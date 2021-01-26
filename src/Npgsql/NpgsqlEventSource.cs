@@ -96,11 +96,10 @@ namespace Npgsql
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
             var sum = 0;
-            foreach (var kv in PoolManager.Pools)
+            foreach (var pool in PoolManager.Pools)
             {
-                var pool = kv.Pool;
                 if (pool == null)
-                    return sum;
+                    break;
                 sum += pool.Statistics.Idle;
             }
             return sum;
@@ -111,13 +110,11 @@ namespace Npgsql
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
             var sum = 0;
-            foreach (var kv in PoolManager.Pools)
+            foreach (var pool in PoolManager.Pools)
             {
-                var pool = kv.Pool;
                 if (pool == null)
-                    return sum;
-                var (_, _, busy) = pool.Statistics;
-                sum += busy;
+                    break;
+                sum += pool.Statistics.Busy;
             }
             return sum;
         }

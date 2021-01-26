@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using System.Linq;
+using System.Text.RegularExpressions;
+using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
@@ -17,6 +19,16 @@ namespace Npgsql.Tests
             }.ToString();
             using (var conn = new NpgsqlConnection(connString2))
                 conn.Open();
+        }
+
+        [Test]
+        public void WithNonCanonicalConnString()
+        {
+            var nonCanonicalConnString = ConnectionString + ";";
+            using (var conn = new NpgsqlConnection(nonCanonicalConnString))
+                conn.Open();
+            // Only one pool, but two alias in PoolManager (for canonical connection string and for noncanonical)
+            Assert.AreEqual(1, PoolManager.Pools.Count(p => p != null));
         }
 
 #if DEBUG

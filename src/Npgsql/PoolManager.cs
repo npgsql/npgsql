@@ -17,16 +17,17 @@ namespace Npgsql
         internal const int InitialPoolsSize = 10;
 
         static readonly object Lock = new();
-        static volatile (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
+        static volatile (string Key, ConnectorPool Pool)[] _poolsAliases = new (string, ConnectorPool)[InitialPoolsSize];
+        static volatile ConnectorPool?[] _pools = new ConnectorPool[InitialPoolsSize];
         static volatile int _nextSlot;
 
-        internal static (string Key, ConnectorPool Pool)[] Pools => _pools;
+        internal static ConnectorPool?[] Pools => _pools;
 
         internal static bool TryGetValue(string key, [NotNullWhen(true)] out ConnectorPool? pool)
         {
-            // Note that pools never get removed. _pools is strictly append-only.
+            // Note that pools never get removed. _poolsAliases is strictly append-only.
             var nextSlot = _nextSlot;
-            var pools = _pools;
+            var pools = _poolsAliases;
             var sw = new SpinWait();
 
             // First scan the pools and do reference equality on the connection strings
@@ -71,16 +72,36 @@ namespace Npgsql
                     return result;
 
                 // May need to grow the array.
-                if (_nextSlot == _pools.Length)
+                if (_nextSlot == _poolsAliases.Length)
                 {
-                    var newPools = new (string, ConnectorPool)[_pools.Length * 2];
+                    var newPools = new (string, ConnectorPool)[_poolsAliases.Length * 2];
+                    Array.Copy(_poolsAliases, newPools, _poolsAliases.Length);
+                    _poolsAliases = newPools;
+                }
+
+                _poolsAliases[_nextSlot].Key = key;
+                _poolsAliases[_nextSlot].Pool = pool;
+                Interlocked.Increment(ref _nextSlot);
+
+                var idx = 0;
+                ConnectorPool? existsPool = null;
+                for (; idx < _pools.Length; idx++)
+                {
+                    existsPool = _pools[idx];
+                    if (existsPool == null || existsPool == pool)
+                        break;
+                }
+
+                if (idx == _pools.Length)
+                {
+                    var newPools = new ConnectorPool[_pools.Length * 2];
                     Array.Copy(_pools, newPools, _pools.Length);
                     _pools = newPools;
                 }
+                
+                if(existsPool == null)
+                    _pools[idx] = pool;
 
-                _pools[_nextSlot].Key = key;
-                _pools[_nextSlot].Pool = pool;
-                Interlocked.Increment(ref _nextSlot);
                 return pool;
             }
         }
@@ -96,12 +117,12 @@ namespace Npgsql
             lock (Lock)
             {
                 var pools = _pools;
-                for (var i = 0; i < _nextSlot; i++)
+                for (var i = 0; i < _pools.Length; i++)
                 {
                     var cp = pools[i];
-                    if (cp.Key == null)
+                    if (cp == null)
                         return;
-                    cp.Pool?.Clear();
+                    cp.Clear();
                 }
             }
         }
@@ -123,7 +144,8 @@ namespace Npgsql
             lock (Lock)
             {
                 ClearAll();
-                _pools = new (string, ConnectorPool)[InitialPoolsSize];
+                _poolsAliases = new (string, ConnectorPool)[InitialPoolsSize];
+                _pools = new ConnectorPool?[InitialPoolsSize];
                 _nextSlot = 0;
             }
         }
