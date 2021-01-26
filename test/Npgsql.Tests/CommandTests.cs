@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -356,6 +358,62 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
                 Is.EqualTo(processId));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
+        [Timeout(6000)]
+        public async Task Bug3466([Values(false, true)] bool isBroken)
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+            };
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString(), completeCancellationImmediately: false);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var serverMock = await postmasterMock.WaitForServerConnection();
+
+            var processId = conn.ProcessID;
+
+            using var cancellationSource = new CancellationTokenSource();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn)
+            {
+                CommandTimeout = 3
+            };
+            var t = Task.Run(() => cmd.ExecuteScalar());
+            Thread.Sleep(300);
+            // Perform cancellation, which will block on the server side
+            var cancelTask = Task.Run(() => cmd.Cancel());
+            // Note what we have to wait for the cancellation request, otherwise the connection might be closed concurrently
+            // and the cancellation request is never send
+            var cancellationRequest = await postmasterMock.WaitForCancellationRequest();
+
+            if (isBroken)
+            {
+                Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+            else
+            {
+                await serverMock
+                    .WriteParseComplete()
+                    .WriteBindComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                    .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+                    .WriteCommandComplete()
+                    .WriteReadyForQuery()
+                    .FlushAsync();
+                Assert.DoesNotThrowAsync(async () => await t);
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                await conn.CloseAsync();
+            }
+
+            // Release the cancellation at the server side, and make sure it completes without an exception
+            cancellationRequest.Complete();
+            Assert.DoesNotThrowAsync(async () => await cancelTask);
         }
 
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
