@@ -195,7 +195,7 @@ namespace Npgsql
             {
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                NpgsqlEventSource.Log.PoolCreated();
+                NpgsqlEventSource.Log.PoolCreated(newPool);
             }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
