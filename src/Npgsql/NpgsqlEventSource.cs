@@ -128,7 +128,7 @@ namespace Npgsql
                 return sum;
             }
         }
-        
+
         protected override void OnEventCommand(EventCommandEventArgs command)
         {
             if (command.Command == EventCommand.Enable)
