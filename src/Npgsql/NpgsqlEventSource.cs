@@ -129,6 +129,14 @@ namespace Npgsql
             }
         }
 
+        int GetPoolsCount()
+        {
+            lock (_pools)
+            {
+                return _pools.Count;
+            }
+        }
+
         protected override void OnEventCommand(EventCommandEventArgs command)
         {
             if (command.Command == EventCommand.Enable)
@@ -181,7 +189,7 @@ namespace Npgsql
                     DisplayUnits = "%"
                 };
 
-                _poolsCounter = new PollingCounter("connection-pools", this, () => _pools.Count)
+                _poolsCounter = new PollingCounter("connection-pools", this, () => GetPoolsCount())
                 {
                     DisplayName = "Connection Pools"
                 };
