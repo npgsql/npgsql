@@ -131,7 +131,7 @@ namespace Npgsql
 
         int GetPoolsCount()
         {
-            lock (_pools)
+            lock (_poolsLock)
             {
                 return _pools.Count;
             }
