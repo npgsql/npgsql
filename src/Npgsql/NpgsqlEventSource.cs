@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.Tracing;
@@ -43,8 +44,7 @@ namespace Npgsql
         long _failedCommands;
 
         readonly object _poolsLock = new();
-        volatile ConnectorPool?[] _pools = new ConnectorPool?[PoolManager.InitialPoolsSize];
-        int _poolsNextSlot;
+        readonly HashSet<ConnectorPool> _pools = new();
 
         long _multiplexingBatchesSent;
         long _multiplexingCommandsSent;
@@ -85,16 +85,7 @@ namespace Npgsql
         {
             lock (_poolsLock)
             {
-                // May need to grow the array.
-                if (_poolsNextSlot == _pools.Length)
-                {
-                    var newPools = new ConnectorPool?[_pools.Length * 2];
-                    Array.Copy(_pools, newPools, _pools.Length);
-                    _pools = newPools;
-                }
-
-                _pools[_poolsNextSlot] = pool;
-                Interlocked.Increment(ref _poolsNextSlot);
+                _pools.Add(pool);
             }
         }
 
@@ -112,33 +103,32 @@ namespace Npgsql
         {
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
-            var sum = 0;
-            var pools = _pools;
-
-            foreach (var pool in pools)
+            lock (_poolsLock)
             {
-                if (pool == null)
-                    return sum;
-                sum += pool.Statistics.Idle;
+                var sum = 0;
+                foreach (var pool in _pools)
+                {
+                    sum += pool.Statistics.Idle;
+                }
+                return sum;
             }
-            return sum;
         }
 
         int GetBusyConnections()
         {
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
-            var sum = 0;
-            var pools = _pools;
-            foreach (var pool in pools)
+            lock (_poolsLock)
             {
-                if (pool == null)
-                    return sum;
-                sum += pool.Statistics.Busy;
+                var sum = 0;
+                foreach (var pool in _pools)
+                {
+                    sum += pool.Statistics.Busy;
+                }
+                return sum;
             }
-            return sum;
         }
-
+        
         protected override void OnEventCommand(EventCommandEventArgs command)
         {
             if (command.Command == EventCommand.Enable)
@@ -191,7 +181,7 @@ namespace Npgsql
                     DisplayUnits = "%"
                 };
 
-                _poolsCounter = new PollingCounter("connection-pools", this, () => _poolsNextSlot)
+                _poolsCounter = new PollingCounter("connection-pools", this, () => _pools.Count)
                 {
                     DisplayName = "Connection Pools"
                 };
