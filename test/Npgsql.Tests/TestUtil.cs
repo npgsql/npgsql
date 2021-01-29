@@ -364,7 +364,7 @@ namespace Npgsql.Tests
 
     public static class NpgsqlCommandExtensions
     {
-        public static void EnsureInProgress(this NpgsqlCommand command)
+        public static void WaitUntilCommandIsInProgress(this NpgsqlCommand command)
         {
             while (command.State != CommandState.InProgress)
                 Thread.Sleep(50);

@@ -251,8 +251,8 @@ namespace Npgsql.Tests
             using var cmd = CreateSleepCommand(conn, 5);
 
             var queryTask = Task.Run(() => cmd.ExecuteNonQuery());
-            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be send
-            cmd.EnsureInProgress();
+            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be sent
+            cmd.WaitUntilCommandIsInProgress();
             cmd.Cancel();
             Assert.That(async () => await queryTask, Throws
                 .TypeOf<OperationCanceledException>()
@@ -355,8 +355,8 @@ namespace Npgsql.Tests
                 CommandTimeout = 3
             };
             var t = Task.Run(() => cmd.ExecuteScalar());
-            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be send
-            cmd.EnsureInProgress();
+            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be sent
+            cmd.WaitUntilCommandIsInProgress();
             // Perform cancellation, which will block on the server side
             var cancelTask = Task.Run(() => cmd.Cancel());
             // Note what we have to wait for the cancellation request, otherwise the connection might be closed concurrently
