@@ -1914,6 +1914,7 @@ namespace Npgsql
         /// <summary>
         /// This event is unsupported by Npgsql. Use <see cref="DbConnection.StateChange"/> instead.
         /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public new event EventHandler? Disposed
         {
             add => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
