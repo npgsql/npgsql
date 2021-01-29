@@ -276,18 +276,15 @@ namespace Npgsql.Tests
             using var conn = await OpenConnectionAsync();
             using var cmd = CreateSleepCommand(conn, 5);
 
-            var cancelTask = Task.Run(() =>
-            {
-                Thread.Sleep(300);
-                cmd.Cancel();
-            });
-            Assert.That(() => cmd.ExecuteNonQuery(), Throws
+            var queryTask = Task.Run(() => cmd.ExecuteNonQuery());
+            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be sent
+            cmd.WaitUntilCommandIsInProgress();
+            cmd.Cancel();
+            Assert.That(async () => await queryTask, Throws
                 .TypeOf<OperationCanceledException>()
                 .With.InnerException.TypeOf<PostgresException>()
                 .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled)
             );
-
-            await cancelTask;
         }
 
         [Test]
@@ -362,7 +359,6 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
         [Timeout(6000)]
-        [Ignore("Flaky")]
         public async Task Bug3466([Values(false, true)] bool isBroken)
         {
             if (IsMultiplexing)
@@ -385,7 +381,8 @@ namespace Npgsql.Tests
                 CommandTimeout = 3
             };
             var t = Task.Run(() => cmd.ExecuteScalar());
-            Thread.Sleep(300);
+            // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be sent
+            cmd.WaitUntilCommandIsInProgress();
             // Perform cancellation, which will block on the server side
             var cancelTask = Task.Run(() => cmd.Cancel());
             // Note what we have to wait for the cancellation request, otherwise the connection might be closed concurrently
