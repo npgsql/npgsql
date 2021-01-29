@@ -705,6 +705,7 @@ namespace Npgsql
             if (disposing)
                 Close();
             _disposed = true;
+            base.Dispose(disposing);
         }
 
         /// <summary>
@@ -720,6 +721,12 @@ namespace Npgsql
                 return;
             await CloseAsync();
             _disposed = true;
+
+#if !NET461 && !NETSTANDARD2_0
+            await base.DisposeAsync();
+#else
+            base.Dispose();
+#endif
         }
 
         #endregion
