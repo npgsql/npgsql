@@ -27,7 +27,7 @@ namespace Npgsql
     /// </summary>
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlCommand : DbCommand, ICloneable
+    public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
     {
         #region Fields
 
@@ -1476,6 +1476,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             default:
                 throw new InvalidOperationException("Connection is not open");
             }
+        }
+
+        /// <summary>
+        /// This event is unsupported by Npgsql. Use <see cref="DbConnection.StateChange"/> instead.
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new event EventHandler? Disposed
+        {
+            add => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+            remove => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+        }
+
+        event EventHandler? IComponent.Disposed
+        {
+            add => Disposed += value;
+            remove => Disposed -= value;
         }
 
         #endregion

@@ -28,7 +28,7 @@ namespace Npgsql
     /// </summary>
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection, ICloneable
+    public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         #region Fields
 
@@ -1909,6 +1909,22 @@ namespace Npgsql
             // Increment the change counter on the global type mapper. This will make conn.Open() pick up the
             // new DatabaseInfo and set up a new connection type mapper
             TypeMapping.GlobalTypeMapper.Instance.RecordChange();
+        }
+
+        /// <summary>
+        /// This event is unsupported by Npgsql. Use <see cref="DbConnection.StateChange"/> instead.
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new event EventHandler? Disposed
+        {
+            add => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+            remove => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+        }
+
+        event EventHandler? IComponent.Disposed
+        {
+            add => Disposed += value;
+            remove => Disposed -= value;
         }
 
         #endregion Misc
