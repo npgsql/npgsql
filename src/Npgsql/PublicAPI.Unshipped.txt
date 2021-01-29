@@ -47,3 +47,5 @@ Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Never = 0 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.PerInstance = 2 -> Npgsql.ArrayNullabilityMode
+Npgsql.NpgsqlCommand.Disposed -> System.EventHandler?
+Npgsql.NpgsqlConnection.Disposed -> System.EventHandler?
