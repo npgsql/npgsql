@@ -1373,7 +1373,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Transaction = null;
             _connection = null;
             State = CommandState.Disposed;
-            base.Dispose(disposing);
         }
 
         #endregion
