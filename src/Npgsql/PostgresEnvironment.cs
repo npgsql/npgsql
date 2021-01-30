@@ -31,6 +31,12 @@ namespace Npgsql
 
         public static string? Options => Environment.GetEnvironmentVariable("PGOPTIONS");
 
+        public static string? Service => Environment.GetEnvironmentVariable("PGSERVICE");
+
+        public static string? ServiceFile => Environment.GetEnvironmentVariable("PGSERVICEFILE");
+
+        public static string? ServiceFileDefault => GetDefaultFilePath(".pg_service.conf");
+
         static string? GetDefaultFilePath(string fileName) =>
             Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData &&
             Path.Combine(appData, "postgresql", fileName) is string filePath &&

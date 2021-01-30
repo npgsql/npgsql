@@ -570,6 +570,18 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public async Task ServiceFile()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Service = "TestService",
+            };
+
+            using var conn = await OpenConnectionAsync(csb);
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
         public void DataSource()
         {

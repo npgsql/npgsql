@@ -502,6 +502,24 @@ namespace Npgsql
         }
         string? _timezone;
 
+        /// <summary>
+        /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
+        [DisplayName("Service")]
+        [NpgsqlConnectionStringProperty]
+        public string? Service
+        {
+            get => service;
+            set
+            {
+                service = value;
+                SetValue(nameof(Service), value);
+            }
+        }
+        string? service;
+
         #endregion
 
         #region Properties - Security
@@ -1510,6 +1528,56 @@ namespace Npgsql
         #endregion
 
         #region Misc
+
+        internal void InitServiceFile()
+        {
+            var service = Service ?? PostgresEnvironment.Service;
+            var serviceFile = PostgresEnvironment.ServiceFile ?? PostgresEnvironment.ServiceFileDefault;
+            if (string.IsNullOrEmpty(service) || string.IsNullOrEmpty(serviceFile) || !File.Exists(serviceFile))
+                return;
+
+            // TODO: Errors
+            // TODO: Parse service file, default service file and system-wide
+
+            var sectionFound = false;
+
+            var lines = File.ReadLines(serviceFile);
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                if (string.IsNullOrEmpty(trimmedLine))
+                    continue;
+
+                var startChar = trimmedLine[0];
+                if (startChar == '#') // Commentary
+                    continue;
+
+                if (startChar == '[') // Begining of the section
+                {
+                    if (sectionFound)
+                        break;
+
+                    var endPosition = trimmedLine.IndexOf(']');
+                    if (endPosition == -1)
+                        continue;
+
+                    var sectionName = trimmedLine.Substring(1, endPosition - 1);
+                    if (sectionName == service)
+                        sectionFound = true;
+
+                    continue;
+                }
+
+                // Connection string values
+                var delimPos = trimmedLine.IndexOf('=');
+                if (delimPos <= 0)
+                    continue;
+
+                var key = trimmedLine.Substring(0, delimPos);
+                var value = trimmedLine.Substring(delimPos + 1);
+                Add(key, value);
+            }
+        }
 
         internal void Validate()
         {

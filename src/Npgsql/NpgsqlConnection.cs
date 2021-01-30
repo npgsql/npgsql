@@ -163,6 +163,7 @@ namespace Npgsql
 
             // Connection string hasn't been seen before. Parse it.
             var settings = new NpgsqlConnectionStringBuilder(_connectionString);
+            settings.InitServiceFile();
             settings.Validate();
             Settings = settings;
 

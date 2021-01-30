@@ -8,6 +8,8 @@ Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.T
 Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlRawCopyStream!>!
 Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
 Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextWriter!>!
+Npgsql.NpgsqlConnectionStringBuilder.Service.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.Service.set -> void
 Npgsql.TypeHandlers.ArrayHandler.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, Npgsql.ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1) -> void
 *REMOVED*Npgsql.TypeHandlers.ArrayHandler.ReadArray<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async, int expectedDimensions = 0) -> System.Threading.Tasks.ValueTask<System.Array!>
 Npgsql.TypeHandlers.ArrayHandler.ReadArray<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async, int expectedDimensions = 0, bool readAsObject = false) -> System.Threading.Tasks.ValueTask<System.Array!>
