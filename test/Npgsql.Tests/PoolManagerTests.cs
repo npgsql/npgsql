@@ -42,11 +42,10 @@ namespace Npgsql.Tests
         {
             using (OpenConnection()) {}
             // Now have one connection in the pool
-            Assert.That(PoolManager.TryGetValue(ConnectionString, out var pool), Is.True);
+            Assert.IsTrue(PoolManager.TryGetValue(ConnectionString, out var pool));
             Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
             NpgsqlConnection.ClearAllPools();
-            Assert.That(PoolManager.TryGetValue(ConnectionString, out var _), Is.False);
             Assert.That(pool.Statistics.Idle, Is.Zero);
             Assert.That(pool.Statistics.Total, Is.Zero);
         }
