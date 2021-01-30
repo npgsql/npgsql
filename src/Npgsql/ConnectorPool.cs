@@ -199,7 +199,7 @@ namespace Npgsql
                         if (async)
                         {
                             connector = await _idleConnectorReader.ReadAsync(finalToken);
-                            if (CheckIdleConnector(connector, canDelete: false))
+                            if (CheckIdleConnector(connector))
                                 return AssignConnection(conn, connector);
                         }
                         else
@@ -269,7 +269,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector, bool canDelete = true)
+        bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector, bool canDelete = false)
         {
             if (connector is null)
                 return false;
@@ -380,9 +380,9 @@ namespace Npgsql
             var count = _idleCount;
             while (count > 0 && _idleConnectorReader.TryRead(out var connector))
             {
-                if (CheckIdleConnector(connector, canDelete: false))
+                if (CheckIdleConnector(connector))
                 {
-                    CloseConnector(connector, canDelete: false);
+                    CloseConnector(connector);
                     count--;
                 }
             }
@@ -518,7 +518,7 @@ namespace Npgsql
                    pool._idleConnectorReader.TryRead(out var connector) &&
                    connector != null)
             {
-                if (pool.CheckIdleConnector(connector))
+                if (pool.CheckIdleConnector(connector, canDelete: true))
                 {
                     pool.CloseConnector(connector);
                     toPrune--;
