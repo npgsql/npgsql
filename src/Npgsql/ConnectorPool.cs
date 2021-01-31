@@ -257,7 +257,7 @@ namespace Npgsql
         {
             while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
-                if (CheckIdleConnector(nullableConnector, canDelete: false))
+                if (CheckIdleConnector(nullableConnector))
                 {
                     connector = nullableConnector;
                     return true;
