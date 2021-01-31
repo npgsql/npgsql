@@ -33,7 +33,7 @@ namespace Npgsql
             var minNextSlot = Math.Min(nextSlot, pools.Length);
 
             // First scan the pools and do reference equality on the connection strings
-            for (var i = 0; i < nextSlot; i++)
+            for (var i = 0; i < minNextSlot; i++)
             {
                 var cp = pools[i];
                 if (ReferenceEquals(cp.Key, key))
@@ -44,7 +44,7 @@ namespace Npgsql
             }
 
             // Next try value comparison on the strings
-            for (var i = 0; i < nextSlot; i++)
+            for (var i = 0; i < minNextSlot; i++)
             {
                 var cp = pools[i];
                 if (cp.Key == key)
