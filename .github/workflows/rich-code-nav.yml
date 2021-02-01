@@ -2,7 +2,6 @@ name: Rich Code Navigation
 
 on:
   push:
-  pull_request:
     branches:
       - main
       - stable
@@ -38,7 +37,7 @@ jobs:
 
       - name: Rich Navigation Indexing
         uses: microsoft/RichCodeNavIndexer@v0.1
-          with:
-            languages: csharp
-            repo-token: ${{ github.token }}
+        with:
+          languages: csharp
+          repo-token: ${{ github.token }}
           continue-on-error: true
