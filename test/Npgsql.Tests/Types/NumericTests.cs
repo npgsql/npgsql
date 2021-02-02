@@ -99,6 +99,19 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [TestCaseSource(nameof(ReadWriteCases))]
+        public async Task WriteNgpsqlDecimal(string query, decimal expected)
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+            cmd.Parameters.AddWithValue("p", expected);
+            using var rdr = await cmd.ExecuteReaderAsync();
+            rdr.Read();
+            Assert.That(NpgsqlDecimal.GetBits(rdr.GetFieldValue<NpgsqlDecimal>(0)), Is.EqualTo(NpgsqlDecimal.GetBits((NpgsqlDecimal)expected)));
+            Assert.That(rdr.GetFieldValue<bool>(1));
+        }
+
+        [Test]
         public async Task Mapping()
         {
             using var conn = await OpenConnectionAsync();
@@ -112,17 +125,18 @@ namespace Npgsql.Tests.Types
             rdr.Read();
             for (var i = 0; i < cmd.Parameters.Count; i++)
             {
-                Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
-                Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
-                Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<int>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<long>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
-                Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
+                        Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
+                        Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
+                        Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
+                        Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
+                        Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
+                        Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
+                        Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
+                        Assert.That(rdr.GetFieldValue<int>(i), Is.EqualTo(8));
+                        Assert.That(rdr.GetFieldValue<long>(i), Is.EqualTo(8));
+                        Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
+                        Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
+                        Assert.That(rdr.GetFieldValue<NpgsqlDecimal>(i), Is.EqualTo(new NpgsqlDecimal(8M)));
             }
         }
 
@@ -148,6 +162,55 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
+            }
+        }
+
+        [Test, Description("Tests the GetSqlDecimal for the Read cases")]
+        [TestCaseSource(nameof(ReadWriteCases))]
+        public async Task ReadNpgsqlDecimal(string query, decimal expected)
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+
+            var result = reader.GetFieldValue<NpgsqlDecimal>(0);
+
+            Assert.That(
+                    decimal.GetBits(result.ToDecimal()),
+                    Is.EqualTo(decimal.GetBits(expected)));
+        }
+
+        [Test, Description("Tests when GetNpgsqlDecimal for Numeric values that don't fit in a System.Decimal and they have decimal digits which can be rounded to fit")]
+        public async Task ReadNpgsqlDecimalOverflow()
+        {
+
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand {
+                Connection = conn
+            };
+
+            var readCases = new[] {
+                                            new object[]{ "1000000000000000000000.123456448", 1000000000000000000000.123456448m , 29, 7 },
+                                            new object[]{ "1000000000000000000000.123456448", 1000000000000000000000.123456448m , 29, 7 },
+                                            new object[]{ "1000000000000000000000.123456789", 1000000000000000000000.123456789m , 29, 7 },
+                                            new object[]{ "9000000000000000000000.123456789", 9000000000000000000000.123456789m , 28, 6 },
+                                            new object[]{ "-9000000000000000000000000001.0002", -9000000000000000000000000001.0002m , 28, 0 },
+                                            new object[]{ "-10000000000000000000000000000.0002", -10000000000000000000000000000.0002m, 29, 0 }
+                                         };
+
+            for (var i = 0; i < readCases.Length; i++)
+            {
+                var sb = string.Format("SELECT {0}::numeric as Val ", readCases[i][0]);
+                cmd.CommandText = sb.ToString();
+
+                using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+                reader.Read();
+
+                var result = reader.GetFieldValue<NpgsqlDecimal>(0);
+                var adjustedResult = result.AdjustScale((int)readCases[i][3]);
+
+                Assert.IsTrue(adjustedResult.ToDecimal() == (decimal)readCases[i][1]);
             }
         }
 

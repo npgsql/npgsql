@@ -21,8 +21,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
     public class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
-        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
-    {
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<NpgsqlDecimal> {
         /// <inheritdoc />
         public NumericHandler(PostgresType postgresType) : base(postgresType) {}
 
@@ -35,6 +34,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         const int MaxGroupCount = 8;
         const int MaxGroupScale = 4;
 
+        static readonly int NpgsqlDecimalMaxGroupCount = (int)Math.Ceiling((NpgsqlDecimal.NUMERIC_MAX_PRECISION + NpgsqlDecimal.NUMERIC_MAX_SCALE) / 4.0);
         static readonly uint MaxGroupSize = DecimalRaw.Powers10[MaxGroupScale];
 
         #region Read
@@ -104,8 +104,76 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return result.Value;
         }
 
+
+        /// <inheritdoc />
+        public NpgsqlDecimal ReadNpgsqlDecimal(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+        {
+            var result = new NpgsqlDecimal(0);
+            var groups = buf.ReadUInt16();
+            var weight = buf.ReadInt16() - groups + 1;
+            var sign = buf.ReadUInt16();
+
+            if (sign == SignNan)
+                throw new InvalidCastException("Numeric NaN not supported by NpgsqlTypes.NpgsqlDecimal");
+
+            if (sign == SignNegative)
+                NpgsqlDecimal.Negate(ref result);
+
+            var scale = buf.ReadInt16();
+            if (scale < 0 is var exponential && exponential)
+                scale = (short)(-scale);
+            else
+                result.Scale = scale;
+
+            if (scale > NpgsqlDecimal.NUMERIC_MAX_SCALE)
+                throw new OverflowException("Numeric value does not fit in a NpgsqlTypes.NpgsqlDecimal");
+
+            var scaleDifference = exponential
+                ? weight * MaxGroupScale
+                : weight * MaxGroupScale + scale;
+
+            if (groups >= NpgsqlDecimalMaxGroupCount)
+                throw new OverflowException("Numeric value does not fit in a NpgsqlTypes.NpgsqlDecimal");
+
+            if (groups == NpgsqlDecimalMaxGroupCount)
+            {
+                while (groups-- > 1)
+                {
+                    result.MpMultiply(MaxGroupSize);
+                    result.MpAdd(buf.ReadUInt16());
+                }
+
+                var group = buf.ReadUInt16();
+                var groupSize = NpgsqlDecimal.Powers10[-scaleDifference];
+                if (group % groupSize != 0)
+                    throw new OverflowException("Numeric value does not fit in a System.NpgsqlDecimal");
+
+                result.MpMultiply(MaxGroupSize / groupSize);
+                result.MpAdd(group / groupSize);
+            } else
+            {
+                while (groups-- > 0)
+                {
+                    result.MpMultiply(MaxGroupSize);
+                    result.MpAdd(buf.ReadUInt16());
+                }
+
+                if (scaleDifference < 0)
+                    result.MpDivide(NpgsqlDecimal.Powers10[-scaleDifference]);
+                else
+                    while (scaleDifference > 0)
+                    {
+                        var scaleChunk = Math.Min(NpgsqlDecimal.MaxUInt32Scale, scaleDifference);
+                        result.MpMultiply(NpgsqlDecimal.Powers10[scaleChunk]);
+                        scaleDifference -= scaleChunk;
+                    }
+            }
+
+            return result;
+        }
+
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => (byte)Read(buf, len, fieldDescription);
+        => (byte)Read(buf, len, fieldDescription);
 
         short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (short)Read(buf, len, fieldDescription);
@@ -121,6 +189,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (double)Read(buf, len, fieldDescription);
+
+        NpgsqlDecimal INpgsqlSimpleTypeHandler<NpgsqlDecimal>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => (NpgsqlDecimal)ReadNpgsqlDecimal(buf, len, fieldDescription);
 
         #endregion
 
@@ -169,6 +240,42 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(double value, NpgsqlParameter? parameter) => ValidateAndGetLength((decimal)value, parameter);
         /// <inheritdoc />
         public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)   => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlDecimal value, NpgsqlParameter? parameter)
+        {
+            var groupCount = 0;
+            var raw = new NpgsqlDecimal(value);
+
+            if (!NpgsqlDecimal.IsZero(ref value))
+            {
+                uint remainder = default;
+                var scaleChunk = raw.Scale % MaxGroupScale;
+                if (scaleChunk > 0)
+                {
+                    var divisor = NpgsqlDecimal.Powers10[scaleChunk];
+                    var multiplier = NpgsqlDecimal.Powers10[MaxGroupScale - scaleChunk];
+                    remainder = raw.MpDivide(divisor) * multiplier;
+                }
+
+                while (remainder == 0)
+                    remainder = raw.MpDivide(MaxGroupSize);
+
+                groupCount++;
+
+                while (!NpgsqlDecimal.IsZero(ref raw))
+                {
+                    raw.MpDivide(MaxGroupSize);
+                    groupCount++;
+                }
+            }
+
+            if (groupCount >= NpgsqlDecimalMaxGroupCount)
+                throw new OverflowException();
+
+            //TODO: Faster way of calculating group count. GetPrecision must be exact!!!
+            //var groupCount = (int)Math.Ceiling(value.GetPrecision() / 4.0);
+            return 4 * sizeof(short) + groupCount * sizeof(short);
+        }
 
         /// <inheritdoc />
         public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -228,8 +335,51 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)  => Write((decimal)value, buf, parameter);
         /// <inheritdoc />
-        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => Write((decimal)value, buf, parameter);
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => Write((decimal)value, buf, parameter);        
+        /// <inheritdoc />
+        public void Write(NpgsqlDecimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) {
+            var weight = 0;
+            var groupCount = 0;
+            Span<short> groups = stackalloc short[(int)Math.Ceiling(value.GetPrecision() / 4.0)];
 
+            var raw = new NpgsqlDecimal(value);
+            if (!NpgsqlDecimal.IsZero(ref raw)) {
+                var scale = raw.Scale;
+                weight = -scale / MaxGroupScale - 1;
+
+                uint remainder;
+                var scaleChunk = scale % MaxGroupScale;
+                if (scaleChunk > 0) {
+                    var divisor = NpgsqlDecimal.Powers10[scaleChunk];
+                    var multiplier = NpgsqlDecimal.Powers10[MaxGroupScale - scaleChunk];
+                    remainder = raw.MpDivide(divisor) * multiplier;
+
+                    if (remainder != 0) {
+                        weight--;
+                        goto WriteGroups;
+                    }
+                }
+
+                while ((remainder = raw.MpDivide(MaxGroupSize)) == 0)
+                    weight++;
+
+                WriteGroups:
+                groups[groupCount++] = (short)remainder;
+
+                while (!NpgsqlDecimal.IsZero(ref raw))
+                    groups[groupCount++] = (short)raw.MpDivide(MaxGroupSize);
+            }
+
+            buf.WriteInt16(groupCount);
+            buf.WriteInt16(groupCount + weight);
+            buf.WriteInt16(raw.Negative ? SignNegative : SignPositive);
+            buf.WriteInt16(raw.Scale);
+
+            while (groupCount > 0)
+                buf.WriteInt16(groups[--groupCount]);
+
+        }
+        
         #endregion
     }
 }

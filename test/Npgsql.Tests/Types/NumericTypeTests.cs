@@ -271,6 +271,39 @@ namespace Npgsql.Tests.Types
                 };
         }
 
+        [Test, Description("Tests handling of numeric overflow when reading and writing data for NpgsqlDecimal type")]
+        public async Task ReadAndWriteOverflowNpgsqlDecimal()
+        {
+            //Assert.Ignore("This test is very slow to execute");
+
+            var npgsqlDecimalStr = new string('9', NpgsqlDecimal.NUMERIC_MAX_PRECISION) + "." + new string('9', NpgsqlDecimal.NUMERIC_MAX_SCALE);
+
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand($"SELECT {npgsqlDecimalStr}::numeric", conn);
+            Assert.ThrowsAsync<OverflowException>(async () => {
+                using var reader = await cmd.ExecuteReaderAsync();
+                Assert.True(reader.Read());
+                reader.GetFieldValue<NpgsqlDecimal>(0);
+            });
+
+            var npgsqlDecimal = NpgsqlDecimal.Parse(npgsqlDecimalStr);
+
+            using var cmd2 = new NpgsqlCommand($"SELECT {npgsqlDecimalStr}::numeric", conn) {
+                CommandText = "SELECT @p1"
+            };
+
+            var p1 = new NpgsqlParameter("p1", DbType.VarNumeric) {
+                Value = npgsqlDecimal
+            };
+            cmd2.Parameters.Add(p1);
+            Assert.ThrowsAsync<OverflowException>(async () => {
+                using var reader = await cmd2.ExecuteReaderAsync();
+                Assert.True(reader.Read());
+                reader.GetFieldValue<NpgsqlDecimal>(0);
+            });
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
         // Older tests
 
         [Test]

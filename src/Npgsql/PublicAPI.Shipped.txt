@@ -1424,6 +1424,50 @@ NpgsqlTypes.NpgsqlCircle.X.get -> double
 NpgsqlTypes.NpgsqlCircle.X.set -> void
 NpgsqlTypes.NpgsqlCircle.Y.get -> double
 NpgsqlTypes.NpgsqlCircle.Y.set -> void
+NpgsqlTypes.NpgsqlDecimal
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal() -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(decimal value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(int value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(long value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(double dVal) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(NpgsqlTypes.NpgsqlDecimal value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(uint[]! data, int scale, bool isPositive) -> void
+NpgsqlTypes.NpgsqlDecimal.Negative.get -> bool
+NpgsqlTypes.NpgsqlDecimal.Positive.get -> bool
+NpgsqlTypes.NpgsqlDecimal.Scale.get -> int
+NpgsqlTypes.NpgsqlDecimal.Scale.set -> void
+NpgsqlTypes.NpgsqlDecimal.AdjustScale(int newScale, bool round = true) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Parse(string! s) -> NpgsqlTypes.NpgsqlDecimal
+NpgsqlTypes.NpgsqlDecimal.IsZero() -> bool
+static NpgsqlTypes.NpgsqlDecimal.Negate(ref NpgsqlTypes.NpgsqlDecimal value) -> void
+static NpgsqlTypes.NpgsqlDecimal.IsZero(ref NpgsqlTypes.NpgsqlDecimal value) -> bool
+NpgsqlTypes.NpgsqlDecimal.ToDecimal() -> decimal
+NpgsqlTypes.NpgsqlDecimal.ToDouble() -> double
+static NpgsqlTypes.NpgsqlDecimal.GetBits(NpgsqlTypes.NpgsqlDecimal value) -> uint[]!
+override NpgsqlTypes.NpgsqlDecimal.ToString() -> string!
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(bool x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(double x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(decimal x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(byte x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(short x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(int x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(long x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator +(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator -(NpgsqlTypes.NpgsqlDecimal x) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator -(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator *(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator /(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator ==(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator !=(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator <(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator <=(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator >(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator >=(NpgsqlTypes.NpgsqlDecimal x, NpgsqlTypes.NpgsqlDecimal y) -> bool
+static NpgsqlTypes.NpgsqlDecimal.Ceiling(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Floor(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Abs(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+override NpgsqlTypes.NpgsqlDecimal.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlDecimal.Equals(object? value) -> bool
 NpgsqlTypes.NpgsqlDate
 NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
 NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
@@ -2142,6 +2186,9 @@ override Npgsql.TypeHandlers.NumericHandlers.MoneyHandler.Write(decimal value, N
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> decimal
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(decimal value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(decimal value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ReadNpgsqlDecimal(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> NpgsqlTypes.NpgsqlDecimal
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(NpgsqlTypes.NpgsqlDecimal value, Npgsql.NpgsqlParameter? parameter) -> int
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(NpgsqlTypes.NpgsqlDecimal value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> float
 override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.ValidateAndGetLength(float value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Write(float value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
