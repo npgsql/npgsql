@@ -479,6 +479,16 @@ namespace Npgsql.Tests.Types
             Assert.That(numBits, Is.EqualTo(bits));
             Assert.That(num.Scale == 0);
             Assert.That(num.Positive);
+
+            num = new NpgsqlDecimal(decimal.MinValue);
+            numBits = NpgsqlDecimal.GetBits(num);
+
+            bits = new uint[] { 4294967295, 4294967295, 4294967295 };
+
+            Assert.That(numBits.Length == 3);
+            Assert.That(numBits, Is.EqualTo(bits));
+            Assert.That(num.Scale == 0);
+            Assert.That(num.Negative);
         }
 
         [Test, Description("Tests NpgsqlDecimal double constructor")]

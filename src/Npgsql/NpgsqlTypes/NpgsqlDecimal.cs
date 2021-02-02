@@ -17,37 +17,26 @@ namespace NpgsqlTypes
     /// https://www.postgresql.org/docs/9.1/datatype-numeric.html
     /// </remarks>
     /// </summary>
-    public struct NpgsqlDecimal
+    public struct NpgsqlDecimal : IComparable, IComparable<NpgsqlDecimal>
     {
+        #region Internal constants
+
         const int SignMask = unchecked((int)0x80000000);
-        const int ScaleMask = 0x00FF0000;
-        const int ScaleShift = 16;
+        const int DecimalScaleMask = 0x00FF0000;
+        const int DecimalScaleShift = 16;
+        const uint InternalScaleMask = 0x7FFFFFFF;
+
         internal const int MaxDataLimbs = 18432; //131072+16383 digits requires ~ 18432 UI4s (uint) or limbs
         internal const int NUMERIC_MAX_PRECISION = 131072;  // Maximum precision of numeric
         internal const int NUMERIC_MAX_SCALE = 16383;  // Maximum scale of numeric
-
-
         private const double DUINT_BASE = (double)x_lInt32Base;     // 2**32
-
         private const uint DBL_DIG = 17;                       // Max decimal digits of double
-
         private const byte x_cNumeDivScaleMin = 6;     // Minimum result scale of numeric division
-        private static readonly NpgsqlDecimal Zero = new NpgsqlDecimal(0);
+
         private const double logOf10Base2 = 3.3219280948873626d;
-
         const int MaxDecimalScale = 28; //maximum scale that a decimal supports according to Scale decimal documentation.
-
-        internal enum EComparison
-        {
-            LT,
-            LE,
-            EQ,
-            GE,
-            GT,
-            NE
-        }
-
-        // Fast access for 10^n where n is 0-9
+                                        // The maximum power of 10 that a 32 bit unsigned integer can store
+                                        // Fast access for 10^n where n is 0-9
         internal static readonly uint[] Powers10 = new uint[]
         {
             1,
@@ -61,56 +50,51 @@ namespace NpgsqlTypes
             100000000,
             1000000000
         };
-
-        // The maximum power of 10 that a 32 bit unsigned integer can store
         internal static readonly int MaxUInt32Scale = Powers10.Length - 1;
-
         private const long x_lInt32Base = ((long)1) << 32;      // 2**32
         private const ulong x_ulInt32Base = ((ulong)1) << 32;     // 2**32
         private const ulong x_ulInt32BaseForMod = x_ulInt32Base - 1;    // 2**32 - 1 (0xFFF...FF)
         internal const ulong x_llMax = long.MaxValue;   // Max of Int64
-
         private const uint x_ulBase10 = 10;
 
-        bool _positive;
-        int _scale;
+        /// <summary>
+        /// Zero NpgsqlDecimal representation.
+        /// </summary>
+        public static readonly NpgsqlDecimal Zero = new NpgsqlDecimal(0);
+
+        #endregion
+
+        #region Fields and Properties
+        uint _flags;
         uint[] _data;
+
 
         /// <summary>
         /// Returns true if the number is negative.
         /// </summary>
-        public bool Negative => (!_positive);
+        public bool Negative => (!Positive);
 
         /// <summary>
-        /// Returns true if the number is positive.
+        /// Gets or sets if the number is positive.
         /// </summary>
-        public bool Positive => _positive;
-
-        private void SetPositive() => _positive = true;
+        public bool Positive {
+            get => (_flags & SignMask) > 0;
+            set => _flags = value ? (uint)(_flags | SignMask) : (uint)(_flags & ~SignMask);
+        }
 
         /// <summary>
         /// Gets or sets the Scale (number of decimal digits) for the current <see cref="NpgsqlDecimal"/> instance.
         /// </summary>
         public int Scale {
-            get => _scale;
-            set => _scale = value;
+            get => (int)(_flags & InternalScaleMask);
+            set => _flags = (uint)((_flags & SignMask) | (value & InternalScaleMask));
         }
 
         internal int LimbsLength => _data.Length;
 
-        /// <summary>
-        /// Gets the internal representation of the <see cref="NpgsqlDecimal"/> without scale and sign information.
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public static uint[] GetBits(NpgsqlDecimal value)
-        {
-            var result = new uint[value._data.Length];
-            Array.Copy(value._data, result, value._data.Length);
-            return result;
-        }
+        #endregion
 
-
+        #region Constructors 
         /// <summary>
         /// Constructor for the decimal value.
         /// </summary>
@@ -124,11 +108,11 @@ namespace NpgsqlTypes
             _data[2] = (uint)dBits[2];
 
             var flags = dBits[3];
-            _scale = (flags & ScaleMask) >> ScaleShift;
-            _positive = (flags & SignMask) == 0;
+            Scale = (flags & DecimalScaleMask) >> DecimalScaleShift;
+            Positive = (flags & SignMask) == 0;
 
             if (IsZero())
-                _positive = true;
+                Positive = true;
 
             FixPrecision();
         }
@@ -139,12 +123,16 @@ namespace NpgsqlTypes
         /// <param name="value"></param>
         public NpgsqlDecimal(int value)
         {
+            _flags = 0;
+            _data = new uint[0];
+
             var uiValue = (uint)value;
-            _positive = true;
+            Positive = true;
+
             // set the sign bit
             if (value < 0)
             {
-                _positive = false;
+                Positive = false;
                 // The negative of -2147483648 doesn't fit into int32, directly cast to int should work.
                 if (value != int.MinValue)
                     uiValue = (uint)(-value);
@@ -152,7 +140,7 @@ namespace NpgsqlTypes
 
             // set the data
             _data = new uint[] { uiValue };
-            _scale = 0;
+
         }
 
         /// <summary>
@@ -161,13 +149,16 @@ namespace NpgsqlTypes
         /// <param name="value"></param>
         public NpgsqlDecimal(long value)
         {
+            _flags = 0;
+            _data = new uint[0];
+
             var dwl = (ulong)value;
-            _positive = true;
+            Positive = true;
 
             // set the sign bit
             if (value < 0)
             {
-                _positive = false;
+                Positive = false;
                 // The negative of Int64.MinValue doesn't fit into int64, directly cast to ulong should work.
                 if (value != long.MinValue)
                     dwl = (ulong)(-value);
@@ -175,7 +166,7 @@ namespace NpgsqlTypes
 
             // Copy DWL into bottom 2 UI4s of numeric
             _data = new uint[] { (uint)dwl, (uint)(dwl >> 32) };
-            _scale = 0;
+
 
             FixPrecision();
         }
@@ -186,14 +177,15 @@ namespace NpgsqlTypes
         /// <param name="dVal"></param>
         public NpgsqlDecimal(double dVal)
         {
-            _positive = true;
-            _scale = 0;
+            _flags = 0;
+            _data = new uint[0];
+            Positive = true;
 
             // Split double to sign, integer, and fractional parts
             if (dVal < 0)
             {
                 dVal = -dVal;
-                _positive = false;
+                Positive = false;
             }
 
             var dInt = Math.Floor(dVal);
@@ -277,7 +269,7 @@ namespace NpgsqlTypes
             }
 
             if (IsZero())
-                SetPositive();
+                Positive = true;
         }
 
         /// <summary>
@@ -288,9 +280,7 @@ namespace NpgsqlTypes
         {
             _data = new uint[value._data.Length];
             value._data.CopyTo(_data, 0);
-
-            _positive = value._positive;
-            _scale = value._scale;
+            _flags = value._flags;
         }
 
         /// <summary>
@@ -302,9 +292,25 @@ namespace NpgsqlTypes
         public NpgsqlDecimal(uint[] data, int scale, bool isPositive)
         {
             _data = (uint[])data;
-            _positive = isPositive;
-            _scale = scale;
+            _flags = 0;
+            Positive = isPositive;
+            Scale = scale;
 
+        }
+
+        #endregion
+
+        #region Methods
+        /// <summary>
+        /// Gets the internal representation of the <see cref="NpgsqlDecimal"/> without scale and sign information.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static uint[] GetBits(NpgsqlDecimal value)
+        {
+            var result = new uint[value._data.Length];
+            Array.Copy(value._data, result, value._data.Length);
+            return result;
         }
 
         /// <summary>
@@ -312,7 +318,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value"></param>
         public static void Negate(ref NpgsqlDecimal value)
-            => value._positive = !value._positive;
+            => value.Positive = !value.Positive;
 
         /// <summary>
         /// Adjusts the size of the given <see cref="NpgsqlDecimal"/> data representation to accomodate higher precision.
@@ -347,7 +353,8 @@ namespace NpgsqlTypes
 
                     if (sum >= integer && sum >= addend)
                         return;
-                } else
+                }
+                else
                 {
                     _data[i] = sum = integer + 1;
 
@@ -387,7 +394,8 @@ namespace NpgsqlTypes
                 if (i == 0)
                 {
                     integer = (ulong)_data[i] * multiplier;
-                } else
+                }
+                else
                 {
                     integer = (ulong)_data[i] * multiplier + remainder;
                 }
@@ -458,7 +466,8 @@ namespace NpgsqlTypes
                     integer = _data[i];
                     _data[i] = (uint)(integer / divisor);
                     remainder = (uint)(integer % divisor);
-                } else
+                }
+                else
                 {
                     integer = ((ulong)remainder << 32) | _data[i];
                     _data[i] = (uint)(integer / divisor);
@@ -469,679 +478,6 @@ namespace NpgsqlTypes
             FixPrecision();
 
             return remainder;
-        }
-
-        // Implicit conversions
-
-        /// <summary>
-        /// Explicit conversion from Decimal to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(decimal x) => new NpgsqlDecimal(x);
-
-        /// <summary>
-        /// Explicit conversion from Double to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(double x) => new NpgsqlDecimal(x);
-
-        /// <summary>
-        /// Implicit conversion from SqlBoolean to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(bool x) => new NpgsqlDecimal(x ? 1 : 0);
-
-        /// <summary>
-        /// Implicit conversion from SqlByte to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(byte x) => new NpgsqlDecimal((int)(x));
-
-        /// <summary>
-        /// Implicit conversion from SqlInt16 to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(short x) => new NpgsqlDecimal((int)x);
-
-        /// <summary>
-        /// Implicit conversion from SqlInt32 to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(int x) => new NpgsqlDecimal(x);
-
-        /// <summary>
-        /// Implicit conversion from SqlInt64 to <see cref="NpgsqlDecimal"/>
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        public static explicit operator NpgsqlDecimal(long x) => new NpgsqlDecimal(x);
-
-
-        #region Arithmetic operators
-
-        /// <summary>
-        /// Sum operator.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand</param>
-        /// <returns>Sum result of <see cref="NpgsqlDecimal"/> operands (x+y)</returns>
-        public static NpgsqlDecimal operator +(NpgsqlDecimal x, NpgsqlDecimal y)
-        {
-            if (IsZero(ref x) || IsZero(ref y))
-                return Zero;
-
-            ulong dwlAccum;           //accumulated sum
-            bool fMySignPos;         //sign of x was positive at start
-            bool fOpSignPos;         // sign of y positive at start
-            var fResSignPos = true; //sign of result should be positive
-            int MyScale;    //scale of x
-            int OpScale;    //scale of y
-            int ResScale;   //scale of result
-            //int ResPrec;    //precision of result
-            //int ResInteger; //number of digits for the integer part of result
-            int culOp1;     //# of UI4s in x
-            int culOp2;     //# of UI4s in y
-            int iulData;    //which UI4 we are operating on in x, y
-
-            fMySignPos = !x.Negative;
-            fOpSignPos = !y.Negative;
-
-            //result scale = max(s1,s2)
-            //result precison = max(s1,s2) + max(p1-s1,p2-s2)
-            MyScale = x.Scale;
-            OpScale = y.Scale;
-
-            // Calculate the scale of the result.
-            ResScale = Math.Max(MyScale, OpScale);
-            Debug.Assert(ResScale <= NUMERIC_MAX_SCALE);
-
-            // Adjust both operands to be the same scale as ResScale.
-            if (MyScale != ResScale)
-                x = x.AdjustScale(ResScale - MyScale, true);
-
-            if (OpScale != ResScale)
-                y = y.AdjustScale(ResScale - OpScale, true);
-
-            // When sign of first operand is negative
-            // negate all operands including result.
-            if (!fMySignPos)
-            {
-                fOpSignPos = !fOpSignPos;
-                fResSignPos = !fResSignPos;
-            }
-
-            // Initialize operand lengths and pointer.
-            culOp1 = x._data.Length;
-            culOp2 = y._data.Length;
-
-            var rglData1 = new uint[x._data.Length];
-            var rglData2 = new uint[y._data.Length];
-            Array.Copy(x._data, rglData1, x._data.Length);
-            Array.Copy(y._data, rglData2, y._data.Length);
-
-            if (fOpSignPos)
-            {
-                dwlAccum = 0;
-
-                // Loop through UI4s adding operands and putting result in *this
-                // of the operands and put result in *this
-                for (iulData = 0; iulData < culOp1 || iulData < culOp2; iulData++)
-                {
-                    // None of these DWORDLONG additions can overflow, as dwlAccum comes in < x_lInt32Base
-                    if (iulData < culOp1)
-                        dwlAccum += rglData1[iulData];
-                    if (iulData < culOp2)
-                        dwlAccum += rglData2[iulData];
-
-                    rglData1[iulData] = (uint)dwlAccum; // equiv to mod x_lInt32Base
-                    dwlAccum >>= 32; // equiv to div x_lInt32Base
-                }
-
-                //If carry
-                if (dwlAccum != 0)
-                {
-                    Debug.Assert(dwlAccum < x_ulInt32Base);
-
-                    //Either overflowed
-                    if (iulData == MaxDataLimbs)
-                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-                    // Or extended length
-                    if (rglData1.Length < (iulData + 1))
-                    {
-                        rglData1 = ExtendPrecision(rglData1, 1);
-                    }
-
-                    rglData1[iulData] = (uint)dwlAccum;
-                }
-            } else
-            {
-                // When second operand is negative, switch operands
-                // if operand2 is greater than operand1
-                if (x.LAbsCmp(y) < 0)
-                {
-                    fResSignPos = !fResSignPos;
-                    var rguiTemp = rglData2;
-                    rglData2 = rglData1;
-                    rglData1 = rguiTemp;
-                    culOp1 = culOp2;
-                    culOp2 = x._data.Length;
-                }
-
-                dwlAccum = x_ulInt32Base;
-                for (iulData = 0; iulData < culOp1 || iulData < culOp2; iulData++)
-                {
-                    if (iulData < culOp1)
-                        dwlAccum += rglData1[iulData];
-                    if (iulData < culOp2)
-                        dwlAccum -= rglData2[iulData];
-
-                    rglData1[iulData] = (uint)dwlAccum; // equiv to mod BaseUI4
-
-                    dwlAccum >>= 32; // equiv to /= BaseUI4
-                    dwlAccum += x_ulInt32BaseForMod; // equiv to BaseUI4 - 1
-                }
-            }
-
-            var ret = new NpgsqlDecimal(rglData1, ResScale, fResSignPos);
-            ret.FixPrecision();
-
-            if (ret.Scale > NUMERIC_MAX_SCALE)
-                ret = ret.AdjustScale(NUMERIC_MAX_SCALE);
-
-            if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
-                throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-
-            if (IsZero(ref ret))
-                ret.SetPositive();
-
-            return ret;
-        }
-
-        /// <summary>
-        /// Implements the unary - operator (negate sign).
-        /// </summary>
-        /// <param name="x"></param>
-        /// <returns>Result of the subtraction respecting scale of the operands.</returns>
-        public static NpgsqlDecimal operator -(NpgsqlDecimal x)
-        {
-            var s = x;
-            if (s.IsZero())
-                s.SetPositive();
-            else NpgsqlDecimal.Negate(ref s);
-            return s;
-        }
-
-        /// <summary>
-        /// Subtraction Operator implementation.
-        /// </summary>
-        /// <param name="x">Operand that will be substracted.</param>
-        /// <param name="y">Operand to substract</param>
-        /// <returns>Result of the addition respecting the scale of the operands</returns>
-        public static NpgsqlDecimal operator -(NpgsqlDecimal x, NpgsqlDecimal y) => x + (-y);
-
-        /// <summary>
-        ///         
-        ///
-        ///   Multiply two numerics.
-        ///
-        /// Parameters:
-        ///       x    - IN Multiplier
-        ///       y    - IN Multiplicand
-        ///
-        ///   Result scale and precision(same as in SQL Server Manual and Hydra):
-        ///       scale = s1 + s2
-        ///       precison = s1 + s2 + (p1 - s1) + (p2 - s2) + 1
-        ///
-        ///   Overflow Rules:
-        ///       If scale is greater than NUMERIC_MAX_SCALE it is set to
-        ///   NUMERIC_MAX_SCALE.  If precision before decimal digit separator is greater than NUMERIC_MAX_PRECISION
-        ///   Overflow exception is raised.
-        ///
-        ///   Algorithm:
-        ///       Starting from the lowest significant uint limb, for each uint limb of the multiplier
-        ///   iterate through the uint limbs of the multiplicand starting from
-        ///   the least significant UI4s, multiply the multiplier uint with
-        ///   multiplicand uint, update the result buffer with the product modulo
-        ///   x_dwlBaseUI4 at the same index as the multiplicand, and carry the quotient to
-        ///   add to the next multiplicand uint.  Until the end of the multiplier data
-        ///   array is reached.
-        ///
-        /// </summary>
-        /// <param name="x">Operand to be multipled.</param>
-        /// <param name="y">Operand that is the multiplier</param>
-        /// <returns>Result of the multiplication respecting scale of operands</returns>
-        public static NpgsqlDecimal operator *(NpgsqlDecimal x, NpgsqlDecimal y)
-        {
-            //Implementation:
-            //        I) Figure result scale,prec
-            //        II) Perform mult.
-            //        III) Adjust product to result scale,prec
-
-            // Local variables for actual multiplication
-            int iulPlier;           //index of UI4 in the Multiplier
-            uint ulPlier;            //current mutiplier UI4
-            ulong dwlAccum;           //accumulated sum
-            ulong dwlNextAccum;       //overflow of accumulated sum
-            var culCand = y._data.Length; //length of multiplicand in UI4s
-
-            //Local variables to track scale,precision
-            int ActualScale;                    // Scale after mult done
-            int ResScale;                       // Final scale we will force result to
-            int ResPrec;                        // Final precision we will force result to
-            int ResInteger;                     // # of digits in integer part of result (prec-scale)
-            int lScaleAdjust;   //How much result scale will be adjusted
-            bool fResPositive;  // Result sign
-
-            NpgsqlDecimal ret;
-
-
-            //I) Figure result prec,scale
-            ActualScale = x.Scale + y.Scale;
-            ResScale = ActualScale;
-            ResInteger = ((int)x.GetPrecision() - x.Scale) + ((int)y.GetPrecision() - y.Scale) + 1;
-
-            //result precison = s1 + s2 + (p1 - s1) + (p2 - s2) + 1
-            ResPrec = ResScale + ResInteger;
-
-            // Downward adjust res prec,scale if either larger than NUMERIC_MAX_PRECISION           
-            if (ResScale > NUMERIC_MAX_SCALE)
-                ResScale = NUMERIC_MAX_SCALE;
-            if ((ResPrec - ResScale) > NUMERIC_MAX_PRECISION)
-                ResPrec = NUMERIC_MAX_PRECISION;
-
-            //
-            // It is possible when two large numbers are being multiplied the scale
-            // can be reduced to 0 to keep data untruncated; the fix here is to
-            // preserve a minimum scale of 6.
-            //
-            // If overflow, reduce the scale to avoid truncation of data
-            ResScale = Math.Min((ResPrec - ResInteger), ResScale);
-            // But keep a minimum scale of NUMERIC_MIN_DVSCALE
-            ResScale = Math.Max(ResScale, Math.Min(ActualScale, x_cNumeDivScaleMin));
-
-            lScaleAdjust = ResScale - ActualScale;
-
-            fResPositive = (x.Positive == y.Positive);//positive if both signs same.
-
-            // II) Perform multiplication
-            var rglData1 = new uint[x._data.Length]; 
-            var rglData2 = new uint[y._data.Length];
-            Array.Copy(x._data, rglData1, x._data.Length);
-            Array.Copy(y._data, rglData2, y._data.Length);
-
-            //Local buffer to hold the result of multiplication.
-            //Longer than CReNumeBuf because full precision of multiplication is carried out
-            var x_culNumeMultRes = x._data.Length + y._data.Length + 2;       // Maximum # UI4s in result buffer in multiplication
-            var rgulRes = new uint[x_culNumeMultRes]; //new [] are already initialized to zero
-            int culRes;             // # of UI4s in result
-            var idRes = (int)0;
-
-            //Iterate over the bytes of multiplier
-            for (iulPlier = 0; iulPlier < x._data.Length; iulPlier++)
-            {
-                ulPlier = rglData1[iulPlier];
-                dwlAccum = 0;
-
-                //Multiply each UI4 of multiCand by ulPliear and accumulate into result buffer
-
-                // Start on correct place in result
-                idRes = iulPlier;
-
-                for (var iulCand = 0; iulCand < culCand; iulCand++)
-                {
-                    // dwlAccum = dwlAccum + rgulRes[idRes] + ulPlier*rglData2[iulCand]
-                    //        use dwlNextAccum to detect overflow of DWORDLONG
-                    dwlNextAccum = dwlAccum + rgulRes[idRes];
-                    var ulTemp = (ulong)rglData2[iulCand];
-                    dwlAccum = (ulong)ulPlier * ulTemp;
-                    dwlAccum += dwlNextAccum;
-                    if (dwlAccum < dwlNextAccum) // indicates dwl addition overflowed
-                        dwlNextAccum = x_ulInt32Base; // = maxUI64/x_dwlBaseUI4
-                    else
-                        dwlNextAccum = 0;
-
-                    // Update result and accum
-                    rgulRes[idRes++] = (uint)(dwlAccum);// & x_ulInt32BaseForMod); // equiv to mod x_lInt32Base
-                    dwlAccum = (dwlAccum >> 32) + dwlNextAccum; // equiv to div BaseUI4 + dwlNAccum
-
-                    // dwlNextAccum can't overflow next iteration
-                    Debug.Assert(dwlAccum < x_ulInt32Base * 2, "can't overflow next iteration");
-                }
-
-                Debug.Assert(dwlAccum < x_ulInt32Base); // can never final accum > 1 more UI4
-                if (dwlAccum != 0)
-                    rgulRes[idRes++] = (uint)dwlAccum;
-            }
-            // Skip leading 0s (may exist if we are multiplying by 0)
-            for (; (rgulRes[idRes] == 0) && (idRes > 0); idRes--)
-                ;
-            // Calculate actual result length
-            culRes = idRes + 1;
-
-            // III) Adjust precision,scale to result prec,scale
-            if (lScaleAdjust != 0)
-            {
-                // If need to decrease scale
-                if (lScaleAdjust < 0)
-                {
-                    Debug.Assert(NUMERIC_MAX_PRECISION > (ResPrec + lScaleAdjust));
-
-                    // have to adjust - might yet end up fitting.
-                    // Cannot call AdjustScale - number cannot fit in a numeric, so
-                    // have to duplicate code here
-
-                    uint ulRem;          //Remainder when downshifting
-                    uint ulShiftBase;    //What to multiply by to effect scale adjust
-
-                    do
-                    {
-                        if (lScaleAdjust <= -9)
-                        {
-                            ulShiftBase = Powers10[8 + 1];
-                            lScaleAdjust += 9;
-                        } else
-                        {
-                            ulShiftBase = Powers10[-lScaleAdjust];
-                            lScaleAdjust = 0;
-                        }
-                        MpDiv1(rgulRes, ref culRes, ulShiftBase, out ulRem);
-                    }
-                    while (lScaleAdjust != 0);
-
-                    // Still do not fit?
-                    if (culRes > MaxDataLimbs)
-                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-                    for (idRes = culRes; idRes < rgulRes.Length; idRes++)
-                        rgulRes[idRes] = 0;
-                    ret = new NpgsqlDecimal(rgulRes, ResScale, fResPositive);
-
-                    // If remainder is 5 or above, increment/decrement by 1.
-                    if (ulRem >= ulShiftBase / 2)
-                        ret.MpAdd(1);
-                    // After adjusting, if the result is 0 and remainder is less than 5,
-                    // set the sign to be positive
-                    if (ret.IsZero())
-                        ret.SetPositive();
-
-                    if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
-                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-                    return ret;
-                }
-
-                // Otherwise call AdjustScale
-                if (culRes > MaxDataLimbs)    // Do not fit now, so will not fit after asjustement
-                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-                // NOTE: Have not check for value in the range (10**38..2**128),
-                // as we'll call AdjustScale with positive argument, and it'll
-                // return "normal" overflow
-
-                for (idRes = culRes; idRes < rgulRes.Length; idRes++)
-                    rgulRes[idRes] = 0;
-                ret = new NpgsqlDecimal(rgulRes, ActualScale, fResPositive);
-
-                if (ret.IsZero())
-                    ret.SetPositive();
-
-
-                ret.AdjustScale(lScaleAdjust, true);
-
-                if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
-                    throw new OverflowException();
-
-                return ret;
-            } else
-            {
-                if (culRes > MaxDataLimbs)
-                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-                for (idRes = culRes; idRes < rgulRes.Length/*MaxDataLimbs*/; idRes++)
-                    rgulRes[idRes] = 0;
-
-                ret = new NpgsqlDecimal(rgulRes, ResScale, fResPositive);
-
-                if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
-                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-                if (ret.IsZero())
-                    ret.SetPositive();
-
-                return ret;
-            }
-        }
-
-
-        /// <summary>
-        /// DivNm():
-        ///   Divide numeric by numeric.
-        ///     The Quotient will be returned in *this
-        ///
-        /// Result scale &amp; precision:
-        ///     NOTE: 
-        ///         scale = max(s1 + p2 + 1, x_cNumeDivScaleMin);
-        ///         precision = max(s1 + p2 + 1, x_cNumeDivScaleMin) + p1 + p2 + 1;
-        ///
-        /// Overflow Rules:
-        ///         If scale is greater than NUMERIC_MAX_SCALE it is set to NUMERIC_MAX_SCALE.
-        ///         If # digits before decimal separator is greater than NUMERIC_MAX_PRECISION
-        ///         OverflowException is throwed.
-        ///         Resulting scale by default will be 6.       
-        ///
-        /// Algorithm
-        ///   Call general purpose arbitrary precision division routine with scale = 0.
-        ///     Scale,prec adjusted later.
-        /// </summary>
-        /// <param name="x">Operand to be divided.</param>
-        /// <param name="y">Operand that is the divisor.</param>
-        /// <returns>Quotient</returns>
-        public static NpgsqlDecimal operator /(NpgsqlDecimal x, NpgsqlDecimal y)
-        {
-
-            // Variables for figuring prec,scale           
-            int ResScale;           // Final scale we will force quotient to
-            int ResPrec;            // Final precision we will force quotient to
-            int ResInteger;         // # of digits in integer part of result (prec-scale)
-            int MinScale;           // Temp to help compute ResScale
-            int lScaleAdjust;       // How much result scale will be adjusted
-            bool fResSignPos;       // sign of result
-
-            // Steps:
-            //    1) Figure result prec,scale; adjust scale of dividend
-            //    2) Compute result remainder/quotient in 0 scale numbers
-            //    3) Set result prec,scale and adjust as necessary
-
-            // 0) Check for Div by 0
-            if (y.IsZero())
-                throw new DivideByZeroException("Divide by Zero");
-
-            // 1) Figure out result prec,scale,sign..
-            fResSignPos = (x.Positive == y.Positive);//sign of result
-
-            //scale = max(s1 + p2 + 1, x_cNumeDivScaleMin);
-            //precision = max(s1 + p2 + 1, x_cNumeDivScaleMin) + p1 + p2 + 1;
-            //For backward compatibility, use exactly the same scheme as in Hydra
-            var xPrec = (int)CalculatePrecision(x._data);
-            var yPrec = (int)CalculatePrecision(y._data);
-            ResScale = Math.Max(x.Scale + yPrec + 1, x_cNumeDivScaleMin);
-            ResInteger = xPrec - x.Scale + y.Scale;
-
-            MinScale = Math.Min(ResScale, x_cNumeDivScaleMin);
-
-            ResInteger = Math.Min(ResInteger, NUMERIC_MAX_PRECISION + NUMERIC_MAX_SCALE);
-            ResPrec = ResInteger + ResScale;
-
-            // If overflow, reduce the scale to avoid truncation of data
-            ResScale = Math.Min((ResPrec - ResInteger), ResScale);
-            ResScale = Math.Max(ResScale, MinScale);
-            ResScale = Math.Min(ResScale, NUMERIC_MAX_SCALE);
-
-            //Adjust the scale of the dividend
-            lScaleAdjust = ResScale - (int)x.Scale + (int)y.Scale;
-            x.AdjustScaleWithDifference(lScaleAdjust, true);
-
-            // Step2: Actual Computation
-            var rgulData1 = new uint[x._data.Length];
-            var rgulData2 = new uint[y._data.Length];
-            Array.Copy(x._data, rgulData1, x._data.Length);
-            Array.Copy(y._data, rgulData2, y._data.Length);
-
-            // Buffers for arbitrary precision divide
-            var rgulR = new uint[x._data.Length + y._data.Length + 1];
-            var rgulQ = new uint[x._data.Length + y._data.Length];
-         
-            // Divide mantissas. V is not zero - already checked.
-            // Cannot overflow, as Q <= U, R <= V. (and both are positive)
-            MpDiv(rgulData1, x._data.Length, rgulData2, y._data.Length, rgulQ, out var culQ /* # of ULONGs in result*/, rgulR, out var culR /* # of ULONGs in result*/);
-
-            // Construct the result from Q
-            ZeroToMaxLen(rgulQ, culQ);
-            var ret = new NpgsqlDecimal(rgulQ, ResScale, fResSignPos);
-
-            //try to avoid this 2 blocks in the future (reuse the calculations made previously)
-            var prec = ret.GetPrecision();
-            if ((prec - ret.Scale) > NUMERIC_MAX_PRECISION)
-                throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
-
-            if ((ret.Scale > NUMERIC_MAX_SCALE))
-                ret = ret.AdjustScale(NUMERIC_MAX_SCALE, true);
-
-            if (ret.IsZero())
-                ret.SetPositive();
-
-            return ret;
-        }
-
-        #endregion
-
-        #region Comparison operators
-
-        /// <summary>
-        /// Overloading comparison operators
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator ==(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) == EComparison.EQ;
-
-        /// <summary>
-        /// Overloading operator for different !=.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator !=(NpgsqlDecimal x, NpgsqlDecimal y) => !(x == y);
-
-        /// <summary>
-        /// Overloading operator for less than.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator <(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) == EComparison.LT;
-
-        /// <summary>
-        /// Overloading operator for greater than.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator >(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) == EComparison.GT;
-
-        /// <summary>
-        /// Overloading operator for less than or equal.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator <=(NpgsqlDecimal x, NpgsqlDecimal y)
-        {
-            var result = x.CompareNm(y);
-            return result == EComparison.LT || result == EComparison.EQ;
-        }
-
-        /// <summary>
-        /// Overloading operator for greater than or equal.
-        /// </summary>
-        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
-        /// <returns></returns>
-        public static bool operator >=(NpgsqlDecimal x, NpgsqlDecimal y)
-        {
-            var result = x.CompareNm(y);
-            return result == EComparison.GT || result == EComparison.EQ;
-        }
-        #endregion
-
-        private EComparison CompareNm(NpgsqlDecimal snumOp)
-        {
-            //Signs of the two numeric operands
-            int Sign1;
-            int Sign2;
-
-            int iFinalResult;   //Final result of comparision: positive = greater
-                                //than, 0 = equal, negative = less than
-
-            //Initialize the sign values to be 1(positive) or -1(negative)
-            Sign1 = Positive ? 1 : -1;
-            Sign2 = snumOp.Positive ? 1 : -1;
-
-            if (Sign1 != Sign2) //If different sign, the positive one is greater
-                return Sign1 == 1 ? EComparison.GT : EComparison.LT;
-
-            else
-            { //same sign, have to compare absolute values
-                //Temporary memory to hold the operand since it is const
-                //but its scale may get adjusted during comparison
-                int ScaleDiff;
-                var snumArg1 = this;
-                var snumArg2 = snumOp;
-
-                //First make the two operands the same scale if necessary
-                ScaleDiff = ((int)Scale) - ((int)snumOp.Scale);
-
-                if (ScaleDiff < 0)
-                {
-                    //If increasing the scale of operand1 caused an overflow,
-                    //then its absolute value is greater than that of operand2.
-                    try
-                    {
-                        snumArg1.AdjustScaleWithDifference(-ScaleDiff, true);
-                    } catch (OverflowException)
-                    {
-                        return (Sign1 > 0) ? EComparison.GT : EComparison.LT;
-                    }
-                } else if (ScaleDiff > 0)
-                {
-                    //If increasing the scale of operand2 caused an overflow, then
-                    //operand1's absolute value is less than that of operand2.
-                    try
-                    {
-
-                        snumArg2.AdjustScaleWithDifference(ScaleDiff, true);
-                    } catch (OverflowException)
-                    {
-                        return (Sign1 > 0) ? EComparison.LT : EComparison.GT;
-                    }
-                }
-
-                //Compare the absolute value of the two numerics
-                //Note: We are sure that scale of arguments is the same,
-                //      so LAbsCmp() will not modify its argument.
-                var lResult = snumArg1.LAbsCmp(snumArg2);
-                if (0 == lResult)
-                    return EComparison.EQ;
-
-                //if both positive, result same as result from LAbsCmp;
-                //if both negative, result reverse of result from LAbsCmp
-                iFinalResult = Sign1 * lResult;
-
-                if (iFinalResult < 0)
-                    return EComparison.LT;
-                else
-                    return EComparison.GT;
-            }
         }
 
         /// <summary>
@@ -1324,10 +660,26 @@ namespace NpgsqlTypes
             }
         }
 
+        /// <summary>
+        /// Merge low and high part uints into a ulong.
+        /// </summary>
+        /// <param name="lo">least significant part of the long (32 bits)</param>
+        /// <param name="hi">highest significant part of the long (32 bits)</param>
+        /// <returns></returns>
         internal static ulong DWL(uint lo, uint hi) => (ulong)lo + (((ulong)hi) << 32);
 
+        /// <summary>
+        /// Obtains the highest significant part (32 bits) of the given unsigned long number.
+        /// </summary>
+        /// <param name="x">ulong to obtain the highest significant part.</param>
+        /// <returns></returns>
         private static uint HI(ulong x) => (uint)(x >> 32);
 
+        /// <summary>
+        /// Obtains the lowest significant part (32 bits) of the given unsigned long number.
+        /// </summary>
+        /// <param name="x"></param>
+        /// <returns></returns>
         private static uint LO(ulong x) => (uint)x;
 
         /// <summary>
@@ -1475,7 +827,8 @@ namespace NpgsqlTypes
             if (!Negative)
             {
                 szResult = new char[uiResultLen + iDigits];
-            } else
+            }
+            else
             {
                 // Increment the result length if negative (need to add '-')            
                 szResult = new char[uiResultLen + iDigits + 1];
@@ -1566,7 +919,6 @@ namespace NpgsqlTypes
         /// <returns></returns>
         public NpgsqlDecimal AdjustScale(int newScale, bool round = true)
         {
-
             if (NpgsqlDecimal.IsZero(ref this))
                 return Zero;
 
@@ -1609,14 +961,16 @@ namespace NpgsqlTypes
                     {
                         ulShiftBase = Powers10[8 + 1];
                         lAdjust -= 9;
-                    } else
+                    }
+                    else
                     {
                         ulShiftBase = Powers10[lAdjust];
                         lAdjust = 0;
                     }
                     MpMultiply(ulShiftBase);
                 }
-            } else if (lAdjust < 0)
+            }
+            else if (lAdjust < 0)
             {
                 do
                 {
@@ -1624,7 +978,8 @@ namespace NpgsqlTypes
                     {
                         ulShiftBase = Powers10[8 + 1];
                         lAdjust += 9;
-                    } else
+                    }
+                    else
                     {
                         ulShiftBase = Powers10[-lAdjust];
                         lAdjust = 0;
@@ -1646,8 +1001,9 @@ namespace NpgsqlTypes
             {
                 // If remainder is 5 or above, increment/decrement by 1.
                 MpAdd(1);
-            } else if (IsZero(ref this))
-                SetPositive();
+            }
+            else if (IsZero(ref this))
+                Positive = true;
         }
 
         /// <summary>
@@ -1765,9 +1121,10 @@ namespace NpgsqlTypes
                 NpgsqlDecimal.Negate(ref snResult);
                 iCurChar++;
                 cwchStr--;
-            } else
+            }
+            else
             {
-                snResult.SetPositive();
+                snResult.Positive = true;
                 if (rgwchStr[iCurChar] == '+')
                 {
                     iCurChar++;
@@ -1811,7 +1168,8 @@ namespace NpgsqlTypes
                 {
                     lDecPnt = iData;
                     continue;
-                } else
+                }
+                else
                     throw new FormatException("Wrong NpgsqlDecimal format");
 
                 snResult.MpMultiply(x_ulBase10);
@@ -1823,7 +1181,8 @@ namespace NpgsqlTypes
             {
                 precision = iData;
                 snResult.Scale = 0;
-            } else
+            }
+            else
             {
                 precision = (iData - 1);
                 snResult.Scale = (precision - lDecPnt);
@@ -1843,9 +1202,7 @@ namespace NpgsqlTypes
 
             // If result is -0, adjust sign to positive.
             if (snResult.IsZero())
-                snResult.SetPositive();
-
-            //snResult.AssertValid();
+                snResult.Positive = true;
 
             return snResult;
         }
@@ -1956,6 +1313,708 @@ namespace NpgsqlTypes
             var result = (uint)(Math.Ceiling(totalBits / logOf10Base2));
             return result == 0 ? 1 : result;
         }
-    }
 
+        #endregion
+
+        #region Implicit Explicit conversions
+
+        /// <summary>
+        /// Explicit conversion from Decimal to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(decimal x) => new NpgsqlDecimal(x);
+
+        /// <summary>
+        /// Explicit conversion from Double to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(double x) => new NpgsqlDecimal(x);
+
+        /// <summary>
+        /// Implicit conversion from SqlBoolean to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(bool x) => new NpgsqlDecimal(x ? 1 : 0);
+
+        /// <summary>
+        /// Implicit conversion from SqlByte to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(byte x) => new NpgsqlDecimal((int)(x));
+
+        /// <summary>
+        /// Implicit conversion from SqlInt16 to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(short x) => new NpgsqlDecimal((int)x);
+
+        /// <summary>
+        /// Implicit conversion from SqlInt32 to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(int x) => new NpgsqlDecimal(x);
+
+        /// <summary>
+        /// Implicit conversion from SqlInt64 to <see cref="NpgsqlDecimal"/>
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        public static explicit operator NpgsqlDecimal(long x) => new NpgsqlDecimal(x);
+
+        #endregion
+
+        #region Arithmetic operators
+
+        /// <summary>
+        /// Sum operator.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand</param>
+        /// <returns>Sum result of <see cref="NpgsqlDecimal"/> operands (x+y)</returns>
+        public static NpgsqlDecimal operator +(NpgsqlDecimal x, NpgsqlDecimal y)
+        {
+            if (IsZero(ref x) || IsZero(ref y))
+                return Zero;
+
+            ulong dwlAccum;           //accumulated sum
+            bool fMySignPos;         //sign of x was positive at start
+            bool fOpSignPos;         // sign of y positive at start
+            var fResSignPos = true; //sign of result should be positive
+            int myScale;    //scale of x
+            int opScale;    //scale of y
+            int resScale;   //scale of result
+            //int ResPrec;    //precision of result
+            //int ResInteger; //number of digits for the integer part of result
+            int culOp1;     //# of UI4s in x
+            int culOp2;     //# of UI4s in y
+            int iulData;    //which UI4 we are operating on in x, y
+
+            fMySignPos = !x.Negative;
+            fOpSignPos = !y.Negative;
+
+            //result scale = max(s1,s2)
+            //result precison = max(s1,s2) + max(p1-s1,p2-s2)
+            myScale = x.Scale;
+            opScale = y.Scale;
+
+            // Calculate the scale of the result.
+            resScale = Math.Max(myScale, opScale);
+            Debug.Assert(resScale <= NUMERIC_MAX_SCALE);
+
+            // Adjust both operands to be the same scale as ResScale.
+            if (myScale != resScale)
+                x = x.AdjustScale(resScale - myScale, true);
+
+            if (opScale != resScale)
+                y = y.AdjustScale(resScale - opScale, true);
+
+            // When sign of first operand is negative
+            // negate all operands including result.
+            if (!fMySignPos)
+            {
+                fOpSignPos = !fOpSignPos;
+                fResSignPos = !fResSignPos;
+            }
+
+            // Initialize operand lengths and pointer.
+            culOp1 = x._data.Length;
+            culOp2 = y._data.Length;
+
+            var rglData1 = new uint[x._data.Length];
+            var rglData2 = new uint[y._data.Length];
+            Array.Copy(x._data, rglData1, x._data.Length);
+            Array.Copy(y._data, rglData2, y._data.Length);
+
+            if (fOpSignPos)
+            {
+                dwlAccum = 0;
+
+                // Loop through UI4s adding operands and putting result in *this
+                // of the operands and put result in *this
+                for (iulData = 0; iulData < culOp1 || iulData < culOp2; iulData++)
+                {
+                    // None of these DWORDLONG additions can overflow, as dwlAccum comes in < x_lInt32Base
+                    if (iulData < culOp1)
+                        dwlAccum += rglData1[iulData];
+                    if (iulData < culOp2)
+                        dwlAccum += rglData2[iulData];
+
+                    rglData1[iulData] = (uint)dwlAccum; // equiv to mod x_lInt32Base
+                    dwlAccum >>= 32; // equiv to div x_lInt32Base
+                }
+
+                //If carry
+                if (dwlAccum != 0)
+                {
+                    Debug.Assert(dwlAccum < x_ulInt32Base);
+
+                    //Either overflowed
+                    if (iulData == MaxDataLimbs)
+                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+                    // Or extended length
+                    if (rglData1.Length < (iulData + 1))
+                    {
+                        rglData1 = ExtendPrecision(rglData1, 1);
+                    }
+
+                    rglData1[iulData] = (uint)dwlAccum;
+                }
+            }
+            else
+            {
+                // When second operand is negative, switch operands
+                // if operand2 is greater than operand1
+                if (x.LAbsCmp(y) < 0)
+                {
+                    fResSignPos = !fResSignPos;
+                    var rguiTemp = rglData2;
+                    rglData2 = rglData1;
+                    rglData1 = rguiTemp;
+                    culOp1 = culOp2;
+                    culOp2 = x._data.Length;
+                }
+
+                dwlAccum = x_ulInt32Base;
+                for (iulData = 0; iulData < culOp1 || iulData < culOp2; iulData++)
+                {
+                    if (iulData < culOp1)
+                        dwlAccum += rglData1[iulData];
+                    if (iulData < culOp2)
+                        dwlAccum -= rglData2[iulData];
+
+                    rglData1[iulData] = (uint)dwlAccum; // equiv to mod BaseUI4
+
+                    dwlAccum >>= 32; // equiv to /= BaseUI4
+                    dwlAccum += x_ulInt32BaseForMod; // equiv to BaseUI4 - 1
+                }
+            }
+
+            var ret = new NpgsqlDecimal(rglData1, resScale, fResSignPos);
+            ret.FixPrecision();
+
+            if (ret.Scale > NUMERIC_MAX_SCALE)
+                ret = ret.AdjustScale(NUMERIC_MAX_SCALE);
+
+            if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
+                throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+
+            if (IsZero(ref ret))
+                ret.Positive = true;
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Implements the unary - operator (negate sign).
+        /// </summary>
+        /// <param name="x"></param>
+        /// <returns>Result of the subtraction respecting scale of the operands.</returns>
+        public static NpgsqlDecimal operator -(NpgsqlDecimal x)
+        {
+            var s = x;
+            if (s.IsZero())
+                s.Positive = true;
+            else NpgsqlDecimal.Negate(ref s);
+            return s;
+        }
+
+        /// <summary>
+        /// Subtraction Operator implementation.
+        /// </summary>
+        /// <param name="x">Operand that will be substracted.</param>
+        /// <param name="y">Operand to substract</param>
+        /// <returns>Result of the addition respecting the scale of the operands</returns>
+        public static NpgsqlDecimal operator -(NpgsqlDecimal x, NpgsqlDecimal y) => x + (-y);
+
+        /// <summary>
+        ///         
+        ///
+        ///   Multiply two numerics.
+        ///
+        /// Parameters:
+        ///       x    - IN Multiplier
+        ///       y    - IN Multiplicand
+        ///
+        ///   Result scale and precision(same as in SQL Server Manual and Hydra):
+        ///       scale = s1 + s2
+        ///       precison = s1 + s2 + (p1 - s1) + (p2 - s2) + 1
+        ///
+        ///   Overflow Rules:
+        ///       If scale is greater than NUMERIC_MAX_SCALE it is set to
+        ///   NUMERIC_MAX_SCALE.  If precision before decimal digit separator is greater than NUMERIC_MAX_PRECISION
+        ///   Overflow exception is raised.
+        ///
+        ///   Algorithm:
+        ///       Starting from the lowest significant uint limb, for each uint limb of the multiplier
+        ///   iterate through the uint limbs of the multiplicand starting from
+        ///   the least significant UI4s, multiply the multiplier uint with
+        ///   multiplicand uint, update the result buffer with the product modulo
+        ///   x_dwlBaseUI4 at the same index as the multiplicand, and carry the quotient to
+        ///   add to the next multiplicand uint.  Until the end of the multiplier data
+        ///   array is reached.
+        ///
+        /// </summary>
+        /// <param name="x">Operand to be multipled.</param>
+        /// <param name="y">Operand that is the multiplier</param>
+        /// <returns>Result of the multiplication respecting scale of operands</returns>
+        public static NpgsqlDecimal operator *(NpgsqlDecimal x, NpgsqlDecimal y)
+        {
+            //Implementation:
+            //        I) Figure result scale,prec
+            //        II) Perform mult.
+            //        III) Adjust product to result scale,prec
+
+            // Local variables for actual multiplication
+            int iulPlier;           //index of UI4 in the Multiplier
+            uint ulPlier;            //current mutiplier UI4
+            ulong dwlAccum;           //accumulated sum
+            ulong dwlNextAccum;       //overflow of accumulated sum
+            var culCand = y._data.Length; //length of multiplicand in UI4s
+
+            //Local variables to track scale,precision
+            int actualScale;                    // Scale after mult done
+            int resScale;                       // Final scale we will force result to
+            int resPrec;                        // Final precision we will force result to
+            int resInteger;                     // # of digits in integer part of result (prec-scale)
+            int lScaleAdjust;   //How much result scale will be adjusted
+            bool fResPositive;  // Result sign
+
+            NpgsqlDecimal ret;
+
+            //I) Figure result prec,scale
+            actualScale = x.Scale + y.Scale;
+            resScale = actualScale;
+            resInteger = ((int)x.GetPrecision() - x.Scale) + ((int)y.GetPrecision() - y.Scale) + 1;
+
+            //result precison = s1 + s2 + (p1 - s1) + (p2 - s2) + 1
+            resPrec = resScale + resInteger;
+
+            // Downward adjust res prec,scale if either larger than NUMERIC_MAX_PRECISION           
+            if (resScale > NUMERIC_MAX_SCALE)
+                resScale = NUMERIC_MAX_SCALE;
+            if ((resPrec - resScale) > NUMERIC_MAX_PRECISION)
+                resPrec = NUMERIC_MAX_PRECISION;
+
+            //
+            // It is possible when two large numbers are being multiplied the scale
+            // can be reduced to 0 to keep data untruncated; the fix here is to
+            // preserve a minimum scale of 6.
+            //
+            // If overflow, reduce the scale to avoid truncation of data
+            resScale = Math.Min((resPrec - resInteger), resScale);
+            // But keep a minimum scale of NUMERIC_MIN_DVSCALE
+            resScale = Math.Max(resScale, Math.Min(actualScale, x_cNumeDivScaleMin));
+
+            lScaleAdjust = resScale - actualScale;
+
+            fResPositive = (x.Positive == y.Positive);//positive if both signs same.
+
+            // II) Perform multiplication
+            var rglData1 = new uint[x._data.Length];
+            var rglData2 = new uint[y._data.Length];
+            Array.Copy(x._data, rglData1, x._data.Length);
+            Array.Copy(y._data, rglData2, y._data.Length);
+
+            //Local buffer to hold the result of multiplication.
+            //Longer than CReNumeBuf because full precision of multiplication is carried out
+            var x_culNumeMultRes = x._data.Length + y._data.Length + 2;       // Maximum # UI4s in result buffer in multiplication
+            var rgulRes = new uint[x_culNumeMultRes]; //new [] are already initialized to zero
+            int culRes;             // # of UI4s in result
+            var idRes = (int)0;
+
+            //Iterate over the bytes of multiplier
+            for (iulPlier = 0; iulPlier < x._data.Length; iulPlier++)
+            {
+                ulPlier = rglData1[iulPlier];
+                dwlAccum = 0;
+
+                //Multiply each UI4 of multiCand by ulPliear and accumulate into result buffer
+
+                // Start on correct place in result
+                idRes = iulPlier;
+
+                for (var iulCand = 0; iulCand < culCand; iulCand++)
+                {
+                    // dwlAccum = dwlAccum + rgulRes[idRes] + ulPlier*rglData2[iulCand]
+                    //        use dwlNextAccum to detect overflow of DWORDLONG
+                    dwlNextAccum = dwlAccum + rgulRes[idRes];
+                    var ulTemp = (ulong)rglData2[iulCand];
+                    dwlAccum = (ulong)ulPlier * ulTemp;
+                    dwlAccum += dwlNextAccum;
+                    if (dwlAccum < dwlNextAccum) // indicates dwl addition overflowed
+                        dwlNextAccum = x_ulInt32Base; // = maxUI64/x_dwlBaseUI4
+                    else
+                        dwlNextAccum = 0;
+
+                    // Update result and accum
+                    rgulRes[idRes++] = (uint)(dwlAccum);// & x_ulInt32BaseForMod); // equiv to mod x_lInt32Base
+                    dwlAccum = (dwlAccum >> 32) + dwlNextAccum; // equiv to div BaseUI4 + dwlNAccum
+
+                    // dwlNextAccum can't overflow next iteration
+                    Debug.Assert(dwlAccum < x_ulInt32Base * 2, "can't overflow next iteration");
+                }
+
+                Debug.Assert(dwlAccum < x_ulInt32Base); // can never final accum > 1 more UI4
+                if (dwlAccum != 0)
+                    rgulRes[idRes++] = (uint)dwlAccum;
+            }
+            // Skip leading 0s (may exist if we are multiplying by 0)
+            for (; (rgulRes[idRes] == 0) && (idRes > 0); idRes--)
+                ;
+            // Calculate actual result length
+            culRes = idRes + 1;
+
+            // III) Adjust precision,scale to result prec,scale
+            if (lScaleAdjust != 0)
+            {
+                // If need to decrease scale
+                if (lScaleAdjust < 0)
+                {
+                    Debug.Assert(NUMERIC_MAX_PRECISION > (resPrec + lScaleAdjust));
+
+                    // have to adjust - might yet end up fitting.
+                    // Cannot call AdjustScale - number cannot fit in a numeric, so
+                    // have to duplicate code here
+
+                    uint ulRem;          //Remainder when downshifting
+                    uint ulShiftBase;    //What to multiply by to effect scale adjust
+
+                    do
+                    {
+                        if (lScaleAdjust <= -9)
+                        {
+                            ulShiftBase = Powers10[8 + 1];
+                            lScaleAdjust += 9;
+                        }
+                        else
+                        {
+                            ulShiftBase = Powers10[-lScaleAdjust];
+                            lScaleAdjust = 0;
+                        }
+                        MpDiv1(rgulRes, ref culRes, ulShiftBase, out ulRem);
+                    }
+                    while (lScaleAdjust != 0);
+
+                    // Still do not fit?
+                    if (culRes > MaxDataLimbs)
+                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+                    for (idRes = culRes; idRes < rgulRes.Length; idRes++)
+                        rgulRes[idRes] = 0;
+                    ret = new NpgsqlDecimal(rgulRes, resScale, fResPositive);
+
+                    // If remainder is 5 or above, increment/decrement by 1.
+                    if (ulRem >= ulShiftBase / 2)
+                        ret.MpAdd(1);
+                    // After adjusting, if the result is 0 and remainder is less than 5,
+                    // set the sign to be positive
+                    if (ret.IsZero())
+                        ret.Positive = true;
+
+                    if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
+                        throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+                    return ret;
+                }
+
+                // Otherwise call AdjustScale
+                if (culRes > MaxDataLimbs)    // Do not fit now, so will not fit after asjustement
+                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+                // NOTE: Have not check for value in the range (10**38..2**128),
+                // as we'll call AdjustScale with positive argument, and it'll
+                // return "normal" overflow
+
+                for (idRes = culRes; idRes < rgulRes.Length; idRes++)
+                    rgulRes[idRes] = 0;
+                ret = new NpgsqlDecimal(rgulRes, actualScale, fResPositive);
+
+                if (ret.IsZero())
+                    ret.Positive = true;
+
+
+                ret.AdjustScale(lScaleAdjust, true);
+
+                if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
+                    throw new OverflowException();
+
+                return ret;
+            }
+            else
+            {
+                if (culRes > MaxDataLimbs)
+                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+                for (idRes = culRes; idRes < rgulRes.Length/*MaxDataLimbs*/; idRes++)
+                    rgulRes[idRes] = 0;
+
+                ret = new NpgsqlDecimal(rgulRes, resScale, fResPositive);
+
+                if ((ret.GetPrecision() - ret.Scale) > NUMERIC_MAX_PRECISION)
+                    throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+                if (ret.IsZero())
+                    ret.Positive = true;
+
+                return ret;
+            }
+        }
+
+
+        /// <summary>
+        /// DivNm():
+        ///   Divide numeric by numeric.
+        ///     The Quotient will be returned in *this
+        ///
+        /// Result scale &amp; precision:
+        ///     NOTE: 
+        ///         scale = max(s1 + p2 + 1, x_cNumeDivScaleMin);
+        ///         precision = max(s1 + p2 + 1, x_cNumeDivScaleMin) + p1 + p2 + 1;
+        ///
+        /// Overflow Rules:
+        ///         If scale is greater than NUMERIC_MAX_SCALE it is set to NUMERIC_MAX_SCALE.
+        ///         If # digits before decimal separator is greater than NUMERIC_MAX_PRECISION
+        ///         OverflowException is throwed.
+        ///         Resulting scale by default will be 6.       
+        ///
+        /// Algorithm
+        ///   Call general purpose arbitrary precision division routine with scale = 0.
+        ///     Scale,prec adjusted later.
+        /// </summary>
+        /// <param name="x">Operand to be divided.</param>
+        /// <param name="y">Operand that is the divisor.</param>
+        /// <returns>Quotient</returns>
+        public static NpgsqlDecimal operator /(NpgsqlDecimal x, NpgsqlDecimal y)
+        {
+
+            // Variables for figuring prec,scale           
+            int resScale;           // Final scale we will force quotient to
+            int resPrec;            // Final precision we will force quotient to
+            int resInteger;         // # of digits in integer part of result (prec-scale)
+            int minScale;           // Temp to help compute ResScale
+            int lScaleAdjust;       // How much result scale will be adjusted
+            bool fResSignPos;       // sign of result
+
+            // Steps:
+            //    1) Figure result prec,scale; adjust scale of dividend
+            //    2) Compute result remainder/quotient in 0 scale numbers
+            //    3) Set result prec,scale and adjust as necessary
+
+            // 0) Check for Div by 0
+            if (y.IsZero())
+                throw new DivideByZeroException("Divide by Zero");
+
+            // 1) Figure out result prec,scale,sign..
+            fResSignPos = (x.Positive == y.Positive);//sign of result
+
+            //scale = max(s1 + p2 + 1, x_cNumeDivScaleMin);
+            //precision = max(s1 + p2 + 1, x_cNumeDivScaleMin) + p1 + p2 + 1;
+            //For backward compatibility, use exactly the same scheme as in Hydra
+            var xPrec = (int)CalculatePrecision(x._data);
+            var yPrec = (int)CalculatePrecision(y._data);
+            resScale = Math.Max(x.Scale + yPrec + 1, x_cNumeDivScaleMin);
+            resInteger = xPrec - x.Scale + y.Scale;
+
+            minScale = Math.Min(resScale, x_cNumeDivScaleMin);
+
+            resInteger = Math.Min(resInteger, NUMERIC_MAX_PRECISION + NUMERIC_MAX_SCALE);
+            resPrec = resInteger + resScale;
+
+            // If overflow, reduce the scale to avoid truncation of data
+            resScale = Math.Min((resPrec - resInteger), resScale);
+            resScale = Math.Max(resScale, minScale);
+            resScale = Math.Min(resScale, NUMERIC_MAX_SCALE);
+
+            //Adjust the scale of the dividend
+            lScaleAdjust = resScale - (int)x.Scale + (int)y.Scale;
+            x.AdjustScaleWithDifference(lScaleAdjust, true);
+
+            // Step2: Actual Computation
+            var rgulData1 = new uint[x._data.Length];
+            var rgulData2 = new uint[y._data.Length];
+            Array.Copy(x._data, rgulData1, x._data.Length);
+            Array.Copy(y._data, rgulData2, y._data.Length);
+
+            // Buffers for arbitrary precision divide
+            var rgulR = new uint[x._data.Length + y._data.Length + 1];
+            var rgulQ = new uint[x._data.Length + y._data.Length];
+
+            // Divide mantissas. V is not zero - already checked.
+            // Cannot overflow, as Q <= U, R <= V. (and both are positive)
+            MpDiv(rgulData1, x._data.Length, rgulData2, y._data.Length, rgulQ, out var culQ /* # of ULONGs in result*/, rgulR, out var culR /* # of ULONGs in result*/);
+
+            // Construct the result from Q
+            ZeroToMaxLen(rgulQ, culQ);
+            var ret = new NpgsqlDecimal(rgulQ, resScale, fResSignPos);
+
+            //try to avoid this 2 blocks in the future (reuse the calculations made previously)
+            var prec = ret.GetPrecision();
+            if ((prec - ret.Scale) > NUMERIC_MAX_PRECISION)
+                throw new OverflowException("Arithmetic overflow. Result requires more precision or scale than allowed by PostgreSQL numeric type.");
+
+            if ((ret.Scale > NUMERIC_MAX_SCALE))
+                ret = ret.AdjustScale(NUMERIC_MAX_SCALE, true);
+
+            if (ret.IsZero())
+                ret.Positive = true;
+
+            return ret;
+        }
+
+        #endregion
+
+        #region Comparison operators
+
+        /// <summary>
+        /// Overloading comparison operators
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator ==(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) == 0 /*EComparison.EQ*/;
+
+        /// <summary>
+        /// Overloading operator for different !=.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator !=(NpgsqlDecimal x, NpgsqlDecimal y) => !(x == y);
+
+        /// <summary>
+        /// Overloading operator for less than.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator <(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) < 0 /*EComparison.LT*/;
+
+        /// <summary>
+        /// Overloading operator for greater than.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator >(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) > 0 /*EComparison.GT*/;
+
+        /// <summary>
+        /// Overloading operator for less than or equal.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator <=(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) <= 0 /* EComparison.LT || result == EComparison.EQ*/;
+
+        /// <summary>
+        /// Overloading operator for greater than or equal.
+        /// </summary>
+        /// <param name="x"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <param name="y"><see cref="NpgsqlDecimal"/> operand to be compared with</param>
+        /// <returns></returns>
+        public static bool operator >=(NpgsqlDecimal x, NpgsqlDecimal y) => x.CompareNm(y) >= 0 /* EComparison.GT || result == EComparison.EQ*/;
+
+        /// <summary>
+        /// Compares the current NpgsqlDecimal with the given object.
+        /// </summary>
+        /// <param name="obj">The object to be compared with</param>
+        /// <returns>
+        /// If the given object is not of NpgsqlDecimal instance returns negative.
+        /// If the given object is NpgsqlDecimal and lower than current returns negative.
+        /// If the given object is NpgsqlDecimal and higher than current returns positive.
+        /// If the given object is NpgsqlDecimal is equal returns 0.
+        /// </returns>
+        public int CompareTo(object? obj)
+        {
+            if (obj != null && obj is NpgsqlDecimal)
+                return CompareNm((NpgsqlDecimal)obj);
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Compares the current NpgsqlDecimal with the given object.
+        /// </summary>
+        /// <param name="obj">The NpgsqlDecimal to be compared with</param>
+        /// <returns>
+        /// If the given number is lower than current returns negative.
+        /// If the given number is and higher than current returns positive.
+        /// If the given number is is equal returns 0.
+        /// </returns>
+        public int CompareTo(NpgsqlDecimal obj) => CompareNm((NpgsqlDecimal)obj);
+
+        private int CompareNm(NpgsqlDecimal snumOp)
+        {
+            //Signs of the two numeric operands
+            int sign1;
+            int sign2;
+
+            int iFinalResult;   //Final result of comparision: positive = greater
+                                //than, 0 = equal, negative = less than
+
+            //Initialize the sign values to be 1(positive) or -1(negative)
+            sign1 = Positive ? 1 : -1;
+            sign2 = snumOp.Positive ? 1 : -1;
+
+            if (sign1 != sign2) //If different sign, the positive one is greater
+                return sign1 == 1 ? 1 /*EComparison.GT*/ : -1 /*EComparison.LT*/;
+
+            else
+            { //same sign, have to compare absolute values
+                //Temporary memory to hold the operand since it is const
+                //but its scale may get adjusted during comparison
+                int scaleDiff;
+                var snumArg1 = this;
+                var snumArg2 = snumOp;
+
+                //First make the two operands the same scale if necessary
+                scaleDiff = ((int)Scale) - ((int)snumOp.Scale);
+
+                if (scaleDiff < 0)
+                {
+                    //If increasing the scale of operand1 caused an overflow,
+                    //then its absolute value is greater than that of operand2.
+                    try
+                    {
+                        snumArg1.AdjustScaleWithDifference(-scaleDiff, true);
+                    }
+                    catch (OverflowException)
+                    {
+                        return (sign1 > 0) ? 1 /*EComparison.GT*/ : -1 /*EComparison.LT*/;
+                    }
+                }
+                else if (scaleDiff > 0)
+                {
+                    //If increasing the scale of operand2 caused an overflow, then
+                    //operand1's absolute value is less than that of operand2.
+                    try
+                    {
+
+                        snumArg2.AdjustScaleWithDifference(scaleDiff, true);
+                    }
+                    catch (OverflowException)
+                    {
+                        return (sign1 > 0) ? -1 /*EComparison.LT*/ : 1 /*EComparison.GT*/;
+                    }
+                }
+
+                //Compare the absolute value of the two numerics
+                //Note: We are sure that scale of arguments is the same,
+                //      so LAbsCmp() will not modify its argument.
+                var lResult = snumArg1.LAbsCmp(snumArg2);
+                if (0 == lResult)
+                    return 0/*EComparison.EQ*/;
+
+                //if both positive, result same as result from LAbsCmp;
+                //if both negative, result reverse of result from LAbsCmp
+                iFinalResult = sign1 * lResult;
+                //iFinalResult < 0 => EComparison.LT
+                //iFinalResult >= 0 => EComparison.GT
+
+                return iFinalResult;
+            }
+        }
+
+
+        #endregion
+    }
 }

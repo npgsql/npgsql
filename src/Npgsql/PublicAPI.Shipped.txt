@@ -1434,9 +1434,11 @@ NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(NpgsqlTypes.NpgsqlDecimal value) -> void
 NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(uint[]! data, int scale, bool isPositive) -> void
 NpgsqlTypes.NpgsqlDecimal.Negative.get -> bool
 NpgsqlTypes.NpgsqlDecimal.Positive.get -> bool
+NpgsqlTypes.NpgsqlDecimal.Positive.set -> void
 NpgsqlTypes.NpgsqlDecimal.Scale.get -> int
 NpgsqlTypes.NpgsqlDecimal.Scale.set -> void
 NpgsqlTypes.NpgsqlDecimal.AdjustScale(int newScale, bool round = true) -> NpgsqlTypes.NpgsqlDecimal
+static readonly NpgsqlTypes.NpgsqlDecimal.Zero -> NpgsqlTypes.NpgsqlDecimal
 static NpgsqlTypes.NpgsqlDecimal.Parse(string! s) -> NpgsqlTypes.NpgsqlDecimal
 NpgsqlTypes.NpgsqlDecimal.IsZero() -> bool
 static NpgsqlTypes.NpgsqlDecimal.Negate(ref NpgsqlTypes.NpgsqlDecimal value) -> void
@@ -1468,6 +1470,8 @@ static NpgsqlTypes.NpgsqlDecimal.Floor(NpgsqlTypes.NpgsqlDecimal value) -> Npgsq
 static NpgsqlTypes.NpgsqlDecimal.Abs(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
 override NpgsqlTypes.NpgsqlDecimal.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlDecimal.Equals(object? value) -> bool
+NpgsqlTypes.NpgsqlDecimal.CompareTo(object? obj) -> int
+NpgsqlTypes.NpgsqlDecimal.CompareTo(NpgsqlTypes.NpgsqlDecimal obj) -> int
 NpgsqlTypes.NpgsqlDate
 NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
 NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
