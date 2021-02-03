@@ -256,8 +256,8 @@ numeric:
     A variable-length numeric value, can be negative.
     text: NaN or first - if it is negative, then the digits with . as decimal separator
     binary:
-        first a header of 4 16-bit signed integers:
-            number of digits in the digits array that follows (can be 0, but not negative),
+        first a header of 4 16-bit integers:
+            number of digits in the digits array that follows (unsigned integer),
             weight of the first digit (10000^weight), can be both negative, positive or 0,
             sign: negative=0x4000, positive=0x0000, NaN=0xC000
             dscale: number of digits (in base 10) to print after the decimal separator
