@@ -90,10 +90,16 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Single connection enlisting implicitly, rollback")]
-        public void RollbackImplicitEnlist()
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2408")]
+        public void RollbackImplicitEnlist([Values(true, false)] bool pooling)
         {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
+            {
+                Pooling = pooling
+            }.ToString();
+
             using (new TransactionScope())
-            using (var conn = OpenConnection(ConnectionStringEnlistOn))
+            using (var conn = OpenConnection(connectionString))
             {
                 Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
                 AssertNoDistributedIdentifier();
