@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Data;
 using System.Linq;
@@ -633,7 +632,7 @@ namespace Npgsql.TypeMapping
                         typeof(Dictionary<string, string?>),
                         typeof(IDictionary<string, string?>),
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
-                        typeof(ImmutableDictionary<string, string?>)
+                        typeof(System.Collections.Immutable.ImmutableDictionary<string, string?>)
 #endif
                     },
                     TypeHandlerFactory = new HstoreHandlerFactory()
