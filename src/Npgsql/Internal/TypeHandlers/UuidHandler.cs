@@ -19,7 +19,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     public class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
         // The following table shows .NET GUID vs Postgres UUID (RFC 4122) layouts.

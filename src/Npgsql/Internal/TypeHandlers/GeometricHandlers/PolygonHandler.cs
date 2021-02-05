@@ -18,7 +18,6 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
     public class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
         /// <inheritdoc />

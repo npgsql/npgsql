@@ -18,8 +18,6 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
-    [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     public class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
         /// <inheritdoc />

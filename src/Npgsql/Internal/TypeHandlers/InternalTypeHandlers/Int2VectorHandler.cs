@@ -7,7 +7,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
-    [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
     class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)

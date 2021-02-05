@@ -17,7 +17,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("boolean", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     public class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
         /// <inheritdoc />

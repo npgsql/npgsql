@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Threading.Tasks;
-using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 

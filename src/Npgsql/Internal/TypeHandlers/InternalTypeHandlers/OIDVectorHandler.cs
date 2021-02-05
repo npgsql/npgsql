@@ -7,7 +7,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
-    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)

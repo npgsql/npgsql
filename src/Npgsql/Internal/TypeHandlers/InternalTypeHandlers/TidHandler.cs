@@ -7,7 +7,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
-    [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
     class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
     {
         public TidHandler(PostgresType postgresType) : base(postgresType) {}

@@ -17,7 +17,6 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("real", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     public class SingleHandler : NpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
         /// <inheritdoc />

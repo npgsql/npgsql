@@ -20,7 +20,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("jsonpath", NpgsqlDbType.JsonPath)]
     public class JsonPathHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         /// <inheritdoc />

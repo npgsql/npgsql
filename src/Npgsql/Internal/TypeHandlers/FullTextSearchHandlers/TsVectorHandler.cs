@@ -22,7 +22,6 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
     public class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +

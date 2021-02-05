@@ -20,18 +20,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping(
-        "bytea",
-        NpgsqlDbType.Bytea,
-        DbType.Binary,
-        new[] {
-            typeof(byte[]),
-            typeof(ArraySegment<byte>),
-#if !NETSTANDARD2_0
-            typeof(ReadOnlyMemory<byte>),
-            typeof(Memory<byte>)
-#endif
-        })]
     public class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
 #if !NETSTANDARD2_0
         , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>

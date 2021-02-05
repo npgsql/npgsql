@@ -8,7 +8,6 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.TypeHandlers
 {
-    [TypeMapping("record")]
     class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
     {
         public override NpgsqlTypeHandler<object[]> Create(PostgresType pgType, NpgsqlConnection conn)

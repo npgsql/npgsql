@@ -22,19 +22,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("text", NpgsqlDbType.Text,
-        new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-        new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
-        DbType.String
-    )]
-    [TypeMapping("xml", NpgsqlDbType.Xml, dbType: DbType.Xml)]
 
-    [TypeMapping("character varying", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
-    [TypeMapping("character", NpgsqlDbType.Char, inferredDbType: DbType.String)]
-    [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
-    [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
-    [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
-    [TypeMapping("unknown")]
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         /// <inheritdoc />

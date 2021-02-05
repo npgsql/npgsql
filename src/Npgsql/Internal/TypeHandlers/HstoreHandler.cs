@@ -25,14 +25,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("hstore", NpgsqlDbType.Hstore, new[]
-    {
-        typeof(Dictionary<string, string?>),
-        typeof(IDictionary<string, string?>),
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1
-        typeof(ImmutableDictionary<string, string?>)
-#endif
-    })]
     public class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string?>>
     {
         /// <inheritdoc />
@@ -92,7 +84,7 @@ namespace Npgsql.Internal.TypeHandlers
                     totalLen += _textHandler.ValidateAndGetLength(kv.Value!, ref lengthCache, null);
             }
 
-            return lengthCache.Lengths[pos] = totalLen;
+            return lengthCache!.Lengths[pos] = totalLen;
         }
 
         /// <inheritdoc />

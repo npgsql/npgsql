@@ -5,37 +5,35 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
-namespace Npgsql.Internal.TypeHandlers
+namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 {
-    [TypeMapping("lquery", NpgsqlDbType.LQuery)]
-    class LQueryHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    class LTxtQueryHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => new LQueryHandler(postgresType, conn);
+            => new LTxtQueryHandler(postgresType, conn);
     }
 
     /// <summary>
-    /// LQuery binary encoding is a simple UTF8 string, but prepended with a version number.
+    /// LTxtQuery binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
-    public class LQueryHandler : TextHandler
+    public class LTxtQueryHandler : TextHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
         /// </summary>
-        const byte LQueryProtocolVersion = 1;
+        const byte LTxtQueryProtocolVersion = 1;
 
         internal override bool PreferTextWrite => false;
 
-        protected internal LQueryHandler(PostgresType postgresType, NpgsqlConnection connection)
+        protected internal LTxtQueryHandler(PostgresType postgresType, NpgsqlConnection connection)
             : base(postgresType, connection) {}
 
         #region Write
 
         public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
             base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
+
 
         public override int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
             base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
@@ -50,7 +48,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LQueryProtocolVersion);
+            buf.WriteByte(LTxtQueryProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -59,7 +57,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LQueryProtocolVersion);
+            buf.WriteByte(LTxtQueryProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -68,7 +66,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LQueryProtocolVersion);
+            buf.WriteByte(LTxtQueryProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -81,8 +79,8 @@ namespace Npgsql.Internal.TypeHandlers
             await buf.Ensure(1, async);
 
             var version = buf.ReadByte();
-            if (version != LQueryProtocolVersion)
-                throw new NotSupportedException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
+            if (version != LTxtQueryProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode ltxtquery with wire format {version}, your connection is now broken");
 
             return await base.Read(buf, len - 1, async, fieldDescription);
         }
@@ -92,8 +90,8 @@ namespace Npgsql.Internal.TypeHandlers
         public override TextReader GetTextReader(Stream stream)
         {
             var version = stream.ReadByte();
-            if (version != LQueryProtocolVersion)
-                throw new NpgsqlException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
+            if (version != LTxtQueryProtocolVersion)
+                throw new NpgsqlException($"Don't know how to decode ltxtquery with wire format {version}, your connection is now broken");
 
             return base.GetTextReader(stream);
         }
