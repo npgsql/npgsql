@@ -3,6 +3,7 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

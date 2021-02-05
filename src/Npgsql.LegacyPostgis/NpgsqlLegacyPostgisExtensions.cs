@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.LegacyPostgis;
+using Npgsql.LegacyPostgis.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

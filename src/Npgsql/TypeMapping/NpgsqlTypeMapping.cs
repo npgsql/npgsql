@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
-using Npgsql.TypeHandling;
+using Npgsql.Internal.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping

@@ -2,10 +2,11 @@
 using System.Data;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandlers.NumericHandlers;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.NumericHandlers;
-using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;

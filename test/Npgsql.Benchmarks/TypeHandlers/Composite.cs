@@ -2,9 +2,6 @@
 using BenchmarkDotNet.Attributes;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.CompositeHandlers;
-using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 
