@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -21,7 +21,7 @@ namespace Npgsql.Json.NET
             => new JsonbHandler(postgresType, conn, _settings);
     }
 
-    class JsonbHandler : Npgsql.TypeHandlers.JsonHandler
+    class JsonbHandler : Internal.TypeHandlers.JsonHandler
     {
         readonly JsonSerializerSettings _settings;
 

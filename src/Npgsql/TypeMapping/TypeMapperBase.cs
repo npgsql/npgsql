@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.CompositeHandlers;
-using Npgsql.TypeHandling;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandlers.CompositeHandlers;
+using Npgsql.Internal.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping

@@ -5,8 +5,8 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.NameTranslation;
-using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping

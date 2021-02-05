@@ -1,9 +1,9 @@
 ﻿using System;
 using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
-using BclTimeHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimeHandler;
+using BclTimeHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimeHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

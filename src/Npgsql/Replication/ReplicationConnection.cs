@@ -1,6 +1,5 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Logging;
-using Npgsql.TypeHandlers.DateTimeHandlers;
 using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
@@ -12,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql.Replication

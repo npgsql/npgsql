@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
 using Npgsql.BackendMessages;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

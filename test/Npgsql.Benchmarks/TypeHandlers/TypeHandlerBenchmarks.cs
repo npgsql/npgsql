@@ -2,11 +2,11 @@
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using Npgsql.TypeHandling;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 

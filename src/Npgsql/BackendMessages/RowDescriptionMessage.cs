@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 
