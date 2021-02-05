@@ -74,7 +74,7 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
         // TODO: Implement length cache
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => 4 + value.Sum(l => Encoding.UTF8.GetByteCount((string)l.Text) + 1 + 2 + l.Count * 2);
+            => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
 
         /// <inheritdoc />
         public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
