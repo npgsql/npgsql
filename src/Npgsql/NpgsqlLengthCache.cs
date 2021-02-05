@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
-using Npgsql.TypeHandling;
+using Npgsql.Internal.TypeHandling;
 
 namespace Npgsql
 {

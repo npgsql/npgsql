@@ -1,5 +1,3 @@
 ﻿#nullable enable
-Npgsql.NetTopologySuite.NetTopologySuiteHandlerFactory
 Npgsql.NpgsqlNetTopologySuiteExtensions
-override Npgsql.NetTopologySuite.NetTopologySuiteHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NetTopologySuite.Geometries.Geometry!>!
 static Npgsql.NpgsqlNetTopologySuiteExtensions.UseNetTopologySuite(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, NetTopologySuite.Geometries.CoordinateSequenceFactory? coordinateSequenceFactory = null, NetTopologySuite.Geometries.PrecisionModel? precisionModel = null, NetTopologySuite.Geometries.Ordinates handleOrdinates = NetTopologySuite.Geometries.Ordinates.None, bool geographyAsDefault = false) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

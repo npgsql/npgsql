@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.TypeHandlers;
+using Npgsql.Internal.TypeHandlers;
 using NpgsqlTypes;
 using NUnit.Framework;
 using NUnit.Framework.Internal;

@@ -7,7 +7,7 @@ using GeoJSON.Net.Converters;
 using GeoJSON.Net.CoordinateReferenceSystem;
 using GeoJSON.Net.Geometry;
 using Newtonsoft.Json;
-using Npgsql.GeoJSON;
+using Npgsql.GeoJSON.Internal;
 using Npgsql.Tests;
 using NUnit.Framework;
 

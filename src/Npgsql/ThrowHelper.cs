@@ -1,8 +1,8 @@
 ﻿using Npgsql.BackendMessages;
-using Npgsql.TypeHandling;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using Npgsql.Internal.TypeHandling;
 
 namespace Npgsql
 {

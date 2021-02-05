@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;

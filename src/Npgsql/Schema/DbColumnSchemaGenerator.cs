@@ -7,8 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.CompositeHandlers;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandlers.CompositeHandlers;
 using Npgsql.Util;
 
 namespace Npgsql.Schema

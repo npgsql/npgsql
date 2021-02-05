@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Npgsql.Internal;
 using Npgsql.Util;
 using NUnit.Framework;
 

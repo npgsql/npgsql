@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.Util;
 
 namespace Npgsql.Tests.Support

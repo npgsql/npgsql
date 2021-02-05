@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Npgsql.Internal;
 
 namespace Npgsql.BackendMessages
 {

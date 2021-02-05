@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using BenchmarkDotNet.Attributes;
-using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.Internal.TypeHandlers.NumericHandlers;
 
 namespace Npgsql.Benchmarks.TypeHandlers
 {

@@ -2,9 +2,11 @@
 using System.Data;
 using GeoJSON.Net;
 using GeoJSON.Net.Geometry;
-using Npgsql.GeoJSON;
+using Npgsql.GeoJSON.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql
@@ -14,7 +16,7 @@ namespace Npgsql
     /// </summary>
     public static class NpgsqlGeoJSONExtensions
     {
-        static readonly Type[] ClrTypes = new[]
+        static readonly Type[] ClrTypes =
         {
             typeof(GeoJSONObject), typeof(IGeoJSONObject), typeof(IGeometryObject),
             typeof(Point), typeof(LineString), typeof(Polygon),
