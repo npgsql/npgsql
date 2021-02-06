@@ -1321,6 +1321,29 @@ CREATE TABLE record ()");
                 Thread.Sleep(Timeout.Infinite);
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3511")]
+        public async Task Keepalive_with_failed_transaction()
+        {
+            if (IsMultiplexing)
+                return;
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                KeepAlive = 1
+            };
+            using var conn = await OpenConnectionAsync(csb);
+            using var tx = await conn.BeginTransactionAsync();
+
+            Assert.Throws<PostgresException>(() => conn.ExecuteScalar("SELECT non_existent_table"));
+            // Connection is now in a failed transaction state. Wait a bit to allow for the keepalive to execute.
+            Thread.Sleep(3000);
+
+            await tx.RollbackAsync();
+
+            // Confirm that the connection is still open and usable
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test]
         public async Task ChangeParameter()
         {
