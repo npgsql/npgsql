@@ -2114,7 +2114,7 @@ namespace Npgsql
                     return;
 
                 Log.Trace("Performed keepalive", Id);
-                WritePregenerated(PregeneratedMessages.KeepAlive);
+                WriteSync(async: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
             }
@@ -2173,7 +2173,7 @@ namespace Npgsql
 
                 // Time for a keepalive
                 var keepaliveTime = Stopwatch.StartNew();
-                await WritePregenerated(PregeneratedMessages.KeepAlive, async, cancellationToken);
+                await WriteSync(async, cancellationToken);
                 await Flush(async, cancellationToken);
 
                 var receivedNotification = false;
@@ -2200,25 +2200,9 @@ namespace Npgsql
                         continue;
                     }
 
-                    if (msg.Code != expectedMessageCode)
+                    if (msg.Code != BackendMessageCode.ReadyForQuery)
                         throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.RowDescription:
-                        expectedMessageCode = BackendMessageCode.DataRow;
-                        continue;
-                    case BackendMessageCode.DataRow:
-                        // DataRow is usually consumed by a reader, here we have to skip it manually.
-                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, async);
-                        expectedMessageCode = BackendMessageCode.CommandComplete;
-                        continue;
-                    case BackendMessageCode.CommandComplete:
-                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        break;
-                    }
                     Log.Trace("Performed keepalive", Id);
 
                     if (receivedNotification)
