@@ -22,7 +22,6 @@ namespace Npgsql
             BeginTransReadUncommitted   = Generate(buf, "BEGIN TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
             CommitTransaction           = Generate(buf, "COMMIT");
             RollbackTransaction         = Generate(buf, "ROLLBACK");
-            KeepAlive                   = Generate(buf, "SELECT NULL");
             DiscardAll                  = Generate(buf, "DISCARD ALL");
         }
 
@@ -51,7 +50,6 @@ namespace Npgsql
         internal static readonly byte[] BeginTransReadUncommitted;
         internal static readonly byte[] CommitTransaction;
         internal static readonly byte[] RollbackTransaction;
-        internal static readonly byte[] KeepAlive;
 
         internal static readonly byte[] DiscardAll;
     }
