@@ -239,6 +239,9 @@ namespace Npgsql
                         Connector = new NpgsqlConnector(this);
                         await Connector.Open(timeout, async, cancellationToken);
                         Counters.NumberOfNonPooledConnections.Increment();
+
+                        if (Settings.Enlist)
+                            transaction = Transaction.Current;
                     }
                     else
                     {
