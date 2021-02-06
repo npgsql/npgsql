@@ -242,6 +242,8 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
+                    var enlistToTransaction = Settings.Enlist ? Transaction.Current : null;
+
                     if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
                         if (string.IsNullOrEmpty(_connectionString))
@@ -257,24 +259,15 @@ namespace Npgsql
                     {
                         _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-                        if (Settings.Enlist && Transaction.Current is Transaction transaction)
+                        // First, check to see if we there's an ambient transaction, and we have a connection enlisted
+                        // to this transaction which has been closed. If so, return that as an optimization rather than
+                        // opening a new one and triggering escalation to a distributed transaction.
+                        // Otherwise just get a new connector and enlist below.
+                        if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
                         {
-                            // First, check to see if we there's an ambient transaction, and we have a connection enlisted
-                            // to this transaction which has been closed. If so, return that as an optimization rather than
-                            // opening a new one and triggering escalation to a distributed transaction.
-                            // Otherwise just get a new connector and enlist.
-                            if (_pool.TryRentEnlistedPending(transaction, out connector))
-                            {
-                                connector.Connection = this;
-                                EnlistedTransaction = transaction;
-                            }
-                            else
-                            {
-                                connector = await _pool.Rent(this, timeout, async, cancellationToken2);
-                                ConnectorBindingScope = ConnectorBindingScope.Connection;
-                                Connector = connector;
-                                EnlistTransaction(Transaction.Current);
-                            }
+                            connector.Connection = this;
+                            EnlistedTransaction = enlistToTransaction;
+                            enlistToTransaction = null;
                         }
                         else
                             connector = await _pool.Rent(this, timeout, async, cancellationToken2);
@@ -285,6 +278,9 @@ namespace Npgsql
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     Connector = connector;
+
+                    if (enlistToTransaction is not null)
+                        EnlistTransaction(enlistToTransaction);
 
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
