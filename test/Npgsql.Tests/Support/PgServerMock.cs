@@ -111,6 +111,8 @@ namespace Npgsql.Tests.Support
             Assert.That(actualSql, Is.EqualTo(expectedSql));
         }
 
+        internal Task WaitForData() => _readBuffer.EnsureAsync(1);
+
         internal Task FlushAsync()
         {
             CheckDisposed();
