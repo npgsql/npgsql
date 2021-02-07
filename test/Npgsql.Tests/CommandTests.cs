@@ -1,9 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Data;
-using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1162,6 +1160,39 @@ LANGUAGE 'plpgsql' VOLATILE;";
                 cmd.Parameters.AddWithValue("p", 9);
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(9));
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Timeout(5000)]
+        public async Task Bug3509()
+        {
+            if (IsMultiplexing)
+                return;
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                KeepAlive = 1,
+            };
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var serverMock = await postmasterMock.WaitForServerConnection();
+            // Wait for a keepalive to arrive at the server, reply with an error
+            await serverMock.WaitForData();
+            var queryTask = Task.Run(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
+            // TODO: kind of flaky - think of the way to rewrite
+            // giving a queryTask some time to get stuck on a lock
+            await Task.Delay(100);
+            await serverMock
+                .WriteErrorResponse("42")
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            await serverMock
+                .WriteScalarResponseAndFlush(1);
+
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask)!;
+            Assert.That(ex.InnerException, Is.TypeOf<NpgsqlException>()
+                .With.InnerException.TypeOf<PostgresException>());
         }
 
         public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

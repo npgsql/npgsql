@@ -1984,6 +1984,13 @@ namespace Npgsql
 
             lock (this)
             {
+                if (!IsConnected)
+                {
+                    throw IsBroken
+                        ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
+                        : new NpgsqlException("The connection is closed");
+                }  
+
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -2113,17 +2120,18 @@ namespace Npgsql
                 if (!IsReady)
                     return;
 
-                Log.Trace("Performed keepalive", Id);
+                Log.Trace("Performing keepalive", Id);
                 WriteSync(async: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
+                Log.Trace("Performed keepalive", Id);
             }
             catch (Exception e)
             {
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e);
+                    Break(new NpgsqlException("Exception while sending a keepalive", e));
                 }
                 catch (Exception e2)
                 {
