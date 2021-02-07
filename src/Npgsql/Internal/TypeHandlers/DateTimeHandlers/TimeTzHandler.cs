@@ -17,7 +17,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("time with time zone", NpgsqlDbType.TimeTz)]
     public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
         /// <inheritdoc />

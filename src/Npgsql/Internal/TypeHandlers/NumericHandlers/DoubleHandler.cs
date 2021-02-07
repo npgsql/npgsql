@@ -17,7 +17,6 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("double precision", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     public class DoubleHandler : NpgsqlSimpleTypeHandler<double>
     {
         /// <inheritdoc />

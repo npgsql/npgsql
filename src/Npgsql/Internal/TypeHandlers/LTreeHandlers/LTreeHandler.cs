@@ -5,31 +5,28 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
-namespace Npgsql.Internal.TypeHandlers
+namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 {
-    [TypeMapping("ltxtquery", NpgsqlDbType.LTxtQuery)]
-    class LTxtQueryHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    class LTreeHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => new LTxtQueryHandler(postgresType, conn);
+            => new LTreeHandler(postgresType, conn);
     }
 
     /// <summary>
-    /// LTxtQuery binary encoding is a simple UTF8 string, but prepended with a version number.
+    /// Ltree binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
-    public class LTxtQueryHandler : TextHandler
+    public class LTreeHandler : TextHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
         /// </summary>
-        const byte LTxtQueryProtocolVersion = 1;
+        const byte LtreeProtocolVersion = 1;
 
         internal override bool PreferTextWrite => false;
 
-        protected internal LTxtQueryHandler(PostgresType postgresType, NpgsqlConnection connection)
+        protected internal LTreeHandler(PostgresType postgresType, NpgsqlConnection connection)
             : base(postgresType, connection) {}
 
         #region Write
@@ -51,7 +48,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LTxtQueryProtocolVersion);
+            buf.WriteByte(LtreeProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -60,7 +57,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LTxtQueryProtocolVersion);
+            buf.WriteByte(LtreeProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -69,7 +66,7 @@ namespace Npgsql.Internal.TypeHandlers
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
 
-            buf.WriteByte(LTxtQueryProtocolVersion);
+            buf.WriteByte(LtreeProtocolVersion);
             await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
@@ -82,8 +79,8 @@ namespace Npgsql.Internal.TypeHandlers
             await buf.Ensure(1, async);
 
             var version = buf.ReadByte();
-            if (version != LTxtQueryProtocolVersion)
-                throw new NotSupportedException($"Don't know how to decode ltxtquery with wire format {version}, your connection is now broken");
+            if (version != LtreeProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
             return await base.Read(buf, len - 1, async, fieldDescription);
         }
@@ -93,8 +90,8 @@ namespace Npgsql.Internal.TypeHandlers
         public override TextReader GetTextReader(Stream stream)
         {
             var version = stream.ReadByte();
-            if (version != LTxtQueryProtocolVersion)
-                throw new NpgsqlException($"Don't know how to decode ltxtquery with wire format {version}, your connection is now broken");
+            if (version != LtreeProtocolVersion)
+                throw new NpgsqlException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
             return base.GetTextReader(stream);
         }

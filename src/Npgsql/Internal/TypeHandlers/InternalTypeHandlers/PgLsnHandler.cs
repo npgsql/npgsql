@@ -2,12 +2,10 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
-    [TypeMapping("pg_lsn", NpgsqlDbType.PgLsn, typeof(NpgsqlLogSequenceNumber))]
     class PgLsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLogSequenceNumber>
     {
         public PgLsnHandler(PostgresType postgresType) : base(postgresType) {}

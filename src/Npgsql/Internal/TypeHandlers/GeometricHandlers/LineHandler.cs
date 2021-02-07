@@ -16,7 +16,6 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
     public class LineHandler : NpgsqlSimpleTypeHandler<NpgsqlLine>
     {
         /// <inheritdoc />

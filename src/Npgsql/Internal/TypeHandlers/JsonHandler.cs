@@ -21,7 +21,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("jsonb", NpgsqlDbType.Jsonb, typeof(JsonDocument))]
     public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         readonly JsonSerializerOptions? _serializerOptions;
@@ -48,7 +47,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("json", NpgsqlDbType.Json)]
     public class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         readonly JsonSerializerOptions? _serializerOptions;

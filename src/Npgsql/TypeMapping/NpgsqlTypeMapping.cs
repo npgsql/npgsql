@@ -67,6 +67,13 @@ namespace Npgsql.TypeMapping
             if (TypeHandlerFactory is null)
                 throw new ArgumentException($"{nameof(TypeHandlerFactory)} must refer to a type handler factory");
 
+            if (InferredDbType is null && DbTypes?.Length > 0)
+            {
+                if (DbTypes.Length > 1)
+                    throw new ArgumentException($"Multiple DbTypes are defined, an InferredDbType must be provided");
+                InferredDbType = DbTypes[0];
+            }
+
             return new NpgsqlTypeMapping(PgTypeName!, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
         }
     }
