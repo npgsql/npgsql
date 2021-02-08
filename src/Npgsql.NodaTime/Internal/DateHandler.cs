@@ -18,7 +18,7 @@ namespace Npgsql.NodaTime.Internal
         }
     }
 
-    sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
+    sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when

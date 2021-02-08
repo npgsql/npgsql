@@ -1,7 +1,6 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
@@ -16,7 +15,7 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>
+    public partial class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>
     {
         /// <inheritdoc />
         public PointHandler(PostgresType postgresType) : base(postgresType) {}

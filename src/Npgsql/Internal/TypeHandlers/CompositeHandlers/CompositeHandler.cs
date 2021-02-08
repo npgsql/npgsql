@@ -14,7 +14,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
 {
-    class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
+    partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
     {
         readonly ConnectorTypeMapper _typeMapper;
         readonly INpgsqlNameTranslator _nameTranslator;

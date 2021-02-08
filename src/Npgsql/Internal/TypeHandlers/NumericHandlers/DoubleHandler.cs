@@ -17,7 +17,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class DoubleHandler : NpgsqlSimpleTypeHandler<double>
+    public partial class DoubleHandler : NpgsqlSimpleTypeHandler<double>
     {
         /// <inheritdoc />
         public DoubleHandler(PostgresType postgresType) : base(postgresType) {}

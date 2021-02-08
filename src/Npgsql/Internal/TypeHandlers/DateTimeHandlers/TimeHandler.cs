@@ -37,7 +37,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
+    public partial class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
         /// <summary>
         /// Constructs a <see cref="TimeHandler"/>.

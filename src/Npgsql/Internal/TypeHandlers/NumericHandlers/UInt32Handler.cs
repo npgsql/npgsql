@@ -16,7 +16,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class UInt32Handler : NpgsqlSimpleTypeHandler<uint>
+    public partial class UInt32Handler : NpgsqlSimpleTypeHandler<uint>
     {
         /// <inheritdoc />
         public UInt32Handler(PostgresType postgresType) : base(postgresType) {}

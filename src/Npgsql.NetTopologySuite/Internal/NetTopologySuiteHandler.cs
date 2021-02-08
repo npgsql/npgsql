@@ -96,6 +96,23 @@ namespace Npgsql.NetTopologySuite.Internal
             return (int)_lengthStream.Length;
         }
 
+                public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value switch
+            {
+                Point converted => ((INpgsqlTypeHandler<Point>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                LineString converted => ((INpgsqlTypeHandler<LineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                Polygon converted => ((INpgsqlTypeHandler<Polygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                MultiPoint converted => ((INpgsqlTypeHandler<MultiPoint>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                MultiLineString converted => ((INpgsqlTypeHandler<MultiLineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                MultiPolygon converted => ((INpgsqlTypeHandler<MultiPolygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                GeometryCollection converted => ((INpgsqlTypeHandler<GeometryCollection>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                Geometry converted => ((INpgsqlTypeHandler<Geometry>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+
+                DBNull => -1,
+                null => -1,
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type NetTopologySuiteHandler")
+            };
+
         sealed class LengthStream : Stream
         {
             long _length;
@@ -163,6 +180,23 @@ namespace Npgsql.NetTopologySuite.Internal
             _writer.Write(value, buf.GetStream());
             return Task.CompletedTask;
         }
+
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value switch
+            {
+                Point converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                LineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                Polygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                MultiPoint converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                MultiLineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                MultiPolygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                GeometryCollection converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                Geometry converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+
+                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type NetTopologySuiteHandler")
+            };
 
         #endregion
     }

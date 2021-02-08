@@ -22,7 +22,7 @@ namespace Npgsql.NodaTime.Internal
         }
     }
 
-    sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
+    sealed partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
                               INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>, 
                               INpgsqlSimpleTypeHandler<DateTime>
     {

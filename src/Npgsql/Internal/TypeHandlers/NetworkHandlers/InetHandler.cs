@@ -76,7 +76,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
         #region Write
 
         /// <inheritdoc />
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch {
                 null => -1,
                 DBNull _ => -1,
@@ -87,7 +87,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
             };
 
         /// <inheritdoc />
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value switch {
                 DBNull _ => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 IPAddress ip => WriteWithLengthInternal(ip, buf, lengthCache, parameter, async, cancellationToken),
@@ -153,5 +153,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
             };
 
         #endregion Write
+
+        protected override int ValidateObjectAndGetLength(object value, NpgsqlParameter? parameter) => throw new NotImplementedException();
     }
 }

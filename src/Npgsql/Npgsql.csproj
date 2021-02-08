@@ -12,6 +12,11 @@
   <ItemGroup>
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net5.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
   </ItemGroup>

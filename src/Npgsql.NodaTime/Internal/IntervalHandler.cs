@@ -18,7 +18,7 @@ namespace Npgsql.NodaTime.Internal
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    sealed class IntervalHandler :
+    sealed partial class IntervalHandler :
         NpgsqlSimpleTypeHandler<Period>,
         INpgsqlSimpleTypeHandler<Duration>,
         INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>,

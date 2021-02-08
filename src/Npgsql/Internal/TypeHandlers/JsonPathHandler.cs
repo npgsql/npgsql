@@ -37,7 +37,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class JsonPathHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
+    public partial class JsonPathHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     {
         readonly TextHandler _textHandler;
 

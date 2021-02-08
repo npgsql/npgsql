@@ -169,6 +169,40 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
             }
         }
 
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value switch
+            {
+                NpgsqlTsQueryEmpty converted => ((INpgsqlTypeHandler<NpgsqlTsQueryEmpty>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQueryLexeme converted => ((INpgsqlTypeHandler<NpgsqlTsQueryLexeme>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQueryNot converted => ((INpgsqlTypeHandler<NpgsqlTsQueryNot>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQueryAnd converted => ((INpgsqlTypeHandler<NpgsqlTsQueryAnd>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQueryOr converted => ((INpgsqlTypeHandler<NpgsqlTsQueryOr>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQueryFollowedBy converted => ((INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlTsQuery converted => ((INpgsqlTypeHandler<NpgsqlTsQuery>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+
+                DBNull => -1,
+                null => -1,
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type TsQueryHandler")
+            };
+
+        /// <inheritdoc />
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
+            NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value switch
+            {
+                NpgsqlTsQueryEmpty converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQueryLexeme converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQueryNot converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQueryAnd converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQueryOr converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQueryFollowedBy converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlTsQuery converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+
+                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type BoolHandler")
+            };
+
         /// <inheritdoc />
         public override async Task Write(NpgsqlTsQuery query, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {

@@ -16,7 +16,7 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class CircleHandler : NpgsqlSimpleTypeHandler<NpgsqlCircle>
+    public partial class CircleHandler : NpgsqlSimpleTypeHandler<NpgsqlCircle>
     {
         /// <inheritdoc />
         public CircleHandler(PostgresType postgresType) : base(postgresType) {}

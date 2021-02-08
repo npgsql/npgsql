@@ -22,7 +22,7 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
+    public partial class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))

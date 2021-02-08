@@ -1,9 +1,7 @@
-﻿using System.Data;
+﻿using System;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 {
@@ -17,7 +15,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class Int32Handler : NpgsqlSimpleTypeHandler<int>,
+    public partial class Int32Handler : NpgsqlSimpleTypeHandler<int>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
     {

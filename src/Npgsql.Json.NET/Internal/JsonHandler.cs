@@ -76,7 +76,7 @@ namespace Npgsql.Json.NET.Internal
             return base.WriteWithLength(serialized, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (value is DBNull ||
                 value is string ||
@@ -91,7 +91,7 @@ namespace Npgsql.Json.NET.Internal
             return ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
-        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull ||
                 value is string ||

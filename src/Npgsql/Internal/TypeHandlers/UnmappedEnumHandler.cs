@@ -52,7 +52,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Write
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value == null || value is DBNull
                 ? -1
                 : ValidateAndGetLength(value, ref lengthCache, parameter);
@@ -78,7 +78,7 @@ namespace Npgsql.Internal.TypeHandlers
         protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => WriteObjectWithLength(value!, buf, lengthCache, parameter, async, cancellationToken);
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull)
                 return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);

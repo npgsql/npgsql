@@ -48,7 +48,7 @@ namespace Npgsql.Internal.TypeHandlers
         protected internal override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (value is string asString)
                 return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
@@ -62,7 +62,7 @@ namespace Npgsql.Internal.TypeHandlers
             return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
         }
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull)
                 return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);

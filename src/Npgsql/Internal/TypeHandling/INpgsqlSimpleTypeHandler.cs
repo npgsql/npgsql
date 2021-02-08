@@ -21,7 +21,7 @@ namespace Npgsql.Internal.TypeHandling
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
-        /// written for PostgreSQL - if the value cannot be written for any reason, an exception shold be thrown.
+        /// written for PostgreSQL - if the value cannot be written for any reason, an exception should be thrown.
         /// Also returns the byte length needed to write the value.
         /// </summary>
         /// <param name="value">The value to be written to PostgreSQL</param>
