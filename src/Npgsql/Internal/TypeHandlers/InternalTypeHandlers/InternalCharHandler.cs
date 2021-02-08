@@ -14,7 +14,7 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
+    public partial class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
         /// <inheritdoc />

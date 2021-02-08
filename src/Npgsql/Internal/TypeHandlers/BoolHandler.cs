@@ -1,9 +1,6 @@
-﻿using System.Data;
-using Npgsql.BackendMessages;
+﻿using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
@@ -17,7 +14,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class BoolHandler : NpgsqlSimpleTypeHandler<bool>
+    public partial class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
         /// <inheritdoc />
         public BoolHandler(PostgresType postgresType) : base(postgresType) {}

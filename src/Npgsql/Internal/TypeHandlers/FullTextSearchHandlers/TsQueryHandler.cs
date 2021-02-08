@@ -25,7 +25,7 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>,
+    public partial class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>,
         INpgsqlTypeHandler<NpgsqlTsQueryEmpty>, INpgsqlTypeHandler<NpgsqlTsQueryLexeme>,
         INpgsqlTypeHandler<NpgsqlTsQueryNot>, INpgsqlTypeHandler<NpgsqlTsQueryAnd>,
         INpgsqlTypeHandler<NpgsqlTsQueryOr>, INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>

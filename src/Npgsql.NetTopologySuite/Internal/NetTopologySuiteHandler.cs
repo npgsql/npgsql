@@ -11,7 +11,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.NetTopologySuite.Internal
 {
-    class NetTopologySuiteHandler : NpgsqlTypeHandler<Geometry>,
+    partial class NetTopologySuiteHandler : NpgsqlTypeHandler<Geometry>,
         INpgsqlTypeHandler<Point>,
         INpgsqlTypeHandler<LineString>,
         INpgsqlTypeHandler<Polygon>,

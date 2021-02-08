@@ -19,7 +19,7 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
+    public partial class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
     {
         /// <inheritdoc />
         public PathHandler(PostgresType postgresType) : base(postgresType) {}

@@ -14,7 +14,7 @@ namespace Npgsql.LegacyPostgis.Internal
             => new LegacyPostgisHandler(postgresType);
     }
 
-    class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    partial class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,

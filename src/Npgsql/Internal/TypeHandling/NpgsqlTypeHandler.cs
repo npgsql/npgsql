@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -108,7 +105,7 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
         /// </summary>
-        internal abstract Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
+        public abstract Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
@@ -125,7 +122,8 @@ namespace Npgsql.Internal.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        protected internal abstract int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+        // Source-generated
+        public abstract int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, using either sync or async I/O.
@@ -141,7 +139,8 @@ namespace Npgsql.Internal.TypeHandling
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-        protected internal abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
+        // Source-generated
+        public abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
 
         #endregion Write
 
@@ -173,75 +172,5 @@ namespace Npgsql.Internal.TypeHandling
         internal string PgDisplayName => PostgresType.DisplayName;
 
         #endregion Misc
-
-        #region Code generation for non-generic writing
-
-        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken);
-
-        internal static NonGenericWriteWithLength GenerateNonGenericWriteMethod(Type handlerType, Type interfaceType)
-        {
-            var interfaces = handlerType.GetInterfaces().Where(i =>
-                IntrospectionExtensions.GetTypeInfo(i).IsGenericType &&
-                i.GetGenericTypeDefinition() == interfaceType
-            ).Reverse().ToList();
-
-            Expression? ifElseExpression = null;
-
-            // NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async, CancellationToken cancellationToken
-            var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");
-            var valueParam = Expression.Parameter(typeof(object), "value");
-            var bufParam = Expression.Parameter(typeof(NpgsqlWriteBuffer), "buf");
-            var lengthCacheParam = Expression.Parameter(typeof(NpgsqlLengthCache), "lengthCache");
-            var parameterParam = Expression.Parameter(typeof(NpgsqlParameter), "parameter");
-            var asyncParam = Expression.Parameter(typeof(bool), "async");
-            var cancellationTokenParam = Expression.Parameter(typeof(CancellationToken), "cancellationToken");
-
-            var resultVariable = Expression.Variable(typeof(Task), "result");
-
-            foreach (var i in interfaces)
-            {
-                var handledType = i.GenericTypeArguments[0];
-
-                ifElseExpression = Expression.IfThenElse(
-                    // Test whether the type of the value given to the delegate corresponds
-                    // to our current interface's handled type (i.e. the T in INpgsqlTypeHandler<T>)
-                    Expression.TypeEqual(valueParam, handledType),
-                    // If it corresponds, call the handler's Write method with the appropriate generic parameter
-                    Expression.Assign(
-                        resultVariable,
-                        Expression.Call(
-                            handlerParam,
-                            // Call the generic WriteWithLengthInternal<T2> with our handled type
-                            nameof(WriteWithLengthInternal),
-                            new[] { handledType },
-                            // Cast the value from object down to the interface's T
-                            Expression.Convert(valueParam, handledType),
-                            bufParam,
-                            lengthCacheParam,
-                            parameterParam,
-                            asyncParam,
-                            cancellationTokenParam
-                        )
-                    ),
-                    // If this is the first interface we're looking at, the else clause throws.
-                    // Note that this should never happen since we passed ValidateAndGetLength.
-                    // Otherwise we stick the previous interface's IfThenElse in our else clause
-                    ifElseExpression ?? Expression.Throw(Expression.New(typeof(InvalidCastException)))
-                );
-            }
-
-            if (ifElseExpression is null)
-                throw new Exception($"Type handler {handlerType.GetType().Name} does not implement the proper interface");
-
-            return Expression.Lambda<NonGenericWriteWithLength>(
-                Expression.Block(
-                    new[] { resultVariable },
-                    ifElseExpression, resultVariable
-                ),
-                handlerParam, valueParam, bufParam, lengthCacheParam, parameterParam, asyncParam, cancellationTokenParam
-            ).Compile();
-        }
-
-        #endregion Code generation for non-generic writing
     }
 }

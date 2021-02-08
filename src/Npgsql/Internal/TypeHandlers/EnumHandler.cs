@@ -22,7 +22,7 @@ namespace Npgsql.Internal.TypeHandlers
         Type EnumType { get; }
     }
 
-    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct, Enum
+    partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct, Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -72,7 +72,6 @@ namespace Npgsql.Internal.TypeHandlers
 
         #endregion
     }
-
 
     /// <summary>
     /// Interface implemented by all enum handler factories.

@@ -46,7 +46,7 @@ namespace Npgsql.GeoJSON.Internal
         }
     }
 
-    sealed class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
+    sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
         INpgsqlTypeHandler<Point>, INpgsqlTypeHandler<MultiPoint>,
         INpgsqlTypeHandler<Polygon>, INpgsqlTypeHandler<MultiPolygon>,
         INpgsqlTypeHandler<LineString>, INpgsqlTypeHandler<MultiLineString>,

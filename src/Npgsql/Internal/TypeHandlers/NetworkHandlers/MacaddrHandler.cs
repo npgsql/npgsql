@@ -18,7 +18,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
+    public partial class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
         /// <inheritdoc />
         public MacaddrHandler(PostgresType postgresType) : base(postgresType) {}

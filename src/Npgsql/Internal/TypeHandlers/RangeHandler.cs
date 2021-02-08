@@ -32,7 +32,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// Use it at your own risk.
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    public class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>, IRangeHandler
+    public partial class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>, IRangeHandler
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -132,7 +132,7 @@ namespace Npgsql.Internal.TypeHandlers
             return totalLen;
         }
 
-        internal override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();
@@ -220,5 +220,27 @@ namespace Npgsql.Internal.TypeHandlers
         /// <inheritdoc />
         public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => Write<TElement2>(value, buf, lengthCache, parameter, async, cancellationToken);
+
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value switch
+            {
+                NpgsqlRange<TElement1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement1>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlRange<TElement2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement2>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+
+                DBNull => -1,
+                null => -1,
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
+            };
+
+        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value switch
+            {
+                NpgsqlRange<TElement1> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlRange<TElement2> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+
+                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
+            };
     }
 }

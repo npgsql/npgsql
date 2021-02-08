@@ -1,16 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
-using Npgsql.Util;
 
 namespace Npgsql.Internal.TypeHandling
 {
@@ -26,27 +21,10 @@ namespace Npgsql.Internal.TypeHandling
     /// </typeparam>
     public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TDefault>
     {
-        delegate int NonGenericValidateAndGetLength(NpgsqlTypeHandler handler, object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
-
-        readonly NonGenericValidateAndGetLength _nonGenericValidateAndGetLength;
-        readonly NonGenericWriteWithLength _nonGenericWriteWithLength;
-
-        static readonly ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>
-            NonGenericDelegateCache = new();
-
         /// <summary>
         /// Constructs an <see cref="NpgsqlSimpleTypeHandler{TDefault}"/>.
         /// </summary>
-        protected NpgsqlSimpleTypeHandler(PostgresType postgresType)
-            : base(postgresType)
-        {
-            // Get code-generated delegates for non-generic ValidateAndGetLength/WriteWithLengthInternal
-            (_nonGenericValidateAndGetLength, _nonGenericWriteWithLength) =
-                NonGenericDelegateCache.GetOrAdd(GetType(), t => (
-                    GenerateNonGenericValidationMethod(GetType()),
-                    GenerateNonGenericWriteMethod(GetType(), typeof(INpgsqlSimpleTypeHandler<>)))
-                );
-        }
+        protected NpgsqlSimpleTypeHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
@@ -154,7 +132,7 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
         /// </summary>
-        internal sealed override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public sealed override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -211,98 +189,13 @@ namespace Npgsql.Internal.TypeHandling
         /// Called to validate and get the length of a value of a non-generic <see cref="NpgsqlParameter"/>.
         /// Type handlers generally don't need to override this.
         /// </summary>
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => value == null || value is DBNull
-                ? -1
-                : _nonGenericValidateAndGetLength(this, value, ref lengthCache, parameter);
+        public override int ValidateObjectAndGetLength(
+            object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateObjectAndGetLength(value, parameter);
 
-        /// <summary>
-        /// Called to write the value of a non-generic <see cref="NpgsqlParameter"/>.
-        /// Type handlers generally don't need to override this.
-        /// </summary>
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value is DBNull  // For null just go through the default WriteWithLengthInternal
-                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
-                : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async, cancellationToken);
+        // Implementation is source-generated
+        protected abstract int ValidateObjectAndGetLength(object value, NpgsqlParameter? parameter);
 
         #endregion
-
-        #region Code generation for non-generic writing
-
-        // We need to support writing via non-generic NpgsqlParameter, which means we get requests
-        // to write some object with no generic typing information.
-        // We need to find out which INpgsqlTypeHandler interfaces our handler implements, and call
-        // the ValidateAndGetLength/WriteWithLengthInternal methods on the interface which corresponds to the
-        // value type.
-        // Since doing this with reflection every time is slow, we generate delegates to do this for us
-        // for each type handler.
-
-        static NonGenericValidateAndGetLength GenerateNonGenericValidationMethod(Type handlerType)
-        {
-            var interfaces = handlerType.GetInterfaces().Where(i =>
-                IntrospectionExtensions.GetTypeInfo(i).IsGenericType &&
-                i.GetGenericTypeDefinition() == typeof(INpgsqlSimpleTypeHandler<>)
-            ).Reverse().ToList();
-
-            Expression? ifElseExpression = null;
-
-            var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");
-            var valueParam = Expression.Parameter(typeof(object), "value");
-            var lengthCacheParam = Expression.Parameter(typeof(NpgsqlLengthCache).MakeByRefType(), "lengthCache");
-            var parameterParam = Expression.Parameter(typeof(NpgsqlParameter), "parameter");
-
-            var resultVariable = Expression.Variable(typeof(int), "result");
-
-            foreach (var i in interfaces)
-            {
-                var handledType = i.GenericTypeArguments[0];
-
-                ifElseExpression = Expression.IfThenElse(
-                    // Test whether the type of the value given to the delegate corresponds
-                    // to our current interface's handled type (i.e. the T in INpgsqlTypeHandler<T>)
-                    Expression.TypeEqual(valueParam, handledType),
-                    // If it corresponds, cast the handler type (this) to INpgsqlTypeHandler<T>
-                    // and call its ValidateAndGetLength method
-                    Expression.Assign(
-                        resultVariable,
-                        Expression.Call(
-                            Expression.Convert(handlerParam, i),
-                            i.GetMethod(nameof(INpgsqlSimpleTypeHandler<TDefault>.ValidateAndGetLength))!,
-                            // Cast the value from object down to the interface's T
-                            Expression.Convert(valueParam, handledType),
-                            parameterParam
-                        )
-                    ),
-                    // If this is the first interface we're looking at, the else clause throws.
-                    // Otherwise we stick the previous interface's IfThenElse in our else clause
-                    ifElseExpression ?? Expression.Throw(
-                        Expression.New(
-                            MethodInfos.InvalidCastExceptionCtor,
-                            Expression.Call(  // Call string.Format to generate a nice informative exception message
-                                MethodInfos.StringFormat,
-                                new Expression[]
-                                {
-                                    Expression.Constant($"Can't write CLR type {{0}} with handler type {handlerType.Name}"),
-                                    Expression.Call(  // GetType() on the value
-                                        valueParam,
-                                        MethodInfos.ObjectGetType
-                                    )
-                                }
-                            )
-                        )
-                    )
-                );
-            }
-
-            if (ifElseExpression is null)
-                throw new Exception($"Type handler {handlerType.GetType().Name} does not implement the proper interface");
-
-            return Expression.Lambda<NonGenericValidateAndGetLength>(
-                Expression.Block(new[] { resultVariable }, ifElseExpression, resultVariable),
-                handlerParam, valueParam, lengthCacheParam, parameterParam
-            ).Compile();
-        }
-
-        #endregion Code generation for non-generic writing
     }
 }

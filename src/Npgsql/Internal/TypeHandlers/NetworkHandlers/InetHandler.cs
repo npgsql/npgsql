@@ -24,7 +24,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IPAddress Address, int Subnet)>,
+    public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IPAddress Address, int Subnet)>,
         INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
         // ReSharper disable InconsistentNaming
@@ -74,27 +74,6 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
         #endregion Read
 
         #region Write
-
-        /// <inheritdoc />
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => value switch {
-                null => -1,
-                DBNull _ => -1,
-                IPAddress ip => ValidateAndGetLength(ip, parameter),
-                ValueTuple<IPAddress, int> tup => ValidateAndGetLength(tup, parameter),
-                NpgsqlInet inet => ValidateAndGetLength(inet, parameter),
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}")
-            };
-
-        /// <inheritdoc />
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value switch {
-                DBNull _ => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                IPAddress ip => WriteWithLengthInternal(ip, buf, lengthCache, parameter, async, cancellationToken),
-                ValueTuple<IPAddress, int> tup => WriteWithLengthInternal(tup, buf, lengthCache, parameter, async, cancellationToken),
-                NpgsqlInet inet => WriteWithLengthInternal(inet, buf, lengthCache, parameter, async, cancellationToken),
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}")
-            };
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(IPAddress value, NpgsqlParameter? parameter)

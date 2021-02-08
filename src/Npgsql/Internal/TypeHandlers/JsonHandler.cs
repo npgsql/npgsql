@@ -189,10 +189,11 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
-                DBNull _                  => base.ValidateObjectAndGetLength(value, ref lengthCache, parameter),
+                DBNull                    => -1,
+                null                      => -1,
                 string s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 char[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 ArraySegment<char> s      => ValidateAndGetLength(s, ref lengthCache, parameter),
@@ -203,7 +204,7 @@ namespace Npgsql.Internal.TypeHandlers
             };
 
         /// <inheritdoc />
-        protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
             if (buf.WriteSpaceLeft < 4)
@@ -211,7 +212,7 @@ namespace Npgsql.Internal.TypeHandlers
 
             await (value switch
             {
-                DBNull _                  => base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken),
+                DBNull                    => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 string s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
                 char[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
                 ArraySegment<char> s      => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
