@@ -63,21 +63,23 @@ namespace Npgsql.SourceGenerators
 
                 var ns = typeSymbol.ContainingNamespace.ToDisplayString();
 
-                var validateAccess = isSimple ? "protected" : "public";
-                var validationDispatchLines = typeSymbol.AllInterfaces
-                    .Where(i => i.OriginalDefinition.Equals(isSimple ? simpleTypeHandlerInterfaceSymbol : typeHandlerInterfaceSymbol, SymbolEqualityComparer.Default))
-                    .Select(i => $"{FormatTypeName(i.TypeArguments[0])} converted => (({FormatTypeName(i)})this).ValidateAndGetLength(converted, {(isSimple ? "" : "ref lengthCache, ")}parameter),");
+                var interfaces = typeSymbol.AllInterfaces
+                    .Where(i => i.OriginalDefinition.Equals(isSimple ? simpleTypeHandlerInterfaceSymbol : typeHandlerInterfaceSymbol,
+                                    SymbolEqualityComparer.Default) &&
+                                !i.TypeArguments[0].IsAbstract);
 
-                var writeDispatchLines = typeSymbol.AllInterfaces
-                    .Where(i => i.OriginalDefinition.Equals(isSimple ? simpleTypeHandlerInterfaceSymbol : typeHandlerInterfaceSymbol, SymbolEqualityComparer.Default))
-                    .Select(i => $"{FormatTypeName(i.TypeArguments[0])} converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),");
+                var validateAccess = isSimple ? "protected" : "public";
+                var validationDispatchLines = interfaces.Select(i =>
+                    $"{FormatTypeName(i.TypeArguments[0])} converted => (({FormatTypeName(i)})this).ValidateAndGetLength(converted, {(isSimple ? "" : "ref lengthCache, ")}parameter),");
+
+                var writeDispatchLines = interfaces.Select(i =>
+                    $"{FormatTypeName(i.TypeArguments[0])} converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),");
 
                 var sourceBuilder = new StringBuilder();
 
                 foreach (var usingNamespace in usings.OrderBy(n => n))
                     sourceBuilder.Append("using ").Append(usingNamespace).AppendLine(";");
 
-                // var sourceBuilder = new StringBuilder($@"
                 sourceBuilder.Append($@"
 
 #nullable enable

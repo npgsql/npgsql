@@ -22,7 +22,7 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>
+    public partial class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
         /// <inheritdoc />
         public CidrHandler(PostgresType postgresType) : base(postgresType) {}
@@ -52,27 +52,5 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
         /// <inheritdoc />
         public void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => InetHandler.DoWrite(value.Address, value.Netmask, buf, true);
-
-        protected override int ValidateObjectAndGetLength(object value, NpgsqlParameter? parameter)
-            => value switch
-            {
-                ValueTuple<IPAddress, int> converted => ((INpgsqlSimpleTypeHandler<(IPAddress, int)>)this).ValidateAndGetLength(converted, parameter),
-                NpgsqlInet converted => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).ValidateAndGetLength(converted, parameter),
-
-                DBNull => -1,
-                null => -1,
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type CidrHandler")
-            };
-
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value switch
-            {
-                ValueTuple<IPAddress, int> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                NpgsqlInet converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type CidrHandler")
-            };
     }
 }

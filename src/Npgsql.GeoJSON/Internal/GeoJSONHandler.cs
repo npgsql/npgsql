@@ -46,7 +46,7 @@ namespace Npgsql.GeoJSON.Internal
         }
     }
 
-    sealed class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
+    sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
         INpgsqlTypeHandler<Point>, INpgsqlTypeHandler<MultiPoint>,
         INpgsqlTypeHandler<Polygon>, INpgsqlTypeHandler<MultiPolygon>,
         INpgsqlTypeHandler<LineString>, INpgsqlTypeHandler<MultiLineString>,
@@ -664,44 +664,6 @@ namespace Npgsql.GeoJSON.Internal
             if (altitude.HasValue)
                 buf.WriteDouble(altitude.Value);
         }
-
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => value switch
-            {
-                Point converted => ((INpgsqlTypeHandler<Point>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                MultiPoint converted => ((INpgsqlTypeHandler<MultiPoint>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                Polygon converted => ((INpgsqlTypeHandler<Polygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                MultiPolygon converted => ((INpgsqlTypeHandler<MultiPolygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                LineString converted => ((INpgsqlTypeHandler<LineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                MultiLineString converted => ((INpgsqlTypeHandler<MultiLineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                GeometryCollection converted => ((INpgsqlTypeHandler<GeometryCollection>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                GeoJSONObject converted => ((INpgsqlTypeHandler<GeoJSONObject>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                IGeoJSONObject converted => ((INpgsqlTypeHandler<IGeoJSONObject>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                IGeometryObject converted => ((INpgsqlTypeHandler<IGeometryObject>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-
-                DBNull => -1,
-                null => -1,
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type GeoJsonHandler")
-            };
-
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value switch
-            {
-                Point converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                MultiPoint converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                Polygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                MultiPolygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                LineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                MultiLineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                GeometryCollection converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                GeoJSONObject converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                IGeoJSONObject converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                IGeometryObject converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type GeoJsonHandler")
-            };
 
         #endregion
 

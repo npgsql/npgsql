@@ -14,7 +14,7 @@ namespace Npgsql.LegacyPostgis.Internal
             => new LegacyPostgisHandler(postgresType);
     }
 
-    class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    partial class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
@@ -371,40 +371,6 @@ namespace Npgsql.LegacyPostgis.Internal
 
         public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
-
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => value switch
-            {
-                PostgisPoint converted => ((INpgsqlTypeHandler<PostgisPoint>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisMultiPoint converted => ((INpgsqlTypeHandler<PostgisMultiPoint>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisLineString converted => ((INpgsqlTypeHandler<PostgisLineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisMultiLineString converted => ((INpgsqlTypeHandler<PostgisMultiLineString>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisPolygon converted => ((INpgsqlTypeHandler<PostgisPolygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisMultiPolygon converted => ((INpgsqlTypeHandler<PostgisMultiPolygon>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisGeometryCollection converted => ((INpgsqlTypeHandler<PostgisGeometryCollection>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                PostgisGeometry converted => ((INpgsqlTypeHandler<PostgisGeometry>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-
-                DBNull => -1,
-                null => -1,
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type LegacyPostgisHandler")
-            };
-
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value switch
-            {
-                PostgisPoint converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisMultiPoint converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisLineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisMultiLineString converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisPolygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisMultiPolygon converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisGeometryCollection converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                PostgisGeometry converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type LegacyPostgisHandler")
-            };
 
         #endregion Write
     }
