@@ -1,7 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
-using Npgsql.TypeHandlers;
 using System.Collections.Generic;
 using System.Text;
+using Npgsql.Internal.TypeHandlers;
 
 namespace Npgsql.Benchmarks.TypeHandlers
 {

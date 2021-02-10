@@ -12,11 +12,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Schema;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandling;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -837,10 +838,8 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-            }
-            finally
-            {
-                State = ReaderState.Disposed;
+                if (e is not PostgresException)
+                    State = ReaderState.Disposed;
             }
         }
 
@@ -866,10 +865,8 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-                }
-                finally
-                {
-                    State = ReaderState.Disposed;
+                    if (e is not PostgresException)
+                        State = ReaderState.Disposed;
                 }
             }
         }
@@ -892,7 +889,11 @@ namespace Npgsql
         internal async Task Close(bool connectionClosing, bool async, bool isDisposing)
         {
             if (State == ReaderState.Closed || State == ReaderState.Disposed)
+            {
+                if (isDisposing)
+                    State = ReaderState.Disposed;
                 return;
+            }
 
             switch (Connector.State)
             {
@@ -901,7 +902,30 @@ namespace Npgsql
             case ConnectorState.Executing:
             case ConnectorState.Connecting:
                 if (State != ReaderState.Consumed)
-                    await Consume(async);
+                {
+                    try
+                    {
+                        await Consume(async);
+                    }
+                    catch (Exception ex) when (
+                        ex is OperationCanceledException ||
+                        ex is NpgsqlException && ex.InnerException is TimeoutException)
+                    {
+                        // Timeout/cancellation - completely normal, consume has basically completed.
+                    }
+                    catch (PostgresException)
+                    {
+                        // In the case of a PostgresException, the connection is fine and consume has basically completed.
+                        // Defer throwing the exception until Cleanup is complete.
+                        await Cleanup(async, connectionClosing, isDisposing);
+                        throw;
+                    }
+                    catch
+                    {
+                        Debug.Assert(Connector.IsBroken);
+                        throw;
+                    }
+                }
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:

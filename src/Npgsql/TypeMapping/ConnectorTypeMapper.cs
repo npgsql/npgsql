@@ -5,10 +5,10 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping

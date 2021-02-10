@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.Util;
 

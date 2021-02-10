@@ -1,8 +1,8 @@
 ﻿using System;
-using Npgsql.Json.NET;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using Newtonsoft.Json;
+using Npgsql.Json.NET.Internal;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql

@@ -5,8 +5,6 @@ Npgsql.LegacyPostgis.Coordinate2D.Coordinate2D(double x, double y) -> void
 Npgsql.LegacyPostgis.Coordinate2D.Equals(Npgsql.LegacyPostgis.Coordinate2D c) -> bool
 Npgsql.LegacyPostgis.Coordinate2D.X.get -> double
 Npgsql.LegacyPostgis.Coordinate2D.Y.get -> double
-Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory
-Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory.LegacyPostgisHandlerFactory() -> void
 Npgsql.LegacyPostgis.PostgisGeometry
 Npgsql.LegacyPostgis.PostgisGeometry.PostgisGeometry() -> void
 Npgsql.LegacyPostgis.PostgisGeometry.SRID.get -> uint
@@ -66,7 +64,6 @@ Npgsql.LegacyPostgis.PostgisPolygon.TotalPointCount.get -> int
 Npgsql.NpgsqlLegacyPostgisExtensions
 override Npgsql.LegacyPostgis.Coordinate2D.Equals(object? obj) -> bool
 override Npgsql.LegacyPostgis.Coordinate2D.GetHashCode() -> int
-override Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<Npgsql.LegacyPostgis.PostgisGeometry!>!
 override Npgsql.LegacyPostgis.PostgisGeometryCollection.Equals(object? obj) -> bool
 override Npgsql.LegacyPostgis.PostgisGeometryCollection.GetHashCode() -> int
 override Npgsql.LegacyPostgis.PostgisGeometryCollection.GetLenHelper() -> int

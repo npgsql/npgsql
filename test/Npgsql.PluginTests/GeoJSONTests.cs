@@ -7,7 +7,7 @@ using GeoJSON.Net.Converters;
 using GeoJSON.Net.CoordinateReferenceSystem;
 using GeoJSON.Net.Geometry;
 using Newtonsoft.Json;
-using Npgsql.GeoJSON;
+using Npgsql.GeoJSON.Internal;
 using Npgsql.Tests;
 using NUnit.Framework;
 
@@ -109,37 +109,31 @@ namespace Npgsql.PluginTests
         [Test, TestCaseSource(nameof(Tests))]
         public void Read(TestData data)
         {
-            using (var conn = OpenConnection(option: GeoJSONOptions.BoundingBox))
-            using (var cmd = new NpgsqlCommand($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                Assert.That(reader.Read());
-                Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(data.Geometry));
-                Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(JsonConvert.DeserializeObject<IGeometryObject>(reader.GetFieldValue<string>(1), new GeometryConverter())));
-            }
+            using var conn = OpenConnection(option: GeoJSONOptions.BoundingBox);
+            using var cmd = new NpgsqlCommand($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn);
+            using var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read());
+            Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(data.Geometry));
+            Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(JsonConvert.DeserializeObject<IGeometryObject>(reader.GetFieldValue<string>(1), new GeometryConverter())));
         }
 
         [Test, TestCaseSource(nameof(Tests))]
         public void Write(TestData data)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn))
-            {
-                cmd.Parameters.AddWithValue("p", data.Geometry);
-                Assert.That(cmd.ExecuteScalar(), Is.True);
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn);
+            cmd.Parameters.AddWithValue("p", data.Geometry);
+            Assert.That(cmd.ExecuteScalar(), Is.True);
         }
 
         [Test]
         public void IgnoreM()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_makepointm(1,1,1)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                Assert.That(reader.Read());
-                Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Position(1d, 1d))));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_makepointm(1,1,1)", conn);
+            using var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read());
+            Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Position(1d, 1d))));
         }
 
         public static readonly TestData[] NotAllZSpecifiedTests =
@@ -165,152 +159,128 @@ namespace Npgsql.PluginTests
         [Test, TestCaseSource(nameof(NotAllZSpecifiedTests))]
         public void NotAllZSpecified(TestData data)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", data.Geometry);
-                Assert.That(() => cmd.ExecuteScalar(), Throws.ArgumentException);
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.AddWithValue("p", data.Geometry);
+            Assert.That(() => cmd.ExecuteScalar(), Throws.ArgumentException);
         }
 
         [Test]
         public void ReadUnknownCRS()
         {
-            using (var conn = OpenConnection(option: GeoJSONOptions.ShortCRS))
-            using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                Assert.That(reader.Read());
-                Assert.That(() => reader.GetValue(0), Throws.InvalidOperationException);
-            }
+            using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
+            using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
+            using var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read());
+            Assert.That((TestDelegate)(() => reader.GetValue(0)), Throws.InvalidOperationException);
         }
 
         [Test]
         public void ReadUnspecifiedCRS()
         {
-            using (var conn = OpenConnection(option: GeoJSONOptions.ShortCRS))
-            using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                Assert.That(reader.Read());
-                Assert.That(reader.GetFieldValue<Point>(0).CRS, Is.Null);
-            }
+            using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
+            using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
+            using var reader = cmd.ExecuteReader();
+            Assert.That(reader.Read());
+            Assert.That(reader.GetFieldValue<Point>(0).CRS, Is.Null);
         }
 
         [Test]
         public void ReadShortCRS()
         {
-            using (var conn = OpenConnection(option: GeoJSONOptions.ShortCRS))
-            using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn))
-            {
-                var point = (Point)cmd.ExecuteScalar()!;
-                var crs = point.CRS as NamedCRS;
+            using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
+            using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+            var point = (Point)cmd.ExecuteScalar()!;
+            var crs = point.CRS as NamedCRS;
 
-                Assert.That(crs, Is.Not.Null);
-                Assert.That(crs!.Properties["name"], Is.EqualTo("EPSG:4326"));
-            }
+            Assert.That(crs, Is.Not.Null);
+            Assert.That(crs!.Properties["name"], Is.EqualTo("EPSG:4326"));
         }
 
         [Test]
         public void ReadLongCRS()
         {
-            using (var conn = OpenConnection(option: GeoJSONOptions.LongCRS))
-            using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn))
-            {
-                var point = (Point)cmd.ExecuteScalar()!;
-                var crs = point.CRS as NamedCRS;
+            using var conn = OpenConnection(option: GeoJSONOptions.LongCRS);
+            using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+            var point = (Point)cmd.ExecuteScalar()!;
+            var crs = point.CRS as NamedCRS;
 
-                Assert.That(crs, Is.Not.Null);
-                Assert.That(crs!.Properties["name"], Is.EqualTo("urn:ogc:def:crs:EPSG::4326"));
-            }
+            Assert.That(crs, Is.Not.Null);
+            Assert.That(crs!.Properties["name"], Is.EqualTo("urn:ogc:def:crs:EPSG::4326"));
         }
 
         [Test]
         public void WriteIllFormedCRS()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("ill:formed") });
-                Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<FormatException>());
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("ill:formed") });
+            Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<FormatException>());
         }
 
         [Test]
         public void WriteLinkedCRS()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new LinkedCRS("href") });
-                Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<NotSupportedException>());
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new LinkedCRS("href") });
+            Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<NotSupportedException>());
         }
 
         [Test]
         public void WriteUnspecifiedCRS()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new UnspecifiedCRS() });
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new UnspecifiedCRS() });
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
         }
 
         [Test]
         public void WriteShortCRS()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("EPSG:4326") });
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("EPSG:4326") });
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
         }
 
         [Test]
         public void WriteLongCRS()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:EPSG::4326") });
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:EPSG::4326") });
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
         }
 
         [Test]
         public void WriteCRS84()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn))
-            {
-                cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:OGC::CRS84") });
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+            cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:OGC::CRS84") });
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
         }
 
         [Test]
         public void RoundtripGeometryGeography()
         {
             var point = new Point(new Position(0d, 0d));
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", point);
-                    cmd.ExecuteNonQuery();
-                }
+                cmd.Parameters.AddWithValue("p", point);
+                cmd.ExecuteNonQuery();
+            }
 
-                using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(point));
-                    Assert.That(reader[1], Is.EqualTo(point));
-                }
+            using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader[0], Is.EqualTo(point));
+                Assert.That(reader[1], Is.EqualTo(point));
             }
         }
 

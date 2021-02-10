@@ -54,3 +54,10 @@ csharp_indent_switch_labels = false
 
 # CA2016: Forward the 'CancellationToken' parameter to methods that take one
 dotnet_diagnostic.CA2016.severity = error
+
+[src/*/Internal/**.cs]
+# RS0016: Symbol is not part of the declared API
+dotnet_diagnostic.RS0016.severity = none
+
+# CS1591: Missing XML comment for publicly visible type or member
+dotnet_diagnostic.CS1591.severity = none

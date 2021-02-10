@@ -99,7 +99,7 @@ namespace Npgsql
         internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
         {
             if (settings.MaxPoolSize < settings.MinPoolSize)
-                throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
+                throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
 
             // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
             // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
@@ -222,8 +222,9 @@ namespace Npgsql
                         cancellationToken.ThrowIfCancellationRequested();
                         Debug.Assert(finalToken.IsCancellationRequested);
                         throw new NpgsqlException(
-                            $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) " +
-                            $"or Timeout (currently {Settings.Timeout} seconds)");
+                            $"The connection pool has been exhausted, either raise 'Max Pool Size' (currently {_max}) " +
+                            $"or 'Timeout' (currently {Settings.Timeout} seconds) in your connection string.",
+                            new TimeoutException());
                     }
                     catch (ChannelClosedException)
                     {

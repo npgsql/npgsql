@@ -1,4 +1,5 @@
 using System;
+using Npgsql.Internal;
 
 namespace Npgsql
 {

@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Util;
 using NUnit.Framework;
 
@@ -110,6 +111,8 @@ namespace Npgsql.Tests.Support
             Assert.That(actualSql, Is.EqualTo(expectedSql));
         }
 
+        internal Task WaitForData() => _readBuffer.EnsureAsync(1);
+
         internal Task FlushAsync()
         {
             CheckDisposed();
@@ -184,6 +187,9 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        /// <summary>
+        /// Writes the bytes to the buffer and flushes <b>only</b> when the buffer is full
+        /// </summary>
         internal async Task WriteDataRowWithFlush(params byte[][] columnValues)
         {
             CheckDisposed();

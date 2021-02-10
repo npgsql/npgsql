@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
@@ -1467,27 +1468,40 @@ namespace Npgsql
 
         internal void PerformUserCancellation()
         {
-            _userCancellationRequested = true;
-
-            if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+            lock (CancelLock)
             {
-                var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+                _userCancellationRequested = true;
+
+                if (AttemptPostgresCancellation && SupportsPostgresCancellation)
                 {
-                    if (cancellationTimeout > 0)
+                    var cancellationTimeout = Settings.CancellationTimeout;
+                    if (PerformPostgresCancellation() && cancellationTimeout >= 0)
                     {
-                        UserTimeout = cancellationTimeout;
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                        if (cancellationTimeout > 0)
+                        {
+                            lock (this)
+                            {
+                                if (!IsConnected)
+                                    return;
+                                UserTimeout = cancellationTimeout;
+                                ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                            }
+                        }
+
+                        return;
                     }
-                        
-                    return;
+                }
+
+                lock (this)
+                {
+                    if (!IsConnected)
+                        return;
+                    UserTimeout = -1;
+                    ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+                    ReadBuffer.Cts.Cancel();
                 }
             }
-
-            UserTimeout = -1;
-            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-            ReadBuffer.Cts.Cancel();
         }
 
         /// <summary>
@@ -1975,6 +1989,13 @@ namespace Npgsql
 
             lock (this)
             {
+                if (!IsConnected)
+                {
+                    throw IsBroken
+                        ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
+                        : new NpgsqlException("The connection is closed");
+                }  
+
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -2104,17 +2125,18 @@ namespace Npgsql
                 if (!IsReady)
                     return;
 
-                Log.Trace("Performed keepalive", Id);
-                WritePregenerated(PregeneratedMessages.KeepAlive);
+                Log.Trace("Performing keepalive", Id);
+                WriteSync(async: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
+                Log.Trace("Performed keepalive", Id);
             }
             catch (Exception e)
             {
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e);
+                    Break(new NpgsqlException("Exception while sending a keepalive", e));
                 }
                 catch (Exception e2)
                 {
@@ -2164,7 +2186,7 @@ namespace Npgsql
 
                 // Time for a keepalive
                 var keepaliveTime = Stopwatch.StartNew();
-                await WritePregenerated(PregeneratedMessages.KeepAlive, async, cancellationToken);
+                await WriteSync(async, cancellationToken);
                 await Flush(async, cancellationToken);
 
                 var receivedNotification = false;
@@ -2191,25 +2213,9 @@ namespace Npgsql
                         continue;
                     }
 
-                    if (msg.Code != expectedMessageCode)
+                    if (msg.Code != BackendMessageCode.ReadyForQuery)
                         throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.RowDescription:
-                        expectedMessageCode = BackendMessageCode.DataRow;
-                        continue;
-                    case BackendMessageCode.DataRow:
-                        // DataRow is usually consumed by a reader, here we have to skip it manually.
-                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, async);
-                        expectedMessageCode = BackendMessageCode.CommandComplete;
-                        continue;
-                    case BackendMessageCode.CommandComplete:
-                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        break;
-                    }
                     Log.Trace("Performed keepalive", Id);
 
                     if (receivedNotification)

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data;
 using NodaTime;
-using Npgsql.NodaTime;
+using Npgsql.NodaTime.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

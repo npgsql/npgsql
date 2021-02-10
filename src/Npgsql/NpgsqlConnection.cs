@@ -28,7 +28,7 @@ namespace Npgsql
     /// </summary>
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlConnection : DbConnection, ICloneable
+    public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         #region Fields
 
@@ -195,7 +195,7 @@ namespace Npgsql
             {
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                NpgsqlEventSource.Log.PoolCreated();
+                NpgsqlEventSource.Log.PoolCreated(newPool);
             }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
@@ -242,6 +242,8 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
+                    var enlistToTransaction = Settings.Enlist ? Transaction.Current : null;
+
                     if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
                         if (string.IsNullOrEmpty(_connectionString))
@@ -257,24 +259,15 @@ namespace Npgsql
                     {
                         _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-                        if (Settings.Enlist && Transaction.Current is Transaction transaction)
+                        // First, check to see if we there's an ambient transaction, and we have a connection enlisted
+                        // to this transaction which has been closed. If so, return that as an optimization rather than
+                        // opening a new one and triggering escalation to a distributed transaction.
+                        // Otherwise just get a new connector and enlist below.
+                        if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
                         {
-                            // First, check to see if we there's an ambient transaction, and we have a connection enlisted
-                            // to this transaction which has been closed. If so, return that as an optimization rather than
-                            // opening a new one and triggering escalation to a distributed transaction.
-                            // Otherwise just get a new connector and enlist.
-                            if (_pool.TryRentEnlistedPending(transaction, out connector))
-                            {
-                                connector.Connection = this;
-                                EnlistedTransaction = transaction;
-                            }
-                            else
-                            {
-                                connector = await _pool.Rent(this, timeout, async, cancellationToken2);
-                                ConnectorBindingScope = ConnectorBindingScope.Connection;
-                                Connector = connector;
-                                EnlistTransaction(Transaction.Current);
-                            }
+                            connector.Connection = this;
+                            EnlistedTransaction = enlistToTransaction;
+                            enlistToTransaction = null;
                         }
                         else
                             connector = await _pool.Rent(this, timeout, async, cancellationToken2);
@@ -285,6 +278,9 @@ namespace Npgsql
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     Connector = connector;
+
+                    if (enlistToTransaction is not null)
+                        EnlistTransaction(enlistToTransaction);
 
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
@@ -736,15 +732,16 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            return CloseAsync(cancellationToken);
+            return CloseAsync(async, cancellationToken);            
+        }
 
-            async Task CloseAsync(CancellationToken cancellationToken)
+        async Task CloseAsync(bool async, CancellationToken cancellationToken)
+        {
+            Debug.Assert(Connector != null);
+            try
             {
-                Debug.Assert(Connector != null);
                 var connector = Connector;
                 Log.Trace("Closing connection...", connector.Id);
-
-                using var _ = Defer(() => Volatile.Write(ref _closing, 0));
 
                 if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
                 {
@@ -813,6 +810,10 @@ namespace Npgsql
                 ConnectorBindingScope = ConnectorBindingScope.None;
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed", connector.Id);
+            }
+            finally
+            {
+                Volatile.Write(ref _closing, 0);
             }
         }
 
@@ -1904,6 +1905,22 @@ namespace Npgsql
             // Increment the change counter on the global type mapper. This will make conn.Open() pick up the
             // new DatabaseInfo and set up a new connection type mapper
             TypeMapping.GlobalTypeMapper.Instance.RecordChange();
+        }
+
+        /// <summary>
+        /// This event is unsupported by Npgsql. Use <see cref="DbConnection.StateChange"/> instead.
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new event EventHandler? Disposed
+        {
+            add => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+            remove => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+        }
+
+        event EventHandler? IComponent.Disposed
+        {
+            add => Disposed += value;
+            remove => Disposed -= value;
         }
 
         #endregion Misc

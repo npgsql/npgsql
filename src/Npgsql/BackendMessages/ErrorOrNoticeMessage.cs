@@ -1,4 +1,5 @@
 ﻿using System;
+using Npgsql.Internal;
 using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages

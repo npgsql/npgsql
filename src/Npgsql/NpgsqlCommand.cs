@@ -27,7 +27,7 @@ namespace Npgsql
     /// </summary>
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
-    public sealed class NpgsqlCommand : DbCommand, ICloneable
+    public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
     {
         #region Fields
 
@@ -296,20 +296,20 @@ namespace Npgsql
 
         #region State management
 
-        int _state;
+        volatile int _state;
 
         /// <summary>
         /// The current state of the command
         /// </summary>
         internal CommandState State
         {
-            private get { return (CommandState)_state; }
+            get => (CommandState)_state;
             set
             {
                 var newState = (int)value;
                 if (newState == _state)
                     return;
-                Interlocked.Exchange(ref _state, newState);
+                _state = newState;
             }
         }
 
@@ -1373,7 +1373,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Transaction = null;
             _connection = null;
             State = CommandState.Disposed;
-            base.Dispose(disposing);
         }
 
         #endregion
@@ -1476,6 +1475,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             default:
                 throw new InvalidOperationException("Connection is not open");
             }
+        }
+
+        /// <summary>
+        /// This event is unsupported by Npgsql. Use <see cref="DbConnection.StateChange"/> instead.
+        /// </summary>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public new event EventHandler? Disposed
+        {
+            add => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+            remove => throw new NotSupportedException("The Disposed event isn't supported by Npgsql. Use DbConnection.StateChange instead.");
+        }
+
+        event EventHandler? IComponent.Disposed
+        {
+            add => Disposed += value;
+            remove => Disposed -= value;
         }
 
         #endregion
