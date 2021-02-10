@@ -370,17 +370,7 @@ namespace Npgsql
                 if (_dataTypeName != null)
                     return _dataTypeName;
                 if (_npgsqlDbType.HasValue)
-                {
-                    var primitiveNpgsqlType = _npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range;
-                    var primitiveTypeName = GlobalTypeMapper.Instance.ToPgTypeName(primitiveNpgsqlType);
-
-                    if ((_npgsqlDbType.Value & NpgsqlDbType.Array) != 0)
-                    {
-                        primitiveTypeName += "[]";
-                    }
-
-                    return primitiveTypeName;
-                }
+                    return GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
                 if (_value != null)   // Infer from value
                     return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
                 throw new InvalidOperationException($"Parameter '{ParameterName}' type not set and no value was supplied");
