@@ -374,8 +374,7 @@ namespace Npgsql
                     var primitiveNpgsqlType = _npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range;
                     var primitiveTypeName = GlobalTypeMapper.Instance.ToPgTypeName(primitiveNpgsqlType);
 
-                    if ((_npgsqlDbType.Value & NpgsqlDbType.Array) != 0 ||
-                        (_npgsqlDbType.Value & NpgsqlDbType.Range) != 0)
+                    if ((_npgsqlDbType.Value & NpgsqlDbType.Array) != 0)
                     {
                         primitiveTypeName += "[]";
                     }

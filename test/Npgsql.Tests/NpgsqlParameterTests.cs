@@ -86,10 +86,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GivenRangeNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        public void GivenRangeNpgsqlDbTypeParameter_ShouldReturnNullDataTypeName()
         {
             var p = new NpgsqlParameter("numeric_range", NpgsqlDbType.Range | NpgsqlDbType.Numeric);
-            Assert.That(p.DataTypeName, Is.EqualTo("numeric[]"));
+            Assert.That(p.DataTypeName, Is.EqualTo(null));
         }
 
         [Test]
