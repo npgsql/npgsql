@@ -62,7 +62,10 @@ namespace Npgsql.TypeMapping
                     _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
 
                     foreach (var dbType in mapping.DbTypes)
+                    {
                         _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
+                        _dbTypeToPgTypeName[dbType] = mapping.PgTypeName;
+                    }
 
                     if (mapping.InferredDbType.HasValue)
                         _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
@@ -127,6 +130,7 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new();
         readonly Dictionary<Type, DbType> _typeToDbType = new();
         readonly Dictionary<NpgsqlDbType, string> _npgsqlDbTypeToPgTypeName = new();
+        readonly Dictionary<DbType, string> _dbTypeToPgTypeName = new();
         readonly Dictionary<Type, string> _typeToPgTypeName = new();
 
         internal DbType ToDbType(NpgsqlDbType npgsqlDbType)
@@ -151,6 +155,9 @@ namespace Npgsql.TypeMapping
                     typeName += "[]";
             return typeName;
         }
+
+        internal string? ToPgTypeName(DbType type)
+            => _dbTypeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;
 
         internal string? ToPgTypeName(Type type)
             => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;

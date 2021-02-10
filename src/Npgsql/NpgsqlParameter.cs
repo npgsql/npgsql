@@ -369,11 +369,13 @@ namespace Npgsql
             {
                 if (_dataTypeName != null)
                     return _dataTypeName;
+                string? dataTypeName = null;
                 if (_npgsqlDbType.HasValue)
-                    return GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
+                    dataTypeName = GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
+                dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(DbType);
                 if (_value != null)   // Infer from value
-                    return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
-                throw new InvalidOperationException($"Parameter '{ParameterName}' type not set and no value was supplied");
+                    dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
+                return dataTypeName;
             }
             set
             {
