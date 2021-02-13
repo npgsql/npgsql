@@ -372,7 +372,6 @@ namespace Npgsql
                 string? dataTypeName = null;
                 if (_npgsqlDbType.HasValue)
                     dataTypeName = GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
-                dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(DbType);
                 if (_value != null)   // Infer from value
                     dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
                 return dataTypeName;
