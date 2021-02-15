@@ -59,6 +59,9 @@ namespace Npgsql.TypeMapping
 
                 if (mapping.NpgsqlDbType.HasValue)
                 {
+                    _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
+                    _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value | NpgsqlDbType.Array] = mapping.PgTypeName + "[]";
+
                     foreach (var dbType in mapping.DbTypes)
                         _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
 
@@ -66,7 +69,10 @@ namespace Npgsql.TypeMapping
                         _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
 
                     foreach (var clrType in mapping.ClrTypes)
+                    {
                         _typeToNpgsqlDbType[clrType] = mapping.NpgsqlDbType.Value;
+                        _typeToPgTypeName[clrType] = mapping.PgTypeName;
+                    }
                 }
 
                 if (mapping.InferredDbType.HasValue)
@@ -121,6 +127,8 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType = new();
         readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new();
         readonly Dictionary<Type, DbType> _typeToDbType = new();
+        readonly Dictionary<NpgsqlDbType, string> _npgsqlDbTypeToPgTypeName = new();
+        readonly Dictionary<Type, string> _typeToPgTypeName = new();
 
         internal DbType ToDbType(NpgsqlDbType npgsqlDbType)
             => _npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out var dbType) ? dbType : DbType.Object;
@@ -134,6 +142,12 @@ namespace Npgsql.TypeMapping
 
         internal DbType ToDbType(Type type)
             => _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
+
+        internal string? ToPgTypeName(NpgsqlDbType npgsqlDbType)
+            => _npgsqlDbTypeToPgTypeName.TryGetValue(npgsqlDbType, out var pgTypeName) ? pgTypeName : null;
+
+        internal string? ToPgTypeName(Type type)
+            => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;
 
         internal NpgsqlDbType ToNpgsqlDbType(Type type)
         {

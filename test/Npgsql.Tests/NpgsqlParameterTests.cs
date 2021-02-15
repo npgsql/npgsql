@@ -3,6 +3,7 @@
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 
@@ -61,6 +62,41 @@ namespace Npgsql.Tests
             // the above doesn't work simply because of type inference from the CLR type.
             p2.DataTypeName = "text";
             Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
+        }
+
+        [Test]
+        public void GivenNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        {
+            var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
+            Assert.That(p.DataTypeName, Is.EqualTo("character varying"));
+        }
+
+        [Test]
+        public void GivenDbTypeParameter_ShouldReturnDataTypeName()
+        {
+            var p = new NpgsqlParameter("par_field1", DbType.String , 50);
+            Assert.That(p.DataTypeName, Is.EqualTo("text"));
+        }
+
+        [Test]
+        public void GivenArrayNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        {
+            var p = new NpgsqlParameter("int_array", NpgsqlDbType.Array | NpgsqlDbType.Integer);
+            Assert.That(p.DataTypeName, Is.EqualTo("integer[]"));
+        }
+
+        [Test]
+        public void GivenRangeNpgsqlDbTypeParameter_ShouldReturnNullDataTypeName()
+        {
+            var p = new NpgsqlParameter("numeric_range", NpgsqlDbType.Range | NpgsqlDbType.Numeric);
+            Assert.That(p.DataTypeName, Is.EqualTo(null));
+        }
+
+        [Test]
+        public void GivenClrTypeParameter_ShouldReturnExpectedDataTypeName()
+        {
+            var p = new NpgsqlParameter("p1", new Dictionary<string, string>());
+            Assert.That(p.DataTypeName, Is.EqualTo("hstore"));
         }
 
         [Test]

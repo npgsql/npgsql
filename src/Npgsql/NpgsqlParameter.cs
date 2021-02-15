@@ -369,7 +369,12 @@ namespace Npgsql
             {
                 if (_dataTypeName != null)
                     return _dataTypeName;
-                throw new NotImplementedException("Infer from others");
+                string? dataTypeName = null;
+                if (_npgsqlDbType.HasValue)
+                    dataTypeName = GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
+                if (_value != null)   // Infer from value
+                    dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
+                return dataTypeName;
             }
             set
             {
