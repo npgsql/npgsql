@@ -1,9 +1,15 @@
 ﻿<Project>
   <PropertyGroup>
     <VersionPrefix>6.0.0</VersionPrefix>
+    <LangVersion>9.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
 
-    <!-- Packing -->
-    <Copyright>Copyright 2020 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2021 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
@@ -13,17 +19,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <NoWarn>$(NoWarn);NU5105</NoWarn>
-
-    <!-- Language -->
-    <LangVersion>9.0</LangVersion>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Nullable>enable</Nullable>
-    <AnalysisLevel>latest</AnalysisLevel>
-
-    <!-- Other -->
-    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
-    <SignAssembly>true</SignAssembly>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
   <!-- In netstandard2.0, the BCL isn't annotated for nullability so we disable nullability there -->
