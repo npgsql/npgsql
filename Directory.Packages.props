@@ -1,0 +1,40 @@
+﻿<Project>
+  <ItemGroup>
+    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.1" />
+
+    <PackageVersion Include="System.Text.Json" Version="4.6.0" />
+    <PackageVersion Include="System.Threading.Channels" Version="4.7.0" />
+    <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+    <PackageVersion Include="System.Memory" Version="4.5.4" />
+    <PackageVersion Include="System.ValueTuple" Version="4.5.0" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
+    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.0" />
+
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.2" />
+
+    <!-- Plugins -->
+    <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.0.0" />
+    <PackageVersion Include="NodaTime" Version="3.0.1" />
+    <PackageVersion Include="GeoJSON.Net" Version="1.1.73" />
+    <PackageVersion Include="Newtonsoft.Json" Version="12.0.2" />
+
+    <!-- Tests -->
+    <PackageVersion Include="NUnit" Version="3.13.0" />
+    <PackageVersion Include="NLog" Version="4.6.7" />
+    <PackageVersion Include="Microsoft.CSharp" Version="4.6.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="3.17.0" />
+    <PackageVersion Include="xunit" Version="2.4.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.1" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="1.1.0" />
+    <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-alpha3" />
+
+    <!-- Benchmarks -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.12.1" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="1.0.19249.1" />
+    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.12.1" />
+  </ItemGroup>
+</Project>
