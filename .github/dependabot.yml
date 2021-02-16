@@ -4,12 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    labels:
-      - dependabot
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-    labels:
-      - dependabot
