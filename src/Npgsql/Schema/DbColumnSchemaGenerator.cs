@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -102,36 +102,39 @@ ORDER BY attnum";
                 result.Add(null);
             var populatedColumns = 0;
 
-            // We have two types of fields - those which correspond to actual database columns
-            // and those that don't (e.g. SELECT 8). For the former we load lots of info from
-            // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
-
-            var columnFieldFilter = _rowDescription.Fields
-                .Where(f => f.TableOID != 0)  // Only column fields
-                .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
-                .Join(" OR ");
-
-            if (_fetchAdditionalInfo && columnFieldFilter != "")
+            if (_fetchAdditionalInfo)
             {
-                var query = oldQueryMode
-                    ? GenerateOldColumnsQuery(columnFieldFilter)
-                    : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
+                // We have two types of fields - those which correspond to actual database columns
+                // and those that don't (e.g. SELECT 8). For the former we load lots of info from
+                // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
 
-                using var scope = new TransactionScope(TransactionScopeOption.Suppress);
-                using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-                connection.Open();
+                var columnFieldFilter = _rowDescription.Fields
+                    .Where(f => f.TableOID != 0)  // Only column fields
+                    .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
+                    .Join(" OR ");
 
-                using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = cmd.ExecuteReader();
-                for (; reader.Read(); populatedColumns++)
+                if (columnFieldFilter != string.Empty)
                 {
-                    var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-                    var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                    Debug.Assert(ordinal >= 0);
+                    var query = oldQueryMode
+                        ? GenerateOldColumnsQuery(columnFieldFilter)
+                        : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
 
-                    // The column's ordinal is with respect to the resultset, not its table
-                    column.ColumnOrdinal = ordinal;
-                    result[ordinal] = column;
+                    using var scope = new TransactionScope(TransactionScopeOption.Suppress);
+                    using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
+                    connection.Open();
+
+                    using var cmd = new NpgsqlCommand(query, connection);
+                    using var reader = cmd.ExecuteReader();
+                    for (; reader.Read(); populatedColumns++)
+                    {
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
+                        var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
+                        Debug.Assert(ordinal >= 0);
+
+                        // The column's ordinal is with respect to the resultset, not its table
+                        column.ColumnOrdinal = ordinal;
+                        result[ordinal] = column;
+                    }
                 }
             }
 
