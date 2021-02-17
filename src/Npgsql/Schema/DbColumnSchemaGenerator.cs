@@ -104,50 +104,53 @@ ORDER BY attnum";
                 result.Add(null);
             var populatedColumns = 0;
 
-            // We have two types of fields - those which correspond to actual database columns
-            // and those that don't (e.g. SELECT 8). For the former we load lots of info from
-            // the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
-
-            var columnFieldFilter = _rowDescription.Fields
-                .Where(f => f.TableOID != 0)  // Only column fields
-                .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
-                .Join(" OR ");
-
-            if (_fetchAdditionalInfo && columnFieldFilter != "")
+            if (_fetchAdditionalInfo)
             {
-                var query = oldQueryMode
-                    ? GenerateOldColumnsQuery(columnFieldFilter)
-                    : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-
-                using var scope = new TransactionScope(
-                    TransactionScopeOption.Suppress,
-                    async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
-                using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-
-                await connection.Open(async, cancellationToken);
-
-                using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
-                while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
-                {
-                    var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-                    for (var ordinal = 0; ordinal < fields.Count; ordinal++)
-                    {
-                        var field = fields[ordinal];
-                        if (field.TableOID == column.TableOID &&
-                            field.ColumnAttributeNumber == column.ColumnAttributeNumber)
-                        {
-                            populatedColumns++;
-
-                            if (column.ColumnOrdinal.HasValue)
-                                column = column.Clone();
-
-                            // The column's ordinal is with respect to the resultset, not its table
-                            column.ColumnOrdinal = ordinal;
-                            result[ordinal] = column;
-                        }
-                    }
-                }
+				// We have two types of fields - those which correspond to actual database columns
+				// and those that don't (e.g. SELECT 8). For the former we load lots of info from
+				// the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
+	
+				var columnFieldFilter = _rowDescription.Fields
+					.Where(f => f.TableOID != 0)  // Only column fields
+					.Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
+					.Join(" OR ");
+				
+				if(columnFieldFilter != string.Empty)
+				{
+					var query = oldQueryMode
+						? GenerateOldColumnsQuery(columnFieldFilter)
+						: GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
+	
+					using var scope = new TransactionScope(
+						TransactionScopeOption.Suppress,
+						async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
+					using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
+	
+					await connection.Open(async, cancellationToken);
+	
+					using var cmd = new NpgsqlCommand(query, connection);
+					using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+					while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
+					{
+						var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
+						for (var ordinal = 0; ordinal < fields.Count; ordinal++)
+						{
+							var field = fields[ordinal];
+							if (field.TableOID == column.TableOID &&
+								field.ColumnAttributeNumber == column.ColumnAttributeNumber)
+							{
+								populatedColumns++;
+	
+								if (column.ColumnOrdinal.HasValue)
+									column = column.Clone();
+	
+								// The column's ordinal is with respect to the resultset, not its table
+								column.ColumnOrdinal = ordinal;
+								result[ordinal] = column;
+							}
+						}
+					}
+				}
             }
 
             // We had some fields which don't correspond to regular table columns (or fetchAdditionalInfo is false).
