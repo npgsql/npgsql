@@ -7,11 +7,12 @@ using AdoNet.Specification.Tests;
 
 namespace Npgsql.Specification.Tests
 {
-    public class NpgsqlSelectValueFixture : NpgsqlDbFactoryFixture, ISelectValueFixture, IDisposable
+    public class NpgsqlSelectValueFixture : NpgsqlDbFactoryFixture, ISelectValueFixture, IDeleteFixture, IDisposable
     {
         public NpgsqlSelectValueFixture()
         {
-            Utility.ExecuteNonQuery(this, @"DROP TABLE IF EXISTS select_value;
+            Utility.ExecuteNonQuery(this, @"
+DROP TABLE IF EXISTS select_value;
 CREATE TABLE select_value
 (
 	id INTEGER NOT NULL PRIMARY KEY,
@@ -67,5 +68,9 @@ INSERT INTO select_value VALUES
             DbType.String,
             DbType.Time
         });
+
+        public Type NullValueExceptionType => typeof(InvalidCastException);
+
+        public string DeleteNoRows => "DELETE FROM select_value WHERE 1 = 0";
     }
 }
