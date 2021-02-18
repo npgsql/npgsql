@@ -30,7 +30,7 @@ namespace Npgsql.Tests.Types
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand($"SELECT {query}", conn);
 
-            Assert.AreEqual(await cmd.ExecuteScalarAsync(), expected);
+            Assert.AreEqual(expected, actual: await cmd.ExecuteScalarAsync());
         }
 
         [Test]
