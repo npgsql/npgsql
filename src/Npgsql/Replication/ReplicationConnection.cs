@@ -326,11 +326,11 @@ namespace Npgsql.Replication
             try
             {
                 var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
-                Debug.Assert(rowDescription.NumFields == 4);
-                Debug.Assert(rowDescription.Fields[0].TypeOID == 25u, "slot_name expected as text");
-                Debug.Assert(rowDescription.Fields[1].TypeOID == 25u, "consistent_point expected as text");
-                Debug.Assert(rowDescription.Fields[2].TypeOID == 25u, "snapshot_name expected as text");
-                Debug.Assert(rowDescription.Fields[3].TypeOID == 25u, "output_plugin expected as text");
+                Debug.Assert(rowDescription.Count == 4);
+                Debug.Assert(rowDescription[0].TypeOID == 25u, "slot_name expected as text");
+                Debug.Assert(rowDescription[1].TypeOID == 25u, "consistent_point expected as text");
+                Debug.Assert(rowDescription[2].TypeOID == 25u, "snapshot_name expected as text");
+                Debug.Assert(rowDescription[3].TypeOID == 25u, "output_plugin expected as text");
                 Expect<DataRowMessage>(await Connector.ReadMessage(true), Connector);
                 var buf = Connector.ReadBuffer;
                 await buf.EnsureAsync(2);
@@ -686,8 +686,7 @@ namespace Npgsql.Replication
             await Connector.WriteQuery(command, true, cancellationToken);
             await Connector.Flush(true, cancellationToken);
 
-            var description =
-                Expect<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
+            var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
             Expect<DataRowMessage>(await Connector.ReadMessage(true), Connector);
             var buf = Connector.ReadBuffer;
             await buf.EnsureAsync(2);
@@ -700,7 +699,7 @@ namespace Npgsql.Replication
                     continue;
 
                 await buf.EnsureAsync(len);
-                var field = description.Fields[i];
+                var field = rowDescription[i];
                 switch (field.PostgresType.Name)
                 {
                 case "text":

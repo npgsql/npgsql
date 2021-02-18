@@ -715,8 +715,8 @@ namespace Npgsql
 
             // We assume that the row's number of columns is identical to the description's
             _numColumns = Buffer.ReadInt16();
-            Debug.Assert(_numColumns == RowDescription!.NumFields,
-                $"Row's number of columns ({_numColumns}) differs from the row description's ({RowDescription.NumFields})");
+            Debug.Assert(_numColumns == RowDescription!.Count,
+                $"Row's number of columns ({_numColumns}) differs from the row description's ({RowDescription.Count})");
 
             _dataMsgEnd = Buffer.ReadPosition + msg.Length - 2;
 
@@ -806,7 +806,7 @@ namespace Npgsql
             get
             {
                 CheckClosedOrDisposed();
-                return RowDescription?.NumFields ?? 0;
+                return RowDescription?.Count ?? 0;
             }
         }
 
@@ -1863,7 +1863,7 @@ namespace Npgsql
         }
 
         Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
-            => RowDescription == null || RowDescription.Fields.Count == 0
+            => RowDescription == null || RowDescription.Count == 0
                 ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchema(async, cancellationToken);
@@ -2165,8 +2165,8 @@ namespace Npgsql
                 throw new InvalidOperationException("No row is available");
             }
 
-            if (column < 0 || column >= RowDescription!.NumFields)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription!.NumFields - 1}");
+            if (column < 0 || column >= RowDescription!.Count)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription!.Count - 1}");
 
             return RowDescription[column];
         }
@@ -2181,8 +2181,8 @@ namespace Npgsql
             if (RowDescription == null)
                 throw new InvalidOperationException("No resultset is currently being traversed");
 
-            if (column < 0 || column >= RowDescription.NumFields)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.NumFields - 1}");
+            if (column < 0 || column >= RowDescription.Count)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.Count - 1}");
 
             return RowDescription[column];
         }
