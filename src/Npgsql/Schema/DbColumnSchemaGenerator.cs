@@ -98,9 +98,9 @@ ORDER BY attnum";
             // This is mainly for Amazon Redshift
             var oldQueryMode = _connection.PostgreSqlVersion < new Version(8, 2);
 
-            var fields = _rowDescription.Fields;
-            var result = new List<NpgsqlDbColumn?>(fields.Count);
-            for (var i = 0; i < fields.Count; i++)
+            var numFields = _rowDescription.Count;
+            var result = new List<NpgsqlDbColumn?>(numFields);
+            for (var i = 0; i < numFields; i++)
                 result.Add(null);
             var populatedColumns = 0;
 
@@ -109,13 +109,13 @@ ORDER BY attnum";
 				// We have two types of fields - those which correspond to actual database columns
 				// and those that don't (e.g. SELECT 8). For the former we load lots of info from
 				// the backend (if fetchAdditionalInfo is true), for the latter we only have the RowDescription
-	
-				var columnFieldFilter = _rowDescription.Fields
+
+				var columnFieldFilter = _rowDescription
 					.Where(f => f.TableOID != 0)  // Only column fields
 					.Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
 					.Join(" OR ");
 				
-				if(columnFieldFilter != string.Empty)
+				if (columnFieldFilter != string.Empty)
 				{
 					var query = oldQueryMode
 						? GenerateOldColumnsQuery(columnFieldFilter)
@@ -133,9 +133,9 @@ ORDER BY attnum";
 					while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
 					{
 						var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-						for (var ordinal = 0; ordinal < fields.Count; ordinal++)
+						for (var ordinal = 0; ordinal < numFields; ordinal++)
 						{
-							var field = fields[ordinal];
+							var field = _rowDescription[ordinal];
 							if (field.TableOID == column.TableOID &&
 								field.ColumnAttributeNumber == column.ColumnAttributeNumber)
 							{
@@ -155,10 +155,10 @@ ORDER BY attnum";
 
             // We had some fields which don't correspond to regular table columns (or fetchAdditionalInfo is false).
             // Fill in whatever info we have from the RowDescription itself
-            for (var i = 0; i < fields.Count; i++)
+            for (var i = 0; i < numFields; i++)
             {
                 var column = result[i];
-                var field = fields[i];
+                var field = _rowDescription[i];
 
                 if (column is null)
                 {
@@ -172,7 +172,7 @@ ORDER BY attnum";
                 column.IsAliased = column.BaseColumnName is null ? default(bool?) : (column.BaseColumnName != column.ColumnName);
             }
 
-            if (populatedColumns != fields.Count)
+            if (populatedColumns != numFields)
                 throw new NpgsqlException("Could not load all columns for the resultset");
 
             return result.AsReadOnly()!;

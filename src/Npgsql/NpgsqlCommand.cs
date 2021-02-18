@@ -1390,7 +1390,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </remarks>
         internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
-            for (var i = 0; i < rowDescription.NumFields; i++)
+            for (var i = 0; i < rowDescription.Count; i++)
             {
                 var field = rowDescription[i];
                 field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])

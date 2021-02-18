@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
@@ -16,23 +18,24 @@ namespace Npgsql.BackendMessages
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </remarks>
-    sealed class RowDescriptionMessage : IBackendMessage
+    sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescription>
     {
-        public List<FieldDescription> Fields { get; }
+        FieldDescription?[] _fields;
         readonly Dictionary<string, int> _nameIndex;
         Dictionary<string, int>? _insensitiveIndex;
 
         internal RowDescriptionMessage()
         {
-            Fields = new List<FieldDescription>();
+            _fields = new FieldDescription[10];
             _nameIndex = new Dictionary<string, int>();
         }
 
         RowDescriptionMessage(RowDescriptionMessage source)
         {
-            Fields = new List<FieldDescription>(source.Fields.Count);
-            foreach (var f in source.Fields)
-                Fields.Add(f.Clone());
+            Count = source.Count;
+            _fields = new FieldDescription?[Count];
+            for (var i = 0; i < Count; i++)
+                _fields[i] = source._fields[i]!.Clone();
             _nameIndex = new Dictionary<string, int>(source._nameIndex);
             if (source._insensitiveIndex?.Count > 0)
                 _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
@@ -40,21 +43,20 @@ namespace Npgsql.BackendMessages
 
         internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
-            Fields.Clear();
             _nameIndex.Clear();
             _insensitiveIndex?.Clear();
 
-            var numFields = buf.ReadInt16();
-            for (var i = 0; i != numFields; ++i)
+            var numFields = Count = buf.ReadInt16();
+            if (_fields.Length < numFields)
             {
-                FieldDescription field;
-                if (i >= Fields.Count)
-                {
-                    field = new FieldDescription();
-                    Fields.Add(field);
-                }
-                else
-                    field = Fields[i];
+                var oldFields = _fields;
+                _fields = new FieldDescription[numFields];
+                Array.Copy(oldFields, _fields, oldFields.Length);
+            }
+
+            for (var i = 0; i < numFields; ++i)
+            {
+                var field = _fields[i] ??= new();
 
                 field.Populate(
                     typeMapper,
@@ -74,9 +76,21 @@ namespace Npgsql.BackendMessages
             return this;
         }
 
-        internal FieldDescription this[int index] => Fields[index];
+        public FieldDescription this[int index]
+        {
+            get
+            {
+                Debug.Assert(index < Count);
+                Debug.Assert(_fields[index] != null);
 
-        internal int NumFields => Fields.Count;
+                return _fields[index]!;
+            }
+        }
+
+        public int Count { get; private set; }
+
+        public IEnumerator<FieldDescription> GetEnumerator() => new Enumerator(this);
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
@@ -128,6 +142,31 @@ namespace Npgsql.BackendMessages
 
             public int GetHashCode(string o)
                 => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
+        }
+
+        class Enumerator : IEnumerator<FieldDescription>
+        {
+            readonly RowDescriptionMessage _rowDescription;
+            int _pos = -1;
+
+            public Enumerator(RowDescriptionMessage rowDescription)
+                => _rowDescription = rowDescription;
+
+            public FieldDescription Current
+                => _pos >= 0 ? _rowDescription[_pos] : throw new InvalidOperationException();
+
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (_pos == _rowDescription.Count - 1)
+                    return false;
+                _pos++;
+                return true;
+            }
+
+            public void Reset() => _pos = -1;
+            public void Dispose() {}
         }
     }
 
