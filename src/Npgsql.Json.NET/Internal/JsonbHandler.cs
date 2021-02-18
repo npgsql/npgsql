@@ -38,7 +38,9 @@ namespace Npgsql.Json.NET.Internal
                 return await base.Read<T>(buf, len, async, fieldDescription);
             }
 
-            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
+            // JSON.NET returns null if no JSON content was found. This means null may get returned even if T is a non-nullable reference
+            // type (for value types, an exception will be thrown).
+            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings)!;
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
