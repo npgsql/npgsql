@@ -55,7 +55,7 @@ At this point, everything is ready to start replicating! Create this simple .NET
 
 ```csharp
 await using var conn = new LogicalReplicationConnection("<connection_string>");
-await conn.Open();
+await conn.OpenAsync();
 
 var slot = new PgOutputReplicationSlot("blog_slot");
 
@@ -89,7 +89,7 @@ An additional logical replication plugin which Npgsql supports is `test_decoding
 To use `test_decoding`, first create a logical replication slot with `test_decoding` as the plugin type.
 
 ```sql
-SELECT * FROM pg_create_logical_replication_slot('blog_slot', '`test_decoding`');
+SELECT * FROM pg_create_logical_replication_slot('blog_slot', 'test_decoding');
 ```
 
 After that use the following:
