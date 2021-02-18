@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -80,12 +79,5 @@ namespace Npgsql.Tests.Types
                     new NpgsqlTsQueryLexeme("f"))
             }
         };
-
-        [OneTimeSetUp]
-        public async Task SetUp()
-        {
-            using var conn = await OpenConnectionAsync();
-            await TestUtil.EnsureExtensionAsync(conn, "ltree");
-        }
     }
 }
