@@ -113,7 +113,7 @@ namespace Npgsql.PluginTests
             using var reader = cmd.ExecuteReader();
             reader.Read();
             var actual = reader.GetFieldValue<JObject>(0);
-            Assert.That((int)actual["Bar"], Is.EqualTo(8));
+            Assert.That((int)actual["Bar"]!, Is.EqualTo(8));
         }
 
         [Test]
