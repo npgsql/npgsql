@@ -175,7 +175,7 @@ namespace Npgsql.Internal
                     {
                         var toRead = buffer.Size - buffer.FilledBytes;
                         var read = async
-                            ? await buffer.Underlying.ReadAsync(buffer.Buffer, buffer.FilledBytes, toRead, finalCt)
+                            ? await buffer.Underlying.ReadAsync(buffer.Buffer.AsMemory(buffer.FilledBytes, toRead), finalCt)
                             : buffer.Underlying.Read(buffer.Buffer, buffer.FilledBytes, toRead);
 
                         if (read == 0)
