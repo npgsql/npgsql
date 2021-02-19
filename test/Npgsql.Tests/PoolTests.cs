@@ -47,8 +47,8 @@ namespace Npgsql.Tests
         {
             // Arrange
             // Create two separate connection strings in order to have multiple pools for testing
-            using var connPool = CreateTempPool(ConnectionString, out var connString);
-            using var connPool2 = CreateTempPool(ConnectionString, out var secondConnString);
+            using var _ = CreateTempPool(ConnectionString, out var connString);
+            using var __ = CreateTempPool(ConnectionString, out var secondConnString);
 
             // Act
             using (var conn = CreateConnection(connString))
@@ -67,7 +67,7 @@ namespace Npgsql.Tests
 
                 // Issue a (syntactically invalid) query in order to invoke a reader exception that is not fatal
                 // This is to ensure we do not clear the pool upon regular errors (that is not desirable)
-                foreach(var c in new[] { conn, conn2})
+                foreach (var c in new[] { conn, conn2})
                     Assert.ThrowsAsync<PostgresException>(async () => await c.ExecuteScalarAsync("this_query_is_invalid_on_purpose"));
 
                 // Return connectors to pool
