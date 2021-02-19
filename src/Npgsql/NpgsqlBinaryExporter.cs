@@ -229,7 +229,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="type">
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type coming in from the
-        /// database. This parameter and be used to unambiguously specify the type. An example is the JSONB
+        /// database. This parameter can be used to unambiguously specify the type. An example is the JSONB
         /// type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
