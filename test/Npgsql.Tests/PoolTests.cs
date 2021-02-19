@@ -47,15 +47,8 @@ namespace Npgsql.Tests
         {
             // Arrange
             // Create two separate connection strings in order to have multiple pools for testing
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = nameof(DoesClearPoolWhenDetectingNetworkOrFatalBackendError)
-            }.ToString();
-
-            var secondConnString = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = $"{nameof(DoesClearPoolWhenDetectingNetworkOrFatalBackendError)}:2"
-            }.ToString();
+            using var connPool = CreateTempPool(ConnectionString, out var connString);
+            using var connPool2 = CreateTempPool(ConnectionString, out var secondConnString);
 
             // Act
             using (var conn = CreateConnection(connString))
