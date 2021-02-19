@@ -76,7 +76,7 @@ namespace Npgsql.Tests
                     conn3.Open();
 
                     foreach (var backendId in backendIds)
-                        await conn3.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({backendId})");
+                        await TerminateBackendAndWaitAsync(backendId, conn3);
                 }
 
                 // Wait for backends to be terminated
@@ -600,6 +600,32 @@ namespace Npgsql.Tests
         }
 
         #region Support
+
+        /// <summary>
+        /// Terminate the provided Backend Id (pid) using a separate backend's administrative connection
+        /// </summary>
+        /// <returns>When the backend has been terminated, the method will return, or assert if we give up waiting</returns>
+        static async Task TerminateBackendAndWaitAsync(int pid, NpgsqlConnection adminConnection)
+        {
+            // Terminate backend
+            await adminConnection.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({pid})");
+
+            // Wait for backend termination to be successful
+            for (var i = 0; i < 10; i++) {
+                // Check for termination
+                var hasTerminated = Convert.ToInt32(await adminConnection.ExecuteScalarAsync($"SELECT count(*) FROM pg_stat_activity WHERE pid = {pid}")) == 0;
+
+                // Return from method if we have terminated
+                if (hasTerminated)
+                    return;
+
+                // Wait a moment before checking again
+                await Task.Delay(1000);
+            }
+
+            // Failure
+            Assert.Fail($"Failed to wait for backend {pid} to be terminated");
+        }
 
         volatile int StopFlag;
 
