@@ -94,6 +94,9 @@ namespace Npgsql.Tests
                 try {
                     // Perform a simple query, this (unlike Open(), which just retrieves a Connector from the pool) will test the liveness of the connector
                     await conn.ExecuteScalarAsync("SELECT 1");
+
+                    // Assert
+                    Assert.Fail("Expected to have thrown an exception due to backend termination");
                 } catch (PostgresException ex) {
                     // We expect this query to have failed, potentially with AdminShutdown error state (backend termination)
                     Assert.AreEqual(PostgresErrorCodes.AdminShutdown, ex.SqlState);
@@ -132,7 +135,7 @@ namespace Npgsql.Tests
 
                 // Issue a (syntactically invalid) query in order to invoke a reader exception that is not fatal
                 // This is to ensure we do not clear the pool upon regular errors (that is not desirable)
-                   Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("this_query_is_invalid_on_purpose"));
+                Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync("this_query_is_invalid_on_purpose"));
 
                 // Return connector to pool
                 await conn.CloseAsync();
