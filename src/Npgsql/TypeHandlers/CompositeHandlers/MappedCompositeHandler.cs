@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -18,9 +17,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         readonly ConnectorTypeMapper _typeMapper;
         readonly INpgsqlNameTranslator _nameTranslator;
 
-        [NotNull] Func<T>? _constructor;
-        [NotNull] CompositeConstructorHandler<T>? _constructorHandler;
-        [NotNull] CompositeMemberHandler<T>[]? _memberHandlers;
+        Func<T>? _constructor;
+        CompositeConstructorHandler<T>? _constructorHandler;
+        CompositeMemberHandler<T>[] _memberHandlers = null!;
 
         public Type CompositeType => typeof(T);
 
@@ -49,7 +48,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
                 if (IsValueType<T>.Value)
                 {
-                    var composite = new ByReference<T> { Value = _constructor() };
+                    var composite = new ByReference<T> { Value = _constructor!() };
                     foreach (var member in _memberHandlers)
                         await member.Read(composite, buffer, async);
 
@@ -57,7 +56,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 }
                 else
                 {
-                    var composite = _constructor();
+                    var composite = _constructor!();
                     foreach (var member in _memberHandlers)
                         await member.Read(composite, buffer, async);
 
