@@ -55,16 +55,20 @@ namespace NpgsqlTypes
         /// <param name="kind"></param>
         protected NpgsqlTsQuery(NodeKind kind) => Kind = kind;
 
-        internal abstract void Write(StringBuilder sb, bool first = false);
+        /// <summary>
+        /// Writes the tsquery in PostgreSQL's text format.
+        /// </summary>
+        public void Write(StringBuilder stringBuilder) => WriteCore(stringBuilder, true);
+
+        internal abstract void WriteCore(StringBuilder sb, bool first = false);
 
         /// <summary>
         /// Writes the tsquery in PostgreSQL's text format.
         /// </summary>
-        /// <returns></returns>
         public override string ToString()
         {
             var sb = new StringBuilder();
-            Write(sb, true);
+            Write(sb);
             return sb.ToString();
         }
 
@@ -484,7 +488,7 @@ namespace NpgsqlTypes
             A = 8
         }
 
-        internal override void Write(StringBuilder sb, bool first = false)
+        internal override void WriteCore(StringBuilder sb, bool first = false)
         {
             sb.Append('\'').Append(Text.Replace(@"\", @"\\").Replace("'", "''")).Append('\'');
             if (IsPrefixSearch || Weights != Weight.None)
@@ -533,7 +537,7 @@ namespace NpgsqlTypes
             Child = child;
         }
 
-        internal override void Write(StringBuilder sb, bool first = false)
+        internal override void WriteCore(StringBuilder sb, bool first = false)
         {
             sb.Append('!');
             if (Child == null)
@@ -544,7 +548,7 @@ namespace NpgsqlTypes
             {
                 if (Child.Kind != NodeKind.Lexeme)
                     sb.Append("( ");
-                Child.Write(sb, true);
+                Child.WriteCore(sb, true);
                 if (Child.Kind != NodeKind.Lexeme)
                     sb.Append(" )");
             }
@@ -599,11 +603,11 @@ namespace NpgsqlTypes
         public NpgsqlTsQueryAnd(NpgsqlTsQuery left, NpgsqlTsQuery right)
             : base(NodeKind.And, left, right) {}
 
-        internal override void Write(StringBuilder sb, bool first = false)
+        internal override void WriteCore(StringBuilder sb, bool first = false)
         {
-            Left.Write(sb);
+            Left.WriteCore(sb);
             sb.Append(" & ");
-            Right.Write(sb);
+            Right.WriteCore(sb);
         }
 
         /// <inheritdoc/>
@@ -630,15 +634,15 @@ namespace NpgsqlTypes
         public NpgsqlTsQueryOr(NpgsqlTsQuery left, NpgsqlTsQuery right)
             : base(NodeKind.Or, left, right) {}
 
-        internal override void Write(StringBuilder sb, bool first = false)
+        internal override void WriteCore(StringBuilder sb, bool first = false)
         {
             // TODO: Figure out the nullability strategy here
             if (!first)
                 sb.Append("( ");
 
-            Left.Write(sb);
+            Left.WriteCore(sb);
             sb.Append(" | ");
-            Right.Write(sb);
+            Right.WriteCore(sb);
 
             if (!first)
                 sb.Append(" )");
@@ -684,20 +688,20 @@ namespace NpgsqlTypes
             Distance = distance;
         }
 
-        internal override void Write(StringBuilder sb, bool first = false)
+        internal override void WriteCore(StringBuilder sb, bool first = false)
         {
             // TODO: Figure out the nullability strategy here
             if (!first)
                 sb.Append("( ");
 
-            Left.Write(sb);
+            Left.WriteCore(sb);
 
             sb.Append(" <");
             if (Distance == 1) sb.Append("-");
             else sb.Append(Distance);
             sb.Append("> ");
 
-            Right.Write(sb);
+            Right.WriteCore(sb);
 
             if (!first)
                 sb.Append(" )");
@@ -725,7 +729,7 @@ namespace NpgsqlTypes
         /// </summary>
         public NpgsqlTsQueryEmpty() : base(NodeKind.Empty) {}
 
-        internal override void Write(StringBuilder sb, bool first = false) { }
+        internal override void WriteCore(StringBuilder sb, bool first = false) { }
 
         /// <inheritdoc/>
         public override bool Equals(NpgsqlTsQuery? other) =>
