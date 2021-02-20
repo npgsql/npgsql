@@ -225,15 +225,15 @@ namespace Npgsql
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
                 if (!_pool.IsBootstrapped)
-                    return BootstrapMultiplexing(cancellationToken);
+                    return BootstrapMultiplexing(async, cancellationToken);
 
                 CompleteOpen();
                 return Task.CompletedTask;
             }
 
-            return OpenAsync(cancellationToken);
+            return OpenAsync(async, cancellationToken);
 
-            async Task OpenAsync(CancellationToken cancellationToken2)
+            async Task OpenAsync(bool async, CancellationToken cancellationToken)
             {
                 Debug.Assert(!Settings.Multiplexing);
 
@@ -253,7 +253,7 @@ namespace Npgsql
                             _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
                         connector = new NpgsqlConnector(this);
-                        await connector.Open(timeout, async, cancellationToken2);
+                        await connector.Open(timeout, async, cancellationToken);
                     }
                     else
                     {
@@ -270,7 +270,7 @@ namespace Npgsql
                             enlistToTransaction = null;
                         }
                         else
-                            connector = await _pool.Rent(this, timeout, async, cancellationToken2);
+                            connector = await _pool.Rent(this, timeout, async, cancellationToken);
                     }
 
                     Debug.Assert(connector.Connection == this,
@@ -310,12 +310,12 @@ namespace Npgsql
                 }
             }
 
-            async Task BootstrapMultiplexing(CancellationToken cancellationToken2)
+            async Task BootstrapMultiplexing(bool async, CancellationToken cancellationToken)
             {
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken2);
+                    await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken);
                     CompleteOpen();
                 }
                 catch
