@@ -454,6 +454,43 @@ namespace Npgsql.Tests.Replication
 
         #endregion
 
+        #region BugTests
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3534")]
+        public Task Bug3534()
+            => SafeReplicationTest(
+                async (slotName, tableName) =>
+                {
+                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString) { CancellationTimeout = 1 });
+                    await CreateReplicationSlot(slotName);
+                    var info = await rc.IdentifySystem();
+                    using var streamingCts = new CancellationTokenSource();
+                    rc.WalReceiverStatusInterval = TimeSpan.FromSeconds(0.5D);
+                    rc.WalReceiverTimeout = TimeSpan.FromSeconds(1D);
+                    var connectionSurvivedWalReceiverTimeout = false;
+                    var manualCancellationTask = Task.Run(async () =>
+                    {
+                        await Task.Delay(rc.WalReceiverTimeout * 2, CancellationToken.None);
+                        connectionSurvivedWalReceiverTimeout = true;
+                        streamingCts.Cancel();
+                    }, CancellationToken.None);
+
+                    try
+                    {
+                        await foreach (var message in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token))
+                        {
+                        }
+
+                        await manualCancellationTask;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Assert.That(connectionSurvivedWalReceiverTimeout, Is.True);
+                    }
+                });
+
+        #endregion
+
         async Task CreateReplicationSlot(string slotName)
         {
             await using var c = await OpenConnectionAsync();
