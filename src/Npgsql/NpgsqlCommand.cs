@@ -849,10 +849,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal Task Write(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             return (_behavior & CommandBehavior.SchemaOnly) == 0
-                ? WriteExecute(connector, async)
-                : WriteExecuteSchemaOnly(connector, async);
+                ? WriteExecute(connector, async, cancellationToken)
+                : WriteExecuteSchemaOnly(connector, async, cancellationToken);
 
-            async Task WriteExecute(NpgsqlConnector connector, bool async)
+            async Task WriteExecute(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
             {
                 for (var i = 0; i < _statements.Count; i++)
                 {
@@ -898,7 +898,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 await connector.WriteSync(async, cancellationToken);
             }
 
-            async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async)
+            async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
             {
                 var wroteSomething = false;
                 for (var i = 0; i < _statements.Count; i++)

@@ -176,12 +176,13 @@ namespace Npgsql
         {
             return TryGetIdleConnector(out var connector)
                 ? new ValueTask<NpgsqlConnector>(AssignConnection(conn, connector))
-                : RentAsync();
+                : RentAsync(conn, timeout, async, cancellationToken);
 
-            async ValueTask<NpgsqlConnector> RentAsync()
+            async ValueTask<NpgsqlConnector> RentAsync(
+                NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
             {
                 // First, try to open a new physical connector. This will fail if we're at max capacity.
-                connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                var connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
                 if (connector != null)
                     return AssignConnection(conn, connector);
 

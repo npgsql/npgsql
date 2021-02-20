@@ -21,12 +21,12 @@ namespace Npgsql
                       (name.Length + 1);   // Statement/portal name
 
             if (WriteBuffer.WriteSpaceLeft < len)
-                return FlushAndWrite(len, statementOrPortal, name, async);
+                return FlushAndWrite(len, statementOrPortal, name, async, cancellationToken);
 
             Write(len, statementOrPortal, name);
             return Task.CompletedTask;
 
-            async Task FlushAndWrite(int len, StatementOrPortal statementOrPortal, string name, bool async)
+            async Task FlushAndWrite(int len, StatementOrPortal statementOrPortal, string name, bool async, CancellationToken cancellationToken)
             {
                 await Flush(async, cancellationToken);
                 Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
@@ -48,12 +48,12 @@ namespace Npgsql
                             sizeof(int);    // Length
 
             if (WriteBuffer.WriteSpaceLeft < len)
-                return FlushAndWrite(async);
+                return FlushAndWrite(async, cancellationToken);
 
             Write();
             return Task.CompletedTask;
 
-            async Task FlushAndWrite(bool async)
+            async Task FlushAndWrite(bool async, CancellationToken cancellationToken)
             {
                 await Flush(async, cancellationToken);
                 Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
@@ -77,12 +77,12 @@ namespace Npgsql
                             sizeof(int);         // Max number of rows
 
             if (WriteBuffer.WriteSpaceLeft < len)
-                return FlushAndWrite(maxRows, async);
+                return FlushAndWrite(maxRows, async, cancellationToken);
 
             Write(maxRows);
             return Task.CompletedTask;
 
-            async Task FlushAndWrite(int maxRows, bool async)
+            async Task FlushAndWrite(int maxRows, bool async, CancellationToken cancellationToken)
             {
                 await Flush(async, cancellationToken);
                 Debug.Assert(10 <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length 10 which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
@@ -250,12 +250,12 @@ namespace Npgsql
                       name.Length + sizeof(byte);  // Statement or portal name plus null terminator
 
             if (WriteBuffer.WriteSpaceLeft < 10)
-                return FlushAndWrite(len, type, name, async);
+                return FlushAndWrite(len, type, name, async, cancellationToken);
 
             Write(len, type, name);
             return Task.CompletedTask;
 
-            async Task FlushAndWrite(int len, StatementOrPortal type, string name, bool async)
+            async Task FlushAndWrite(int len, StatementOrPortal type, string name, bool async, CancellationToken cancellationToken)
             {
                 await Flush(async, cancellationToken);
                 Debug.Assert(len <= WriteBuffer.WriteSpaceLeft, $"Message of type {GetType().Name} has length {len} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
@@ -448,12 +448,12 @@ namespace Npgsql
         internal Task WritePregenerated(byte[] data, bool async = false, CancellationToken cancellationToken = default)
         {
             if (WriteBuffer.WriteSpaceLeft < data.Length)
-                return FlushAndWrite(data, async);
+                return FlushAndWrite(data, async, cancellationToken);
 
             WriteBuffer.WriteBytes(data, 0, data.Length);
             return Task.CompletedTask;
 
-            async Task FlushAndWrite(byte[] data, bool async)
+            async Task FlushAndWrite(byte[] data, bool async, CancellationToken cancellationToken)
             {
                 await Flush(async, cancellationToken);
                 Debug.Assert(data.Length <= WriteBuffer.WriteSpaceLeft, $"Pregenerated message has length {data.Length} which is bigger than the buffer ({WriteBuffer.WriteSpaceLeft})");
