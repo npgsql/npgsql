@@ -153,8 +153,8 @@ namespace Npgsql
             Command = command;
             _connection = command.Connection!;
             _behavior = behavior;
-            _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
-            _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);
+            _isSchemaOnly = (_behavior & CommandBehavior.SchemaOnly) != 0;
+            _isSequential = (_behavior & CommandBehavior.SequentialAccess) != 0;
             _statements = statements;
             StatementIndex = -1;
             _sendTask = sendTask;
@@ -205,7 +205,7 @@ namespace Npgsql
             // This is an optimized execution path that avoids calling any async methods for the (usual)
             // case where the next row (or CommandComplete) is already in memory.
 
-            if (_behavior.HasFlag(CommandBehavior.SingleRow))
+            if ((_behavior & CommandBehavior.SingleRow) != 0)
                 return null;
 
             switch (State)
@@ -259,7 +259,7 @@ namespace Npgsql
 
                 case ReaderState.InResult:
                     await ConsumeRow(async);
-                    if (_behavior.HasFlag(CommandBehavior.SingleRow))
+                    if ((_behavior & CommandBehavior.SingleRow) != 0)
                     {
                         // TODO: See optimization proposal in #410
                         await Consume(async);
@@ -387,7 +387,7 @@ namespace Npgsql
                 Debug.Assert(State == ReaderState.BetweenResults);
                 _hasRows = false;
 
-                if (_behavior.HasFlag(CommandBehavior.SingleResult) && StatementIndex == 0 && !isConsuming)
+                if ((_behavior & CommandBehavior.SingleResult) != 0 && StatementIndex == 0 && !isConsuming)
                 {
                     await Consume(async);
                     return false;
@@ -995,12 +995,12 @@ namespace Npgsql
 
                 // If the reader is being closed as part of the connection closing, we don't apply
                 // the reader's CommandBehavior.CloseConnection
-                if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+                if ((_behavior & CommandBehavior.CloseConnection) != 0 && !connectionClosing)
                     _connection.Close();
 
                 connector.ReaderCompleted.SetResult(null);
             }
-            else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+            else if ((_behavior & CommandBehavior.CloseConnection) != 0 && !connectionClosing)
                 _connection.Close();
 
             if (ReaderClosed != null)
@@ -1865,7 +1865,7 @@ namespace Npgsql
         Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
             => RowDescription == null || RowDescription.Count == 0
                 ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
-                : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
+                : new DbColumnSchemaGenerator(_connection, RowDescription, (_behavior & CommandBehavior.KeyInfo) != 0)
                     .GetColumnSchema(async, cancellationToken);
 
         #endregion

@@ -472,11 +472,11 @@ namespace Npgsql
                 };
             internal set
             {
-                var originalOpen = _fullState.HasFlag(ConnectionState.Open);
+                var originalOpen = (_fullState & ConnectionState.Open) != 0;
 
                 _fullState = value;
 
-                var currentOpen = _fullState.HasFlag(ConnectionState.Open);
+                var currentOpen = (_fullState & ConnectionState.Open) != 0;
                 if (currentOpen != originalOpen)
                 {
                     OnStateChange(currentOpen
@@ -496,10 +496,10 @@ namespace Npgsql
             get
             {
                 var fullState = FullState;
-                if (fullState.HasFlag(ConnectionState.Connecting))
+                if ((fullState & ConnectionState.Connecting) != 0)
                     return ConnectionState.Connecting;
 
-                if (fullState.HasFlag(ConnectionState.Open))
+                if ((fullState & ConnectionState.Open) != 0)
                     return ConnectionState.Open;
 
                 return ConnectionState.Closed;
