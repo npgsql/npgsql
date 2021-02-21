@@ -461,22 +461,22 @@ namespace Npgsql.Tests.Replication
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
-                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString) { CancellationTimeout = 1 });
+                    await using var rc = await OpenReplicationConnectionAsync();
                     await CreateReplicationSlot(slotName);
                     var info = await rc.IdentifySystem();
                     using var streamingCts = new CancellationTokenSource();
-                    rc.WalReceiverStatusInterval = TimeSpan.FromSeconds(0.5D);
-                    rc.WalReceiverTimeout = TimeSpan.FromSeconds(1D);
+                    rc.WalReceiverStatusInterval = TimeSpan.FromSeconds(1D);
+                    rc.WalReceiverTimeout = TimeSpan.FromSeconds(3D);
                     await using var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
 
                     var replicationMessageTask = replicationEnumerator.MoveNextAsync().AsTask();
-                    var successTimeoutTask = Task.Delay(rc.WalReceiverTimeout * 2, CancellationToken.None);
-                    await Task.WhenAny(replicationMessageTask, successTimeoutTask);
+                    streamingCts.CancelAfter(rc.WalReceiverTimeout * 2);
 
-                    Assert.That(replicationMessageTask.IsCompleted, Is.False);
-                    Assert.That(successTimeoutTask.IsCompletedSuccessfully);
-                    streamingCts.Cancel();
-                    Assert.That(async () => await replicationMessageTask, Throws.Exception.AssignableTo<OperationCanceledException>());
+                    Assert.Multiple(() =>
+                    {
+                        Assert.That(async () => await replicationMessageTask, Throws.Exception.AssignableTo<OperationCanceledException>());
+                        Assert.That(streamingCts.IsCancellationRequested);
+                    });
                 });
 
         #endregion
