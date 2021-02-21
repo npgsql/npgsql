@@ -65,6 +65,11 @@ await foreach (var message in conn.StartReplication(
     slot, new PgOutputReplicationOptions("blog_pub"), cancellationTokenSource.Token))
 {
     Console.WriteLine($"Received message type: {message.GetType().Name}");
+
+    // Always assign LastAppliedLsn and LastFlushedLsn so that Npgsql can inform the
+    // server which WAL files can be removed/recycled.
+    conn.LastAppliedLsn = message.WalEnd;
+    conn.LastFlushedLsn = message.WalEnd;
 }
 ```
 
@@ -105,6 +110,11 @@ var cancellationTokenSource = new CancellationTokenSource();
 await foreach (var message in conn.StartReplication(slot, cancellationTokenSource.Token))
 {
     Console.WriteLine($"Message: {message.Data}");
+
+    // Always assign LastAppliedLsn and LastFlushedLsn so that Npgsql can inform the
+    // server which WAL files can be removed/recycled.
+    conn.LastAppliedLsn = message.WalEnd;
+    conn.LastFlushedLsn = message.WalEnd;
 }
 ```
 
