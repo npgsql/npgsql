@@ -467,26 +467,19 @@ namespace Npgsql.Tests.Replication
                     using var streamingCts = new CancellationTokenSource();
                     rc.WalReceiverStatusInterval = TimeSpan.FromSeconds(0.5D);
                     rc.WalReceiverTimeout = TimeSpan.FromSeconds(1D);
-                    var connectionSurvivedWalReceiverTimeout = false;
-                    var manualCancellationTask = Task.Run(async () =>
+                    await using var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
+
+                    var replicationMessageTask = replicationEnumerator.MoveNextAsync().AsTask();
+                    var successTimeoutTask = Task.Delay(rc.WalReceiverTimeout * 2, CancellationToken.None);
+                    await Task.WhenAny(replicationMessageTask, successTimeoutTask);
+
+                    Assert.That(replicationMessageTask.IsCompleted, Is.False);
+                    Assert.That(successTimeoutTask.IsCompletedSuccessfully);
+                    Assert.That(async () =>
                     {
-                        await Task.Delay(rc.WalReceiverTimeout * 2, CancellationToken.None);
-                        connectionSurvivedWalReceiverTimeout = true;
                         streamingCts.Cancel();
-                    }, CancellationToken.None);
-
-                    try
-                    {
-                        await foreach (var message in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token))
-                        {
-                        }
-
-                        await manualCancellationTask;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Assert.That(connectionSurvivedWalReceiverTimeout, Is.True);
-                    }
+                        await replicationMessageTask;
+                    }, Throws.Exception.AssignableTo<OperationCanceledException>());
                 });
 
         #endregion
@@ -515,7 +508,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new TestDecodingReplicationSlot(slotName);
                 var rc = (LogicalReplicationConnection)(ReplicationConnection)connection;
-                await foreach (var msg in rc.StartReplication(slot, cancellationToken, walLocation: xLogPos))
+                await foreach (var msg in rc.StartReplication(slot, cancellationToken, options: new TestDecodingOptions(skipEmptyXacts: true), walLocation: xLogPos))
                 {
                     yield return msg;
                 }
