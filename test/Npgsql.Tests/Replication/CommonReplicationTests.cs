@@ -475,11 +475,8 @@ namespace Npgsql.Tests.Replication
 
                     Assert.That(replicationMessageTask.IsCompleted, Is.False);
                     Assert.That(successTimeoutTask.IsCompletedSuccessfully);
-                    Assert.That(async () =>
-                    {
-                        streamingCts.Cancel();
-                        await replicationMessageTask;
-                    }, Throws.Exception.AssignableTo<OperationCanceledException>());
+                    streamingCts.Cancel();
+                    Assert.That(async () => await replicationMessageTask, Throws.Exception.AssignableTo<OperationCanceledException>());
                 });
 
         #endregion
