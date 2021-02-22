@@ -205,7 +205,7 @@ namespace Npgsql
         /// <param name="value">The value to be written</param>
         /// <param name="npgsqlDbType">
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
-        /// the database. This parameter and be used to unambiguously specify the type. An example is
+        /// the database. This parameter can be used to unambiguously specify the type. An example is
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
@@ -219,7 +219,7 @@ namespace Npgsql
         /// <param name="value">The value to be written</param>
         /// <param name="npgsqlDbType">
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
-        /// the database. This parameter and be used to unambiguously specify the type. An example is
+        /// the database. This parameter can be used to unambiguously specify the type. An example is
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
