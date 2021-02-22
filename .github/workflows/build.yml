@@ -8,7 +8,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '5.0.100'
+  dotnet_sdk_version: '5.0.x'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
