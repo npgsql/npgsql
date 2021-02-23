@@ -233,12 +233,8 @@ namespace Npgsql.Tests.Replication
                 {
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command, which is required to run this test was added to the Streaming Replication Protocol in PostgreSQL 10");
-                    var messages = new ConcurrentQueue<ReplicationMessage>();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);");
-                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        ApplicationName = slotName
-                    });
+                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString));
                     var walSenderTimeout = ParseTimespan(await rc.Show("wal_sender_timeout"));
                     var info = await rc.IdentifySystem();
                     if (walSenderTimeout > TimeSpan.FromSeconds(3) && !TestUtil.IsOnBuildServer)
@@ -252,12 +248,13 @@ namespace Npgsql.Tests.Replication
                     using var streamingCts = new CancellationTokenSource();
 
                     var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
-
-                    var delay = TimeSpan.FromTicks((long)(walSenderTimeout.Ticks * 1.1));
-                    Console.WriteLine($"Going to sleep for {delay}");
-                    await Task.Delay(delay, CancellationToken.None);
-
                     Assert.That(await replicationEnumerator.MoveNextAsync(), Is.True);
+
+                    await Task.Delay(walSenderTimeout * 1.1, CancellationToken.None);
+
+                    await c.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" (name) VALUES ('val2')");
+                    Assert.That(await replicationEnumerator.MoveNextAsync(), Is.True);
+
                     var message = replicationEnumerator.Current;
                     Assert.That(message.WalStart, Is.GreaterThanOrEqualTo(info.XLogPos));
                     Assert.That(message.WalEnd, Is.GreaterThanOrEqualTo(message.WalStart));
@@ -454,6 +451,43 @@ namespace Npgsql.Tests.Replication
 
         #endregion
 
+        #region BugTests
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3534")]
+        public Task Bug3534()
+            => SafeReplicationTest(
+                async (slotName, _) =>
+                {
+                    await using var rc = await OpenReplicationConnectionAsync();
+                    var info = await rc.IdentifySystem();
+                    await CreateReplicationSlot(slotName);
+                    using var streamingCts = new CancellationTokenSource();
+                    rc.WalReceiverStatusInterval = TimeSpan.FromSeconds(1D);
+                    rc.WalReceiverTimeout = TimeSpan.FromSeconds(3D);
+                    await using var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
+
+                    var replicationMessageTask = replicationEnumerator.MoveNextAsync();
+                    streamingCts.CancelAfter(rc.WalReceiverTimeout * 2);
+
+                    Assert.Multiple(() =>
+                    {
+                        Assert.That(async () =>
+                        {
+                            // We only expect one transaction here but we need to keep polling
+                            // because in physical replication we can't prevent internal transactions
+                            // from being sent to the replication connection
+                            while (true)
+                            {
+                                await replicationMessageTask;
+                                replicationMessageTask = replicationEnumerator.MoveNextAsync();
+                            }
+                        }, Throws.Exception.AssignableTo<OperationCanceledException>());
+                        Assert.That(streamingCts.IsCancellationRequested);
+                    });
+                });
+
+        #endregion
+
         async Task CreateReplicationSlot(string slotName)
         {
             await using var c = await OpenConnectionAsync();
@@ -478,7 +512,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new TestDecodingReplicationSlot(slotName);
                 var rc = (LogicalReplicationConnection)(ReplicationConnection)connection;
-                await foreach (var msg in rc.StartReplication(slot, cancellationToken, walLocation: xLogPos))
+                await foreach (var msg in rc.StartReplication(slot, cancellationToken, options: new TestDecodingOptions(skipEmptyXacts: true), walLocation: xLogPos))
                 {
                     yield return msg;
                 }
