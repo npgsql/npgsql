@@ -56,9 +56,9 @@ namespace Npgsql
         internal NpgsqlConnector? Connector { get; set; }
 
         /// <summary>
-        /// The parsed connection string set by the user
+        /// The parsed connection string. Set only after the connection is opened.
         /// </summary>
-        internal NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
+        public NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
