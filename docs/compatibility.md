@@ -14,7 +14,9 @@ Please let us know if you notice any non-standard behavior.
 
 ## .NET Framework/.NET Core/mono
 
-Npgsql currently targets .NET Framework 4.6.1, as well as the [.NET Standard 2.0](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) which allows it to run on .NET Core. It is also tested and runs well on mono.
+Npgsql 4.* targets .NET Framework 4.6.1, as well as [.NET Standard 2.0](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) which allows it to run on .NET Core. It is also tested and runs well on mono.
+
+Npgsql 5.* targets .NET Standard 2.0 and .NET 5. Starting with this version, we no longer run regression tests on .NET Framework and mono. In addition, the Visual Studio extension (VSIX) and the MSI GAC installer have been discontinued.
 
 ## Amazon Redshift
 
@@ -45,3 +47,4 @@ Npgsql works well with PgBouncer, but there are some quirks to be aware of.
 * Prior to version 3.1, Npgsql sends the `statement_timeout` startup parameter when it connects, but this parameter isn't supported by pgbouncer.
   You can get around this by specifying `CommandTimeout=0` on the connection string, and then manually setting the `CommandTimeout`
   property on your `NpgsqlCommand` objects. Version 3.1 no longer sends `statement_timeout`.
+* PgBouncer below 1.12 doesn't support SASL authentication.
