@@ -57,6 +57,11 @@ namespace Npgsql
 
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
 
+        /// <summary>
+        /// Whether this command is cached by <see cref="NpgsqlConnection" /> and returned by <see cref="NpgsqlConnection.CreateCommand" />.
+        /// </summary>
+        bool _isCached;
+
         static readonly List<NpgsqlParameter> EmptyParameters = new();
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
@@ -111,6 +116,9 @@ namespace Npgsql
             Transaction = transaction;
             CommandType = CommandType.Text;
         }
+
+        internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
+            => new(null, connection) { _isCached = true };
 
         #endregion Constructors
 
@@ -1368,10 +1376,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </summary>
         protected override void Dispose(bool disposing)
         {
-            if (State == CommandState.Disposed)
-                return;
             Transaction = null;
-            _connection = null;
+
+            if (_isCached && _connection is not null && _connection.CachedCommand is null)
+            {
+                // TODO: Optimize NpgsqlParameterCollection to recycle NpgsqlParameter instances as well
+                // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
+
+                State = CommandState.Idle;
+                _commandText = string.Empty;
+                CommandType = CommandType.Text;
+                _parameters.Clear();
+                _connection.CachedCommand = this;
+                return;
+            }
+
+            _isCached = false;
             State = CommandState.Disposed;
         }
 

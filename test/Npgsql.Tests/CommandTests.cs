@@ -877,9 +877,43 @@ LANGUAGE 'plpgsql' VOLATILE;";
         [Test]
         public void ConnectionNotOpen()
         {
-            using var conn = new NpgsqlConnection(ConnectionString);
+            using var conn = CreateConnection();
             var cmd = new NpgsqlCommand("SELECT 1", conn);
             Assert.That(() => cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public void Command_is_recycled()
+        {
+            using var conn = OpenConnection();
+            var cmd1 = conn.CreateCommand();
+            cmd1.CommandText = "SELECT @p1";
+            var tx = conn.BeginTransaction();
+            cmd1.Transaction = tx;
+            cmd1.Parameters.AddWithValue("p1", 8);
+            _ = cmd1.ExecuteScalar();
+            cmd1.Dispose();
+
+            var cmd2 = conn.CreateCommand();
+            Assert.That(cmd2, Is.SameAs(cmd1));
+            Assert.That(cmd2.CommandText, Is.Empty);
+            Assert.That(cmd2.CommandType, Is.EqualTo(CommandType.Text));
+            Assert.That(cmd2.Transaction, Is.Null);
+            Assert.That(cmd2.Parameters, Is.Empty);
+            // TODO: Leaving this for now, since it'll be replaced by the new batching API
+            // Assert.That(cmd2.Statements, Is.Empty);
+        }
+
+        [Test]
+        public void Command_recycled_resets_CommandType()
+        {
+            using var conn = CreateConnection();
+            var cmd1 = conn.CreateCommand();
+            cmd1.CommandType = CommandType.StoredProcedure;
+            cmd1.Dispose();
+
+            var cmd2 = conn.CreateCommand();
+            Assert.That(cmd2.CommandType, Is.EqualTo(CommandType.Text));
         }
 
         [Test]

@@ -66,6 +66,11 @@ namespace Npgsql
         internal ConnectorPool? Pool => _pool;
 
         /// <summary>
+        /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
+        /// </summary>
+        internal NpgsqlCommand? CachedCommand { get; set; }
+
+        /// <summary>
         /// Flag used to make sure we never double-close a connection, returning it twice to the pool.
         /// </summary>
         int _closing;
@@ -524,7 +529,15 @@ namespace Npgsql
         public new NpgsqlCommand CreateCommand()
         {
             CheckDisposed();
-            return new NpgsqlCommand("", this);
+
+            var cachedCommand = CachedCommand;
+            if (cachedCommand is not null)
+            {
+                CachedCommand = null;
+                return cachedCommand;
+            }
+
+            return NpgsqlCommand.CreateCachedCommand(this);
         }
 
         #endregion Commands
