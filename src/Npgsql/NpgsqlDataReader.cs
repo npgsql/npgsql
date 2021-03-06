@@ -295,13 +295,13 @@ namespace Npgsql
         {
             return _isSequential ? ReadMessageSequential(Connector, async) : Connector.ReadMessage(async);
 
-            static async ValueTask<IBackendMessage> ReadMessageSequential(NpgsqlConnector connector, bool async2)
+            static async ValueTask<IBackendMessage> ReadMessageSequential(NpgsqlConnector connector, bool async)
             {
-                var msg = await connector.ReadMessage(async2, DataRowLoadingMode.Sequential);
+                var msg = await connector.ReadMessage(async, DataRowLoadingMode.Sequential);
                 if (msg.Code == BackendMessageCode.DataRow)
                 {
                     // Make sure that the datarow's column count is already buffered
-                    await connector.ReadBuffer.Ensure(2, async2);
+                    await connector.ReadBuffer.Ensure(2, async);
                     return msg;
                 }
                 return msg;
@@ -1736,10 +1736,10 @@ namespace Npgsql
                 return IsDBNull(ordinal) ? PGUtil.TrueTask : PGUtil.FalseTask;
 
             using (NoSynchronizationContextScope.Enter())
-                return IsDBNullAsyncInternal();
+                return IsDBNullAsyncInternal(ordinal, cancellationToken);
 
             // ReSharper disable once InconsistentNaming
-            async Task<bool> IsDBNullAsyncInternal()
+            async Task<bool> IsDBNullAsyncInternal(int ordinal, CancellationToken cancellationToken)
             {
                 using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
@@ -2045,7 +2045,7 @@ namespace Npgsql
         Task SeekInColumn(int posInColumn, bool async, CancellationToken cancellationToken = default)
         {
             if (_isSequential)
-                return SeekInColumnSequential(posInColumn, async, cancellationToken);
+                return SeekInColumnSequential(posInColumn, async);
 
             if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
@@ -2054,20 +2054,20 @@ namespace Npgsql
             PosInColumn = posInColumn;
             return Task.CompletedTask;
 
-            async Task SeekInColumnSequential(int posInColumn2, bool async2, CancellationToken cancellationToken2)
+            async Task SeekInColumnSequential(int posInColumn, bool async)
             {
                 Debug.Assert(_column > -1);
 
-                if (posInColumn2 < PosInColumn)
+                if (posInColumn < PosInColumn)
                     throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
 
-                if (posInColumn2 > ColumnLen)
-                    posInColumn2 = ColumnLen;
+                if (posInColumn > ColumnLen)
+                    posInColumn = ColumnLen;
 
-                if (posInColumn2 > PosInColumn)
+                if (posInColumn > PosInColumn)
                 {
-                    await Buffer.Skip(posInColumn2 - PosInColumn, async2);
-                    PosInColumn = posInColumn2;
+                    await Buffer.Skip(posInColumn - PosInColumn, async);
+                    PosInColumn = posInColumn;
                 }
             }
         }
@@ -2087,7 +2087,7 @@ namespace Npgsql
             ConsumeRowNonSequential();
             return Task.CompletedTask;
 
-            async Task ConsumeRowSequential(bool async2)
+            async Task ConsumeRowSequential(bool async)
             {
                 if (_columnStream != null)
                 {
@@ -2101,15 +2101,15 @@ namespace Npgsql
                 // Skip to end of column if needed
                 var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
                 if (remainingInColumn > 0)
-                    await Buffer.Skip(remainingInColumn, async2);
+                    await Buffer.Skip(remainingInColumn, async);
 
                 // Skip over the remaining columns in the row
                 for (; _column < _numColumns - 1; _column++)
                 {
-                    await Buffer.Ensure(4, async2);
+                    await Buffer.Ensure(4, async);
                     var len = Buffer.ReadInt32();
                     if (len != -1)
-                        await Buffer.Skip(len, async2);
+                        await Buffer.Skip(len, async);
                 }
             }
         }
