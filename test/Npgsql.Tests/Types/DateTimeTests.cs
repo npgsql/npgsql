@@ -327,6 +327,21 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(nDateTimeLocal, nDateTimeUnspecified.ToLocalTime());
         }
 
+        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+        public async Task TimeStampTzConvertInfinity()
+        {
+            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
+            conn.Open();
+
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimestampTz, DateTime.MaxValue);
+            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTz, DateTime.MinValue);
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
+            Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+        }
+
         #endregion
 
         #region Interval
