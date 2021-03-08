@@ -260,9 +260,9 @@ namespace Npgsql.Replication
         public Task<ReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return IdentifySystemInternal();
+                return IdentifySystemInternal(cancellationToken);
 
-            async Task<ReplicationSystemIdentification> IdentifySystemInternal()
+            async Task<ReplicationSystemIdentification> IdentifySystemInternal(CancellationToken cancellationToken)
             {
                 var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
                 return new ReplicationSystemIdentification(
@@ -287,9 +287,9 @@ namespace Npgsql.Replication
                 throw new ArgumentNullException(nameof(parameterName));
 
             using (NoSynchronizationContextScope.Enter())
-                return ShowInternal();
+                return ShowInternal(parameterName, cancellationToken);
 
-            async Task<string> ShowInternal()
+            async Task<string> ShowInternal(string parameterName, CancellationToken cancellationToken)
                 => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken))[0];
         }
 
@@ -304,9 +304,9 @@ namespace Npgsql.Replication
         public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return TimelineHistoryInternal();
+                return TimelineHistoryInternal(tli, cancellationToken);
 
-            async Task<TimelineHistoryFile> TimelineHistoryInternal()
+            async Task<TimelineHistoryFile> TimelineHistoryInternal(uint tli, CancellationToken cancellationToken)
             {
                 var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
                 return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
@@ -545,9 +545,9 @@ namespace Npgsql.Replication
         public Task SendStatusUpdate(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return SendStatusUpdateInternal();
+                return SendStatusUpdateInternal(cancellationToken);
 
-            async Task SendStatusUpdateInternal()
+            async Task SendStatusUpdateInternal(CancellationToken cancellationToken)
             {
                 CheckDisposed();
                 cancellationToken.ThrowIfCancellationRequested();
@@ -651,9 +651,9 @@ namespace Npgsql.Replication
                 throw new ArgumentNullException(nameof(slotName));
 
             using (NoSynchronizationContextScope.Enter())
-                return DropReplicationSlotInternal();
+                return DropReplicationSlotInternal(slotName, wait,  cancellationToken);
 
-            async Task DropReplicationSlotInternal()
+            async Task DropReplicationSlotInternal(string slotName, bool wait, CancellationToken cancellationToken)
             {
                 CheckDisposed();
 
@@ -744,13 +744,13 @@ namespace Npgsql.Replication
             Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
             return results;
 
-            byte[] ParseBytea(ReadOnlySpan<byte> bytes)
+            static byte[] ParseBytea(ReadOnlySpan<byte> bytes)
             {
                 return bytes.Length >= 2 && bytes[0] == '\\' && bytes[1] == 'x'
                     ? ParseByteaHex(bytes.Slice(2))
                     : ParseByteaEscape(bytes);
 
-                byte[] ParseByteaHex(ReadOnlySpan<byte> inBytes)
+                static byte[] ParseByteaHex(ReadOnlySpan<byte> inBytes)
                 {
                     var outBytes = new byte[inBytes.Length / 2];
                     for (var i = 0; i < inBytes.Length; i++)
@@ -764,7 +764,7 @@ namespace Npgsql.Replication
                     return outBytes;
                 }
 
-                byte[] ParseByteaEscape(ReadOnlySpan<byte> inBytes)
+                static byte[] ParseByteaEscape(ReadOnlySpan<byte> inBytes)
                 {
                     var result = new MemoryStream(new byte[inBytes.Length]);
                     for (var tp = 0; tp < inBytes.Length;)

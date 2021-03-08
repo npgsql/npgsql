@@ -51,9 +51,9 @@ namespace Npgsql.Replication
             string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
-            return CreatePhysicalReplicationSlot();
+            return CreatePhysicalReplicationSlot(slotName, isTemporary, reserveWal, cancellationToken);
 
-            async Task<PhysicalReplicationSlot> CreatePhysicalReplicationSlot()
+            async Task<PhysicalReplicationSlot> CreatePhysicalReplicationSlot(string slotName, bool isTemporary, bool reserveWal, CancellationToken cancellationToken)
             {
                 var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
                 if (isTemporary)

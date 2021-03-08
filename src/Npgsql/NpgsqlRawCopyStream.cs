@@ -175,9 +175,9 @@ namespace Npgsql
                 throw new InvalidOperationException("Stream not open for writing");
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return WriteAsyncInternal();
+                return WriteAsyncInternal(buffer, cancellationToken);
 
-            async ValueTask WriteAsyncInternal()
+            async ValueTask WriteAsyncInternal(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
             {
                 if (buffer.Length == 0)
                     return;
