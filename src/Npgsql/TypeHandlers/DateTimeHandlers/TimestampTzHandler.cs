@@ -136,7 +136,21 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
 
-            base.Write(value, buf, parameter);
+            NpgsqlDateTime pgValue = value;
+            if (ConvertInfinityDateTime)
+            {
+                if (value == DateTime.MinValue)
+                {
+                    pgValue = NpgsqlDateTime.NegativeInfinity;
+                }
+                else if (value == DateTime.MaxValue)
+                {
+                    pgValue = NpgsqlDateTime.Infinity;
+                }
+            }
+
+            // We cannot pass the DateTime value due to it implicitly converting to the NpgsqlDateTime anyway
+            base.Write(pgValue, buf, parameter);
         }
 
         /// <inheritdoc />
