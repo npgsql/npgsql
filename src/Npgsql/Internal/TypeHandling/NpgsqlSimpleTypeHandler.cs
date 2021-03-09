@@ -137,7 +137,7 @@ namespace Npgsql.Internal.TypeHandling
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 if (buf.WriteSpaceLeft < 4)
-                    return WriteWithLengthLong();
+                    return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);
                 buf.WriteInt32(-1);
                 return Task.CompletedTask;
             }
@@ -147,12 +147,12 @@ namespace Npgsql.Internal.TypeHandling
 
             var elementLen = typedHandler.ValidateAndGetLength(value, parameter);
             if (buf.WriteSpaceLeft < 4 + elementLen)
-                return WriteWithLengthLong();
+                return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);
             buf.WriteInt32(elementLen);
             typedHandler.Write(value, buf, parameter);
             return Task.CompletedTask;
 
-            async Task WriteWithLengthLong()
+            async Task WriteWithLengthLong([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 if (value == null || typeof(TAny) == typeof(DBNull))
                 {
@@ -162,8 +162,8 @@ namespace Npgsql.Internal.TypeHandling
                     return;
                 }
 
-                typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
-                elementLen = typedHandler.ValidateAndGetLength(value, parameter);
+                var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
+                var elementLen = typedHandler.ValidateAndGetLength(value, parameter);
                 if (buf.WriteSpaceLeft < 4 + elementLen)
                     await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(elementLen);

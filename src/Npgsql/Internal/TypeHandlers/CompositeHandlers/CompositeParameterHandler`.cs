@@ -14,9 +14,9 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
             var task = Read<T>(buffer, async);
             return task.IsCompleted
                 ? new ValueTask<object?>(task.Result)
-                : AwaitTask();
+                : AwaitTask(task);
 
-            async ValueTask<object?> AwaitTask() => await task;
+            static async ValueTask<object?> AwaitTask(ValueTask<T> task) => await task;
         }
     }
 }

@@ -36,10 +36,10 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
             Initialize();
 
             return _constructorHandler is null
-                ? ReadUsingMemberHandlers()
+                ? ReadUsingMemberHandlers(buffer, async)
                 : _constructorHandler.Read(buffer, async);
 
-            async ValueTask<T> ReadUsingMemberHandlers()
+            async ValueTask<T> ReadUsingMemberHandlers(NpgsqlReadBuffer buffer, bool async)
             {
                 await buffer.Ensure(sizeof(int), async);
 

@@ -108,7 +108,7 @@ namespace Npgsql.Internal.TypeHandling
         public override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong();
+                return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);
 
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -118,7 +118,7 @@ namespace Npgsql.Internal.TypeHandling
 
             return WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
-            async Task WriteWithLengthLong()
+            async Task WriteWithLengthLong([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 if (buf.WriteSpaceLeft < 4)
                     await buf.Flush(async, cancellationToken);
