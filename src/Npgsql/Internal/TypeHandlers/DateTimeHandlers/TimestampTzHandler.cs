@@ -78,6 +78,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
+            if (!ts.IsFinite)
+                return ts;
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
