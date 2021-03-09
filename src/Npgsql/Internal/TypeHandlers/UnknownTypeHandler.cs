@@ -72,12 +72,12 @@ namespace Npgsql.Internal.TypeHandlers
                 : (string)parameter!.ConvertedValue!;
 
             if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong();
+                return WriteWithLengthLong(value, convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
             buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
             return base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
-            async Task WriteWithLengthLong()
+            async Task WriteWithLengthLong( object value, string convertedValue, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(ValidateObjectAndGetLength(value!, ref lengthCache, parameter));

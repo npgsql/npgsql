@@ -162,9 +162,9 @@ namespace Npgsql.Internal.TypeHandlers
                 buf.ReadBytes(bytes, 0, byteLen);
                 return new ValueTask<byte[]>(bytes);
             }
-            return ReadLong();
+            return ReadLong(buf, bytes, byteLen, async);
 
-            async ValueTask<byte[]> ReadLong()
+            static async ValueTask<byte[]> ReadLong(NpgsqlReadBuffer buf, byte[] bytes, int byteLen, bool async)
             {
                 if (byteLen <= buf.Size)
                 {

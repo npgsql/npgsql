@@ -403,17 +403,17 @@ namespace Npgsql.Internal.TypeHandlers
         public override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong();
+                return WriteWithLengthLong(value,buf, lengthCache, parameter, async, cancellationToken);
 
-            return WriteWithLength();
+            return WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
-            async Task WriteWithLengthLong()
+            async Task WriteWithLengthLong([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 await buf.Flush(async, cancellationToken);
-                await WriteWithLength();
+                await WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
             }
 
-            Task WriteWithLength()
+            Task WriteWithLength([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 if (value == null || typeof(TAny) == typeof(DBNull))
                 {
