@@ -18,9 +18,7 @@ namespace Npgsql
         {
             if (!timeout.IsSet)
                 return await task;
-            var timeLeft = timeout.TimeLeft;
-            if (timeLeft <= TimeSpan.Zero)
-                throw new TimeoutException();
+            var timeLeft = timeout.CheckAndGetTimeLeft();
             if (task != await Task.WhenAny(task, Task.Delay(timeLeft)))
                 throw new TimeoutException();
             return await task;
@@ -60,9 +58,7 @@ namespace Npgsql
                 await task;
                 return;
             }
-            var timeLeft = timeout.TimeLeft;
-            if (timeLeft <= TimeSpan.Zero)
-                throw new TimeoutException();
+            var timeLeft = timeout.CheckAndGetTimeLeft();
             if (task != await Task.WhenAny(task, Task.Delay(timeLeft)))
                 throw new TimeoutException();
             await task;
