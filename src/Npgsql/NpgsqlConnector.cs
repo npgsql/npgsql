@@ -754,12 +754,7 @@ namespace Npgsql
             // Give each endpoint an equal share of the remaining time
             var perEndpointTimeout = -1;  // Default to infinity
             if (timeout.IsSet)
-            {
-                var timeoutTicks = timeout.TimeLeft.Ticks;
-                if (timeoutTicks <= 0)
-                    throw new TimeoutException();
-                perEndpointTimeout = (int)(timeoutTicks / endpoints.Length / 10);
-            }
+                perEndpointTimeout = (int)(timeout.TimeLeft.Ticks / endpoints.Length / 10);
 
             for (var i = 0; i < endpoints.Length; i++)
             {
@@ -828,10 +823,7 @@ namespace Npgsql
             var perIpTimeout = timeout;
             if (timeout.IsSet)
             {
-                var timeoutTicks = timeout.TimeLeft.Ticks;
-                if (timeoutTicks <= 0)
-                    throw new TimeoutException();
-                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Length);
+                perIpTimespan = new TimeSpan(timeout.TimeLeft.Ticks / endpoints.Length);
                 perIpTimeout = new NpgsqlTimeout(perIpTimespan);
             }
 
@@ -860,12 +852,8 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
-                        var connectTimeout = (int)perIpTimeout.TimeLeft.TotalMilliseconds;
-                        if (connectTimeout <= 0)
-                            throw new TimeoutException();
-
                         combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter(connectTimeout);
+                        combinedCts.CancelAfter((int)perIpTimeout.TimeLeft.TotalMilliseconds);
                         finalCt = combinedCts.Token;
                     }
 

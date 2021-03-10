@@ -169,25 +169,31 @@ namespace Npgsql.Util
                 return;
 
             var timeLeft = TimeLeft;
-            if (timeLeft > TimeSpan.Zero)
-            {
-                // Set the remaining timeout on the read and write buffers
-                connector.ReadBuffer.Timeout = connector.WriteBuffer.Timeout = timeLeft;
+            // Set the remaining timeout on the read and write buffers
+            connector.ReadBuffer.Timeout = connector.WriteBuffer.Timeout = timeLeft;
 
-                // Note that we set UserTimeout as well, otherwise the read timeout will get overwritten in ReadMessage
-                // Note also that we must set the read buffer's timeout directly (above), since the SSL handshake
-                // reads data directly from the buffer, without going through ReadMessage.
-                connector.UserTimeout = (int)Math.Ceiling(timeLeft.TotalMilliseconds);
-            }
-
-            Check();
+            // Note that we set UserTimeout as well, otherwise the read timeout will get overwritten in ReadMessage
+            // Note also that we must set the read buffer's timeout directly (above), since the SSL handshake
+            // reads data directly from the buffer, without going through ReadMessage.
+            connector.UserTimeout = (int) Math.Ceiling(timeLeft.TotalMilliseconds);
         }
 
         internal bool IsSet => _expiration != DateTime.MaxValue;
 
         internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
-        internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
+        internal TimeSpan TimeLeft
+        {
+            get
+            {
+                if (!IsSet)
+                    return Timeout.InfiniteTimeSpan;
+                var timeLeft = Expiration - DateTime.UtcNow;
+                if (timeLeft <= TimeSpan.Zero)
+                    Check();
+                return timeLeft;
+            }
+        }
     }
 
     static class MethodInfos
