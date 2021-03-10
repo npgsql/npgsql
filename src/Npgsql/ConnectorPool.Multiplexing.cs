@@ -48,8 +48,8 @@ namespace Npgsql
             Debug.Assert(_multiplexing);
 
             var hasSemaphore = async
-                ? await _bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
-                : _bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
+                ? await _bootstrapSemaphore!.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+                : _bootstrapSemaphore!.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
             // We've timed out - calling Check, to throw the correct exception
             if (!hasSemaphore)

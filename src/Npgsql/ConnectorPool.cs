@@ -191,7 +191,7 @@ namespace Npgsql
                 // served), which is crucial to us.
                 using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var finalToken = linkedSource.Token;
-                linkedSource.CancelAfter(timeout.TimeLeft);
+                linkedSource.CancelAfter(timeout.CheckAndGetTimeLeft());
 
                 while (true)
                 {

@@ -168,7 +168,7 @@ namespace Npgsql.Util
             if (!IsSet)
                 return;
 
-            var timeLeft = TimeLeft;
+            var timeLeft = CheckAndGetTimeLeft();
             // Set the remaining timeout on the read and write buffers
             connector.ReadBuffer.Timeout = connector.WriteBuffer.Timeout = timeLeft;
 
@@ -182,17 +182,14 @@ namespace Npgsql.Util
 
         internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
-        internal TimeSpan TimeLeft
+        internal TimeSpan CheckAndGetTimeLeft()
         {
-            get
-            {
-                if (!IsSet)
-                    return Timeout.InfiniteTimeSpan;
-                var timeLeft = Expiration - DateTime.UtcNow;
-                if (timeLeft <= TimeSpan.Zero)
-                    Check();
-                return timeLeft;
-            }
+            if (!IsSet)
+                return Timeout.InfiniteTimeSpan;
+            var timeLeft = Expiration - DateTime.UtcNow;
+            if (timeLeft <= TimeSpan.Zero)
+                Check();
+            return timeLeft;
         }
     }
 
