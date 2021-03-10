@@ -860,8 +860,12 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
+                        var connectTimeout = (int)perIpTimeout.TimeLeft.TotalMilliseconds;
+                        if (connectTimeout <= 0)
+                            throw new TimeoutException();
+
                         combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter((int)perIpTimeout.TimeLeft.TotalMilliseconds);
+                        combinedCts.CancelAfter(connectTimeout);
                         finalCt = combinedCts.Token;
                     }
 
