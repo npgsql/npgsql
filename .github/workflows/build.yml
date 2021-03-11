@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - 'hotfix/**'
+    tags:
+      - v*
   pull_request:
 
 env:
