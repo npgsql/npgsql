@@ -1667,6 +1667,10 @@ namespace Npgsql
                 {
                     try
                     {
+                        // At this point, there could be some prepended commands (like DISCARD ALL)
+                        // which make no sense to send on connection close
+                        // see https://github.com/npgsql/npgsql/issues/3592
+                        WriteBuffer.Clear();
                         WriteTerminate();
                         Flush();
                     }
