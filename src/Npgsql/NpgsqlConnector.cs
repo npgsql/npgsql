@@ -685,8 +685,8 @@ namespace Npgsql
                                 // It's PEM time
                                 var keyPath = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
                                 cert = string.IsNullOrEmpty(password)
-                                        ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
-                                        : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                                    ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
+                                    : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
                             }
 #endif
                             if (cert is null)
