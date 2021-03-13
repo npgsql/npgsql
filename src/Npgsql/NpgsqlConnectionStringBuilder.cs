@@ -562,10 +562,10 @@ namespace Npgsql
         string? _clientCertificate;
 
         /// <summary>
-        /// Key for a client certificate to be sent to the server.
+        /// Location of a client key for a client certificate to be sent to the server.
         /// </summary>
         [Category("Security")]
-        [Description("Key for a client certificate to be sent to the server.")]
+        [Description("Location of a client key for a client certificate to be sent to the server.")]
         [DisplayName("Client Certificate Key")]
         [NpgsqlConnectionStringProperty]
         public string? ClientCertificateKey
@@ -578,6 +578,24 @@ namespace Npgsql
             }
         }
         string? _clientCertificateKey;
+
+        /// <summary>
+        /// Password for a key for a client certificate.
+        /// </summary>
+        [Category("Security")]
+        [Description("Password for a key for a client certificate.")]
+        [DisplayName("Client Certificate Key Password")]
+        [NpgsqlConnectionStringProperty]
+        public string? ClientCertificateKeyPassword
+        {
+            get => _clientCertificateKeyPassword;
+            set
+            {
+                _clientCertificateKeyPassword = value;
+                SetValue(nameof(ClientCertificateKeyPassword), value);
+            }
+        }
+        string? _clientCertificateKeyPassword;
 
         /// <summary>
         /// Location of a CA certificate used to validate the server certificate.

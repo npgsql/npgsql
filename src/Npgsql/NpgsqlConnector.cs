@@ -674,14 +674,23 @@ namespace Npgsql
                         break;
                     case 'S':
                         var clientCertificates = new X509Certificate2Collection();
-                        var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
-
-                        if (certPath is null && PostgresEnvironment.SslCertDefault is string certPathDefault)
-                            certPath = certPathDefault;
+                        var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
 
                         if (certPath != null)
                         {
-                            cert = new X509Certificate2(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey);
+                            var password = Settings.ClientCertificateKeyPassword;
+#if NET5_0
+                            if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
+                            {
+                                // It's PEM time
+                                var keyPath = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
+                                cert = string.IsNullOrEmpty(password)
+                                        ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
+                                        : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                            }
+#endif
+                            if (cert is null)
+                                cert = new X509Certificate2(certPath, password);
                             clientCertificates.Add(cert);
                         }
 
