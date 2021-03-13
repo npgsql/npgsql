@@ -485,7 +485,7 @@ namespace Npgsql
         string _encoding = "UTF8";
 
         /// <summary>
-        /// Gets or sets the PostgreSQL target server.
+        /// Determines the preferred PostgreSQL target server type.
         /// </summary>
         [Category("Connection")]
         [Description("Gets or sets the PostgreSQL target server.")]
