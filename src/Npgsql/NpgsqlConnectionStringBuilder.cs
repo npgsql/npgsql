@@ -488,7 +488,7 @@ namespace Npgsql
         /// Determines the preferred PostgreSQL target server type.
         /// </summary>
         [Category("Connection")]
-        [Description("Gets or sets the PostgreSQL target server.")]
+        [Description("Determines the preferred PostgreSQL target server type.")]
         [DisplayName("TargetServerType")]
         [DefaultValue(TargetServerType.Any)]
         [NpgsqlConnectionStringProperty]
