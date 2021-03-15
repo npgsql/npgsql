@@ -599,22 +599,24 @@ namespace Npgsql
 
         internal void UpdateServerPrimaryStatus()
         {
-            WritePregenerated(PregeneratedMessages.ServerIsSecondary);
-            Flush();
+            if(TransactionStatus == TransactionStatus.Idle)
+            {
+                WritePregenerated(PregeneratedMessages.ServerIsSecondary);
+                Flush();
 
-            var columnsMsg = ReadMessage();
-            var rowMsg = Expect<DataRowMessage>(ReadMessage(), this);
+                var columnsMsg = ReadMessage();
+                var rowMsg = Expect<DataRowMessage>(ReadMessage(), this);
 
-            var columnCount = ReadBuffer.ReadInt16();
-            var lengthOfBooleanColumn = ReadBuffer.ReadInt32();
-            var resultSetBuffer = new byte[lengthOfBooleanColumn];
-            ReadBuffer.ReadBytes(resultSetBuffer, 0, lengthOfBooleanColumn);
+                var columnCount = ReadBuffer.ReadInt16();
+                var lengthOfBooleanColumn = ReadBuffer.ReadInt32();
+                var resultSetBuffer = new byte[lengthOfBooleanColumn];
+                ReadBuffer.ReadBytes(resultSetBuffer, 0, lengthOfBooleanColumn);
 
-            var serverIsPrimary = resultSetBuffer[0] == 'f';
-            ConnectedServerType = serverIsPrimary ? TargetServerType.Primary : TargetServerType.Secondary;
+                var serverIsPrimary = resultSetBuffer[0] == 'f';
+                ConnectedServerType = serverIsPrimary ? TargetServerType.Primary : TargetServerType.Secondary;
 
-            SkipUntil(BackendMessageCode.ReadyForQuery);
-            EndUserAction();
+                SkipUntil(BackendMessageCode.ReadyForQuery);
+            }
         }
 
         internal bool IsAppropriateFor(TargetServerType requestedServerType)
