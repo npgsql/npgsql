@@ -6,8 +6,12 @@ Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Thre
 Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
 Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextWriter!>!
 Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
-Npgsql.NpgsqlConnectionStringBuilder.ClientCertificateKeyPassword.get -> string?
-Npgsql.NpgsqlConnectionStringBuilder.ClientCertificateKeyPassword.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.SslCertificate.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.SslCertificate.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.SslKey.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.SslKey.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int

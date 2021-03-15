@@ -548,54 +548,54 @@ namespace Npgsql
         /// </summary>
         [Category("Security")]
         [Description("Location of a client certificate to be sent to the server.")]
-        [DisplayName("Client Certificate")]
+        [DisplayName("SSL Certificate")]
         [NpgsqlConnectionStringProperty]
-        public string? ClientCertificate
+        public string? SslCertificate
         {
-            get => _clientCertificate;
+            get => _sslCertificate;
             set
             {
-                _clientCertificate = value;
-                SetValue(nameof(ClientCertificate), value);
+                _sslCertificate = value;
+                SetValue(nameof(SslCertificate), value);
             }
         }
-        string? _clientCertificate;
+        string? _sslCertificate;
 
         /// <summary>
         /// Location of a client key for a client certificate to be sent to the server.
         /// </summary>
         [Category("Security")]
         [Description("Location of a client key for a client certificate to be sent to the server.")]
-        [DisplayName("Client Certificate Key")]
+        [DisplayName("SSL Key")]
         [NpgsqlConnectionStringProperty]
-        public string? ClientCertificateKey
+        public string? SslKey
         {
-            get => _clientCertificateKey;
+            get => _sslKey;
             set
             {
-                _clientCertificateKey = value;
-                SetValue(nameof(ClientCertificateKey), value);
+                _sslKey = value;
+                SetValue(nameof(SslKey), value);
             }
         }
-        string? _clientCertificateKey;
+        string? _sslKey;
 
         /// <summary>
         /// Password for a key for a client certificate.
         /// </summary>
         [Category("Security")]
         [Description("Password for a key for a client certificate.")]
-        [DisplayName("Client Certificate Key Password")]
+        [DisplayName("SSL Password")]
         [NpgsqlConnectionStringProperty]
-        public string? ClientCertificateKeyPassword
+        public string? SslPassword
         {
-            get => _clientCertificateKeyPassword;
+            get => _sslPassword;
             set
             {
-                _clientCertificateKeyPassword = value;
-                SetValue(nameof(ClientCertificateKeyPassword), value);
+                _sslPassword = value;
+                SetValue(nameof(SslPassword), value);
             }
         }
-        string? _clientCertificateKeyPassword;
+        string? _sslPassword;
 
         /// <summary>
         /// Location of a CA certificate used to validate the server certificate.
@@ -1515,7 +1515,7 @@ namespace Npgsql
         /// <summary>
         /// Writes connection performance information to performance counters.
         /// </summary>
-        [Category("Advanced")]
+        [Category("Obsolete")]
         [Description("Writes connection performance information to performance counters.")]
         [DisplayName("Use Perf Counters")]
         [NpgsqlConnectionStringProperty]
@@ -1524,6 +1524,34 @@ namespace Npgsql
         {
             get => false;
             set => throw new NotSupportedException("The UsePerfCounters parameter is no longer supported. Please see https://www.npgsql.org/doc/release-notes/5.0.html");
+        }
+
+        /// <summary>
+        /// Location of a client certificate to be sent to the server.
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Location of a client certificate to be sent to the server.")]
+        [DisplayName("Client Certificate")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("Use NpgsqlConnectionStringBuilder.SslKey instead")]
+        public string? ClientCertificate
+        {
+            get => SslKey;
+            set => SslKey = value;
+        }
+
+        /// <summary>
+        /// Key for a client certificate to be sent to the server.
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Key for a client certificate to be sent to the server.")]
+        [DisplayName("Client Certificate Key")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("Use NpgsqlConnectionStringBuilder.SslPassword instead")]
+        public string? ClientCertificateKey
+        {
+            get => SslPassword;
+            set => SslPassword = value;
         }
 
         #endregion

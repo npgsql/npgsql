@@ -674,17 +674,17 @@ namespace Npgsql
                         break;
                     case 'S':
                         var clientCertificates = new X509Certificate2Collection();
-                        var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
+                        var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
 
                         if (certPath != null)
                         {
-                            var password = Settings.ClientCertificateKeyPassword;
+                            var password = Settings.SslPassword;
 
                             if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
                             {
 #if NET5_0
                                 // It's PEM time
-                                var keyPath = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
+                                var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey;
                                 cert = string.IsNullOrEmpty(password)
                                     ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                                     : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
