@@ -599,7 +599,6 @@ namespace Npgsql
 
         internal void UpdateServerPrimaryStatus()
         {
-            StartUserAction();
             WritePregenerated(PregeneratedMessages.ServerIsSecondary);
             Flush();
 
