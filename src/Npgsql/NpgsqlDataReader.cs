@@ -140,6 +140,12 @@ namespace Npgsql
         /// </summary>
         char[]? _tempCharBuf;
 
+        /// <summary>
+        /// Used to keep track of every unique row this reader object ever traverses.
+        /// This is used to detect whether inner DbDataReaders are still valid.
+        /// </summary>
+        internal ulong UniqueRowId;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDataReader));
 
         internal NpgsqlDataReader(NpgsqlConnector connector)
@@ -175,6 +181,7 @@ namespace Npgsql
         {
             CheckClosedOrDisposed();
 
+            UniqueRowId++;
             var fastRead = TryFastRead();
             return fastRead.HasValue
                 ? fastRead.Value
@@ -1188,6 +1195,31 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
+        /// <inheritdoc />
+        protected override DbDataReader GetDbDataReader(int ordinal)
+        {
+            var field = CheckRowAndGetField(ordinal);
+            var type = field.PostgresType;
+            var isArray = type is PostgresArrayType;
+            var elementType = isArray ? ((PostgresArrayType)type).Element : type;
+            if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
+                throw new InvalidCastException("GetDbDataReader() not supported for type " + field.TypeDisplayName);
+
+            SeekToColumn(ordinal, false).GetAwaiter().GetResult();
+            if (ColumnLen == -1)
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
+            if (_isSequential)
+                throw new InvalidOperationException("GetDbDataReader not supported in sequential mode.");
+
+            var reader = new NpgsqlRecordDataReader(this, UniqueRowId, 1);
+            if (isArray)
+                reader.InitArray();
+            else
+                reader.InitSingleRow();
+            return reader;
+        }
+
         #endregion
 
         #region Special binary getters
@@ -2079,6 +2111,8 @@ namespace Npgsql
         Task ConsumeRow(bool async)
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
+
+            UniqueRowId++;
 
             if (!CanConsumeRowNonSequentially)
                 return ConsumeRowSequential(async);
