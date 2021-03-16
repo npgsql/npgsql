@@ -6,6 +6,16 @@ PostgreSQL 11 stored procedures can be called, but unfortunately not with `Comma
 
 On the brighter side, it's very easy to invoke stored procedures (or functions) yourself - you don't really need `CommandType.StoredProcedure`. Simply create a regular command and set `CommandText` to `CALL my_stored_procedure(@p1, @p2)`, handling parameters like you would any other statement. In fact, with Npgsql and PostgreSQL, `CommandType.StoredProcedure` doesn't really have any added value over constructing the command yourself.
 
+## <a name="broken_connection_from_pool">I opened a pooled connection, and it throws right away when I use it! What gives?</a>
+
+We know it's frustrating and seems weird, but this behavior is by-design.
+
+While your connection is idle in the pool, any number of things could happen to it - a timeout could cause it to break, or some other similar network problem. Unfortunately, with the way networking works, there is no reliable way for us to know on the client if a connection is still alive; the only thing we can do is send something to PostgreSQL, and wait for the response to arrive. Doing this whenever a connection is handed out from the pool would kill the very reason pooling exists - it would dramatically slow down pooling, which is there precisely to avoid unneeded network roundtrips.
+
+But the reality is even more grim than that. Even if Npgsql checked whether a connection is live before handing it out of the pool, there's nothing guaranteeing that the connection won't break 1 millisecond after that check - it's a total race condition. So the check wouldn't just degrade performance, it would also be largely useless. The reality of network programming is that I/O occurs really can occur at any point, and your code must take that into account if it has high reliability requirements. Resilience/retrying systems can help you with this; take a look at [Polly](https://github.com/App-vNext/Polly) as an example.
+
+One thing which Npgsql can do to help a bit, is the [keepalive feature](https://www.npgsql.org/doc/keepalive.html); this does a roundtrip with PostgreSQL every e.g. 1 second - including when the connection is idle in the pool - and destroy it if an I/O error occurs. However, depending on timing, you may still get a broken connection out of the pool - unfortunately there's simply no way around that.
+
 ## <a name="unknown_type">I get an exception "The field field1 has a type currently unknown to Npgsql (OID XXXXX). You can retrieve it as a string by marking it as unknown".</a>
 
 Npgsql has to implement support for each PostgreSQL type, and it seems you've stumbled upon an unsupported type.
