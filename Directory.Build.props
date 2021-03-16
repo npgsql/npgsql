@@ -5,6 +5,7 @@
     <Company>Npgsql</Company>
     <VersionPrefix>4.1.9</VersionPrefix>
     <NoWarn>NU5105</NoWarn>
+    <WarningsNotAsErrors>nullable</WarningsNotAsErrors>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
