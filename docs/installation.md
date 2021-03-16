@@ -18,9 +18,11 @@ In additional to the official releases, we automatically publish CI packages for
 
 If you'd like to have Visual Studio Design-Time support, give our [VSIX extension a try](ddex.md).
 
-## GAC Installation
+## Windows MSI Installer
 
-In some cases you'll want to install Npgsql into your [Global Assembly Cache (GAC)](https://msdn.microsoft.com/en-us/library/yf1d93sz%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396). This is usually the case when you're using a generic .NET Framework program that can work with any ADO.NET provider but doesn't come with Npgsql or reference it directly (e.g. Excel, PowerBI...). For these cases, you can download the Npgsql Windows installer from [our Github releases page](https://github.com/npgsql/npgsql/releases): it will install Npgsql (and optionally the Entity Framework providers) into your GAC and add Npgsql's DbProviderFactory into your `machine.config` file.  This is *not* the general recommended method of using Npgsql - always install via Nuget if possible. In addition to Npgsql.dll, this will also install `System.Threading.Tasks.Extensions.dll` into the GAC.
+In some cases you'll want to install Npgsql into your [Global Assembly Cache (GAC)](https://msdn.microsoft.com/en-us/library/yf1d93sz%28v=vs.110%29.aspx?f=255&MSPPError=-2147217396). This is usually the case when you're using a generic .NET Framework program that can work with any ADO.NET provider but doesn't come with Npgsql or reference it directly (e.g. Excel, PowerBI...). For these cases, you can download the Npgsql Windows MSI installer for Npgsql 4.1.x from [our Github releases page](https://github.com/npgsql/npgsql/releases): it will install Npgsql (and optionally the Entity Framework providers) into your GAC and add Npgsql's DbProviderFactory into your `machine.config` file.  This is *not* the general recommended method of using Npgsql - always install via Nuget if possible. In addition to Npgsql.dll, this will also install `System.Threading.Tasks.Extensions.dll` into the GAC.
+
+Note that support for the Windows MSI installer has been discontinued since Npgsql 5.0.0. However, it is still available for versions 4.1.x, is updated from time to time and should work well.
 
 ## DbProviderFactory in .NET Framework
 
