@@ -52,6 +52,9 @@ namespace Npgsql
             if (containsNulls)
                 throw new InvalidOperationException("Record array contains null record");
 
+            if (dimensions == 0)
+                return;
+
             if (dimensions != 1)
                 throw new InvalidOperationException($"Cannot read an array with 1 dimension from an array with {dimensions} dimension(s)");
 
@@ -150,7 +153,11 @@ namespace Npgsql
 
         public override IEnumerator GetEnumerator() => new DbEnumerator(this);
 
-        public override string GetName(int ordinal) => throw new NotImplementedException();
+        public override string GetName(int ordinal)
+        {
+            CheckRowAndColumn(ordinal);
+            return ordinal.ToString();
+        }
         public override int GetOrdinal(string name) => throw new NotImplementedException();
 
         public override Type GetFieldType(int ordinal)

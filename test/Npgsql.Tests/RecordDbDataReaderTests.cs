@@ -115,6 +115,18 @@ namespace Npgsql.Tests
             Assert.That(innerReader2.Read(), Is.False);
         }
 
+        [Test]
+        public async Task TestEmpty()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var command = new NpgsqlCommand("SELECT ARRAY[]::RECORD[]", conn);
+            using var reader = await command.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            using var innerReader = reader.GetData(0);
+            Assert.That(innerReader.Read(), Is.False);
+            Assert.That(innerReader.NextResult(), Is.False);
+        }
+
         public RecordDbDataReaderTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) { }
     }
 }
