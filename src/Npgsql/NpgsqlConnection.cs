@@ -62,8 +62,16 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
-        ConnectorPoolBase? _pool;
-        internal ConnectorPool? Pool => _pool as ConnectorPool;
+        ConnectorSource? _pool;
+
+        internal ConnectorSource Pool
+        {
+            get
+            {
+                Debug.Assert(_pool is not null);
+                return _pool;
+            }
+        }
 
         /// <summary>
         /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
@@ -171,14 +179,11 @@ namespace Npgsql
             settings.Validate();
             Settings = settings;
 
-            // Maybe pooling is off
-            if (!Settings.Pooling)
-                return;
-
             // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
-            var canonical = Settings.ConnectionStringWithoutTargetType;
+            // Note that we remove TargetServerType to make all connection strings that are otherwise identical point to the same pool.
+            var canonical = settings.ConnectionStringWithoutTargetType;
 
             if (PoolManager.TryGetValue(canonical, out _pool))
             {
@@ -192,15 +197,21 @@ namespace Npgsql
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
             var hostsSeparator = settings.Host?.IndexOf(',');
-            ConnectorPoolBase newPool;
+            ConnectorSource newPool;
             if (hostsSeparator.HasValue && hostsSeparator != -1)
             {
                 if (settings.Multiplexing)
                     throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
+                if (settings.ReplicationMode != ReplicationMode.Off)
+                    throw new NotSupportedException("Replication is not supported with multiple hosts");
+                if (!settings.Pooling)
+                    throw new NotSupportedException("Pooling must be on with multiple hosts");
                 newPool = new MultiHostConnectorPool(settings, canonical);
             }
+            else if (settings.Pooling)
+                newPool = new ConnectorPool(settings, canonical);
             else
-                newPool = new ConnectorPool(Settings, canonical);
+                newPool = new UnpooledConnectorSource(settings, canonical);
 
             _pool = PoolManager.GetOrAdd(canonical, newPool);
 
@@ -221,13 +232,18 @@ namespace Npgsql
             CheckClosed();
             Debug.Assert(Connector == null);
 
+            if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
+            {
+                Debug.Assert(string.IsNullOrEmpty(_connectionString));
+
+                throw new InvalidOperationException("The ConnectionString property has not been initialized.");
+            }
+
             FullState = ConnectionState.Connecting;
             Log.Trace("Opening connection...");
 
             if (Settings.Multiplexing)
             {
-                Debug.Assert(Pool != null, "Multiplexing is off by default, and cannot be on without pooling");
-
                 if (Settings.Enlist && Transaction.Current != null)
                 {
                     // TODO: Keep in mind that the TransactionScope can be disposed
@@ -239,7 +255,7 @@ namespace Npgsql
 
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-                if (!Pool.IsBootstrapped)
+                if (!((ConnectorPool)Pool).IsBootstrapped)
                     return BootstrapMultiplexing(async, cancellationToken);
 
                 CompleteOpen();
@@ -260,34 +276,20 @@ namespace Npgsql
 
                     var enlistToTransaction = Settings.Enlist ? Transaction.Current : null;
 
-                    if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
+                    _userFacingConnectionString = _pool.UserFacingConnectionString;
+
+                    // First, check to see if we there's an ambient transaction, and we have a connection enlisted
+                    // to this transaction which has been closed. If so, return that as an optimization rather than
+                    // opening a new one and triggering escalation to a distributed transaction.
+                    // Otherwise just get a new connector and enlist below.
+                    if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
                     {
-                        if (string.IsNullOrEmpty(_connectionString))
-                            throw new InvalidOperationException("The ConnectionString property has not been initialized.");
-
-                        if (!Settings.PersistSecurityInfo)
-                            _userFacingConnectionString = Settings.ToStringWithoutPassword();
-
-                        connector = new NpgsqlConnector(this);
-                        await connector.Open(timeout, async, cancellationToken);
+                        connector.Connection = this;
+                        EnlistedTransaction = enlistToTransaction;
+                        enlistToTransaction = null;
                     }
                     else
-                    {
-                        _userFacingConnectionString = _pool.UserFacingConnectionString;
-
-                        // First, check to see if we there's an ambient transaction, and we have a connection enlisted
-                        // to this transaction which has been closed. If so, return that as an optimization rather than
-                        // opening a new one and triggering escalation to a distributed transaction.
-                        // Otherwise just get a new connector and enlist below.
-                        if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
-                        {
-                            connector.Connection = this;
-                            EnlistedTransaction = enlistToTransaction;
-                            enlistToTransaction = null;
-                        }
-                        else
-                            connector = await _pool.Rent(this, timeout, async, cancellationToken);
-                    }
+                        connector = await _pool.Get(this, timeout, async, cancellationToken);
 
                     Debug.Assert(connector.Connection == this,
                         $"Connection for opened connector {Connector} isn't the same as this connection");
@@ -315,13 +317,7 @@ namespace Npgsql
                     ConnectorBindingScope = ConnectorBindingScope.None;
                     Connector = null;
 
-                    if (connector != null)
-                    {
-                        if (_pool == null)
-                            connector.Close();
-                        else
-                            connector.Return();
-                    }
+                    connector?.Return();
 
                     throw;
                 }
@@ -332,7 +328,7 @@ namespace Npgsql
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await Pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                    await ((ConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
                     CompleteOpen();
                 }
                 catch
@@ -781,11 +777,7 @@ namespace Npgsql
                 if (connector.IsBroken)
                 {
                     connector.Connection = null;
-
-                    if (_pool == null)
-                        connector.Close();
-                    else
-                        connector.Return();
+                    connector.Return();
 
                     EnlistedTransaction = null;
                 }
@@ -1686,7 +1678,7 @@ namespace Npgsql
                 Debug.Assert(Settings.Multiplexing);
                 Debug.Assert(_pool != null);
 
-                var connector = await _pool.Rent(this, timeout, async, cancellationToken);
+                var connector = await _pool.Get(this, timeout, async, cancellationToken);
                 ConnectorBindingScope = scope;
                 return connector;
             }

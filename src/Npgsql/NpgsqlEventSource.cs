@@ -44,7 +44,7 @@ namespace Npgsql
         long _failedCommands;
 
         readonly object _poolsLock = new();
-        readonly HashSet<ConnectorPoolBase> _pools = new();
+        readonly HashSet<ConnectorSource> _pools = new();
 
         long _multiplexingBatchesSent;
         long _multiplexingCommandsSent;
@@ -81,7 +81,7 @@ namespace Npgsql
 
         internal void CommandFailed() => Interlocked.Increment(ref _failedCommands);
 
-        internal void PoolCreated(ConnectorPoolBase pool)
+        internal void PoolCreated(ConnectorSource pool)
         {
             lock (_poolsLock)
             {

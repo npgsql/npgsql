@@ -1823,18 +1823,22 @@ namespace Npgsql
         ///  Try to connect to every server in order.
         /// </summary>
         Any = 1,
+
         /// <summary>
         ///  Secondary (readonly) server is selected for the connection.
         /// </summary>
         Secondary = 2,
+
         /// <summary>
         /// Secondary (readonly) server is selected for the connection. Falls back to Primary (writable), if none are available.
         /// </summary>
         PreferSecondary = Secondary | Any,
+
         /// <summary>
         ///  Primary (writable) server is selected for the connection.
         /// </summary>
         Primary = 4,
+
         /// <summary>
         /// Primary (writable) server is selected for the connection. Falls back to Secondary (readonly), if none are available.
         /// </summary>

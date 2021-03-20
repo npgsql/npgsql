@@ -13,7 +13,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
-    sealed partial class ConnectorPool : ConnectorPoolBase
+    sealed partial class ConnectorPool : ConnectorSource
     {
         #region Fields and properties
 
@@ -90,7 +90,8 @@ namespace Npgsql
             }
         }
 
-        internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null) : base(settings, connString)
+        internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
+            : base(settings, connString)
         {
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
@@ -161,7 +162,7 @@ namespace Npgsql
             }
         }
 
-        internal override ValueTask<NpgsqlConnector> Rent(
+        internal override ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
@@ -343,7 +344,7 @@ namespace Npgsql
             return null;
         }
 
-        internal void Return(NpgsqlConnector connector)
+        internal override void Return(NpgsqlConnector connector)
         {
             Debug.Assert(!connector.InTransaction);
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,

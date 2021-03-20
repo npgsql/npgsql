@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
-    sealed class MultiHostConnectorPool : ConnectorPoolBase
+    sealed class MultiHostConnectorPool : ConnectorSource
     {
         readonly ConnectorPool[] _pools;
 
@@ -54,36 +54,36 @@ namespace Npgsql
             }
         }
 
-        static bool IsValidHost(ConnectorPool pool, TargetServerType preferedType)
-        {
-            var currentState = GetHostState(pool);
-            if (currentState == HostState.Offline)
-                return false;
-            return preferedType == TargetServerType.Any || currentState == HostState.Unknown ||
-                preferedType.HasFlag(TargetServerType.Primary) && currentState == HostState.Primary ||
-                preferedType.HasFlag(TargetServerType.Secondary) && currentState == HostState.Secondary;
-        }
+        static bool IsPreferred(ClusterState state, TargetServerType preferredType)
+            => state switch
+            {
+                ClusterState.Offline => false,
+                ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
+                ClusterState.Primary when preferredType.HasFlag(TargetServerType.Primary) => true,
+                ClusterState.Secondary when preferredType.HasFlag(TargetServerType.Secondary) => true,
+                _ => preferredType == TargetServerType.Any
+            };
 
-        static bool IsValidUnpreferedHost(ConnectorPool pool, TargetServerType preferedType)
-        {
-            var currentState = GetHostState(pool);
-            if (currentState == HostState.Offline)
-                return false;
-            return currentState == HostState.Unknown ||
-                preferedType == TargetServerType.PreferSecondary && currentState == HostState.Primary ||
-                preferedType == TargetServerType.PreferPrimary && currentState == HostState.Secondary;
-        }
+        static bool IsFallback(ClusterState state, TargetServerType preferredType)
+            => state switch
+            {
+                ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
+                ClusterState.Primary when preferredType == TargetServerType.PreferSecondary => true,
+                ClusterState.Secondary when preferredType == TargetServerType.PreferPrimary => true,
+                _ => false
+            };
 
-        static HostState GetHostState(ConnectorPool pool)
-            => HostsCache.GetHostState($"{pool.Settings.Host}:{pool.Settings.Port}");
+        static ClusterState GetClusterState(ConnectorPool pool)
+            => ClusterStateCache.GetClusterState(pool.Settings.Host!, pool.Settings.Port);
 
-        async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
-            Func<ConnectorPool, TargetServerType, bool> validHostFunc, IList<Exception> exceptions,
+        async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferredType,
+            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
             {
-                if (!validHostFunc(pool, preferedType))
+                var clusterState = GetClusterState(pool);
+                if (!clusterValidator(clusterState, preferredType))
                     continue;
 
                 if (pool.TryGetIdleConnector(out var connector))
@@ -93,10 +93,10 @@ namespace Npgsql
 
                     try
                     {
-                        if (GetHostState(pool) == HostState.Unknown)
-                            await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        if (clusterState == ClusterState.Unknown)
+                            clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
 
-                        if (!validHostFunc(pool, preferedType))
+                        if (!clusterValidator(clusterState, preferredType))
                         {
                             conn.Connector = null;
                             connector.Connection = null;
@@ -120,12 +120,13 @@ namespace Npgsql
         }
 
         async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
-            Func<ConnectorPool, TargetServerType, bool> validHostFunc, IList<Exception> exceptions,
+            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
             {
-                if (!validHostFunc(pool, preferedType))
+                var clusterState = GetClusterState(pool);
+                if (!clusterValidator(clusterState, preferedType))
                     continue;
 
                 try
@@ -133,7 +134,9 @@ namespace Npgsql
                     var connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                     if (connector is not null)
                     {
-                        if (!validHostFunc(pool, preferedType))
+                        // Opening a new physical connection refreshed the cluster state, check again
+                        clusterState = GetClusterState(pool);
+                        if (!clusterValidator(clusterState, preferedType))
                         {
                             conn.Connector = null;
                             connector.Connection = null;
@@ -155,24 +158,26 @@ namespace Npgsql
             return null;
         }
 
-        async ValueTask<NpgsqlConnector?> TryRent(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
-            Func<ConnectorPool, TargetServerType, bool> validHostFunc, IList<Exception> exceptions,
+        async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
+            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
             {
-                if (!validHostFunc(pool, preferedType))
+                var clusterState = GetClusterState(pool);
+                if (!clusterValidator(clusterState, preferedType))
                     continue;
 
                 NpgsqlConnector? connector = null;
 
                 try
                 {
-                    connector = await pool.Rent(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                    if (GetHostState(pool) == HostState.Unknown)
-                        await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                    connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                    // Get may be have opened a new physical connection and refreshed the cluster state, check again
+                    if (clusterState == ClusterState.Unknown)
+                        clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
 
-                    if (!validHostFunc(pool, preferedType))
+                    if (!clusterValidator(clusterState, preferedType))
                     {
                         conn.Connector = null;
                         connector.Connection = null;
@@ -200,48 +205,48 @@ namespace Npgsql
             return null;
         }
 
-        internal override async ValueTask<NpgsqlConnector> Rent(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        internal override async ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var exceptions = new List<Exception>();
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
-            var preferedType = conn.Settings.TargetServerType;
+            var preferredType = conn.Settings.TargetServerType;
 
-            var idlePreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferedType, IsValidHost, exceptions, cancellationToken);
-            if (idlePreferedConnector is not null)
-                return idlePreferedConnector;
+            var idlePreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
+            if (idlePreferredConnector is not null)
+                return idlePreferredConnector;
 
-            var newPreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferedType, IsValidHost, exceptions, cancellationToken);
-            if (newPreferedConnector is not null)
-                return newPreferedConnector;
+            var newPreferredConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
+            if (newPreferredConnector is not null)
+                return newPreferredConnector;
 
-            if (preferedType == TargetServerType.Any)
+            if (preferredType == TargetServerType.Any)
             {
-                var rentedAnyConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidHost, exceptions, cancellationToken);
+                var rentedAnyConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
                 if (rentedAnyConnector is null)
                     throw NoSuitableHostsException(exceptions);
                 return rentedAnyConnector;
             }
 
-            if (preferedType.HasFlag(TargetServerType.Any))
+            if (preferredType.HasFlag(TargetServerType.Any))
             {
-                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
                     return idleUnpreferedConnector;
 
-                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
                 if (newUnpreferedConnector is not null)
                     return newUnpreferedConnector;
             }
 
             // TODO: add a queue to wait for the connector
-            var rentedPreferedConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidHost, exceptions, cancellationToken);
+            var rentedPreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            if (preferedType.HasFlag(TargetServerType.Any))
+            if (preferredType.HasFlag(TargetServerType.Any))
             {
-                var rentedUnpreferedConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)
                     return rentedUnpreferedConnector;
             }
@@ -250,7 +255,10 @@ namespace Npgsql
         }
 
         static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
-            => new NpgsqlException("Unable to connect to a suitable host. Check inner exception for more details.", new AggregateException(exceptions));
+            => new("Unable to connect to a suitable host. Check inner exception for more details.", new AggregateException(exceptions));
+
+        internal override void Return(NpgsqlConnector connector)
+            => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
 
         internal override void Clear()
         {

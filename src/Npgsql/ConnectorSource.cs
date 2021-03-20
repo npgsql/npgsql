@@ -1,15 +1,13 @@
 ﻿using Npgsql.Util;
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 
 namespace Npgsql
 {
-    abstract class ConnectorPoolBase
+    abstract class ConnectorSource
     {
         internal NpgsqlConnectionStringBuilder Settings { get; }
 
@@ -24,9 +22,9 @@ namespace Npgsql
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
             = new();
 
-        abstract internal (int Total, int Idle, int Busy) Statistics { get; }
+        internal abstract (int Total, int Idle, int Busy) Statistics { get; }
 
-        public ConnectorPoolBase(NpgsqlConnectionStringBuilder settings, string connString)
+        internal ConnectorSource(NpgsqlConnectionStringBuilder settings, string connString)
         {
             Settings = settings;
 
@@ -35,8 +33,10 @@ namespace Npgsql
                 : settings.ToStringWithoutPassword();
         }
 
-        internal abstract ValueTask<NpgsqlConnector> Rent(
+        internal abstract ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
+
+        internal abstract void Return(NpgsqlConnector connector);
 
         internal abstract void Clear();
 
@@ -64,7 +64,7 @@ namespace Npgsql
             }
         }
 
-        internal bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal virtual bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             lock (_pendingEnlistedConnectors)
             {

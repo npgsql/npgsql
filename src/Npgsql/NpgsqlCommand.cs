@@ -1268,6 +1268,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 else
                 {
                     // The connection isn't bound to a connector - it's multiplexing time.
+                    var pool = (ConnectorPool)conn.Pool;
 
                     if (!async)
                     {
@@ -1277,7 +1278,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             "Synchronous command execution is not supported when multiplexing is on");
                     }
 
-                    ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
+                    ValidateParameters(pool.MultiplexingTypeMapper!);
                     ProcessRawQuery(standardConformingStrings: true, deriveParameters: false);
 
                     State = CommandState.InProgress;
@@ -1286,7 +1287,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
                     // the first read). But waiting on writing would allow us to do sync writing and async reading.
                     ExecutionCompletion.Reset();
-                    await conn.Pool!.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
+                    await pool.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
                     connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
                     // TODO: Overload of StartBindingScope?
                     conn.Connector = connector;

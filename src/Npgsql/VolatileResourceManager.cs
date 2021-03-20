@@ -260,13 +260,8 @@ namespace Npgsql
             {
                 // We're here for connections which were closed before their TransactionScope completes.
                 // These need to be closed now.
-                if (_connector.Settings.Pooling)
-                {
-                    _connector.TryRemovePendingEnlistedConnector(_transaction);
-                    _connector.Return();
-                }
-                else
-                    _connector.Close();
+                _connector.TryRemovePendingEnlistedConnector(_transaction);
+                _connector.Return();
             }
 
             _connector = null!;

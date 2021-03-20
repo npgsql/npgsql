@@ -221,7 +221,12 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
-        ConnectorPool? _pool;
+        /// <summary>
+        /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
+        /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolManager"/> rather than the
+        /// <see cref="MultiHostConnectorPool"/>,
+        /// </summary>
+        readonly ConnectorSource _connectorSource;
 
         /// <summary>
         /// Contains the UTC timestamp when this connector was opened, used to implement
@@ -288,11 +293,10 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlConnector(NpgsqlConnection connection, ConnectorPool? pool = null)
-            : this(pool?.Settings ?? connection.Settings)
+        internal NpgsqlConnector(NpgsqlConnection connection, ConnectorSource connectorSource)
+            : this(connectorSource)
         {
             Connection = connection;
-            _pool = pool;
             Connection.Connector = this;
             ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
@@ -300,22 +304,20 @@ namespace Npgsql
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
-            : this(connector.Settings)
+            : this(connector._connectorSource)
         {
             ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
             ProvidePasswordCallback = connector.ProvidePasswordCallback;
         }
 
-        /// <summary>
-        /// Creates a new connector with the given connection string.
-        /// </summary>
-        /// <param name="settings">The parsed connection string.</param>
-        NpgsqlConnector(NpgsqlConnectionStringBuilder settings)
+        NpgsqlConnector(ConnectorSource connectorSource)
         {
+            _connectorSource = connectorSource;
+
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
-            Settings = settings;
+            Settings = connectorSource.Settings;
             PostgresParameters = new Dictionary<string, string>();
 
             CancelLock = new object();
@@ -332,7 +334,7 @@ namespace Npgsql
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
 
-            if (settings.Multiplexing)
+            if (Settings.Multiplexing)
             {
                 // Note: It's OK for this channel to be unbounded: each command enqueued to it is accompanied by sending
                 // it to PostgreSQL. If we overload it, a TCP zero window will make us block on the networking side
@@ -516,7 +518,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", HostState.Offline);
+                ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline);
                 Break(e);
                 throw;
             }
@@ -564,12 +566,12 @@ namespace Npgsql
             TypeMapper.Bind(DatabaseInfo);
         }
 
-        internal async ValueTask UpdateServerType(NpgsqlTimeout timeout, bool async,
-            CancellationToken cancellationToken = default)
+        internal async ValueTask<ClusterState> UpdateServerType(
+            NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
             // Extended query protocol not supported in a replication connection
             if (Settings.ReplicationMode != ReplicationMode.Off)
-                return;
+                return ClusterState.Unknown;
 
             // Super hacky stuff...
 
@@ -582,7 +584,9 @@ namespace Npgsql
             var isSecondary = (bool)(async
                 ? await cmd.ExecuteScalarAsync(cancellationToken)
                 : cmd.ExecuteScalar())!;
-            HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", isSecondary ? HostState.Secondary : HostState.Primary);
+            var state = isSecondary ? ClusterState.Secondary : ClusterState.Primary;
+            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state);
+            return state;
         }
 
         void WriteStartupMessage(string username)
@@ -1037,7 +1041,7 @@ namespace Npgsql
                         // the connector's write lock has been released (long waiting will never occur here).
                         SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0);
 
-                        _pool!.Return(this);
+                        _connectorSource.Return(this);
                     }
                 }
 
@@ -1074,7 +1078,7 @@ namespace Npgsql
                 }
 
                 // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
-                _pool!.Return(this);
+                _connectorSource.Return(this);
 
                 Log.Error("Exception in multiplexing read loop", e, Id);
             }
@@ -1732,9 +1736,9 @@ namespace Npgsql
         }
 
         internal void TryRemovePendingEnlistedConnector(Transaction transaction)
-            => _pool!.TryRemovePendingEnlistedConnector(this, transaction);
+            => _connectorSource.TryRemovePendingEnlistedConnector(this, transaction);
 
-        internal void Return() => _pool!.Return(this);
+        internal void Return() => _connectorSource.Return(this);
 
         public void Dispose() => Close();
 
