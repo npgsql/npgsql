@@ -575,9 +575,10 @@ namespace Npgsql
 
             using var cmd = new NpgsqlCommand("select pg_is_in_recovery()", Connection);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-            var isSecondary = (bool)(async
+            cmd.AllResultTypesAreUnknown = true;
+            var isSecondary = (string)(async
                 ? await cmd.ExecuteScalarAsync(cancellationToken)
-                : cmd.ExecuteScalar())!;
+                : cmd.ExecuteScalar())! == "t";
             HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", isSecondary ? HostState.Secondary : HostState.Primary);
         }
 
