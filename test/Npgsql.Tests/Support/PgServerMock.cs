@@ -61,8 +61,11 @@ namespace Npgsql.Tests.Support
             });
             WriteBackendKeyData(ProcessId, BackendSecret);
             WriteReadyForQuery();
-
             await FlushAsync();
+
+            // Writing a response, that the mock is not secondary
+            await ExpectExtendedQuery();
+            await WriteScalarResponseAndFlush(false);
         }
 
         internal async Task SkipMessage()
@@ -124,6 +127,15 @@ namespace Npgsql.Tests.Support
                 .WriteBindComplete()
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
                 .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(value)))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+        internal Task WriteScalarResponseAndFlush(bool value)
+            => WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
+                .WriteDataRow(BitConverter.GetBytes(value))
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
