@@ -65,7 +65,7 @@ namespace Npgsql.Tests.Support
 
             // Writing a response, that the mock is not secondary
             await ExpectExtendedQuery();
-            await WriteScalarResponseAndFlush("f");
+            await WriteScalarResponseAndFlush(false);
         }
 
         internal async Task SkipMessage()

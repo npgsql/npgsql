@@ -567,6 +567,10 @@ namespace Npgsql
         internal async ValueTask UpdateServerType(NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken = default)
         {
+            // Extended query protocol not supported in a replication connection
+            if (Settings.ReplicationMode != ReplicationMode.Off)
+                return;
+
             // Super hacky stuff...
 
             var prevBindingScope = Connection!.ConnectorBindingScope;
@@ -575,10 +579,9 @@ namespace Npgsql
 
             using var cmd = new NpgsqlCommand("select pg_is_in_recovery()", Connection);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-            cmd.AllResultTypesAreUnknown = true;
-            var isSecondary = (string)(async
+            var isSecondary = (bool)(async
                 ? await cmd.ExecuteScalarAsync(cancellationToken)
-                : cmd.ExecuteScalar())! == "t";
+                : cmd.ExecuteScalar())!;
             HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", isSecondary ? HostState.Secondary : HostState.Primary);
         }
 
