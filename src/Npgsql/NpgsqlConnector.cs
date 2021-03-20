@@ -22,6 +22,7 @@ using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
+using System.Transactions;
 
 namespace Npgsql
 {
@@ -49,7 +50,6 @@ namespace Npgsql
         Stream _stream = default!;
 
         internal NpgsqlConnectionStringBuilder Settings { get; }
-        internal string ConnectionString { get; }
 
         ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; }
         RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
@@ -288,11 +288,11 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlConnector(NpgsqlConnection connection)
-            : this(connection.Settings, connection.OriginalConnectionString)
+        internal NpgsqlConnector(NpgsqlConnection connection, ConnectorPool? pool = null)
+            : this(pool?.Settings ?? connection.Settings)
         {
             Connection = connection;
-            _pool = connection.Pool;
+            _pool = pool;
             Connection.Connector = this;
             ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
@@ -300,7 +300,7 @@ namespace Npgsql
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
-            : this(connector.Settings, connector.ConnectionString)
+            : this(connector.Settings)
         {
             ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
@@ -311,13 +311,11 @@ namespace Npgsql
         /// Creates a new connector with the given connection string.
         /// </summary>
         /// <param name="settings">The parsed connection string.</param>
-        /// <param name="connectionString">The connection string.</param>
-        NpgsqlConnector(NpgsqlConnectionStringBuilder settings, string connectionString)
+        NpgsqlConnector(NpgsqlConnectionStringBuilder settings)
         {
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
             Settings = settings;
-            ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
 
             CancelLock = new object();
@@ -357,8 +355,8 @@ namespace Npgsql
 
         #region Configuration settings
 
-        string Host => Settings.Host!;
-        int Port => Settings.Port;
+        internal string Host => Settings.Host!;
+        internal int Port => Settings.Port;
         string Database => Settings.Database!;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
@@ -479,6 +477,7 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
+                await UpdateServerType(timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -517,6 +516,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
+                HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", HostState.Offline);
                 Break(e);
                 throw;
             }
@@ -562,6 +562,23 @@ namespace Npgsql
 
             DatabaseInfo = database!;
             TypeMapper.Bind(DatabaseInfo);
+        }
+
+        internal async ValueTask UpdateServerType(NpgsqlTimeout timeout, bool async,
+            CancellationToken cancellationToken = default)
+        {
+            // Super hacky stuff...
+
+            var prevBindingScope = Connection!.ConnectorBindingScope;
+            Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
+            using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
+
+            using var cmd = new NpgsqlCommand("select pg_is_in_recovery()", Connection);
+            cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
+            var isSecondary = (bool)(async
+                ? await cmd.ExecuteScalarAsync(cancellationToken)
+                : cmd.ExecuteScalar())!;
+            HostsCache.UpdateHostState($"{Settings.Host}:{Settings.Port}", isSecondary ? HostState.Secondary : HostState.Primary);
         }
 
         void WriteStartupMessage(string username)
@@ -1709,6 +1726,11 @@ namespace Npgsql
                 Cleanup();
             }
         }
+
+        internal void TryRemovePendingEnlistedConnector(Transaction transaction)
+            => _pool!.TryRemovePendingEnlistedConnector(this, transaction);
+
+        internal void Return() => _pool!.Return(this);
 
         public void Dispose() => Close();
 

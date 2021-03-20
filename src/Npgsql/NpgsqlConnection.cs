@@ -62,8 +62,8 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
-        ConnectorPool? _pool;
-        internal ConnectorPool? Pool => _pool;
+        ConnectorPoolBase? _pool;
+        internal ConnectorPool? Pool => _pool as ConnectorPool;
 
         /// <summary>
         /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
@@ -178,7 +178,7 @@ namespace Npgsql
             // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
-            var canonical = Settings.ConnectionString;
+            var canonical = Settings.ConnectionStringWithoutTargetType;
 
             if (PoolManager.TryGetValue(canonical, out _pool))
             {
@@ -191,7 +191,17 @@ namespace Npgsql
             // Really unseen, need to create a new pool
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
-            var newPool = new ConnectorPool(Settings, canonical);
+            var hostsSeparator = settings.Host?.IndexOf(',');
+            ConnectorPoolBase newPool;
+            if (hostsSeparator.HasValue && hostsSeparator != -1)
+            {
+                if (settings.Multiplexing)
+                    throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
+                newPool = new MultiHostConnectorPool(settings, canonical);
+            }
+            else
+                newPool = new ConnectorPool(Settings, canonical);
+
             _pool = PoolManager.GetOrAdd(canonical, newPool);
 
             // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
@@ -216,7 +226,7 @@ namespace Npgsql
 
             if (Settings.Multiplexing)
             {
-                Debug.Assert(_pool != null, "Multiplexing is off by default, and cannot be on without pooling");
+                Debug.Assert(Pool != null, "Multiplexing is off by default, and cannot be on without pooling");
 
                 if (Settings.Enlist && Transaction.Current != null)
                 {
@@ -225,11 +235,11 @@ namespace Npgsql
                 }
 
                 // We're opening in multiplexing mode, without a transaction. We don't actually do anything.
-                _userFacingConnectionString = _pool.UserFacingConnectionString;
+                _userFacingConnectionString = Pool.UserFacingConnectionString;
 
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-                if (!_pool.IsBootstrapped)
+                if (!Pool.IsBootstrapped)
                     return BootstrapMultiplexing(async, cancellationToken);
 
                 CompleteOpen();
@@ -245,7 +255,8 @@ namespace Npgsql
                 NpgsqlConnector? connector = null;
                 try
                 {
-                    var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+                    var connectionTimeout = TimeSpan.FromSeconds(ConnectionTimeout);
+                    var timeout = new NpgsqlTimeout(connectionTimeout);
 
                     var enlistToTransaction = Settings.Enlist ? Transaction.Current : null;
 
@@ -287,6 +298,7 @@ namespace Npgsql
                     if (enlistToTransaction is not null)
                         EnlistTransaction(enlistToTransaction);
 
+                    timeout = new NpgsqlTimeout(connectionTimeout);
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
                     // Bring this up to date if needed.
@@ -308,7 +320,7 @@ namespace Npgsql
                         if (_pool == null)
                             connector.Close();
                         else
-                            _pool.Return(connector);
+                            connector.Return();
                     }
 
                     throw;
@@ -320,7 +332,7 @@ namespace Npgsql
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                    await Pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken);
                     CompleteOpen();
                 }
                 catch
@@ -388,13 +400,13 @@ namespace Npgsql
         /// Backend server host name.
         /// </summary>
         [Browsable(true)]
-        public string? Host => Settings.Host;
+        public string? Host => Connector?.Host ?? Settings.Host;
 
         /// <summary>
         /// Backend server port.
         /// </summary>
         [Browsable(true)]
-        public int Port => Settings.Port;
+        public int Port => Connector?.Port ?? Settings.Port;
 
         /// <summary>
         /// Gets the time (in seconds) to wait while trying to establish a connection
@@ -424,7 +436,7 @@ namespace Npgsql
         /// The name of the database server (host and port). If the connection uses a Unix-domain socket,
         /// the path to that socket is returned. The default value is the empty string.
         /// </value>
-        public override string DataSource => Settings.DataSourceCached;
+        public override string DataSource => Connector?.Settings.DataSourceCached ?? Settings.DataSourceCached;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
@@ -773,7 +785,7 @@ namespace Npgsql
                     if (_pool == null)
                         connector.Close();
                     else
-                        _pool.Return(connector);
+                        connector.Return();
 
                     EnlistedTransaction = null;
                 }
@@ -814,7 +826,7 @@ namespace Npgsql
                         else
                         {
                             connector.Connection = null;
-                            _pool.Return(connector);
+                            connector.Return();
                         }
                     }
                 }
@@ -1722,7 +1734,7 @@ namespace Npgsql
             Connector = null;
             connector.Connection = null;
             connector.Transaction?.UnbindIfNecessary();
-            _pool.Return(connector);
+            connector.Return();
             ConnectorBindingScope = ConnectorBindingScope.None;
         }
 

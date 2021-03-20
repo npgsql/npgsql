@@ -53,7 +53,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearAllWithBusy()
         {
-            ConnectorPool? pool;
+            ConnectorPoolBase? pool;
             using (OpenConnection())
             {
                 using (OpenConnection()) { }

@@ -486,6 +486,25 @@ namespace Npgsql
         string _encoding = "UTF8";
 
         /// <summary>
+        /// Determines the preferred PostgreSQL target server type.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Determines the preferred PostgreSQL target server type.")]
+        [DisplayName("TargetServerType")]
+        [DefaultValue(TargetServerType.Any)]
+        [NpgsqlConnectionStringProperty]
+        public TargetServerType TargetServerType
+        {
+            get => _targetservertype;
+            set
+            {
+                _targetservertype = value;
+                SetValue(nameof(TargetServerType), value);
+            }
+        }
+        TargetServerType _targetservertype;
+
+        /// <summary>
         /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
         /// </summary>
         [Category("Connection")]
@@ -1573,6 +1592,16 @@ namespace Npgsql
             return clone.ToString();
         }
 
+        internal string ConnectionStringWithoutTargetType
+        {
+            get
+            {
+                var clone = Clone();
+                clone[nameof(TargetServerType)] = null;
+                return clone.ConnectionString;
+            }
+        }
+
         internal NpgsqlConnectionStringBuilder Clone() => new(ConnectionString);
 
         /// <summary>
@@ -1783,5 +1812,34 @@ namespace Npgsql
         /// </summary>
         Logical
     }
+
+    /// <summary>
+    /// Specifies server type preference.
+    /// </summary>
+    [Flags]
+    public enum TargetServerType : byte
+    {
+        /// <summary>
+        ///  Try to connect to every server in order.
+        /// </summary>
+        Any = 1,
+        /// <summary>
+        ///  Secondary (readonly) server is selected for the connection.
+        /// </summary>
+        Secondary = 2,
+        /// <summary>
+        /// Secondary (readonly) server is selected for the connection. Falls back to Primary (writable), if none are available.
+        /// </summary>
+        PreferSecondary = Secondary | Any,
+        /// <summary>
+        ///  Primary (writable) server is selected for the connection.
+        /// </summary>
+        Primary = 4,
+        /// <summary>
+        /// Primary (writable) server is selected for the connection. Falls back to Secondary (readonly), if none are available.
+        /// </summary>
+        PreferPrimary = Primary | Any,
+    }
+
     #endregion
 }
