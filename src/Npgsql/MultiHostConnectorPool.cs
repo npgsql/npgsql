@@ -223,25 +223,28 @@ namespace Npgsql
                 return rentedAnyConnector;
             }
 
-            if (!preferedType.HasFlag(TargetServerType.Any))
-                throw NoSuitableHostsException(exceptions);
+            if (preferedType.HasFlag(TargetServerType.Any))
+            {
+                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                if (idleUnpreferedConnector is not null)
+                    return idleUnpreferedConnector;
 
-            var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
-            if (idleUnpreferedConnector is not null)
-                return idleUnpreferedConnector;
-
-            var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
-            if (newUnpreferedConnector is not null)
-                return newUnpreferedConnector;
+                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                if (newUnpreferedConnector is not null)
+                    return newUnpreferedConnector;
+            }
 
             // TODO: add a queue to wait for the connector
             var rentedPreferedConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidHost, exceptions, cancellationToken);
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            var rentedUnpreferedConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
-            if (rentedUnpreferedConnector is not null)
-                return rentedUnpreferedConnector;
+            if (preferedType.HasFlag(TargetServerType.Any))
+            {
+                var rentedUnpreferedConnector = await TryRent(conn, timeoutPerHost, async, preferedType, IsValidUnpreferedHost, exceptions, cancellationToken);
+                if (rentedUnpreferedConnector is not null)
+                    return rentedUnpreferedConnector;
+            }
 
             throw NoSuitableHostsException(exceptions);
         }
