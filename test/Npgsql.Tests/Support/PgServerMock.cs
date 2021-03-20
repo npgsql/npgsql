@@ -65,7 +65,7 @@ namespace Npgsql.Tests.Support
 
             // Writing a response, that the mock is not secondary
             await ExpectExtendedQuery();
-            await WriteScalarResponseAndFlush(false);
+            await WriteScalarResponseAndFlush("f");
         }
 
         internal async Task SkipMessage()
@@ -136,6 +136,15 @@ namespace Npgsql.Tests.Support
                 .WriteBindComplete()
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
                 .WriteDataRow(BitConverter.GetBytes(value))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+        internal Task WriteScalarResponseAndFlush(string value)
+            => WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+                .WriteDataRow(Encoding.ASCII.GetBytes(value))
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
