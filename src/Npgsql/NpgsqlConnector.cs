@@ -223,7 +223,7 @@ namespace Npgsql
 
         /// <summary>
         /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
-        /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolManager"/> rather than the
+        /// Note that in multi-host scenarios, this references the host-specific <see cref="ConnectorPool"/> rather than the
         /// <see cref="MultiHostConnectorPool"/>,
         /// </summary>
         readonly ConnectorSource _connectorSource;
