@@ -8,18 +8,18 @@ namespace Npgsql
     {
         static readonly ConcurrentDictionary<ClusterIdentifier, ClusterInfo> Clusters = new();
 
-        static readonly TimeSpan HostStateExpiration = TimeSpan.FromSeconds(10); // TODO: add a param?
+        static readonly TimeSpan ClusterStateExpiration = TimeSpan.FromSeconds(10); // TODO: add a param?
 
         internal static ClusterState GetClusterState(string host, int port)
         {
-            if (Clusters.TryGetValue(new(host, port), out var hsc) && !hsc.Timeout.HasExpired)
-                return hsc.State;
+            if (Clusters.TryGetValue(new(host, port), out var cs) && !cs.Timeout.HasExpired)
+                return cs.State;
 
             return ClusterState.Unknown;
         }
 
         internal static void UpdateClusterState(string host, int port, ClusterState state)
-            => Clusters[new(host, port)] = new ClusterInfo(state, new NpgsqlTimeout(HostStateExpiration));
+            => Clusters[new(host, port)] = new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration));
 
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
         {
