@@ -558,8 +558,9 @@ namespace Npgsql.Tests
 
             try
             {
-                using var conn = await OpenConnectionAsync(csb);
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+                await using var conn = await OpenConnectionAsync(csb);
+                await using var tx = await conn.BeginTransactionAsync();
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1", tx), Is.EqualTo(1));
                 Assert.That(conn.DataSource, Is.EqualTo(Path.Combine(csb.Host, $".s.PGSQL.{port}")));
             }
             catch (PostgresException e) when (e.SqlState.StartsWith("28"))
@@ -571,7 +572,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
-        public void DataSource()
+        public async Task DataSource()
         {
             using var conn = new NpgsqlConnection();
             Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
@@ -579,7 +580,8 @@ namespace Npgsql.Tests
             conn.ConnectionString = ConnectionString;
             Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
 
-            conn.Open();
+            await conn.OpenAsync();
+            await using var _ = await conn.BeginTransactionAsync();
             Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
         }
 
