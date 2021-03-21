@@ -42,7 +42,7 @@ namespace Npgsql
 
         #region Pending Enlisted Connections
 
-        internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal virtual void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)
             {
