@@ -182,11 +182,14 @@ namespace Npgsql
             // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
-            // Note that we remove TargetServerType to make all connection strings that are otherwise identical point to the same pool.
-            var canonical = settings.ConnectionStringWithoutTargetType;
+            // Note that we remove TargetSessionAttributes to make all connection strings that are otherwise identical point to the same pool.
+            var canonical = settings.ConnectionStringWithoutTargetSessionAttributes;
 
             if (PoolManager.TryGetValue(canonical, out _pool))
             {
+                // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
+                if (_pool is MultiHostConnectorPool)
+                    _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, _pool);
                 // The pool was found, but only under the canonical key - we're using a different version
                 // for the first time. Map it via our own key for next time.
                 _pool = PoolManager.GetOrAdd(_connectionString, _pool);
@@ -223,6 +226,10 @@ namespace Npgsql
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
                 NpgsqlEventSource.Log.PoolCreated(newPool);
             }
+
+            // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
+            if (_pool is MultiHostConnectorPool)
+                _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, _pool);
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
         }

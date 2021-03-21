@@ -1592,7 +1592,7 @@ namespace Npgsql
             return clone.ToString();
         }
 
-        internal string ConnectionStringWithoutTargetType
+        internal string ConnectionStringWithoutTargetSessionAttributes
         {
             get
             {
