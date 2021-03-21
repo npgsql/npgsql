@@ -11,12 +11,9 @@ namespace Npgsql
         static readonly TimeSpan ClusterStateExpiration = TimeSpan.FromSeconds(10); // TODO: add a param?
 
         internal static ClusterState GetClusterState(string host, int port)
-        {
-            if (Clusters.TryGetValue(new(host, port), out var cs) && !cs.Timeout.HasExpired)
-                return cs.State;
-
-            return ClusterState.Unknown;
-        }
+            => Clusters.TryGetValue(new(host, port), out var cs) && !cs.Timeout.HasExpired
+                ? cs.State
+                : ClusterState.Unknown;
 
         internal static void UpdateClusterState(string host, int port, ClusterState state)
             => Clusters[new(host, port)] = new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration));

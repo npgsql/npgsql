@@ -479,7 +479,7 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
-                await UpdateServerType(timeout, async, cancellationToken);
+                await QueryClusterState(timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -566,7 +566,7 @@ namespace Npgsql
             TypeMapper.Bind(DatabaseInfo);
         }
 
-        internal async ValueTask<ClusterState> UpdateServerType(
+        internal async ValueTask<ClusterState> QueryClusterState(
             NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
             // Extended query protocol not supported in a replication connection

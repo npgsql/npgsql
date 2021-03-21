@@ -11,23 +11,6 @@ namespace Npgsql
     {
         readonly ConnectorPool[] _pools;
 
-        internal override (int Total, int Idle, int Busy) Statistics
-        {
-            get
-            {
-                var numConnectors = 0;
-                var idleCount = 0;
-
-                foreach (var pool in _pools)
-                {
-                    numConnectors += pool.NumConnectors;
-                    idleCount += pool.IdleCount;
-                }
-                
-                return (numConnectors, idleCount, numConnectors - idleCount);
-            }
-        }
-
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
         {
             var hosts = settings.Host!.Split(',');
@@ -91,7 +74,7 @@ namespace Npgsql
                     {
                         if (clusterState == ClusterState.Unknown)
                         {
-                            clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
@@ -175,7 +158,7 @@ namespace Npgsql
                     // Get may be have opened a new physical connection and refreshed the cluster state, check again
                     if (clusterState == ClusterState.Unknown)
                     {
-                        clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                         Debug.Assert(clusterState != ClusterState.Unknown);
                         if (!clusterValidator(clusterState, preferedType))
                         {
@@ -265,6 +248,23 @@ namespace Npgsql
         {
             foreach (var pool in _pools)
                 pool.Clear();
+        }
+
+        internal override (int Total, int Idle, int Busy) Statistics
+        {
+            get
+            {
+                var numConnectors = 0;
+                var idleCount = 0;
+
+                foreach (var pool in _pools)
+                {
+                    numConnectors += pool.NumConnectors;
+                    idleCount += pool.IdleCount;
+                }
+
+                return (numConnectors, idleCount, numConnectors - idleCount);
+            }
         }
     }
 }

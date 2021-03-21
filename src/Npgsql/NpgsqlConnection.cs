@@ -232,7 +232,7 @@ namespace Npgsql
             CheckClosed();
             Debug.Assert(Connector == null);
 
-            if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
+            if (_pool == null)
             {
                 Debug.Assert(string.IsNullOrEmpty(_connectionString));
 
