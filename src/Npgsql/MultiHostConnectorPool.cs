@@ -194,7 +194,7 @@ namespace Npgsql
             var exceptions = new List<Exception>();
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
-            var preferredType = conn.Settings.TargetServerType;
+            var preferredType = conn.Settings.TargetSessionAttributes;
 
             var idlePreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
             if (idlePreferredConnector is not null)

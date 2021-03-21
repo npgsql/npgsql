@@ -490,19 +490,19 @@ namespace Npgsql
         /// </summary>
         [Category("Connection")]
         [Description("Determines the preferred PostgreSQL target server type.")]
-        [DisplayName("TargetServerType")]
+        [DisplayName("TargetSessionAttributes")]
         [DefaultValue(TargetSessionAttributes.Any)]
         [NpgsqlConnectionStringProperty]
-        public TargetSessionAttributes TargetServerType
+        public TargetSessionAttributes TargetSessionAttributes
         {
-            get => _targetservertype;
+            get => _targetSessionAttributes;
             set
             {
-                _targetservertype = value;
-                SetValue(nameof(TargetServerType), value);
+                _targetSessionAttributes = value;
+                SetValue(nameof(TargetSessionAttributes), value);
             }
         }
-        TargetSessionAttributes _targetservertype;
+        TargetSessionAttributes _targetSessionAttributes;
 
         /// <summary>
         /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
@@ -1597,7 +1597,7 @@ namespace Npgsql
             get
             {
                 var clone = Clone();
-                clone[nameof(TargetServerType)] = null;
+                clone[nameof(TargetSessionAttributes)] = null;
                 return clone.ConnectionString;
             }
         }
