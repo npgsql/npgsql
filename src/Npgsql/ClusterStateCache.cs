@@ -15,8 +15,20 @@ namespace Npgsql
                 ? cs.State
                 : ClusterState.Unknown;
 
-        internal static void UpdateClusterState(string host, int port, ClusterState state)
-            => Clusters[new(host, port)] = new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration));
+#if NETSTANDARD2_0
+        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp)
+            => Clusters.AddOrUpdate(
+                new ClusterIdentifier(host, port),
+                new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp),
+                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp));
+#else
+        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp)
+            => Clusters.AddOrUpdate(
+                new ClusterIdentifier(host, port),
+                (_, newInfo) => newInfo,
+                (_, oldInfo, newInfo) => oldInfo.TimeStamp >= newInfo.TimeStamp ? oldInfo : newInfo,
+                new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp));
+#endif
 
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
         {
@@ -33,8 +45,9 @@ namespace Npgsql
         {
             internal readonly ClusterState State;
             internal readonly NpgsqlTimeout Timeout;
+            internal readonly DateTime TimeStamp;
 
-            public ClusterInfo(ClusterState state, NpgsqlTimeout timeout) => (State, Timeout) = (state, timeout);
+            public ClusterInfo(ClusterState state, NpgsqlTimeout timeout, DateTime timeStamp) => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
         }
     }
 

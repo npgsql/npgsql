@@ -518,7 +518,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline);
+                ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline, DateTime.UtcNow);
                 Break(e);
                 throw;
             }
@@ -585,7 +585,7 @@ namespace Npgsql
                 ? await cmd.ExecuteScalarAsync(cancellationToken)
                 : cmd.ExecuteScalar())!;
             var state = isSecondary ? ClusterState.Secondary : ClusterState.Primary;
-            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state);
+            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow);
             return state;
         }
 
