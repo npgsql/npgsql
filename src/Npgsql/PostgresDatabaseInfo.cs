@@ -75,7 +75,7 @@ namespace Npgsql
         public virtual bool HasTypeCategory => Version >= new Version(8, 4, 0);
 
         internal PostgresDatabaseInfo(NpgsqlConnection conn)
-            : base(conn.Host!, conn.Port, conn.Database!, ParseServerVersion(conn.PostgresParameters["server_version"]))
+            : base(conn.Host!, conn.Port!.Value, conn.Database!, ParseServerVersion(conn.PostgresParameters["server_version"]))
         {
         }
 

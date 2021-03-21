@@ -377,7 +377,6 @@ Npgsql.NpgsqlConnection.Notice -> Npgsql.NoticeEventHandler?
 Npgsql.NpgsqlConnection.Notification -> Npgsql.NotificationEventHandler?
 Npgsql.NpgsqlConnection.NpgsqlConnection() -> void
 Npgsql.NpgsqlConnection.NpgsqlConnection(string? connectionString) -> void
-Npgsql.NpgsqlConnection.Port.get -> int
 Npgsql.NpgsqlConnection.PostgresParameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Npgsql.NpgsqlConnection.PostgreSqlVersion.get -> System.Version!
 Npgsql.NpgsqlConnection.ProcessID.get -> int

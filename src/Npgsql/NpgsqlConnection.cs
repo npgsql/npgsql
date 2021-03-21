@@ -396,13 +396,13 @@ namespace Npgsql
         /// Backend server host name.
         /// </summary>
         [Browsable(true)]
-        public string? Host => Connector?.Host ?? Settings.Host;
+        public string? Host => Connector?.Host;
 
         /// <summary>
         /// Backend server port.
         /// </summary>
         [Browsable(true)]
-        public int Port => Connector?.Port ?? Settings.Port;
+        public int? Port => Connector?.Port;
 
         /// <summary>
         /// Gets the time (in seconds) to wait while trying to establish a connection
@@ -432,7 +432,7 @@ namespace Npgsql
         /// The name of the database server (host and port). If the connection uses a Unix-domain socket,
         /// the path to that socket is returned. The default value is the empty string.
         /// </value>
-        public override string DataSource => Connector?.Settings.DataSourceCached ?? Settings.DataSourceCached;
+        public override string DataSource => Connector?.Settings.DataSourceCached ?? string.Empty;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
