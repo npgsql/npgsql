@@ -25,7 +25,7 @@ namespace Npgsql
             => _wrappedSource.AddPendingEnlistedConnector(connector, transaction);
         internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
             => _wrappedSource.TryRemovePendingEnlistedConnector(connector, transaction);
-        internal override bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector connector)
+        internal override bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
             => _wrappedSource.TryRentEnlistedPending(transaction, out connector);
     }
 }
