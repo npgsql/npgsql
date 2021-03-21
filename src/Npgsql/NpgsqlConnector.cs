@@ -581,11 +581,14 @@ namespace Npgsql
 
             using var cmd = new NpgsqlCommand("select pg_is_in_recovery()", Connection);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
+            // We're taking the timestamp before the query is send, because due to issues (IO, operation ordering, etc) we can recieve an 'old' state
+            // Otherwise, execution of the query shouldn't make notable difference
+            var timeStamp = DateTime.UtcNow;
             var isSecondary = (bool)(async
                 ? await cmd.ExecuteScalarAsync(cancellationToken)
                 : cmd.ExecuteScalar())!;
             var state = isSecondary ? ClusterState.Secondary : ClusterState.Primary;
-            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow);
+            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp);
             return state;
         }
 

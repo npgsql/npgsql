@@ -45,6 +45,7 @@ namespace Npgsql
         {
             internal readonly ClusterState State;
             internal readonly NpgsqlTimeout Timeout;
+            // While the TimeStamp is not strictly required, it does lowers the risk of overwriting the current state with an old value
             internal readonly DateTime TimeStamp;
 
             public ClusterInfo(ClusterState state, NpgsqlTimeout timeout, DateTime timeStamp) => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
