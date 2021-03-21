@@ -60,8 +60,8 @@ namespace Npgsql
             {
                 ClusterState.Offline => false,
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType.HasFlag(TargetServerType.Primary) => true,
-                ClusterState.Secondary when preferredType.HasFlag(TargetServerType.Secondary) => true,
+                ClusterState.Primary when preferredType == TargetServerType.Primary || preferredType == TargetServerType.PreferPrimary => true,
+                ClusterState.Secondary when preferredType == TargetServerType.Secondary || preferredType == TargetServerType.PreferSecondary => true,
                 _ => preferredType == TargetServerType.Any
             };
 
@@ -234,7 +234,7 @@ namespace Npgsql
                 return rentedAnyConnector;
             }
 
-            if (preferredType.HasFlag(TargetServerType.Any))
+            if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
             {
                 var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
@@ -250,7 +250,7 @@ namespace Npgsql
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            if (preferredType.HasFlag(TargetServerType.Any))
+            if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
             {
                 var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)
