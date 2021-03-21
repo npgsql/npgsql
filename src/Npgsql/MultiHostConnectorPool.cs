@@ -60,12 +60,12 @@ namespace Npgsql
                 _ => preferredType == TargetServerType.Any
             };
 
-        static bool IsFallback(ClusterState state, TargetServerType preferredType)
+        static bool IsFallbackOrPreferred(ClusterState state, TargetServerType preferredType)
             => state switch
             {
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType == TargetServerType.PreferSecondary => true,
-                ClusterState.Secondary when preferredType == TargetServerType.PreferPrimary => true,
+                ClusterState.Primary when preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary => true,
+                ClusterState.Secondary when preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary => true,
                 _ => false
             };
 
@@ -231,11 +231,11 @@ namespace Npgsql
 
             if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
             {
-                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
+                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
                     return idleUnpreferedConnector;
 
-                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
+                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (newUnpreferedConnector is not null)
                     return newUnpreferedConnector;
             }
@@ -247,7 +247,7 @@ namespace Npgsql
 
             if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
             {
-                var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallback, exceptions, cancellationToken);
+                var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)
                     return rentedUnpreferedConnector;
             }
