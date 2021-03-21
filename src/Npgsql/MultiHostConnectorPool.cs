@@ -235,6 +235,9 @@ namespace Npgsql
                     return rentedUnpreferedConnector;
             }
 
+            if (exceptions.Count == 0)
+                exceptions.Add(new NpgsqlException("No suitable host has been found."));
+
             throw NoSuitableHostsException(exceptions);
         }
 
