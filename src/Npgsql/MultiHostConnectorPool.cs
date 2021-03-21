@@ -47,11 +47,6 @@ namespace Npgsql
                 poolSettings.Host = host;
                 poolSettings.Port = port;
                 _pools[i] = new ConnectorPool(poolSettings, poolSettings.ConnectionString, this);
-                // TODO: should be safely removed
-                /*
-                // Setting the default settings due to PoolManager.TryGetValue
-                _pools[i] = new ConnectorPool(poolSettings, settings.ConnectionString, this);
-                */
             }
         }
 
