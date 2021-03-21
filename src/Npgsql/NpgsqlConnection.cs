@@ -217,9 +217,6 @@ namespace Npgsql
                 newPool = new UnpooledConnectorSource(settings, canonical);
 
             _pool = PoolManager.GetOrAdd(canonical, newPool);
-
-            // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
-            // Avoids a race condition where multiple threads will create a pool but only one will be stored.
             if (_pool == newPool)
             {
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.

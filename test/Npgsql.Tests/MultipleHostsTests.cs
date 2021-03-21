@@ -1,9 +1,6 @@
 ﻿using NUnit.Framework;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,11 +10,13 @@ namespace Npgsql.Tests
     {
         public MultipleHostsTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) { }
 
-        [Test, Timeout(10000)]
+        [Test, Timeout(10000), NonParallelizable]
         public void Basic()
         {
             if (IsMultiplexing)
                 return;
+
+            PoolManager.Reset();
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -39,6 +38,10 @@ namespace Npgsql.Tests
             Assert.DoesNotThrowAsync(async () => await clientsTask);
             Assert.ThrowsAsync<NpgsqlException>(async () => await onlySecondaryClient);
             Assert.AreEqual(100, queriesDone);
+
+            Assert.AreEqual(6, PoolManager.Pools.Where(x => x.Key is not null).Count());
+
+            PoolManager.Reset();
 
             Task Client(NpgsqlConnectionStringBuilder csb, TargetSessionAttributes targetServerType)
             {
