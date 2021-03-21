@@ -33,30 +33,30 @@ namespace Npgsql
             }
         }
 
-        static bool IsPreferred(ClusterState state, TargetServerType preferredType)
+        static bool IsPreferred(ClusterState state, TargetSessionAttributes preferredType)
             => state switch
             {
                 ClusterState.Offline => false,
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType == TargetServerType.Primary || preferredType == TargetServerType.PreferPrimary => true,
-                ClusterState.Secondary when preferredType == TargetServerType.Secondary || preferredType == TargetServerType.PreferSecondary => true,
-                _ => preferredType == TargetServerType.Any
+                ClusterState.Primary when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary => true,
+                ClusterState.Secondary when preferredType == TargetSessionAttributes.Secondary || preferredType == TargetSessionAttributes.PreferSecondary => true,
+                _ => preferredType == TargetSessionAttributes.Any
             };
 
-        static bool IsFallbackOrPreferred(ClusterState state, TargetServerType preferredType)
+        static bool IsFallbackOrPreferred(ClusterState state, TargetSessionAttributes preferredType)
             => state switch
             {
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary => true,
-                ClusterState.Secondary when preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary => true,
+                ClusterState.Primary when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
+                ClusterState.Secondary when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
                 _ => false
             };
 
         static ClusterState GetClusterState(ConnectorPool pool)
             => ClusterStateCache.GetClusterState(pool.Settings.Host!, pool.Settings.Port);
 
-        async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferredType,
-            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
+        async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
@@ -100,8 +100,8 @@ namespace Npgsql
             return null;
         }
 
-        async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
-            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
+        async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferedType,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
@@ -140,8 +140,8 @@ namespace Npgsql
             return null;
         }
 
-        async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetServerType preferedType,
-            Func<ClusterState, TargetServerType, bool> clusterValidator, IList<Exception> exceptions,
+        async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferedType,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
@@ -204,7 +204,7 @@ namespace Npgsql
             if (newPreferredConnector is not null)
                 return newPreferredConnector;
 
-            if (preferredType == TargetServerType.Any)
+            if (preferredType == TargetSessionAttributes.Any)
             {
                 var rentedAnyConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
                 if (rentedAnyConnector is null)
@@ -212,7 +212,7 @@ namespace Npgsql
                 return rentedAnyConnector;
             }
 
-            if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
+            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary)
             {
                 var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
@@ -228,7 +228,7 @@ namespace Npgsql
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            if (preferredType == TargetServerType.PreferPrimary || preferredType == TargetServerType.PreferSecondary)
+            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary)
             {
                 var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)

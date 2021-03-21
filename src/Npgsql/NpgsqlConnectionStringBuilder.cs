@@ -491,9 +491,9 @@ namespace Npgsql
         [Category("Connection")]
         [Description("Determines the preferred PostgreSQL target server type.")]
         [DisplayName("TargetServerType")]
-        [DefaultValue(TargetServerType.Any)]
+        [DefaultValue(TargetSessionAttributes.Any)]
         [NpgsqlConnectionStringProperty]
-        public TargetServerType TargetServerType
+        public TargetSessionAttributes TargetServerType
         {
             get => _targetservertype;
             set
@@ -502,7 +502,7 @@ namespace Npgsql
                 SetValue(nameof(TargetServerType), value);
             }
         }
-        TargetServerType _targetservertype;
+        TargetSessionAttributes _targetservertype;
 
         /// <summary>
         /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
@@ -1816,7 +1816,7 @@ namespace Npgsql
     /// <summary>
     /// Specifies server type preference.
     /// </summary>
-    public enum TargetServerType : byte
+    public enum TargetSessionAttributes : byte
     {
         /// <summary>
         ///  Try to connect to every server in order.
