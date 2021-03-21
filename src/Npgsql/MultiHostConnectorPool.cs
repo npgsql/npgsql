@@ -1,6 +1,7 @@
 ﻿using Npgsql.Util;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -94,14 +95,16 @@ namespace Npgsql
                     try
                     {
                         if (clusterState == ClusterState.Unknown)
-                            clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-
-                        if (!clusterValidator(clusterState, preferredType))
                         {
-                            conn.Connector = null;
-                            connector.Connection = null;
-                            pool.Return(connector);
-                            continue;
+                            clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                            Debug.Assert(clusterState != ClusterState.Unknown);
+                            if (!clusterValidator(clusterState, preferredType))
+                            {
+                                conn.Connector = null;
+                                connector.Connection = null;
+                                pool.Return(connector);
+                                continue;
+                            }
                         }
 
                         return connector;
@@ -111,7 +114,7 @@ namespace Npgsql
                         conn.Connector = null;
                         connector.Connection = null;
                         pool.Return(connector);
-                        exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
+                        exceptions.Add(new NpgsqlException($"Unable to get an idle connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                     }
                 }
             }
@@ -136,6 +139,7 @@ namespace Npgsql
                     {
                         // Opening a new physical connection refreshed the cluster state, check again
                         clusterState = GetClusterState(pool);
+                        Debug.Assert(clusterState != ClusterState.Unknown);
                         if (!clusterValidator(clusterState, preferedType))
                         {
                             conn.Connector = null;
@@ -151,7 +155,7 @@ namespace Npgsql
                 }
                 catch (Exception ex)
                 {
-                    exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
+                    exceptions.Add(new NpgsqlException($"Unable to open a new connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                 }
             }
 
@@ -175,14 +179,16 @@ namespace Npgsql
                     connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                     // Get may be have opened a new physical connection and refreshed the cluster state, check again
                     if (clusterState == ClusterState.Unknown)
-                        clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-
-                    if (!clusterValidator(clusterState, preferedType))
                     {
-                        conn.Connector = null;
-                        connector.Connection = null;
-                        pool.Return(connector);
-                        continue;
+                        clusterState = await connector.UpdateServerType(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        Debug.Assert(clusterState != ClusterState.Unknown);
+                        if (!clusterValidator(clusterState, preferedType))
+                        {
+                            conn.Connector = null;
+                            connector.Connection = null;
+                            pool.Return(connector);
+                            continue;
+                        }
                     }
 
                     conn.Connector = connector;
