@@ -6,41 +6,59 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace Npgsql
 {
-    internal sealed class NpgsqlRecordDataReader : DbDataReader
+    /// <summary>
+    /// Reads a forward-only stream of rows from a nested data source.
+    /// Can be retrieved using <see cref="NpgsqlDataReader.GetData(int)"/> or
+    /// <see cref="NpgsqlNestedDataReader.GetData(int)"/>.
+    /// </summary>
+    public sealed class NpgsqlNestedDataReader : DbDataReader
     {
         NpgsqlDataReader _outermostReader;
         ulong _uniqueOutermostReaderRowId;
+        NpgsqlNestedDataReader? _outerReader;
+        NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
         int _depth;
         int _numRows;
         int _nextRowIndex;
         int _nextRowBufferPos;
 
-        ColumnInfo[]? _columns;
+        readonly List<ColumnInfo> _columns = new();
 
         bool _calledNextResult;
         bool _closed;
 
         struct ColumnInfo
         {
-            public uint Oid;
+            public uint TypeOid;
             public int BufferPos;
+            public NpgsqlTypeHandler TypeHandler;
         }
 
         NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
         ConnectorTypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
 
-        internal NpgsqlRecordDataReader(NpgsqlDataReader outermostReader, ulong uniqueOutermostReaderRowId, int depth)
+        internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, ulong uniqueOutermostReaderRowId, int depth)
         {
             _outermostReader = outermostReader;
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
             _depth = depth;
+        }
+
+        internal void Recreate(NpgsqlDataReader outermostReader, ulong uniqueOutermostReaderRowId, int depth)
+        {
+            _outermostReader = outermostReader;
+            _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
+            _depth = depth;
+            _numRows = 0;
+            _nextRowIndex = 0;
+            _nextRowBufferPos = 0;
+            _calledNextResult = false;
+            _closed = false;
         }
 
         internal void InitArray()
@@ -56,7 +74,7 @@ namespace Npgsql
                 return;
 
             if (dimensions != 1)
-                throw new InvalidOperationException($"Cannot read an array with 1 dimension from an array with {dimensions} dimension(s)");
+                throw new InvalidOperationException("Cannot read a multidimensional array with a nested DbDataReader");
 
             _numRows = Buffer.ReadInt32();
             Buffer.ReadInt32(); // Lower bound
@@ -73,10 +91,13 @@ namespace Npgsql
             _nextRowBufferPos = Buffer.ReadPosition;
         }
 
+        /// <inheritdoc />
         public override object this[int ordinal] => GetValue(ordinal);
 
+        /// <inheritdoc />
         public override object this[string name] => GetValue(GetOrdinal(name));
 
+        /// <inheritdoc />
         public override int Depth
         {
             get
@@ -86,15 +107,17 @@ namespace Npgsql
             }
         }
 
+        /// <inheritdoc />
         public override int FieldCount
         {
             get
             {
                 CheckNotClosed();
-                return _calledNextResult ? 0 : _columns?.Length ?? 0;
+                return _calledNextResult ? 0 : _columns.Count;
             }
         }
 
+        /// <inheritdoc />
         public override bool HasRows
         {
             get
@@ -104,40 +127,75 @@ namespace Npgsql
             }
         }
 
-        public override bool IsClosed => _closed;
+        /// <inheritdoc />
+        public override bool IsClosed
+            => _closed || _outermostReader.IsClosed || _uniqueOutermostReaderRowId != _outermostReader.UniqueRowId;
 
+        /// <inheritdoc />
         public override int RecordsAffected => -1;
 
+        /// <inheritdoc />
         public override bool GetBoolean(int ordinal) => GetFieldValue<bool>(ordinal);
+        /// <inheritdoc />
         public override byte GetByte(int ordinal) => GetFieldValue<byte>(ordinal);
+        /// <inheritdoc />
         public override char GetChar(int ordinal) => GetFieldValue<char>(ordinal);
+        /// <inheritdoc />
         public override DateTime GetDateTime(int ordinal) => GetFieldValue<DateTime>(ordinal);
+        /// <inheritdoc />
         public override decimal GetDecimal(int ordinal) => GetFieldValue<decimal>(ordinal);
+        /// <inheritdoc />
         public override double GetDouble(int ordinal) => GetFieldValue<double>(ordinal);
+        /// <inheritdoc />
         public override float GetFloat(int ordinal) => GetFieldValue<float>(ordinal);
+        /// <inheritdoc />
         public override Guid GetGuid(int ordinal) => GetFieldValue<Guid>(ordinal);
+        /// <inheritdoc />
         public override short GetInt16(int ordinal) => GetFieldValue<short>(ordinal);
+        /// <inheritdoc />
         public override int GetInt32(int ordinal) => GetFieldValue<int>(ordinal);
+        /// <inheritdoc />
         public override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
+        /// <inheritdoc />
         public override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
+        /// <inheritdoc />
         public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
-            => throw new NotImplementedException();
+            => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
-            => throw new NotImplementedException();
+            => throw new NotSupportedException();
 
-        protected override DbDataReader GetDbDataReader(int ordinal)
+        /// <inheritdoc />
+        protected override DbDataReader GetDbDataReader(int ordinal) => GetData(ordinal);
+
+        /// <summary>
+        /// Returns a nested data reader for the requested column.
+        /// The column type must be a record or a to Npgsql known composite type, or an array thereof.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>A data reader.</returns>
+        public new NpgsqlNestedDataReader GetData(int ordinal)
         {
             var field = CheckRowAndColumnAndSeek(ordinal);
             var type = field.Handler.PostgresType;
             var isArray = type is PostgresArrayType;
             var elementType = isArray ? ((PostgresArrayType)type).Element : type;
             if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
-                throw new InvalidCastException("GetDbDataReader() not supported for type " + type.DisplayName);
+                throw new InvalidCastException("GetData() not supported for type " + type.DisplayName);
 
             if (field.Length == -1)
                 throw new InvalidCastException("field is null");
 
-            var reader = new NpgsqlRecordDataReader(_outermostReader, _uniqueOutermostReaderRowId, _depth + 1);
+            var reader = _cachedFreeNestedDataReader;
+            if (reader != null)
+            {
+                _cachedFreeNestedDataReader = null;
+                reader.Recreate(_outermostReader, _uniqueOutermostReaderRowId, _depth + 1);
+            }
+            else
+            {
+                reader = new NpgsqlNestedDataReader(_outermostReader, _uniqueOutermostReaderRowId, _depth + 1);
+            }
             if (isArray)
                 reader.InitArray();
             else
@@ -145,27 +203,45 @@ namespace Npgsql
             return reader;
         }
 
+        /// <inheritdoc />
         public override string GetDataTypeName(int ordinal)
         {
             var column = CheckRowAndColumn(ordinal);
-            return TypeMapper.GetByOID(column.Oid).PgDisplayName;
+            return column.TypeHandler.PgDisplayName;
         }
 
+        /// <inheritdoc />
         public override IEnumerator GetEnumerator() => new DbEnumerator(this);
 
+        /// <inheritdoc />
         public override string GetName(int ordinal)
         {
             CheckRowAndColumn(ordinal);
             return ordinal.ToString();
         }
-        public override int GetOrdinal(string name) => throw new NotImplementedException();
 
+        /// <inheritdoc />
+        public override int GetOrdinal(string name)
+        {
+            if (int.TryParse(name, out var ordinal))
+            {
+                CheckRowAndColumn(ordinal);
+                return ordinal;
+            }
+            else
+            {
+                throw new IndexOutOfRangeException("Name must be an integer representing the column index");
+            }
+        }
+
+        /// <inheritdoc />
         public override Type GetFieldType(int ordinal)
         {
             var column = CheckRowAndColumn(ordinal);
-            return TypeMapper.GetByOID(column.Oid).GetFieldType();
+            return column.TypeHandler.GetFieldType();
         }
 
+        /// <inheritdoc />
         public override object GetValue(int ordinal)
         {
             var column = CheckRowAndColumnAndSeek(ordinal);
@@ -174,6 +250,7 @@ namespace Npgsql
             return column.Handler.ReadAsObject(Buffer, column.Length);
         }
 
+        /// <inheritdoc />
         public override int GetValues(object[] values)
         {
             if (values == null)
@@ -186,9 +263,11 @@ namespace Npgsql
             return count;
         }
 
+        /// <inheritdoc />
         public override bool IsDBNull(int ordinal)
             => CheckRowAndColumnAndSeek(ordinal).Length == -1;
 
+        /// <inheritdoc />
         public override T GetFieldValue<T>(int ordinal)
         {
             if (typeof(T) == typeof(Stream))
@@ -219,12 +298,14 @@ namespace Npgsql
                     : field.Handler.Read<T>(Buffer, field.Length, fieldDescription: null);
         }
 
+        /// <inheritdoc />
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
             var column = CheckRowAndColumn(ordinal);
-            return TypeMapper.GetByOID(column.Oid).GetProviderSpecificFieldType();
+            return column.TypeHandler.GetProviderSpecificFieldType();
         }
 
+        /// <inheritdoc />
         public override object GetProviderSpecificValue(int ordinal)
         {
             var column = CheckRowAndColumnAndSeek(ordinal);
@@ -233,6 +314,7 @@ namespace Npgsql
             return column.Handler.ReadPsvAsObject(Buffer, column.Length);
         }
 
+        /// <inheritdoc />
         public override int GetProviderSpecificValues(object[] values)
         {
             if (values == null)
@@ -245,6 +327,7 @@ namespace Npgsql
             return count;
         }
 
+        /// <inheritdoc />
         public override bool Read()
         {
             CheckResultSet();
@@ -258,13 +341,29 @@ namespace Npgsql
 
             var numColumns = Buffer.ReadInt32();
 
-            if (_columns == null || _columns.Length != numColumns)
-                _columns = new ColumnInfo[numColumns];
-
             for (var i = 0; i < numColumns; i++)
             {
-                _columns[i].Oid = Buffer.ReadUInt32();
-                _columns[i].BufferPos = Buffer.ReadPosition;
+                var typeOid = Buffer.ReadUInt32();
+                var bufferPos = Buffer.ReadPosition;
+                if (i >= _columns.Count)
+                {
+                    _columns.Add(new ColumnInfo
+                    {
+                        TypeOid = typeOid,
+                        BufferPos = bufferPos,
+                        TypeHandler = TypeMapper.GetByOID(typeOid)
+                    });
+                }
+                else
+                {
+                    _columns[i] = new ColumnInfo
+                    {
+                        TypeOid = typeOid,
+                        BufferPos = bufferPos,
+                        TypeHandler = _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.GetByOID(typeOid)
+                    };
+                }
+
                 var columnLen = Buffer.ReadInt32();
                 if (columnLen >= 0)
                     Buffer.Skip(columnLen);
@@ -279,20 +378,21 @@ namespace Npgsql
         {
             CheckResultSet();
 
-            if (column < 0 || column >= _columns!.Length)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {_columns!.Length - 1}");
+            if (column < 0 || column >= _columns.Count)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {_columns.Count - 1}");
 
-            return _columns![column];
+            return _columns[column];
         }
 
-        (NpgsqlTypeHandler Handler, int Length) CheckRowAndColumnAndSeek(int column)
+        (NpgsqlTypeHandler Handler, int Length) CheckRowAndColumnAndSeek(int ordinal)
         {
-            var columnInfo = CheckRowAndColumn(column);
-            Buffer.ReadPosition = columnInfo.BufferPos;
+            var column = CheckRowAndColumn(ordinal);
+            Buffer.ReadPosition = column.BufferPos;
             var len = Buffer.ReadInt32();
-            return (TypeMapper.GetByOID(columnInfo.Oid), len);
+            return (column.TypeHandler, len);
         }
 
+        /// <inheritdoc />
         public override bool NextResult()
         {
             CheckNotClosed();
@@ -304,20 +404,36 @@ namespace Npgsql
             return false;
         }
 
-        public override void Close()
+        /// <inheritdoc />
+        public override void Close() => _closed = true;
+
+        /// <inheritdoc />
+        protected override void Dispose(bool disposing)
         {
-            _closed = true;
+            if (disposing)
+            {
+                Close();
+                if (_outerReader != null)
+                {
+                    _outerReader._cachedFreeNestedDataReader ??= this;
+                    _outerReader = null;
+                }
+                else
+                {
+                    _outermostReader.CachedFreeNestedDataReader ??= this;
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CheckNotClosed()
+        void CheckNotClosed()
         {
-            if (_closed || _outermostReader.IsClosed || _uniqueOutermostReaderRowId != _outermostReader.UniqueRowId)
+            if (IsClosed)
                 throw new InvalidOperationException("The reader is closed");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CheckResultSet()
+        void CheckResultSet()
         {
             CheckNotClosed();
             if (_calledNextResult)

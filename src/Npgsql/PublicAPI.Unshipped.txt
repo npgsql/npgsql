@@ -31,3 +31,42 @@ Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.PerInstance = 2 -> Npgsql.ArrayNullabilityMode
 Npgsql.NpgsqlCommand.Disposed -> System.EventHandler?
 Npgsql.NpgsqlConnection.Disposed -> System.EventHandler?
+Npgsql.NpgsqlNestedDataReader
+override Npgsql.NpgsqlNestedDataReader.Close() -> void
+override Npgsql.NpgsqlNestedDataReader.Depth.get -> int
+override Npgsql.NpgsqlNestedDataReader.FieldCount.get -> int
+override Npgsql.NpgsqlNestedDataReader.GetBoolean(int ordinal) -> bool
+override Npgsql.NpgsqlNestedDataReader.GetByte(int ordinal) -> byte
+override Npgsql.NpgsqlNestedDataReader.GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) -> long
+override Npgsql.NpgsqlNestedDataReader.GetChar(int ordinal) -> char
+override Npgsql.NpgsqlNestedDataReader.GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) -> long
+override Npgsql.NpgsqlNestedDataReader.GetDataTypeName(int ordinal) -> string!
+override Npgsql.NpgsqlNestedDataReader.GetDateTime(int ordinal) -> System.DateTime
+override Npgsql.NpgsqlNestedDataReader.GetDecimal(int ordinal) -> decimal
+override Npgsql.NpgsqlNestedDataReader.GetDouble(int ordinal) -> double
+override Npgsql.NpgsqlNestedDataReader.GetEnumerator() -> System.Collections.IEnumerator!
+override Npgsql.NpgsqlNestedDataReader.GetFieldType(int ordinal) -> System.Type!
+override Npgsql.NpgsqlNestedDataReader.GetFieldValue<T>(int ordinal) -> T
+override Npgsql.NpgsqlNestedDataReader.GetFloat(int ordinal) -> float
+override Npgsql.NpgsqlNestedDataReader.GetGuid(int ordinal) -> System.Guid
+override Npgsql.NpgsqlNestedDataReader.GetInt16(int ordinal) -> short
+override Npgsql.NpgsqlNestedDataReader.GetInt32(int ordinal) -> int
+override Npgsql.NpgsqlNestedDataReader.GetInt64(int ordinal) -> long
+override Npgsql.NpgsqlNestedDataReader.GetName(int ordinal) -> string!
+override Npgsql.NpgsqlNestedDataReader.GetOrdinal(string! name) -> int
+override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
+override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValue(int ordinal) -> object!
+override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValues(object![]! values) -> int
+override Npgsql.NpgsqlNestedDataReader.GetString(int ordinal) -> string!
+override Npgsql.NpgsqlNestedDataReader.GetValue(int ordinal) -> object!
+override Npgsql.NpgsqlNestedDataReader.GetValues(object![]! values) -> int
+override Npgsql.NpgsqlNestedDataReader.HasRows.get -> bool
+override Npgsql.NpgsqlNestedDataReader.IsClosed.get -> bool
+override Npgsql.NpgsqlNestedDataReader.IsDBNull(int ordinal) -> bool
+override Npgsql.NpgsqlNestedDataReader.NextResult() -> bool
+override Npgsql.NpgsqlNestedDataReader.Read() -> bool
+override Npgsql.NpgsqlNestedDataReader.RecordsAffected.get -> int
+override Npgsql.NpgsqlNestedDataReader.this[int ordinal].get -> object!
+override Npgsql.NpgsqlNestedDataReader.this[string! name].get -> object!
+Npgsql.NpgsqlNestedDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
+Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!

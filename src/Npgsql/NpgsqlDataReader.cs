@@ -142,9 +142,11 @@ namespace Npgsql
 
         /// <summary>
         /// Used to keep track of every unique row this reader object ever traverses.
-        /// This is used to detect whether inner DbDataReaders are still valid.
+        /// This is used to detect whether nested DbDataReaders are still valid.
         /// </summary>
         internal ulong UniqueRowId;
+
+        internal NpgsqlNestedDataReader? CachedFreeNestedDataReader;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDataReader));
 
@@ -1196,23 +1198,41 @@ namespace Npgsql
         public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
         /// <inheritdoc />
-        protected override DbDataReader GetDbDataReader(int ordinal)
+        protected override DbDataReader GetDbDataReader(int ordinal) => GetData(ordinal);
+
+        /// <summary>
+        /// Returns a nested data reader for the requested column.
+        /// The column type must be a record or a to Npgsql known composite type, or an array thereof.
+        /// Currently only supported in non-sequential mode.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>A data reader.</returns>
+        public new NpgsqlNestedDataReader GetData(int ordinal)
         {
             var field = CheckRowAndGetField(ordinal);
             var type = field.PostgresType;
             var isArray = type is PostgresArrayType;
             var elementType = isArray ? ((PostgresArrayType)type).Element : type;
             if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
-                throw new InvalidCastException("GetDbDataReader() not supported for type " + field.TypeDisplayName);
+                throw new NotSupportedException("GetData() not supported for type " + field.TypeDisplayName);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
             if (ColumnLen == -1)
                 ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
             if (_isSequential)
-                throw new InvalidOperationException("GetDbDataReader not supported in sequential mode.");
+                throw new NotSupportedException("GetData() not supported in sequential mode.");
 
-            var reader = new NpgsqlRecordDataReader(this, UniqueRowId, 1);
+            var reader = CachedFreeNestedDataReader;
+            if (reader != null)
+            {
+                CachedFreeNestedDataReader = null;
+                reader.Recreate(this, UniqueRowId, 1);
+            }
+            else
+            {
+                reader = new NpgsqlNestedDataReader(this, UniqueRowId, 1);
+            }
             if (isArray)
                 reader.InitArray();
             else
