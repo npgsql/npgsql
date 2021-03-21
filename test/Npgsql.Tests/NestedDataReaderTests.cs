@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Tests
 {
-    public class NestedDataReaderTests : MultiplexingTestBase
+    public class NestedDataReaderTests : TestBase
     {
         [Test]
         public async Task BasicFunctionality()
@@ -177,7 +177,5 @@ namespace Npgsql.Tests
                 }
             }
         }
-
-        public NestedDataReaderTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) { }
     }
 }

@@ -368,6 +368,7 @@ namespace Npgsql
                 if (columnLen >= 0)
                     Buffer.Skip(columnLen);
             }
+            _columns.RemoveRange(numColumns, _columns.Count - numColumns);
 
             _nextRowBufferPos = Buffer.ReadPosition;
 
