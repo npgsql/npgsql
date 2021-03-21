@@ -219,6 +219,7 @@ namespace Npgsql
             _pool = PoolManager.GetOrAdd(canonical, newPool);
             if (_pool == newPool)
             {
+                Debug.Assert(_pool is not MultiHostConnectorPoolWrapper);
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
                 NpgsqlEventSource.Log.PoolCreated(newPool);
