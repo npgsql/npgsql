@@ -164,18 +164,44 @@ namespace Npgsql.Tests
                                       "SELECT ARRAY[ROW('1', '2')::nested_db_reader_composite]"};
             foreach (var sql in sqls)
             {
-                using (var command = new NpgsqlCommand(sql, conn))
-                {
-                    await using var reader = await command.ExecuteReaderAsync();
-                    await reader.ReadAsync();
-                    using var nestedReader = reader.GetData(0);
-                    nestedReader.Read();
-                    Assert.That(nestedReader.GetDataTypeName(0), Is.EqualTo("integer"));
-                    Assert.That(nestedReader.GetDataTypeName(1), Is.EqualTo("text"));
-                    Assert.That(nestedReader.GetInt32(0), Is.EqualTo(1));
-                    Assert.That(nestedReader.GetString(1), Is.EqualTo("2"));
-                }
+                await using var command = new NpgsqlCommand(sql, conn);
+                await using var reader = await command.ExecuteReaderAsync();
+                await reader.ReadAsync();
+                using var nestedReader = reader.GetData(0);
+                nestedReader.Read();
+                Assert.That(nestedReader.GetDataTypeName(0), Is.EqualTo("integer"));
+                Assert.That(nestedReader.GetDataTypeName(1), Is.EqualTo("text"));
+                Assert.That(nestedReader.GetInt32(0), Is.EqualTo(1));
+                Assert.That(nestedReader.GetString(1), Is.EqualTo("2"));
             }
+        }
+
+        [Test]
+        public void GetBytes()
+        {
+            using var conn = OpenConnection();
+            using var command = new NpgsqlCommand(@"SELECT ROW('\x010203'::BYTEA, NULL::BYTEA)", conn);
+            using var reader = command.ExecuteReader();
+            reader.Read();
+            using var nestedReader = reader.GetData(0);
+            nestedReader.Read();
+            Assert.That(nestedReader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
+            var buf = new byte[4];
+            Assert.That(nestedReader.GetBytes(0, 0, null, 0, 3), Is.EqualTo(3));
+            Assert.That(nestedReader.GetBytes(0, 0, null, 0, 4), Is.EqualTo(3));
+            Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 3), Is.EqualTo(3));
+            Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 4), Is.EqualTo(3));
+            CollectionAssert.AreEqual(new byte[] { 1, 2, 3, 0 }, buf);
+            buf = new byte[2];
+            Assert.That(nestedReader.GetBytes(0, 0, buf, 0, 2), Is.EqualTo(2));
+            CollectionAssert.AreEqual(new byte[] { 1, 2 }, buf);
+            buf = new byte[2];
+            Assert.That(nestedReader.GetBytes(0, 1, buf, 1, 1), Is.EqualTo(1));
+            CollectionAssert.AreEqual(new byte[] { 0, 2 }, buf);
+            Assert.That(nestedReader.GetBytes(0, 2, buf, 1, 1), Is.EqualTo(1));
+            CollectionAssert.AreEqual(new byte[] { 0, 3 }, buf);
+            Assert.Throws<InvalidCastException>(() => nestedReader.GetBytes(1, 0, buf, 0, 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => nestedReader.GetBytes(0, 4, buf, 0, 1));
         }
     }
 }

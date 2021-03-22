@@ -1,4 +1,5 @@
 ﻿using Npgsql.Internal;
+using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
@@ -20,17 +21,15 @@ namespace Npgsql
     {
         NpgsqlDataReader _outermostReader;
         ulong _uniqueOutermostReaderRowId;
-        NpgsqlNestedDataReader? _outerReader;
+        NpgsqlNestedDataReader? _outerNestedReader;
         NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
         int _depth;
         int _numRows;
         int _nextRowIndex;
         int _nextRowBufferPos;
+        ReaderState _readerState;
 
         readonly List<ColumnInfo> _columns = new();
-
-        bool _calledNextResult;
-        bool _closed;
 
         struct ColumnInfo
         {
@@ -54,11 +53,11 @@ namespace Npgsql
             _outermostReader = outermostReader;
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
             _depth = depth;
+            _columns.Clear();
             _numRows = 0;
             _nextRowIndex = 0;
             _nextRowBufferPos = 0;
-            _calledNextResult = false;
-            _closed = false;
+            _readerState = ReaderState.BeforeFirstRow;
         }
 
         internal void InitArray()
@@ -113,7 +112,7 @@ namespace Npgsql
             get
             {
                 CheckNotClosed();
-                return _calledNextResult ? 0 : _columns.Count;
+                return _readerState == ReaderState.OnRow ? _columns.Count : 0;
             }
         }
 
@@ -129,7 +128,8 @@ namespace Npgsql
 
         /// <inheritdoc />
         public override bool IsClosed
-            => _closed || _outermostReader.IsClosed || _uniqueOutermostReaderRowId != _outermostReader.UniqueRowId;
+            => _readerState == ReaderState.Closed || _readerState == ReaderState.Disposed
+               || _outermostReader.IsClosed || _uniqueOutermostReaderRowId != _outermostReader.UniqueRowId;
 
         /// <inheritdoc />
         public override int RecordsAffected => -1;
@@ -158,9 +158,39 @@ namespace Npgsql
         public override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
         /// <inheritdoc />
         public override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
+
         /// <inheritdoc />
         public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
-            => throw new NotSupportedException();
+        {
+            if (dataOffset < 0 || dataOffset > int.MaxValue)
+                throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
+            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
+                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
+            if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
+                throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
+
+            var field = CheckRowAndColumnAndSeek(ordinal);
+            var handler = field.Handler;
+            if (!(handler is ByteaHandler))
+                throw new InvalidCastException("GetBytes() not supported for type " + field.Handler.PgDisplayName);
+
+            if (field.Length == -1)
+                throw new InvalidCastException("field is null");
+
+            var dataOffset2 = (int)dataOffset;
+            if (dataOffset2 > field.Length)
+                throw new ArgumentOutOfRangeException(nameof(dataOffset),
+                    $"attempting to read out of bounds from the column data, dataOffset must be between {0} and {field.Length}");
+
+            Buffer.ReadPosition += dataOffset2;
+
+            length = Math.Min(length, field.Length - dataOffset2);
+
+            if (buffer == null)
+                return length;
+
+            return Buffer.Read(new Span<byte>(buffer, bufferOffset, length));
+        }
         /// <inheritdoc />
         public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
             => throw new NotSupportedException();
@@ -255,7 +285,7 @@ namespace Npgsql
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
-            CheckResultSet();
+            CheckOnRow();
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -319,7 +349,7 @@ namespace Npgsql
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
-            CheckResultSet();
+            CheckOnRow();
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -333,8 +363,11 @@ namespace Npgsql
             CheckResultSet();
 
             Buffer.ReadPosition = _nextRowBufferPos;
-            if (_nextRowIndex >= _numRows)
+            if (_nextRowIndex == _numRows)
+            {
+                _readerState = ReaderState.AfterRows;
                 return false;
+            }
 
             if (_nextRowIndex++ != 0)
                 Buffer.ReadInt32(); // Length of record
@@ -372,25 +405,8 @@ namespace Npgsql
 
             _nextRowBufferPos = Buffer.ReadPosition;
 
+            _readerState = ReaderState.OnRow;
             return true;
-        }
-
-        ColumnInfo CheckRowAndColumn(int column)
-        {
-            CheckResultSet();
-
-            if (column < 0 || column >= _columns.Count)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {_columns.Count - 1}");
-
-            return _columns[column];
-        }
-
-        (NpgsqlTypeHandler Handler, int Length) CheckRowAndColumnAndSeek(int ordinal)
-        {
-            var column = CheckRowAndColumn(ordinal);
-            Buffer.ReadPosition = column.BufferPos;
-            var len = Buffer.ReadInt32();
-            return (column.TypeHandler, len);
         }
 
         /// <inheritdoc />
@@ -401,23 +417,29 @@ namespace Npgsql
             _numRows = 0;
             _nextRowBufferPos = 0;
             _nextRowIndex = 0;
-            _calledNextResult = true;
+            _readerState = ReaderState.AfterResult;
             return false;
         }
 
         /// <inheritdoc />
-        public override void Close() => _closed = true;
+        public override void Close()
+        {
+            if (_readerState != ReaderState.Disposed)
+            {
+                _readerState = ReaderState.Closed;
+            }
+        }
 
         /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && _readerState != ReaderState.Disposed)
             {
                 Close();
-                if (_outerReader != null)
+                if (_outerNestedReader != null)
                 {
-                    _outerReader._cachedFreeNestedDataReader ??= this;
-                    _outerReader = null;
+                    _outerNestedReader._cachedFreeNestedDataReader ??= this;
+                    _outerNestedReader = null;
                 }
                 else
                 {
@@ -437,8 +459,51 @@ namespace Npgsql
         void CheckResultSet()
         {
             CheckNotClosed();
-            if (_calledNextResult)
-                throw new InvalidOperationException("No resultset is currently being traversed");
+            switch (_readerState)
+            {
+                case ReaderState.BeforeFirstRow:
+                case ReaderState.OnRow:
+                case ReaderState.AfterRows:
+                    break;
+                default:
+                    throw new InvalidOperationException("No resultset is currently being traversed");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void CheckOnRow()
+        {
+            CheckResultSet();
+            if (_readerState != ReaderState.OnRow)
+                throw new InvalidOperationException("No row is available");
+        }
+
+        ColumnInfo CheckRowAndColumn(int column)
+        {
+            CheckOnRow();
+
+            if (column < 0 || column >= _columns.Count)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {_columns.Count - 1}");
+
+            return _columns[column];
+        }
+
+        (NpgsqlTypeHandler Handler, int Length) CheckRowAndColumnAndSeek(int ordinal)
+        {
+            var column = CheckRowAndColumn(ordinal);
+            Buffer.ReadPosition = column.BufferPos;
+            var len = Buffer.ReadInt32();
+            return (column.TypeHandler, len);
+        }
+
+        enum ReaderState
+        {
+            BeforeFirstRow,
+            OnRow,
+            AfterRows,
+            AfterResult,
+            Closed,
+            Disposed
         }
     }
 }

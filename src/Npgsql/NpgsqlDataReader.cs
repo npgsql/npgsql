@@ -1214,7 +1214,7 @@ namespace Npgsql
             var isArray = type is PostgresArrayType;
             var elementType = isArray ? ((PostgresArrayType)type).Element : type;
             if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
-                throw new NotSupportedException("GetData() not supported for type " + field.TypeDisplayName);
+                throw new InvalidCastException("GetData() not supported for type " + field.TypeDisplayName);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
             if (ColumnLen == -1)
