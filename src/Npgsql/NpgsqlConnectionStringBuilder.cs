@@ -486,6 +486,24 @@ namespace Npgsql
         string _encoding = "UTF8";
 
         /// <summary>
+        /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
+        [DisplayName("Timezone")]
+        [NpgsqlConnectionStringProperty]
+        public string? Timezone
+        {
+            get => _timezone;
+            set
+            {
+                _timezone = value;
+                SetValue(nameof(Timezone), value);
+            }
+        }
+        string? _timezone;
+
+        /// <summary>
         /// Determines the preferred PostgreSQL target server type.
         /// </summary>
         [Category("Connection")]
@@ -505,22 +523,23 @@ namespace Npgsql
         TargetSessionAttributes _targetSessionAttributes;
 
         /// <summary>
-        /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
+        /// Controls for how long the cluster's cached state will be considered as valid.
         /// </summary>
         [Category("Connection")]
-        [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
-        [DisplayName("Timezone")]
+        [Description("Controls for how long the cluster's cached state will be considered as valid.")]
+        [DisplayName("ClusterRecheckSeconds")]
+        [DefaultValue(10)]
         [NpgsqlConnectionStringProperty]
-        public string? Timezone
+        public int ClusterRecheckSeconds
         {
-            get => _timezone;
+            get => _clusterRecheckSeconds;
             set
             {
-                _timezone = value;
-                SetValue(nameof(Timezone), value);
+                _clusterRecheckSeconds = value;
+                SetValue(nameof(ClusterRecheckSeconds), value);
             }
         }
-        string? _timezone;
+        int _clusterRecheckSeconds;
 
         #endregion
 

@@ -8,26 +8,24 @@ namespace Npgsql
     {
         static readonly ConcurrentDictionary<ClusterIdentifier, ClusterInfo> Clusters = new();
 
-        static readonly TimeSpan ClusterStateExpiration = TimeSpan.FromSeconds(10); // TODO: add a param?
-
         internal static ClusterState GetClusterState(string host, int port)
             => Clusters.TryGetValue(new(host, port), out var cs) && !cs.Timeout.HasExpired
                 ? cs.State
                 : ClusterState.Unknown;
 
 #if NETSTANDARD2_0
-        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp)
+        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
             => Clusters.AddOrUpdate(
                 new ClusterIdentifier(host, port),
-                new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp),
-                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp));
+                new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp),
+                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp));
 #else
-        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp)
+        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
             => Clusters.AddOrUpdate(
                 new ClusterIdentifier(host, port),
                 (_, newInfo) => newInfo,
                 (_, oldInfo, newInfo) => oldInfo.TimeStamp >= newInfo.TimeStamp ? oldInfo : newInfo,
-                new ClusterInfo(state, new NpgsqlTimeout(ClusterStateExpiration), timeStamp));
+                new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp));
 #endif
 
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
