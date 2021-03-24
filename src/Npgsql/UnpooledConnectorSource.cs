@@ -21,7 +21,7 @@ namespace Npgsql
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var connector = new NpgsqlConnector(conn, this);
-            await connector.Open(timeout, async, cancellationToken);
+            await connector.Open(timeout, async, queryState: false, cancellationToken);
             Interlocked.Increment(ref _numConnectors);
             return connector;
         }

@@ -461,7 +461,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal async Task Open(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        internal async Task Open(NpgsqlTimeout timeout, bool async, bool queryState, CancellationToken cancellationToken)
         {
             Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
@@ -502,7 +502,8 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
-                await QueryClusterState(timeout, async, cancellationToken);
+                if (queryState)
+                    await QueryClusterState(timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -593,10 +594,6 @@ namespace Npgsql
         internal async ValueTask<ClusterState> QueryClusterState(
             NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
-            // Extended query protocol not supported in a replication connection
-            if (Settings.ReplicationMode != ReplicationMode.Off)
-                return ClusterState.Unknown;
-
             // Super hacky stuff...
 
             var prevBindingScope = Connection!.ConnectorBindingScope;
