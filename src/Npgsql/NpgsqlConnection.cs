@@ -407,7 +407,7 @@ namespace Npgsql
         /// Backend server port.
         /// </summary>
         [Browsable(true)]
-        public int? Port => Connector?.Port;
+        public int Port => Connector?.Port ?? 0;
 
         /// <summary>
         /// Gets the time (in seconds) to wait while trying to establish a connection
