@@ -1312,13 +1312,16 @@ namespace Npgsql
 
                     throw;
                 }
-                catch (NpgsqlException e)
+                catch (Exception e) when (e is OperationCanceledException ||
+                    e is NpgsqlException && e.InnerException is TimeoutException && !readingNotifications)
                 {
                     // We've timed out even though we've send the cancellation request
-                    if (e.InnerException is TimeoutException && connector.PostgresCancellationPerformed)
-                        ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
+                    ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
                             TimeSpan.FromSeconds(connector.Settings.ClusterRecheckSeconds));
-
+                    throw;
+                }
+                catch (NpgsqlException)
+                {
                     // An ErrorResponse isn't followed by ReadyForQuery
                     if (error != null)
                         ExceptionDispatchInfo.Capture(error).Throw();
