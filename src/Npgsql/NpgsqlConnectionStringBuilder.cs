@@ -1840,27 +1840,27 @@ namespace Npgsql
         /// <summary>
         ///  Try to connect to every server in order.
         /// </summary>
-        Any = 1,
+        Any = 0,
 
         /// <summary>
         ///  Secondary (readonly) server is selected for the connection.
         /// </summary>
-        Secondary = 2,
+        Secondary = 1,
 
         /// <summary>
         /// Secondary (readonly) server is selected for the connection. Falls back to Primary (writable), if none are available.
         /// </summary>
-        PreferSecondary = 3,
+        PreferSecondary = 2,
 
         /// <summary>
         ///  Primary (writable) server is selected for the connection.
         /// </summary>
-        Primary = 4,
+        Primary = 3,
 
         /// <summary>
         /// Primary (writable) server is selected for the connection. Falls back to Secondary (readonly), if none are available.
         /// </summary>
-        PreferPrimary = 5,
+        PreferPrimary = 4,
     }
 
     #endregion
