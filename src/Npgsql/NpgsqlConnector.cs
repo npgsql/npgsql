@@ -1808,6 +1808,11 @@ namespace Npgsql
             {
                 if (State != ConnectorState.Broken)
                 {
+                    // There was an IOException while reading/writing
+                    if (reason is NpgsqlException && reason.InnerException is IOException)
+                        ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
+                            TimeSpan.FromSeconds(Settings.ClusterRecheckSeconds));
+
                     Log.Error("Breaking connector", reason, Id);
 
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
