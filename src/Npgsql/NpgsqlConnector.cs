@@ -264,7 +264,6 @@ namespace Npgsql
             PostgresErrorCodes.OutOfMemory, // Self explanatory
             PostgresErrorCodes.TooManyConnections,
             PostgresErrorCodes.ConfigurationLimitExceeded,
-            PostgresErrorCodes.AdminShutdown, // Restart by admin
             PostgresErrorCodes.CrashShutdown, // Self explanatory
             PostgresErrorCodes.CannotConnectNow, // Database is starting up
             PostgresErrorCodes.SystemError, // Server is dying
