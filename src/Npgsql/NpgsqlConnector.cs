@@ -542,7 +542,7 @@ namespace Npgsql
             catch (Exception e)
             {
                 ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline,
-                    DateTime.UtcNow, TimeSpan.FromSeconds(Settings.ClusterRecheckSeconds));
+                    DateTime.UtcNow, TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
                 Break(e);
                 throw;
             }
@@ -613,7 +613,7 @@ namespace Npgsql
                 : cmd.ExecuteScalar())!;
             var state = isSecondary ? ClusterState.Secondary : ClusterState.Primary;
             ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                TimeSpan.FromSeconds(Settings.ClusterRecheckSeconds));
+                TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
             return state;
         }
 
@@ -1262,7 +1262,7 @@ namespace Npgsql
                             {
                                 // Consider the database offline
                                 ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                                    TimeSpan.FromSeconds(connector.Settings.ClusterRecheckSeconds));
+                                    TimeSpan.FromSeconds(connector.Settings.HostRecheckSeconds));
                                 throw connector.Break(error);
                             }
 
@@ -1316,7 +1316,7 @@ namespace Npgsql
                 {
                     // We've timed out even though we've send the cancellation request
                     ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                            TimeSpan.FromSeconds(connector.Settings.ClusterRecheckSeconds));
+                            TimeSpan.FromSeconds(connector.Settings.HostRecheckSeconds));
                     throw;
                 }
                 catch (NpgsqlException)
@@ -1810,7 +1810,7 @@ namespace Npgsql
                     // There was an IOException while reading/writing
                     if (reason is NpgsqlException && reason.InnerException is IOException)
                         ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                            TimeSpan.FromSeconds(Settings.ClusterRecheckSeconds));
+                            TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
 
                     Log.Error("Breaking connector", reason, Id);
 

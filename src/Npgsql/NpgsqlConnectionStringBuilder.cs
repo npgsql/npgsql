@@ -523,23 +523,23 @@ namespace Npgsql
         TargetSessionAttributes _targetSessionAttributes;
 
         /// <summary>
-        /// Controls for how long the cluster's cached state will be considered as valid.
+        /// Controls for how long the host's cached state will be considered as valid.
         /// </summary>
         [Category("Connection")]
-        [Description("Controls for how long the cluster's cached state will be considered as valid.")]
-        [DisplayName("ClusterRecheckSeconds")]
+        [Description("Controls for how long the host's cached state will be considered as valid.")]
+        [DisplayName("HostRecheckSeconds")]
         [DefaultValue(10)]
         [NpgsqlConnectionStringProperty]
-        public int ClusterRecheckSeconds
+        public int HostRecheckSeconds
         {
-            get => _clusterRecheckSeconds;
+            get => _hostRecheckSeconds;
             set
             {
-                _clusterRecheckSeconds = value;
-                SetValue(nameof(ClusterRecheckSeconds), value);
+                _hostRecheckSeconds = value;
+                SetValue(nameof(HostRecheckSeconds), value);
             }
         }
-        int _clusterRecheckSeconds;
+        int _hostRecheckSeconds;
 
         #endregion
 
