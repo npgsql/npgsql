@@ -25,19 +25,22 @@ namespace Npgsql.Tests.Support
         Task? _acceptClientsTask;
         int _processIdCounter;
 
+        readonly bool _completeCancellationImmediately;
+        readonly bool? _isSecondary;
+
         ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
         internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
 
-        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true)
+        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true, bool? isSecondary = null)
         {
-            var mock = new PgPostmasterMock(connectionString);
-            mock.AcceptClients(completeCancellationImmediately);
+            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, isSecondary);
+            mock.AcceptClients();
             return mock;
         }
 
-        internal PgPostmasterMock(string? connectionString = null)
+        internal PgPostmasterMock(string? connectionString = null, bool completeCancellationImmediately = true, bool? isSecondary = null)
         {
             var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
             PendingRequestsReader = pendingRequestsChannel.Reader;
@@ -45,6 +48,9 @@ namespace Npgsql.Tests.Support
 
             var connectionStringBuilder =
                 new NpgsqlConnectionStringBuilder(connectionString ?? TestUtil.ConnectionString);
+
+            _completeCancellationImmediately = completeCancellationImmediately;
+            _isSecondary = isSecondary;
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
@@ -58,7 +64,7 @@ namespace Npgsql.Tests.Support
             _socket.Listen(5);
         }
 
-        void AcceptClients(bool acceptCancellationImmediately)
+        void AcceptClients()
         {
             _acceptingClients = true;
             _acceptClientsTask = DoAcceptClients();
@@ -67,12 +73,12 @@ namespace Npgsql.Tests.Support
             {
                 while (true)
                 {
-                    var serverOrCancellationRequest = await Accept(acceptCancellationImmediately);
+                    var serverOrCancellationRequest = await Accept(_completeCancellationImmediately);
                     if (serverOrCancellationRequest.Server is { } server)
                     {
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
-                        _ = server.Startup().ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        _ = server.Startup(_isSecondary).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
                     }
                     else
                     {

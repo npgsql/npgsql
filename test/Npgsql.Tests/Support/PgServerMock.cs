@@ -38,7 +38,7 @@ namespace Npgsql.Tests.Support
             _writeBuffer = writeBuffer;
         }
 
-        internal async Task Startup()
+        internal async Task Startup(bool? isSecondary)
         {
             // Read and skip the startup message
             await SkipMessage();
@@ -63,9 +63,12 @@ namespace Npgsql.Tests.Support
             WriteReadyForQuery();
             await FlushAsync();
 
-            // Writing a response, that the mock is not secondary
-            await ExpectExtendedQuery();
-            await WriteScalarResponseAndFlush(false);
+            if (isSecondary.HasValue)
+            {
+                // Writing a response, whether the mock secondary
+                await ExpectExtendedQuery();
+                await WriteScalarResponseAndFlush(isSecondary.Value);
+            }
         }
 
         internal async Task SkipMessage()
