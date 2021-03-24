@@ -310,7 +310,7 @@ namespace Npgsql
                 {
                     // We've managed to increase the open counter, open a physical connections.
                     var connector = new NpgsqlConnector(conn, this) { ClearCounter = _clearCounter };
-                    var queryState = _parentPool != null && Settings.ReplicationMode != ReplicationMode.Off;
+                    var queryState = _parentPool is not null && Settings.ReplicationMode == ReplicationMode.Off;
                     await connector.Open(timeout, async, queryState, cancellationToken);
 
                     var i = 0;
