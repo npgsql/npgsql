@@ -1,13 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 using System.Transactions;
+using Npgsql.Tests.Support;
+
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -114,6 +115,27 @@ namespace Npgsql.Tests
                     .With.Property(nameof(InvalidOperationException.Message)).EqualTo("Catch me outside the using statement if you can!")
             );
             Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.Zero);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3600")]
+        public async Task Bug3600()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                CommandTimeout = 1,
+            };
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var serverMock = await postmasterMock.WaitForServerConnection();
+            await serverMock
+                .WriteCopyInResponse()
+                .FlushAsync();
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () =>
+            {
+                await using var importer = await conn.BeginTextImportAsync($"COPY SomeTable (field_text, field_int4) FROM STDIN");
+            });
+            Assert.That(ex!.InnerException, Is.TypeOf<TimeoutException>());
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
