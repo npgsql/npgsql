@@ -438,7 +438,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal async Task Open(NpgsqlTimeout timeout, bool async, bool queryState, CancellationToken cancellationToken)
+        internal async Task Open(NpgsqlTimeout timeout, bool async, bool queryClusterState, CancellationToken cancellationToken)
         {
             Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
@@ -479,7 +479,7 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
-                if (queryState)
+                if (queryClusterState)
                     await QueryClusterState(timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
@@ -577,10 +577,10 @@ namespace Npgsql
             Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
             using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
 
-            using var cmd = new NpgsqlCommand("select pg_is_in_recovery();SHOW default_transaction_read_only;", Connection);
+            using var cmd = new NpgsqlCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only", Connection);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-            // We're taking the timestamp before the query is send, because due to issues (IO, operation ordering, etc) we can recieve an 'old' state
-            // Otherwise, execution of the query shouldn't make notable difference
+            // We're taking the timestamp before the query is sent, because due to issues (IO, operation ordering, etc) we can receive an
+            // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
             var timeStamp = DateTime.UtcNow;
 
             using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
@@ -590,7 +590,7 @@ namespace Npgsql
             reader.Read();
             var transactionReadOnly = reader.GetString(0) != "off";
 
-            var state = isInRecovery ? ClusterState.Secondary :
+            var state = isInRecovery ? ClusterState.Standby :
                 transactionReadOnly
                     ? ClusterState.PrimaryReadOnly
                     : ClusterState.PrimaryReadWrite;
@@ -852,7 +852,7 @@ namespace Npgsql
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
                     if (i == endpoints.Length - 1)
-                        throw new NpgsqlException("Exception while connecting", e);
+                        throw new NpgsqlException($"Failed to connect to {endpoint}", e);
                 }
             }
         }
@@ -930,9 +930,7 @@ namespace Npgsql
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
                     if (i == endpoints.Length - 1)
-                    {
-                        throw new NpgsqlException("Exception while connecting", e);
-                    }
+                        throw new NpgsqlException($"Failed to connect to {endpoint}", e);
                 }
                 finally
                 {

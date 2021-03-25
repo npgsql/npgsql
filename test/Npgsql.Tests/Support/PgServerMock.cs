@@ -63,21 +63,32 @@ namespace Npgsql.Tests.Support
             WriteReadyForQuery();
             await FlushAsync();
 
-            if (state != MockState.Default)
+            if (state != MockState.MultipleHostsDisabled)
             {
-                var isSecondary = state == MockState.Secondary;
-                var transactionReadOnly = state == MockState.Secondary || state == MockState.PrimaryReadOnly
+                var isStandby = state == MockState.Standby;
+                var transactionReadOnly = state == MockState.Standby || state == MockState.PrimaryReadOnly
                     ? "on"
                     : "off";
 
-                // Writing a response, whether the mock secondary
-                await ExpectExtendedQuery();
+                // Write the response on the mock is primary/standby/read-write/read-only
+                await ExpectMessages(
+                    FrontendMessageCode.Parse,
+                    FrontendMessageCode.Bind,
+                    FrontendMessageCode.Describe,
+                    FrontendMessageCode.Execute,
+                    FrontendMessageCode.Parse,
+                    FrontendMessageCode.Bind,
+                    FrontendMessageCode.Describe,
+                    FrontendMessageCode.Execute,
+                    FrontendMessageCode.Sync);
 
                 await WriteParseComplete()
                     .WriteBindComplete()
                     .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
-                    .WriteDataRow(BitConverter.GetBytes(isSecondary))
+                    .WriteDataRow(BitConverter.GetBytes(isStandby))
                     .WriteCommandComplete()
+                    .WriteParseComplete()
+                    .WriteBindComplete()
                     .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
                     .WriteDataRow(Encoding.ASCII.GetBytes(transactionReadOnly))
                     .WriteCommandComplete()

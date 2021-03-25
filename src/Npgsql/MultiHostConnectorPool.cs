@@ -17,7 +17,7 @@ namespace Npgsql
             _pools = new ConnectorPool[hosts.Length];
             for (var i = 0; i < hosts.Length; i++)
             {
-                var host = hosts[i];
+                var host = hosts[i].Trim();
                 var port = settings.Port;
                 var portSeparator = host.IndexOf(':');
                 if (portSeparator != -1)
@@ -41,7 +41,7 @@ namespace Npgsql
                     || preferredType == TargetSessionAttributes.ReadWrite  => true,
                 ClusterState.PrimaryReadOnly when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary
                     || preferredType == TargetSessionAttributes.ReadOnly => true,
-                ClusterState.Secondary when preferredType == TargetSessionAttributes.Secondary || preferredType == TargetSessionAttributes.PreferSecondary
+                ClusterState.Standby when preferredType == TargetSessionAttributes.Standby || preferredType == TargetSessionAttributes.PreferStandby
                     || preferredType == TargetSessionAttributes.ReadOnly => true,
                 _ => preferredType == TargetSessionAttributes.Any
             };
@@ -50,8 +50,8 @@ namespace Npgsql
             => state switch
             {
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
-                ClusterState.Secondary when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
+                ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
+                ClusterState.Standby when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
                 _ => false
             };
 
@@ -136,7 +136,7 @@ namespace Npgsql
                 }
                 catch (Exception ex)
                 {
-                    exceptions.Add(new NpgsqlException($"Unable to open a new connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
+                    exceptions.Add(ex);
                 }
             }
 
@@ -216,7 +216,7 @@ namespace Npgsql
                 throw NoSuitableHostsException(exceptions);
             }
 
-            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary)
+            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
             {
                 var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
@@ -232,7 +232,7 @@ namespace Npgsql
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary)
+            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
             {
                 var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)
@@ -244,7 +244,7 @@ namespace Npgsql
 
         static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
             => exceptions.Count == 0
-                ? new NpgsqlException("No suitable host has been found.")
+                ? new NpgsqlException("No suitable host was found.")
                 : new("Unable to connect to a suitable host. Check inner exception for more details.",
                     new AggregateException(exceptions));
 

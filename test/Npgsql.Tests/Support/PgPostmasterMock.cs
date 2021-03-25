@@ -32,22 +32,29 @@ namespace Npgsql.Tests.Support
         internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
+        internal string Host { get; }
+        internal int Port { get; }
 
-        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true, MockState state = MockState.Default)
+        internal static PgPostmasterMock Start(
+            string? connectionString = null,
+            bool completeCancellationImmediately = true,
+            MockState state = MockState.MultipleHostsDisabled)
         {
             var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state);
             mock.AcceptClients();
             return mock;
         }
 
-        internal PgPostmasterMock(string? connectionString = null, bool completeCancellationImmediately = true, MockState state = MockState.Default)
+        internal PgPostmasterMock(
+            string? connectionString = null,
+            bool completeCancellationImmediately = true,
+            MockState state = MockState.MultipleHostsDisabled)
         {
             var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
             PendingRequestsReader = pendingRequestsChannel.Reader;
             _pendingRequestsWriter = pendingRequestsChannel.Writer;
 
-            var connectionStringBuilder =
-                new NpgsqlConnectionStringBuilder(connectionString ?? TestUtil.ConnectionString);
+            var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
 
             _completeCancellationImmediately = completeCancellationImmediately;
             _state = state;
@@ -55,9 +62,12 @@ namespace Npgsql.Tests.Support
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             _socket.Bind(endpoint);
+
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint!;
-            connectionStringBuilder.Host = localEndPoint.Address.ToString();
-            connectionStringBuilder.Port = localEndPoint.Port;
+            Host = localEndPoint.Address.ToString();
+            Port = localEndPoint.Port;
+            connectionStringBuilder.Host = Host;
+            connectionStringBuilder.Port = Port;
             connectionStringBuilder.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
             ConnectionString = connectionStringBuilder.ConnectionString;
 
@@ -110,7 +120,7 @@ namespace Npgsql.Tests.Support
                 {
                     cancellationRequest.Complete();
                 }
-                
+
                 return new ServerOrCancellationRequest(cancellationRequest);
             }
 
@@ -196,11 +206,11 @@ namespace Npgsql.Tests.Support
         }
     }
 
-    enum MockState
+    public enum MockState
     {
-        Default,
-        PrimaryReadWrite,
-        PrimaryReadOnly,
-        Secondary
+        MultipleHostsDisabled = 0,
+        Primary = 1,
+        PrimaryReadOnly = 2,
+        Standby = 3
     }
 }

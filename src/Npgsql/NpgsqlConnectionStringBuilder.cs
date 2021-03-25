@@ -1838,39 +1838,40 @@ namespace Npgsql
     public enum TargetSessionAttributes : byte
     {
         /// <summary>
-        ///  Try to connect to every server in order.
+        /// Any successful connection is acceptable.
         /// </summary>
         Any = 0,
 
         /// <summary>
-        ///  Secondary (readonly) server is selected for the connection.
+        /// Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the
+        /// <c>default_transaction_read_only</c> parameter must be off).
         /// </summary>
-        Secondary = 1,
+        ReadWrite = 1,
 
         /// <summary>
-        /// Secondary (readonly) server is selected for the connection. Falls back to Primary (writable), if none are available.
+        /// Session must not accept read-write transactions by default (the converse).
         /// </summary>
-        PreferSecondary = 2,
+        ReadOnly = 2,
 
         /// <summary>
-        ///  Primary (writable) server is selected for the connection.
+        /// Server must not be in hot standby mode.
         /// </summary>
         Primary = 3,
 
         /// <summary>
-        /// Primary (writable) server is selected for the connection. Falls back to Secondary (readonly), if none are available.
+        /// Server must be in hot standby mode.
         /// </summary>
-        PreferPrimary = 4,
+        Standby = 4,
 
         /// <summary>
-        /// Server must not be in hot standby mode and the default_transaction_read_only parameter must be 'off'.
+        /// First try to find a primary server, but if none of the listed hosts is a primary server, try again in <see cref="Any"/> mode.
         /// </summary>
-        ReadWrite = 5,
+        PreferPrimary = 5,
 
         /// <summary>
-        /// Server must be either in hot standby mode or the default_transaction_read_only parameter must be 'on'.
+        /// First try to find a standby server, but if none of the listed hosts is a standby server, try again in <see cref="Any"/> mode.
         /// </summary>
-        ReadOnly = 6,
+        PreferStandby = 6,
     }
 
     #endregion
