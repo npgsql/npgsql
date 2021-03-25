@@ -207,9 +207,10 @@ namespace Npgsql
             if (preferredType == TargetSessionAttributes.Any)
             {
                 var rentedAnyConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-                if (rentedAnyConnector is null)
-                    throw NoSuitableHostsException(exceptions);
-                return rentedAnyConnector;
+                if (rentedAnyConnector is not null)
+                    return rentedAnyConnector;
+
+                throw NoSuitableHostsException(exceptions);
             }
 
             if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary)
@@ -235,14 +236,14 @@ namespace Npgsql
                     return rentedUnpreferedConnector;
             }
 
-            if (exceptions.Count == 0)
-                exceptions.Add(new NpgsqlException("No suitable host has been found."));
-
             throw NoSuitableHostsException(exceptions);
         }
 
         static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
-            => new("Unable to connect to a suitable host. Check inner exception for more details.", new AggregateException(exceptions));
+            => new("Unable to connect to a suitable host. Check inner exception for more details.",
+                exceptions.Count == 0
+                ? new NpgsqlException("No suitable host has been found.")
+                : new AggregateException(exceptions));
 
         internal override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
