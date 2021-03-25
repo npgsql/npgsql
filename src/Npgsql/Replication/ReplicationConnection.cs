@@ -592,7 +592,8 @@ namespace Npgsql.Replication
             finally
             {
                 _sendFeedbackTimer!.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
-                _requestFeedbackTimer!.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+                if (requestReply)
+                    _requestFeedbackTimer!.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
                 _feedbackSemaphore.Release();
             }
         }

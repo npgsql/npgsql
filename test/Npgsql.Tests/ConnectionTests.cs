@@ -24,27 +24,34 @@ namespace Npgsql.Tests
         {
             using var conn = new NpgsqlConnection(ConnectionString);
 
-            bool eventOpen = false, eventClosed = false;
+            var eventOpen = false;
+            var eventClosed = false;
+
             conn.StateChange += (s, e) =>
             {
-                if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
+                if (e.OriginalState == ConnectionState.Closed &&
+                    e.CurrentState == ConnectionState.Open)
                     eventOpen = true;
-                if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
+
+                if (e.OriginalState == ConnectionState.Open &&
+                    e.CurrentState == ConnectionState.Closed)
                     eventClosed = true;
             };
 
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
 
-            conn.Open();
+            await conn.OpenAsync();
+
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(eventOpen, Is.True);
 
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = await cmd.ExecuteReaderAsync())
+            await using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            await using (var reader = await cmd.ExecuteReaderAsync())
             {
-                reader.Read();
+                await reader.ReadAsync();
+
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             }
@@ -52,7 +59,59 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
-            conn.Close();
+            await conn.CloseAsync();
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(eventClosed, Is.True);
+        }
+
+        [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
+        //[Timeout(5000)]
+        public async Task BrokenLifecycle()
+        {
+            if (IsMultiplexing)
+                return;
+
+            await using var conn = new NpgsqlConnection(ConnectionString);
+
+            var eventOpen = false;
+            var eventClosed = false;
+
+            conn.StateChange += (s, e) =>
+            {
+                if (e.OriginalState == ConnectionState.Closed &&
+                    e.CurrentState == ConnectionState.Open)
+                    eventOpen = true;
+
+                if (e.OriginalState == ConnectionState.Open &&
+                    e.CurrentState == ConnectionState.Closed)
+                    eventClosed = true;
+            };
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+
+            await conn.OpenAsync();
+            await using var transaction = await conn.BeginTransactionAsync();
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(eventOpen, Is.True);
+
+            var sleep = conn.ExecuteNonQueryAsync("SELECT pg_sleep(5)");
+
+            await using (var killingConn = await OpenConnectionAsync())
+                killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+
+            Assert.ThrowsAsync<PostgresException>(() => sleep);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(eventClosed, Is.True);
+
+            await conn.CloseAsync();
+
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             Assert.That(eventClosed, Is.True);
@@ -1296,6 +1355,29 @@ CREATE TABLE record ()");
             };
             using (await OpenConnectionAsync(csb))
                 Thread.Sleep(Timeout.Infinite);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3511")]
+        public async Task Keepalive_with_failed_transaction()
+        {
+            if (IsMultiplexing)
+                return;
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                KeepAlive = 1
+            };
+            using var conn = await OpenConnectionAsync(csb);
+            using var tx = await conn.BeginTransactionAsync();
+
+            Assert.Throws<PostgresException>(() => conn.ExecuteScalar("SELECT non_existent_table"));
+            // Connection is now in a failed transaction state. Wait a bit to allow for the keepalive to execute.
+            Thread.Sleep(3000);
+
+            await tx.RollbackAsync();
+
+            // Confirm that the connection is still open and usable
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test]

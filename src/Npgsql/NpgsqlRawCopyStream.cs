@@ -438,7 +438,7 @@ namespace Npgsql
         {
             Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
-            _connector.Connection!.EndBindingScope(ConnectorBindingScope.Copy);
+            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
             _connector = null;
             _readBuf = null;
             _writeBuf = null;

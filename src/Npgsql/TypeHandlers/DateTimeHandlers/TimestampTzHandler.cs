@@ -54,7 +54,26 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => base.Read(buf, len, fieldDescription).ToLocalTime();
+        {
+            var postgresTimestamp = buf.ReadInt64();
+            if (postgresTimestamp == long.MaxValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MaxValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            if (postgresTimestamp == long.MinValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MinValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+
+            try
+            {
+                return FromPostgresTimestamp(postgresTimestamp).ToLocalTime();
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
+            }
+        }
 
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
@@ -124,7 +143,21 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
 
-            base.Write(value, buf, parameter);
+            NpgsqlDateTime pgValue = value;
+            if (ConvertInfinityDateTime)
+            {
+                if (value == DateTime.MinValue)
+                {
+                    pgValue = NpgsqlDateTime.NegativeInfinity;
+                }
+                else if (value == DateTime.MaxValue)
+                {
+                    pgValue = NpgsqlDateTime.Infinity;
+                }
+            }
+
+            // We cannot pass the DateTime value due to it implicitly converting to the NpgsqlDateTime anyway
+            base.Write(pgValue, buf, parameter);
         }
 
         /// <inheritdoc />
