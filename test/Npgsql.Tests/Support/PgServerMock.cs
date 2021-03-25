@@ -264,6 +264,17 @@ namespace Npgsql.Tests.Support
         internal PgServerMock WriteCancellationResponse()
             => WriteErrorResponse(PostgresErrorCodes.QueryCanceled, "Cancellation", "Query cancelled");
 
+        internal PgServerMock WriteCopyInResponse()
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.CopyInResponse);
+            _writeBuffer.WriteInt32(5);
+            _writeBuffer.WriteByte(0);
+            _writeBuffer.WriteInt16(1);
+            _writeBuffer.WriteInt16(0);
+            return this;
+        }
+
         internal PgServerMock WriteErrorResponse(string code)
             => WriteErrorResponse(code, "ERROR", "MOCK ERROR MESSAGE");
 
