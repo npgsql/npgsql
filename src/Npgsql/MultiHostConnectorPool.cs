@@ -19,12 +19,11 @@ namespace Npgsql
             {
                 var host = hosts[i];
                 var port = settings.Port;
-                // TODO: Add support for host:port to the default pool (and conn without pooling)
                 var portSeparator = host.IndexOf(':');
                 if (portSeparator != -1)
                 {
-                    host = host.Substring(0, portSeparator);
                     port = int.Parse(host.Substring(portSeparator + 1));
+                    host = host.Substring(0, portSeparator);
                 }
                 var poolSettings = settings.Clone();
                 poolSettings.Host = host;

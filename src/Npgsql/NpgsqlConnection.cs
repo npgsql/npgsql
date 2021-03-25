@@ -179,6 +179,17 @@ namespace Npgsql
             settings.Validate();
             Settings = settings;
 
+            var hostsSeparator = settings.Host?.IndexOf(',');
+            if (hostsSeparator.HasValue && hostsSeparator == -1)
+            {
+                var portSeparator = settings.Host!.IndexOf(':');
+                if (portSeparator != -1)
+                {
+                    settings.Port = int.Parse(settings.Host.Substring(portSeparator + 1));
+                    settings.Host = settings.Host.Substring(0, portSeparator);
+                }
+            }
+
             // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
@@ -199,7 +210,6 @@ namespace Npgsql
             // Really unseen, need to create a new pool
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
-            var hostsSeparator = settings.Host?.IndexOf(',');
             ConnectorSource newPool;
             if (hostsSeparator.HasValue && hostsSeparator != -1)
             {
