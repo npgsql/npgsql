@@ -186,7 +186,7 @@ namespace Npgsql
                     throw new NotSupportedException("TargetSessionAttributes other then Any is only supported with multiple hosts");
 
                 var portSeparator = settings.Host!.IndexOf(':');
-                if (portSeparator != -1)
+                if (!Path.IsPathRooted(settings.Host) && portSeparator != -1)
                 {
                     settings.Port = int.Parse(settings.Host.Substring(portSeparator + 1));
                     settings.Host = settings.Host.Substring(0, portSeparator);
