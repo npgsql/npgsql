@@ -240,10 +240,10 @@ namespace Npgsql
         }
 
         static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
-            => new("Unable to connect to a suitable host. Check inner exception for more details.",
-                exceptions.Count == 0
+            => exceptions.Count == 0
                 ? new NpgsqlException("No suitable host has been found.")
-                : new AggregateException(exceptions));
+                : new("Unable to connect to a suitable host. Check inner exception for more details.",
+                    new AggregateException(exceptions));
 
         internal override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
