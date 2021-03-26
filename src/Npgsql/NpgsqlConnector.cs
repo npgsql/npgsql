@@ -254,29 +254,6 @@ namespace Npgsql
 
         internal readonly Stopwatch QueryLogStopWatch = new();
 
-        static readonly string[] CriticalFailureCodes =
-        {
-            PostgresErrorCodes.ConnectionException,
-            PostgresErrorCodes.ConnectionDoesNotExist,
-            PostgresErrorCodes.ConnectionFailure,
-            PostgresErrorCodes.ProtocolViolation,
-            PostgresErrorCodes.DiskFull, // Self explanatory
-            PostgresErrorCodes.OutOfMemory, // Self explanatory
-            PostgresErrorCodes.TooManyConnections,
-            PostgresErrorCodes.ConfigurationLimitExceeded,
-            PostgresErrorCodes.CrashShutdown, // Self explanatory
-            PostgresErrorCodes.CannotConnectNow, // Database is starting up
-            PostgresErrorCodes.SystemError, // Server is dying
-            PostgresErrorCodes.IoError,
-            PostgresErrorCodes.UndefinedFile,
-            PostgresErrorCodes.DuplicateFile,
-            PostgresErrorCodes.InternalError, // Database is dying
-            PostgresErrorCodes.ConfigFileError,
-            PostgresErrorCodes.LockFileExists,
-            PostgresErrorCodes.DataCorrupted,
-            PostgresErrorCodes.IndexCorrupted,
-        };
-
         #endregion
 
         #region Constants
@@ -1255,7 +1232,7 @@ namespace Npgsql
                                 // an RFQ. Instead, the server closes the connection immediately
                                 throw error;
                             }
-                            else if (CriticalFailureCodes.Contains(error.SqlState))
+                            else if (PostgresErrorCodes.IsCriticalFailure(error))
                             {
                                 // Consider the database offline
                                 ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
