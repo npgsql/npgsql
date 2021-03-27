@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Support
                     {
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
-                        _ = server.Startup(_isSecondary).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        _ = server.Startup(_state).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
                     }
                     else
                     {
