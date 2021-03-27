@@ -38,7 +38,7 @@ namespace Npgsql.Tests.Support
             _writeBuffer = writeBuffer;
         }
 
-        internal async Task Startup(bool? isSecondary)
+        internal async Task Startup(MockState state)
         {
             // Read and skip the startup message
             await SkipMessage();
@@ -63,11 +63,26 @@ namespace Npgsql.Tests.Support
             WriteReadyForQuery();
             await FlushAsync();
 
-            if (isSecondary.HasValue)
+            if (state != MockState.Default)
             {
+                var isSecondary = state == MockState.Secondary;
+                var transactionReadOnly = state == MockState.Secondary || state == MockState.PrimaryReadOnly
+                    ? "on"
+                    : "off";
+
                 // Writing a response, whether the mock secondary
                 await ExpectExtendedQuery();
-                await WriteScalarResponseAndFlush(isSecondary.Value);
+
+                await WriteParseComplete()
+                    .WriteBindComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
+                    .WriteDataRow(BitConverter.GetBytes(isSecondary))
+                    .WriteCommandComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+                    .WriteDataRow(Encoding.ASCII.GetBytes(transactionReadOnly))
+                    .WriteCommandComplete()
+                    .WriteReadyForQuery()
+                    .FlushAsync();
             }
         }
 

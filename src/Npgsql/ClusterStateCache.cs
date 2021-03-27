@@ -54,7 +54,8 @@ namespace Npgsql
     {
         Unknown = 0,
         Offline = 1,
-        Primary = 2,
-        Secondary = 3
+        PrimaryReadWrite = 2,
+        PrimaryReadOnly = 3,
+        Secondary = 4
     }
 }

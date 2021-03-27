@@ -1861,6 +1861,16 @@ namespace Npgsql
         /// Primary (writable) server is selected for the connection. Falls back to Secondary (readonly), if none are available.
         /// </summary>
         PreferPrimary = 4,
+
+        /// <summary>
+        /// Server must not be in hot standby mode and the default_transaction_read_only parameter must be 'off'.
+        /// </summary>
+        ReadWrite = 5,
+
+        /// <summary>
+        /// Server must be either in hot standby mode or the default_transaction_read_only parameter must be 'on'.
+        /// </summary>
+        ReadOnly = 6,
     }
 
     #endregion

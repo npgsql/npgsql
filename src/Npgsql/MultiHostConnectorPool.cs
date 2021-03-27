@@ -37,8 +37,12 @@ namespace Npgsql
             {
                 ClusterState.Offline => false,
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary => true,
-                ClusterState.Secondary when preferredType == TargetSessionAttributes.Secondary || preferredType == TargetSessionAttributes.PreferSecondary => true,
+                ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary
+                    || preferredType == TargetSessionAttributes.ReadWrite  => true,
+                ClusterState.PrimaryReadOnly when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary
+                    || preferredType == TargetSessionAttributes.ReadOnly => true,
+                ClusterState.Secondary when preferredType == TargetSessionAttributes.Secondary || preferredType == TargetSessionAttributes.PreferSecondary
+                    || preferredType == TargetSessionAttributes.ReadOnly => true,
                 _ => preferredType == TargetSessionAttributes.Any
             };
 
@@ -46,7 +50,7 @@ namespace Npgsql
             => state switch
             {
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-                ClusterState.Primary when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
+                ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
                 ClusterState.Secondary when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferSecondary => true,
                 _ => false
             };
@@ -203,7 +207,7 @@ namespace Npgsql
             if (newPreferredConnector is not null)
                 return newPreferredConnector;
 
-            if (preferredType == TargetSessionAttributes.Any)
+            if (preferredType == TargetSessionAttributes.Any || preferredType == TargetSessionAttributes.ReadWrite || preferredType == TargetSessionAttributes.ReadOnly)
             {
                 var rentedAnyConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
                 if (rentedAnyConnector is not null)

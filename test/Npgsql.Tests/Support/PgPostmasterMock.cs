@@ -26,21 +26,21 @@ namespace Npgsql.Tests.Support
         int _processIdCounter;
 
         readonly bool _completeCancellationImmediately;
-        readonly bool? _isSecondary;
+        readonly MockState _state;
 
         ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
         internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
 
-        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true, bool? isSecondary = null)
+        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true, MockState state = MockState.Default)
         {
-            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, isSecondary);
+            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state);
             mock.AcceptClients();
             return mock;
         }
 
-        internal PgPostmasterMock(string? connectionString = null, bool completeCancellationImmediately = true, bool? isSecondary = null)
+        internal PgPostmasterMock(string? connectionString = null, bool completeCancellationImmediately = true, MockState state = MockState.Default)
         {
             var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
             PendingRequestsReader = pendingRequestsChannel.Reader;
@@ -50,7 +50,7 @@ namespace Npgsql.Tests.Support
                 new NpgsqlConnectionStringBuilder(connectionString ?? TestUtil.ConnectionString);
 
             _completeCancellationImmediately = completeCancellationImmediately;
-            _isSecondary = isSecondary;
+            _state = state;
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
@@ -194,5 +194,13 @@ namespace Npgsql.Tests.Support
             internal PgServerMock? Server { get; }
             internal PgCancellationRequest? CancellationRequest { get; }
         }
+    }
+
+    enum MockState
+    {
+        Default,
+        PrimaryReadWrite,
+        PrimaryReadOnly,
+        Secondary
     }
 }

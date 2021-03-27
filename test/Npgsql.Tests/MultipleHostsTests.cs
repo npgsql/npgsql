@@ -31,15 +31,18 @@ namespace Npgsql.Tests
                 Client(csb, TargetSessionAttributes.Any),
                 Client(csb, TargetSessionAttributes.Primary),
                 Client(csb, TargetSessionAttributes.PreferPrimary),
-                Client(csb, TargetSessionAttributes.PreferSecondary));
+                Client(csb, TargetSessionAttributes.PreferSecondary),
+                Client(csb, TargetSessionAttributes.ReadWrite));
 
             var onlySecondaryClient = Client(csb, TargetSessionAttributes.Secondary);
+            var readOnlyClient = Client(csb, TargetSessionAttributes.ReadOnly);
 
             Assert.DoesNotThrowAsync(async () => await clientsTask);
             Assert.ThrowsAsync<NpgsqlException>(async () => await onlySecondaryClient);
-            Assert.AreEqual(100, queriesDone);
+            Assert.ThrowsAsync<NpgsqlException>(async () => await readOnlyClient);
+            Assert.AreEqual(125, queriesDone);
 
-            Assert.AreEqual(6, PoolManager.Pools.Where(x => x.Key is not null).Count());
+            Assert.AreEqual(8, PoolManager.Pools.Where(x => x.Key is not null).Count());
 
             PoolManager.Reset();
 

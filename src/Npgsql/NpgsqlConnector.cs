@@ -577,15 +577,23 @@ namespace Npgsql
             Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
             using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
 
-            using var cmd = new NpgsqlCommand("select pg_is_in_recovery()", Connection);
+            using var cmd = new NpgsqlCommand("select pg_is_in_recovery();SHOW default_transaction_read_only;", Connection);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
             // We're taking the timestamp before the query is send, because due to issues (IO, operation ordering, etc) we can recieve an 'old' state
             // Otherwise, execution of the query shouldn't make notable difference
             var timeStamp = DateTime.UtcNow;
-            var isSecondary = (bool)(async
-                ? await cmd.ExecuteScalarAsync(cancellationToken)
-                : cmd.ExecuteScalar())!;
-            var state = isSecondary ? ClusterState.Secondary : ClusterState.Primary;
+
+            using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
+            reader.Read();
+            var isInRecovery = reader.GetBoolean(0);
+            reader.NextResult();
+            reader.Read();
+            var transactionReadOnly = reader.GetString(0) != "off";
+
+            var state = isInRecovery ? ClusterState.Secondary :
+                transactionReadOnly
+                    ? ClusterState.PrimaryReadOnly
+                    : ClusterState.PrimaryReadWrite;
             ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
                 TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
             return state;
