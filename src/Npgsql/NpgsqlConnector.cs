@@ -1285,8 +1285,8 @@ namespace Npgsql
 
                     throw;
                 }
-                catch (Exception e) when (e is OperationCanceledException ||
-                    e is NpgsqlException && e.InnerException is TimeoutException && !readingNotifications)
+                catch (Exception e) when (!readingNotifications && (e is OperationCanceledException ||
+                    e is NpgsqlException && e.InnerException is TimeoutException))
                 {
                     // We've timed out even though we've send the cancellation request
                     ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
