@@ -164,7 +164,10 @@ namespace Npgsql
                     // Get may be have opened a new physical connection and refreshed the cluster state, check again
                     if (clusterState == ClusterState.Unknown)
                     {
-                        clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        clusterState = GetClusterState(pool);
+                        if (clusterState == ClusterState.Unknown)
+                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+
                         Debug.Assert(clusterState != ClusterState.Unknown);
                         if (!clusterValidator(clusterState, preferedType))
                         {
