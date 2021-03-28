@@ -1,6 +1,7 @@
 ﻿using Npgsql.Util;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -92,6 +93,7 @@ namespace Npgsql
                     }
                     catch (Exception ex)
                     {
+                        conn.FullState = ConnectionState.Connecting;
                         conn.Connector = null;
                         connector.Connection = null;
                         pool.Return(connector);
@@ -136,6 +138,7 @@ namespace Npgsql
                 }
                 catch (Exception ex)
                 {
+                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(ex);
                 }
             }
@@ -185,6 +188,7 @@ namespace Npgsql
                         pool.Return(connector);
                     }
 
+                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                 }
             }
@@ -213,6 +217,7 @@ namespace Npgsql
                 if (rentedAnyConnector is not null)
                     return rentedAnyConnector;
 
+                conn.FullState = ConnectionState.Broken;
                 throw NoSuitableHostsException(exceptions);
             }
 
@@ -239,6 +244,7 @@ namespace Npgsql
                     return rentedUnpreferedConnector;
             }
 
+            conn.FullState = ConnectionState.Broken;
             throw NoSuitableHostsException(exceptions);
         }
 
