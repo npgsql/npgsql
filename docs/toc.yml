@@ -14,8 +14,6 @@
     href: release-notes/3.1.md
   - name: "3.0"
     href: release-notes/3.0.md
-- name: Compatibility notes
-  href: compatibility.md
 - name: Installation
   href: installation.md
 - name: Basic usage
@@ -44,8 +42,6 @@
       href: types/geojson.md
     - name: Legacy PostGIS
       ref: types/legacy-postgis.md
-- name: Transactions
-  href: transactions.md
 - name: Performance
   href: performance.md
 - name: Prepared statements
@@ -60,8 +56,8 @@
   href: replication.md
 - name: Logging
   href: logging.md
-- name: Visual Studio integration
-  href: ddex.md
+- name: Compatibility notes
+  href: compatibility.md
 - name: FAQ
   href: faq.md
 - name: API reference
