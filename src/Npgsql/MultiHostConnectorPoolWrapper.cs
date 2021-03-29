@@ -8,9 +8,9 @@ namespace Npgsql
 {
     sealed class MultiHostConnectorPoolWrapper : ConnectorSource
     {
-        readonly ConnectorSource _wrappedSource;
+        readonly MultiHostConnectorPool _wrappedSource;
 
-        public MultiHostConnectorPoolWrapper(NpgsqlConnectionStringBuilder settings, string connString, ConnectorSource source) : base(settings, connString)
+        public MultiHostConnectorPoolWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool source) : base(settings, connString)
             => _wrappedSource = source;
 
         internal override (int Total, int Idle, int Busy) Statistics => _wrappedSource.Statistics;

@@ -202,8 +202,8 @@ namespace Npgsql
             if (PoolManager.TryGetValue(canonical, out _pool))
             {
                 // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-                if (_pool is MultiHostConnectorPool)
-                    _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, _pool);
+                if (_pool is MultiHostConnectorPool mhcpCanonical)
+                    _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, mhcpCanonical);
                 // The pool was found, but only under the canonical key - we're using a different version
                 // for the first time. Map it via our own key for next time.
                 _pool = PoolManager.GetOrAdd(_connectionString, _pool);
@@ -239,8 +239,8 @@ namespace Npgsql
             }
 
             // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-            if (_pool is MultiHostConnectorPool)
-                _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, _pool);
+            if (_pool is MultiHostConnectorPool mhcp)
+                _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, mhcp);
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
         }
