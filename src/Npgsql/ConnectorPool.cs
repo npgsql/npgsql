@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -9,7 +8,6 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Logging;
 using Npgsql.Util;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
@@ -80,7 +78,7 @@ namespace Npgsql
 
         #endregion
 
-        internal override (int Total, int Idle, int Busy) Statistics
+        internal sealed override (int Total, int Idle, int Busy) Statistics
         {
             get
             {
@@ -162,7 +160,7 @@ namespace Npgsql
             }
         }
 
-        internal override ValueTask<NpgsqlConnector> Get(
+        internal sealed override ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
@@ -345,7 +343,7 @@ namespace Npgsql
             return null;
         }
 
-        internal override void Return(NpgsqlConnector connector)
+        internal sealed override void Return(NpgsqlConnector connector)
         {
             Debug.Assert(!connector.InTransaction);
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
@@ -366,7 +364,7 @@ namespace Npgsql
             Debug.Assert(written);
         }
 
-        internal override void Clear()
+        internal sealed override void Clear()
         {
             Interlocked.Increment(ref _clearCounter);
 
@@ -412,7 +410,7 @@ namespace Npgsql
                 DisablePruning();
         }
 
-        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal sealed override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             if (_parentPool is null)
                 base.TryRemovePendingEnlistedConnector(connector, transaction);
