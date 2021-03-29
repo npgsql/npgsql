@@ -120,15 +120,18 @@ namespace Npgsql
                     var connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                     if (connector is not null)
                     {
-                        // Opening a new physical connection refreshed the cluster state, check again
-                        clusterState = GetClusterState(pool);
-                        Debug.Assert(clusterState != ClusterState.Unknown);
-                        if (!clusterValidator(clusterState, preferedType))
+                        if (clusterState == ClusterState.Unknown)
                         {
-                            conn.Connector = null;
-                            connector.Connection = null;
-                            pool.Return(connector);
-                            continue;
+                            // Opening a new physical connection refreshed the cluster state, check again
+                            clusterState = GetClusterState(pool);
+                            Debug.Assert(clusterState != ClusterState.Unknown);
+                            if (!clusterValidator(clusterState, preferedType))
+                            {
+                                conn.Connector = null;
+                                connector.Connection = null;
+                                pool.Return(connector);
+                                continue;
+                            }
                         }
 
                         conn.Connector = connector;
