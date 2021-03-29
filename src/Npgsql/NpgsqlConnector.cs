@@ -594,9 +594,8 @@ namespace Npgsql
                 transactionReadOnly
                     ? ClusterState.PrimaryReadOnly
                     : ClusterState.PrimaryReadWrite;
-            ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
+            return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
                 TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
-            return state;
         }
 
         void WriteStartupMessage(string username)

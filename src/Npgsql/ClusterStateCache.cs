@@ -14,18 +14,18 @@ namespace Npgsql
                 : ClusterState.Unknown;
 
 #if NETSTANDARD2_0
-        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
+        internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
             => Clusters.AddOrUpdate(
                 new ClusterIdentifier(host, port),
                 new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp),
-                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp));
+                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #else
-        internal static void UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
+        internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
             => Clusters.AddOrUpdate(
                 new ClusterIdentifier(host, port),
                 (_, newInfo) => newInfo,
                 (_, oldInfo, newInfo) => oldInfo.TimeStamp >= newInfo.TimeStamp ? oldInfo : newInfo,
-                new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp));
+                new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #endif
 
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
