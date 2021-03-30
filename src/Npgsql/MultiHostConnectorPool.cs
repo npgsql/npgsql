@@ -208,7 +208,7 @@ namespace Npgsql
             return null;
         }
 
-        internal sealed override async ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        internal override async ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var exceptions = new List<Exception>();
 
@@ -259,16 +259,16 @@ namespace Npgsql
                 : new("Unable to connect to a suitable host. Check inner exception for more details.",
                     new AggregateException(exceptions));
 
-        internal sealed override void Return(NpgsqlConnector connector)
+        internal override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
 
-        internal sealed override void Clear()
+        internal override void Clear()
         {
             foreach (var pool in _pools)
                 pool.Clear();
         }
 
-        internal sealed override (int Total, int Idle, int Busy) Statistics
+        internal override (int Total, int Idle, int Busy) Statistics
         {
             get
             {
@@ -285,7 +285,7 @@ namespace Npgsql
             }
         }
 
-        internal sealed override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+        internal override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
             [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             lock (_pendingEnlistedConnectors)

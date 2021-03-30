@@ -78,7 +78,7 @@ namespace Npgsql
 
         #endregion
 
-        internal sealed override (int Total, int Idle, int Busy) Statistics
+        internal override (int Total, int Idle, int Busy) Statistics
         {
             get
             {
@@ -160,7 +160,7 @@ namespace Npgsql
             }
         }
 
-        internal sealed override ValueTask<NpgsqlConnector> Get(
+        internal override ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
@@ -343,7 +343,7 @@ namespace Npgsql
             return null;
         }
 
-        internal sealed override void Return(NpgsqlConnector connector)
+        internal override void Return(NpgsqlConnector connector)
         {
             Debug.Assert(!connector.InTransaction);
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
@@ -364,7 +364,7 @@ namespace Npgsql
             Debug.Assert(written);
         }
 
-        internal sealed override void Clear()
+        internal override void Clear()
         {
             Interlocked.Increment(ref _clearCounter);
 
@@ -410,7 +410,7 @@ namespace Npgsql
                 DisablePruning();
         }
 
-        internal sealed override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             if (_parentPool is null)
                 base.TryRemovePendingEnlistedConnector(connector, transaction);

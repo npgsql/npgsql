@@ -15,9 +15,9 @@ namespace Npgsql
 
         volatile int _numConnectors;
 
-        internal sealed override (int Total, int Idle, int Busy) Statistics => (_numConnectors, 0, _numConnectors);
+        internal override (int Total, int Idle, int Busy) Statistics => (_numConnectors, 0, _numConnectors);
 
-        internal sealed override async ValueTask<NpgsqlConnector> Get(
+        internal override async ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var connector = new NpgsqlConnector(conn, this);
@@ -26,22 +26,22 @@ namespace Npgsql
             return connector;
         }
 
-        internal sealed override void Return(NpgsqlConnector connector)
+        internal override void Return(NpgsqlConnector connector)
         {
             Interlocked.Decrement(ref _numConnectors);
             connector.Close();
         }
 
-        internal sealed override void Clear() {}
+        internal override void Clear() {}
 
-        internal sealed override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+        internal override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
             [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             connector = null;
             return false;
         }
 
-        internal sealed override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
         }
     }
