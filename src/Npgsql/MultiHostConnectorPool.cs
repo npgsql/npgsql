@@ -111,14 +111,14 @@ namespace Npgsql
             return null;
         }
 
-        async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferedType,
+        async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
             Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
             {
                 var clusterState = GetClusterState(pool);
-                if (!clusterValidator(clusterState, preferedType))
+                if (!clusterValidator(clusterState, preferredType))
                     continue;
 
                 try
@@ -131,7 +131,7 @@ namespace Npgsql
                             // Opening a new physical connection refreshed the cluster state, check again
                             clusterState = GetClusterState(pool);
                             Debug.Assert(clusterState != ClusterState.Unknown);
-                            if (!clusterValidator(clusterState, preferedType))
+                            if (!clusterValidator(clusterState, preferredType))
                             {
                                 conn.Connector = null;
                                 connector.Connection = null;
@@ -155,14 +155,14 @@ namespace Npgsql
             return null;
         }
 
-        async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferedType,
+        async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
             Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
             CancellationToken cancellationToken)
         {
             foreach (var pool in _pools)
             {
                 var clusterState = GetClusterState(pool);
-                if (!clusterValidator(clusterState, preferedType))
+                if (!clusterValidator(clusterState, preferredType))
                     continue;
 
                 NpgsqlConnector? connector = null;
@@ -178,7 +178,7 @@ namespace Npgsql
                             clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
 
                         Debug.Assert(clusterState != ClusterState.Unknown);
-                        if (!clusterValidator(clusterState, preferedType))
+                        if (!clusterValidator(clusterState, preferredType))
                         {
                             conn.Connector = null;
                             connector.Connection = null;
@@ -228,25 +228,25 @@ namespace Npgsql
 
             if (checkUnpreferred)
             {
-                var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (idleUnpreferedConnector is not null)
-                    return idleUnpreferedConnector;
+                var idleUnpreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
+                if (idleUnpreferredConnector is not null)
+                    return idleUnpreferredConnector;
 
-                var newUnpreferedConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (newUnpreferedConnector is not null)
-                    return newUnpreferedConnector;
+                var newUnpreferredConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
+                if (newUnpreferredConnector is not null)
+                    return newUnpreferredConnector;
             }
 
             // TODO: add a queue to wait for the connector
-            var rentedPreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-            if (rentedPreferedConnector is not null)
-                return rentedPreferedConnector;
+            var rentedpreferredConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
+            if (rentedpreferredConnector is not null)
+                return rentedpreferredConnector;
 
             if (checkUnpreferred)
             {
-                var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (rentedUnpreferedConnector is not null)
-                    return rentedUnpreferedConnector;
+                var rentedUnpreferredConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
+                if (rentedUnpreferredConnector is not null)
+                    return rentedUnpreferredConnector;
             }
 
             conn.FullState = ConnectionState.Broken;
