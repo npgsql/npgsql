@@ -34,7 +34,8 @@ namespace Npgsql
 
         internal sealed override void Clear() {}
 
-        internal sealed override bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal sealed override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+            [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             connector = null;
             return false;

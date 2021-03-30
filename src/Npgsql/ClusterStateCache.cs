@@ -8,8 +8,8 @@ namespace Npgsql
     {
         static readonly ConcurrentDictionary<ClusterIdentifier, ClusterInfo> Clusters = new();
 
-        internal static ClusterState GetClusterState(string host, int port)
-            => Clusters.TryGetValue(new(host, port), out var cs) && !cs.Timeout.HasExpired
+        internal static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
+            => Clusters.TryGetValue(new(host, port), out var cs) && (ignoreExpiration || !cs.Timeout.HasExpired)
                 ? cs.State
                 : ClusterState.Unknown;
 

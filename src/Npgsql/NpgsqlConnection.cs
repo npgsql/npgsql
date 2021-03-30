@@ -300,7 +300,7 @@ namespace Npgsql
                     // to this transaction which has been closed. If so, return that as an optimization rather than
                     // opening a new one and triggering escalation to a distributed transaction.
                     // Otherwise just get a new connector and enlist below.
-                    if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
+                    if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                     {
                         connector.Connection = this;
                         EnlistedTransaction = enlistToTransaction;

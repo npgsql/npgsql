@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 
 namespace Npgsql
 {
@@ -58,7 +60,10 @@ namespace Npgsql
             };
 
         static ClusterState GetClusterState(ConnectorPool pool)
-            => ClusterStateCache.GetClusterState(pool.Settings.Host!, pool.Settings.Port);
+            => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration: false);
+
+        static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
+            => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
 
         async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
             Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
@@ -277,6 +282,37 @@ namespace Npgsql
                 }
 
                 return (numConnectors, idleCount, numConnectors - idleCount);
+            }
+        }
+
+        internal sealed override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+            [NotNullWhen(true)] out NpgsqlConnector? connector)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
+                {
+                    connector = null;
+                    return false;
+                }
+
+                for (var i = list.Count - 1; i >= 0; i--)
+                {
+                    connector = list[i];
+                    var lastKnownState = GetClusterState(connector.Host, connector.Port, ignoreExpiration: true);
+                    Debug.Assert(lastKnownState != ClusterState.Unknown);
+                    var preferredType = connection.Settings.TargetSessionAttributes;
+                    if (IsFallbackOrPreferred(lastKnownState, preferredType))
+                    {
+                        list.RemoveAt(i);
+                        if (list.Count == 0)
+                            _pendingEnlistedConnectors.Remove(transaction);
+                        return true;
+                    }
+                }
+
+                connector = null;
+                return false;
             }
         }
     }

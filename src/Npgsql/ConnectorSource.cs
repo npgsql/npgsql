@@ -19,7 +19,7 @@ namespace Npgsql
 
         // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
         // (i.e. access to connectors of a specific transaction won't be concurrent)
-        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
+        protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
             = new();
 
         internal abstract (int Total, int Idle, int Busy) Statistics { get; }
@@ -64,7 +64,8 @@ namespace Npgsql
             }
         }
 
-        internal virtual bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal virtual bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+            [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             lock (_pendingEnlistedConnectors)
             {

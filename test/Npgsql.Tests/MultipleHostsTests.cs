@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +9,7 @@ using System.Threading.Tasks;
 using Npgsql.Tests.Support;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Tests.Support.MockState;
+using System.Transactions;
 
 namespace Npgsql.Tests
 {
@@ -124,6 +124,84 @@ namespace Npgsql.Tests
 
             for (var i = 0; i < servers.Length; i++)
                 _ = await postmasters[i].WaitForServerConnection();
+        }
+
+        [Test]
+        [Description("Test that enlist returns a new connector if a previous connector is for an incompatible server type")]
+        public async Task Enlist_depends_on_session_attributes()
+        {
+            var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Enlist = true,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            var primaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
+            {
+                TargetSessionAttributes = TargetSessionAttributes.Primary,
+            };
+
+            var standbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
+            {
+                TargetSessionAttributes = TargetSessionAttributes.Standby,
+            };
+
+            var preferPrimaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
+            {
+                TargetSessionAttributes = TargetSessionAttributes.PreferPrimary,
+            };
+
+            var preferStandbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
+            {
+                TargetSessionAttributes = TargetSessionAttributes.PreferStandby,
+            };
+
+            // Note that the transaction scope is not disposed due to a rollback (which isn't something a mock expects)
+            var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+
+            NpgsqlConnector primaryConnector;
+            NpgsqlConnector standbyConnector;
+
+            using (var primaryConnection = await OpenConnectionAsync(primaryCsb.ConnectionString))
+            {
+                primaryConnector = primaryConnection.Connector!;
+            }
+
+            using (var preferPrimaryConnection = await OpenConnectionAsync(preferPrimaryCsb.ConnectionString))
+            {
+                Assert.AreSame(primaryConnector, preferPrimaryConnection.Connector);
+            }
+
+            using (var preferStandbyConnection = await OpenConnectionAsync(preferStandbyCsb.ConnectionString))
+            {
+                Assert.AreSame(primaryConnector, preferStandbyConnection.Connector);
+            }
+
+            using (var standbyConnection = await OpenConnectionAsync(standbyCsb.ConnectionString))
+            {
+                standbyConnector = standbyConnection.Connector!;
+            }
+
+            using (var preferPrimaryConnection = await OpenConnectionAsync(preferPrimaryCsb.ConnectionString))
+            {
+                Assert.AreSame(standbyConnector, preferPrimaryConnection.Connector);
+            }
+
+            using (var preferStandbyConnection = await OpenConnectionAsync(preferStandbyCsb.ConnectionString))
+            {
+                Assert.AreSame(standbyConnector, preferStandbyConnection.Connector);
+            }
+
+            Assert.AreNotSame(primaryConnector, standbyConnector);
+
+            await primaryPostmaster.WaitForServerConnection();
+            await standbyPostmaster.WaitForServerConnection();
         }
 
         [Test]
