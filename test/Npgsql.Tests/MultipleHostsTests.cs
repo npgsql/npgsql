@@ -285,6 +285,31 @@ namespace Npgsql.Tests
             Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any));
         }
 
+        [Test]
+        public void Cluster_state_cache_basic()
+        {
+            const string host = nameof(Cluster_state_cache_basic);
+            var timeStamp = DateTime.UtcNow;
+
+            ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.PrimaryReadWrite, timeStamp, TimeSpan.Zero);
+            Assert.AreEqual(ClusterState.PrimaryReadWrite, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: false));
+
+            // Update with the same timestamp - shouldn't change anything
+            ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.Standby, timeStamp, TimeSpan.Zero);
+            Assert.AreEqual(ClusterState.PrimaryReadWrite, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: false));
+
+            // Update with a new timestamp
+            timeStamp = timeStamp.AddSeconds(1);
+            ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.PrimaryReadOnly, timeStamp, TimeSpan.Zero);
+            Assert.AreEqual(ClusterState.PrimaryReadOnly, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: false));
+
+            // Expired state returns as Unknown (depending on ignoreExpiration)
+            timeStamp = timeStamp.AddSeconds(1);
+            ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.PrimaryReadWrite, timeStamp, TimeSpan.FromSeconds(-1));
+            Assert.AreEqual(ClusterState.Unknown, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: false));
+            Assert.AreEqual(ClusterState.PrimaryReadWrite, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: true));
+        }
+
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
         public void IntegrationTest()
