@@ -213,7 +213,7 @@ namespace Npgsql
             var exceptions = new List<Exception>();
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
-            var preferredType = conn.Settings.TargetSessionAttributes;
+            var preferredType = conn.Settings.TargetSessionAttributesParsed;
             var checkUnpreferred =
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
@@ -301,7 +301,7 @@ namespace Npgsql
                     connector = list[i];
                     var lastKnownState = GetClusterState(connector.Host, connector.Port, ignoreExpiration: true);
                     Debug.Assert(lastKnownState != ClusterState.Unknown);
-                    var preferredType = connection.Settings.TargetSessionAttributes;
+                    var preferredType = connection.Settings.TargetSessionAttributesParsed;
                     if (IsFallbackOrPreferred(lastKnownState, preferredType))
                     {
                         list.RemoveAt(i);

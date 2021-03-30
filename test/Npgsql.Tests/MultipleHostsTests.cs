@@ -38,14 +38,14 @@ namespace Npgsql.Tests
 
         [Test]
         [TestCaseSource(nameof(MyCases))]
-        public async Task Connect_to_correct_host(TargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+        public async Task Connect_to_correct_host(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(postmasters),
-                TargetSessionAttributes = targetSessionAttributes,
+                TargetSessionAttributes = targetSessionAttributes.ToString(),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
             };
 
@@ -61,7 +61,7 @@ namespace Npgsql.Tests
         [Test]
         [TestCaseSource(nameof(MyCases))]
         public async Task Connect_to_correct_host_with_available_idle(
-            TargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+            TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
 
@@ -70,7 +70,7 @@ namespace Npgsql.Tests
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(postmasters),
-                TargetSessionAttributes = servers[0] switch
+                TargetSessionAttributesParsed = servers[0] switch
                 {
                     Primary => TargetSessionAttributes.ReadWrite,
                     PrimaryReadOnly => TargetSessionAttributes.ReadOnly,
@@ -89,7 +89,7 @@ namespace Npgsql.Tests
             // Now connect with the test TargetSessionAttributes
             connectionString = new NpgsqlConnectionStringBuilder(connectionString)
             {
-                TargetSessionAttributes = targetSessionAttributes
+                TargetSessionAttributes = targetSessionAttributes.ToString()
             }.ConnectionString;
 
             await using var conn = await OpenConnectionAsync(connectionString);
@@ -105,7 +105,7 @@ namespace Npgsql.Tests
         [TestCase(TargetSessionAttributes.Primary,   new[] { Standby,         Standby })]
         [TestCase(TargetSessionAttributes.ReadWrite, new[] { PrimaryReadOnly, Standby })]
         [TestCase(TargetSessionAttributes.ReadOnly,  new[] { Primary,         Primary })]
-        public async Task Valid_host_not_found(TargetSessionAttributes targetSessionAttributes, MockState[] servers)
+        public async Task Valid_host_not_found(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
 
@@ -113,7 +113,7 @@ namespace Npgsql.Tests
             {
                 Host = MultipleHosts(postmasters),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
-                TargetSessionAttributes = targetSessionAttributes
+                TargetSessionAttributes = targetSessionAttributes.ToString()
             };
 
             using var pool = CreateTempPool(connectionStringBuilder.ConnectionString, out var connectionString);
@@ -144,22 +144,22 @@ namespace Npgsql.Tests
 
             var primaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributes = TargetSessionAttributes.Primary,
+                TargetSessionAttributesParsed = TargetSessionAttributes.Primary,
             };
 
             var standbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributes = TargetSessionAttributes.Standby,
+                TargetSessionAttributesParsed = TargetSessionAttributes.Standby,
             };
 
             var preferPrimaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributes = TargetSessionAttributes.PreferPrimary,
+                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
             };
 
             var preferStandbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributes = TargetSessionAttributes.PreferStandby,
+                TargetSessionAttributesParsed = TargetSessionAttributes.PreferStandby,
             };
 
             // Note that the transaction scope is not disposed due to a rollback (which isn't something a mock expects)
@@ -258,14 +258,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TargetSessionAttributes_with_single_host([Values] TargetSessionAttributes targetSessionAttributes)
+        public async Task TargetSessionAttributes_with_single_host([Values] TestTargetSessionAttributes targetSessionAttributes)
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                TargetSessionAttributes = targetSessionAttributes
+                TargetSessionAttributes = targetSessionAttributes.ToString()
             }.ConnectionString;
 
-            if (targetSessionAttributes == TargetSessionAttributes.Any)
+            if (targetSessionAttributes == TestTargetSessionAttributes.Any)
             {
                 await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
                 using var pool = CreateTempPool(postmasterMock.ConnectionString, out connectionString);
@@ -282,7 +282,7 @@ namespace Npgsql.Tests
         public void TargetSessionAttributes_default_is_Any()
         {
             var builder = new NpgsqlConnectionStringBuilder();
-            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any));
+            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any.ToString()));
         }
 
         [Test]
@@ -347,7 +347,7 @@ namespace Npgsql.Tests
             Task Client(NpgsqlConnectionStringBuilder csb, TargetSessionAttributes targetServerType)
             {
                 csb = csb.Clone();
-                csb.TargetSessionAttributes = targetServerType;
+                csb.TargetSessionAttributesParsed = targetServerType;
                 var tasks = new List<Task>(5);
 
                 for (var i = 0; i < 5; i++)
@@ -373,5 +373,16 @@ namespace Npgsql.Tests
 
         static string MultipleHosts(params PgPostmasterMock[] postmasters)
             => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
+
+        public enum TestTargetSessionAttributes : byte
+        {
+            Any = TargetSessionAttributes.Any,
+            ReadWrite = TargetSessionAttributes.ReadWrite,
+            ReadOnly = TargetSessionAttributes.ReadOnly,
+            Primary = TargetSessionAttributes.Primary,
+            Standby = TargetSessionAttributes.Standby,
+            PreferPrimary = TargetSessionAttributes.PreferPrimary,
+            PreferStandby = TargetSessionAttributes.PreferStandby,
+        }
     }
 }

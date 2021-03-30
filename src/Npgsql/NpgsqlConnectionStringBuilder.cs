@@ -50,6 +50,21 @@ namespace Npgsql
                     ? Path.Combine(_host, $".s.PGSQL.{_port}")
                     : $"tcp://{_host}:{_port}";
 
+        TargetSessionAttributes? _targetSessionAttributesParsed;
+
+        internal TargetSessionAttributes TargetSessionAttributesParsed
+        {
+            get => _targetSessionAttributesParsed ??= Enum.TryParse<TargetSessionAttributes>(TargetSessionAttributes, out var result)
+                ? result
+                : Npgsql.TargetSessionAttributes.Any;
+            set
+            {
+                TargetSessionAttributes = value.ToString();
+                _targetSessionAttributesParsed = value;
+            }
+        }
+
+
         #endregion
 
         #region Constructors
@@ -509,18 +524,19 @@ namespace Npgsql
         [Category("Connection")]
         [Description("Determines the preferred PostgreSQL target server type.")]
         [DisplayName("TargetSessionAttributes")]
-        [DefaultValue(TargetSessionAttributes.Any)]
+        [DefaultValue("Any")]
         [NpgsqlConnectionStringProperty]
-        public TargetSessionAttributes TargetSessionAttributes
+        public string TargetSessionAttributes
         {
             get => _targetSessionAttributes;
             set
             {
                 _targetSessionAttributes = value;
                 SetValue(nameof(TargetSessionAttributes), value);
+                _targetSessionAttributesParsed = null;
             }
         }
-        TargetSessionAttributes _targetSessionAttributes;
+        string _targetSessionAttributes = "Any";
 
         /// <summary>
         /// Controls for how long the host's cached state will be considered as valid.
@@ -1835,7 +1851,7 @@ namespace Npgsql
     /// <summary>
     /// Specifies server type preference.
     /// </summary>
-    public enum TargetSessionAttributes : byte
+    enum TargetSessionAttributes : byte
     {
         /// <summary>
         /// Any successful connection is acceptable.
