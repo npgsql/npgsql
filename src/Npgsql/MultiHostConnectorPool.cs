@@ -218,36 +218,19 @@ namespace Npgsql
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
 
-            var idlePreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-            if (idlePreferredConnector is not null)
-                return idlePreferredConnector;
+            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
+                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
+                            (checkUnpreferred ?
+                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken) ??
+                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken)
+                            : null) ??
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
+                            (checkUnpreferred ?
+                                await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken)
+                            : null);
 
-            var newPreferredConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-            if (newPreferredConnector is not null)
-                return newPreferredConnector;
-
-            if (checkUnpreferred)
-            {
-                var idleUnpreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (idleUnpreferredConnector is not null)
-                    return idleUnpreferredConnector;
-
-                var newUnpreferredConnector = await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (newUnpreferredConnector is not null)
-                    return newUnpreferredConnector;
-            }
-
-            // TODO: add a queue to wait for the connector
-            var rentedpreferredConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-            if (rentedpreferredConnector is not null)
-                return rentedpreferredConnector;
-
-            if (checkUnpreferred)
-            {
-                var rentedUnpreferredConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
-                if (rentedUnpreferredConnector is not null)
-                    return rentedUnpreferredConnector;
-            }
+            if (connector is not null)
+                return connector;
 
             conn.FullState = ConnectionState.Broken;
             throw NoSuitableHostsException(exceptions);
