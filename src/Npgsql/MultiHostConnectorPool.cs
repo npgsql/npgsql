@@ -52,6 +52,7 @@ namespace Npgsql
             {
                 ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
                 ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
+                ClusterState.PrimaryReadOnly when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
                 ClusterState.Standby when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
                 _ => false
             };
@@ -208,6 +209,9 @@ namespace Npgsql
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
             var preferredType = conn.Settings.TargetSessionAttributes;
+            var checkUnpreferred =
+                preferredType == TargetSessionAttributes.PreferPrimary ||
+                preferredType == TargetSessionAttributes.PreferStandby;
 
             var idlePreferredConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
             if (idlePreferredConnector is not null)
@@ -217,17 +221,7 @@ namespace Npgsql
             if (newPreferredConnector is not null)
                 return newPreferredConnector;
 
-            if (preferredType == TargetSessionAttributes.Any || preferredType == TargetSessionAttributes.ReadWrite || preferredType == TargetSessionAttributes.ReadOnly)
-            {
-                var rentedAnyConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken);
-                if (rentedAnyConnector is not null)
-                    return rentedAnyConnector;
-
-                conn.FullState = ConnectionState.Broken;
-                throw NoSuitableHostsException(exceptions);
-            }
-
-            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
+            if (checkUnpreferred)
             {
                 var idleUnpreferedConnector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (idleUnpreferedConnector is not null)
@@ -243,7 +237,7 @@ namespace Npgsql
             if (rentedPreferedConnector is not null)
                 return rentedPreferedConnector;
 
-            if (preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
+            if (checkUnpreferred)
             {
                 var rentedUnpreferedConnector = await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken);
                 if (rentedUnpreferedConnector is not null)
@@ -263,7 +257,7 @@ namespace Npgsql
         internal sealed override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
 
-        internal override void Clear()
+        internal sealed override void Clear()
         {
             foreach (var pool in _pools)
                 pool.Clear();
