@@ -1788,8 +1788,10 @@ namespace Npgsql
                 {
                     // There was an IOException while reading/writing
                     if (reason is NpgsqlException && reason.InnerException is IOException)
+                    {
                         ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                             TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
+                    }
 
                     Log.Error("Breaking connector", reason, Id);
 
