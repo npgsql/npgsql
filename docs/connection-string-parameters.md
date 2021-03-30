@@ -2,7 +2,7 @@
 
 To connect to a database, the application provides a connection string which specifies parameters such as the host, the username, the password, etc. Connection strings have the form `keyword1=value; keyword2=value;` and are case-insensitive. Values containing special characters (e.g. semicolons) can be double-quoted. For more information, [see the official doc page on connection strings](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/connection-strings).
 
-Below are the connection string parameters which Npgsql understands.
+Below are the connection string parameters which Npgsql understands, as well as some standard PostgreSQL environment variables.
 
 ## Basic Connection
 
@@ -11,23 +11,25 @@ Parameter    | Description                                                      
 Host         | Specifies the host name of the machine on which the server is running. If the value begins with a slash, it is used as the directory for the Unix-domain socket (specifying a `Port` is still required). | *Required*
 Port         | The TCP port of the PostgreSQL server.                                             | 5432
 Database     | The PostgreSQL database to connect to.                                             | Same as Username
-Username     | The username to connect with. Not required if using IntegratedSecurity.            |
-Password     | The password to connect with. Not required if using IntegratedSecurity.            |
-Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. |
+Username     | The username to connect with. Not required if using IntegratedSecurity.            | PGUSER
+Password     | The password to connect with. Not required if using IntegratedSecurity.            | PGPASSWORD
+Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. | PGPASSFILE
 
 ## Security and Encryption
 
-Parameter                | Description                                                             | Default
------------------------- | ----------------------------------------------------------------------- | -------
-SSL Mode                 | Controls whether SSL is used, depending on server support. Can be `Require`, `Disable`, or `Prefer`. [See docs for more info](security.md). | Disable
-Trust Server Certificate | Whether to trust the server certificate without validating it. [See docs for more info](security.md). | false
-Client Certificate       | Location of a client certificate to be sent to the server.              | [See docs](security.md)
+Parameter                    | Description                                                             | Default
+---------------------------- | ----------------------------------------------------------------------- | -------
+SSL Mode                     | Controls whether SSL is used, depending on server support. Can be `Require`, `Disable`, or `Prefer`. [See docs for more info](security.md). | Disable
+Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md). | false
+Client Certificate           | Location of a client certificate to be sent to the server. [See docs](security.md) | PGSSLCERT
+Client Certificate Key       | Location of a client key for a client certificate to be sent to the server. | PGSSLKEY
+Root Certificate             | Location of a CA certificate used to validate the server certificate. | PGSSLROOTCERT
 Check Certificate Revocation | Whether to check the certificate revocation list during authentication. False by default. | false
-Integrated Security      | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false
-Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
-Kerberos Service Name    | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
-Include Realm            | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
-Include Error Detail     | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
+Integrated Security          | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false
+Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
+Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
+Include Realm                | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
+Include Error Detail         | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
 
 ## Pooling
 
@@ -69,12 +71,12 @@ No Reset On Close          | Improves performance in some cases by not resetting
 
 Parameter                | Description                                                                                          | Default
 ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------
-Options                  | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS), surrounded by single ticks. Introduced in 5.0. |
+Options                  | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS), surrounded by single ticks. Introduced in 5.0. | PGOPTIONS
 Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
-Client Encoding          | Gets or sets the client_encoding parameter. Introduced in 3.1.                                       |
-Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Introduced in 3.3. |
+Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING
+Timezone                 | Gets or sets the session timezone.                                                                   | PGTZ
 EF Template Database     | The database template to specify when creating a database in Entity Framework.                       | template1
 Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.                   | false
 
@@ -84,3 +86,19 @@ Parameter                 | Description                                         
 ------------------------- | ------------------------------------------------------------------------------------------------- | -------
 Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types . | none
 Convert Infinity DateTime | Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.      | false
+
+## Environment variables
+
+In addition to the connection string parameters above, Npgsql also recognizes the standard PostgreSQL environment variables below. This helps Npgsql-based applications behave similar to other, non-.NET PostgreSQL client applications. The PostgreSQL doc page on environment variables recognized by libpq can be found [here](https://www.postgresql.org/docs/current/libpq-envars.html).
+
+Environment variable | Description
+-------------------- | -----------
+PGUSER               | Behaves the same as the [user](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-USER) connection parameter.
+PGPASSWORD           | Behaves the same as the [password](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-PASSWORD) connection parameter. Use of this environment variable is not recommended for security reasons, as some operating systems allow non-root users to see process environment variables via ps; instead consider using a password file (see [Section 33.15](https://www.postgresql.org/docs/current/libpq-pgpass.html)).
+PGPASSFILE           | Behaves the same as the [passfile](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-PASSFILE) connection parameter.
+PGSSLCERT            | Behaves the same as the [sslcert](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLCERT) connection parameter.
+PGSSLKEY             | Behaves the same as the [sslkey](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLKEY) connection parameter.
+PGSSLROOTCERT        | Behaves the same as the [sslrootcert](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-SSLROOTCERT) connection parameter.
+PGCLIENTENCODING     | Behaves the same as the [client_encoding](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CLIENT-ENCODING) connection parameter.
+PGTZ                 | Sets the default time zone. (Equivalent to SET timezone TO ....)
+PGOPTIONS            | Behaves the same as the [options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) connection parameter.
