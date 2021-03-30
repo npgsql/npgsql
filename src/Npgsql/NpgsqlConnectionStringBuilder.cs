@@ -50,6 +50,21 @@ namespace Npgsql
                     ? Path.Combine(_host, $".s.PGSQL.{_port}")
                     : $"tcp://{_host}:{_port}";
 
+        TargetSessionAttributes? _targetSessionAttributesParsed;
+
+        internal TargetSessionAttributes TargetSessionAttributesParsed
+        {
+            get => _targetSessionAttributesParsed ??= Enum.TryParse<TargetSessionAttributes>(TargetSessionAttributes, out var result)
+                ? result
+                : Npgsql.TargetSessionAttributes.Any;
+            set
+            {
+                TargetSessionAttributes = value.ToString();
+                _targetSessionAttributesParsed = value;
+            }
+        }
+
+
         #endregion
 
         #region Constructors
@@ -502,6 +517,45 @@ namespace Npgsql
             }
         }
         string? _timezone;
+
+        /// <summary>
+        /// Determines the preferred PostgreSQL target server type.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Determines the preferred PostgreSQL target server type.")]
+        [DisplayName("TargetSessionAttributes")]
+        [DefaultValue("Any")]
+        [NpgsqlConnectionStringProperty]
+        public string TargetSessionAttributes
+        {
+            get => _targetSessionAttributes;
+            set
+            {
+                _targetSessionAttributes = value;
+                SetValue(nameof(TargetSessionAttributes), value);
+                _targetSessionAttributesParsed = null;
+            }
+        }
+        string _targetSessionAttributes = "Any";
+
+        /// <summary>
+        /// Controls for how long the host's cached state will be considered as valid.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Controls for how long the host's cached state will be considered as valid.")]
+        [DisplayName("HostRecheckSeconds")]
+        [DefaultValue(10)]
+        [NpgsqlConnectionStringProperty]
+        public int HostRecheckSeconds
+        {
+            get => _hostRecheckSeconds;
+            set
+            {
+                _hostRecheckSeconds = value;
+                SetValue(nameof(HostRecheckSeconds), value);
+            }
+        }
+        int _hostRecheckSeconds;
 
         #endregion
 
@@ -1573,6 +1627,16 @@ namespace Npgsql
             return clone.ToString();
         }
 
+        internal string ConnectionStringWithoutTargetSessionAttributes
+        {
+            get
+            {
+                var clone = Clone();
+                clone[nameof(TargetSessionAttributes)] = null;
+                return clone.ConnectionString;
+            }
+        }
+
         internal NpgsqlConnectionStringBuilder Clone() => new(ConnectionString);
 
         /// <summary>
@@ -1783,5 +1847,48 @@ namespace Npgsql
         /// </summary>
         Logical
     }
+
+    /// <summary>
+    /// Specifies server type preference.
+    /// </summary>
+    enum TargetSessionAttributes : byte
+    {
+        /// <summary>
+        /// Any successful connection is acceptable.
+        /// </summary>
+        Any = 0,
+
+        /// <summary>
+        /// Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the
+        /// <c>default_transaction_read_only</c> parameter must be off).
+        /// </summary>
+        ReadWrite = 1,
+
+        /// <summary>
+        /// Session must not accept read-write transactions by default (the converse).
+        /// </summary>
+        ReadOnly = 2,
+
+        /// <summary>
+        /// Server must not be in hot standby mode.
+        /// </summary>
+        Primary = 3,
+
+        /// <summary>
+        /// Server must be in hot standby mode.
+        /// </summary>
+        Standby = 4,
+
+        /// <summary>
+        /// First try to find a primary server, but if none of the listed hosts is a primary server, try again in <see cref="Any"/> mode.
+        /// </summary>
+        PreferPrimary = 5,
+
+        /// <summary>
+        /// First try to find a standby server, but if none of the listed hosts is a standby server, try again in <see cref="Any"/> mode.
+        /// </summary>
+        PreferStandby = 6,
+    }
+
     #endregion
 }

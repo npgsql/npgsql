@@ -1,5 +1,7 @@
 ﻿#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
+using System.Linq;
+
 namespace Npgsql
 {
     /// <summary>
@@ -461,5 +463,19 @@ namespace Npgsql
         public const string IndexCorrupted = "XX002";
 
         #endregion Class XX - Internal Error
+
+        static readonly string[] CriticalFailureCodes =
+        {
+            "08", // Connection error
+            "53", // Insufficient resources
+            CrashShutdown, // Self explanatory
+            CannotConnectNow, // Database is starting up
+            "58", // System errors, external to PG (server is dying)
+            "F0", // Configuration file error
+            "XX", // Internal error (database is dying)
+        };
+
+        internal static bool IsCriticalFailure(PostgresException e)
+            => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x));
     }
 }

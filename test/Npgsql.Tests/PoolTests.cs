@@ -379,7 +379,7 @@ namespace Npgsql.Tests
                 ApplicationName = nameof(ClearWithBusy)
             }.ToString();
 
-            ConnectorPool? pool;
+            ConnectorSource? pool;
             using (var conn = OpenConnection(connString))
             {
                 NpgsqlConnection.ClearPool(conn);
@@ -478,7 +478,7 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool? pool, int open, int idle)
+        void AssertPoolState(ConnectorSource? pool, int open, int idle)
         {
             if (pool == null)
                 throw new ArgumentNullException(nameof(pool));

@@ -38,7 +38,7 @@ namespace Npgsql.Tests.Support
             _writeBuffer = writeBuffer;
         }
 
-        internal async Task Startup()
+        internal async Task Startup(MockState state)
         {
             // Read and skip the startup message
             await SkipMessage();
@@ -61,8 +61,40 @@ namespace Npgsql.Tests.Support
             });
             WriteBackendKeyData(ProcessId, BackendSecret);
             WriteReadyForQuery();
-
             await FlushAsync();
+
+            if (state != MockState.MultipleHostsDisabled)
+            {
+                var isStandby = state == MockState.Standby;
+                var transactionReadOnly = state == MockState.Standby || state == MockState.PrimaryReadOnly
+                    ? "on"
+                    : "off";
+
+                // Write the response on the mock is primary/standby/read-write/read-only
+                await ExpectMessages(
+                    FrontendMessageCode.Parse,
+                    FrontendMessageCode.Bind,
+                    FrontendMessageCode.Describe,
+                    FrontendMessageCode.Execute,
+                    FrontendMessageCode.Parse,
+                    FrontendMessageCode.Bind,
+                    FrontendMessageCode.Describe,
+                    FrontendMessageCode.Execute,
+                    FrontendMessageCode.Sync);
+
+                await WriteParseComplete()
+                    .WriteBindComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
+                    .WriteDataRow(BitConverter.GetBytes(isStandby))
+                    .WriteCommandComplete()
+                    .WriteParseComplete()
+                    .WriteBindComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+                    .WriteDataRow(Encoding.ASCII.GetBytes(transactionReadOnly))
+                    .WriteCommandComplete()
+                    .WriteReadyForQuery()
+                    .FlushAsync();
+            }
         }
 
         internal async Task SkipMessage()
@@ -124,6 +156,24 @@ namespace Npgsql.Tests.Support
                 .WriteBindComplete()
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
                 .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(value)))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+        internal Task WriteScalarResponseAndFlush(bool value)
+            => WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
+                .WriteDataRow(BitConverter.GetBytes(value))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+        internal Task WriteScalarResponseAndFlush(string value)
+            => WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+                .WriteDataRow(Encoding.ASCII.GetBytes(value))
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();

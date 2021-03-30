@@ -379,7 +379,7 @@ namespace Npgsql.Replication
             }
             catch (PostgresException e)
             {
-                if (PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode && e.SqlState == PostgresErrorCodes.SyntaxError)
+                if (!Connector.IsBroken && PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode && e.SqlState == PostgresErrorCodes.SyntaxError)
                 {
                     if (temporarySlot)
                         throw new NotSupportedException("Temporary replication slots were introduced in PostgreSQL " +

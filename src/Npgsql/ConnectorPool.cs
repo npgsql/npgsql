@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -9,29 +8,19 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Logging;
 using Npgsql.Util;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
-    sealed partial class ConnectorPool
+    sealed partial class ConnectorPool : ConnectorSource
     {
         #region Fields and properties
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorPool));
 
-        internal NpgsqlConnectionStringBuilder Settings { get; }
-
-        /// <summary>
-        /// Contains the connection string returned to the user from <see cref="NpgsqlConnection.ConnectionString"/>
-        /// after the connection has been opened. Does not contain the password unless Persist Security Info=true.
-        /// </summary>
-        internal string UserFacingConnectionString { get; }
-
         readonly int _max;
         readonly int _min;
         readonly bool _autoPrepare;
         readonly TimeSpan _connectionLifetime;
-        volatile int _numConnectors;
 
         public bool IsBootstrapped
         {
@@ -41,7 +30,13 @@ namespace Npgsql
 
         volatile bool _isBootstrapped;
 
+        volatile int _numConnectors;
+
+        internal int NumConnectors => _numConnectors;
+
         volatile int _idleCount;
+
+        internal int IdleCount => _idleCount;
 
         /// <summary>
         /// Tracks all connectors currently managed by this pool, whether idle or busy.
@@ -50,6 +45,8 @@ namespace Npgsql
         readonly NpgsqlConnector?[] _connectors;
 
         readonly bool _multiplexing;
+
+        readonly MultiHostConnectorPool? _parentPool;
 
         /// <summary>
         /// Reader side for the idle connector channel. Contains nulls in order to release waiting attempts after
@@ -74,11 +71,6 @@ namespace Npgsql
         volatile bool _pruningTimerEnabled;
         int _pruningSampleIndex;
 
-        // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
-        // (i.e. access to connectors of a specific transaction won't be concurrent)
-        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
-            = new();
-
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         // TODO: Make this configurable
@@ -86,7 +78,7 @@ namespace Npgsql
 
         #endregion
 
-        internal (int Total, int Idle, int Busy) Statistics
+        internal override (int Total, int Idle, int Busy) Statistics
         {
             get
             {
@@ -96,10 +88,13 @@ namespace Npgsql
             }
         }
 
-        internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
+        internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
+            : base(settings, connString)
         {
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
+
+            _parentPool = parentPool;
 
             // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
             // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
@@ -110,12 +105,6 @@ namespace Npgsql
 
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
-
-            UserFacingConnectionString = settings.PersistSecurityInfo
-                ? connString
-                : settings.ToStringWithoutPassword();
-
-            Settings = settings;
 
             if (settings.ConnectionPruningInterval == 0)
                 throw new ArgumentException("ConnectionPruningInterval can't be 0.");
@@ -171,7 +160,7 @@ namespace Npgsql
             }
         }
 
-        internal ValueTask<NpgsqlConnector> Rent(
+        internal override ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
@@ -254,7 +243,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
@@ -305,7 +294,7 @@ namespace Npgsql
             return true;
         }
 
-        async ValueTask<NpgsqlConnector?> OpenNewConnector(
+        internal async ValueTask<NpgsqlConnector?> OpenNewConnector(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
@@ -318,8 +307,9 @@ namespace Npgsql
                 try
                 {
                     // We've managed to increase the open counter, open a physical connections.
-                    var connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                    await connector.Open(timeout, async, cancellationToken);
+                    var connector = new NpgsqlConnector(conn, this) { ClearCounter = _clearCounter };
+                    var queryClusterState = _parentPool is not null && Settings.ReplicationMode == ReplicationMode.Off;
+                    await connector.Open(timeout, async, queryClusterState, cancellationToken);
 
                     var i = 0;
                     for (; i < _max; i++)
@@ -353,7 +343,7 @@ namespace Npgsql
             return null;
         }
 
-        internal void Return(NpgsqlConnector connector)
+        internal override void Return(NpgsqlConnector connector)
         {
             Debug.Assert(!connector.InTransaction);
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
@@ -374,7 +364,7 @@ namespace Npgsql
             Debug.Assert(written);
         }
 
-        internal void Clear()
+        internal override void Clear()
         {
             Interlocked.Increment(ref _clearCounter);
 
@@ -420,48 +410,13 @@ namespace Npgsql
                 DisablePruning();
         }
 
-        #region Pending Enlisted Connections
-
-        internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
-                list.Add(connector);
-            }
+            if (_parentPool is null)
+                base.TryRemovePendingEnlistedConnector(connector, transaction);
+            else
+                _parentPool.TryRemovePendingEnlistedConnector(connector, transaction);
         }
-
-        internal void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    return;
-                list.Remove(connector);
-                if (list.Count == 0)
-                    _pendingEnlistedConnectors.Remove(transaction);
-            }
-        }
-
-        internal bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
-        {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                {
-                    connector = null;
-                    return false;
-                }
-                connector = list[list.Count - 1];
-                list.RemoveAt(list.Count - 1);
-                if (list.Count == 0)
-                    _pendingEnlistedConnectors.Remove(transaction);
-                return true;
-            }
-        }
-
-        #endregion
 
         #region Pruning
 
