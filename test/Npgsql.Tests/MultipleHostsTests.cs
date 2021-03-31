@@ -353,6 +353,11 @@ namespace Npgsql.Tests
             {
                 Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
             }
+
+            await using (var thirdBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            {
+                Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
+            }
         }
 
         [Test]
