@@ -283,6 +283,76 @@ namespace Npgsql.Tests
         {
             var builder = new NpgsqlConnectionStringBuilder();
             Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any.ToString()));
+            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
+        }
+
+        [Test]
+        public void TargetSessionAttributes_invalid_is_Any()
+        {
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                TargetSessionAttributes = nameof(TargetSessionAttributes_invalid_is_Any)
+            };
+            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(nameof(TargetSessionAttributes_invalid_is_Any)));
+            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
+        }
+
+        [Test]
+        public async Task Load_balancing_is_working()
+        {
+            var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            var balancingCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
+            {
+                LoadBalanceHosts = true
+            };
+
+            NpgsqlConnector firstConnector;
+            NpgsqlConnector secondConnector;
+
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                firstConnector = firstConnection.Connector!;
+                secondConnector = secondConnection.Connector!;
+            }
+
+            Assert.AreNotSame(firstConnector, secondConnector);
+
+            await using (var firstUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
+            }
+
+            await using (var secondUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
+            }
+
+            await using (var firstBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            {
+                Assert.AreSame(firstConnector, firstBalancedConnection.Connector);
+            }
+
+            await using (var thirdUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, thirdUnbalancedConnection.Connector);
+            }
+
+            await using (var secondBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            {
+                Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
+            }
         }
 
         [Test]
@@ -312,7 +382,7 @@ namespace Npgsql.Tests
 
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
-        public void IntegrationTest()
+        public void IntegrationTest([Values(true, false)] bool withLoadBalancing)
         {
             PoolManager.Reset();
 
@@ -321,6 +391,7 @@ namespace Npgsql.Tests
                 Host = "localhost,127.0.0.1",
                 Pooling = true,
                 MaxPoolSize = 2,
+                LoadBalanceHosts = withLoadBalancing
             };
 
             var queriesDone = 0;

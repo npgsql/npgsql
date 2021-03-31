@@ -936,6 +936,25 @@ namespace Npgsql
         }
         int _connectionLifetime;
 
+        /// <summary>
+        /// Enables balancing between multiple hosts by round-robin.
+        /// </summary>
+        [Category("Pooling")]
+        [Description("Enables balancing between multiple hosts by round-robin.")]
+        [DisplayName("LoadBalanceHosts")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(false)]
+        public bool LoadBalanceHosts
+        {
+            get => _loadBalanceHosts;
+            set
+            {
+                _loadBalanceHosts = value;
+                SetValue(nameof(LoadBalanceHosts), value);
+            }
+        }
+        bool _loadBalanceHosts;
+
         #endregion
 
         #region Properties - Timeouts
@@ -1627,12 +1646,13 @@ namespace Npgsql
             return clone.ToString();
         }
 
-        internal string ConnectionStringWithoutTargetSessionAttributes
+        internal string ConnectionStringForMultipleHosts
         {
             get
             {
                 var clone = Clone();
                 clone[nameof(TargetSessionAttributes)] = null;
+                clone[nameof(LoadBalanceHosts)] = null;
                 return clone.ConnectionString;
             }
         }

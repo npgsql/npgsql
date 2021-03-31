@@ -196,8 +196,9 @@ namespace Npgsql
             // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
-            // Note that we remove TargetSessionAttributes to make all connection strings that are otherwise identical point to the same pool.
-            var canonical = settings.ConnectionStringWithoutTargetSessionAttributes;
+            // Note that we remove TargetSessionAttributes and LoadBalanceHosts to make all connection strings
+            // that are otherwise identical point to the same pool.
+            var canonical = settings.ConnectionStringForMultipleHosts;
 
             if (PoolManager.TryGetValue(canonical, out _pool))
             {

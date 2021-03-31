@@ -14,6 +14,10 @@ namespace Npgsql
     {
         readonly ConnectorPool[] _pools;
 
+        readonly object _roundRobinIndexLock = new();
+
+        int _roundRobinIndex = 0;
+
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
         {
             var hosts = settings.Host!.Split(',');
@@ -66,11 +70,17 @@ namespace Npgsql
             => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
 
         async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
-            CancellationToken cancellationToken)
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            IList<Exception> exceptions, CancellationToken cancellationToken)
         {
-            foreach (var pool in _pools)
+            var pools = _pools;
+            for (var i = 0; i < pools.Length; i++)
             {
+                var pool = pools[startIndex];
+                startIndex++;
+                if (startIndex == pools.Length)
+                    startIndex = 0;
+
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
                     continue;
@@ -112,11 +122,17 @@ namespace Npgsql
         }
 
         async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
-            CancellationToken cancellationToken)
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            IList<Exception> exceptions, CancellationToken cancellationToken)
         {
-            foreach (var pool in _pools)
+            var pools = _pools;
+            for (var i = 0; i < pools.Length; i++)
             {
+                var pool = pools[startIndex];
+                startIndex++;
+                if (startIndex == pools.Length)
+                    startIndex = 0;
+
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
                     continue;
@@ -156,11 +172,17 @@ namespace Npgsql
         }
 
         async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, IList<Exception> exceptions,
-            CancellationToken cancellationToken)
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            IList<Exception> exceptions, CancellationToken cancellationToken)
         {
-            foreach (var pool in _pools)
+            var pools = _pools;
+            for (var i = 0; i < pools.Length; i++)
             {
+                var pool = pools[startIndex];
+                startIndex++;
+                if (startIndex == pools.Length)
+                    startIndex = 0;
+
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
                     continue;
@@ -212,21 +234,23 @@ namespace Npgsql
         {
             var exceptions = new List<Exception>();
 
+            var startIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
+
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
             var preferredType = conn.Settings.TargetSessionAttributesParsed;
             var checkUnpreferred =
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
 
-            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
-                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
+            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
+                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken) ??
-                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken)
+                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken) ??
+                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken)
                             : null) ??
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, exceptions, cancellationToken) ??
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, exceptions, cancellationToken)
+                                await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken)
                             : null);
 
             if (connector is not null)
@@ -241,6 +265,18 @@ namespace Npgsql
                 ? new NpgsqlException("No suitable host was found.")
                 : new("Unable to connect to a suitable host. Check inner exception for more details.",
                     new AggregateException(exceptions));
+
+        int GetRoundRobinIndex()
+        {
+            lock (_roundRobinIndexLock)
+            {
+                var index = _roundRobinIndex;
+                _roundRobinIndex++;
+                if (_roundRobinIndex == _pools.Length)
+                    _roundRobinIndex = 0;
+                return index;
+            }
+        }
 
         internal override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
