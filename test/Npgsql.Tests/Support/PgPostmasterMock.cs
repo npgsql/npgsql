@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -169,6 +170,15 @@ namespace Npgsql.Tests.Support
 
         public async ValueTask DisposeAsync()
         {
+            if (_state != MockState.MultipleHostsDisabled)
+            {
+                var endpoint = _socket.LocalEndPoint as IPEndPoint;
+                Debug.Assert(endpoint is not null);
+                var host = endpoint.Address.ToString();
+                var port = endpoint.Port;
+                ClusterStateCache.RemoveClusterState(host, port);
+            }
+            
             // Stop accepting new connections
             _socket.Dispose();
             try

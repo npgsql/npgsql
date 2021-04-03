@@ -41,6 +41,7 @@ namespace Npgsql.Tests
         public async Task Connect_to_correct_host(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
@@ -64,6 +65,7 @@ namespace Npgsql.Tests
             TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             // First, open and close a connection with the TargetSessionAttributes matching the first server.
             // This ensures wew have an idle connection in the pool.
@@ -108,6 +110,7 @@ namespace Npgsql.Tests
         public async Task Valid_host_not_found(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
@@ -130,8 +133,8 @@ namespace Npgsql.Tests
         [Description("Test that enlist returns a new connector if a previous connector is for an incompatible server type")]
         public async Task Enlist_depends_on_session_attributes()
         {
-            var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
-            var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
 
             var defaultCsb = new NpgsqlConnectionStringBuilder
             {
@@ -300,8 +303,8 @@ namespace Npgsql.Tests
         [Test]
         public async Task Load_balancing_is_working()
         {
-            var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
-            var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
 
             var defaultCsb = new NpgsqlConnectionStringBuilder
             {
@@ -459,6 +462,19 @@ namespace Npgsql.Tests
             Standby = TargetSessionAttributes.Standby,
             PreferPrimary = TargetSessionAttributes.PreferPrimary,
             PreferStandby = TargetSessionAttributes.PreferStandby,
+        }
+
+        class DisposableWrapper : IAsyncDisposable
+        {
+            private readonly IEnumerable<IAsyncDisposable> disposables;
+
+            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => this.disposables = disposables;
+
+            public async ValueTask DisposeAsync()
+            {
+                foreach (var disposable in disposables)
+                    await disposable.DisposeAsync();
+            }
         }
     }
 }
