@@ -14,9 +14,7 @@ namespace Npgsql
     {
         readonly ConnectorPool[] _pools;
 
-        readonly object _roundRobinIndexLock = new();
-
-        int _roundRobinIndex = 0;
+        volatile int _roundRobinIndex = -1;
 
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
         {
@@ -268,14 +266,33 @@ namespace Npgsql
 
         int GetRoundRobinIndex()
         {
-            lock (_roundRobinIndexLock)
+            int index;
+            while (true)
             {
-                var index = _roundRobinIndex;
-                _roundRobinIndex++;
-                if (_roundRobinIndex == _pools.Length)
-                    _roundRobinIndex = 0;
-                return index;
+                index = Interlocked.Increment(ref _roundRobinIndex);
+                if (index < 0)
+                {
+                    // Worst case scenario - we've wrapped around integer counter
+                    if (index == int.MinValue)
+                    {
+                        // This is the thread which wrapped around the counter - reset it to 0
+                        _roundRobinIndex = 0;
+                        index = 0;
+                    }
+                    else
+                    {
+                        // This is not the thread which wrapped around the counter - just wait until it's 0 or more
+                        var sw = new SpinWait();
+                        while (_roundRobinIndex < 0)
+                            sw.SpinOnce();
+                        continue;
+                    }
+                }
+
+                break;
             }
+
+            return index % _pools.Length;
         }
 
         internal override void Return(NpgsqlConnector connector)
