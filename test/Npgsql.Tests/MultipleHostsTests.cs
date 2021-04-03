@@ -293,12 +293,10 @@ namespace Npgsql.Tests
         [Test]
         public void TargetSessionAttributes_invalid_throws()
             => Assert.Throws<ArgumentException>(() =>
-            {
                 new NpgsqlConnectionStringBuilder
                 {
                     TargetSessionAttributes = nameof(TargetSessionAttributes_invalid_throws)
-                };
-            });
+                });
 
         [Test]
         public async Task Connect_with_load_balancing()
