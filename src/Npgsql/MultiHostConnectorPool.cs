@@ -70,16 +70,16 @@ namespace Npgsql
             => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
 
         async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
             IList<Exception> exceptions, CancellationToken cancellationToken)
         {
             var pools = _pools;
             for (var i = 0; i < pools.Length; i++)
             {
-                var pool = pools[startIndex];
-                startIndex++;
-                if (startIndex == pools.Length)
-                    startIndex = 0;
+                var pool = pools[poolIndex];
+                poolIndex++;
+                if (poolIndex == pools.Length)
+                    poolIndex = 0;
 
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
@@ -122,16 +122,16 @@ namespace Npgsql
         }
 
         async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
             IList<Exception> exceptions, CancellationToken cancellationToken)
         {
             var pools = _pools;
             for (var i = 0; i < pools.Length; i++)
             {
-                var pool = pools[startIndex];
-                startIndex++;
-                if (startIndex == pools.Length)
-                    startIndex = 0;
+                var pool = pools[poolIndex];
+                poolIndex++;
+                if (poolIndex == pools.Length)
+                    poolIndex = 0;
 
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
@@ -172,16 +172,16 @@ namespace Npgsql
         }
 
         async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int startIndex,
+            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
             IList<Exception> exceptions, CancellationToken cancellationToken)
         {
             var pools = _pools;
             for (var i = 0; i < pools.Length; i++)
             {
-                var pool = pools[startIndex];
-                startIndex++;
-                if (startIndex == pools.Length)
-                    startIndex = 0;
+                var pool = pools[poolIndex];
+                poolIndex++;
+                if (poolIndex == pools.Length)
+                    poolIndex = 0;
 
                 var clusterState = GetClusterState(pool);
                 if (!clusterValidator(clusterState, preferredType))
@@ -234,7 +234,7 @@ namespace Npgsql
         {
             var exceptions = new List<Exception>();
 
-            var startIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
+            var poolIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
             var preferredType = conn.Settings.TargetSessionAttributesParsed;
@@ -242,15 +242,15 @@ namespace Npgsql
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
 
-            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
-                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
+            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken) ??
-                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken)
+                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken) ??
+                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
                             : null) ??
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, startIndex, exceptions, cancellationToken) ??
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, startIndex, exceptions, cancellationToken)
+                                await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
                             : null);
 
             if (connector is not null)

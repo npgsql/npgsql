@@ -410,7 +410,7 @@ namespace Npgsql.Tests
 
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
-        public void IntegrationTest([Values(true, false)] bool withLoadBalancing)
+        public void IntegrationTest([Values] bool withLoadBalancing)
         {
             PoolManager.Reset();
 
