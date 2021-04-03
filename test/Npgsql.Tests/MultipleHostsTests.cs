@@ -290,15 +290,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TargetSessionAttributes_invalid_is_Any()
-        {
-            var builder = new NpgsqlConnectionStringBuilder
+        public void TargetSessionAttributes_invalid_throws()
+            => Assert.Throws<ArgumentException>(() =>
             {
-                TargetSessionAttributes = nameof(TargetSessionAttributes_invalid_is_Any)
-            };
-            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(nameof(TargetSessionAttributes_invalid_is_Any)));
-            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
-        }
+                new NpgsqlConnectionStringBuilder
+                {
+                    TargetSessionAttributes = nameof(TargetSessionAttributes_invalid_throws)
+                };
+            });
 
         [Test]
         public async Task Load_balancing_is_working()
@@ -311,14 +310,10 @@ namespace Npgsql.Tests
                 Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                 MaxPoolSize = 1,
+                LoadBalanceHosts = true,
             };
 
             using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
-
-            var balancingCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
-            {
-                LoadBalanceHosts = true
-            };
 
             NpgsqlConnector firstConnector;
             NpgsqlConnector secondConnector;
@@ -332,32 +327,17 @@ namespace Npgsql.Tests
 
             Assert.AreNotSame(firstConnector, secondConnector);
 
-            await using (var firstUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
-            {
-                Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
-            }
-
-            await using (var secondUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
-            {
-                Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
-            }
-
-            await using (var firstBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            await using (var firstBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 Assert.AreSame(firstConnector, firstBalancedConnection.Connector);
             }
 
-            await using (var thirdUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
-            {
-                Assert.AreSame(firstConnector, thirdUnbalancedConnection.Connector);
-            }
-
-            await using (var secondBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            await using (var secondBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
             }
 
-            await using (var thirdBalancedConnection = await OpenConnectionAsync(balancingCsb.ConnectionString))
+            await using (var thirdBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
             }
