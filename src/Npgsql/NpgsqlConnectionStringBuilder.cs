@@ -50,20 +50,13 @@ namespace Npgsql
                     ? Path.Combine(_host, $".s.PGSQL.{_port}")
                     : $"tcp://{_host}:{_port}";
 
-        TargetSessionAttributes? _targetSessionAttributesParsed;
+        TargetSessionAttributes _targetSessionAttributesParsed;
 
         internal TargetSessionAttributes TargetSessionAttributesParsed
         {
-            get => _targetSessionAttributesParsed ??= Enum.TryParse<TargetSessionAttributes>(TargetSessionAttributes, out var result)
-                ? result
-                : Npgsql.TargetSessionAttributes.Any;
-            set
-            {
-                TargetSessionAttributes = value.ToString();
-                _targetSessionAttributesParsed = value;
-            }
+            get => _targetSessionAttributesParsed;
+            set => TargetSessionAttributes = value.ToString();
         }
-
 
         #endregion
 
@@ -531,9 +524,12 @@ namespace Npgsql
             get => _targetSessionAttributes;
             set
             {
+                if (!Enum.TryParse<TargetSessionAttributes>(value, out var result))
+                    throw new ArgumentException($"Unable to parse {nameof(TargetSessionAttributes)}", nameof(TargetSessionAttributes));
+
                 _targetSessionAttributes = value;
                 SetValue(nameof(TargetSessionAttributes), value);
-                _targetSessionAttributesParsed = null;
+                _targetSessionAttributesParsed = result;
             }
         }
         string _targetSessionAttributes = "Any";
@@ -935,6 +931,25 @@ namespace Npgsql
             }
         }
         int _connectionLifetime;
+
+        /// <summary>
+        /// Enables balancing between multiple hosts by round-robin.
+        /// </summary>
+        [Category("Pooling")]
+        [Description("Enables balancing between multiple hosts by round-robin.")]
+        [DisplayName("LoadBalanceHosts")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(false)]
+        public bool LoadBalanceHosts
+        {
+            get => _loadBalanceHosts;
+            set
+            {
+                _loadBalanceHosts = value;
+                SetValue(nameof(LoadBalanceHosts), value);
+            }
+        }
+        bool _loadBalanceHosts;
 
         #endregion
 
@@ -1627,7 +1642,7 @@ namespace Npgsql
             return clone.ToString();
         }
 
-        internal string ConnectionStringWithoutTargetSessionAttributes
+        internal string ConnectionStringForMultipleHosts
         {
             get
             {

@@ -1,15 +1,16 @@
-﻿using System;
+﻿using Npgsql.Tests.Support;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Tests.Support;
-using static Npgsql.Tests.TestUtil;
-using static Npgsql.Tests.Support.MockState;
 using System.Transactions;
+
+using static Npgsql.Tests.Support.MockState;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -41,6 +42,7 @@ namespace Npgsql.Tests
         public async Task Connect_to_correct_host(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
@@ -64,6 +66,7 @@ namespace Npgsql.Tests
             TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             // First, open and close a connection with the TargetSessionAttributes matching the first server.
             // This ensures wew have an idle connection in the pool.
@@ -108,6 +111,7 @@ namespace Npgsql.Tests
         public async Task Valid_host_not_found(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
@@ -130,8 +134,8 @@ namespace Npgsql.Tests
         [Description("Test that enlist returns a new connector if a previous connector is for an incompatible server type")]
         public async Task Enlist_depends_on_session_attributes()
         {
-            var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
-            var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
 
             var defaultCsb = new NpgsqlConnectionStringBuilder
             {
@@ -283,6 +287,98 @@ namespace Npgsql.Tests
         {
             var builder = new NpgsqlConnectionStringBuilder();
             Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any.ToString()));
+            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
+        }
+
+        [Test]
+        public void TargetSessionAttributes_invalid_throws()
+            => Assert.Throws<ArgumentException>(() =>
+                new NpgsqlConnectionStringBuilder
+                {
+                    TargetSessionAttributes = nameof(TargetSessionAttributes_invalid_throws)
+                });
+
+        [Test]
+        public async Task Connect_with_load_balancing()
+        {
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1,
+                LoadBalanceHosts = true,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            NpgsqlConnector firstConnector;
+            NpgsqlConnector secondConnector;
+
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                firstConnector = firstConnection.Connector!;
+                secondConnector = secondConnection.Connector!;
+            }
+
+            Assert.AreNotSame(firstConnector, secondConnector);
+
+            await using (var firstBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, firstBalancedConnection.Connector);
+            }
+
+            await using (var secondBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(secondConnector, secondBalancedConnection.Connector);
+            }
+
+            await using (var thirdBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
+            }
+        }
+
+        [Test]
+        public async Task Connect_without_load_balancing()
+        {
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1,
+                LoadBalanceHosts = false,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            NpgsqlConnector firstConnector;
+            NpgsqlConnector secondConnector;
+
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                firstConnector = firstConnection.Connector!;
+                secondConnector = secondConnection.Connector!;
+            }
+
+            Assert.AreNotSame(firstConnector, secondConnector);
+
+            await using (var firstUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
+            }
+
+            await using (var secondUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
+            }
         }
 
         [Test]
@@ -312,7 +408,7 @@ namespace Npgsql.Tests
 
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
-        public void IntegrationTest()
+        public void IntegrationTest([Values] bool withLoadBalancing)
         {
             PoolManager.Reset();
 
@@ -321,6 +417,7 @@ namespace Npgsql.Tests
                 Host = "localhost,127.0.0.1",
                 Pooling = true,
                 MaxPoolSize = 2,
+                LoadBalanceHosts = withLoadBalancing
             };
 
             var queriesDone = 0;
@@ -383,6 +480,19 @@ namespace Npgsql.Tests
             Standby = TargetSessionAttributes.Standby,
             PreferPrimary = TargetSessionAttributes.PreferPrimary,
             PreferStandby = TargetSessionAttributes.PreferStandby,
+        }
+
+        class DisposableWrapper : IAsyncDisposable
+        {
+            private readonly IEnumerable<IAsyncDisposable> disposables;
+
+            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => this.disposables = disposables;
+
+            public async ValueTask DisposeAsync()
+            {
+                foreach (var disposable in disposables)
+                    await disposable.DisposeAsync();
+            }
         }
     }
 }

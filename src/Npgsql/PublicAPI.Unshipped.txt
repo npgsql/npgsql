@@ -8,6 +8,8 @@ Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Thr
 Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 Npgsql.NpgsqlConnectionStringBuilder.HostRecheckSeconds.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.HostRecheckSeconds.set -> void
+Npgsql.NpgsqlConnectionStringBuilder.LoadBalanceHosts.get -> bool
+Npgsql.NpgsqlConnectionStringBuilder.LoadBalanceHosts.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslCertificate.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslCertificate.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslKey.get -> string?

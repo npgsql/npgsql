@@ -28,6 +28,9 @@ namespace Npgsql
                 new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #endif
 
+        internal static void RemoveClusterState(string host, int port)
+            => Clusters.TryRemove(new ClusterIdentifier(host, port), out _);
+
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
         {
             readonly string _host;
