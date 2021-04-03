@@ -1,15 +1,16 @@
-﻿using System;
+﻿using Npgsql.Tests.Support;
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Tests.Support;
-using static Npgsql.Tests.TestUtil;
-using static Npgsql.Tests.Support.MockState;
 using System.Transactions;
+
+using static Npgsql.Tests.Support.MockState;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -300,7 +301,7 @@ namespace Npgsql.Tests
             });
 
         [Test]
-        public async Task Load_balancing_is_working()
+        public async Task Connect_with_load_balancing()
         {
             await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
             await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
@@ -340,6 +341,45 @@ namespace Npgsql.Tests
             await using (var thirdBalancedConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 Assert.AreSame(firstConnector, thirdBalancedConnection.Connector);
+            }
+        }
+
+        [Test]
+        public async Task Connect_without_load_balancing()
+        {
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1,
+                LoadBalanceHosts = false,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            NpgsqlConnector firstConnector;
+            NpgsqlConnector secondConnector;
+
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                firstConnector = firstConnection.Connector!;
+                secondConnector = secondConnection.Connector!;
+            }
+
+            Assert.AreNotSame(firstConnector, secondConnector);
+
+            await using (var firstUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, firstUnbalancedConnection.Connector);
+            }
+
+            await using (var secondUnbalancedConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, secondUnbalancedConnection.Connector);
             }
         }
 
