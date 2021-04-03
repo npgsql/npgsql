@@ -520,7 +520,7 @@ namespace Npgsql
             catch (Exception e)
             {
                 ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline,
-                    DateTime.UtcNow, TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
+                    DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 Break(e);
                 throw;
             }
@@ -595,7 +595,7 @@ namespace Npgsql
                     ? ClusterState.PrimaryReadOnly
                     : ClusterState.PrimaryReadWrite;
             return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
+                Settings.HostRecheckSecondsTranslated);
         }
 
         void WriteStartupMessage(string username)
@@ -1241,7 +1241,7 @@ namespace Npgsql
                             {
                                 // Consider the database offline
                                 ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                                    TimeSpan.FromSeconds(connector.Settings.HostRecheckSeconds));
+                                    connector.Settings.HostRecheckSecondsTranslated);
                                 throw connector.Break(error);
                             }
 
@@ -1295,7 +1295,7 @@ namespace Npgsql
                 {
                     // We've timed out even though we've send the cancellation request
                     ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                            TimeSpan.FromSeconds(connector.Settings.HostRecheckSeconds));
+                            connector.Settings.HostRecheckSecondsTranslated);
                     throw;
                 }
                 catch (NpgsqlException)
@@ -1790,7 +1790,7 @@ namespace Npgsql
                     if (reason is NpgsqlException && reason.InnerException is IOException)
                     {
                         ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                            TimeSpan.FromSeconds(Settings.HostRecheckSeconds));
+                            Settings.HostRecheckSecondsTranslated);
                     }
 
                     Log.Error("Breaking connector", reason, Id);

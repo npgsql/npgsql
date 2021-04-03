@@ -31,6 +31,8 @@ namespace Npgsql
 
         public static string? Options => Environment.GetEnvironmentVariable("PGOPTIONS");
 
+        public static string? TargetSessionAttributes => Environment.GetEnvironmentVariable("PGTARGETSESSIONATTRS");
+
         static string? GetDefaultFilePath(string fileName) =>
             Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData &&
             Path.Combine(appData, "postgresql", fileName) is string filePath &&

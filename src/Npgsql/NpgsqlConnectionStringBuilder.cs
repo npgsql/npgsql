@@ -58,6 +58,11 @@ namespace Npgsql
             set => TargetSessionAttributes = value.ToString();
         }
 
+        TimeSpan? _hostRecheckSecondsTranslated;
+
+        internal TimeSpan HostRecheckSecondsTranslated
+            => _hostRecheckSecondsTranslated ??= TimeSpan.FromSeconds(HostRecheckSeconds == 0 ? -1 : HostRecheckSeconds);
+
         #endregion
 
         #region Constructors
@@ -517,13 +522,14 @@ namespace Npgsql
         [Category("Connection")]
         [Description("Determines the preferred PostgreSQL target server type.")]
         [DisplayName("TargetSessionAttributes")]
-        [DefaultValue("Any")]
         [NpgsqlConnectionStringProperty]
         public string TargetSessionAttributes
         {
             get => _targetSessionAttributes;
             set
             {
+                if (value is null)
+                    value = PostgresEnvironment.TargetSessionAttributes ?? Npgsql.TargetSessionAttributes.Any.ToString();
                 if (!Enum.TryParse<TargetSessionAttributes>(value, out var result))
                     throw new ArgumentException($"Unable to parse {nameof(TargetSessionAttributes)}", nameof(TargetSessionAttributes));
 
@@ -547,8 +553,11 @@ namespace Npgsql
             get => _hostRecheckSeconds;
             set
             {
+                if (value < 0)
+                    throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
                 _hostRecheckSeconds = value;
                 SetValue(nameof(HostRecheckSeconds), value);
+                _hostRecheckSecondsTranslated = null;
             }
         }
         int _hostRecheckSeconds;

@@ -64,6 +64,17 @@ namespace Npgsql.Tests.Support
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             _socket.Bind(endpoint);
 
+            // In some cases we can attempt to connect to a port, which was already in use (doesn't have to be a mock).
+            // Clearing the cached state, so the previous state is not leaking.
+            if (state != MockState.MultipleHostsDisabled)
+            {
+                var afterBindEndport = _socket.LocalEndPoint as IPEndPoint;
+                Debug.Assert(afterBindEndport is not null);
+                var host = afterBindEndport.Address.ToString();
+                var port = afterBindEndport.Port;
+                ClusterStateCache.RemoveClusterState(host, port);
+            }
+
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint!;
             Host = localEndPoint.Address.ToString();
             Port = localEndPoint.Port;

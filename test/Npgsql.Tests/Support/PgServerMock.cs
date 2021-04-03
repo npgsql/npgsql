@@ -65,11 +65,6 @@ namespace Npgsql.Tests.Support
 
             if (state != MockState.MultipleHostsDisabled)
             {
-                var isStandby = state == MockState.Standby;
-                var transactionReadOnly = state == MockState.Standby || state == MockState.PrimaryReadOnly
-                    ? "on"
-                    : "off";
-
                 // Write the response on the mock is primary/standby/read-write/read-only
                 await ExpectMessages(
                     FrontendMessageCode.Parse,
@@ -82,19 +77,29 @@ namespace Npgsql.Tests.Support
                     FrontendMessageCode.Execute,
                     FrontendMessageCode.Sync);
 
-                await WriteParseComplete()
-                    .WriteBindComplete()
-                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
-                    .WriteDataRow(BitConverter.GetBytes(isStandby))
-                    .WriteCommandComplete()
-                    .WriteParseComplete()
-                    .WriteBindComplete()
-                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
-                    .WriteDataRow(Encoding.ASCII.GetBytes(transactionReadOnly))
-                    .WriteCommandComplete()
-                    .WriteReadyForQuery()
-                    .FlushAsync();
+                await SendMockState(state);
             }
+        }
+
+        internal Task SendMockState(MockState state)
+        {
+            var isStandby = state == MockState.Standby;
+            var transactionReadOnly = state == MockState.Standby || state == MockState.PrimaryReadOnly
+                ? "on"
+                : "off";
+
+            return WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bool))
+                .WriteDataRow(BitConverter.GetBytes(isStandby))
+                .WriteCommandComplete()
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Text))
+                .WriteDataRow(Encoding.ASCII.GetBytes(transactionReadOnly))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
         }
 
         internal async Task SkipMessage()
