@@ -270,29 +270,25 @@ namespace Npgsql
             while (true)
             {
                 index = Interlocked.Increment(ref _roundRobinIndex);
-                if (index < 0)
+                if (index >= 0)
+                    return index % _pools.Length;
+
+                // Worst case scenario - we've wrapped around integer counter
+                if (index == int.MinValue)
                 {
-                    // Worst case scenario - we've wrapped around integer counter
-                    if (index == int.MinValue)
-                    {
-                        // This is the thread which wrapped around the counter - reset it to 0
-                        _roundRobinIndex = 0;
-                        index = 0;
-                    }
-                    else
-                    {
-                        // This is not the thread which wrapped around the counter - just wait until it's 0 or more
-                        var sw = new SpinWait();
-                        while (_roundRobinIndex < 0)
-                            sw.SpinOnce();
-                        continue;
-                    }
+                    // This is the thread which wrapped around the counter - reset it to 0
+                    _roundRobinIndex = 0;
+                    return 0;
                 }
-
-                break;
+                else
+                {
+                    // This is not the thread which wrapped around the counter - just wait until it's 0 or more
+                    var sw = new SpinWait();
+                    while (_roundRobinIndex < 0)
+                        sw.SpinOnce();
+                    continue;
+                }
             }
-
-            return index % _pools.Length;
         }
 
         internal override void Return(NpgsqlConnector connector)
