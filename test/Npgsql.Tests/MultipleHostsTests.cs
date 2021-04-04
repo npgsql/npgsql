@@ -419,7 +419,7 @@ namespace Npgsql.Tests
                 Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                 MaxPoolSize = 1,
-                HostRecheckSeconds = alwaysCheckHostState ? 0 : 10,
+                HostRecheckSeconds = alwaysCheckHostState ? 0 : int.MaxValue,
                 TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
                 NoResetOnClose = true,
             };

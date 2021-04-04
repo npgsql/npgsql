@@ -143,7 +143,7 @@ namespace Npgsql
                         if (clusterState == ClusterState.Unknown)
                         {
                             // Opening a new physical connection refreshed the cluster state, check again
-                            // Note that we purposefuly ignore the expiration, as in case of the HostRecheckSeconds = 0
+                            // Note that we purposefully ignore the expiration, as in case of the HostRecheckSeconds = 0
                             // it will always be expired
                             clusterState = GetClusterState(pool, ignoreExpiration: true);
                             Debug.Assert(clusterState != ClusterState.Unknown);
