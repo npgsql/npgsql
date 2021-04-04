@@ -61,8 +61,8 @@ namespace Npgsql
                 _ => false
             };
 
-        static ClusterState GetClusterState(ConnectorPool pool)
-            => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration: false);
+        static ClusterState GetClusterState(ConnectorPool pool, bool ignoreExpiration = false)
+            => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration);
 
         static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
             => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
@@ -143,7 +143,9 @@ namespace Npgsql
                         if (clusterState == ClusterState.Unknown)
                         {
                             // Opening a new physical connection refreshed the cluster state, check again
-                            clusterState = GetClusterState(pool);
+                            // Note that we purposefully ignore the expiration, as in case of the HostRecheckSeconds = 0
+                            // it will always be expired
+                            clusterState = GetClusterState(pool, ignoreExpiration: true);
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
@@ -190,9 +192,9 @@ namespace Npgsql
                 try
                 {
                     connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                    // Get may be have opened a new physical connection and refreshed the cluster state, check again
                     if (clusterState == ClusterState.Unknown)
                     {
+                        // Get might have opened a new physical connection and refreshed the cluster state, check again
                         clusterState = GetClusterState(pool);
                         if (clusterState == ClusterState.Unknown)
                             clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);

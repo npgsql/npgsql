@@ -299,6 +299,33 @@ namespace Npgsql.Tests
                 });
 
         [Test]
+        public void HostRecheckSeconds_default_value()
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+            Assert.That(builder.HostRecheckSeconds, Is.EqualTo(10));
+            Assert.That(builder.HostRecheckSecondsTranslated, Is.EqualTo(TimeSpan.FromSeconds(10)));
+        }
+
+        [Test]
+        public void HostRecheckSeconds_zero_value()
+        {
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                HostRecheckSeconds = 0,
+            };
+            Assert.That(builder.HostRecheckSeconds, Is.EqualTo(0));
+            Assert.That(builder.HostRecheckSecondsTranslated, Is.EqualTo(TimeSpan.FromSeconds(-1)));
+        }
+
+        [Test]
+        public void HostRecheckSeconds_invalid_throws()
+            => Assert.Throws<ArgumentException>(() =>
+                new NpgsqlConnectionStringBuilder
+                {
+                    HostRecheckSeconds = -1
+                });
+
+        [Test]
         public async Task Connect_with_load_balancing()
         {
             await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
@@ -382,6 +409,61 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public async Task Connect_state_changing_hosts([Values] bool alwaysCheckHostState)
+        {
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var defaultCsb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 1,
+                HostRecheckSeconds = alwaysCheckHostState ? 0 : int.MaxValue,
+                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
+                NoResetOnClose = true,
+            };
+
+            using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
+
+            NpgsqlConnector firstConnector;
+            NpgsqlConnector secondConnector;
+            var firstServerTask = Task.Run(async () =>
+            {
+                var server = await primaryPostmaster.WaitForServerConnection();
+                if (!alwaysCheckHostState)
+                    return;
+
+                // Update the state after a 'failover'
+                await server.SendMockState(Standby);
+            });
+            var secondServerTask = Task.Run(async () =>
+            {
+                var server = await standbyPostmaster.WaitForServerConnection();
+                if (!alwaysCheckHostState)
+                    return;
+
+                // As TargetSessionAttributes is 'prefer', it does another cycle for the 'unpreferred'
+                await server.SendMockState(Standby);
+                // Update the state after a 'failover'
+                await server.SendMockState(Primary);
+            });
+
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                firstConnector = firstConnection.Connector!;
+                secondConnector = secondConnection.Connector!;
+            }
+
+            await using var thirdConnection = await OpenConnectionAsync(defaultConnectionString);
+            Assert.AreSame(alwaysCheckHostState ? secondConnector : firstConnector, thirdConnection.Connector);
+
+            await firstServerTask;
+            await secondServerTask;
+        }
+
+        [Test]
         public void Cluster_state_cache_basic()
         {
             const string host = nameof(Cluster_state_cache_basic);
@@ -408,7 +490,7 @@ namespace Npgsql.Tests
 
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
-        public void IntegrationTest([Values] bool withLoadBalancing)
+        public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
         {
             PoolManager.Reset();
 
@@ -417,7 +499,8 @@ namespace Npgsql.Tests
                 Host = "localhost,127.0.0.1",
                 Pooling = true,
                 MaxPoolSize = 2,
-                LoadBalanceHosts = withLoadBalancing
+                LoadBalanceHosts = loadBalancing,
+                HostRecheckSeconds = alwaysCheckHostState ? 0 : 10,
             };
 
             var queriesDone = 0;
@@ -432,9 +515,9 @@ namespace Npgsql.Tests
             var onlyStandbyClient = Client(csb, TargetSessionAttributes.Standby);
             var readOnlyClient = Client(csb, TargetSessionAttributes.ReadOnly);
 
-            Assert.DoesNotThrowAsync(async () => await clientsTask);
-            Assert.ThrowsAsync<NpgsqlException>(async () => await onlyStandbyClient);
-            Assert.ThrowsAsync<NpgsqlException>(async () => await readOnlyClient);
+            Assert.DoesNotThrowAsync(() => clientsTask);
+            Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
+            Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
             Assert.AreEqual(125, queriesDone);
 
             Assert.AreEqual(8, PoolManager.Pools.Where(x => x.Key is not null).Count());
