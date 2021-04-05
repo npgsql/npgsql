@@ -51,7 +51,7 @@ namespace Npgsql
             // TODO: Why should it be possible to remove the QuotePrefix?
             set
             {
-                if (string.IsNullOrEmpty(value))
+                if (!string.IsNullOrEmpty(value))
                 {
                     base.QuotePrefix = value;
                 }
