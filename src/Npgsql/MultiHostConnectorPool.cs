@@ -1,6 +1,7 @@
 ﻿using Npgsql.Util;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -237,7 +238,7 @@ namespace Npgsql
             var poolIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
-            var preferredType = conn.Settings.TargetSessionAttributesParsed;
+            var preferredType = GetTargetSessionAttributes(conn);
             var checkUnpreferred =
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
@@ -335,7 +336,7 @@ namespace Npgsql
                     connector = list[i];
                     var lastKnownState = GetClusterState(connector.Host, connector.Port, ignoreExpiration: true);
                     Debug.Assert(lastKnownState != ClusterState.Unknown);
-                    var preferredType = connection.Settings.TargetSessionAttributesParsed;
+                    var preferredType = GetTargetSessionAttributes(connection);
                     if (IsFallbackOrPreferred(lastKnownState, preferredType))
                     {
                         list.RemoveAt(i);
@@ -348,6 +349,22 @@ namespace Npgsql
                 connector = null;
                 return false;
             }
+        }
+
+        static TargetSessionAttributes GetTargetSessionAttributes(NpgsqlConnection connection)
+        {
+            var result = connection.Settings.TargetSessionAttributesParsed;
+            if (result is not null)
+                return result.Value;
+
+            if (PostgresEnvironment.TargetSessionAttributes is string s)
+            {
+                if (!Enum.TryParse<TargetSessionAttributes>(s, out var parsed))
+                    throw new ArgumentException($"The environment variable PGTARGETSESSIONATTRS contains an invalid value '{s}'");
+                return parsed;
+            }
+
+            return default;
         }
     }
 }

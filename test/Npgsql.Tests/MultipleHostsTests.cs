@@ -73,11 +73,11 @@ namespace Npgsql.Tests
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(postmasters),
-                TargetSessionAttributesParsed = servers[0] switch
+                TargetSessionAttributes = servers[0] switch
                 {
-                    Primary => TargetSessionAttributes.ReadWrite,
-                    PrimaryReadOnly => TargetSessionAttributes.ReadOnly,
-                    Standby => TargetSessionAttributes.Standby,
+                    Primary => "ReadWrite",
+                    PrimaryReadOnly => "ReadOnly",
+                    Standby => "Standby",
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
@@ -148,22 +148,22 @@ namespace Npgsql.Tests
 
             var primaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.Primary,
+                TargetSessionAttributes = "Primary",
             };
 
             var standbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.Standby,
+                TargetSessionAttributes = "Standby",
             };
 
             var preferPrimaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
+                TargetSessionAttributes = "PreferPrimary",
             };
 
             var preferStandbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferStandby,
+                TargetSessionAttributes = "PreferStandby",
             };
 
             // Note that the transaction scope is not disposed due to a rollback (which isn't something a mock expects)
@@ -283,11 +283,29 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TargetSessionAttributes_default_is_Any()
+        public void TargetSessionAttributes_default_is_null()
+            => Assert.That(new NpgsqlConnectionStringBuilder().TargetSessionAttributes, Is.Null);
+
+        [Test, NonParallelizable]
+        public async Task TargetSessionAttributes_uses_environment_variable()
         {
-            var builder = new NpgsqlConnectionStringBuilder();
-            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any.ToString()));
-            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
+            using var envVarResetter = SetEnvironmentVariable("PGTARGETSESSIONATTRS", "PreferStandby");
+
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
+            };
+
+            Assert.That(builder.TargetSessionAttributes, Is.Null);
+
+            using var _ = CreateTempPool(builder.ConnectionString, out var connectionString);
+
+            await using var conn = await OpenConnectionAsync(connectionString);
+            Assert.That(conn.Port, Is.EqualTo(standbyPostmaster.Port));
         }
 
         [Test]
@@ -420,7 +438,7 @@ namespace Npgsql.Tests
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                 MaxPoolSize = 1,
                 HostRecheckSeconds = alwaysCheckHostState ? 0 : int.MaxValue,
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
+                TargetSessionAttributes = "PreferPrimary",
                 NoResetOnClose = true,
             };
 
@@ -506,14 +524,14 @@ namespace Npgsql.Tests
             var queriesDone = 0;
 
             var clientsTask = Task.WhenAll(
-                Client(csb, TargetSessionAttributes.Any),
-                Client(csb, TargetSessionAttributes.Primary),
-                Client(csb, TargetSessionAttributes.PreferPrimary),
-                Client(csb, TargetSessionAttributes.PreferStandby),
-                Client(csb, TargetSessionAttributes.ReadWrite));
+                Client(csb, "Any"),
+                Client(csb, "Primary"),
+                Client(csb, "PreferPrimary"),
+                Client(csb, "PreferStandby"),
+                Client(csb, "ReadWrite"));
 
-            var onlyStandbyClient = Client(csb, TargetSessionAttributes.Standby);
-            var readOnlyClient = Client(csb, TargetSessionAttributes.ReadOnly);
+            var onlyStandbyClient = Client(csb, "Standby");
+            var readOnlyClient = Client(csb, "ReadOnly");
 
             Assert.DoesNotThrowAsync(() => clientsTask);
             Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
@@ -524,10 +542,10 @@ namespace Npgsql.Tests
 
             PoolManager.Reset();
 
-            Task Client(NpgsqlConnectionStringBuilder csb, TargetSessionAttributes targetServerType)
+            Task Client(NpgsqlConnectionStringBuilder csb, string targetSessionAttributes)
             {
                 csb = csb.Clone();
-                csb.TargetSessionAttributesParsed = targetServerType;
+                csb.TargetSessionAttributes = targetSessionAttributes;
                 var tasks = new List<Task>(5);
 
                 for (var i = 0; i < 5; i++)

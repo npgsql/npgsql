@@ -50,14 +50,6 @@ namespace Npgsql
                     ? Path.Combine(_host, $".s.PGSQL.{_port}")
                     : $"tcp://{_host}:{_port}";
 
-        TargetSessionAttributes _targetSessionAttributesParsed;
-
-        internal TargetSessionAttributes TargetSessionAttributesParsed
-        {
-            get => _targetSessionAttributesParsed;
-            set => TargetSessionAttributes = value.ToString();
-        }
-
         TimeSpan? _hostRecheckSecondsTranslated;
 
         internal TimeSpan HostRecheckSecondsTranslated
@@ -521,31 +513,32 @@ namespace Npgsql
         /// </summary>
         [Category("Connection")]
         [Description("Determines the preferred PostgreSQL target server type.")]
-        [DisplayName("TargetSessionAttributes")]
+        [DisplayName("Target Session Attributes")]
         [NpgsqlConnectionStringProperty]
-        public string TargetSessionAttributes
+        public string? TargetSessionAttributes
         {
-            get => _targetSessionAttributes;
+            get => TargetSessionAttributesParsed?.ToString();
             set
             {
                 if (value is null)
-                    value = PostgresEnvironment.TargetSessionAttributes ?? Npgsql.TargetSessionAttributes.Any.ToString();
-                if (!Enum.TryParse<TargetSessionAttributes>(value, out var result))
-                    throw new ArgumentException($"Unable to parse {nameof(TargetSessionAttributes)}", nameof(TargetSessionAttributes));
+                    TargetSessionAttributesParsed = null;
+                else if (Enum.TryParse<TargetSessionAttributes>(value, out var parsed))
+                    TargetSessionAttributesParsed = parsed;
+                else
+                    throw new ArgumentException($"'Target Session Attributes' contains an invalid value '{value}'");
 
-                _targetSessionAttributes = value;
-                SetValue(nameof(TargetSessionAttributes), value);
-                _targetSessionAttributesParsed = result;
+                SetValue(nameof(TargetSessionAttributes), TargetSessionAttributesParsed);
             }
         }
-        string _targetSessionAttributes = "Any";
+
+        internal TargetSessionAttributes? TargetSessionAttributesParsed { get; private set; }
 
         /// <summary>
         /// Controls for how long the host's cached state will be considered as valid.
         /// </summary>
         [Category("Connection")]
         [Description("Controls for how long the host's cached state will be considered as valid.")]
-        [DisplayName("HostRecheckSeconds")]
+        [DisplayName("Host Recheck Seconds")]
         [DefaultValue(10)]
         [NpgsqlConnectionStringProperty]
         public int HostRecheckSeconds
@@ -929,7 +922,6 @@ namespace Npgsql
         [Description("The total maximum lifetime of connections (in seconds).")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty("Load Balance Timeout")]
-        [DefaultValue(0)]
         public int ConnectionLifetime
         {
             get => _connectionLifetime;
@@ -946,9 +938,8 @@ namespace Npgsql
         /// </summary>
         [Category("Pooling")]
         [Description("Enables balancing between multiple hosts by round-robin.")]
-        [DisplayName("LoadBalanceHosts")]
+        [DisplayName("Load Balance Hosts")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(false)]
         public bool LoadBalanceHosts
         {
             get => _loadBalanceHosts;

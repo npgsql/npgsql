@@ -182,8 +182,11 @@ namespace Npgsql
             var hostsSeparator = settings.Host?.IndexOf(',');
             if (hostsSeparator.HasValue && hostsSeparator == -1)
             {
-                if (settings.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
-                    throw new NotSupportedException("TargetSessionAttributes other then Any is only supported with multiple hosts");
+                if (settings.TargetSessionAttributesParsed is not null &&
+                    settings.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
+                {
+                    throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
+                }
 
                 var portSeparator = settings.Host!.IndexOf(':');
                 if (!Path.IsPathRooted(settings.Host) && portSeparator != -1)
