@@ -143,10 +143,7 @@ namespace Npgsql
                     {
                         if (clusterState == ClusterState.Unknown)
                         {
-                            // Opening a new physical connection refreshed the cluster state, check again
-                            // Note that we purposefully ignore the expiration, as in case of the HostRecheckSeconds = 0
-                            // it will always be expired
-                            clusterState = GetClusterState(pool, ignoreExpiration: true);
+                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
@@ -269,10 +266,9 @@ namespace Npgsql
 
         int GetRoundRobinIndex()
         {
-            int index;
             while (true)
             {
-                index = Interlocked.Increment(ref _roundRobinIndex);
+                var index = Interlocked.Increment(ref _roundRobinIndex);
                 if (index >= 0)
                     return index % _pools.Length;
 
@@ -283,14 +279,11 @@ namespace Npgsql
                     _roundRobinIndex = 0;
                     return 0;
                 }
-                else
-                {
-                    // This is not the thread which wrapped around the counter - just wait until it's 0 or more
-                    var sw = new SpinWait();
-                    while (_roundRobinIndex < 0)
-                        sw.SpinOnce();
-                    continue;
-                }
+
+                // This is not the thread which wrapped around the counter - just wait until it's 0 or more
+                var sw = new SpinWait();
+                while (_roundRobinIndex < 0)
+                    sw.SpinOnce();
             }
         }
 
