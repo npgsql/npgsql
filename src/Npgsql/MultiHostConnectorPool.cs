@@ -352,19 +352,9 @@ namespace Npgsql
         }
 
         static TargetSessionAttributes GetTargetSessionAttributes(NpgsqlConnection connection)
-        {
-            var result = connection.Settings.TargetSessionAttributesParsed;
-            if (result is not null)
-                return result.Value;
-
-            if (PostgresEnvironment.TargetSessionAttributes is string s)
-            {
-                if (!Enum.TryParse<TargetSessionAttributes>(s, out var parsed))
-                    throw new ArgumentException($"The environment variable PGTARGETSESSIONATTRS contains an invalid value '{s}'");
-                return parsed;
-            }
-
-            return default;
-        }
+            => connection.Settings.TargetSessionAttributesParsed ??
+               (PostgresEnvironment.TargetSessionAttributes is string s
+                   ? NpgsqlConnectionStringBuilder.ParseTargetSessionAttributes(s)
+                   : default);
     }
 }

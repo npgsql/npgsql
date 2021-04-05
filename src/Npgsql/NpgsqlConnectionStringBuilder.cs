@@ -517,21 +517,42 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string? TargetSessionAttributes
         {
-            get => TargetSessionAttributesParsed?.ToString();
+            get => TargetSessionAttributesParsed switch
+            {
+                Npgsql.TargetSessionAttributes.Any           => "any",
+                Npgsql.TargetSessionAttributes.Primary       => "primary",
+                Npgsql.TargetSessionAttributes.Standby       => "standby",
+                Npgsql.TargetSessionAttributes.PreferPrimary => "prefer-primary",
+                Npgsql.TargetSessionAttributes.PreferStandby => "prefer-standby",
+                Npgsql.TargetSessionAttributes.ReadWrite     => "read-write",
+                Npgsql.TargetSessionAttributes.ReadOnly      => "read-only",
+                null => null,
+
+                _ => throw new ArgumentException($"Unhandled enum value '{TargetSessionAttributesParsed}'")
+            };
+
             set
             {
-                if (value is null)
-                    TargetSessionAttributesParsed = null;
-                else if (Enum.TryParse<TargetSessionAttributes>(value, out var parsed))
-                    TargetSessionAttributesParsed = parsed;
-                else
-                    throw new ArgumentException($"'Target Session Attributes' contains an invalid value '{value}'");
-
+                TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value);
                 SetValue(nameof(TargetSessionAttributes), TargetSessionAttributesParsed);
             }
         }
 
         internal TargetSessionAttributes? TargetSessionAttributesParsed { get; private set; }
+
+        internal static TargetSessionAttributes ParseTargetSessionAttributes(string s)
+            => s switch
+            {
+                "any"            => Npgsql.TargetSessionAttributes.Any,
+                "primary"        => Npgsql.TargetSessionAttributes.Primary,
+                "standby"        => Npgsql.TargetSessionAttributes.Standby,
+                "prefer-primary" => Npgsql.TargetSessionAttributes.PreferPrimary,
+                "prefer-standby" => Npgsql.TargetSessionAttributes.PreferStandby,
+                "read-write"     => Npgsql.TargetSessionAttributes.ReadWrite,
+                "read-only"      => Npgsql.TargetSessionAttributes.ReadOnly,
+
+                _ => throw new ArgumentException($"TargetSessionAttributes contains an invalid value '{s}'")
+            };
 
         /// <summary>
         /// Controls for how long the host's cached state will be considered as valid.
