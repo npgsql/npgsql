@@ -248,7 +248,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Numeric,
                     DbTypes = new[] { DbType.Decimal, DbType.VarNumeric },
                     InferredDbType = DbType.Decimal,
-                    ClrTypes = new[] { typeof(decimal) },
+                    ClrTypes = new[] { typeof(NpgsqlDecimal), typeof(decimal) },
                     TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(NumericHandler))
                 }.Build());
 

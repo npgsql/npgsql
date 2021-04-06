@@ -43,3 +43,82 @@ Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.PerInstance = 2 -> Npgsql.ArrayNullabilityMode
 Npgsql.NpgsqlCommand.Disposed -> System.EventHandler?
 Npgsql.NpgsqlConnection.Disposed -> System.EventHandler?
+NpgsqlTypes.NpgsqlDecimal
+static readonly NpgsqlTypes.NpgsqlDecimal.PositiveInfinity -> NpgsqlTypes.NpgsqlDecimal
+static readonly NpgsqlTypes.NpgsqlDecimal.NegativeInfinity -> NpgsqlTypes.NpgsqlDecimal
+static readonly NpgsqlTypes.NpgsqlDecimal.NaN -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Zero.get -> NpgsqlTypes.NpgsqlDecimal
+static readonly NpgsqlTypes.NpgsqlDecimal.One -> NpgsqlTypes.NpgsqlDecimal
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal() -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(ulong value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(long value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(int value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(uint value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(double value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(float value) -> void
+NpgsqlTypes.NpgsqlDecimal.NpgsqlDecimal(decimal value) -> void
+NpgsqlTypes.NpgsqlDecimal.Scale.get -> int
+static NpgsqlTypes.NpgsqlDecimal.Parse(string! value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.TryParse(string? value, out NpgsqlTypes.NpgsqlDecimal result) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator +(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator -(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator *(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator /(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator %(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator -(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator +(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator ++(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator --(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.operator ==(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator !=(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator >=(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator <=(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator <(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.operator >(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> bool
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(double value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(float value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator NpgsqlTypes.NpgsqlDecimal(decimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(ulong value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(long value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(uint value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(int value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(ushort value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(short value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(byte value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.implicit operator NpgsqlTypes.NpgsqlDecimal(sbyte value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator double(NpgsqlTypes.NpgsqlDecimal value) -> double
+static NpgsqlTypes.NpgsqlDecimal.explicit operator float(NpgsqlTypes.NpgsqlDecimal value) -> float
+static NpgsqlTypes.NpgsqlDecimal.explicit operator decimal(NpgsqlTypes.NpgsqlDecimal value) -> decimal
+static NpgsqlTypes.NpgsqlDecimal.explicit operator ulong(NpgsqlTypes.NpgsqlDecimal value) -> ulong
+static NpgsqlTypes.NpgsqlDecimal.explicit operator long(NpgsqlTypes.NpgsqlDecimal value) -> long
+static NpgsqlTypes.NpgsqlDecimal.explicit operator uint(NpgsqlTypes.NpgsqlDecimal value) -> uint
+static NpgsqlTypes.NpgsqlDecimal.explicit operator int(NpgsqlTypes.NpgsqlDecimal value) -> int
+static NpgsqlTypes.NpgsqlDecimal.explicit operator ushort(NpgsqlTypes.NpgsqlDecimal value) -> ushort
+static NpgsqlTypes.NpgsqlDecimal.explicit operator short(NpgsqlTypes.NpgsqlDecimal value) -> short
+static NpgsqlTypes.NpgsqlDecimal.explicit operator byte(NpgsqlTypes.NpgsqlDecimal value) -> byte
+static NpgsqlTypes.NpgsqlDecimal.explicit operator sbyte(NpgsqlTypes.NpgsqlDecimal value) -> sbyte
+static NpgsqlTypes.NpgsqlDecimal.ToSingle(NpgsqlTypes.NpgsqlDecimal value) -> float
+static NpgsqlTypes.NpgsqlDecimal.ToDouble(NpgsqlTypes.NpgsqlDecimal value) -> double
+static NpgsqlTypes.NpgsqlDecimal.ToDecimal(NpgsqlTypes.NpgsqlDecimal value) -> decimal
+static NpgsqlTypes.NpgsqlDecimal.ToUInt64(NpgsqlTypes.NpgsqlDecimal value) -> ulong
+static NpgsqlTypes.NpgsqlDecimal.ToUInt32(NpgsqlTypes.NpgsqlDecimal value) -> uint
+static NpgsqlTypes.NpgsqlDecimal.ToUInt16(NpgsqlTypes.NpgsqlDecimal value) -> ushort
+static NpgsqlTypes.NpgsqlDecimal.ToByte(NpgsqlTypes.NpgsqlDecimal value) -> byte
+static NpgsqlTypes.NpgsqlDecimal.ToInt64(NpgsqlTypes.NpgsqlDecimal value) -> long
+static NpgsqlTypes.NpgsqlDecimal.ToInt32(NpgsqlTypes.NpgsqlDecimal value) -> int
+static NpgsqlTypes.NpgsqlDecimal.ToInt16(NpgsqlTypes.NpgsqlDecimal value) -> short
+static NpgsqlTypes.NpgsqlDecimal.ToSByte(NpgsqlTypes.NpgsqlDecimal value) -> sbyte
+override NpgsqlTypes.NpgsqlDecimal.ToString() -> string!
+NpgsqlTypes.NpgsqlDecimal.CompareTo(NpgsqlTypes.NpgsqlDecimal o) -> int
+NpgsqlTypes.NpgsqlDecimal.CompareTo(object? o) -> int
+NpgsqlTypes.NpgsqlDecimal.Compare(NpgsqlTypes.NpgsqlDecimal n1, NpgsqlTypes.NpgsqlDecimal n2) -> int
+NpgsqlTypes.NpgsqlDecimal.Compare(object? x, object? y) -> int
+NpgsqlTypes.NpgsqlDecimal.Equals(NpgsqlTypes.NpgsqlDecimal other) -> bool
+override NpgsqlTypes.NpgsqlDecimal.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlDecimal.GetHashCode() -> int
+static NpgsqlTypes.NpgsqlDecimal.Ceiling(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Floor(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Round(NpgsqlTypes.NpgsqlDecimal value, int scale = 0) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Truncate(NpgsqlTypes.NpgsqlDecimal value, int scale = 0) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.AdjustScale(NpgsqlTypes.NpgsqlDecimal value, int scale) -> NpgsqlTypes.NpgsqlDecimal
+static NpgsqlTypes.NpgsqlDecimal.Abs(NpgsqlTypes.NpgsqlDecimal value) -> NpgsqlTypes.NpgsqlDecimal

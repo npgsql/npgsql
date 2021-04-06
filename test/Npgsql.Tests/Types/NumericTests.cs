@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -83,6 +84,12 @@ namespace Npgsql.Tests.Types
             Assert.That(
                 decimal.GetBits((decimal)(await cmd.ExecuteScalarAsync())!),
                 Is.EqualTo(decimal.GetBits(expected)));
+            using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            var npgsqlDecimal = reader.GetFieldValue<NpgsqlDecimal>(0);
+            Assert.That(npgsqlDecimal, Is.EqualTo((NpgsqlDecimal)expected));
+            Assert.That((decimal)npgsqlDecimal, Is.EqualTo(expected));
+            Assert.That(npgsqlDecimal.ToString(), Is.EqualTo(expected.ToString(CultureInfo.InvariantCulture)));
         }
 
         [Test]
@@ -90,12 +97,14 @@ namespace Npgsql.Tests.Types
         public async Task Write(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+            using var cmd = new NpgsqlCommand("SELECT @p, @p2, @p = " + query + " AND @p2 = " + query, conn);
             cmd.Parameters.AddWithValue("p", expected);
+            cmd.Parameters.AddWithValue("p2", (NpgsqlDecimal)expected);
             using var rdr = await cmd.ExecuteReaderAsync();
             rdr.Read();
             Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
-            Assert.That(rdr.GetFieldValue<bool>(1));
+            Assert.That(rdr.GetFieldValue<NpgsqlDecimal>(1), Is.EqualTo((NpgsqlDecimal)expected));
+            Assert.That(rdr.GetFieldValue<bool>(2));
         }
 
         [Test]
@@ -149,6 +158,36 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
             }
+        }
+
+        [Test]
+        public async Task ReadLarge()
+        {
+            var rnd = new System.Random(123);
+            var str = new System.Text.StringBuilder();
+            for (var i = 0; i < 131072; i++) str.Append(rnd.Next(0, 10));
+            str.Append('.');
+            for (var i = 0; i < 16383; i++) str.Append(rnd.Next(0, 10));
+            var large = str.ToString();
+            var parsed = NpgsqlDecimal.Parse(large);
+
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '" + large + "'::numeric, @p, '1e+40'::numeric, @nan", conn);
+            var p = new NpgsqlParameter("p", parsed);
+            cmd.Parameters.Add(p);
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Numeric));
+            cmd.Parameters.Add(new NpgsqlParameter("nan", NpgsqlDecimal.NaN));
+            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+            var d1 = (NpgsqlDecimal)reader.GetProviderSpecificValue(0);
+            var d2 = (NpgsqlDecimal)reader.GetProviderSpecificValue(1);
+            var d3 = reader.GetFieldValue<NpgsqlDecimal>(2);
+            var d4 = reader.GetFieldValue<NpgsqlDecimal>(3);
+            Assert.That(d1, Is.EqualTo(d2));
+            Assert.That(d1, Is.EqualTo(parsed));
+            Assert.That(d1.ToString(), Is.EqualTo(large));
+            Assert.That(d3, Is.EqualTo(NpgsqlDecimal.Parse("1e+40")));
+            Assert.That(d4, Is.EqualTo(NpgsqlDecimal.NaN));
         }
 
         public NumericTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

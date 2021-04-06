@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -594,5 +595,167 @@ namespace Npgsql.Tests
 #pragma warning disable CS8625
         }
 #pragma warning restore 618
+
+        [Test]
+        public void Decimal()
+        {
+            var numbers = new decimal[]
+                { 1M, 10000M, 100000000M, 12345678M, 123456789M, 0.1M, 0.123M, -0.123456789M, 0.000000001M, 0.00000000000000001M, 12345678000000000000M };
+
+            foreach (var num in numbers)
+            {
+                var npgsqlDecimal1 = NpgsqlDecimal.Parse(num.ToString(CultureInfo.InvariantCulture));
+                var npgsqlDecimal2 = (NpgsqlDecimal)num;
+
+                Assert.That(npgsqlDecimal1, Is.EqualTo(npgsqlDecimal2));
+                Assert.That(npgsqlDecimal1.ToString(), Is.EqualTo(num.ToString(CultureInfo.InvariantCulture)));
+
+                Assert.That(NpgsqlDecimal.Abs(npgsqlDecimal1), Is.EqualTo((NpgsqlDecimal)Math.Abs(num)));
+                Assert.That(NpgsqlDecimal.Floor(npgsqlDecimal1), Is.EqualTo((NpgsqlDecimal)decimal.Floor(num)));
+                Assert.That(NpgsqlDecimal.Ceiling(npgsqlDecimal1), Is.EqualTo((NpgsqlDecimal)decimal.Ceiling(num)));
+                Assert.That(NpgsqlDecimal.Truncate(npgsqlDecimal1), Is.EqualTo((NpgsqlDecimal)decimal.Truncate(num)));
+                Assert.That(NpgsqlDecimal.Round(npgsqlDecimal1), Is.EqualTo((NpgsqlDecimal)decimal.Round(num, MidpointRounding.AwayFromZero)));
+
+                foreach (var num2 in numbers)
+                {
+                    var n2 = (NpgsqlDecimal)num2;
+                    var add = npgsqlDecimal1 + n2;
+                    var sub = npgsqlDecimal1 - n2;
+                    var mul = npgsqlDecimal1 * n2;
+                    if (add.ToString().Length < 28)
+                        Assert.That(add, Is.EqualTo((NpgsqlDecimal)(num + num2)));
+                    else
+                        Assert.That(NpgsqlDecimal.Abs((NpgsqlDecimal)(num + num2) - add) < (NpgsqlDecimal)0.00001M);
+                    if (sub.ToString().Length < 28)
+                        Assert.That(sub, Is.EqualTo((NpgsqlDecimal)(num - num2)));
+                    else
+                        Assert.That(NpgsqlDecimal.Abs((NpgsqlDecimal)(num - num2) - sub) < (NpgsqlDecimal)0.00001M);
+                    var mulAbs = NpgsqlDecimal.Abs(mul);
+                    if (mulAbs < NpgsqlDecimal.Parse("7E+28") && mulAbs >= NpgsqlDecimal.Parse("7E-28"))
+                        Assert.That(mul, Is.EqualTo((NpgsqlDecimal)(num * num2)));
+
+                    Assert.That(npgsqlDecimal1.CompareTo(n2), Is.EqualTo(num.CompareTo(num2)));
+
+                    Assert.That(npgsqlDecimal1 < n2, Is.EqualTo(num < num2));
+                    Assert.That(npgsqlDecimal1 >= n2, Is.EqualTo(num >= num2));
+                    Assert.That(npgsqlDecimal1 > n2, Is.EqualTo(num > num2));
+                    Assert.That(npgsqlDecimal1 <= n2, Is.EqualTo(num <= num2));
+                    Assert.That(npgsqlDecimal1 == n2, Is.EqualTo(num == num2));
+                    Assert.That(npgsqlDecimal1 != n2, Is.EqualTo(num != num2));
+
+                    var div = npgsqlDecimal1 / n2;
+                    var n2test = div * n2;
+                    var diff = NpgsqlDecimal.Abs(n2test - npgsqlDecimal1);
+                    Assert.That(diff, Is.LessThan((NpgsqlDecimal)0.2M));
+                    var rem = npgsqlDecimal2 % n2;
+                    Assert.That(rem, Is.EqualTo((NpgsqlDecimal)(num % num2)));
+                }
+            }
+
+            Assert.That(NpgsqlDecimal.Zero.Scale, Is.EqualTo(0));
+            Assert.That(NpgsqlDecimal.One.Scale, Is.EqualTo(0));
+            Assert.That(NpgsqlDecimal.Parse("0.00").Scale, Is.EqualTo(2));
+            Assert.That(NpgsqlDecimal.Parse("123456789.1234567890").Scale, Is.EqualTo(10));
+            Assert.That(NpgsqlDecimal.Parse("123456789").Scale, Is.EqualTo(0));
+
+            Assert.That(NpgsqlDecimal.AdjustScale(NpgsqlDecimal.Parse("1.567811111"), 2), Is.EqualTo(NpgsqlDecimal.Parse("1.57")));
+            Assert.That(NpgsqlDecimal.AdjustScale(NpgsqlDecimal.Parse("1.1"), 9), Is.EqualTo(NpgsqlDecimal.Parse("1.100000000")));
+            Assert.That(NpgsqlDecimal.Round((NpgsqlDecimal)1.77M, 1), Is.EqualTo((NpgsqlDecimal)1.8M));
+            Assert.That(NpgsqlDecimal.Round((NpgsqlDecimal)1.77777777M, 7), Is.EqualTo((NpgsqlDecimal)1.7777778M));
+            Assert.That(NpgsqlDecimal.Round((NpgsqlDecimal)99999999.99999999M, -8), Is.EqualTo((NpgsqlDecimal)100000000M));
+            Assert.That(NpgsqlDecimal.Truncate((NpgsqlDecimal)99999999.99999999M, -8), Is.EqualTo(NpgsqlDecimal.Zero));
+            Assert.That(NpgsqlDecimal.Truncate((NpgsqlDecimal)3399999999.99999999M, -8), Is.EqualTo((NpgsqlDecimal)3300000000M));
+            Assert.That(NpgsqlDecimal.Truncate((NpgsqlDecimal)3399999999.99999999M, -9), Is.EqualTo((NpgsqlDecimal)3000000000M));
+            Assert.That(NpgsqlDecimal.Truncate((NpgsqlDecimal)3399999999.999999999M, 3), Is.EqualTo((NpgsqlDecimal)3399999999.999M));
+            Assert.That(NpgsqlDecimal.Truncate((NpgsqlDecimal)3399999999.999M, 30), Is.EqualTo((NpgsqlDecimal)3399999999.999M));
+
+            Assert.That(NpgsqlDecimal.Abs(NpgsqlDecimal.NegativeInfinity), Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That(NpgsqlDecimal.Abs(-NpgsqlDecimal.One), Is.EqualTo(NpgsqlDecimal.One));
+
+            var maxDecimal = NpgsqlDecimal.Parse(string.Join("", Enumerable.Range(0, 131072).Select(i => '9')));
+
+            Assert.Throws<OverflowException>(() => maxDecimal++);
+
+            var minusOne = -NpgsqlDecimal.One;
+            minusOne++;
+            Assert.That(minusOne, Is.EqualTo(NpgsqlDecimal.Zero));
+            minusOne++;
+            Assert.That(minusOne, Is.EqualTo(NpgsqlDecimal.One));
+            minusOne--;
+            minusOne--;
+            Assert.That(minusOne, Is.EqualTo(-NpgsqlDecimal.One));
+
+            // Case that visits the rare "add back" part in the division algorithm
+            // Note that due to 8 digit groups internally, the result has 4 more digits than PostgreSQL's calculation would give
+            Assert.That((NpgsqlDecimal)1.166375M / (NpgsqlDecimal)1.6666666666666667M,
+                Is.EqualTo((NpgsqlDecimal)0.699824999999999986003500M));
+
+            var hc1 = new NpgsqlDecimal(12.1M).GetHashCode();
+            var hc2 = new NpgsqlDecimal(12.100M).GetHashCode();
+            var hc3 = new NpgsqlDecimal(12.100000000M).GetHashCode();
+            Assert.That(hc1, Is.EqualTo(hc2));
+            Assert.That(hc1, Is.EqualTo(hc3));
+
+            Assert.That(-NpgsqlDecimal.Zero, Is.EqualTo(NpgsqlDecimal.Zero));
+            Assert.That(-NpgsqlDecimal.One, Is.EqualTo(NpgsqlDecimal.Parse("-1")));
+            Assert.That(NpgsqlDecimal.Parse("12.0"), Is.EqualTo(NpgsqlDecimal.Parse("12.00")));
+
+            Assert.That(NpgsqlDecimal.Parse("naN"), Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.Parse("infinity"), Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That(NpgsqlDecimal.Parse("-INFInity"), Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+            Assert.That(NpgsqlDecimal.Parse("inf"), Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That(NpgsqlDecimal.Parse("-INF"), Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+
+            Assert.That(NpgsqlDecimal.PositiveInfinity + 1, Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That(NpgsqlDecimal.NegativeInfinity + 1, Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+            Assert.That(NpgsqlDecimal.NegativeInfinity - NpgsqlDecimal.NegativeInfinity, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.PositiveInfinity - NpgsqlDecimal.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.PositiveInfinity + NpgsqlDecimal.NegativeInfinity, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.NegativeInfinity + NpgsqlDecimal.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.NegativeInfinity / NpgsqlDecimal.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That(NpgsqlDecimal.NegativeInfinity * NpgsqlDecimal.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+            Assert.That(NpgsqlDecimal.One / NpgsqlDecimal.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.Zero));
+
+            Assert.That((long)(NpgsqlDecimal)long.MinValue, Is.EqualTo(long.MinValue));
+            Assert.That((long)(NpgsqlDecimal)long.MaxValue, Is.EqualTo(long.MaxValue));
+            Assert.That((ulong)(NpgsqlDecimal)ulong.MaxValue, Is.EqualTo(ulong.MaxValue));
+            Assert.That((short)(NpgsqlDecimal)short.MinValue, Is.EqualTo(short.MinValue));
+            Assert.That((int)(NpgsqlDecimal)int.MinValue, Is.EqualTo(int.MinValue));
+            Assert.That((sbyte)(NpgsqlDecimal)sbyte.MinValue, Is.EqualTo(sbyte.MinValue));
+            Assert.That((sbyte)(NpgsqlDecimal)sbyte.MaxValue, Is.EqualTo(sbyte.MaxValue));
+            Assert.That((float)(NpgsqlDecimal)float.MinValue, Is.EqualTo(float.MinValue));
+            Assert.That((double)(NpgsqlDecimal)double.MaxValue, Is.EqualTo(double.MaxValue));
+            Assert.That((NpgsqlDecimal)float.NaN, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That((NpgsqlDecimal)float.NegativeInfinity, Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+            Assert.That((NpgsqlDecimal)float.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That((NpgsqlDecimal)double.NaN, Is.EqualTo(NpgsqlDecimal.NaN));
+            Assert.That((NpgsqlDecimal)double.NegativeInfinity, Is.EqualTo(NpgsqlDecimal.NegativeInfinity));
+            Assert.That((NpgsqlDecimal)double.PositiveInfinity, Is.EqualTo(NpgsqlDecimal.PositiveInfinity));
+            Assert.That((float)NpgsqlDecimal.NegativeInfinity, Is.EqualTo(float.NegativeInfinity));
+            Assert.That((float)NpgsqlDecimal.PositiveInfinity, Is.EqualTo(float.PositiveInfinity));
+            Assert.That((double)NpgsqlDecimal.NegativeInfinity, Is.EqualTo(double.NegativeInfinity));
+            Assert.That((double)NpgsqlDecimal.PositiveInfinity, Is.EqualTo(double.PositiveInfinity));
+            Assert.That((int)(NpgsqlDecimal)3.4567M, Is.EqualTo(3));
+            Assert.That((int)(NpgsqlDecimal)0.5567M, Is.EqualTo(1));
+            Assert.That((int)(NpgsqlDecimal)200000000, Is.EqualTo(200000000));
+
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt64((NpgsqlDecimal)long.MinValue - 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt64((NpgsqlDecimal)long.MaxValue + 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToUInt64((NpgsqlDecimal)ulong.MinValue - 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToUInt64((NpgsqlDecimal)ulong.MaxValue + 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt32((NpgsqlDecimal)int.MinValue - 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt32((NpgsqlDecimal)int.MaxValue + 1));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt64(NpgsqlDecimal.NaN));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt64(NpgsqlDecimal.PositiveInfinity));
+            Assert.Throws<OverflowException>(() => NpgsqlDecimal.ToInt64(NpgsqlDecimal.NegativeInfinity));
+
+            NpgsqlDecimal dummy;
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.One / NpgsqlDecimal.Zero);
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.PositiveInfinity / NpgsqlDecimal.Zero);
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.NegativeInfinity / NpgsqlDecimal.Zero);
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.One % NpgsqlDecimal.Zero);
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.PositiveInfinity % NpgsqlDecimal.Zero);
+            Assert.Throws<DivideByZeroException>(() => dummy = NpgsqlDecimal.NegativeInfinity % NpgsqlDecimal.Zero);
+        }
     }
 }

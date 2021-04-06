@@ -156,7 +156,7 @@ namespace Npgsql.Tests
             Assert.That(textRow["OID"], Is.EqualTo(25));
 
             var numericRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("numeric"));
-            Assert.That(numericRow["DataType"], Is.EqualTo("System.Decimal"));
+            Assert.That(numericRow["DataType"], Is.EqualTo("NpgsqlTypes.NpgsqlDecimal"));
             Assert.That(numericRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Numeric));
             Assert.That(numericRow["IsUnsigned"], Is.False);
             Assert.That(numericRow["OID"], Is.EqualTo(1700));
