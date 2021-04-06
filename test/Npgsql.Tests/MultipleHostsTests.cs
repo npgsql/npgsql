@@ -578,26 +578,15 @@ namespace Npgsql.Tests
         static string MultipleHosts(params PgPostmasterMock[] postmasters)
             => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
 
-        public enum TestTargetSessionAttributes : byte
-        {
-            Any = TargetSessionAttributes.Any,
-            ReadWrite = TargetSessionAttributes.ReadWrite,
-            ReadOnly = TargetSessionAttributes.ReadOnly,
-            Primary = TargetSessionAttributes.Primary,
-            Standby = TargetSessionAttributes.Standby,
-            PreferPrimary = TargetSessionAttributes.PreferPrimary,
-            PreferStandby = TargetSessionAttributes.PreferStandby,
-        }
-
         class DisposableWrapper : IAsyncDisposable
         {
-            private readonly IEnumerable<IAsyncDisposable> disposables;
+            readonly IEnumerable<IAsyncDisposable> _disposables;
 
-            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => this.disposables = disposables;
+            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => _disposables = disposables;
 
             public async ValueTask DisposeAsync()
             {
-                foreach (var disposable in disposables)
+                foreach (var disposable in _disposables)
                     await disposable.DisposeAsync();
             }
         }

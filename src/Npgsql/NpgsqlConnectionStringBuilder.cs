@@ -534,7 +534,7 @@ namespace Npgsql
             set
             {
                 TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value);
-                SetValue(nameof(TargetSessionAttributes), TargetSessionAttributesParsed);
+                SetValue(nameof(TargetSessionAttributes), value);
             }
         }
 
