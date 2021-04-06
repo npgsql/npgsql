@@ -11,7 +11,7 @@ using Npgsql.Util;
 
 namespace Npgsql
 {
-    sealed partial class ConnectorPool : ConnectorSource
+    class ConnectorPool : ConnectorSource
     {
         #region Fields and properties
 
@@ -19,16 +19,7 @@ namespace Npgsql
 
         readonly int _max;
         readonly int _min;
-        readonly bool _autoPrepare;
         readonly TimeSpan _connectionLifetime;
-
-        public bool IsBootstrapped
-        {
-            get => _isBootstrapped;
-            set => _isBootstrapped = value;
-        }
-
-        volatile bool _isBootstrapped;
 
         volatile int _numConnectors;
 
@@ -42,9 +33,7 @@ namespace Npgsql
         /// Tracks all connectors currently managed by this pool, whether idle or busy.
         /// Only updated rarely - when physical connections are opened/closed - but is read in perf-sensitive contexts.
         /// </summary>
-        readonly NpgsqlConnector?[] _connectors;
-
-        readonly bool _multiplexing;
+        private protected readonly NpgsqlConnector?[] Connectors;
 
         readonly MultiHostConnectorPool? _parentPool;
 
@@ -73,12 +62,9 @@ namespace Npgsql
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
-        // TODO: Make this configurable
-        const int MultiexingCommandChannelBound = 4096;
-
         #endregion
 
-        internal override (int Total, int Idle, int Busy) Statistics
+        internal sealed override (int Total, int Idle, int Busy) Statistics
         {
             get
             {
@@ -122,45 +108,11 @@ namespace Npgsql
 
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
-            _autoPrepare = settings.MaxAutoPrepare > 0;
             _connectionLifetime = TimeSpan.FromSeconds(settings.ConnectionLifetime);
-            _connectors = new NpgsqlConnector[_max];
-
-            // TODO: Validate multiplexing options are set only when Multiplexing is on
-
-            if (Settings.Multiplexing)
-            {
-                _multiplexing = true;
-
-                _bootstrapSemaphore = new SemaphoreSlim(1);
-
-                // Translate microseconds to ticks for cancellation token
-                _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
-                _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
-
-                var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
-                    new BoundedChannelOptions(MultiexingCommandChannelBound)
-                    {
-                        FullMode = BoundedChannelFullMode.Wait,
-                        SingleReader = true
-                    });
-                _multiplexCommandReader = multiplexCommandChannel.Reader;
-                MultiplexCommandWriter = multiplexCommandChannel.Writer;
-
-                // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
-                // pool clearing
-
-                _ = Task.Run(MultiplexingWriteLoop)
-                    .ContinueWith(t =>
-                    {
-                        // Note that we *must* observe the exception if the task is faulted.
-                        Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
-                            t.Exception!);
-                    }, TaskContinuationOptions.OnlyOnFaulted);
-            }
+            Connectors = new NpgsqlConnector[_max];
         }
 
-        internal override ValueTask<NpgsqlConnector> Get(
+        internal sealed override ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
@@ -312,12 +264,12 @@ namespace Npgsql
 
                     var i = 0;
                     for (; i < _max; i++)
-                        if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
+                        if (Interlocked.CompareExchange(ref Connectors[i], connector, null) == null)
                             break;
 
-                    Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when opening.");
+                    Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when opening.");
                     if (i == _max)
-                        throw new NpgsqlException($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+                        throw new NpgsqlException($"Could not find free slot in {Connectors} when opening. Please report a bug.");
 
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (numConnectors == _min)
@@ -342,7 +294,7 @@ namespace Npgsql
             return null;
         }
 
-        internal override void Return(NpgsqlConnector connector)
+        internal sealed override void Return(NpgsqlConnector connector)
         {
             Debug.Assert(!connector.InTransaction);
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
@@ -395,12 +347,12 @@ namespace Npgsql
 
             var i = 0;
             for (; i < _max; i++)
-                if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == connector)
+                if (Interlocked.CompareExchange(ref Connectors[i], null, connector) == connector)
                     break;
 
-            Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when closing.");
+            Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when closing.");
             if (i == _max)
-                throw new NpgsqlException($"Could not find free slot in {_connectors} when closing. Please report a bug.");
+                throw new NpgsqlException($"Could not find free slot in {Connectors} when closing. Please report a bug.");
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);

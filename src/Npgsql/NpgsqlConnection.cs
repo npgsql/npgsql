@@ -228,6 +228,8 @@ namespace Npgsql
                     throw new NotSupportedException("Pooling must be on with multiple hosts");
                 newPool = new MultiHostConnectorPool(settings, canonical);
             }
+            else if (settings.Multiplexing)
+                newPool = new MultiplexingConnectorPool(settings, canonical);
             else if (settings.Pooling)
                 newPool = new ConnectorPool(settings, canonical);
             else
@@ -350,7 +352,7 @@ namespace Npgsql
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await ((ConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                    await ((MultiplexingConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
                     CompleteOpen();
                 }
                 catch

@@ -3,18 +3,31 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
-    sealed partial class ConnectorPool
+    sealed class MultiplexingConnectorPool : ConnectorPool
     {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(MultiplexingConnectorPool));
+
+        readonly bool _autoPrepare;
+
+        public bool IsBootstrapped
+        {
+            get => _isBootstrapped;
+            set => _isBootstrapped = value;
+        }
+
+        volatile bool _isBootstrapped;
+
         readonly ChannelReader<NpgsqlCommand>? _multiplexCommandReader;
         internal ChannelWriter<NpgsqlCommand>? MultiplexCommandWriter { get; }
 
-        const int WriteCoalescineDelayAdaptivityUs = 10;
+        const int WriteCoalescingDelayAdaptivityUs = 10;
 
         /// <summary>
         /// A pool-wide type mapper used when multiplexing. This is necessary because binding parameters
@@ -38,6 +51,46 @@ namespace Npgsql
 
         readonly SemaphoreSlim? _bootstrapSemaphore;
 
+        // TODO: Make this configurable
+        const int MultiplexingCommandChannelBound = 4096;
+
+        internal MultiplexingConnectorPool(
+            NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
+            : base(settings, connString, parentPool)
+        {
+            Debug.Assert(Settings.Multiplexing);
+
+            // TODO: Validate multiplexing options are set only when Multiplexing is on
+
+            _autoPrepare = settings.MaxAutoPrepare > 0;
+
+            _bootstrapSemaphore = new SemaphoreSlim(1);
+
+            // Translate microseconds to ticks for cancellation token
+            _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
+            _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
+
+            var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
+                new BoundedChannelOptions(MultiplexingCommandChannelBound)
+                {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleReader = true
+                });
+            _multiplexCommandReader = multiplexCommandChannel.Reader;
+            MultiplexCommandWriter = multiplexCommandChannel.Writer;
+
+            // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
+            // pool clearing
+
+            _ = Task.Run(MultiplexingWriteLoop)
+                .ContinueWith(t =>
+                {
+                    // Note that we *must* observe the exception if the task is faulted.
+                    Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
+                        t.Exception!);
+                }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
         /// <summary>
         /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
         /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
@@ -45,8 +98,6 @@ namespace Npgsql
         /// </summary>
         internal async Task BootstrapMultiplexing(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
-            Debug.Assert(_multiplexing);
-
             var hasSemaphore = async
                 ? await _bootstrapSemaphore!.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
                 : _bootstrapSemaphore!.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
@@ -133,7 +184,7 @@ namespace Npgsql
                         // Enter over-capacity mode - find an unlocked connector with the least currently in-flight
                         // commands and sent on it, even though there are already pending commands.
                         var minInFlight = int.MaxValue;
-                        foreach (var c in _connectors)
+                        foreach (var c in Connectors)
                         {
                             if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount < minInFlight)
                             {
@@ -230,14 +281,14 @@ namespace Npgsql
 
                             // Increase the timeout slightly for next time: we're under load, so allow more
                             // commands to get coalesced into the same packet (up to the hard limit)
-                            timeout = Math.Min(timeout + WriteCoalescineDelayAdaptivityUs, _writeCoalescingDelayTicks);
+                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
                         }
                         catch (OperationCanceledException)
                         {
                             // Timeout fired, we're done writing.
                             // Reduce the timeout slightly for next time: we're under little load, so reduce impact
                             // on latency
-                            timeout = Math.Max(timeout - WriteCoalescineDelayAdaptivityUs, 0);
+                            timeout = Math.Max(timeout - WriteCoalescingDelayAdaptivityUs, 0);
                         }
                     }
 
