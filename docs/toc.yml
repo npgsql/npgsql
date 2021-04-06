@@ -50,6 +50,8 @@
   href: wait.md
 - name: Keepalive
   href: keepalive.md
+- name: Failover and load balancing
+  href: failover-and-load-balancing.md
 - name: Bulk copy
   href: copy.md
 - name: Replication

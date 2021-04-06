@@ -12,7 +12,7 @@ For documentation about all auth methods supported by PostgreSQL, [see this page
 
 ## Integrated Security (GSS/SSPI/Kerberos)
 
-Logging in with a username and password isn't recommended, since your application must have access to your password. An alternate way of authenticating is "Integrated Security", which uses GSS or SSPI to negotiate Kerberos. The advantage of this method is that authentication is handed off to your operating system, using your already-open login session. Your application never needs to handle a password. You can use this method for a Kerberos login, Windows Active Directory or a local Windows session. Note that since 3.2, this method of authentication also works on non-Windows platforms.
+Logging in with a username and password may not be ideal, since your application must have access to your password, and raise questions around secret management. An alternate way of authenticating is "Integrated Security", which uses GSS or SSPI to negotiate Kerberos. The advantage of this method is that authentication is handed off to your operating system, using your already-open login session. Your application never needs to handle a password. You can use this method for a Kerberos login, Windows Active Directory or a local Windows session. Note that since 3.2, this method of authentication also works on non-Windows platforms.
 
 Instructions on setting up Kerberos and SSPI are available in the [PostgreSQL auth methods docs](http://www.postgresql.org/docs/current/static/auth-methods.html). Some more instructions for SSPI are [available here](https://wiki.postgresql.org/wiki/Configuring_for_single_sign-on_using_SSPI_on_Windows).
 

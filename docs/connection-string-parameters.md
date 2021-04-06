@@ -4,18 +4,18 @@ To connect to a database, the application provides a connection string which spe
 
 Below are the connection string parameters which Npgsql understands, as well as some standard PostgreSQL environment variables.
 
-## Basic Connection
+## Basic connection
 
 Parameter    | Description                                                                        | Default
 ------------ | ---------------------------------------------------------------------------------- | -------
-Host         | Specifies the host name of the machine on which the server is running. If the value begins with a slash, it is used as the directory for the Unix-domain socket (specifying a `Port` is still required). | *Required*
+Host         | Specifies the host name - and optionally port - on which PostgreSQL is running. Multiple hosts may be specified, [see the docs for more info](failover-and-load-balancing.md). If the value begins with a slash, it is used as the directory for the Unix-domain socket (specifying a `Port` is still required).  | *Required*
 Port         | The TCP port of the PostgreSQL server.                                             | 5432
 Database     | The PostgreSQL database to connect to.                                             | Same as Username
 Username     | The username to connect with. Not required if using IntegratedSecurity.            | PGUSER
 Password     | The password to connect with. Not required if using IntegratedSecurity.            | PGPASSWORD
 Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. | PGPASSFILE
 
-## Security and Encryption
+## Security and encryption
 
 Parameter                    | Description                                                             | Default
 ---------------------------- | ----------------------------------------------------------------------- | -------
@@ -42,7 +42,7 @@ Connection Idle Lifetime    | The time (in seconds) to wait before closing idle 
 Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Introduced in 3.1. | 10
 ConnectionLifetime          | The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be destroyed instead of returned from the pool. This is useful in clustered configurations to force load balancing between a running server and a server just brought online. | 0 (disabled)
 
-## Timeouts and Keepalive
+## Timeouts and keepalive
 
 Parameter                | Description                                                  | Default
 ------------------------ | ------------------------------------------------------------ | -------
@@ -66,6 +66,16 @@ Write Buffer Size          | Determines the size of the internal buffer Npgsql u
 Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent
 Socket Send Buffer Size    | Determines the size of socket send buffer. | System-dependent
 No Reset On Close          | Improves performance in some cases by not resetting the connection state when it is returned to the pool, at the cost of leaking state. Use only if benchmarking shows a performance improvement | false
+
+## Failover and load balancing
+
+For more information, [see the dedicated docs page](failover-and-load-balancing.md).
+
+Parameter                 | Description                                                                | Default
+------------------------- | -------------------------------------------------------------------------- | -------------------------
+Target Session Attributes | Determines the preferred PostgreSQL target server type.                    | PGTARGETSESSIONATTRS, Any
+Load Balance Hosts        | Enables balancing between multiple hosts by round-robin.                   | false
+Host Recheck Seconds      | Controls for how long the host's cached state will be considered as valid. | 10
 
 ## Misc
 
