@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Globalization;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -22,7 +24,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// </remarks>
     public partial class NumericHandler : NpgsqlTypeHandler<decimal>, INpgsqlTypeHandler<NpgsqlDecimal>,
         INpgsqlTypeHandler<byte>, INpgsqlTypeHandler<short>, INpgsqlTypeHandler<int>, INpgsqlTypeHandler<long>,
-        INpgsqlTypeHandler<float>, INpgsqlTypeHandler<double>
+        INpgsqlTypeHandler<float>, INpgsqlTypeHandler<double>, INpgsqlTypeHandler<BigInteger>
     {
         /// <inheritdoc />
         public NumericHandler(PostgresType postgresType) : base(postgresType) {}
@@ -212,6 +214,102 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
                 digits);
         }
 
+        async ValueTask<BigInteger> INpgsqlTypeHandler<BigInteger>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        {
+            await buf.Ensure(4 * sizeof(short), async);
+
+            var groups = buf.ReadUInt16();
+            var weightLeft = (int)buf.ReadInt16();
+            var weightRight = weightLeft - groups + 1;
+            var sign = buf.ReadUInt16();
+            buf.ReadInt16(); // dscale
+
+            var numMissingGroups = Math.Max(weightRight, 0);
+
+            if (groups == 0)
+                return sign switch
+                {
+                    SignPositive or SignNegative => BigInteger.Zero,
+                    SignNan => throw new InvalidCastException("Numeric NaN not supported by BigInteger"),
+                    SignPinf => throw new InvalidCastException("Numeric Infinity not supported by BigInteger"),
+                    SignNinf => throw new InvalidCastException("Numeric -Infinity not supported by BigInteger"),
+                    _ => throw new InvalidCastException("Numeric special value not supported"),
+                };
+
+            // Since we parse in groups of 8 digits instead of 4
+            var newWeightLeft = weightLeft >> 1;
+            var newWeightRight = weightRight >> 1;
+
+            var digit = 0U;
+
+            // First two groups are treated specially to handle when the first is not present
+            await buf.Ensure(Math.Min((int)groups, 2) * sizeof(ushort), async);
+            if ((weightLeft & 1) != 0)
+            {
+                digit = buf.ReadUInt16() * 10000U;
+                --groups;
+            }
+            if (groups > 0)
+            {
+                digit += buf.ReadUInt16();
+                --groups;
+            }
+
+            if (weightLeft < 0)
+            {
+                // We round the number to the nearest integer
+                var simpleResult = digit >= 50000000 ? BigInteger.One : BigInteger.Zero;
+                await buf.Skip(groups * sizeof(ushort), async);
+                return sign == SignPositive ? simpleResult : -simpleResult;
+            }
+
+            var res = new BigInteger(digit);
+            var hundredMillion = new BigInteger(100000000);
+
+            if (groups > 0)
+            {
+                for (var i = newWeightLeft - 1; i >= newWeightRight + 1 && i >= 0; i--)
+                {
+                    await buf.Ensure(2 * sizeof(ushort), async);
+                    digit = buf.ReadUInt16() * 10000U + buf.ReadUInt16();
+                    res = res * hundredMillion + digit;
+                    groups -= 2;
+                }
+
+                // Last two groups are treated specially to handle when the last is not present
+                await buf.Ensure(Math.Min((int)groups, 2) * sizeof(ushort), async);
+                if (groups > 0)
+                {
+                    digit = buf.ReadUInt16() * 10000U;
+                    groups--;
+                }
+
+                if (groups > 0)
+                {
+                    digit += buf.ReadUInt16();
+                    groups--;
+                }
+
+                if (newWeightRight >= 0)
+                    res = res * hundredMillion + digit;
+                else
+                {
+                    // We round the number to the nearest integer
+                    if (digit >= 50000000)
+                        ++res;
+                    await buf.Skip(groups * sizeof(ushort), async);
+                }
+            }
+
+            while (numMissingGroups >= 2)
+            {
+                res *= hundredMillion;
+                numMissingGroups -= 2;
+            }
+
+            return sign == SignPositive ? res : -res;
+        }
+
         #endregion
 
         #region Write
@@ -248,7 +346,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         }
 
         /// <inheritdoc />
-        public int ValidateAndGetLength(short value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) 
+        public int ValidateAndGetLength(short value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((decimal)value, ref lengthCache, parameter);
         /// <inheritdoc />
         public int ValidateAndGetLength(int value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -427,6 +525,79 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
                     if (lo != 0)
                         buf.WriteUInt16(lo);
                 }
+            }
+        }
+
+        ushort[] FromBigInteger(BigInteger value)
+        {
+            var str = value.ToString(CultureInfo.InvariantCulture);
+            ushort[] result;
+            if (str == "0")
+            {
+                result = new ushort[4];
+            }
+            else
+            {
+                var negative = str[0] == '-';
+                var strLen = str.Length;
+                var numGroups = (strLen - (negative ? 1 : 0) + 3) / 4;
+
+                if (numGroups > 131072 / 4)
+                    throw new InvalidCastException("Cannot write a BigInteger with more than 131072 digits");
+
+                result = new ushort[4 + numGroups];
+
+                var strPos = strLen - numGroups * 4;
+
+                var firstDigit = 0;
+                for (var i = 0; i < 4; i++)
+                {
+                    if (strPos >= 0 && str[strPos] != '-')
+                        firstDigit = firstDigit * 10 + (str[strPos] - '0');
+                    strPos++;
+                }
+
+                result[4] = (ushort)firstDigit;
+
+                for (var i = 1; i < numGroups; i++)
+                {
+                    result[4 + i] = (ushort)((((str[strPos++] - '0') * 10 + (str[strPos++] - '0')) * 10 + (str[strPos++] - '0')) * 10 +
+                                             (str[strPos++] - '0'));
+
+                }
+
+                var lastNonZeroDigitPos = numGroups - 1;
+                while (result[4 + lastNonZeroDigitPos] == 0)
+                    lastNonZeroDigitPos--;
+
+                result[0] = (ushort)(lastNonZeroDigitPos + 1); // number of items in array
+                result[1] = (ushort)(numGroups - 1); // weight
+                result[2] = (ushort)(negative ? SignNegative : SignPositive);
+                result[3] = 0; // dscale
+            }
+
+            return result;
+        }
+
+        public int ValidateAndGetLength(BigInteger value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        {
+            var result = FromBigInteger(value)!;
+            if (parameter != null)
+                parameter.ConvertedValue = result;
+            return (4 + result[0]) * sizeof(ushort);
+        }
+
+        public async Task Write(BigInteger value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
+            CancellationToken cancellationToken = default)
+        {
+            var result = (ushort[])(parameter?.ConvertedValue ?? FromBigInteger(value))!;
+            var len = 4 + result[0];
+            var pos = 0;
+            while (len-- > 0)
+            {
+                if (buf.WriteSpaceLeft < 1024)
+                    await buf.Flush(async, cancellationToken);
+                buf.WriteUInt16(result[pos++]);
             }
         }
 
