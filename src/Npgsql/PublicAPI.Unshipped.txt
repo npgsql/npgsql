@@ -16,7 +16,7 @@ Npgsql.NpgsqlConnectionStringBuilder.SslKey.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslKey.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
-Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string!
+Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool

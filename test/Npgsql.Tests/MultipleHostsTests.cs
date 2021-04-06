@@ -18,28 +18,28 @@ namespace Npgsql.Tests
     {
         static readonly object[] MyCases =
         {
-            new object[] { TargetSessionAttributes.Standby,       new[] { Primary,         Standby         }, 1 },
-            new object[] { TargetSessionAttributes.Standby,       new[] { PrimaryReadOnly, Standby         }, 1 },
-            new object[] { TargetSessionAttributes.PreferStandby, new[] { Primary,         Standby         }, 1 },
-            new object[] { TargetSessionAttributes.PreferStandby, new[] { PrimaryReadOnly, Standby         }, 1 },
-            new object[] { TargetSessionAttributes.PreferStandby, new[] { Primary,         Primary         }, 0 },
-            new object[] { TargetSessionAttributes.Primary,       new[] { Standby,         Primary         }, 1 },
-            new object[] { TargetSessionAttributes.Primary,       new[] { Standby,         PrimaryReadOnly }, 1 },
-            new object[] { TargetSessionAttributes.PreferPrimary, new[] { Standby,         Primary         }, 1 },
-            new object[] { TargetSessionAttributes.PreferPrimary, new[] { Standby,         PrimaryReadOnly }, 1 },
-            new object[] { TargetSessionAttributes.PreferPrimary, new[] { Standby,         Standby         }, 0 },
-            new object[] { TargetSessionAttributes.Any,           new[] { Standby,         Primary         }, 0 },
-            new object[] { TargetSessionAttributes.Any,           new[] { Primary,         Standby         }, 0 },
-            new object[] { TargetSessionAttributes.Any,           new[] { PrimaryReadOnly, Standby         }, 0 },
-            new object[] { TargetSessionAttributes.ReadWrite,     new[] { Standby,         Primary         }, 1 },
-            new object[] { TargetSessionAttributes.ReadWrite,     new[] { PrimaryReadOnly, Primary         }, 1 },
-            new object[] { TargetSessionAttributes.ReadOnly,      new[] { Primary,         Standby         }, 1 },
-            new object[] { TargetSessionAttributes.ReadOnly,      new[] { PrimaryReadOnly, Standby         }, 0 }
+            new object[] { "standby",        new[] { Primary,         Standby         }, 1 },
+            new object[] { "standby",        new[] { PrimaryReadOnly, Standby         }, 1 },
+            new object[] { "prefer-standby", new[] { Primary,         Standby         }, 1 },
+            new object[] { "prefer-standby", new[] { PrimaryReadOnly, Standby         }, 1 },
+            new object[] { "prefer-standby", new[] { Primary,         Primary         }, 0 },
+            new object[] { "primary",        new[] { Standby,         Primary         }, 1 },
+            new object[] { "primary",        new[] { Standby,         PrimaryReadOnly }, 1 },
+            new object[] { "prefer-primary", new[] { Standby,         Primary         }, 1 },
+            new object[] { "prefer-primary", new[] { Standby,         PrimaryReadOnly }, 1 },
+            new object[] { "prefer-primary", new[] { Standby,         Standby         }, 0 },
+            new object[] { "any",            new[] { Standby,         Primary         }, 0 },
+            new object[] { "any",            new[] { Primary,         Standby         }, 0 },
+            new object[] { "any",            new[] { PrimaryReadOnly, Standby         }, 0 },
+            new object[] { "read-write",     new[] { Standby,         Primary         }, 1 },
+            new object[] { "read-write",     new[] { PrimaryReadOnly, Primary         }, 1 },
+            new object[] { "read-only",      new[] { Primary,         Standby         }, 1 },
+            new object[] { "read-only",      new[] { PrimaryReadOnly, Standby         }, 0 }
         };
 
         [Test]
         [TestCaseSource(nameof(MyCases))]
-        public async Task Connect_to_correct_host(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+        public async Task Connect_to_correct_host(string targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
             await using var __ = new DisposableWrapper(postmasters);
@@ -47,7 +47,7 @@ namespace Npgsql.Tests
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(postmasters),
-                TargetSessionAttributes = targetSessionAttributes.ToString(),
+                TargetSessionAttributes = targetSessionAttributes,
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
             };
 
@@ -63,7 +63,7 @@ namespace Npgsql.Tests
         [Test]
         [TestCaseSource(nameof(MyCases))]
         public async Task Connect_to_correct_host_with_available_idle(
-            TestTargetSessionAttributes targetSessionAttributes, MockState[] servers, int expectedServer)
+            string targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
             await using var __ = new DisposableWrapper(postmasters);
@@ -73,11 +73,11 @@ namespace Npgsql.Tests
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(postmasters),
-                TargetSessionAttributesParsed = servers[0] switch
+                TargetSessionAttributes = servers[0] switch
                 {
-                    Primary => TargetSessionAttributes.ReadWrite,
-                    PrimaryReadOnly => TargetSessionAttributes.ReadOnly,
-                    Standby => TargetSessionAttributes.Standby,
+                    Primary => "read-write",
+                    PrimaryReadOnly => "read-only",
+                    Standby => "standby",
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
@@ -104,11 +104,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [TestCase(TargetSessionAttributes.Standby,   new[] { Primary,         Primary })]
-        [TestCase(TargetSessionAttributes.Primary,   new[] { Standby,         Standby })]
-        [TestCase(TargetSessionAttributes.ReadWrite, new[] { PrimaryReadOnly, Standby })]
-        [TestCase(TargetSessionAttributes.ReadOnly,  new[] { Primary,         Primary })]
-        public async Task Valid_host_not_found(TestTargetSessionAttributes targetSessionAttributes, MockState[] servers)
+        [TestCase("standby",   new[] { Primary,         Primary })]
+        [TestCase("primary",   new[] { Standby,         Standby })]
+        [TestCase("read-write", new[] { PrimaryReadOnly, Standby })]
+        [TestCase("read-only",  new[] { Primary,         Primary })]
+        public async Task Valid_host_not_found(string targetSessionAttributes, MockState[] servers)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
             await using var __ = new DisposableWrapper(postmasters);
@@ -117,7 +117,7 @@ namespace Npgsql.Tests
             {
                 Host = MultipleHosts(postmasters),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
-                TargetSessionAttributes = targetSessionAttributes.ToString()
+                TargetSessionAttributes = targetSessionAttributes
             };
 
             using var pool = CreateTempPool(connectionStringBuilder.ConnectionString, out var connectionString);
@@ -148,22 +148,22 @@ namespace Npgsql.Tests
 
             var primaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.Primary,
+                TargetSessionAttributes = "primary",
             };
 
             var standbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.Standby,
+                TargetSessionAttributes = "standby",
             };
 
             var preferPrimaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
+                TargetSessionAttributes = "prefer-primary",
             };
 
             var preferStandbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
             {
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferStandby,
+                TargetSessionAttributes = "prefer-standby",
             };
 
             // Note that the transaction scope is not disposed due to a rollback (which isn't something a mock expects)
@@ -262,14 +262,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TargetSessionAttributes_with_single_host([Values] TestTargetSessionAttributes targetSessionAttributes)
+        [TestCase("any")]
+        [TestCase("primary")]
+        [TestCase("standby")]
+        [TestCase("prefer-primary")]
+        [TestCase("prefer-standby")]
+        [TestCase("read-write")]
+        [TestCase("read-only")]
+        public async Task TargetSessionAttributes_with_single_host(string targetSessionAttributes)
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                TargetSessionAttributes = targetSessionAttributes.ToString()
+                TargetSessionAttributes = targetSessionAttributes
             }.ConnectionString;
 
-            if (targetSessionAttributes == TestTargetSessionAttributes.Any)
+            if (targetSessionAttributes == "any")
             {
                 await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
                 using var pool = CreateTempPool(postmasterMock.ConnectionString, out connectionString);
@@ -283,11 +290,29 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TargetSessionAttributes_default_is_Any()
+        public void TargetSessionAttributes_default_is_null()
+            => Assert.That(new NpgsqlConnectionStringBuilder().TargetSessionAttributes, Is.Null);
+
+        [Test, NonParallelizable]
+        public async Task TargetSessionAttributes_uses_environment_variable()
         {
-            var builder = new NpgsqlConnectionStringBuilder();
-            Assert.That(builder.TargetSessionAttributes, Is.EqualTo(TargetSessionAttributes.Any.ToString()));
-            Assert.That(builder.TargetSessionAttributesParsed, Is.EqualTo(TargetSessionAttributes.Any));
+            using var envVarResetter = SetEnvironmentVariable("PGTARGETSESSIONATTRS", "prefer-standby");
+
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
+
+            var builder = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
+            };
+
+            Assert.That(builder.TargetSessionAttributes, Is.Null);
+
+            using var _ = CreateTempPool(builder.ConnectionString, out var connectionString);
+
+            await using var conn = await OpenConnectionAsync(connectionString);
+            Assert.That(conn.Port, Is.EqualTo(standbyPostmaster.Port));
         }
 
         [Test]
@@ -420,7 +445,7 @@ namespace Npgsql.Tests
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                 MaxPoolSize = 1,
                 HostRecheckSeconds = alwaysCheckHostState ? 0 : int.MaxValue,
-                TargetSessionAttributesParsed = TargetSessionAttributes.PreferPrimary,
+                TargetSessionAttributes = "prefer-primary",
                 NoResetOnClose = true,
             };
 
@@ -475,7 +500,6 @@ namespace Npgsql.Tests
             // Update with the same timestamp - shouldn't change anything
             ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.Standby, timeStamp, TimeSpan.Zero);
             Assert.AreEqual(ClusterState.PrimaryReadWrite, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: false));
-
             // Update with a new timestamp
             timeStamp = timeStamp.AddSeconds(1);
             ClusterStateCache.UpdateClusterState(host, 5432, ClusterState.PrimaryReadOnly, timeStamp, TimeSpan.Zero);
@@ -506,28 +530,28 @@ namespace Npgsql.Tests
             var queriesDone = 0;
 
             var clientsTask = Task.WhenAll(
-                Client(csb, TargetSessionAttributes.Any),
-                Client(csb, TargetSessionAttributes.Primary),
-                Client(csb, TargetSessionAttributes.PreferPrimary),
-                Client(csb, TargetSessionAttributes.PreferStandby),
-                Client(csb, TargetSessionAttributes.ReadWrite));
+                Client(csb, "any"),
+                Client(csb, "primary"),
+                Client(csb, "prefer-primary"),
+                Client(csb, "prefer-standby"),
+                Client(csb, "read-write"));
 
-            var onlyStandbyClient = Client(csb, TargetSessionAttributes.Standby);
-            var readOnlyClient = Client(csb, TargetSessionAttributes.ReadOnly);
+            var onlyStandbyClient = Client(csb, "standby");
+            var readOnlyClient = Client(csb, "read-only");
 
             Assert.DoesNotThrowAsync(() => clientsTask);
             Assert.ThrowsAsync<NpgsqlException>(() => onlyStandbyClient);
             Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
             Assert.AreEqual(125, queriesDone);
 
-            Assert.AreEqual(8, PoolManager.Pools.Where(x => x.Key is not null).Count());
+            Assert.AreEqual(8, PoolManager.Pools.Count(x => x.Key is not null));
 
             PoolManager.Reset();
 
-            Task Client(NpgsqlConnectionStringBuilder csb, TargetSessionAttributes targetServerType)
+            Task Client(NpgsqlConnectionStringBuilder csb, string targetSessionAttributes)
             {
                 csb = csb.Clone();
-                csb.TargetSessionAttributesParsed = targetServerType;
+                csb.TargetSessionAttributes = targetSessionAttributes;
                 var tasks = new List<Task>(5);
 
                 for (var i = 0; i < 5; i++)
@@ -554,26 +578,15 @@ namespace Npgsql.Tests
         static string MultipleHosts(params PgPostmasterMock[] postmasters)
             => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
 
-        public enum TestTargetSessionAttributes : byte
-        {
-            Any = TargetSessionAttributes.Any,
-            ReadWrite = TargetSessionAttributes.ReadWrite,
-            ReadOnly = TargetSessionAttributes.ReadOnly,
-            Primary = TargetSessionAttributes.Primary,
-            Standby = TargetSessionAttributes.Standby,
-            PreferPrimary = TargetSessionAttributes.PreferPrimary,
-            PreferStandby = TargetSessionAttributes.PreferStandby,
-        }
-
         class DisposableWrapper : IAsyncDisposable
         {
-            private readonly IEnumerable<IAsyncDisposable> disposables;
+            readonly IEnumerable<IAsyncDisposable> _disposables;
 
-            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => this.disposables = disposables;
+            public DisposableWrapper(IEnumerable<IAsyncDisposable> disposables) => _disposables = disposables;
 
             public async ValueTask DisposeAsync()
             {
-                foreach (var disposable in disposables)
+                foreach (var disposable in _disposables)
                     await disposable.DisposeAsync();
             }
         }

@@ -438,7 +438,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal async Task Open(NpgsqlTimeout timeout, bool async, bool queryClusterState, CancellationToken cancellationToken)
+        internal async Task Open(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
@@ -479,8 +479,6 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
-                if (queryClusterState)
-                    await QueryClusterState(timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {

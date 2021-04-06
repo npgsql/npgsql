@@ -50,14 +50,6 @@ namespace Npgsql
                     ? Path.Combine(_host, $".s.PGSQL.{_port}")
                     : $"tcp://{_host}:{_port}";
 
-        TargetSessionAttributes _targetSessionAttributesParsed;
-
-        internal TargetSessionAttributes TargetSessionAttributesParsed
-        {
-            get => _targetSessionAttributesParsed;
-            set => TargetSessionAttributes = value.ToString();
-        }
-
         TimeSpan? _hostRecheckSecondsTranslated;
 
         internal TimeSpan HostRecheckSecondsTranslated
@@ -516,52 +508,6 @@ namespace Npgsql
         }
         string? _timezone;
 
-        /// <summary>
-        /// Determines the preferred PostgreSQL target server type.
-        /// </summary>
-        [Category("Connection")]
-        [Description("Determines the preferred PostgreSQL target server type.")]
-        [DisplayName("TargetSessionAttributes")]
-        [NpgsqlConnectionStringProperty]
-        public string TargetSessionAttributes
-        {
-            get => _targetSessionAttributes;
-            set
-            {
-                if (value is null)
-                    value = PostgresEnvironment.TargetSessionAttributes ?? Npgsql.TargetSessionAttributes.Any.ToString();
-                if (!Enum.TryParse<TargetSessionAttributes>(value, out var result))
-                    throw new ArgumentException($"Unable to parse {nameof(TargetSessionAttributes)}", nameof(TargetSessionAttributes));
-
-                _targetSessionAttributes = value;
-                SetValue(nameof(TargetSessionAttributes), value);
-                _targetSessionAttributesParsed = result;
-            }
-        }
-        string _targetSessionAttributes = "Any";
-
-        /// <summary>
-        /// Controls for how long the host's cached state will be considered as valid.
-        /// </summary>
-        [Category("Connection")]
-        [Description("Controls for how long the host's cached state will be considered as valid.")]
-        [DisplayName("HostRecheckSeconds")]
-        [DefaultValue(10)]
-        [NpgsqlConnectionStringProperty]
-        public int HostRecheckSeconds
-        {
-            get => _hostRecheckSeconds;
-            set
-            {
-                if (value < 0)
-                    throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
-                _hostRecheckSeconds = value;
-                SetValue(nameof(HostRecheckSeconds), value);
-                _hostRecheckSecondsTranslated = null;
-            }
-        }
-        int _hostRecheckSeconds;
-
         #endregion
 
         #region Properties - Security
@@ -929,7 +875,6 @@ namespace Npgsql
         [Description("The total maximum lifetime of connections (in seconds).")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty("Load Balance Timeout")]
-        [DefaultValue(0)]
         public int ConnectionLifetime
         {
             get => _connectionLifetime;
@@ -940,25 +885,6 @@ namespace Npgsql
             }
         }
         int _connectionLifetime;
-
-        /// <summary>
-        /// Enables balancing between multiple hosts by round-robin.
-        /// </summary>
-        [Category("Pooling")]
-        [Description("Enables balancing between multiple hosts by round-robin.")]
-        [DisplayName("LoadBalanceHosts")]
-        [NpgsqlConnectionStringProperty]
-        [DefaultValue(false)]
-        public bool LoadBalanceHosts
-        {
-            get => _loadBalanceHosts;
-            set
-            {
-                _loadBalanceHosts = value;
-                SetValue(nameof(LoadBalanceHosts), value);
-            }
-        }
-        bool _loadBalanceHosts;
 
         #endregion
 
@@ -1059,6 +985,96 @@ namespace Npgsql
         int _cancellationTimeout;
 
         #endregion
+
+        #region Properties - Failover and load balancing
+
+        /// <summary>
+        /// Determines the preferred PostgreSQL target server type.
+        /// </summary>
+        [Category("Failover and load balancing")]
+        [Description("Determines the preferred PostgreSQL target server type.")]
+        [DisplayName("Target Session Attributes")]
+        [NpgsqlConnectionStringProperty]
+        public string? TargetSessionAttributes
+        {
+            get => TargetSessionAttributesParsed switch
+            {
+                Npgsql.TargetSessionAttributes.Any           => "any",
+                Npgsql.TargetSessionAttributes.Primary       => "primary",
+                Npgsql.TargetSessionAttributes.Standby       => "standby",
+                Npgsql.TargetSessionAttributes.PreferPrimary => "prefer-primary",
+                Npgsql.TargetSessionAttributes.PreferStandby => "prefer-standby",
+                Npgsql.TargetSessionAttributes.ReadWrite     => "read-write",
+                Npgsql.TargetSessionAttributes.ReadOnly      => "read-only",
+                null => null,
+
+                _ => throw new ArgumentException($"Unhandled enum value '{TargetSessionAttributesParsed}'")
+            };
+
+            set
+            {
+                TargetSessionAttributesParsed = value is null ? null : ParseTargetSessionAttributes(value);
+                SetValue(nameof(TargetSessionAttributes), value);
+            }
+        }
+
+        internal TargetSessionAttributes? TargetSessionAttributesParsed { get; private set; }
+
+        internal static TargetSessionAttributes ParseTargetSessionAttributes(string s)
+            => s switch
+            {
+                "any"            => Npgsql.TargetSessionAttributes.Any,
+                "primary"        => Npgsql.TargetSessionAttributes.Primary,
+                "standby"        => Npgsql.TargetSessionAttributes.Standby,
+                "prefer-primary" => Npgsql.TargetSessionAttributes.PreferPrimary,
+                "prefer-standby" => Npgsql.TargetSessionAttributes.PreferStandby,
+                "read-write"     => Npgsql.TargetSessionAttributes.ReadWrite,
+                "read-only"      => Npgsql.TargetSessionAttributes.ReadOnly,
+
+                _ => throw new ArgumentException($"TargetSessionAttributes contains an invalid value '{s}'")
+            };
+
+        /// <summary>
+        /// Enables balancing between multiple hosts by round-robin.
+        /// </summary>
+        [Category("Failover and load balancing")]
+        [Description("Enables balancing between multiple hosts by round-robin.")]
+        [DisplayName("Load Balance Hosts")]
+        [NpgsqlConnectionStringProperty]
+        public bool LoadBalanceHosts
+        {
+            get => _loadBalanceHosts;
+            set
+            {
+                _loadBalanceHosts = value;
+                SetValue(nameof(LoadBalanceHosts), value);
+            }
+        }
+        bool _loadBalanceHosts;
+
+        /// <summary>
+        /// Controls for how long the host's cached state will be considered as valid.
+        /// </summary>
+        [Category("Failover and load balancing")]
+        [Description("Controls for how long the host's cached state will be considered as valid.")]
+        [DisplayName("Host Recheck Seconds")]
+        [DefaultValue(10)]
+        [NpgsqlConnectionStringProperty]
+        public int HostRecheckSeconds
+        {
+            get => _hostRecheckSeconds;
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
+                _hostRecheckSeconds = value;
+                SetValue(nameof(HostRecheckSeconds), value);
+                _hostRecheckSecondsTranslated = null;
+            }
+        }
+        int _hostRecheckSeconds;
+
+        #endregion Properties - Failover and load balancing
 
         #region Properties - Entity Framework
 
