@@ -173,10 +173,10 @@ namespace NpgsqlTypes
         /// <returns>A signed number indicating the relative values of this instance and the value parameter.</returns>
         public int CompareTo(NpgsqlInterval other)
         {
-            var thisMircoseconds = ToMicroseconds(this);
+            var thisMicroseconds = ToMicroseconds(this);
             var otherMicroseconds = ToMicroseconds(other);
 
-            return thisMircoseconds.CompareTo(otherMicroseconds);
+            return thisMicroseconds.CompareTo(otherMicroseconds);
 
             static decimal ToMicroseconds(NpgsqlInterval value)
             {

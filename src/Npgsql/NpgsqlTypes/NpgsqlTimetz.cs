@@ -129,13 +129,13 @@ namespace NpgsqlTypes
         /// <returns>A signed number indicating the relative values of this instance and the value parameter.</returns>
         public int CompareTo(NpgsqlTimetz other)
         {
-            var thisMircoseconds = ToMicroseconds(this);
+            var thisMicroseconds = ToMicroseconds(this);
             var otherMicroseconds = ToMicroseconds(other);
 
-            if (thisMircoseconds > otherMicroseconds)
+            if (thisMicroseconds > otherMicroseconds)
                 return 1;
 
-            if (thisMircoseconds > otherMicroseconds)
+            if (thisMicroseconds > otherMicroseconds)
                 return -1;
 
             if (TimeZone > other.TimeZone)
