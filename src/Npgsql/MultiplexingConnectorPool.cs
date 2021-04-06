@@ -69,6 +69,9 @@ namespace Npgsql
             _multiplexCommandReader = multiplexCommandChannel.Reader;
             MultiplexCommandWriter = multiplexCommandChannel.Writer;
 
+            if (settings.ExtraPoolCapacity > 0)
+                throw new ArgumentException($"{nameof(settings.ExtraPoolCapacity)} is not supported with multiplexing");
+
             // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
             // pool clearing
 

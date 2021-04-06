@@ -806,6 +806,25 @@ namespace Npgsql
         }
         int _connectionLifetime;
 
+        /// <summary>
+        /// Determines how many unpooled connections can be open over the MaxPoolSize.
+        /// </summary>
+        [Category("Pooling")]
+        [Description("Determines how many unpooled connections can be open over the MaxPoolSize.")]
+        [DisplayName("ExtraPoolCapacity")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(0)]
+        public int ExtraPoolCapacity
+        {
+            get => _extraPoolCapacity;
+            set
+            {
+                _extraPoolCapacity = value;
+                SetValue(nameof(ExtraPoolCapacity), value);
+            }
+        }
+        int _extraPoolCapacity;
+
         #endregion
 
         #region Properties - Timeouts

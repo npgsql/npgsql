@@ -247,6 +247,8 @@ namespace Npgsql.Internal
 
         internal int ClearCounter { get; set; }
 
+        internal bool IsExtra { get; init; }
+
         volatile bool _postgresCancellationPerformed;
         internal bool PostgresCancellationPerformed
         {

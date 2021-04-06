@@ -40,6 +40,8 @@ Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
 Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
 Npgsql.NpgsqlConnection.PhysicalOpenCallback.set -> void
 Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
+Npgsql.NpgsqlConnectionStringBuilder.ExtraPoolCapacity.get -> int
+Npgsql.NpgsqlConnectionStringBuilder.ExtraPoolCapacity.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.HostRecheckSeconds.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.HostRecheckSeconds.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.IncludeErrorDetail.get -> bool
