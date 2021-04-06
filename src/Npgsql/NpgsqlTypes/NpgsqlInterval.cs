@@ -84,9 +84,10 @@ namespace NpgsqlTypes
         public int Microsecond => NpgsqlDateTime.GetMicrosecond(Microseconds);
 
         /// <summary>
-        /// 
+        /// Adjust the interval so 24-hour time periods are represented as days
+        /// and 30-day time periods are represented as months.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Returns an adjusted interval.</returns>
         public NpgsqlInterval Justify()
         {
             var microseconds = Microseconds;
@@ -129,14 +130,37 @@ namespace NpgsqlTypes
             return new NpgsqlInterval(microseconds, (int)days, (int)months);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
+        /// <summary>Adjust the interval so 30-day time periods are represented as months.</summary>
+        /// <returns>Returns an adjusted interval.</returns>
+        public NpgsqlInterval JustifyDays()
+        {
+            var days = Days;
+            var months = days / NpgsqlDateTime.DaysPerMonth;
+
+            days -= months * NpgsqlDateTime.DaysPerMonth;
+            months += Month;
+
+            if (months > 0 && days < 0)
+            {
+                days += NpgsqlDateTime.DaysPerMonth;
+                months--;
+            }
+            else
+            if (months < 0 && days > 0)
+            {
+                days -= NpgsqlDateTime.DaysPerMonth;
+                months++;
+            }
+
+            return new NpgsqlInterval(Microseconds, days, months);
+        }
+
+        /// <summary>Adjust interval so 24-hour time periods are represented as days.</summary>
+        /// <returns>Returns an adjusted interval.</returns>
         public NpgsqlInterval JustifyHours()
         {
             var microseconds = Microseconds;
-            var days = Microseconds / NpgsqlDateTime.MicrosecondsPerDay;
+            var days = microseconds / NpgsqlDateTime.MicrosecondsPerDay;
 
             microseconds -= days * NpgsqlDateTime.MicrosecondsPerDay;
             days += Days;
