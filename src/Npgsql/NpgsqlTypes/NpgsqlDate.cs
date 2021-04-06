@@ -9,16 +9,7 @@ namespace NpgsqlTypes
     {
         readonly int _days;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlDate"/>
-        /// structure to a specified number of days since PostgreSQL epoch.
-        /// </summary>
-        /// <param name="days">
-        /// A date expressed in number of days since PostgreSQL epoch.
-        /// </param>
-        /// <seealso cref="Days"/>
-        /// <seealso cref="PostgreSqlEpoch"/>
-        public NpgsqlDate(int days) => _days =
+        internal NpgsqlDate(int days) => _days =
             days >= NpgsqlDateTime.DaysMinValue &&
             days <= NpgsqlDateTime.DaysMaxValue ||
             days == NpgsqlDateTime.DaysNegativeInfinity ||

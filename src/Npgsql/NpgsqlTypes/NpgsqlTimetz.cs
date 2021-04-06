@@ -10,21 +10,7 @@ namespace NpgsqlTypes
         readonly NpgsqlTime _time;
         readonly NpgsqlTimeZone _timeZone;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlTimetz"/>
-        /// structure to a specified number of microseconds since
-        /// the midnight and time zone offset.
-        /// </summary>
-        /// <param name="microseconds">
-        /// A time expressed in number of microseconds since the midnight.
-        /// </param>
-        /// <param name="timeZoneSeconds">
-        /// A time zone offset from Coordinated Universal Time (UTC)
-        /// expressed in seconds.
-        /// </param>
-        /// <seealso cref="Microseconds"/>
-        /// <seealso cref="TimeZone"/>
-        public NpgsqlTimetz(long microseconds, int timeZoneSeconds)
+        internal NpgsqlTimetz(long microseconds, int timeZoneSeconds)
             : this(new NpgsqlTime(microseconds), new NpgsqlTimeZone(timeZoneSeconds)) { }
 
         /// <summary>

@@ -11,13 +11,7 @@ namespace NpgsqlTypes
         readonly int _days;
         readonly int _months;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="microseconds"></param>
-        /// <param name="days"></param>
-        /// <param name="months"></param>
-        public NpgsqlInterval(long microseconds, int days, int months) =>
+        internal NpgsqlInterval(long microseconds, int days, int months) =>
             (_microseconds, _days, _months) = (microseconds, days, months);
 
         /// <summary>

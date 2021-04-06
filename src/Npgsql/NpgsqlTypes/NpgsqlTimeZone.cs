@@ -14,11 +14,7 @@ namespace NpgsqlTypes
 
         readonly int _seconds;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="seconds"></param>
-        public NpgsqlTimeZone(int seconds) =>
+        internal NpgsqlTimeZone(int seconds) =>
             _seconds = Math.Abs(seconds) > SecondsLimitValue
                 ? throw new ArgumentOutOfRangeException(nameof(seconds))
                 : seconds;

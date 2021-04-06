@@ -9,15 +9,7 @@ namespace NpgsqlTypes
     {
         readonly long _microseconds;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlTime"/>
-        /// structure to a specified number of microseconds since the midnight.
-        /// </summary>
-        /// <param name="microseconds">
-        /// A date expressed in number of microseconds since the midnight.
-        /// </param>
-        /// <seealso cref="Microseconds"/>
-        public NpgsqlTime(long microseconds) =>
+        internal NpgsqlTime(long microseconds) =>
             _microseconds = microseconds < 0 || microseconds > NpgsqlDateTime.MicrosecondsPerDay
             ? throw new ArgumentOutOfRangeException(nameof(microseconds))
             : microseconds;

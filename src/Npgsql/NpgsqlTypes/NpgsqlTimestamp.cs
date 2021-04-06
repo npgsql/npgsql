@@ -12,15 +12,7 @@ namespace NpgsqlTypes
 
         private readonly long _microseconds;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlTimestamp"/>
-        /// structure to a specified number of microseconds since the PostgreSQL epoch.
-        /// </summary>
-        /// <param name="microseconds">
-        /// A date expressed in number of microseconds since PostgreSQL epoch.
-        /// </param>
-        /// <seealso cref="Microseconds"/>
-        public NpgsqlTimestamp(long microseconds) =>
+        internal NpgsqlTimestamp(long microseconds) =>
             _microseconds =
                 microseconds >= MicrosecondsMinValue &&
                 microseconds <= MicrosecondsMaxValue ||

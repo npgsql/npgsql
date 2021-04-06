@@ -12,15 +12,7 @@ namespace NpgsqlTypes
         private NpgsqlTimestamptz(NpgsqlTimestamp timestamp) =>
             _timestamp = timestamp;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlTimestamptz"/>
-        /// structure to a specified number of microseconds since the PostgreSQL epoch.
-        /// </summary>
-        /// <param name="microseconds">
-        /// A date expressed in number of microseconds since PostgreSQL epoch.
-        /// </param>
-        /// <seealso cref="Microseconds"/>
-        public NpgsqlTimestamptz(long microseconds) =>
+        internal NpgsqlTimestamptz(long microseconds) =>
             _timestamp = new NpgsqlTimestamp(microseconds);
 
         /// <summary>
