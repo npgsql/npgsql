@@ -8,7 +8,7 @@ namespace NpgsqlTypes
     public readonly struct NpgsqlTimestamptz : IEquatable<NpgsqlTimestamptz>, IComparable<NpgsqlTimestamptz>
     {
         private readonly NpgsqlTimestamp _timestamp;
-        
+
         internal long Microseconds => _timestamp.Microseconds;
 
         private NpgsqlTimestamptz(NpgsqlTimestamp timestamp) =>
@@ -114,26 +114,22 @@ namespace NpgsqlTypes
         public int Microsecond => _timestamp.Microsecond;
 
         /// <summary>
-        /// Determines whether the specified value is finite.
+        /// Determines whether the current value is finite.
         /// </summary>
-        /// <param name="value">A date.</param>
         /// <returns>
-        /// <see langword="true"/> if the specified value is finite;
+        /// <see langword="true"/> if the current value is finite;
         /// otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool IsFinity(NpgsqlTimestamptz value) =>
-            NpgsqlTimestamp.IsFinity(value._timestamp);
+        public bool IsFinite => _timestamp.IsFinite;
 
         /// <summary>
-        /// Determines whether the specified value is infinite.
+        /// Determines whether the current value is infinite.
         /// </summary>
-        /// <param name="value">A date.</param>
         /// <returns>
-        /// <see langword="true"/> if the specified value is infinite;
+        /// <see langword="true"/> if the current value is infinite;
         /// otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool IsInfinity(NpgsqlTimestamptz value) =>
-            NpgsqlTimestamp.IsInfinity(value._timestamp);
+        public bool IsInfinity => _timestamp.IsInfinity;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimestamp"/>

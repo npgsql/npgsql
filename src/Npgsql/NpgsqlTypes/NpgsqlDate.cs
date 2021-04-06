@@ -62,28 +62,26 @@ namespace NpgsqlTypes
         public int Day => NpgsqlDateTime.GetDatePart(Days, NpgsqlDateTimePart.Day);
 
         /// <summary>
-        /// Determines whether the specified value is finite.
+        /// Determines whether the current value is finite.
         /// </summary>
-        /// <param name="value">A date.</param>
         /// <returns>
-        /// <see langword="true"/> if the specified value is finite;
+        /// <see langword="true"/> if the current value is finite;
         /// otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool IsFinity(NpgsqlDate value) =>
-            value != NegativeInfinity &&
-            value != PositiveInfinity;
+        public bool IsFinite =>
+            this != NegativeInfinity &&
+            this != PositiveInfinity;
 
         /// <summary>
-        /// Determines whether the specified value is infinite.
+        /// Determines whether the current value is infinite.
         /// </summary>
-        /// <param name="value">A date.</param>
         /// <returns>
-        /// <see langword="true"/> if the specified value is infinite;
+        /// <see langword="true"/> if the current value is infinite;
         /// otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool IsInfinity(NpgsqlDate value) =>
-            value == NegativeInfinity ||
-            value == PositiveInfinity;
+        public bool IsInfinity =>
+            this == NegativeInfinity ||
+            this == PositiveInfinity;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlDate"/> object to its equivalent
