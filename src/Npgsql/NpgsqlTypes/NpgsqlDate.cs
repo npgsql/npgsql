@@ -7,14 +7,10 @@ namespace NpgsqlTypes
     /// </summary>
     public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>
     {
-        readonly int _days;
+        internal int Days { get; }
 
-        internal NpgsqlDate(int days) => _days =
-            days >= NpgsqlDateTime.DaysMinValue &&
-            days <= NpgsqlDateTime.DaysMaxValue ||
-            days == NpgsqlDateTime.DaysNegativeInfinity ||
-            days == NpgsqlDateTime.DaysPositiveInfinity
-            ? days : throw new ArgumentOutOfRangeException(nameof(days));
+        internal NpgsqlDate(int days) =>
+            Days = days;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlDate"/>
@@ -23,7 +19,7 @@ namespace NpgsqlTypes
         /// <param name="year">The year (4713 BC through 5874897 AD).</param>
         /// <param name="month">The month (1 through 12).</param>
         /// <param name="day">The day (1 through the number of days in <paramref name="month"/>).</param>
-        public NpgsqlDate(int year, int month, int day) => _days = NpgsqlDateTime.ToDays(year, month, day);
+        public NpgsqlDate(int year, int month, int day) => Days = NpgsqlDateTime.ToDays(year, month, day);
 
         /// <summary>Represents the largest possible value of <see cref="NpgsqlDate"/>.</summary>
         /// <value>The largest possible value of <see cref="NpgsqlDate"/>.</value>
@@ -64,11 +60,6 @@ namespace NpgsqlTypes
         /// <summary>Gets the day component of the date represented by this instance.</summary>
         /// <value>The day component, expressed as a value between 1 and 31.</value>
         public int Day => NpgsqlDateTime.GetDatePart(Days, NpgsqlDateTimePart.Day);
-
-        /// <summary>Gets the number of days since PostgreSQL epoch.</summary>
-        /// <value>The number of days since PostgreSQL epoch.</value>
-        /// <seealso cref="PostgreSqlEpoch"/>
-        internal int Days => _days;
 
         /// <summary>
         /// Determines whether the specified value is finite.

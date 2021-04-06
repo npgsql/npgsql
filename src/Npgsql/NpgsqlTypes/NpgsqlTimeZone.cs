@@ -12,12 +12,10 @@ namespace NpgsqlTypes
             59 * NpgsqlDateTime.SecondsPerMinute +
             59;
 
-        readonly int _seconds;
+        internal int Seconds { get; }
 
         internal NpgsqlTimeZone(int seconds) =>
-            _seconds = Math.Abs(seconds) > SecondsLimitValue
-                ? throw new ArgumentOutOfRangeException(nameof(seconds))
-                : seconds;
+            Seconds = seconds;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlTimeZone"/>
@@ -43,19 +41,15 @@ namespace NpgsqlTypes
 
         /// <summary>Gets the hour component of the time represented by this instance.</summary>
         /// <value>The hour component.</value>
-        public int Hour => -_seconds / NpgsqlDateTime.SecondsPerHour;
+        public int Hour => -Seconds / NpgsqlDateTime.SecondsPerHour;
 
         /// <summary>Gets the minute component of the time represented by this instance.</summary>
         /// <value>The minute component.</value>
-        public int Minute => -_seconds / NpgsqlDateTime.SecondsPerMinute % NpgsqlDateTime.MinutesPerHour;
+        public int Minute => -Seconds / NpgsqlDateTime.SecondsPerMinute % NpgsqlDateTime.MinutesPerHour;
 
         /// <summary>Gets the second component of the time represented by this instance.</summary>
         /// <value>The second component.</value>
-        public int Second => -_seconds % NpgsqlDateTime.SecondsPerMinute;
-
-        /// <summary>Gets the number of microseconds since the midnight.</summary>
-        /// <value>The number of seconds since the midnight.</value>
-        internal int Seconds => _seconds;
+        public int Second => -Seconds % NpgsqlDateTime.SecondsPerMinute;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimeZone"/> object to its equivalent

@@ -9,6 +9,9 @@ namespace NpgsqlTypes
     {
         readonly NpgsqlTime _time;
         readonly NpgsqlTimeZone _timeZone;
+        
+        internal long Microseconds => _time.Microseconds;
+        internal int TimeZoneSeconds => _timeZone.Seconds;
 
         internal NpgsqlTimetz(long microseconds, int timeZoneSeconds)
             : this(new NpgsqlTime(microseconds), new NpgsqlTimeZone(timeZoneSeconds)) { }
@@ -108,15 +111,6 @@ namespace NpgsqlTypes
         /// <summary>Gets the microsecond component of the time represented by this instance.</summary>
         /// <value>The microsecond component.</value>
         public int Microsecond => _time.Microsecond;
-
-        /// <summary>Gets the number of microseconds since the midnight.</summary>
-        /// <value>The number of microseconds since the midnight.</value>
-        internal long Microseconds => _time.Microseconds;
-
-        /// <summary>
-        /// 
-        /// </summary>
-        internal int TimeZoneSeconds => _timeZone.Seconds;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimestamp"/>

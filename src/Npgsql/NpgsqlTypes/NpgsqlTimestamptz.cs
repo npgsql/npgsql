@@ -8,6 +8,8 @@ namespace NpgsqlTypes
     public readonly struct NpgsqlTimestamptz : IEquatable<NpgsqlTimestamptz>, IComparable<NpgsqlTimestamptz>
     {
         private readonly NpgsqlTimestamp _timestamp;
+        
+        internal long Microseconds => _timestamp.Microseconds;
 
         private NpgsqlTimestamptz(NpgsqlTimestamp timestamp) =>
             _timestamp = timestamp;
@@ -110,11 +112,6 @@ namespace NpgsqlTypes
         /// <summary>Gets the microsecond component of the timestamp represented by this instance.</summary>
         /// <value>The microsecond component.</value>
         public int Microsecond => _timestamp.Microsecond;
-
-        /// <summary>Gets the number of microseconds since PostgreSQL epoch.</summary>
-        /// <value>The number of microseconds since PostgreSQL epoch.</value>
-        /// <seealso cref="PostgreSqlEpoch"/>
-        internal long Microseconds => _timestamp.Microseconds;
 
         /// <summary>
         /// Determines whether the specified value is finite.

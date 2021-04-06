@@ -10,16 +10,10 @@ namespace NpgsqlTypes
         const long MicrosecondsMinValue = -211813488000000000;
         const long MicrosecondsMaxValue = 9223371331200000000 - 1;
 
-        private readonly long _microseconds;
+        internal long Microseconds { get; }
 
         internal NpgsqlTimestamp(long microseconds) =>
-            _microseconds =
-                microseconds >= MicrosecondsMinValue &&
-                microseconds <= MicrosecondsMaxValue ||
-                microseconds == long.MinValue ||
-                microseconds == long.MaxValue
-                ? microseconds
-                : throw new ArgumentOutOfRangeException(nameof(microseconds));
+            Microseconds = microseconds;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlTimestamp"/>
@@ -38,14 +32,14 @@ namespace NpgsqlTypes
             var date = NpgsqlDateTime.ToDays(year, month, day);
             var time = NpgsqlDateTime.ToMicroseconds(hour, minute, second, millisecond, microsecond);
 
-            _microseconds = date * NpgsqlDateTime.MicrosecondsPerDay + time;
+            Microseconds = date * NpgsqlDateTime.MicrosecondsPerDay + time;
 
-            var dateRestored = (_microseconds - time) / NpgsqlDateTime.MicrosecondsPerDay;
+            var dateRestored = (Microseconds - time) / NpgsqlDateTime.MicrosecondsPerDay;
             if (dateRestored != date ||
-                _microseconds < 0 && date > 0 ||
-                _microseconds > 0 && date < -1 ||
-                _microseconds < MicrosecondsMinValue ||
-                _microseconds > MicrosecondsMaxValue)
+                Microseconds < 0 && date > 0 ||
+                Microseconds > 0 && date < -1 ||
+                Microseconds < MicrosecondsMinValue ||
+                Microseconds > MicrosecondsMaxValue)
             {
                 throw new ArgumentOutOfRangeException(nameof(year));
             }
@@ -58,7 +52,7 @@ namespace NpgsqlTypes
         /// <seealso cref="Time"/>
         public void Deconstruct(out NpgsqlDate date, out NpgsqlTime time)
         {
-            var microseconds = _microseconds;
+            var microseconds = Microseconds;
             var days = (int)(microseconds / NpgsqlDateTime.MicrosecondsPerDay);
 
             if (days != 0)
@@ -164,11 +158,6 @@ namespace NpgsqlTypes
         /// <value>The microsecond component.</value>
         public int Microsecond => Time.Microsecond;
 
-        /// <summary>Gets the number of microseconds since PostgreSQL epoch.</summary>
-        /// <value>The number of microseconds since PostgreSQL epoch.</value>
-        /// <seealso cref="PostgreSqlEpoch"/>
-        internal long Microseconds => _microseconds;
-
         /// <summary>
         /// Determines whether the specified value is finite.
         /// </summary>
@@ -214,7 +203,7 @@ namespace NpgsqlTypes
         /// <param name="other">The instance to compare to the current instance.</param>
         /// <returns>A signed number indicating the relative values of this instance and the value parameter.</returns>
         public int CompareTo(NpgsqlTimestamp other) =>
-            Microseconds.CompareTo(other._microseconds);
+            Microseconds.CompareTo(other.Microseconds);
 
         /// <summary>
         /// Returns a value indicating whether the value of this instance is equal
@@ -245,7 +234,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/>
         /// represent the same date; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator ==(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds == right._microseconds;
+        public static bool operator ==(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds == right.Microseconds;
 
         /// <summary>
         /// Determines whether two specified instances of
@@ -257,7 +246,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/>
         /// do not represent the same date; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator !=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds != right._microseconds;
+        public static bool operator !=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds != right.Microseconds;
 
         /// <summary>
         /// Determines whether one specified <see cref="NpgsqlTimestamp"/>
@@ -269,7 +258,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> is earlier
         /// than <paramref name="right"/>; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator <(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds < right._microseconds;
+        public static bool operator <(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds < right.Microseconds;
 
         /// <summary>
         /// Determines whether one specified <see cref="NpgsqlTimestamp"/>
@@ -282,7 +271,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> is the same as
         /// or earlier than <paramref name="right"/>; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator <=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds <= right._microseconds;
+        public static bool operator <=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds <= right.Microseconds;
 
         /// <summary>
         /// Determines whether one specified <see cref="NpgsqlTimestamp"/>
@@ -294,7 +283,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> is later
         /// than <paramref name="right"/>; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator >(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds > right._microseconds;
+        public static bool operator >(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds > right.Microseconds;
 
         /// <summary>
         /// Determines whether one specified <see cref="NpgsqlTimestamp"/>
@@ -307,7 +296,7 @@ namespace NpgsqlTypes
         /// <see langword="true"/> if <paramref name="left"/> is the same as
         /// or later than <paramref name="right"/>; otherwise, <see langword="false"/>.
         /// </returns>
-        public static bool operator >=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left._microseconds >= right._microseconds;
+        public static bool operator >=(NpgsqlTimestamp left, NpgsqlTimestamp right) => left.Microseconds >= right.Microseconds;
 
         /// <summary>
         /// An explicit operator to convert a <see cref="NpgsqlTimestamp"/> value to a <see cref="DateTime"/>.

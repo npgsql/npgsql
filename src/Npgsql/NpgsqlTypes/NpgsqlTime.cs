@@ -7,12 +7,10 @@ namespace NpgsqlTypes
     /// </summary>
     public readonly struct NpgsqlTime : IEquatable<NpgsqlTime>, IComparable<NpgsqlTime>
     {
-        readonly long _microseconds;
+        internal long Microseconds { get; }
 
         internal NpgsqlTime(long microseconds) =>
-            _microseconds = microseconds < 0 || microseconds > NpgsqlDateTime.MicrosecondsPerDay
-            ? throw new ArgumentOutOfRangeException(nameof(microseconds))
-            : microseconds;
+            Microseconds = microseconds;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlTime"/>
@@ -24,7 +22,7 @@ namespace NpgsqlTypes
         /// <param name="millisecond">The millisecond (0 through 1000).</param>
         /// <param name="microsecond">The microsecond (0 through 1000).</param>
         public NpgsqlTime(int hour, int minute, int second = 0, int millisecond = 0, int microsecond = 0) =>
-            _microseconds = NpgsqlDateTime.ToMicroseconds(hour, minute, second, millisecond, microsecond);
+            Microseconds = NpgsqlDateTime.ToMicroseconds(hour, minute, second, millisecond, microsecond);
 
         /// <summary>Represents the largest possible value of <see cref="NpgsqlTime"/>.</summary>
         /// <value>The largest possible value of <see cref="NpgsqlTime"/>.</value>
@@ -53,10 +51,6 @@ namespace NpgsqlTypes
         /// <summary>Gets the microsecond component of the time represented by this instance.</summary>
         /// <value>The microsecond component.</value>
         public int Microsecond => NpgsqlDateTime.GetMicrosecond(Microseconds);
-
-        /// <summary>Gets the number of microseconds since the midnight.</summary>
-        /// <value>The number of microseconds since the midnight.</value>
-        internal long Microseconds => _microseconds;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimestamp"/>

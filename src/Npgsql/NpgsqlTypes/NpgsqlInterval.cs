@@ -7,12 +7,12 @@ namespace NpgsqlTypes
     /// </summary>
     public readonly struct NpgsqlInterval : IEquatable<NpgsqlInterval>, IComparable<NpgsqlInterval>
     {
-        readonly long _microseconds;
-        readonly int _days;
-        readonly int _months;
+        internal long Microseconds { get; }
+        internal int Days { get; }
+        internal int Months { get; }
 
         internal NpgsqlInterval(long microseconds, int days, int months) =>
-            (_microseconds, _days, _months) = (microseconds, days, months);
+            (Microseconds, Days, Months) = (microseconds, days, months);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlInterval"/>
@@ -28,14 +28,14 @@ namespace NpgsqlTypes
         /// <param name="microsecond">Number of microseconds.</param>
         public NpgsqlInterval(int year, int month, int day, int hour, int minute, int second = 0, int millisecond = 0, int microsecond = 0)
         {
-            _months = (long)year * 12 + month is var months &&
+            Months = (long)year * 12 + month is var months &&
                 months <= int.MaxValue &&
                 months >= int.MinValue
                 ? (int)months
                 : throw new ArgumentOutOfRangeException(nameof(year));
 
-            _days = day;
-            _microseconds =
+            Days = day;
+            Microseconds =
                 microsecond +
                 millisecond * NpgsqlDateTime.MicrosecondsPerMillisecond +
                 second * NpgsqlDateTime.MicrosecondsPerSecond +
@@ -82,18 +82,6 @@ namespace NpgsqlTypes
         /// <summary>Gets the microsecond component of the interval represented by this instance.</summary>
         /// <value>The microsecond component.</value>
         public int Microsecond => NpgsqlDateTime.GetMicrosecond(Microseconds);
-
-        /// <summary>Gets the number of months.</summary>
-        /// <value>The number of months.</value>
-        internal int Months => _months;
-
-        /// <summary>Gets the number of days.</summary>
-        /// <value>The number of days.</value>
-        internal int Days => _days;
-
-        /// <summary>Gets the number of microseconds.</summary>
-        /// <value>The number of microseconds.</value>
-        internal long Microseconds => _microseconds;
 
         /// <summary>
         /// 
