@@ -44,6 +44,41 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(microsecond, value.Microsecond);
         }
 
+        public static IEnumerable JustifyDaysTestCases => new[]
+        {
+            new object[] { new NpgsqlInterval(0000, 00, 01, 25, 00, 00) },
+            new object[] { new NpgsqlInterval(0000, 00, 31, 25, 00, 00) },
+            new object[] { new NpgsqlInterval(0000, 00, 31, 00, 00, 00) },
+            new object[] { new NpgsqlInterval(0000, 00, 61, 25, 00, 00) },
+        };
+
+        [TestCaseSource(nameof(EqualityTestCases))]
+        public async Task Justify(NpgsqlInterval value)
+        {
+            await BackendTrue(
+                "SELECT @left = justify_interval(@right)",
+                Parameter(value.Justify(), "left"),
+                Parameter(value, "right"));
+        }
+
+        [TestCaseSource(nameof(EqualityTestCases))]
+        public async Task JustifyDays(NpgsqlInterval value)
+        {
+            await BackendTrue(
+                "SELECT @left = justify_days(@right)",
+                Parameter(value.JustifyDays(), "left"),
+                Parameter(value, "right"));
+        }
+
+        [TestCaseSource(nameof(EqualityTestCases))]
+        public async Task JustifyHours(NpgsqlInterval value)
+        {
+            await BackendTrue(
+                "SELECT @left = justify_hours(@right)",
+                Parameter(value.JustifyHours(), "left"),
+                Parameter(value, "right"));
+        }
+
         public static IEnumerable EqualityTestCases => new[]
         {
             new object[] { NpgsqlInterval.MinValue, NpgsqlInterval.MinValue },
@@ -181,12 +216,12 @@ namespace Npgsql.Tests.Types
 
         public static IEnumerable TimeSpanCastingTestCases() => new[]
         {
-            new object[] { new NpgsqlTime(01, 27, 27), new TimeSpan(01, 27, 27) },
-            new object[] { new NpgsqlTime(02, 55, 52), new TimeSpan(02, 55, 52) },
-            new object[] { new NpgsqlTime(11, 17, 51), new TimeSpan(11, 17, 51) },
-            new object[] { new NpgsqlTime(11, 47, 33), new TimeSpan(11, 47, 33) },
-            new object[] { new NpgsqlTime(12, 57, 32), new TimeSpan(12, 57, 32) },
-            new object[] { new NpgsqlTime(12, 58, 00), new TimeSpan(12, 58, 00) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 01, 27, 27), new TimeSpan(01, 27, 27) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 02, 55, 52), new TimeSpan(02, 55, 52) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 11, 17, 51), new TimeSpan(11, 17, 51) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 11, 47, 33), new TimeSpan(11, 47, 33) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 12, 57, 32), new TimeSpan(12, 57, 32) },
+            new object[] { new NpgsqlInterval(0000, 00, 00, 12, 58, 00), new TimeSpan(12, 58, 00) },
         };
 
         [TestCaseSource(nameof(TimeSpanCastingTestCases))]
