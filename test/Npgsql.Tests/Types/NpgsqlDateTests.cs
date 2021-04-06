@@ -9,21 +9,6 @@ namespace Npgsql.Tests.Types
 {
     public sealed class NpgsqlDateTests : NpgsqlTypeTests
     {
-        const long DaysMinValue = -2451545;
-        const long DaysMaxValue = 2145031949 - 1;
-
-        [TestCase(int.MinValue)]
-        [TestCase(int.MaxValue)]
-        [TestCase(DaysMaxValue)]
-        [TestCase(DaysMinValue)]
-        public void ConstructionFromDays(int days) =>
-            Assert.DoesNotThrow(() => new NpgsqlDate(days));
-
-        [TestCase(DaysMaxValue + 1)]
-        [TestCase(DaysMinValue - 1)]
-        public void ConstructionFromDaysThrows(int days) =>
-            Assert.Throws<ArgumentOutOfRangeException>(() => new NpgsqlDate(days));
-
         // General
         [TestCase(1, 01, 01)]
         [TestCase(1, 02, 01)]

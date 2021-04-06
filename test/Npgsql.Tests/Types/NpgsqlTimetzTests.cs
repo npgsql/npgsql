@@ -9,31 +9,7 @@ namespace Npgsql.Tests.Types
 {
     public sealed class NpgsqlTimetzTests : NpgsqlTypeTests
     {
-        const int TimeZoneSecondsMinValue = -(((15 * 60) + 59) * 60 + 59);
-        const int TimeZoneSecondsMaxValue = +(((15 * 60) + 59) * 60 + 59);
-
-        [TestCase(86400000000, 0000)]
-        [TestCase(3600000000, 0000)]
-        [TestCase(60000000, 0000)]
-        [TestCase(1000000, 0000)]
-        [TestCase(1000, 0000)]
-        [TestCase(1, 0000)]
-        [TestCase(0, 0000)]
-        [TestCase(0, TimeZoneSecondsMinValue)]
-        [TestCase(0, TimeZoneSecondsMaxValue)]
-        public void ConstructionFromMicroseconds(long microseconds, int offsetSeconds) =>
-            Assert.DoesNotThrow(() => new NpgsqlTimetz(microseconds, offsetSeconds));
-
-        [TestCase(86400000001, 0)]
-        [TestCase(-1, 0)]
-        [TestCase(0, TimeZoneSecondsMinValue - 1)]
-        [TestCase(0, TimeZoneSecondsMaxValue + 1)]
-        public void ConstructionFromMicrosecondsThrows(long microseconds, int offsetSeconds) =>
-            Assert.Throws<ArgumentOutOfRangeException>(() => new NpgsqlTimetz(microseconds, offsetSeconds));
-
         // General
-        [TestCase(00, 00, 00, 000, 000, TimeZoneSecondsMinValue)]
-        [TestCase(00, 00, 00, 000, 000, TimeZoneSecondsMaxValue)]
         [TestCase(00, 00, 00, 000, 000, 0)]
         [TestCase(00, 00, 00, 000, 001, 0)]
         [TestCase(00, 00, 00, 001, 000, 0)]
@@ -51,8 +27,6 @@ namespace Npgsql.Tests.Types
             Assert.DoesNotThrow(() => new NpgsqlTimetz(hour, minute, second, millisecond, microsecond, new(timeZoneSeconds)));
 
         // General
-        [TestCase(00, 00, 00, 000, 000, TimeZoneSecondsMinValue - 1, "seconds")]
-        [TestCase(00, 00, 00, 000, 000, TimeZoneSecondsMaxValue + 1, "seconds")]
         [TestCase(00, 00, 00, 000, -001, 0, "microsecond")]
         [TestCase(00, 00, 00, 000, 1000, 0, "microsecond")]
         [TestCase(00, 00, 00, -001, 000, 0, "millisecond")]

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Tests.Types
 {
-    public sealed class NpgsqlIntervalTests
+    public sealed class NpgsqlIntervalTests : NpgsqlTypeTests
     {
     }
 }

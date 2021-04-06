@@ -9,22 +9,6 @@ namespace Npgsql.Tests.Types
 {
     public sealed class NpgsqlTimestampTests : NpgsqlTypeTests
     {
-        const long MicrosecondsMinValue = -211813488000000000;
-        const long MicrosecondsMaxValue = 9223371331200000000 - 1;
-
-        [TestCase(long.MinValue)]
-        [TestCase(long.MaxValue)]
-        [TestCase(MicrosecondsMinValue)]
-        [TestCase(MicrosecondsMaxValue)]
-        [TestCase(0)]
-        public void ConstructionFromMicroseconds(long microseconds) =>
-            Assert.DoesNotThrow(() => new NpgsqlTimestamp(microseconds));
-
-        [TestCase(MicrosecondsMinValue - 1)]
-        [TestCase(MicrosecondsMaxValue + 1)]
-        public void ConstructionFromMicrosecondsThrows(long microseconds) =>
-            Assert.Throws<ArgumentOutOfRangeException>(() => new NpgsqlTimestamp(microseconds));
-
         // Time cases
         [TestCase(1, 01, 01, 00, 00, 00, 000, 000)]
         [TestCase(1, 01, 01, 00, 00, 00, 000, 001)]

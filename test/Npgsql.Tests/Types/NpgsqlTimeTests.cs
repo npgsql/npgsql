@@ -8,21 +8,6 @@ namespace Npgsql.Tests.Types
 {
     public sealed class NpgsqlTimeTests
     {
-        [TestCase(86400000000)]
-        [TestCase(3600000000)]
-        [TestCase(60000000)]
-        [TestCase(1000000)]
-        [TestCase(1000)]
-        [TestCase(1)]
-        [TestCase(0)]
-        public void ConstructionFromMicroseconds(long microseconds) =>
-            Assert.DoesNotThrow(() => new NpgsqlTime(microseconds));
-
-        [TestCase(86400000001)]
-        [TestCase(-1)]
-        public void ConstructionFromMicrosecondsThrows(long microseconds) =>
-            Assert.Throws<ArgumentOutOfRangeException>(() => new NpgsqlTime(microseconds));
-
         // General
         [TestCase(00, 00, 00, 000, 000)]
         [TestCase(00, 00, 00, 000, 001)]
