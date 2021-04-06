@@ -279,7 +279,7 @@ namespace Npgsql
 
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-                if (!((ConnectorPool)Pool).IsBootstrapped)
+                if (!((MultiplexingConnectorPool)Pool).IsBootstrapped)
                     return BootstrapMultiplexing(async, cancellationToken);
 
                 CompleteOpen();
