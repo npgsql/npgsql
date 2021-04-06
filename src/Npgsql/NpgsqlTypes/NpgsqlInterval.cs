@@ -65,17 +65,9 @@ namespace NpgsqlTypes
         /// <value>The month component.</value>
         public int Month => NpgsqlDateTime.GetDatePart(Microseconds, NpgsqlDateTimePart.Month);
 
-        /// <summary>Gets the number of months.</summary>
-        /// <value>The number of months.</value>
-        public int Months => _months;
-
         /// <summary>Gets the day component of the interval represented by this instance.</summary>
         /// <value>The day component.</value>
         public int Day => NpgsqlDateTime.GetDatePart(Microseconds, NpgsqlDateTimePart.Day);
-
-        /// <summary>Gets the number of days.</summary>
-        /// <value>The number of days.</value>
-        public int Days => _days;
 
         /// <summary>Gets the hour component of the interval represented by this instance.</summary>
         /// <value>The hour component.</value>
@@ -97,9 +89,17 @@ namespace NpgsqlTypes
         /// <value>The microsecond component.</value>
         public int Microsecond => NpgsqlDateTime.GetMicrosecond(Microseconds);
 
+        /// <summary>Gets the number of months.</summary>
+        /// <value>The number of months.</value>
+        internal int Months => _months;
+
+        /// <summary>Gets the number of days.</summary>
+        /// <value>The number of days.</value>
+        internal int Days => _days;
+
         /// <summary>Gets the number of microseconds.</summary>
         /// <value>The number of microseconds.</value>
-        public long Microseconds => _microseconds;
+        internal long Microseconds => _microseconds;
 
         /// <summary>
         /// 

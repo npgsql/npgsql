@@ -175,7 +175,7 @@ namespace NpgsqlTypes
         /// <summary>Gets the number of microseconds since PostgreSQL epoch.</summary>
         /// <value>The number of microseconds since PostgreSQL epoch.</value>
         /// <seealso cref="PostgreSqlEpoch"/>
-        public long Microseconds => _microseconds;
+        internal long Microseconds => _microseconds;
 
         /// <summary>
         /// Determines whether the specified value is finite.

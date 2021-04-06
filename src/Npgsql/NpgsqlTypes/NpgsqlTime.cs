@@ -64,7 +64,7 @@ namespace NpgsqlTypes
 
         /// <summary>Gets the number of microseconds since the midnight.</summary>
         /// <value>The number of microseconds since the midnight.</value>
-        public long Microseconds => _microseconds;
+        internal long Microseconds => _microseconds;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimestamp"/>

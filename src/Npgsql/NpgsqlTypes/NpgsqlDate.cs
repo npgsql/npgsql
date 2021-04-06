@@ -77,7 +77,7 @@ namespace NpgsqlTypes
         /// <summary>Gets the number of days since PostgreSQL epoch.</summary>
         /// <value>The number of days since PostgreSQL epoch.</value>
         /// <seealso cref="PostgreSqlEpoch"/>
-        public int Days => _days;
+        internal int Days => _days;
 
         /// <summary>
         /// Determines whether the specified value is finite.

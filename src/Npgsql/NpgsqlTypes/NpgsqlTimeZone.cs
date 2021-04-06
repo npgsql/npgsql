@@ -59,7 +59,7 @@ namespace NpgsqlTypes
 
         /// <summary>Gets the number of microseconds since the midnight.</summary>
         /// <value>The number of seconds since the midnight.</value>
-        public int Seconds => _seconds;
+        internal int Seconds => _seconds;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimeZone"/> object to its equivalent

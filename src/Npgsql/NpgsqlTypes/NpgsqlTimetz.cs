@@ -125,12 +125,12 @@ namespace NpgsqlTypes
 
         /// <summary>Gets the number of microseconds since the midnight.</summary>
         /// <value>The number of microseconds since the midnight.</value>
-        public long Microseconds => _time.Microseconds;
+        internal long Microseconds => _time.Microseconds;
 
         /// <summary>
         /// 
         /// </summary>
-        public int TimeZoneSeconds => _timeZone.Seconds;
+        internal int TimeZoneSeconds => _timeZone.Seconds;
 
         /// <summary>
         /// Converts the value of the current <see cref="NpgsqlTimestamp"/>
