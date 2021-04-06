@@ -124,7 +124,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
                 Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
                 Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
+                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo((NpgsqlDecimal)8M));
                 Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
                 Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
                 Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
