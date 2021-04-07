@@ -1268,7 +1268,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 else
                 {
                     // The connection isn't bound to a connector - it's multiplexing time.
-                    var pool = (ConnectorPool)conn.Pool;
+                    var pool = (MultiplexingConnectorPool)conn.Pool;
 
                     if (!async)
                     {

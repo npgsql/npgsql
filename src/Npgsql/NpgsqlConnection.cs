@@ -228,6 +228,8 @@ namespace Npgsql
                     throw new NotSupportedException("Pooling must be on with multiple hosts");
                 newPool = new MultiHostConnectorPool(settings, canonical);
             }
+            else if (settings.Multiplexing)
+                newPool = new MultiplexingConnectorPool(settings, canonical);
             else if (settings.Pooling)
                 newPool = new ConnectorPool(settings, canonical);
             else
@@ -277,7 +279,7 @@ namespace Npgsql
 
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-                if (!((ConnectorPool)Pool).IsBootstrapped)
+                if (!((MultiplexingConnectorPool)Pool).IsBootstrapped)
                     return BootstrapMultiplexing(async, cancellationToken);
 
                 CompleteOpen();
@@ -350,7 +352,7 @@ namespace Npgsql
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await ((ConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                    await ((MultiplexingConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
                     CompleteOpen();
                 }
                 catch

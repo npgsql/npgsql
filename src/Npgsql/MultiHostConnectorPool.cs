@@ -34,6 +34,7 @@ namespace Npgsql
                 var poolSettings = settings.Clone();
                 poolSettings.Host = host;
                 poolSettings.Port = port;
+                Debug.Assert(!poolSettings.Multiplexing);
                 _pools[i] = new ConnectorPool(poolSettings, poolSettings.ConnectionString, this);
             }
         }
