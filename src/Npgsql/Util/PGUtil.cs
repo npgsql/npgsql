@@ -119,9 +119,6 @@ namespace Npgsql.Util
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
 
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
-
-        internal static bool IsWindows =>
-            System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
     }
 
     enum FormatCode : short

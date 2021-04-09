@@ -1401,30 +1401,99 @@ CREATE TABLE record ()");
         }
 
         [Test]
-        [NonParallelizable]
-        public async Task UsePgPassFile()
+        public async Task Use_pgpass_from_connection_string()
         {
             using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
             var password = builder.Password;
-            var passFile = Path.GetTempFileName();
+            builder.Password = null;
 
-            builder.Password = password;
+            var passFile = Path.GetTempFileName();
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
             builder.Passfile = passFile;
 
-            using var deletePassFile = Defer(() => File.Delete(passFile));
-
-            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
-
-            using var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile);
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            try
+            {
+                using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+                using var conn = await OpenConnectionAsync(connectionString);
+            }
+            finally
+            {
+                File.Delete(passFile);
+            }
         }
 
         [Test]
         [NonParallelizable]
-        public void PasswordSourcePrecendence()
+        public async Task Use_pgpass_from_environment_variable()
+        {
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+            var password = builder.Password;
+            builder.Password = null;
+
+            var passFile = Path.GetTempFileName();
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+            using var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile);
+
+            try
+            {
+                using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+                using var conn = await OpenConnectionAsync(connectionString);
+            }
+            finally
+            {
+                File.Delete(passFile);
+            }
+        }
+
+        [Test]
+        [NonParallelizable]
+        public async Task Use_pgpass_from_homedir()
+        {
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+            var password = builder.Password;
+            builder.Password = null;
+
+            string? dirToDelete = null;
+            string passFile;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var dir = Path.Combine(Environment.GetEnvironmentVariable("APPDATA")!, "postgresql");
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                    dirToDelete = dir;
+
+                }
+                passFile = Path.Combine(dir, "pgpass.conf");
+            }
+            else
+            {
+                passFile = Path.Combine(Environment.GetEnvironmentVariable("HOME")!, ".pgpass");
+            }
+
+            try
+            {
+                File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+                using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+                using var conn = await OpenConnectionAsync(connectionString);
+            }
+            finally
+            {
+                File.Delete(passFile);
+                if (dirToDelete is not null)
+                    Directory.Delete(dirToDelete);
+            }
+        }
+
+        [Test]
+        [NonParallelizable]
+        public void PasswordSourcePrecedence()
         {
             using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1464,7 +1533,7 @@ CREATE TABLE record ()");
                 builder.Password = password;
                 builder.Passfile = passFile;
                 builder.IntegratedSecurity = false;
-                builder.ApplicationName = $"{nameof(PasswordSourcePrecendence)}:{Guid.NewGuid()}";
+                builder.ApplicationName = $"{nameof(PasswordSourcePrecedence)}:{Guid.NewGuid()}";
 
                 using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
                 using var connection = await OpenConnectionAsync(connectionString);
