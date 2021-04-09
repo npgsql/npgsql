@@ -607,7 +607,7 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-            if (!PGUtil.IsWindows)
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
                 if (username?.Length > 0)
