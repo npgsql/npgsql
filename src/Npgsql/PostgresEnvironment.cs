@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using Npgsql.Util;
 
 namespace Npgsql
@@ -13,15 +14,33 @@ namespace Npgsql
 
         internal static string? PassFile => Environment.GetEnvironmentVariable("PGPASSFILE");
 
-        internal static string? PassFileDefault => GetDefaultFilePath(PGUtil.IsWindows ? "pgpass.conf" : ".pgpass");
+        internal static string? PassFileDefault
+            => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                   ? Path.Combine(GetHomeDir(), "postgresql", "pgpass.conf")
+                   : Path.Combine(GetHomeDir(), ".pgpass")) is var path &&
+               File.Exists(path)
+                ? path
+                : null;
 
         internal static string? SslCert => Environment.GetEnvironmentVariable("PGSSLCERT");
 
-        internal static string? SslCertDefault => GetDefaultFilePath("postgresql.crt");
+        internal static string? SslCertDefault
+            => Path.Combine(
+                   GetHomeDir(),
+                   RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "postgresql" : ".postgresql", "postgresql.crt") is var path &&
+               File.Exists(path)
+                ? path
+                : null;
 
         internal static string? SslCertRoot => Environment.GetEnvironmentVariable("PGSSLROOTCERT");
 
-        internal static string? SslCertRootDefault => GetDefaultFilePath("root.crt");
+        internal static string? SslCertRootDefault
+            => Path.Combine(
+                   GetHomeDir(),
+                   RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "postgresql" : ".postgresql", "root.crt") is var path &&
+               File.Exists(path)
+                ? path
+                : null;
 
         internal static string? SslKey => Environment.GetEnvironmentVariable("PGSSLKEY");
 
@@ -33,11 +52,12 @@ namespace Npgsql
 
         internal static string? TargetSessionAttributes => Environment.GetEnvironmentVariable("PGTARGETSESSIONATTRS");
 
-        static string? GetDefaultFilePath(string fileName) =>
-            Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData &&
-            Path.Combine(appData, "postgresql", fileName) is string filePath &&
-            File.Exists(filePath)
-                ? filePath
-                : null;
+        static string GetHomeDir()
+        {
+            var envVar = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME";
+            return Environment.GetEnvironmentVariable(envVar) is string homedir
+                ? homedir
+                : throw new InvalidOperationException($"Environment variable {envVar} not defined");
+        }
     }
 }
