@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -72,6 +74,13 @@ namespace Npgsql.Tests.Types
 
             // Bug 2033
             new object[] { "0.0036882500000000000000000000", 0.0036882500000000000000000000M },
+
+            new object[] { "936490726837837729197", 936490726837837729197M },
+            new object[] { "9364907268378377291970000", 9364907268378377291970000M },
+            new object[] { "3649072683783772919700000000", 3649072683783772919700000000M },
+            new object[] { "1234567844445555.000000000", 1234567844445555.000000000M },
+            new object[] { "11112222000000000000", 11112222000000000000M },
+            new object[] { "0::numeric", 0M },
         };
 
         [Test]
@@ -149,6 +158,39 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
             }
+        }
+
+        [Test]
+        [TestCaseSource(nameof(ReadWriteCases))]
+        public async Task BigIntegerSupport(string query, decimal expected)
+        {
+            if (decimal.Floor(expected) == expected)
+            {
+                var bigInt = new BigInteger(expected);
+                using var conn = await OpenConnectionAsync();
+                using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                cmd.Parameters.AddWithValue("p1", bigInt);
+                cmd.Parameters.AddWithValue("p2", expected);
+                using var rdr = await cmd.ExecuteReaderAsync();
+                await rdr.ReadAsync();
+                Assert.That(rdr.GetFieldValue<decimal>(0), Is.EqualTo(expected));
+                Assert.That(rdr.GetFieldValue<BigInteger>(0), Is.EqualTo(bigInt));
+                Assert.That(rdr.GetFieldValue<decimal>(1), Is.EqualTo(expected));
+                Assert.That(rdr.GetFieldValue<BigInteger>(1), Is.EqualTo(bigInt));
+            }
+        }
+
+        [Test]
+        public async Task BigIntegerLarge()
+        {
+            var num = BigInteger.Parse(string.Join("", Enumerable.Range(0, 17000).Select(i => ((i + 1) % 10).ToString())));
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '0.1'::numeric, @p", conn);
+            cmd.Parameters.AddWithValue("p", num);
+            using var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await rdr.ReadAsync();
+            Assert.Throws<InvalidCastException>(() => rdr.GetFieldValue<BigInteger>(0));
+            Assert.That(rdr.GetFieldValue<BigInteger>(1), Is.EqualTo(num));
         }
 
         public NumericTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

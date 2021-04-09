@@ -6,6 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Numerics;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -248,7 +249,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Numeric,
                     DbTypes = new[] { DbType.Decimal, DbType.VarNumeric },
                     InferredDbType = DbType.Decimal,
-                    ClrTypes = new[] { typeof(decimal) },
+                    ClrTypes = new[] { typeof(decimal), typeof(BigInteger) },
                     TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(NumericHandler))
                 }.Build());
 
