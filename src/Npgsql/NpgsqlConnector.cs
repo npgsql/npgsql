@@ -716,7 +716,7 @@ namespace Npgsql
                             {
 #if NET5_0
                                 // It's PEM time
-                                var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey;
+                                var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
                                 cert = string.IsNullOrEmpty(password)
                                     ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                                     : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
