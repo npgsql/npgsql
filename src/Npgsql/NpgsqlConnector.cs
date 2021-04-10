@@ -720,6 +720,13 @@ namespace Npgsql
                                 cert = string.IsNullOrEmpty(password)
                                     ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                                     : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                                {
+                                    // Windows crypto API has a bug with pem certs
+                                    // See #3650
+                                    using var previousCert = cert;
+                                    cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                                }
 #else
                                 throw new NotSupportedException("PEM certificates are only supported with .NET 5 and higher");
 #endif
