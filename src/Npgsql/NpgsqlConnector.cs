@@ -1517,15 +1517,15 @@ namespace Npgsql
 #if NET5_0
                 if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
                     certs.ImportFromPemFile(certRootPath);
+                chain.ChainPolicy.CustomTrustStore.AddRange(certs);
+                chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
 #endif
+
                 if (certs.Count == 0)
                     certs.Add(new X509Certificate2(certRootPath));
 
                 chain.ChainPolicy.ExtraStore.AddRange(certs);
-#if NET5_0
-                chain.ChainPolicy.CustomTrustStore.AddRange(certs);
-                chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-#endif
+
                 return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
             };
 
