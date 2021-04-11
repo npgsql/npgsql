@@ -56,13 +56,13 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 
             if ((sign & SignSpecialMask) == SignSpecialMask)
             {
-                if (sign == SignNan)
-                    throw new InvalidCastException("Numeric NaN not supported by System.Decimal");
-                if (sign == SignPinf)
-                    throw new InvalidCastException("Numeric Infinity not supported by System.Decimal");
-                if (sign == SignNinf)
-                    throw new InvalidCastException("Numeric -Infinity not supported by System.Decimal");
-                throw new InvalidCastException("Numeric special value not supported by System.Decimal");
+                throw sign switch
+                {
+                    SignNan => new InvalidCastException("Numeric NaN not supported by System.Decimal"),
+                    SignPinf => new InvalidCastException("Numeric Infinity not supported by System.Decimal"),
+                    SignNinf => new InvalidCastException("Numeric -Infinity not supported by System.Decimal"),
+                    _ => new InvalidCastException($"Numeric special value {sign} not supported by System.Decimal")
+                };
             }
 
             if (sign == SignNegative)
@@ -153,14 +153,16 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
             buf.ReadInt16(); // dscale
 
             if (groups == 0)
+            {
                 return sign switch
                 {
                     SignPositive or SignNegative => BigInteger.Zero,
                     SignNan => throw new InvalidCastException("Numeric NaN not supported by BigInteger"),
                     SignPinf => throw new InvalidCastException("Numeric Infinity not supported by BigInteger"),
                     SignNinf => throw new InvalidCastException("Numeric -Infinity not supported by BigInteger"),
-                    _ => throw new InvalidCastException("Numeric special value not supported"),
+                    _ => throw new InvalidCastException($"Numeric special value {sign} not supported")
                 };
+            }
 
             if (weightRight < 0)
             {
@@ -357,50 +359,45 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         static ushort[] FromBigInteger(BigInteger value)
         {
             var str = value.ToString(CultureInfo.InvariantCulture);
-            ushort[] result;
             if (str == "0")
+                return new ushort[4];
+
+            var negative = str[0] == '-';
+            var strLen = str.Length;
+            var numGroups = (strLen - (negative ? 1 : 0) + 3) / 4;
+
+            if (numGroups > 131072 / 4)
+                throw new InvalidCastException("Cannot write a BigInteger with more than 131072 digits");
+
+            var result = new ushort[4 + numGroups];
+
+            var strPos = strLen - numGroups * 4;
+
+            var firstDigit = 0;
+            for (var i = 0; i < 4; i++)
             {
-                result = new ushort[4];
+                if (strPos >= 0 && str[strPos] != '-')
+                    firstDigit = firstDigit * 10 + (str[strPos] - '0');
+                strPos++;
             }
-            else
+
+            result[4] = (ushort)firstDigit;
+
+            for (var i = 1; i < numGroups; i++)
             {
-                var negative = str[0] == '-';
-                var strLen = str.Length;
-                var numGroups = (strLen - (negative ? 1 : 0) + 3) / 4;
+                result[4 + i] = (ushort)((((str[strPos++] - '0') * 10 + (str[strPos++] - '0')) * 10 + (str[strPos++] - '0')) * 10 +
+                                            (str[strPos++] - '0'));
 
-                if (numGroups > 131072 / 4)
-                    throw new InvalidCastException("Cannot write a BigInteger with more than 131072 digits");
-
-                result = new ushort[4 + numGroups];
-
-                var strPos = strLen - numGroups * 4;
-
-                var firstDigit = 0;
-                for (var i = 0; i < 4; i++)
-                {
-                    if (strPos >= 0 && str[strPos] != '-')
-                        firstDigit = firstDigit * 10 + (str[strPos] - '0');
-                    strPos++;
-                }
-
-                result[4] = (ushort)firstDigit;
-
-                for (var i = 1; i < numGroups; i++)
-                {
-                    result[4 + i] = (ushort)((((str[strPos++] - '0') * 10 + (str[strPos++] - '0')) * 10 + (str[strPos++] - '0')) * 10 +
-                                             (str[strPos++] - '0'));
-
-                }
-
-                var lastNonZeroDigitPos = numGroups - 1;
-                while (result[4 + lastNonZeroDigitPos] == 0)
-                    lastNonZeroDigitPos--;
-
-                result[0] = (ushort)(lastNonZeroDigitPos + 1); // number of items in array
-                result[1] = (ushort)(numGroups - 1); // weight
-                result[2] = (ushort)(negative ? SignNegative : SignPositive);
-                result[3] = 0; // dscale
             }
+
+            var lastNonZeroDigitPos = numGroups - 1;
+            while (result[4 + lastNonZeroDigitPos] == 0)
+                lastNonZeroDigitPos--;
+
+            result[0] = (ushort)(lastNonZeroDigitPos + 1); // number of items in array
+            result[1] = (ushort)(numGroups - 1); // weight
+            result[2] = (ushort)(negative ? SignNegative : SignPositive);
+            result[3] = 0; // dscale
 
             return result;
         }
