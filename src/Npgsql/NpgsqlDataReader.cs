@@ -89,7 +89,7 @@ namespace Npgsql
 
         /// <summary>
         /// The position in the buffer at which the current data row message ends.
-        /// Used only when the row is consumed non-sequentially. 
+        /// Used only when the row is consumed non-sequentially.
         /// </summary>
         int _dataMsgEnd;
 
@@ -1227,11 +1227,11 @@ namespace Npgsql
             if (reader != null)
             {
                 CachedFreeNestedDataReader = null;
-                reader.Recreate(this, UniqueRowId, 1);
+                reader.Init(UniqueRowId);
             }
             else
             {
-                reader = new NpgsqlNestedDataReader(this, UniqueRowId, 1);
+                reader = new NpgsqlNestedDataReader(this, null, UniqueRowId, 1);
             }
             if (isArray)
                 reader.InitArray();
@@ -2258,7 +2258,7 @@ namespace Npgsql
                 throw new InvalidOperationException("The reader is closed");
             case ReaderState.Disposed:
                 throw new ObjectDisposedException(nameof(NpgsqlDataReader));
-            }          
+            }
         }
 
         #endregion

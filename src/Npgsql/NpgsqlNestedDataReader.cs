@@ -19,11 +19,11 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlNestedDataReader : DbDataReader
     {
-        NpgsqlDataReader _outermostReader;
+        readonly NpgsqlDataReader _outermostReader;
         ulong _uniqueOutermostReaderRowId;
-        NpgsqlNestedDataReader? _outerNestedReader;
+        readonly NpgsqlNestedDataReader? _outerNestedReader;
         NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
-        int _depth;
+        readonly int _depth;
         int _numRows;
         int _nextRowIndex;
         int _nextRowBufferPos;
@@ -31,28 +31,34 @@ namespace Npgsql
 
         readonly List<ColumnInfo> _columns = new();
 
-        struct ColumnInfo
+        readonly struct ColumnInfo
         {
-            public uint TypeOid;
-            public int BufferPos;
-            public NpgsqlTypeHandler TypeHandler;
+            public readonly uint TypeOid;
+            public readonly int BufferPos;
+            public readonly NpgsqlTypeHandler TypeHandler;
+
+            public ColumnInfo(uint typeOid, int bufferPos, NpgsqlTypeHandler typeHandler)
+            {
+                TypeOid = typeOid;
+                BufferPos = bufferPos;
+                TypeHandler = typeHandler;
+            }
         }
 
         NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
         ConnectorTypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
 
-        internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, ulong uniqueOutermostReaderRowId, int depth)
+        internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader, ulong uniqueOutermostReaderRowId, int depth)
         {
             _outermostReader = outermostReader;
+            _outerNestedReader = outerNestedReader;
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
             _depth = depth;
         }
 
-        internal void Recreate(NpgsqlDataReader outermostReader, ulong uniqueOutermostReaderRowId, int depth)
+        internal void Init(ulong uniqueOutermostReaderRowId)
         {
-            _outermostReader = outermostReader;
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
-            _depth = depth;
             _columns.Clear();
             _numRows = 0;
             _nextRowIndex = 0;
@@ -220,11 +226,11 @@ namespace Npgsql
             if (reader != null)
             {
                 _cachedFreeNestedDataReader = null;
-                reader.Recreate(_outermostReader, _uniqueOutermostReaderRowId, _depth + 1);
+                reader.Init(_uniqueOutermostReaderRowId);
             }
             else
             {
-                reader = new NpgsqlNestedDataReader(_outermostReader, _uniqueOutermostReaderRowId, _depth + 1);
+                reader = new NpgsqlNestedDataReader(_outermostReader, this, _uniqueOutermostReaderRowId, _depth + 1);
             }
             if (isArray)
                 reader.InitArray();
@@ -253,15 +259,10 @@ namespace Npgsql
         /// <inheritdoc />
         public override int GetOrdinal(string name)
         {
-            if (int.TryParse(name, out var ordinal))
-            {
-                CheckRowAndColumn(ordinal);
-                return ordinal;
-            }
-            else
-            {
+            if (!int.TryParse(name, out var ordinal))
                 throw new IndexOutOfRangeException("Name must be an integer representing the column index");
-            }
+            CheckRowAndColumn(ordinal);
+            return ordinal;
         }
 
         /// <inheritdoc />
@@ -320,7 +321,6 @@ namespace Npgsql
                 throw new InvalidCastException("field is null");
             }
 
-            var position = Buffer.ReadPosition;
             return NullableHandler<T>.Exists
                 ? NullableHandler<T>.Read(field.Handler, Buffer, field.Length, fieldDescription: null)
                 : typeof(T) == typeof(object)
@@ -379,23 +379,10 @@ namespace Npgsql
                 var typeOid = Buffer.ReadUInt32();
                 var bufferPos = Buffer.ReadPosition;
                 if (i >= _columns.Count)
-                {
-                    _columns.Add(new ColumnInfo
-                    {
-                        TypeOid = typeOid,
-                        BufferPos = bufferPos,
-                        TypeHandler = TypeMapper.GetByOID(typeOid)
-                    });
-                }
+                    _columns.Add(new ColumnInfo(typeOid, bufferPos, TypeMapper.GetByOID(typeOid)));
                 else
-                {
-                    _columns[i] = new ColumnInfo
-                    {
-                        TypeOid = typeOid,
-                        BufferPos = bufferPos,
-                        TypeHandler = _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.GetByOID(typeOid)
-                    };
-                }
+                    _columns[i] = new ColumnInfo(typeOid, bufferPos,
+                        _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.GetByOID(typeOid));
 
                 var columnLen = Buffer.ReadInt32();
                 if (columnLen >= 0)
@@ -436,10 +423,10 @@ namespace Npgsql
             if (disposing && _readerState != ReaderState.Disposed)
             {
                 Close();
+                _readerState = ReaderState.Disposed;
                 if (_outerNestedReader != null)
                 {
                     _outerNestedReader._cachedFreeNestedDataReader ??= this;
-                    _outerNestedReader = null;
                 }
                 else
                 {
