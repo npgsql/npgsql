@@ -1224,6 +1224,18 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.DoesNotThrowAsync(async () => await reader.DisposeAsync());
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3648")]
+        public async Task RecoversFromExceptionInLongColumn()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand(@"SELECT array_cat(array_fill(NULL::numeric, ARRAY[2048]), ARRAY['NaN'::numeric]), 9", conn);
+            using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            await reader.ReadAsync();
+            Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<decimal?[]>(0));
+            Assert.That(reader.GetInt32(1), Is.EqualTo(9));
+        }
+
         #region GetBytes / GetStream
 
         [Test]

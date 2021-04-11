@@ -77,6 +77,9 @@ namespace Npgsql.Internal
         internal int ReadPosition { get; set; }
         internal int ReadBytesLeft => FilledBytes - ReadPosition;
 
+        int _flushedBytes; // modulo 2^32
+        internal int CumulativeReadPosition => unchecked(_flushedBytes + ReadPosition);
+
         internal readonly byte[] Buffer;
         internal int FilledBytes;
 
@@ -161,6 +164,7 @@ namespace Npgsql.Internal
                 {
                     Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
                     buffer.FilledBytes = buffer.ReadBytesLeft;
+                    buffer._flushedBytes = unchecked(buffer._flushedBytes + buffer.ReadPosition);
                     buffer.ReadPosition = 0;
                 }
 
@@ -494,6 +498,7 @@ namespace Npgsql.Internal
                 var read = Underlying.Read(output);
                 if (read == 0)
                     throw new EndOfStreamException();
+                _flushedBytes = unchecked(_flushedBytes + read);
                 return read;
             }
             catch (Exception e)
@@ -526,6 +531,7 @@ namespace Npgsql.Internal
                     var read = await buffer.Underlying.ReadAsync(output, cancellationToken);
                     if (read == 0)
                         throw new EndOfStreamException();
+                    buffer._flushedBytes = unchecked(buffer._flushedBytes + read);
                     return read;
                 }
                 catch (Exception e)
@@ -637,6 +643,7 @@ namespace Npgsql.Internal
 
         internal void Clear()
         {
+            _flushedBytes = unchecked(_flushedBytes + FilledBytes);
             ReadPosition = 0;
             FilledBytes = 0;
         }

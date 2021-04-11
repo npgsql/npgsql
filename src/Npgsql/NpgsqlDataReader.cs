@@ -1520,8 +1520,8 @@ namespace Npgsql
             {
                 if (Connector.State != ConnectorState.Broken)
                 {
-                    var writtenBytes = Buffer.ReadPosition - position;
-                    var remainingBytes = ColumnLen - writtenBytes;
+                    var readBytes = Buffer.ReadPosition - position;
+                    var remainingBytes = ColumnLen - readBytes;
                     if (remainingBytes > 0)
                         Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
                 }
@@ -1554,7 +1554,7 @@ namespace Npgsql
                 ThrowHelper.ThrowInvalidCastException_NoValue(field);
             }
 
-            var position = Buffer.ReadPosition;
+            var position = Buffer.CumulativeReadPosition;
             try
             {
                 return NullableHandler<T>.Exists
@@ -1573,8 +1573,8 @@ namespace Npgsql
             {
                 if (Connector.State != ConnectorState.Broken)
                 {
-                    var writtenBytes = Buffer.ReadPosition - position;
-                    var remainingBytes = ColumnLen - writtenBytes;
+                    var readBytes = unchecked(Buffer.CumulativeReadPosition - position);
+                    var remainingBytes = ColumnLen - readBytes;
                     if (remainingBytes > 0)
                         await Buffer.Skip(remainingBytes, async);
                 }
@@ -1610,7 +1610,7 @@ namespace Npgsql
                 return DBNull.Value;
 
             object result;
-            var position = Buffer.ReadPosition;
+            var position = Buffer.CumulativeReadPosition;
             try
             {
                 result = _isSequential
@@ -1621,8 +1621,8 @@ namespace Npgsql
             {
                 if (Connector.State != ConnectorState.Broken)
                 {
-                    var writtenBytes = Buffer.ReadPosition - position;
-                    var remainingBytes = ColumnLen - writtenBytes;
+                    var readBytes = unchecked(Buffer.CumulativeReadPosition - position);
+                    var remainingBytes = ColumnLen - readBytes;
                     if (remainingBytes > 0)
                         Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
                 }
@@ -1666,7 +1666,7 @@ namespace Npgsql
             if (ColumnLen == -1)
                 return DBNull.Value;
 
-            var position = Buffer.ReadPosition;
+            var position = Buffer.CumulativeReadPosition;
             try
             {
                 return _isSequential
@@ -1677,8 +1677,8 @@ namespace Npgsql
             {
                 if (Connector.State != ConnectorState.Broken)
                 {
-                    var writtenBytes = Buffer.ReadPosition - position;
-                    var remainingBytes = ColumnLen - writtenBytes;
+                    var readBytes = unchecked(Buffer.CumulativeReadPosition - position);
+                    var remainingBytes = ColumnLen - readBytes;
                     if (remainingBytes > 0)
                         Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
                 }
