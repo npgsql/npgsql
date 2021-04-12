@@ -1519,7 +1519,23 @@ namespace Npgsql
                 if (certificate is null || chain is null)
                     return false;
 
-                chain.ChainPolicy.ExtraStore.Add(new X509Certificate2(certRootPath));
+                var certs = new X509Certificate2Collection();
+
+#if NET5_0
+                if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+                    certs.ImportFromPemFile(certRootPath);
+#endif
+
+                if (certs.Count == 0)
+                    certs.Add(new X509Certificate2(certRootPath));
+
+#if NET5_0
+                chain.ChainPolicy.CustomTrustStore.AddRange(certs);
+                chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+#endif
+
+                chain.ChainPolicy.ExtraStore.AddRange(certs);
+
                 return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
             };
 
