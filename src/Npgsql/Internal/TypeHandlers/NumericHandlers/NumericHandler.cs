@@ -404,6 +404,11 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 
         public int ValidateAndGetLength(BigInteger value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
             var result = (ushort[]?)parameter?.ConvertedValue;
             if (result == null)
             {
@@ -411,7 +416,8 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
                 if (parameter != null)
                     parameter.ConvertedValue = result;
             }
-            return (4 + result[0]) * sizeof(ushort);
+
+            return lengthCache.Set((4 + result[0]) * sizeof(ushort));
         }
 
         public async Task Write(BigInteger value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,

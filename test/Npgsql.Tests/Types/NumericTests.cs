@@ -85,7 +85,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Read(string query, decimal expected)
+        public async Task ReadDecimal(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT " + query, conn);
@@ -96,7 +96,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Write(string query, decimal expected)
+        public async Task WriteDecimal(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
@@ -162,21 +162,34 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task BigIntegerSupport(string query, decimal expected)
+        public async Task ReadBigInteger(string query, decimal expected)
         {
             if (decimal.Floor(expected) == expected)
             {
                 var bigInt = new BigInteger(expected);
                 using var conn = await OpenConnectionAsync();
-                using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-                cmd.Parameters.AddWithValue("p1", bigInt);
-                cmd.Parameters.AddWithValue("p2", expected);
+                using var cmd = new NpgsqlCommand("SELECT " + query, conn);
                 using var rdr = await cmd.ExecuteReaderAsync();
                 await rdr.ReadAsync();
-                Assert.That(rdr.GetFieldValue<decimal>(0), Is.EqualTo(expected));
                 Assert.That(rdr.GetFieldValue<BigInteger>(0), Is.EqualTo(bigInt));
-                Assert.That(rdr.GetFieldValue<decimal>(1), Is.EqualTo(expected));
-                Assert.That(rdr.GetFieldValue<BigInteger>(1), Is.EqualTo(bigInt));
+            }
+        }
+
+
+        [Test]
+        [TestCaseSource(nameof(ReadWriteCases))]
+        public async Task WriteBigInteger(string query, decimal expected)
+        {
+            if (decimal.Floor(expected) == expected)
+            {
+                var bigInt = new BigInteger(expected);
+                using var conn = await OpenConnectionAsync();
+                using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+                cmd.Parameters.AddWithValue("p", bigInt);
+                using var rdr = await cmd.ExecuteReaderAsync();
+                await rdr.ReadAsync();
+                Assert.That(rdr.GetFieldValue<BigInteger>(0), Is.EqualTo(bigInt));
+                Assert.That(rdr.GetFieldValue<bool>(1));
             }
         }
 
