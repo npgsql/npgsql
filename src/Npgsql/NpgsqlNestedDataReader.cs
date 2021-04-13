@@ -7,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 
@@ -23,6 +24,7 @@ namespace Npgsql
         ulong _uniqueOutermostReaderRowId;
         readonly NpgsqlNestedDataReader? _outerNestedReader;
         NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
+        PostgresCompositeType? _compositeType;
         readonly int _depth;
         int _numRows;
         int _nextRowIndex;
@@ -48,15 +50,17 @@ namespace Npgsql
         NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
         ConnectorTypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
 
-        internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader, ulong uniqueOutermostReaderRowId, int depth)
+        internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
+            ulong uniqueOutermostReaderRowId, int depth, PostgresCompositeType? compositeType)
         {
             _outermostReader = outermostReader;
             _outerNestedReader = outerNestedReader;
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
             _depth = depth;
+            _compositeType = compositeType;
         }
 
-        internal void Init(ulong uniqueOutermostReaderRowId)
+        internal void Init(ulong uniqueOutermostReaderRowId, PostgresCompositeType? compositeType)
         {
             _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
             _columns.Clear();
@@ -64,6 +68,7 @@ namespace Npgsql
             _nextRowIndex = 0;
             _nextRowBufferPos = 0;
             _readerState = ReaderState.BeforeFirstRow;
+            _compositeType = compositeType;
         }
 
         internal void InitArray()
@@ -216,7 +221,8 @@ namespace Npgsql
             var type = field.Handler.PostgresType;
             var isArray = type is PostgresArrayType;
             var elementType = isArray ? ((PostgresArrayType)type).Element : type;
-            if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
+            var compositeType = elementType as PostgresCompositeType;
+            if (elementType.InternalName != "record" && compositeType == null)
                 throw new InvalidCastException("GetData() not supported for type " + type.DisplayName);
 
             if (field.Length == -1)
@@ -226,11 +232,11 @@ namespace Npgsql
             if (reader != null)
             {
                 _cachedFreeNestedDataReader = null;
-                reader.Init(_uniqueOutermostReaderRowId);
+                reader.Init(_uniqueOutermostReaderRowId, compositeType);
             }
             else
             {
-                reader = new NpgsqlNestedDataReader(_outermostReader, this, _uniqueOutermostReaderRowId, _depth + 1);
+                reader = new NpgsqlNestedDataReader(_outermostReader, this, _uniqueOutermostReaderRowId, _depth + 1, compositeType);
             }
             if (isArray)
                 reader.InitArray();
@@ -253,16 +259,29 @@ namespace Npgsql
         public override string GetName(int ordinal)
         {
             CheckRowAndColumn(ordinal);
-            return ordinal.ToString();
+            return _compositeType?.Fields[ordinal].Name ?? "?column?";
         }
 
         /// <inheritdoc />
         public override int GetOrdinal(string name)
         {
-            if (!int.TryParse(name, out var ordinal))
-                throw new IndexOutOfRangeException("Name must be an integer representing the column index");
-            CheckRowAndColumn(ordinal);
-            return ordinal;
+            if (_compositeType == null)
+                throw new NotSupportedException("GetOrdinal is not supported for the record type");
+
+            for (var i = 0; i < _compositeType.Fields.Count; i++)
+            {
+                if (_compositeType.Fields[i].Name == name)
+                    return i;
+            }
+
+            for (var i = 0; i < _compositeType.Fields.Count; i++)
+            {
+                if (string.Compare(_compositeType.Fields[i].Name, name, CultureInfo.InvariantCulture,
+                    CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0)
+                    return i;
+            }
+
+            throw new IndexOutOfRangeException("Field not found in row: " + name);
         }
 
         /// <inheritdoc />

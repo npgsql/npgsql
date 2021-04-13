@@ -1213,7 +1213,8 @@ namespace Npgsql
             var type = field.PostgresType;
             var isArray = type is PostgresArrayType;
             var elementType = isArray ? ((PostgresArrayType)type).Element : type;
-            if (elementType.InternalName != "record" && !(elementType is PostgresCompositeType))
+            var compositeType = elementType as PostgresCompositeType;
+            if (elementType.InternalName != "record" && compositeType == null)
                 throw new InvalidCastException("GetData() not supported for type " + field.TypeDisplayName);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
@@ -1227,11 +1228,11 @@ namespace Npgsql
             if (reader != null)
             {
                 CachedFreeNestedDataReader = null;
-                reader.Init(UniqueRowId);
+                reader.Init(UniqueRowId, compositeType);
             }
             else
             {
-                reader = new NpgsqlNestedDataReader(this, null, UniqueRowId, 1);
+                reader = new NpgsqlNestedDataReader(this, null, UniqueRowId, 1, compositeType);
             }
             if (isArray)
                 reader.InitArray();

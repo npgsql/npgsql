@@ -26,6 +26,8 @@ namespace Npgsql.Tests
                     Assert.That(nestedReader.FieldCount, Is.EqualTo(3));
                     Assert.That(nestedReader.GetFieldType(0), Is.EqualTo(typeof(int)));
                     Assert.That(nestedReader.GetDataTypeName(0), Is.EqualTo("integer"));
+                    Assert.That(nestedReader.GetName(0), Is.EqualTo("?column?"));
+                    Assert.Throws<NotSupportedException>(() => nestedReader.GetOrdinal("c0"));
                     for (var k = 0; k < 3; k++)
                     {
                         Assert.That(nestedReader.GetInt32(k), Is.EqualTo(1 + 6 * i + j * 3 + k));
@@ -170,6 +172,11 @@ namespace Npgsql.Tests
                 Assert.That(nestedReader.GetDataTypeName(1), Is.EqualTo("text"));
                 Assert.That(nestedReader.GetInt32(0), Is.EqualTo(1));
                 Assert.That(nestedReader.GetString(1), Is.EqualTo("2"));
+                Assert.That(nestedReader.GetName(0), Is.EqualTo("c0"));
+                Assert.That(nestedReader.GetName(1), Is.EqualTo("c1"));
+                Assert.That(nestedReader.GetOrdinal("C1"), Is.EqualTo(1));
+                Assert.That(nestedReader["C1"], Is.EqualTo("2"));
+                Assert.Throws<IndexOutOfRangeException>(() => nestedReader.GetOrdinal("ABC"));
             }
         }
 
