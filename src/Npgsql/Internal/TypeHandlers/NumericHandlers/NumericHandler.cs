@@ -237,6 +237,11 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(decimal value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
             var groupCount = 0;
             var raw = new DecimalRaw(value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
@@ -262,7 +267,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
                 }
             }
 
-            return 4 * sizeof(short) + groupCount * sizeof(short);
+            return lengthCache.Set((4 + groupCount) * sizeof(short));
         }
 
         /// <inheritdoc />
