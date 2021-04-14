@@ -175,7 +175,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
         public async Task WriteBigInteger(string query, decimal expected)
