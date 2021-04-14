@@ -207,5 +207,24 @@ namespace Npgsql.Tests
             Assert.Throws<InvalidCastException>(() => nestedReader.GetBytes(1, 0, buf, 0, 1));
             Assert.Throws<ArgumentOutOfRangeException>(() => nestedReader.GetBytes(0, 4, buf, 0, 1));
         }
+
+        [Test]
+        public async Task ThrowAfterNextRow()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var command = new NpgsqlCommand(@"SELECT ROW(1) UNION ALL SELECT ROW(2) UNION ALL SELECT ROW(3)", conn);
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.That(await reader.ReadAsync(), Is.True);
+            var nestedReader = reader.GetData(0);
+            nestedReader.Read();
+            await reader.ReadAsync();
+            Assert.Throws<InvalidOperationException>(() => nestedReader.IsDBNull(0));
+            nestedReader = reader.GetData(0);
+            reader.Read();
+            Assert.Throws<InvalidOperationException>(() => nestedReader.Read());
+            nestedReader = reader.GetData(0);
+            nestedReader.Read();
+            Assert.That(nestedReader.IsDBNull(0), Is.False);
+        }
     }
 }

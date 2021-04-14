@@ -201,6 +201,7 @@ namespace Npgsql
         {
             CheckClosedOrDisposed();
 
+            UniqueRowId++;
             var fastRead = TryFastRead();
             if (fastRead.HasValue)
                 return fastRead.Value ? PGUtil.TrueTask : PGUtil.FalseTask;
