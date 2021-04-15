@@ -752,17 +752,12 @@ namespace Npgsql
                         {
                             var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
-                            var sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
-#if NETCOREAPP3_1_OR_GREATER
-                            sslProtocols |= SslProtocols.Tls13;
-#endif
-
                             if (async)
                                 await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    SslProtocols.None, Settings.CheckCertificateRevocation);
                             else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    SslProtocols.None, Settings.CheckCertificateRevocation);
 
                             _stream = sslStream;
                         }
