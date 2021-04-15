@@ -294,6 +294,7 @@ namespace Npgsql
                 {
                     _params[_column] = typedParam = new NpgsqlParameter<T>();
                     typedParam.NpgsqlDbType = param.NpgsqlDbType;
+                    param = typedParam;
                 }
                 typedParam.TypedValue = value;
             }
