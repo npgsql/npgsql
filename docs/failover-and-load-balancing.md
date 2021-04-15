@@ -51,14 +51,14 @@ prefer-standby | First try to find a standby server, but if none of the listed h
 read-write     | Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the `default_transaction_read_only` parameter must be off).
 read-only      | Session must not accept read-write transactions by default (the converse).
 
-Npgsql detects whether a server is a primary or a standby by occasionally querying `pg_is_in_recovery()`, and whether a server is read-write or read-only by querying [`default_transaction_read_only`](TODO) - this is consistent with how PostgreSQL's libpq implements `target_session_attributes`. Servers are queried just before a connection is returned from the pool; the query intervals can be controlled via the `Host Recheck Seconds` parameter (10 seconds by default). PostgreSQL 14 reports state changes automatically, so querying isn't needed (except when a host is done).
+Npgsql detects whether a server is a primary or a standby by occasionally querying `pg_is_in_recovery()`, and whether a server is read-write or read-only by querying [`default_transaction_read_only`](TODO) - this is consistent with how PostgreSQL's libpq implements `target_session_attributes`. Servers are queried just before a connection is returned from the pool; the query intervals can be controlled via the `Host Recheck Seconds` parameter (10 seconds by default). PostgreSQL 14 reports state changes automatically, so querying isn't needed (except when a host is down).
 
 > [!NOTE]
 > If you choose to distribute load across multiple servers, make sure you understand what consistency guarantees are provided by PostgreSQL in your particular setup. In some cases, hot standbys lag behind their primary servers, and will therefore return slightly out-of-date results. This is usually OK, but if you require up-to-date results at all times, synchronous commit may provide a good solution (but has a performance cost).
 
 ## Load balancing
 
-We have seen how to select servers based on the type of workload we want to execute. However, in the above examples, Npgsql still attempts to return connections based on the host order specified in the connection string; this concentrates load on a single primary and possibly a single secondary, and does balance load across multiple servers of the same type.
+We have seen how to select servers based on the type of workload we want to execute. However, in the above examples, Npgsql still attempts to return connections based on the host order specified in the connection string; this concentrates load on a single primary and possibly a single secondary, and doesn't balance load across multiple servers of the same type.
 
 You can specify `Load Balance Hosts=true` in the connection string to instruct Npgsql to load balance across all servers, by returning connections in round-robbin fashion:
 
