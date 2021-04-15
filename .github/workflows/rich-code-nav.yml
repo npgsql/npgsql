@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - stable
+    tags:
+      - '*'
 
 env:
   dotnet_sdk_version: '5.0.x'
