@@ -22,16 +22,16 @@ namespace Npgsql.GeoJSON.Internal
 
         static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new();
 
-        public override NpgsqlTypeHandler<GeoJSONObject> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<GeoJSONObject> Create(PostgresType postgresType, NpgsqlConnector conn)
         {
             var crsMap = (_options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) == GeoJSONOptions.None
-                ? default : s_crsMaps.GetOrAdd(conn.ConnectionString, _ =>
+                ? default : s_crsMaps.GetOrAdd(conn.Settings.ConnectionString, _ =>
                  {
                      var builder = new CrsMapBuilder();
-                     using (var cmd = new NpgsqlCommand(
+                     using (var cmd = conn.CreateCommand(
                              "SELECT min(srid), max(srid), auth_name " +
                              "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;", conn))
+                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;"))
                      using (var reader = cmd.ExecuteReader())
                          while (reader.Read())
                          {

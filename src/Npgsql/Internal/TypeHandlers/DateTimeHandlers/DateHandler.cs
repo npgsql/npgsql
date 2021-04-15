@@ -21,8 +21,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     public class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => new DateHandler(postgresType, conn.Connector!.ConvertInfinityDateTime);
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnector conn)
+            => new DateHandler(postgresType, conn.ConvertInfinityDateTime);
     }
 
     /// <summary>

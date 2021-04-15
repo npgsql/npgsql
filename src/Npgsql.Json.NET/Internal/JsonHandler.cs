@@ -16,7 +16,7 @@ namespace Npgsql.Json.NET.Internal
         public JsonHandlerFactory(JsonSerializerSettings? settings = null)
             => _settings = settings ?? new JsonSerializerSettings();
 
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new JsonHandler(postgresType, conn, _settings);
     }
 
@@ -24,7 +24,7 @@ namespace Npgsql.Json.NET.Internal
     {
         readonly JsonSerializerSettings _settings;
 
-        public JsonHandler(PostgresType postgresType, NpgsqlConnection connection, JsonSerializerSettings settings)
+        public JsonHandler(PostgresType postgresType, NpgsqlConnector connection, JsonSerializerSettings settings)
             : base(postgresType, connection, isJsonb: false) => _settings = settings;
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

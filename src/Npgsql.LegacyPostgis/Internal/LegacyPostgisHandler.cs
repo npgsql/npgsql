@@ -10,7 +10,7 @@ namespace Npgsql.LegacyPostgis.Internal
 {
     public class LegacyPostgisHandlerFactory : NpgsqlTypeHandlerFactory<PostgisGeometry>
     {
-        public override NpgsqlTypeHandler<PostgisGeometry> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<PostgisGeometry> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new LegacyPostgisHandler(postgresType);
     }
 

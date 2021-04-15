@@ -12,13 +12,12 @@ namespace Npgsql.NodaTime.Internal
     public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<Instant>
     {
         // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnector conn)
         {
-            var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
-            return conn.HasIntegerDateTimes
-                ? new TimestampTzHandler(postgresType, csb.ConvertInfinityDateTime)
-                : throw new NotSupportedException(
-                    $"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
+            if (!conn.DatabaseInfo.HasIntegerDateTimes)
+                throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
+
+            return new TimestampTzHandler(postgresType, conn.Settings.ConvertInfinityDateTime);
         }
     }
 

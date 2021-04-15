@@ -5,6 +5,7 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Logging;
@@ -59,7 +60,7 @@ namespace Npgsql.TypeMapping
         internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
             _connector = connector;
-            UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection!);
+            UnrecognizedTypeHandler = new UnknownTypeHandler(_connector);
             ClearBindings();
             ResetMappings();
         }
@@ -239,7 +240,7 @@ namespace Npgsql.TypeMapping
             // Enums
             var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
             foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                BindType(enumFactory.Create(e, _connector.Connection!), e);
+                BindType(enumFactory.Create(e, _connector), e);
 
             // Wire up any domains we find to their base type mappings, this is important
             // for reading domain fields of composites
@@ -296,7 +297,7 @@ namespace Npgsql.TypeMapping
                 return;
             }
 
-            var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, connector.Connection!);
+            var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, connector);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
 
             if (!externalCall)

@@ -23,7 +23,7 @@ namespace Npgsql.Internal.TypeHandlers
     public class JsonPathHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new JsonPathHandler(postgresType, conn);
     }
 
@@ -47,8 +47,8 @@ namespace Npgsql.Internal.TypeHandlers
         const byte JsonPathVersion = 1;
 
         /// <inheritdoc />
-        protected internal JsonPathHandler(PostgresType postgresType, NpgsqlConnection connection)
-            : base(postgresType) => _textHandler = new TextHandler(postgresType, connection);
+        protected internal JsonPathHandler(PostgresType postgresType, NpgsqlConnector connector)
+            : base(postgresType) => _textHandler = new TextHandler(postgresType, connector);
 
         /// <inheritdoc />
         public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

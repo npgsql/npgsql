@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Npgsql.Internal;
 using Npgsql.Logging;
 
 namespace Npgsql

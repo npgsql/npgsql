@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -10,9 +11,9 @@ namespace Npgsql
 {
     class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
             => Task.FromResult(
-                new NpgsqlConnectionStringBuilder(conn.ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.NoTypeLoading
+               conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.NoTypeLoading
                     ? (NpgsqlDatabaseInfo)new PostgresMinimalDatabaseInfo(conn)
                     : null
             );
@@ -28,7 +29,7 @@ namespace Npgsql
 
         protected override IEnumerable<PostgresType> GetTypes() => Types;
 
-        internal PostgresMinimalDatabaseInfo(NpgsqlConnection conn)
+        internal PostgresMinimalDatabaseInfo(NpgsqlConnector conn)
             : base(conn)
         {
             HasIntegerDateTimes = !conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) ||

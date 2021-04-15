@@ -27,7 +27,7 @@ namespace Npgsql.Internal.TypeHandling
             _handlerType = handlerType;
         }
 
-        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
             => (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType, pgType)!;
 
         public override Type DefaultValueType { get; }

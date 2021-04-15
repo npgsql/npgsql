@@ -9,8 +9,8 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
     class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
-            => new Int2VectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["smallint"]
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
+            => new Int2VectorHandler(pgType, conn.TypeMapper.DatabaseInfo.ByName["smallint"]
                                              ?? throw new NpgsqlException("Two types called 'smallint' defined in the database"));
 
         public override Type DefaultValueType => typeof(short[]);

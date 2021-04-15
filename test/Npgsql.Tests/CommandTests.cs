@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;

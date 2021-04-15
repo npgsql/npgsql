@@ -1,5 +1,6 @@
 ﻿#nullable enable
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.Internal.NpgsqlConnector! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
 Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryImporter!>!
 Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlRawCopyStream!>!
@@ -18,6 +19,11 @@ Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
+Npgsql.Internal.NpgsqlConnector
+Npgsql.Internal.NpgsqlConnector.CreateCommand(string? cmdText = null) -> Npgsql.NpgsqlCommand!
+Npgsql.Internal.NpgsqlConnector.DatabaseInfo.get -> Npgsql.NpgsqlDatabaseInfo!
+Npgsql.Internal.NpgsqlConnector.Dispose() -> void
+Npgsql.Internal.NpgsqlConnector.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 // ReSharper disable VariableHidesOuterVariable
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     partial class NpgsqlConnector
     {

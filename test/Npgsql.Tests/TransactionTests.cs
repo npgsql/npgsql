@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NUnit.Framework;
@@ -680,7 +681,7 @@ namespace Npgsql.Tests
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
-            public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+            public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
             {
                 var db = new NoTransactionDatabaseInfo(conn);
                 await db.LoadPostgresInfo(conn, timeout, async);
@@ -692,7 +693,7 @@ namespace Npgsql.Tests
         {
             public override bool SupportsTransactions => false;
 
-            internal NoTransactionDatabaseInfo(NpgsqlConnection conn) : base(conn) {}
+            internal NoTransactionDatabaseInfo(NpgsqlConnector conn) : base(conn) {}
         }
 
         // Older tests

@@ -26,7 +26,7 @@ namespace Npgsql.Internal.TypeHandlers
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnector conn)
             => new TextHandler(pgType, conn);
     }
 
@@ -56,8 +56,8 @@ namespace Npgsql.Internal.TypeHandlers
         #endregion
 
         /// <inheritdoc />
-        protected internal TextHandler(PostgresType postgresType, NpgsqlConnection connection)
-            : this(postgresType, connection.Connector!.TextEncoding) { }
+        protected internal TextHandler(PostgresType postgresType, NpgsqlConnector connector)
+            : this(postgresType, connector.TextEncoding) { }
 
         /// <inheritdoc />
         protected internal TextHandler(PostgresType postgresType, Encoding encoding)

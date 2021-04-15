@@ -2019,7 +2019,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         readonly bool _safe;
         internal ExplodingTypeHandlerFactory(bool safe) => _safe = safe;
-        public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new ExplodingTypeHandler(postgresType, _safe);
     }
 

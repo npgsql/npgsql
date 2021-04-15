@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -6,6 +7,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.Util;
 
@@ -259,7 +261,8 @@ namespace Npgsql
                 try
                 {
                     // We've managed to increase the open counter, open a physical connections.
-                    var connector = new NpgsqlConnector(conn, this) { ClearCounter = _clearCounter };
+                    var connector = new NpgsqlConnector(this, conn.ProvideClientCertificatesCallback, conn.UserCertificateValidationCallback,
+                        conn.ProvidePasswordCallback) { ClearCounter = _clearCounter };
                     await connector.Open(timeout, async, cancellationToken);
 
                     var i = 0;
@@ -280,8 +283,9 @@ namespace Npgsql
                 catch
                 {
                     // Physical open failed, decrement the open and busy counter back down.
-                    conn.Connector = null;
                     Interlocked.Decrement(ref _numConnectors);
+
+                    conn.FullState = ConnectionState.Broken;
 
                     // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
                     // to wake it up, so it will try opening (and probably throw immediately)

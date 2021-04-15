@@ -13,13 +13,13 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
