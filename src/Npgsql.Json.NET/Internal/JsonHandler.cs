@@ -24,8 +24,8 @@ namespace Npgsql.Json.NET.Internal
     {
         readonly JsonSerializerSettings _settings;
 
-        public JsonHandler(PostgresType postgresType, NpgsqlConnector connection, JsonSerializerSettings settings)
-            : base(postgresType, connection, isJsonb: false) => _settings = settings;
+        public JsonHandler(PostgresType postgresType, NpgsqlConnector connector, JsonSerializerSettings settings)
+            : base(postgresType, connector, isJsonb: false) => _settings = settings;
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
