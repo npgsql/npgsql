@@ -327,10 +327,11 @@ namespace Npgsql
                 }
                 else
                 {
-                    if (!(param is NpgsqlParameter<T> typedParam))
+                    if (param is not NpgsqlParameter<T> typedParam)
                     {
                         _params[_column] = typedParam = new NpgsqlParameter<T>();
                         typedParam.NpgsqlDbType = param.NpgsqlDbType;
+                        param = typedParam;
                     }
                     typedParam.TypedValue = value;
                 }
