@@ -1351,5 +1351,34 @@ $$;");
             await using var reader = await cmd.ExecuteReaderAsync();
             Assert.DoesNotThrowAsync(async () => await reader.NextResultAsync());
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3649")]
+        public async Task Bug3649()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "value integer", out var table);
+
+            using (var importer = conn.BeginBinaryImport($"COPY {table} (value) FROM STDIN (FORMAT binary)"))
+            {
+                await importer.StartRowAsync();
+                await importer.WriteAsync(DBNull.Value, NpgsqlDbType.Integer);
+                await importer.StartRowAsync();
+                await importer.WriteAsync(1, NpgsqlDbType.Integer);
+                await importer.StartRowAsync();
+                await importer.WriteAsync(2, NpgsqlDbType.Integer);
+                await importer.CompleteAsync();
+            }
+
+            using (var exporter = conn.BeginBinaryExport($"COPY {table} (value) TO STDIN (FORMAT binary)"))
+            {
+                await exporter.StartRowAsync();
+                Assert.IsTrue(exporter.IsNull);
+                await exporter.SkipAsync();
+                await exporter.StartRowAsync();
+                Assert.AreEqual(1, await exporter.ReadAsync<int?>());
+                await exporter.StartRowAsync();
+                Assert.AreEqual(2, await exporter.ReadAsync<int?>());
+            }
+        }
     }
 }
