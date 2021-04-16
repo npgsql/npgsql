@@ -261,8 +261,7 @@ namespace Npgsql
                 try
                 {
                     // We've managed to increase the open counter, open a physical connections.
-                    var connector = new NpgsqlConnector(this, conn.ProvideClientCertificatesCallback, conn.UserCertificateValidationCallback,
-                        conn.ProvidePasswordCallback) { ClearCounter = _clearCounter };
+                    var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
                     await connector.Open(timeout, async, cancellationToken);
 
                     var i = 0;

@@ -24,8 +24,7 @@ namespace Npgsql
         {
             try
             {
-                var connector = new NpgsqlConnector(this, conn.ProvideClientCertificatesCallback, conn.UserCertificateValidationCallback,
-                        conn.ProvidePasswordCallback);
+                var connector = new NpgsqlConnector(this, conn);
                 await connector.Open(timeout, async, cancellationToken);
                 connector.Connection = conn;
                 conn.Connector = connector;

@@ -300,13 +300,12 @@ namespace Npgsql.Internal
 
         #region Constructors
 
-        internal NpgsqlConnector(ConnectorSource connectorSource, ProvideClientCertificatesCallback? pccc,
-            RemoteCertificateValidationCallback? ucvc, ProvidePasswordCallback? ppc)
+        internal NpgsqlConnector(ConnectorSource connectorSource, NpgsqlConnection conn)
             : this(connectorSource)
         {
-            ProvideClientCertificatesCallback = pccc;
-            UserCertificateValidationCallback = ucvc;
-            ProvidePasswordCallback = ppc;
+            ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
+            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+            ProvidePasswordCallback = conn.ProvidePasswordCallback;
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
