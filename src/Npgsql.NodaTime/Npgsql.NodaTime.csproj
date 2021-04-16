@@ -4,7 +4,7 @@
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net5.0</TargetFramework>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NodaTime" />

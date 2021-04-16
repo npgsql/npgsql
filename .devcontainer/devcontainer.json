@@ -1,7 +1,9 @@
 {
-  "name": "Npgsql dev environment (.NET 5.0)",
+  "name": "Npgsql dev environment (.NET)",
   "dockerComposeFile": "docker-compose.yml",
   "service": "npgsql-dev",
+
+  "workspaceFolder": "/workspace",
 
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash",

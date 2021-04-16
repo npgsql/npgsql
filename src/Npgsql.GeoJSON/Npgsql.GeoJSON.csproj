@@ -4,7 +4,7 @@
     <Description>GeoJSON plugin for Npgsql, allowing mapping of PostGIS geometry types to GeoJSON types.</Description>
     <PackageTags>npgsql postgresql postgres postgis geojson spatial ado ado.net database sql</PackageTags>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net5.0</TargetFramework>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFramework>
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
