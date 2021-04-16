@@ -1909,7 +1909,7 @@ namespace Npgsql
         /// Asynchronously returns schema information for the columns in the current resultset.
         /// </summary>
         /// <returns></returns>
-#if NET
+#if NET5_0_OR_GREATER
         public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #else
         public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
@@ -1938,7 +1938,7 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-#if NET
+#if NET5_0_OR_GREATER
         public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
         public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)

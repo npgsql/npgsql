@@ -192,7 +192,7 @@ namespace Npgsql
         /// This method does not cause a database roundtrip to be made. The savepoint creation statement will instead be sent along with
         /// the next command.
         /// </remarks>
-#if NET
+#if NET5_0_OR_GREATER
         public override void Save(string name)
 #else
         public void Save(string name)
@@ -243,7 +243,7 @@ namespace Npgsql
         /// This method does not cause a database roundtrip to be made, and will therefore always complete synchronously.
         /// The savepoint creation statement will instead be sent along with the next command.
         /// </remarks>
-#if NET
+#if NET5_0_OR_GREATER
         public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
@@ -278,7 +278,7 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET
+#if NET5_0_OR_GREATER
         public override void Rollback(string name)
 #else
         public void Rollback(string name)
@@ -292,7 +292,7 @@ namespace Npgsql
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-#if NET
+#if NET5_0_OR_GREATER
         public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
@@ -327,7 +327,7 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET
+#if NET5_0_OR_GREATER
         public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 #else
         public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
@@ -340,7 +340,7 @@ namespace Npgsql
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-#if NET
+#if NET5_0_OR_GREATER
         public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)

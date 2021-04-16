@@ -257,7 +257,7 @@ namespace Npgsql
         /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
         /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-#if NET
+#if NET5_0_OR_GREATER
         public override string SqlState { get; }
 #else
         public string SqlState { get; }
