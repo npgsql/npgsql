@@ -83,5 +83,27 @@ namespace Npgsql
         internal static Task WithCancellationAndTimeout(this Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
             => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 #endif
+
+        internal static TResult ExecuteWithCancellationAndTimeout<TResult>(Func<CancellationToken, TResult> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            CancellationTokenSource? combinedCts = null;
+            try
+            {
+                var finalCt = cancellationToken;
+
+                if (timeout.IsSet)
+                {
+                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    combinedCts.CancelAfter((int)timeout.CheckAndGetTimeLeft().TotalMilliseconds);
+                    finalCt = combinedCts.Token;
+                }
+
+                return func(finalCt);
+            }
+            finally
+            {
+                combinedCts?.Dispose();
+            }
+        }
     }
 }

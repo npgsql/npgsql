@@ -909,12 +909,21 @@ namespace Npgsql.Internal
 
             Task<IPAddress[]> GetHostAddressesAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
             {
-                // .NET 6.0 added cancellation support to GetHostAddressesAsync, but it is only supported on Windows.
-                // For now, we keep the same cancellation handling for all TFM and OS platforms.
-                // However, the CA2016 quality rule forces us to specify a CancellationToken parameter.
+                // .NET 6.0 added cancellation support to GetHostAddressesAsync on Windows, which allows us to implement real
+                // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
+                // and raise the exception, but the actual connection task is left running.
 #if NET6_0_OR_GREATER
-                return Dns.GetHostAddressesAsync(Host, CancellationToken.None)
-                    .WithCancellationAndTimeout(timeout, cancellationToken);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return TaskExtensions.ExecuteWithCancellationAndTimeout(
+                        ct => Dns.GetHostAddressesAsync(Host, ct),
+                        timeout, cancellationToken);
+                }
+                else
+                {
+                    return Dns.GetHostAddressesAsync(Host, CancellationToken.None)
+                        .WithCancellationAndTimeout(timeout, cancellationToken);
+                }
 #else
                 return Dns.GetHostAddressesAsync(Host)
                     .WithCancellationAndTimeout(timeout, cancellationToken);
@@ -928,29 +937,16 @@ namespace Npgsql.Internal
                 // and raise the exception, but the actual connection task is left running.
 
 #if NET5_0_OR_GREATER
-                CancellationTokenSource? combinedCts = null;
-                try
-                {
-                    var finalCt = cancellationToken;
-
-                    if (perIpTimeout.IsSet)
-                    {
-                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter((int)perIpTimeout.CheckAndGetTimeLeft().TotalMilliseconds);
-                        finalCt = combinedCts.Token;
-                    }
-
-                    return socket.ConnectAsync(endpoint, finalCt).AsTask();
-                }
-                finally
-                {
-                    combinedCts?.Dispose();
-                }
+                return TaskExtensions.ExecuteWithCancellationAndTimeout(
+                    ct => socket.ConnectAsync(endpoint, ct).AsTask(),
+                    perIpTimeout, cancellationToken);
 #else
                 return socket.ConnectAsync(endpoint)
                     .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
 #endif
             }
+
+            
         }
 
         void SetSocketOptions(Socket socket)
