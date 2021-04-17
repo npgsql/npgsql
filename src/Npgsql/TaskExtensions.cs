@@ -43,7 +43,7 @@ namespace Npgsql
         internal static Task<T> WithCancellationAndTimeout<T>(this Task<T> task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
             => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+#if !NET5_0_OR_GREATER
         /// <summary>
         /// Utility that simplifies awaiting a task with a timeout. If the given task does not
         /// complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
