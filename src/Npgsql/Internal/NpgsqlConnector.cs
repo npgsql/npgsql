@@ -909,29 +909,12 @@ namespace Npgsql.Internal
 
             Task<IPAddress[]> GetHostAddressesAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
             {
-                // .NET 6.0 added cancellation support to GetHostAddressesAsync, which allows us to implement real
-                // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
-                // and raise the exception, but the actual task is left running.
-
+                // .NET 6.0 added cancellation support to GetHostAddressesAsync, but it is only supported on Windows.
+                // For now, we keep the same cancellation handling for all TFM and OS platforms.
+                // However, the CA2016 quality rule forces us to specify a CancellationToken parameter.
 #if NET6_0_OR_GREATER
-                CancellationTokenSource? combinedCts = null;
-                try
-                {
-                    var finalCt = cancellationToken;
-
-                    if (timeout.IsSet)
-                    {
-                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter((int)timeout.CheckAndGetTimeLeft().TotalMilliseconds);
-                        finalCt = combinedCts.Token;
-                    }
-
-                    return Dns.GetHostAddressesAsync(Host, cancellationToken);
-                }
-                finally
-                {
-                    combinedCts?.Dispose();
-                }
+                return Dns.GetHostAddressesAsync(Host, CancellationToken.None)
+                    .WithCancellationAndTimeout(timeout, cancellationToken);
 #else
                 return Dns.GetHostAddressesAsync(Host)
                     .WithCancellationAndTimeout(timeout, cancellationToken);
