@@ -234,6 +234,38 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [Timeout(10000)]
+        public async Task PrepareTimeoutHard([Values] SyncOrAsync async)
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, Timeout
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+            await using var postmasterMock = PgPostmasterMock.Start(builder.ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            await postmasterMock.WaitForServerConnection();
+
+            var processId = conn.ProcessID;
+
+            var cmd = new NpgsqlCommand("SELECT 1", conn);
+            Assert.That(async () =>
+                {
+                    if (async == SyncOrAsync.Sync)
+                        cmd.Prepare();
+                    else
+                        await cmd.PrepareAsync();
+                },
+                Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
+                Is.EqualTo(processId));
+        }
+
         #endregion
 
         #region Cancel
