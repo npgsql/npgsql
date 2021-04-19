@@ -84,26 +84,46 @@ namespace Npgsql
             => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 #endif
 
-        internal static TResult ExecuteWithCancellationAndTimeout<TResult>(Func<CancellationToken, TResult> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        internal static async Task ExecuteWithTimeout(Func<CancellationToken, Task> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             CancellationTokenSource? combinedCts = null;
             try
             {
-                var finalCt = cancellationToken;
-
-                if (timeout.IsSet)
-                {
-                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    combinedCts.CancelAfter((int)timeout.CheckAndGetTimeLeft().TotalMilliseconds);
-                    finalCt = combinedCts.Token;
-                }
-
-                return func(finalCt);
+                var combinedCancellationToken = GetCombinedCancellationToken(ref combinedCts, timeout, cancellationToken);
+                await func(combinedCancellationToken);
             }
             finally
             {
                 combinedCts?.Dispose();
             }
+        }
+
+        internal static async Task<TResult> ExecuteWithTimeout<TResult>(Func<CancellationToken, Task<TResult>> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            CancellationTokenSource? combinedCts = null;
+            try
+            {
+                var combinedCancellationToken = GetCombinedCancellationToken(ref combinedCts, timeout, cancellationToken);
+                return await func(combinedCancellationToken);
+            }
+            finally
+            {
+                combinedCts?.Dispose();
+            }
+        }
+
+        private static CancellationToken GetCombinedCancellationToken(ref CancellationTokenSource? combinedCts, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            var finalCt = cancellationToken;
+
+            if (timeout.IsSet)
+            {
+                combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                combinedCts.CancelAfter((int)timeout.CheckAndGetTimeLeft().TotalMilliseconds);
+                finalCt = combinedCts.Token;
+            }
+
+            return finalCt;
         }
     }
 }

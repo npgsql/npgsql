@@ -909,25 +909,21 @@ namespace Npgsql.Internal
 
             Task<IPAddress[]> GetHostAddressesAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
             {
-                // .NET 6.0 added cancellation support to GetHostAddressesAsync on Windows, which allows us to implement real
+                // .NET 6.0 added cancellation support to GetHostAddressesAsync, which allows us to implement real
                 // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
                 // and raise the exception, but the actual connection task is left running.
+
 #if NET6_0_OR_GREATER
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    return TaskExtensions.ExecuteWithCancellationAndTimeout(
-                        ct => Dns.GetHostAddressesAsync(Host, ct),
-                        timeout, cancellationToken);
-                }
-                else
-                {
-                    return Dns.GetHostAddressesAsync(Host, CancellationToken.None)
-                        .WithCancellationAndTimeout(timeout, cancellationToken);
-                }
+                var task = TaskExtensions.ExecuteWithTimeout(
+                    ct => Dns.GetHostAddressesAsync(Host, ct),
+                    timeout, cancellationToken);
 #else
-                return Dns.GetHostAddressesAsync(Host)
-                    .WithCancellationAndTimeout(timeout, cancellationToken);
+                var task = Dns.GetHostAddressesAsync(Host);
 #endif
+
+                // As the cancellation support of GetHostAddressesAsync is not guaranteed on all platforms
+                // we apply the fake-cancel mechanism in all cases.
+                return task.WithCancellationAndTimeout(timeout, cancellationToken);
             }
 
             static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
@@ -937,7 +933,7 @@ namespace Npgsql.Internal
                 // and raise the exception, but the actual connection task is left running.
 
 #if NET5_0_OR_GREATER
-                return TaskExtensions.ExecuteWithCancellationAndTimeout(
+                return TaskExtensions.ExecuteWithTimeout(
                     ct => socket.ConnectAsync(endpoint, ct).AsTask(),
                     perIpTimeout, cancellationToken);
 #else
@@ -945,8 +941,6 @@ namespace Npgsql.Internal
                     .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
 #endif
             }
-
-            
         }
 
         void SetSocketOptions(Socket socket)
