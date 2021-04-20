@@ -101,8 +101,7 @@ namespace Npgsql.Internal
         internal int Id => BackendProcessId;
 
         /// <summary>
-        /// Information about PostgreSQL and PostgreSQL-like databases
-        /// (e.g. type definitions, capabilities...).
+        /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
         /// </summary>
         public NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = default!;
 
@@ -1774,9 +1773,7 @@ namespace Npgsql.Internal
 
         internal void Return() => _connectorSource.Return(this);
 
-        /// <summary>
-        /// Releases all resources used by the <see cref="NpgsqlConnector"/>.
-        /// </summary>
+        /// <inheritdoc />
         public void Dispose() => Close();
 
         /// <summary>

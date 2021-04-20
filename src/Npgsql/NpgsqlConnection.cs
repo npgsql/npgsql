@@ -1996,11 +1996,6 @@ namespace Npgsql
         Reader,
 
         /// <summary>
-        /// The connection is bound to its connector for the scope of establishing a new physical connection.
-        /// </summary>
-        PhysicalConnecting,
-
-        /// <summary>
         /// The connection is bound to its connector for an unspecified, temporary scope; the code that initiated
         /// the binding is also responsible to unbind it.
         /// </summary>
