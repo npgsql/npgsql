@@ -277,8 +277,6 @@ namespace Npgsql
                     // Physical open failed, decrement the open and busy counter back down.
                     Interlocked.Decrement(ref _numConnectors);
 
-                    conn.FullState = ConnectionState.Broken;
-
                     // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
                     // to wake it up, so it will try opening (and probably throw immediately)
                     IdleConnectorWriter.TryWrite(null);

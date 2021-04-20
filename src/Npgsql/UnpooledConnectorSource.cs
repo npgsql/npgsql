@@ -22,18 +22,10 @@ namespace Npgsql
         internal override async ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            try
-            {
-                var connector = new NpgsqlConnector(this, conn);
-                await connector.Open(timeout, async, cancellationToken);
-                Interlocked.Increment(ref _numConnectors);
-                return connector;
-            }
-            catch
-            {
-                conn.FullState = ConnectionState.Broken;
-                throw;
-            }
+            var connector = new NpgsqlConnector(this, conn);
+            await connector.Open(timeout, async, cancellationToken);
+            Interlocked.Increment(ref _numConnectors);
+            return connector;
         }
 
         internal override void Return(NpgsqlConnector connector)

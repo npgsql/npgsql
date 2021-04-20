@@ -1699,14 +1699,22 @@ namespace Npgsql
 
             async ValueTask<NpgsqlConnector> StartBindingScopeAsync()
             {
-                Debug.Assert(Settings.Multiplexing);
-                Debug.Assert(_pool != null);
+                try
+                {
+                    Debug.Assert(Settings.Multiplexing);
+                    Debug.Assert(_pool != null);
 
-                var connector = await _pool.Get(this, timeout, async, cancellationToken);
-                Connector = connector;
-                connector.Connection = this;
-                ConnectorBindingScope = scope;
-                return connector;
+                    var connector = await _pool.Get(this, timeout, async, cancellationToken);
+                    Connector = connector;
+                    connector.Connection = this;
+                    ConnectorBindingScope = scope;
+                    return connector;
+                }
+                catch
+                {
+                    FullState = ConnectionState.Broken;
+                    throw;
+                }
             }
         }
 

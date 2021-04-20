@@ -105,7 +105,6 @@ namespace Npgsql
                     }
                     catch (Exception ex)
                     {
-                        conn.FullState = ConnectionState.Connecting;
                         pool.Return(connector);
                         exceptions.Add(new NpgsqlException($"Unable to get an idle connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                     }
@@ -152,7 +151,6 @@ namespace Npgsql
                 }
                 catch (Exception ex)
                 {
-                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(ex);
                 }
             }
@@ -203,7 +201,6 @@ namespace Npgsql
                     if (connector is not null)
                         pool.Return(connector);
 
-                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                 }
             }
@@ -237,7 +234,6 @@ namespace Npgsql
             if (connector is not null)
                 return connector;
 
-            conn.FullState = ConnectionState.Broken;
             throw NoSuitableHostsException(exceptions);
         }
 
