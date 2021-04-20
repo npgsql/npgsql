@@ -565,7 +565,7 @@ namespace Npgsql.Internal
         internal async ValueTask<ClusterState> QueryClusterState(
             NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
-            using var cmd = CreateCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only");
+            using var cmd = new NpgsqlCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only", this);
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
             // We're taking the timestamp before the query is sent, because due to issues (IO, operation ordering, etc) we can receive an
             // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
@@ -2351,13 +2351,6 @@ namespace Npgsql.Internal
         #endregion
 
         #region Misc
-
-        /// <summary>
-        /// Creates and returns a <see cref="NpgsqlCommand"/> object associated with the <see cref="NpgsqlConnector"/>.
-        /// </summary>
-        /// <param name="cmdText">The text of the query.</param>
-        /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
-        public NpgsqlCommand CreateCommand(string? cmdText = null) => new(cmdText, this);
 
         void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
         {

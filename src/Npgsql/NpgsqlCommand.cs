@@ -120,7 +120,13 @@ namespace Npgsql
             CommandType = CommandType.Text;
         }
 
-        internal NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText) => _connector = connector;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query
+        /// and the <see cref="NpgsqlConnector"/>.
+        /// </summary>
+        /// <param name="cmdText">The text of the query.</param>
+        /// /// <param name="connector">A <see cref="NpgsqlConnector"/> that represents the connection to a PostgreSQL server.</param>
+        public NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText) => _connector = connector;
 
         internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
             => new(null, connection) { _isCached = true };

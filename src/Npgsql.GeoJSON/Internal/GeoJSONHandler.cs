@@ -28,10 +28,10 @@ namespace Npgsql.GeoJSON.Internal
                 ? default : s_crsMaps.GetOrAdd(conn.Settings.ConnectionString, _ =>
                  {
                      var builder = new CrsMapBuilder();
-                     using (var cmd = conn.CreateCommand(
+                     using (var cmd = new NpgsqlCommand(
                              "SELECT min(srid), max(srid), auth_name " +
                              "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;"))
+                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;", conn))
                      using (var reader = cmd.ExecuteReader())
                          while (reader.Read())
                          {
