@@ -26,8 +26,6 @@ namespace Npgsql
             {
                 var connector = new NpgsqlConnector(this, conn);
                 await connector.Open(timeout, async, cancellationToken);
-                connector.Connection = conn;
-                conn.Connector = connector;
                 Interlocked.Increment(ref _numConnectors);
                 return connector;
             }

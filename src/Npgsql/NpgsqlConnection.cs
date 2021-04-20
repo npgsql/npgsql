@@ -308,7 +308,6 @@ namespace Npgsql
                     // Otherwise just get a new connector and enlist below.
                     if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                     {
-                        connector.Connection = this;
                         EnlistedTransaction = enlistToTransaction;
                         enlistToTransaction = null;
                     }
@@ -319,6 +318,7 @@ namespace Npgsql
                         $"Connection for opened connector {Connector} isn't the same as this connection");
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
+                    connector.Connection = this;
                     Connector = connector;
 
                     if (enlistToTransaction is not null)
@@ -1703,6 +1703,8 @@ namespace Npgsql
                 Debug.Assert(_pool != null);
 
                 var connector = await _pool.Get(this, timeout, async, cancellationToken);
+                Connector = connector;
+                connector.Connection = this;
                 ConnectorBindingScope = scope;
                 return connector;
             }
