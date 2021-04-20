@@ -258,6 +258,7 @@ Npgsql.BackendMessages.FieldDescription.TypeModifier.set -> void
 Npgsql.BackendMessages.FieldDescription.TypeSize.get -> short
 Npgsql.BackendMessages.FieldDescription.TypeSize.set -> void
 Npgsql.INpgsqlDatabaseInfoFactory
+Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.NpgsqlConnection! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
 Npgsql.INpgsqlNameTranslator
 Npgsql.INpgsqlNameTranslator.TranslateMemberName(string! clrName) -> string!
 Npgsql.INpgsqlNameTranslator.TranslateTypeName(string! clrName) -> string!
