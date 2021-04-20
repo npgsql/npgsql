@@ -1162,16 +1162,34 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new();
 
+        NpgsqlConnector? TryGetBoundConnector(NpgsqlConnection? connection)
+        {
+            if (_connector is not null)
+            {
+                Debug.Assert(_connection is null);
+                return _connector;
+            }
+
+            Debug.Assert(connection is not null);
+            if (connection.TryGetBoundConnector(out var connector))
+                return connector;
+
+            Debug.Assert(connection.Settings.Multiplexing);
+            return null;
+        }
+
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var conn = CheckAndGetConnection();
             _behavior = behavior;
 
+            var connector = TryGetBoundConnector(conn);
+            if (conn is null && connector is not null && behavior.HasFlag(CommandBehavior.CloseConnection))
+                throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with ${nameof(NpgsqlConnector)}", nameof(behavior));
+
             try
             {
-                var connector = _connector;
-                Debug.Assert(connector is null ^ conn is null);
-                if (connector is not null || conn!.TryGetBoundConnector(out connector))
+                if (connector is not null)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // We cannot pass a token here, as we'll cancel a non-send query
@@ -1283,6 +1301,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                 else
                 {
+                    Debug.Assert(conn is not null);
+                    Debug.Assert(conn.Settings.Multiplexing);
                     // The connection isn't bound to a connector - it's multiplexing time.
                     var pool = (MultiplexingConnectorPool)conn.Pool;
 
@@ -1320,7 +1340,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             catch (Exception e)
             {
-                var reader = (conn?.Connector ?? _connector)?.CurrentReader;
+                var reader = connector?.CurrentReader;
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
 
