@@ -205,7 +205,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
-            using var command = new NpgsqlCommand(typeLoadingQuery, conn);
+            using var command = conn.CreateCommand(typeLoadingQuery);
             command.CommandTimeout = commandTimeout;
             command.AllResultTypesAreUnknown = true;
 
