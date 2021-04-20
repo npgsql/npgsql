@@ -17,7 +17,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;

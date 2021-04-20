@@ -314,8 +314,8 @@ namespace Npgsql
                     else
                         connector = await _pool.Get(this, timeout, async, cancellationToken);
 
-                    Debug.Assert(connector.Connection == this,
-                        $"Connection for opened connector {Connector} isn't the same as this connection");
+                    Debug.Assert(connector.Connection is null,
+                        $"Connection for opened connector {Connector} is bound to another connection");
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     connector.Connection = this;
