@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Logging;
 
 namespace Npgsql

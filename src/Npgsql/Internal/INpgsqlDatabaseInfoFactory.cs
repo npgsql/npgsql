@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Npgsql.Util;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// A factory which get generate instances of <see cref="NpgsqlDatabaseInfo"/>, which describe a database
@@ -18,6 +18,6 @@ namespace Npgsql
         /// An object describing the database to which <paramref name="conn"/> is connected, or null if the
         /// database isn't of the correct type and isn't handled by this factory.
         /// </returns>
-        Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async);
+        Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async);
     }
 }

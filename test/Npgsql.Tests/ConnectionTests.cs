@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;

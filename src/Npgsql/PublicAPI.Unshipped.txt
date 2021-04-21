@@ -1,4 +1,5 @@
 ﻿#nullable enable
+*REMOVED*abstract Npgsql.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
 Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryImporter!>!
@@ -18,9 +19,19 @@ Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
+*REMOVED*Npgsql.INpgsqlDatabaseInfoFactory
+*REMOVED*Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.NpgsqlConnection! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
+*REMOVED*Npgsql.NpgsqlDatabaseInfo
+*REMOVED*Npgsql.NpgsqlDatabaseInfo.Host.get -> string!
+*REMOVED*Npgsql.NpgsqlDatabaseInfo.Name.get -> string!
+*REMOVED*Npgsql.NpgsqlDatabaseInfo.NpgsqlDatabaseInfo(string! host, int port, string! databaseName, System.Version! version) -> void
+*REMOVED*Npgsql.NpgsqlDatabaseInfo.Port.get -> int
+*REMOVED*Npgsql.NpgsqlDatabaseInfo.Version.get -> System.Version!
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
+*REMOVED*static Npgsql.NpgsqlDatabaseInfo.ParseServerVersion(string! value) -> System.Version!
+*REMOVED*static Npgsql.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.INpgsqlDatabaseInfoFactory! factory) -> void
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 override NpgsqlTypes.NpgsqlTsQueryEmpty.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
@@ -82,3 +93,15 @@ override Npgsql.NpgsqlNestedDataReader.this[int ordinal].get -> object!
 override Npgsql.NpgsqlNestedDataReader.this[string! name].get -> object!
 Npgsql.NpgsqlNestedDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.HasIntegerDateTimes.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.HasIntegerDateTimes.set -> void
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsAdvisoryLocks.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsCloseAll.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsDiscard.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsDiscardSequences.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsDiscardTemp.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsEnumTypes.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsRangeTypes.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
+*REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool

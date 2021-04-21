@@ -11,11 +11,8 @@ namespace Npgsql.NodaTime.Internal
 {
     public class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
     {
-        public override NpgsqlTypeHandler<LocalDate> Create(PostgresType postgresType, NpgsqlConnection conn)
-        {
-            var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
-            return new DateHandler(postgresType, csb.ConvertInfinityDateTime);
-        }
+        public override NpgsqlTypeHandler<LocalDate> Create(PostgresType postgresType, NpgsqlConnector conn)
+            => new DateHandler(postgresType, conn.Settings.ConvertInfinityDateTime);
     }
 
     sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>

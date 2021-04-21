@@ -1,4 +1,5 @@
-﻿using Npgsql.Util;
+﻿using Npgsql.Internal;
+using Npgsql.Util;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;

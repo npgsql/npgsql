@@ -20,8 +20,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<DateTimeOffset> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => conn.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
+        public override NpgsqlTypeHandler<DateTimeOffset> Create(PostgresType postgresType, NpgsqlConnector conn)
+            => conn.DatabaseInfo.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
                 ? new TimeTzHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }

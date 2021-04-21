@@ -151,7 +151,7 @@ CHECK
 
         class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
         {
-            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnector conn)
                 => throw new Exception();
         }
 
@@ -222,7 +222,7 @@ CHECK
         {
             internal int Reads, Writes;
 
-            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnector conn)
                 => new MyInt32Handler(postgresType, this);
         }
 

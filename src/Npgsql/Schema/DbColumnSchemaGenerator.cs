@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
+using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.CompositeHandlers;
 using Npgsql.Util;

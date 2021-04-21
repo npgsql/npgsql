@@ -1,4 +1,5 @@
-﻿using Npgsql.Util;
+﻿using Npgsql.Internal;
+using Npgsql.Util;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -87,9 +88,6 @@ namespace Npgsql
 
                 if (pool.TryGetIdleConnector(out var connector))
                 {
-                    conn.Connector = connector;
-                    connector.Connection = conn;
-
                     try
                     {
                         if (clusterState == ClusterState.Unknown)
@@ -98,8 +96,6 @@ namespace Npgsql
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
-                                conn.Connector = null;
-                                connector.Connection = null;
                                 pool.Return(connector);
                                 continue;
                             }
@@ -109,9 +105,6 @@ namespace Npgsql
                     }
                     catch (Exception ex)
                     {
-                        conn.FullState = ConnectionState.Connecting;
-                        conn.Connector = null;
-                        connector.Connection = null;
                         pool.Return(connector);
                         exceptions.Add(new NpgsqlException($"Unable to get an idle connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                     }
@@ -148,21 +141,16 @@ namespace Npgsql
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
-                                conn.Connector = null;
-                                connector.Connection = null;
                                 pool.Return(connector);
                                 continue;
                             }
                         }
 
-                        conn.Connector = connector;
-                        connector.Connection = conn;
                         return connector;
                     }
                 }
                 catch (Exception ex)
                 {
-                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(ex);
                 }
             }
@@ -201,27 +189,18 @@ namespace Npgsql
                         Debug.Assert(clusterState != ClusterState.Unknown);
                         if (!clusterValidator(clusterState, preferredType))
                         {
-                            conn.Connector = null;
-                            connector.Connection = null;
                             pool.Return(connector);
                             continue;
                         }
                     }
 
-                    conn.Connector = connector;
-                    connector.Connection = conn;
                     return connector;
                 }
                 catch (Exception ex)
                 {
                     if (connector is not null)
-                    {
-                        conn.Connector = null;
-                        connector.Connection = null;
                         pool.Return(connector);
-                    }
 
-                    conn.FullState = ConnectionState.Connecting;
                     exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                 }
             }
@@ -255,7 +234,6 @@ namespace Npgsql
             if (connector is not null)
                 return connector;
 
-            conn.FullState = ConnectionState.Broken;
             throw NoSuitableHostsException(exceptions);
         }
 

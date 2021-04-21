@@ -1,6 +1,7 @@
 ﻿using System;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
+using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
@@ -17,7 +18,7 @@ namespace Npgsql.NetTopologySuite.Internal
             _writer = writer ?? throw new ArgumentNullException(nameof(writer));
         }
 
-        public override NpgsqlTypeHandler<Geometry> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Geometry> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new NetTopologySuiteHandler(postgresType, _reader, _writer);
     }
 }

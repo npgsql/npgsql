@@ -108,7 +108,7 @@ namespace Npgsql.Internal.TypeHandlers
             }
         }
 
-        public override NpgsqlTypeHandler<TEnum> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<TEnum> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new EnumHandler<TEnum>(postgresType, _enumToLabel, _labelToEnum);
 
         public INpgsqlNameTranslator NameTranslator { get; }

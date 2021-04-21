@@ -16,7 +16,7 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// Creates a type handler.
         /// </summary>
-        public abstract NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn);
+        public abstract NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn);
 
         /// <summary>
         /// The default CLR type that handlers produced by this factory will read and write.
@@ -38,10 +38,10 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// Creates a type handler.
         /// </summary>
-        public abstract NpgsqlTypeHandler<TDefault> Create(PostgresType pgType, NpgsqlConnection conn);
+        public abstract NpgsqlTypeHandler<TDefault> Create(PostgresType pgType, NpgsqlConnector conn);
 
         /// <inheritdoc />
-        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
             => Create(pgType, conn);
 
         /// <inheritdoc />

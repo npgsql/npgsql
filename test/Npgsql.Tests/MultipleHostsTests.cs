@@ -1,4 +1,5 @@
-﻿using Npgsql.Tests.Support;
+﻿using Npgsql.Internal;
+using Npgsql.Tests.Support;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

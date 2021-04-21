@@ -13,7 +13,7 @@ using Npgsql.BackendMessages;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     partial class NpgsqlConnector
     {

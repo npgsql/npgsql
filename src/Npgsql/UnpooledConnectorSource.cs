@@ -1,7 +1,9 @@
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Util;
 
 namespace Npgsql
@@ -20,7 +22,7 @@ namespace Npgsql
         internal override async ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            var connector = new NpgsqlConnector(conn, this);
+            var connector = new NpgsqlConnector(this, conn);
             await connector.Open(timeout, async, cancellationToken);
             Interlocked.Increment(ref _numConnectors);
             return connector;

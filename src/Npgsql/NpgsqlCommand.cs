@@ -18,6 +18,7 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using Npgsql.Internal;
 
 namespace Npgsql
 {
@@ -32,6 +33,8 @@ namespace Npgsql
         #region Fields
 
         NpgsqlConnection? _connection;
+
+        readonly NpgsqlConnector? _connector;
 
         /// <summary>
         /// If this command is (explicitly) prepared, references the connector on which the preparation happened.
@@ -116,6 +119,8 @@ namespace Npgsql
             Transaction = transaction;
             CommandType = CommandType.Text;
         }
+
+        internal NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText) => _connector = connector;
 
         internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
             => new(null, connection) { _isCached = true };
@@ -379,6 +384,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal void DeriveParameters()
         {
             var conn = CheckAndGetConnection();
+            Debug.Assert(conn is not null);
 
             using var _ = conn.StartTemporaryBindingScope(out var connector);
 
@@ -567,6 +573,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         Task Prepare(bool async, CancellationToken cancellationToken = default)
         {
             var connection = CheckAndGetConnection();
+            Debug.Assert(connection is not null);
             if (connection.Settings.Multiplexing)
                 throw new NotSupportedException("Explicit preparation not supported with multiplexing");
             var connector = connection.Connector!;
@@ -700,6 +707,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         async Task Unprepare(bool async, CancellationToken cancellationToken = default)
         {
             var connection = CheckAndGetConnection();
+            Debug.Assert(connection is not null);
             if (connection.Settings.Multiplexing)
                 throw new NotSupportedException("Explicit preparation not supported with multiplexing");
             if (_statements.All(s => !s.IsPrepared))
@@ -1148,14 +1156,44 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new();
 
+        NpgsqlConnector? GetBoundConnector(NpgsqlConnection? connection)
+        {
+            if (_connector is not null)
+            {
+                Debug.Assert(_connection is null);
+                return _connector;
+            }
+
+            Debug.Assert(connection is not null);
+            if (connection.TryGetBoundConnector(out var connector))
+                return connector;
+
+            Debug.Assert(connection.Settings.Multiplexing);
+            return null;
+        }
+
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var conn = CheckAndGetConnection();
             _behavior = behavior;
 
+            NpgsqlConnector? connector;
+            if (_connector is not null)
+            {
+                Debug.Assert(conn is null);
+                if (behavior.HasFlag(CommandBehavior.CloseConnection))
+                    throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with ${nameof(NpgsqlConnector)}", nameof(behavior));
+                connector = _connector;
+            }
+            else
+            {
+                Debug.Assert(conn is not null);
+                conn.TryGetBoundConnector(out connector);
+            }
+
             try
             {
-                if (conn.TryGetBoundConnector(out var connector))
+                if (connector is not null)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     // We cannot pass a token here, as we'll cancel a non-send query
@@ -1250,7 +1288,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     catch
                     {
-                        conn.Connector?.EndUserAction();
+                        connector.EndUserAction();
                         throw;
                     }
 
@@ -1267,6 +1305,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                 else
                 {
+                    Debug.Assert(conn is not null);
+                    Debug.Assert(conn.Settings.Multiplexing);
                     // The connection isn't bound to a connector - it's multiplexing time.
                     var pool = (MultiplexingConnectorPool)conn.Pool;
 
@@ -1304,7 +1344,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             catch (Exception e)
             {
-                var reader = conn.Connector?.CurrentReader;
+                var reader = connector?.CurrentReader;
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
 
@@ -1314,7 +1354,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // specified. However, close here as well in case of an error before the reader was even instantiated
                 // (e.g. write I/O error)
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+                {
+                    Debug.Assert(_connector is null && conn is not null);
                     conn.Close();
+                }
+                    
                 throw;
             }
 
@@ -1360,12 +1404,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return;
 
             var connection = Connection;
-            if (connection is null)
-                return;
-            if (!connection.IsBound)
+            if (connection is not null && !connection.IsBound)
                 throw new NotSupportedException("Cancellation not supported with multiplexing");
+            var connector = connection?.Connector ?? _connector;
+            if (connector is null)
+                return;
 
-            connection.Connector?.PerformUserCancellation();
+            connector.PerformUserCancellation();
         }
 
         #endregion Cancel
@@ -1480,12 +1525,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        NpgsqlConnection CheckAndGetConnection()
+        NpgsqlConnection? CheckAndGetConnection()
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             if (_connection == null)
-                throw new InvalidOperationException("Connection property has not been initialized.");
+            {
+                if (_connector is null)
+                    throw new InvalidOperationException("Connection property has not been initialized.");
+                return null;
+            }
             switch (_connection.FullState)
             {
             case ConnectionState.Open:

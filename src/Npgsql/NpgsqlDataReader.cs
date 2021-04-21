@@ -34,7 +34,7 @@ namespace Npgsql
     {
         internal NpgsqlCommand Command { get; private set; } = default!;
         internal NpgsqlConnector Connector { get; }
-        NpgsqlConnection _connection = default!;
+        NpgsqlConnection? _connection;
 
         /// <summary>
         /// The behavior of the command with which this reader was executed.
@@ -159,7 +159,7 @@ namespace Npgsql
             NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task? sendTask = null)
         {
             Command = command;
-            _connection = command.Connection!;
+            _connection = command.Connection;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
             _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);
@@ -992,7 +992,7 @@ namespace Npgsql
             if (isDisposing)
                 State = ReaderState.Disposed;
 
-            if (_connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+            if (_connection?.ConnectorBindingScope == ConnectorBindingScope.Reader)
             {
                 // We may unbind the current reader, which also sets the connector to null
                 var connector = Connector;
@@ -1011,7 +1011,10 @@ namespace Npgsql
                 connector.ReaderCompleted.SetResult(null);
             }
             else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+            {
+                Debug.Assert(_connection is not null);
                 _connection.Close();
+            }
 
             if (ReaderClosed != null)
             {
@@ -1919,7 +1922,7 @@ namespace Npgsql
         Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
             => RowDescription == null || RowDescription.Count == 0
                 ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
-                : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
+                : new DbColumnSchemaGenerator(_connection!, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchema(async, cancellationToken);
 
         #endregion

@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.Logging;
 
 namespace Npgsql

@@ -12,8 +12,8 @@ namespace Npgsql.NodaTime.Internal
     public class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<Period>
     {
         // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<Period> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => conn.HasIntegerDateTimes
+        public override NpgsqlTypeHandler<Period> Create(PostgresType postgresType, NpgsqlConnector conn)
+            => conn.DatabaseInfo.HasIntegerDateTimes
                 ? new IntervalHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }

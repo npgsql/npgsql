@@ -9,8 +9,8 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
     class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
-            => new OIDVectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["oid"]
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
+            => new OIDVectorHandler(pgType, conn.TypeMapper.DatabaseInfo.ByName["oid"]
                                     ?? throw new NpgsqlException("Two types called 'oid' defined in the database"));
 
         public override Type DefaultValueType => typeof(uint[]);

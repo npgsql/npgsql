@@ -17,20 +17,19 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
     /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
     /// </summary>
-    sealed partial class NpgsqlConnector : IDisposable
+    public sealed partial class NpgsqlConnector : IDisposable
     {
         #region Fields and Properties
 
@@ -49,7 +48,10 @@ namespace Npgsql
         /// </summary>
         Stream _stream = default!;
 
-        internal NpgsqlConnectionStringBuilder Settings { get; }
+        /// <summary>
+        /// The parsed connection string.
+        /// </summary>
+        public NpgsqlConnectionStringBuilder Settings { get; }
 
         ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; }
         RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
@@ -97,7 +99,10 @@ namespace Npgsql
         /// </summary>
         internal int Id => BackendProcessId;
 
-        internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = default!;
+        /// <summary>
+        /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
+        /// </summary>
+        public NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = default!;
 
         internal ConnectorTypeMapper TypeMapper { get; set; } = default!;
 
@@ -293,14 +298,12 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlConnector(NpgsqlConnection connection, ConnectorSource connectorSource)
+        internal NpgsqlConnector(ConnectorSource connectorSource, NpgsqlConnection conn)
             : this(connectorSource)
         {
-            Connection = connection;
-            Connection.Connector = this;
-            ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
-            UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
-            ProvidePasswordCallback = Connection.ProvidePasswordCallback;
+            ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
+            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+            ProvidePasswordCallback = conn.ProvidePasswordCallback;
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
@@ -359,7 +362,7 @@ namespace Npgsql
 
         internal string Host => Settings.Host!;
         internal int Port => Settings.Port;
-        string Database => Settings.Database!;
+        internal string Database => Settings.Database!;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
         int ConnectionTimeout => Settings.Timeout;
@@ -440,7 +443,6 @@ namespace Npgsql
         /// Method of the connection pool manager.</remarks>
         internal async Task Open(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
 
             State = ConnectorState.Connecting;
@@ -527,12 +529,6 @@ namespace Npgsql
         internal async ValueTask LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken = default)
         {
-            // Super hacky stuff...
-
-            var prevBindingScope = Connection!.ConnectorBindingScope;
-            Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
-            using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
-
             // The type loading below will need to send queries to the database, and that depends on a type mapper
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
@@ -552,8 +548,7 @@ namespace Npgsql
                 {
                     if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out database))
                     {
-                        NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(Connection,
-                            timeout, async);
+                        NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(this, timeout, async);
                     }
                 }
                 finally
@@ -569,13 +564,7 @@ namespace Npgsql
         internal async ValueTask<ClusterState> QueryClusterState(
             NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
-            // Super hacky stuff...
-
-            var prevBindingScope = Connection!.ConnectorBindingScope;
-            Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
-            using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
-
-            using var cmd = new NpgsqlCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only", Connection);
+            using var cmd = CreateCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only");
             cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
             // We're taking the timestamp before the query is sent, because due to issues (IO, operation ordering, etc) we can receive an
             // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
@@ -1783,6 +1772,7 @@ namespace Npgsql
 
         internal void Return() => _connectorSource.Return(this);
 
+        /// <inheritdoc />
         public void Dispose() => Close();
 
         /// <summary>
@@ -2360,6 +2350,13 @@ namespace Npgsql
         #endregion
 
         #region Misc
+
+        /// <summary>
+        /// Creates and returns a <see cref="NpgsqlCommand"/> object associated with the <see cref="NpgsqlConnector"/>.
+        /// </summary>
+        /// <param name="cmdText">The text of the query.</param>
+        /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
+        public NpgsqlCommand CreateCommand(string? cmdText = null) => new(cmdText, this);
 
         void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
         {

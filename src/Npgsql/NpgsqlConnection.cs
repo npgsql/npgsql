@@ -13,13 +13,13 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
@@ -308,17 +308,17 @@ namespace Npgsql
                     // Otherwise just get a new connector and enlist below.
                     if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                     {
-                        connector.Connection = this;
                         EnlistedTransaction = enlistToTransaction;
                         enlistToTransaction = null;
                     }
                     else
                         connector = await _pool.Get(this, timeout, async, cancellationToken);
 
-                    Debug.Assert(connector.Connection == this,
-                        $"Connection for opened connector {Connector} isn't the same as this connection");
+                    Debug.Assert(connector.Connection is null,
+                        $"Connection for opened connector {Connector} is bound to another connection");
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
+                    connector.Connection = this;
                     Connector = connector;
 
                     if (enlistToTransaction is not null)
@@ -1699,12 +1699,22 @@ namespace Npgsql
 
             async ValueTask<NpgsqlConnector> StartBindingScopeAsync()
             {
-                Debug.Assert(Settings.Multiplexing);
-                Debug.Assert(_pool != null);
+                try
+                {
+                    Debug.Assert(Settings.Multiplexing);
+                    Debug.Assert(_pool != null);
 
-                var connector = await _pool.Get(this, timeout, async, cancellationToken);
-                ConnectorBindingScope = scope;
-                return connector;
+                    var connector = await _pool.Get(this, timeout, async, cancellationToken);
+                    Connector = connector;
+                    connector.Connection = this;
+                    ConnectorBindingScope = scope;
+                    return connector;
+                }
+                catch
+                {
+                    FullState = ConnectionState.Broken;
+                    throw;
+                }
             }
         }
 
@@ -1994,11 +2004,6 @@ namespace Npgsql
         /// The connection is bound to its connector for the scope of a single reader.
         /// </summary>
         Reader,
-
-        /// <summary>
-        /// The connection is bound to its connector for the scope of establishing a new physical connection.
-        /// </summary>
-        PhysicalConnecting,
 
         /// <summary>
         /// The connection is bound to its connector for an unspecified, temporary scope; the code that initiated

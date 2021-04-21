@@ -1,4 +1,6 @@
-﻿namespace Npgsql
+﻿using Npgsql.Internal;
+
+namespace Npgsql
 {
     /// <summary>
     /// Thrown when trying to use a connection that is already busy performing some other operation.

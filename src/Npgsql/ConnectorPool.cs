@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -6,6 +7,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.Util;
 
@@ -116,7 +118,7 @@ namespace Npgsql
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             return TryGetIdleConnector(out var connector)
-                ? new ValueTask<NpgsqlConnector>(AssignConnection(conn, connector))
+                ? new ValueTask<NpgsqlConnector>(connector)
                 : RentAsync(conn, timeout, async, cancellationToken);
 
             async ValueTask<NpgsqlConnector> RentAsync(
@@ -125,7 +127,7 @@ namespace Npgsql
                 // First, try to open a new physical connector. This will fail if we're at max capacity.
                 var connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
                 if (connector != null)
-                    return AssignConnection(conn, connector);
+                    return connector;
 
                 // We're at max capacity. Block on the idle channel with a timeout.
                 // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
@@ -142,7 +144,7 @@ namespace Npgsql
                         {
                             connector = await _idleConnectorReader.ReadAsync(finalToken);
                             if (CheckIdleConnector(connector))
-                                return AssignConnection(conn, connector);
+                                return connector;
                         }
                         else
                         {
@@ -176,21 +178,14 @@ namespace Npgsql
                     // If we're here, our waiting attempt on the idle connector channel was released with a null
                     // (or bad connector), or we're in sync mode. Check again if a new idle connector has appeared since we last checked.
                     if (TryGetIdleConnector(out connector))
-                        return AssignConnection(conn, connector);
+                        return connector;
 
                     // We might have closed a connector in the meantime and no longer be at max capacity
                     // so try to open a new connector and if that fails, loop again.
                     connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
                     if (connector != null)
-                        return AssignConnection(conn, connector);
+                        return connector;
                 }
-            }
-
-            static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
-            {
-                connector.Connection = connection;
-                connection.Connector = connector;
-                return connector;
             }
         }
 
@@ -259,7 +254,7 @@ namespace Npgsql
                 try
                 {
                     // We've managed to increase the open counter, open a physical connections.
-                    var connector = new NpgsqlConnector(conn, this) { ClearCounter = _clearCounter };
+                    var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
                     await connector.Open(timeout, async, cancellationToken);
 
                     var i = 0;
@@ -280,7 +275,6 @@ namespace Npgsql
                 catch
                 {
                     // Physical open failed, decrement the open and busy counter back down.
-                    conn.Connector = null;
                     Interlocked.Decrement(ref _numConnectors);
 
                     // In case there's a waiting attempt on the channel, we write a null to the idle connector channel

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// Base class for implementations which provide information about PostgreSQL and PostgreSQL-like databases
@@ -229,7 +229,7 @@ namespace Npgsql
             Cache.Clear();
         }
 
-        internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         {
             foreach (var factory in Factories)
             {

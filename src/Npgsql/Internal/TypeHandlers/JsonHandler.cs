@@ -33,7 +33,7 @@ namespace Npgsql.Internal.TypeHandlers
             => _serializerOptions = serializerOptions;
 
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new JsonHandler(postgresType, conn, isJsonb: true, _serializerOptions);
     }
 
@@ -59,7 +59,7 @@ namespace Npgsql.Internal.TypeHandlers
             => _serializerOptions = serializerOptions;
 
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new JsonHandler(postgresType, conn, isJsonb: false, _serializerOptions);
     }
 
@@ -88,13 +88,13 @@ namespace Npgsql.Internal.TypeHandlers
         static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
         /// <inheritdoc />
-        protected internal JsonHandler(PostgresType postgresType, NpgsqlConnection connection, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
+        protected internal JsonHandler(PostgresType postgresType, NpgsqlConnector connector, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
             : base(postgresType)
         {
             _serializerOptions = serializerOptions ?? DefaultSerializerOptions;
             _isJsonb = isJsonb;
             _headerLen = isJsonb ? 1 : 0;
-            _textHandler = new TextHandler(postgresType, connection);
+            _textHandler = new TextHandler(postgresType, connector);
         }
 
         /// <inheritdoc />

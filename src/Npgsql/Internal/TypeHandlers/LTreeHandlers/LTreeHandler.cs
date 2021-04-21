@@ -10,7 +10,7 @@ namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 {
     class LTreeHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
             => new LTreeHandler(postgresType, conn);
     }
 
@@ -26,8 +26,8 @@ namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 
         internal override bool PreferTextWrite => false;
 
-        protected internal LTreeHandler(PostgresType postgresType, NpgsqlConnection connection)
-            : base(postgresType, connection) {}
+        protected internal LTreeHandler(PostgresType postgresType, NpgsqlConnector connector)
+            : base(postgresType, connector) {}
 
         #region Write
 

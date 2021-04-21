@@ -10,8 +10,8 @@ namespace Npgsql.Internal.TypeHandlers
 {
     class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
     {
-        public override NpgsqlTypeHandler<object[]> Create(PostgresType pgType, NpgsqlConnection conn)
-            => new RecordHandler(pgType, conn.Connector!.TypeMapper);
+        public override NpgsqlTypeHandler<object[]> Create(PostgresType pgType, NpgsqlConnector conn)
+            => new RecordHandler(pgType, conn.TypeMapper);
     }
 
     /// <summary>

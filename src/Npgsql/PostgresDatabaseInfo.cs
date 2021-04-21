@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
@@ -20,7 +21,7 @@ namespace Npgsql
     class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
         /// <inheritdoc />
-        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         {
             var db = new PostgresDatabaseInfo(conn);
             await db.LoadPostgresInfo(conn, timeout, async);
@@ -74,7 +75,7 @@ namespace Npgsql
         /// </remarks>
         public virtual bool HasTypeCategory => Version >= new Version(8, 4, 0);
 
-        internal PostgresDatabaseInfo(NpgsqlConnection conn)
+        internal PostgresDatabaseInfo(NpgsqlConnector conn)
             : base(conn.Host!, conn.Port, conn.Database!, ParseServerVersion(conn.PostgresParameters["server_version"]))
         {
         }
@@ -88,7 +89,7 @@ namespace Npgsql
         /// <returns>
         /// A task representing the asynchronous operation.
         /// </returns>
-        internal async Task LoadPostgresInfo(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async Task LoadPostgresInfo(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         {
             HasIntegerDateTimes =
                 conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
@@ -197,20 +198,18 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </returns>
         /// <exception cref="TimeoutException" />
         /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
-        internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         {
             var commandTimeout = 0;  // Default to infinity
             if (timeout.IsSet)
                 commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
-            using var command = new NpgsqlCommand(typeLoadingQuery, conn)
-            {
-                CommandTimeout = commandTimeout,
-                AllResultTypesAreUnknown = true
-            };
+            using var command = conn.CreateCommand(typeLoadingQuery);
+            command.CommandTimeout = commandTimeout;
+            command.AllResultTypesAreUnknown = true;
 
-            timeout.CheckAndApply(conn.Connector!);
+            timeout.CheckAndApply(conn);
             using var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
             var byOID = new Dictionary<uint, PostgresType>();
 
@@ -253,7 +252,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         Debug.Assert(elementOID > 0);
                         if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                         {
-                            Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
+                            Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.Id);
                             continue;
                         }
 
@@ -267,7 +266,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         Debug.Assert(elementOID > 0);
                         if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                         {
-                            Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
+                            Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.Id);
                             continue;
                         }
 
@@ -290,7 +289,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         Debug.Assert(elementOID > 0);
                         if (!byOID.TryGetValue(elementOID, out var basePostgresType))
                         {
-                            Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {elementOID}, skipping", conn.ProcessID);
+                            Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {elementOID}, skipping", conn.Id);
                             continue;
                         }
                         var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType, reader.GetString("typnotnull") == "t");
