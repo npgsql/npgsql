@@ -1,6 +1,5 @@
 ﻿#nullable enable
 *REMOVED*abstract Npgsql.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
-abstract Npgsql.Internal.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
 Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryImporter!>!
@@ -28,24 +27,11 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.NpgsqlDatabaseInfo(string! host, int port, string! databaseName, System.Version! version) -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Port.get -> int
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Version.get -> System.Version!
-Npgsql.Internal.NpgsqlDatabaseInfo
-Npgsql.Internal.NpgsqlDatabaseInfo.Host.get -> string!
-Npgsql.Internal.NpgsqlDatabaseInfo.Name.get -> string!
-Npgsql.Internal.NpgsqlDatabaseInfo.NpgsqlDatabaseInfo(string! host, int port, string! databaseName, System.Version! version) -> void
-Npgsql.Internal.NpgsqlDatabaseInfo.Port.get -> int
-Npgsql.Internal.NpgsqlDatabaseInfo.Version.get -> System.Version!
-Npgsql.Internal.NpgsqlConnector
-Npgsql.Internal.NpgsqlConnector.CreateCommand(string? cmdText = null) -> Npgsql.NpgsqlCommand!
-Npgsql.Internal.NpgsqlConnector.DatabaseInfo.get -> Npgsql.Internal.NpgsqlDatabaseInfo!
-Npgsql.Internal.NpgsqlConnector.Dispose() -> void
-Npgsql.Internal.NpgsqlConnector.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
 *REMOVED*static Npgsql.NpgsqlDatabaseInfo.ParseServerVersion(string! value) -> System.Version!
-static Npgsql.Internal.NpgsqlDatabaseInfo.ParseServerVersion(string! value) -> System.Version!
 *REMOVED*static Npgsql.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.INpgsqlDatabaseInfoFactory! factory) -> void
-static Npgsql.Internal.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.Internal.INpgsqlDatabaseInfoFactory! factory) -> void
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 override NpgsqlTypes.NpgsqlTsQueryEmpty.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
@@ -119,15 +105,3 @@ Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.HasIntegerDateTimes.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.HasIntegerDateTimes.set -> void
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsAdvisoryLocks.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsCloseAll.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsDiscard.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsDiscardSequences.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsDiscardTemp.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsEnumTypes.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsRangeTypes.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
-virtual Npgsql.Internal.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
