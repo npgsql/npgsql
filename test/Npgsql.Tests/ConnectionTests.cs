@@ -1634,7 +1634,7 @@ CREATE TABLE record ()");
                 NpgsqlConnection.ClearPool(conn);
 
                 conn.PhysicalOpenCallback = callback;
-                Assert.ThrowsAsync<NotImplementedException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
+                Assert.ThrowsAsync<NotImplementedException>(() => conn.ExecuteNonQueryAsync("SELECT 1"));
             }    
         }
 
