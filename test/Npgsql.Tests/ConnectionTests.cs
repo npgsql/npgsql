@@ -1616,14 +1616,26 @@ CREATE TABLE record ()");
         [Test]
         public async Task Physical_open_callback_throws()
         {
+            PhysicalOpenCallback callback = _ => throw new NotImplementedException();
+
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             await using var conn = new NpgsqlConnection(connectionString);
-            conn.PhysicalOpenCallback = connector =>
-            {
-                throw new NotImplementedException();
-            };
+            conn.PhysicalOpenCallback = callback;
 
-            Assert.Throws<NotImplementedException>(conn.Open);
+            Assert.ThrowsAsync<NotImplementedException>(conn.OpenAsync);
+
+            if (IsMultiplexing)
+            {
+                await conn.CloseAsync();
+                conn.PhysicalOpenCallback = null;
+                // Allow the bootstrap to complete
+                Assert.DoesNotThrowAsync(conn.OpenAsync);
+
+                NpgsqlConnection.ClearPool(conn);
+
+                conn.PhysicalOpenCallback = callback;
+                Assert.ThrowsAsync<NotImplementedException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
+            }    
         }
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
