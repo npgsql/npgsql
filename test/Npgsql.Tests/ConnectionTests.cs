@@ -1638,6 +1638,23 @@ CREATE TABLE record ()");
             }    
         }
 
+        [Test]
+        public async Task Physical_open_callback_idle_connection()
+        {
+            PhysicalOpenCallback callback = _ => throw new NotImplementedException();
+
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            await conn.CloseAsync();
+
+            conn.PhysicalOpenCallback = callback;
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
