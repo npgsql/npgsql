@@ -1156,7 +1156,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new();
 
-        NpgsqlConnector? TryGetBoundConnector(NpgsqlConnection? connection)
+        NpgsqlConnector? GetBoundConnector(NpgsqlConnection? connection)
         {
             if (_connector is not null)
             {
@@ -1177,9 +1177,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var conn = CheckAndGetConnection();
             _behavior = behavior;
 
-            var connector = TryGetBoundConnector(conn);
-            if (conn is null && connector is not null && behavior.HasFlag(CommandBehavior.CloseConnection))
-                throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with ${nameof(NpgsqlConnector)}", nameof(behavior));
+            NpgsqlConnector? connector;
+            if (_connector is not null)
+            {
+                Debug.Assert(conn is null);
+                if (behavior.HasFlag(CommandBehavior.CloseConnection))
+                    throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with ${nameof(NpgsqlConnector)}", nameof(behavior));
+                connector = _connector;
+            }
+            else
+            {
+                Debug.Assert(conn is not null);
+                conn.TryGetBoundConnector(out connector);
+            }
 
             try
             {
@@ -1394,12 +1404,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return;
 
             var connection = Connection;
-            if (connection is null && _connector is null)
-                return;
             if (connection is not null && !connection.IsBound)
                 throw new NotSupportedException("Cancellation not supported with multiplexing");
+            var connector = connection?.Connector ?? _connector;
+            if (connector is null)
+                return;
 
-            (connection?.Connector ?? _connector)?.PerformUserCancellation();
+            connector.PerformUserCancellation();
         }
 
         #endregion Cancel
