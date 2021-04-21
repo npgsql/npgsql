@@ -412,6 +412,11 @@ namespace Npgsql
         /// </remarks>
         public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
+        /// <summary>
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is open.
+        /// </summary>
+        public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -2053,6 +2058,12 @@ namespace Npgsql
     /// <param name="username">User</param>
     /// <returns>A valid password for connecting to the database</returns>
     public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
+
+    /// <summary>
+    /// Represents the method that allows the application to setup a connecton with custom commands.
+    /// </summary>
+    /// <param name="connection">Physical connection to the database</param>
+    public delegate ValueTask PhysicalOpenCallback(NpgsqlConnector connection);
 
     #endregion
 }

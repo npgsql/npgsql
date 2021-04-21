@@ -56,6 +56,7 @@ namespace Npgsql.Internal
         ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; }
         RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
         ProvidePasswordCallback? ProvidePasswordCallback { get; }
+        PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
 
         internal Encoding TextEncoding { get; private set; } = default!;
 
@@ -304,6 +305,7 @@ namespace Npgsql.Internal
             ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
             ProvidePasswordCallback = conn.ProvidePasswordCallback;
+            PhysicalOpenCallback = conn.PhysicalOpenCallback;
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
@@ -490,6 +492,18 @@ namespace Npgsql.Internal
 
                 OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
+
+                if (PhysicalOpenCallback is not null)
+                {
+                    var physicalOpenTask = PhysicalOpenCallback(this);
+                    if (!async && !physicalOpenTask.IsCompleted)
+                    {
+                        physicalOpenTask.AsTask().GetAwaiter().GetResult();
+                        throw new InvalidOperationException($"Asynchronous {nameof(PhysicalOpenCallback)} isn't supported with synchronous {nameof(NpgsqlConnection.Open)}");
+                    }
+
+                    await physicalOpenTask;
+                }
 
                 if (Settings.Multiplexing)
                 {

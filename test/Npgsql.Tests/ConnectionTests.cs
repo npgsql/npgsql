@@ -1559,6 +1559,60 @@ CREATE TABLE record ()");
                     .With.InnerException.TypeOf<TimeoutException>());
         }
 
+        [Test]
+        public async Task Physical_open_callback_sync()
+        {
+            await using var defaultConn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
+
+            using var __ = CreateTempPool(ConnectionString, out var connectionString);
+            using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = connector =>
+            {
+                using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
+                cmd.ExecuteNonQuery();
+                return new ValueTask();
+            };
+
+            conn.Open();
+
+            var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
+            Assert.AreEqual(1, rowsCount);
+        }
+
+        [Test]
+        public async Task Physical_open_callback_async()
+        {
+            await using var defaultConn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
+
+            using var __ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = async connector =>
+            {
+                using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
+                await cmd.ExecuteNonQueryAsync();
+            };
+
+            await conn.OpenAsync();
+
+            var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
+            Assert.AreEqual(1, rowsCount);
+        }
+
+        [Test]
+        public async Task Physical_open_callback_async_over_sync()
+        {
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = async connector =>
+            {
+                await Task.Delay(50);
+            };
+
+            Assert.Throws<InvalidOperationException>(conn.Open);
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
