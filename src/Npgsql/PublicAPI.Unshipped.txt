@@ -1,6 +1,5 @@
 ﻿#nullable enable
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
-Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.Internal.NpgsqlConnector! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
 Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryImporter!>!
 Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlRawCopyStream!>!
@@ -19,6 +18,7 @@ Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
+*REMOVED*Npgsql.INpgsqlDatabaseInfoFactory
 *REMOVED*Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.NpgsqlConnection! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
 Npgsql.Internal.NpgsqlConnector
 Npgsql.Internal.NpgsqlConnector.CreateCommand(string? cmdText = null) -> Npgsql.NpgsqlCommand!
@@ -28,6 +28,8 @@ Npgsql.Internal.NpgsqlConnector.Settings.get -> Npgsql.NpgsqlConnectionStringBui
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
+*REMOVED*static Npgsql.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.INpgsqlDatabaseInfoFactory! factory) -> void
+static Npgsql.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.Internal.INpgsqlDatabaseInfoFactory! factory) -> void
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 override NpgsqlTypes.NpgsqlTsQueryEmpty.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool

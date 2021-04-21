@@ -1,8 +1,7 @@
 ﻿using System.Threading.Tasks;
-using Npgsql.Internal;
 using Npgsql.Util;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// A factory which get generate instances of <see cref="NpgsqlDatabaseInfo"/>, which describe a database
