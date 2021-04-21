@@ -2041,16 +2041,16 @@ namespace Npgsql
     public delegate void NotificationEventHandler(object sender, NpgsqlNotificationEventArgs e);
 
     /// <summary>
-    /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
+    /// Represents a method that allows the application to provide a certificate collection to be used for SSL client authentication
     /// </summary>
     /// <param name="certificates">
-    /// A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection"/> to be filled with one or more client
+    /// A <see cref="X509CertificateCollection"/> to be filled with one or more client
     /// certificates.
     /// </param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
     /// <summary>
-    /// Represents the method that allows the application to provide a password at connection time in code rather than configuration
+    /// Represents a method that allows the application to provide a password at connection time in code rather than configuration
     /// </summary>
     /// <param name="host">Hostname</param>
     /// <param name="port">Port</param>
@@ -2060,7 +2060,7 @@ namespace Npgsql
     public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
 
     /// <summary>
-    /// Represents the method that allows the application to setup a connecton with custom commands.
+    /// Represents a method that allows the application to setup a connecton with custom commands.
     /// </summary>
     /// <param name="connection">Physical connection to the database</param>
     public delegate ValueTask PhysicalOpenCallback(NpgsqlConnector connection);
