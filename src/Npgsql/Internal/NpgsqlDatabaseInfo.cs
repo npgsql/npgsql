@@ -2,11 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// Base class for implementations which provide information about PostgreSQL and PostgreSQL-like databases
