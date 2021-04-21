@@ -1613,6 +1613,19 @@ CREATE TABLE record ()");
             Assert.Throws<InvalidOperationException>(conn.Open);
         }
 
+        [Test]
+        public async Task Physical_open_callback_throws()
+        {
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = connector =>
+            {
+                throw new NotImplementedException();
+            };
+
+            Assert.Throws<NotImplementedException>(conn.Open);
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
