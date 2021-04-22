@@ -112,7 +112,7 @@ namespace Npgsql
             }
         }
 
-        private static CancellationToken GetCombinedCancellationToken(ref CancellationTokenSource? combinedCts, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        static CancellationToken GetCombinedCancellationToken(ref CancellationTokenSource? combinedCts, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             var finalCt = cancellationToken;
 
