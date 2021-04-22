@@ -2060,7 +2060,7 @@ namespace Npgsql
     public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
 
     /// <summary>
-    /// Represents a method that allows the application to setup a connecton with custom commands.
+    /// Represents a method that allows the application to setup a connection with custom commands.
     /// </summary>
     /// <param name="connection">Physical connection to the database</param>
     public delegate ValueTask PhysicalOpenCallback(NpgsqlConnector connection);
