@@ -9,7 +9,7 @@ on:
       - '*'
 
 env:
-  dotnet_sdk_version: '5.0.x'
+  dotnet_sdk_version: '6.0.100-preview.3.21202.5'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
