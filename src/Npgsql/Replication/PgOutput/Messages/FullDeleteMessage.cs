@@ -24,10 +24,10 @@ namespace Npgsql.Replication.PgOutput.Messages
         }
 
         /// <inheritdoc />
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
-        public override PgOutputReplicationMessage Clone()
-#else
+#if NET5_0_OR_GREATER
         public override FullDeleteMessage Clone()
+#else
+        public override PgOutputReplicationMessage Clone()
 #endif
         {
             var clone = new FullDeleteMessage();

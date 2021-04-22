@@ -70,7 +70,7 @@ namespace Npgsql
         /// <param name="value">The value of the <see cref="NpgsqlParameter"/>.</param>
         /// <remarks>
         /// <p>
-        /// When you specify an <see cref="System.Object"/> in the value parameter, the <see cref="System.Data.DbType"/> is
+        /// When you specify an <see cref="object"/> in the value parameter, the <see cref="System.Data.DbType"/> is
         /// inferred from the CLR type.
         /// </p>
         /// <p>
@@ -179,7 +179,7 @@ namespace Npgsql
         /// </param>
         /// <param name="scale">The total number of decimal places to which <see cref="Value"/> is resolved.</param>
         /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion"/> values.</param>
-        /// <param name="value">An <see cref="System.Object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
+        /// <param name="value">An <see cref="object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
@@ -214,7 +214,7 @@ namespace Npgsql
         /// </param>
         /// <param name="scale">The total number of decimal places to which <see cref="Value"/> is resolved.</param>
         /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion"/> values.</param>
-        /// <param name="value">An <see cref="System.Object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
+        /// <param name="value">An <see cref="object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
@@ -280,7 +280,7 @@ namespace Npgsql
         /// Gets or sets the value of the parameter.
         /// </summary>
         /// <value>
-        /// An <see cref="System.Object" /> that is the value of the parameter.
+        /// An <see cref="object" /> that is the value of the parameter.
         /// The default value is <see langword="null" />.
         /// </value>
         [Category("Data")]
@@ -298,7 +298,7 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the <see cref="System.Data.DbType"/> of the parameter.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.DbType"/> values. The default is <see cref="Object"/>.</value>
+        /// <value>One of the <see cref="System.Data.DbType"/> values. The default is <see cref="object"/>.</value>
         [DefaultValue(DbType.Object)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
         public sealed override DbType DbType

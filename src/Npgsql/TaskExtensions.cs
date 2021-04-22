@@ -43,7 +43,7 @@ namespace Npgsql
         internal static Task<T> WithCancellationAndTimeout<T>(this Task<T> task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
             => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+#if !NET5_0_OR_GREATER
         /// <summary>
         /// Utility that simplifies awaiting a task with a timeout. If the given task does not
         /// complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
@@ -83,5 +83,47 @@ namespace Npgsql
         internal static Task WithCancellationAndTimeout(this Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
             => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 #endif
+
+        internal static async Task ExecuteWithTimeout(Func<CancellationToken, Task> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            CancellationTokenSource? combinedCts = null;
+            try
+            {
+                var combinedCancellationToken = GetCombinedCancellationToken(ref combinedCts, timeout, cancellationToken);
+                await func(combinedCancellationToken);
+            }
+            finally
+            {
+                combinedCts?.Dispose();
+            }
+        }
+
+        internal static async Task<TResult> ExecuteWithTimeout<TResult>(Func<CancellationToken, Task<TResult>> func, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            CancellationTokenSource? combinedCts = null;
+            try
+            {
+                var combinedCancellationToken = GetCombinedCancellationToken(ref combinedCts, timeout, cancellationToken);
+                return await func(combinedCancellationToken);
+            }
+            finally
+            {
+                combinedCts?.Dispose();
+            }
+        }
+
+        static CancellationToken GetCombinedCancellationToken(ref CancellationTokenSource? combinedCts, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        {
+            var finalCt = cancellationToken;
+
+            if (timeout.IsSet)
+            {
+                combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                combinedCts.CancelAfter((int)timeout.CheckAndGetTimeLeft().TotalMilliseconds);
+                finalCt = combinedCts.Token;
+            }
+
+            return finalCt;
+        }
     }
 }

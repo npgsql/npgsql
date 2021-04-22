@@ -2,7 +2,7 @@ version: '3'
 
 services:
   npgsql-dev:
-    image: mcr.microsoft.com/dotnet/sdk:5.0
+    image: mcr.microsoft.com/dotnet/sdk:6.0
     volumes:
       - ..:/workspace:cached
     tty: true
