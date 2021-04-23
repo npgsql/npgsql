@@ -1626,6 +1626,9 @@ CREATE TABLE record ()");
 
             if (IsMultiplexing)
             {
+                // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
+                // or on NpgsqlCommand.ExecuteReaderAsync.
+                // We've already tested the first case above, testing the second one below.
                 conn.PhysicalOpenCallback = null;
                 // Allow the bootstrap to complete
                 Assert.DoesNotThrowAsync(conn.OpenAsync);
