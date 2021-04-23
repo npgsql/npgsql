@@ -413,12 +413,12 @@ namespace Npgsql
         public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
         /// <summary>
-        /// Gets or sets the delegate used to setup a connection whenever a physical connection is open.
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened synchronously.
         /// </summary>
         public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
 
         /// <summary>
-        /// Gets or sets the delegate used to setup a connection whenever a physical connection is open asynchronously.
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened asynchronously.
         /// </summary>
         public PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
