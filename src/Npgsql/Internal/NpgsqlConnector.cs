@@ -57,6 +57,7 @@ namespace Npgsql.Internal
         RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
         ProvidePasswordCallback? ProvidePasswordCallback { get; }
         PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
+        PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
         internal Encoding TextEncoding { get; private set; } = default!;
 
@@ -306,6 +307,7 @@ namespace Npgsql.Internal
             UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
             ProvidePasswordCallback = conn.ProvidePasswordCallback;
             PhysicalOpenCallback = conn.PhysicalOpenCallback;
+            PhysicalOpenAsyncCallback = conn.PhysicalOpenAsyncCallback;
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
@@ -493,20 +495,10 @@ namespace Npgsql.Internal
                 OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
-                if (PhysicalOpenCallback is not null)
-                {
-                    var physicalOpenTask = PhysicalOpenCallback(this);
-                    if (!async && !physicalOpenTask.IsCompleted)
-                    {
-                        physicalOpenTask.GetAwaiter().GetResult();
-                        throw new InvalidOperationException($"Asynchronous {nameof(PhysicalOpenCallback)} isn't supported with synchronous {nameof(NpgsqlConnection.Open)}");
-                    }
-                    else if (async)
-                        await physicalOpenTask;
-                    // By this point if PhysicalOpenCallback is synchronous, it's already completed.
-                    // If it's async, we've awaited it just above.
-                    Debug.Assert(physicalOpenTask.IsCompleted);
-                }
+                if (async && PhysicalOpenAsyncCallback is not null)
+                    await PhysicalOpenAsyncCallback(this);
+                else if (!async && PhysicalOpenCallback is not null)
+                    PhysicalOpenCallback(this);
 
                 if (Settings.Multiplexing)
                 {

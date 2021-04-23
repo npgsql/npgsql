@@ -6,6 +6,8 @@ Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.T
 Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlRawCopyStream!>!
 Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
 Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextWriter!>!
+Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.get -> Npgsql.PhysicalOpenAsyncCallback?
+Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
 Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
 Npgsql.NpgsqlConnection.PhysicalOpenCallback.set -> void
 Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
@@ -29,6 +31,7 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.NpgsqlDatabaseInfo(string! host, int port, string! databaseName, System.Version! version) -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Port.get -> int
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Version.get -> System.Version!
+Npgsql.PhysicalOpenAsyncCallback
 Npgsql.PhysicalOpenCallback
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool

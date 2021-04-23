@@ -417,6 +417,11 @@ namespace Npgsql
         /// </summary>
         public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
 
+        /// <summary>
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is open asynchronously.
+        /// </summary>
+        public PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -2063,7 +2068,13 @@ namespace Npgsql
     /// Represents a method that allows the application to setup a connection with custom commands.
     /// </summary>
     /// <param name="connection">Physical connection to the database</param>
-    public delegate Task PhysicalOpenCallback(NpgsqlConnector connection);
+    public delegate void PhysicalOpenCallback(NpgsqlConnector connection);
+
+    /// <summary>
+    /// Represents an asynchronous method that allows the application to setup a connection with custom commands.
+    /// </summary>
+    /// <param name="connection">Physical connection to the database</param>
+    public delegate Task PhysicalOpenAsyncCallback(NpgsqlConnector connection);
 
     #endregion
 }
