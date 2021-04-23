@@ -2063,7 +2063,7 @@ namespace Npgsql
     /// Represents a method that allows the application to setup a connection with custom commands.
     /// </summary>
     /// <param name="connection">Physical connection to the database</param>
-    public delegate ValueTask PhysicalOpenCallback(NpgsqlConnector connection);
+    public delegate Task PhysicalOpenCallback(NpgsqlConnector connection);
 
     #endregion
 }

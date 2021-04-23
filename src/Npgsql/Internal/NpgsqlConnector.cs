@@ -498,7 +498,7 @@ namespace Npgsql.Internal
                     var physicalOpenTask = PhysicalOpenCallback(this);
                     if (!async && !physicalOpenTask.IsCompleted)
                     {
-                        physicalOpenTask.AsTask().GetAwaiter().GetResult();
+                        physicalOpenTask.GetAwaiter().GetResult();
                         throw new InvalidOperationException($"Asynchronous {nameof(PhysicalOpenCallback)} isn't supported with synchronous {nameof(NpgsqlConnection.Open)}");
                     }
 
