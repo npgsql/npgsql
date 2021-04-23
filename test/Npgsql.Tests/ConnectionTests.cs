@@ -1626,7 +1626,6 @@ CREATE TABLE record ()");
 
             if (IsMultiplexing)
             {
-                await conn.CloseAsync();
                 conn.PhysicalOpenCallback = null;
                 // Allow the bootstrap to complete
                 Assert.DoesNotThrowAsync(conn.OpenAsync);
