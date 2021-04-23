@@ -1559,6 +1559,118 @@ CREATE TABLE record ()");
                     .With.InnerException.TypeOf<TimeoutException>());
         }
 
+        [Test]
+        public async Task Physical_open_callback_sync()
+        {
+            await using var defaultConn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
+
+            using var __ = CreateTempPool(ConnectionString, out var connectionString);
+            using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = connector =>
+            {
+                using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
+                cmd.ExecuteNonQuery();
+            };
+            conn.PhysicalOpenAsyncCallback = _ => throw new NotImplementedException();
+
+            Assert.DoesNotThrow(conn.Open);
+
+            var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
+            Assert.AreEqual(1, rowsCount);
+        }
+
+        [Test]
+        public async Task Physical_open_async_callback()
+        {
+            await using var defaultConn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
+
+            using var __ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenAsyncCallback = async connector =>
+            {
+                using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
+                await cmd.ExecuteNonQueryAsync();
+            };
+            conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+
+            var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
+            Assert.AreEqual(1, rowsCount);
+        }
+
+        [Test]
+        public async Task Physical_open_callback_throws()
+        {
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
+
+            Assert.Throws<NotImplementedException>(conn.Open);
+        }
+
+        [Test]
+        public async Task Physical_open_async_callback_throws()
+        {
+            PhysicalOpenAsyncCallback callback = _ => throw new NotImplementedException();
+
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            conn.PhysicalOpenAsyncCallback = callback;
+
+            Assert.ThrowsAsync<NotImplementedException>(conn.OpenAsync);
+
+            if (IsMultiplexing)
+            {
+                // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
+                // or on NpgsqlCommand.ExecuteReaderAsync.
+                // We've already tested the first case above, testing the second one below.
+                conn.PhysicalOpenAsyncCallback = null;
+                // Allow the bootstrap to complete
+                Assert.DoesNotThrowAsync(conn.OpenAsync);
+
+                NpgsqlConnection.ClearPool(conn);
+
+                conn.PhysicalOpenAsyncCallback = callback;
+                Assert.ThrowsAsync<NotImplementedException>(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+            }    
+        }
+
+        [Test]
+        public async Task Physical_open_callback_idle_connection()
+        {
+            if (IsMultiplexing)
+                return;
+
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+
+            Assert.DoesNotThrow(conn.Open);
+            conn.Close();
+
+            conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
+
+            Assert.DoesNotThrow(conn.Open);
+            Assert.DoesNotThrow(() => conn.ExecuteNonQuery("SELECT 1"));
+        }
+
+        [Test]
+        public async Task Physical_open_async_callback_idle_connection()
+        {
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            await conn.CloseAsync();
+
+            conn.PhysicalOpenAsyncCallback = _ => throw new NotImplementedException();
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

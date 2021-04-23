@@ -412,6 +412,16 @@ namespace Npgsql
         /// </remarks>
         public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
+        /// <summary>
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened synchronously.
+        /// </summary>
+        public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
+
+        /// <summary>
+        /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened asynchronously.
+        /// </summary>
+        public PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -2036,16 +2046,16 @@ namespace Npgsql
     public delegate void NotificationEventHandler(object sender, NpgsqlNotificationEventArgs e);
 
     /// <summary>
-    /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
+    /// Represents a method that allows the application to provide a certificate collection to be used for SSL client authentication
     /// </summary>
     /// <param name="certificates">
-    /// A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection"/> to be filled with one or more client
+    /// A <see cref="X509CertificateCollection"/> to be filled with one or more client
     /// certificates.
     /// </param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
     /// <summary>
-    /// Represents the method that allows the application to provide a password at connection time in code rather than configuration
+    /// Represents a method that allows the application to provide a password at connection time in code rather than configuration
     /// </summary>
     /// <param name="host">Hostname</param>
     /// <param name="port">Port</param>
@@ -2053,6 +2063,18 @@ namespace Npgsql
     /// <param name="username">User</param>
     /// <returns>A valid password for connecting to the database</returns>
     public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
+
+    /// <summary>
+    /// Represents a method that allows the application to setup a connection with custom commands.
+    /// </summary>
+    /// <param name="connection">Physical connection to the database</param>
+    public delegate void PhysicalOpenCallback(NpgsqlConnector connection);
+
+    /// <summary>
+    /// Represents an asynchronous method that allows the application to setup a connection with custom commands.
+    /// </summary>
+    /// <param name="connection">Physical connection to the database</param>
+    public delegate Task PhysicalOpenAsyncCallback(NpgsqlConnector connection);
 
     #endregion
 }
