@@ -1601,13 +1601,13 @@ CREATE TABLE record ()");
         }
 
         [Test]
-        public async Task Physical_open_callback_async_over_sync()
+        public async Task Physical_open_callback_sync_over_async()
         {
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             await using var conn = new NpgsqlConnection(connectionString);
             conn.PhysicalOpenCallback = async connector =>
             {
-                await Task.Delay(50);
+                await Task.Yield();
             };
 
             Assert.Throws<InvalidOperationException>(conn.Open);
