@@ -501,8 +501,11 @@ namespace Npgsql.Internal
                         physicalOpenTask.GetAwaiter().GetResult();
                         throw new InvalidOperationException($"Asynchronous {nameof(PhysicalOpenCallback)} isn't supported with synchronous {nameof(NpgsqlConnection.Open)}");
                     }
-
-                    await physicalOpenTask;
+                    else if (async)
+                        await physicalOpenTask;
+                    // By this point if PhysicalOpenCallback is synchronous, it's already completed.
+                    // If it's async, we've awaited it just above.
+                    Debug.Assert(physicalOpenTask.IsCompleted);
                 }
 
                 if (Settings.Multiplexing)
