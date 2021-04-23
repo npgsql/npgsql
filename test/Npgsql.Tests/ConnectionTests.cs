@@ -1604,9 +1604,6 @@ CREATE TABLE record ()");
         [Test]
         public async Task Physical_open_callback_throws()
         {
-            if (IsMultiplexing)
-                return;
-
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             await using var conn = new NpgsqlConnection(connectionString);
             conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
