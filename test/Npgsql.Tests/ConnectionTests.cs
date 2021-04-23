@@ -1571,7 +1571,7 @@ CREATE TABLE record ()");
             {
                 using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
                 cmd.ExecuteNonQuery();
-                return new ValueTask();
+                return default;
             };
 
             conn.Open();
