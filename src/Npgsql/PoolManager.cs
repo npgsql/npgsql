@@ -36,7 +36,7 @@ namespace Npgsql
                 if (ReferenceEquals(cp.Key, key))
                 {
                     // It's possible that this pool entry is currently being written: the connection string
-                    // component has already been writte, but the pool component is just about to be. So we
+                    // component has already been written, but the pool component is just about to be. So we
                     // loop on the pool until it's non-null
                     while (Volatile.Read(ref cp.Pool) == null)
                         sw.SpinOnce();
