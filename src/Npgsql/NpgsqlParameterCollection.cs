@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -19,21 +20,50 @@ namespace Npgsql
 
         // Dictionary lookups for GetValue to improve performance
         Dictionary<string, int>? _lookup;
-        Dictionary<string, int>? _lookupIgnoreCase;
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
         /// </summary>
-        internal NpgsqlParameterCollection() => InvalidateHashLookups();
+        internal NpgsqlParameterCollection() {}
 
         /// <summary>
-        /// Invalidate the hash lookup tables.  This should be done any time a change
-        /// may throw the lookups out of sync with the list.
+        /// Revise the lookup. This should be done any time a change
+        /// may throw the lookup out of sync with the list.
         /// </summary>
-        internal void InvalidateHashLookups()
+        internal void ReflectListMutationInLookup(NpgsqlParameter parameter, int? index = 0)
         {
-            _lookup = null;
-            _lookupIgnoreCase = null;
+            if (_lookup is null) return;
+
+            // We can't go through IndexOf as we may query the same lookup that is now out of sync.
+            var i = index ?? IndexOfName(parameter.TrimmedName);
+
+            if (i == -1)
+            {
+                _lookup.Remove(parameter.TrimmedName);
+                return;
+            }
+
+            // Fill lookup on unknown name.
+            if (!_lookup.TryGetValue(parameter.TrimmedName, out var lookupIndex))
+            {
+                _lookup[parameter.TrimmedName] = i;
+            }
+            // Lowest index should be returned, adjust lookup.
+            else if (lookupIndex > i)
+            {
+                _lookup[parameter.TrimmedName] = i;
+            }
+
+            // Other cases don't need adjusting.
+
+            int IndexOfName(string parameterName)
+            {
+                for (var i = 0; i < _internalList.Count; i++)
+                    if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+                        return i;
+
+                return -1;
+            }
         }
 
         #region NpgsqlParameterCollection Member
@@ -70,9 +100,9 @@ namespace Npgsql
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                var oldValue = _internalList[index];
-                if (oldValue.ParameterName != value.ParameterName)
-                    InvalidateHashLookups();
+                // When names don't match lookup could get out of sync due to lookup only storing first value index.
+                if (_internalList[index].ParameterName != value.ParameterName)
+                    ReflectListMutationInLookup(value, index);
 
                 _internalList[index] = value;
             }
@@ -99,7 +129,7 @@ namespace Npgsql
                     return;
 
                 if (value.ParameterName != oldValue.ParameterName)
-                    InvalidateHashLookups();
+                    ReflectListMutationInLookup(value, index);
 
                 _internalList[index] = value;
                 value.Collection = this;
@@ -121,7 +151,7 @@ namespace Npgsql
 
             _internalList.Add(value);
             value.Collection = this;
-            InvalidateHashLookups();
+            ReflectListMutationInLookup(value);
             return value;
         }
 
@@ -248,56 +278,32 @@ namespace Npgsql
 
             // Using a dictionary is much faster for 5 or more items
             if (_internalList.Count >= 5)
-            {
-                if (_lookup == null)
-                {
-                    _lookup = new Dictionary<string, int>();
-                    for (var i = 0 ; i < _internalList.Count ; i++)
-                    {
-                        var item = _internalList[i];
+                EnsureLookup();
 
-                        // Store only the first of each distinct value
-                        if (!_lookup.ContainsKey(item.TrimmedName))
-                            _lookup.Add(item.TrimmedName, i);
-                    }
-                }
+            if (_lookup != null)
+                return _lookup.TryGetValue(parameterName, out var retIndex) ? retIndex : -1;
 
-                // Try to access the case sensitive parameter name first
-                if (_lookup.TryGetValue(parameterName, out var retIndex))
-                    return retIndex;
 
-                // Case sensitive lookup failed, generate a case insensitive lookup
-                if (_lookupIgnoreCase == null)
-                {
-                    _lookupIgnoreCase = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
-                    for (var i = 0 ; i < _internalList.Count ; i++)
-                    {
-                        var item = _internalList[i];
-
-                        // Store only the first of each distinct value
-                        if (!_lookupIgnoreCase.ContainsKey(item.TrimmedName))
-                            _lookupIgnoreCase.Add(item.TrimmedName, i);
-                    }
-                }
-
-                // Then try to access the case insensitive parameter name
-                if (_lookupIgnoreCase.TryGetValue(parameterName, out retIndex))
-                    return retIndex;
-
-                return -1;
-            }
-
-            // First try a case-sensitive match
-            for (var i = 0; i < _internalList.Count; i++)
-                if (parameterName == _internalList[i].TrimmedName)
-                    return i;
-
-            // If not fond, try a case-insensitive match
+            // Do a case-insensitive match
             for (var i = 0; i < _internalList.Count; i++)
                 if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                     return i;
 
             return -1;
+
+            void EnsureLookup()
+            {
+                if (_lookup == null)
+                {
+                    _lookup = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
+                    for (var i = _internalList.Count - 1; i >= 0; i--)
+                    {
+                        var item = _internalList[i];
+                        // Reverse add to store only the first value of each key.
+                        _lookup[item.TrimmedName] = i;
+                    }
+                }
+            }
         }
 
         #endregion
@@ -389,7 +395,7 @@ namespace Npgsql
                 toRemove.Collection = null;
 
             _internalList.Clear();
-            InvalidateHashLookups();
+            _lookup = null;
         }
 
         /// <inheritdoc />
@@ -489,7 +495,7 @@ namespace Npgsql
 
             _internalList.Insert(index, item);
             item.Collection = this;
-            InvalidateHashLookups();
+            ReflectListMutationInLookup(item, index);
         }
 
         /// <summary>
@@ -514,7 +520,7 @@ namespace Npgsql
             if (_internalList.Remove(item))
             {
                 item.Collection = null;
-                InvalidateHashLookups();
+                ReflectListMutationInLookup(item, -1);
                 return true;
             }
 
@@ -545,7 +551,6 @@ namespace Npgsql
                 other._internalList.Add(newParam);
             }
             other._lookup = _lookup;
-            other._lookupIgnoreCase = _lookupIgnoreCase;
         }
 
         internal bool HasOutputParameters

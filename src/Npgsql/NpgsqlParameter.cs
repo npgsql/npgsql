@@ -254,7 +254,7 @@ namespace Npgsql
                 else
                     _name = TrimmedName = value;
 
-                Collection?.InvalidateHashLookups();
+                Collection?.ReflectListMutationInLookup(this);
             }
         }
 
