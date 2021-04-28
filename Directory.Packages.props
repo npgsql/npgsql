@@ -22,7 +22,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.1" />
 
     <!-- Tests -->
-    <PackageVersion Include="NUnit" Version="3.13.1" />
+    <PackageVersion Include="NUnit" Version="3.13.2" />
     <PackageVersion Include="NLog" Version="4.7.9" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
