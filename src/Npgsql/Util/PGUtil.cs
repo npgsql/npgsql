@@ -118,8 +118,6 @@ namespace Npgsql.Util
 
         internal static readonly Task<bool> TrueTask = Task.FromResult(true);
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
-
-        internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
     }
 
     enum FormatCode : short
