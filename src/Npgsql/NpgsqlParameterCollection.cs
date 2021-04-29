@@ -269,7 +269,7 @@ namespace Npgsql
                 // Case sensitive lookup failed, generate a case insensitive lookup
                 if (_lookupIgnoreCase == null)
                 {
-                    _lookupIgnoreCase = new Dictionary<string, int>(PGUtil.InvariantCaseIgnoringStringComparer);
+                    _lookupIgnoreCase = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
                     for (var i = 0 ; i < _internalList.Count ; i++)
                     {
                         var item = _internalList[i];
