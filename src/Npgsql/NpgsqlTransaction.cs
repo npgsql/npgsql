@@ -320,8 +320,16 @@ namespace Npgsql
 
             if (disposing && !IsCompleted)
             {
-                _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
-                Rollback();
+                try
+                {
+                    _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
+                    Rollback();
+                }
+                catch (Exception ex)
+                {
+                    Debug.Assert(_connector.IsBroken);
+                    Log.Error("Exception while disposing a transaction", ex, _connector.Id);
+                }
             }
 
             Clear();
@@ -353,8 +361,16 @@ namespace Npgsql
 
             async ValueTask DisposeAsyncInternal()
             {
-                await _connector.CloseOngoingOperations(async: true);
-                await Rollback(async: true);
+            	try
+            	{
+                	await _connector.CloseOngoingOperations(async: true);
+                	await Rollback(async: true);
+            	}
+            	catch (Exception ex)
+            	{
+            		Debug.Assert(_connector.IsBroken);
+                    Log.Error("Exception while disposing a transaction", ex, _connector.Id);
+            	}
                 _isDisposed = true;
             }
         }
