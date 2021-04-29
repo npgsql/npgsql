@@ -787,7 +787,11 @@ namespace Npgsql
                 else
                 {
                     if (_pool == null)
+                    {
+                        // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
+                        connector.Transaction?.UnbindIfNecessary();
                         connector.Close();
+                    }
                     else
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
