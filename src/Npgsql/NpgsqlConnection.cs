@@ -834,26 +834,31 @@ namespace Npgsql
                 }
                 else
                 {
-                    if (_pool == null)
-                        connector.Close();
-                    else
+                    if (Settings.Pooling)
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                         // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
+                        // Note that we're doing this only for pooled connections
                         await connector.Reset(async, cancellationToken);
+                    }
+                    else
+                    {
+                        // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
+                        // TODO: move reset logic to ConnectorSource.Return
+                        connector.Transaction?.UnbindIfNecessary();
+                    }  
 
-                        if (Settings.Multiplexing)
-                        {
-                            // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool,
-                            // so we must be unbound. Nothing to do.
-                            Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
-                                $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
-                        }
-                        else
-                        {
-                            connector.Connection = null;
-                            connector.Return();
-                        }
+                    if (Settings.Multiplexing)
+                    {
+                        // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool,
+                        // so we must be unbound. Nothing to do.
+                        Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
+                            $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
+                    }
+                    else
+                    {
+                        connector.Connection = null;
+                        connector.Return();
                     }
                 }
 
