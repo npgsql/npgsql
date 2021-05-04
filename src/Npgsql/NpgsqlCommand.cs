@@ -1032,10 +1032,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            using var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+            try
+            {
+                while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
 
-            return reader.RecordsAffected;
+                return reader.RecordsAffected;
+            }
+            finally
+            {
+                if (async)
+                    await reader.DisposeAsync();
+                else
+                    reader.Dispose();
+            }
         }
 
         #endregion Execute Non Query
@@ -1069,8 +1079,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
 
-            using var reader = await ExecuteReader(behavior, async, cancellationToken);
-            return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            var reader = await ExecuteReader(behavior, async, cancellationToken);
+            try
+            {
+                var read = async ? await reader.ReadAsync(cancellationToken) : reader.Read();
+                return read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            }
+            finally
+            {
+                if (async)
+                    await reader.DisposeAsync();
+                else
+                    reader.Dispose();
+            }
         }
 
         #endregion Execute Scalar

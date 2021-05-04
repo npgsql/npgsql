@@ -62,16 +62,25 @@ namespace Npgsql
             foreach (var argument in arguments)
                 command.Parameters.Add(new NpgsqlParameter { Value = argument });
 
-            using var reader = async
+            var reader = async
                 ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken)
                 : command.ExecuteReader(CommandBehavior.SequentialAccess);
+            try
+            {
+                if (async)
+                    await reader.ReadAsync(cancellationToken);
+                else
+                    reader.Read();
 
-            if (async)
-                await reader.ReadAsync(cancellationToken);
-            else
-                reader.Read();
-
-            return (int)reader.GetBytes(0, 0, buffer, offset, len);
+                return (int)reader.GetBytes(0, 0, buffer, offset, len);
+            }
+            finally
+            {
+                if (async)
+                    await reader.DisposeAsync();
+                else
+                    reader.Dispose();
+            }
         }
 
         /// <summary>

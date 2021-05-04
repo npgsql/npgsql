@@ -127,26 +127,36 @@ ORDER BY attnum";
                 await connection.Open(async, cancellationToken);
 
                 using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
-                while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
+                var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+                try
                 {
-                    var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-                    for (var ordinal = 0; ordinal < fields.Count; ordinal++)
+                    while (async ? await reader.ReadAsync(cancellationToken) : reader.Read())
                     {
-                        var field = fields[ordinal];
-                        if (field.TableOID == column.TableOID &&
-                            field.ColumnAttributeNumber == column.ColumnAttributeNumber)
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
+                        for (var ordinal = 0; ordinal < fields.Count; ordinal++)
                         {
-                            populatedColumns++;
+                            var field = fields[ordinal];
+                            if (field.TableOID == column.TableOID &&
+                                field.ColumnAttributeNumber == column.ColumnAttributeNumber)
+                            {
+                                populatedColumns++;
 
-                            if (column.ColumnOrdinal.HasValue)
-                                column = column.Clone();
+                                if (column.ColumnOrdinal.HasValue)
+                                    column = column.Clone();
 
-                            // The column's ordinal is with respect to the resultset, not its table
-                            column.ColumnOrdinal = ordinal;
-                            result[ordinal] = column;
+                                // The column's ordinal is with respect to the resultset, not its table
+                                column.ColumnOrdinal = ordinal;
+                                result[ordinal] = column;
+                            }
                         }
                     }
+                }
+                finally
+                {
+                    if (async)
+                        await reader.DisposeAsync();
+                    else
+                        reader.Dispose();
                 }
             }
 
