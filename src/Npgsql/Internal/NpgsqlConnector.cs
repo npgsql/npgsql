@@ -582,20 +582,19 @@ namespace Npgsql.Internal
             var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
             try
             {
-                if (async)
-                    await reader.ReadAsync(cancellationToken);
-                else
-                    reader.Read();
-
-                var isInRecovery = reader.GetBoolean(0);
+                bool isInRecovery;
 
                 if (async)
                 {
+                    await reader.ReadAsync(cancellationToken);
+                    isInRecovery = reader.GetBoolean(0);
                     await reader.NextResultAsync(cancellationToken);
                     await reader.ReadAsync(cancellationToken);
                 }
                 else
                 {
+                    reader.Read();
+                    isInRecovery = reader.GetBoolean(0);
                     reader.NextResult();
                     reader.Read();
                 }
