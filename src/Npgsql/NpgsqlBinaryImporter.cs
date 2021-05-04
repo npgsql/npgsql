@@ -17,7 +17,7 @@ namespace Npgsql
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public sealed class NpgsqlBinaryImporter : ICancelable, IAsyncDisposable
+    public sealed class NpgsqlBinaryImporter : ICancelable
     {
         #region Fields and Properties
 
@@ -480,13 +480,15 @@ namespace Npgsql
 
         void ICancelable.Cancel() => Close();
 
+        async Task ICancelable.CancelAsync() => await CloseAsync();
+
         /// <summary>
-        /// Cancels that binary import and sets the connection back to idle state
+        /// Completes that binary import and sets the connection back to idle state
         /// </summary>
         public void Dispose() => Close();
 
         /// <summary>
-        /// Async cancels that binary import and sets the connection back to idle state
+        /// Async completes that binary import and sets the connection back to idle state
         /// </summary>
         /// <returns></returns>
         public ValueTask DisposeAsync()

@@ -392,6 +392,14 @@ namespace Npgsql
 
         protected override void Dispose(bool disposing) => DisposeAsync(disposing, false).GetAwaiter().GetResult();
 
+#if NETSTANDARD2_0
+        public ValueTask DisposeAsync()
+#else
+        public override ValueTask DisposeAsync()
+#endif
+            => DisposeAsync(disposing: true, async: true);
+
+
         async ValueTask DisposeAsync(bool disposing, bool async)
         {
             if (_isDisposed || !disposing) { return; }
@@ -526,6 +534,14 @@ namespace Npgsql
             using (NoSynchronizationContextScope.Enter())
                 return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
         }
+
+#if NETSTANDARD2_0
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return new ValueTask();
+        }
+#endif
     }
 
     /// <summary>
@@ -543,18 +559,24 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Cancels and terminates an ongoing import.
+        /// Cancels and terminates an ongoing export.
         /// </summary>
         public void Cancel()
             => ((NpgsqlRawCopyStream)BaseStream).Cancel();
 
         /// <summary>
-        /// Cancels and terminates an ongoing import. Any data already written will be discarded.
+        /// Asynchronously cancels and terminates an ongoing export.
         /// </summary>
         public Task CancelAsync()
         {
             using (NoSynchronizationContextScope.Enter())
                 return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return new ValueTask();
         }
     }
 }

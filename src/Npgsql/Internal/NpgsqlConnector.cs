@@ -1753,7 +1753,10 @@ namespace Npgsql.Internal
                 {
                     try
                     {
-                        copyOperation.Cancel();
+                        if (async)
+                            await copyOperation.CancelAsync();
+                        else
+                            copyOperation.Cancel();
                     }
                     catch (Exception e)
                     {
@@ -1763,7 +1766,10 @@ namespace Npgsql.Internal
 
                 try
                 {
-                    copyOperation.Dispose();
+                    if (async)
+                        await copyOperation.DisposeAsync();
+                    else
+                        copyOperation.Dispose();
                 }
                 catch (Exception e)
                 {
