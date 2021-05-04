@@ -579,19 +579,42 @@ namespace Npgsql.Internal
             // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
             var timeStamp = DateTime.UtcNow;
 
-            using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
-            reader.Read();
-            var isInRecovery = reader.GetBoolean(0);
-            reader.NextResult();
-            reader.Read();
-            var transactionReadOnly = reader.GetString(0) != "off";
+            var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
+            try
+            {
+                bool isInRecovery;
 
-            var state = isInRecovery ? ClusterState.Standby :
-                transactionReadOnly
-                    ? ClusterState.PrimaryReadOnly
-                    : ClusterState.PrimaryReadWrite;
-            return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                Settings.HostRecheckSecondsTranslated);
+                if (async)
+                {
+                    await reader.ReadAsync(cancellationToken);
+                    isInRecovery = reader.GetBoolean(0);
+                    await reader.NextResultAsync(cancellationToken);
+                    await reader.ReadAsync(cancellationToken);
+                }
+                else
+                {
+                    reader.Read();
+                    isInRecovery = reader.GetBoolean(0);
+                    reader.NextResult();
+                    reader.Read();
+                }
+                
+                var transactionReadOnly = reader.GetString(0) != "off";
+
+                var state = isInRecovery ? ClusterState.Standby :
+                    transactionReadOnly
+                        ? ClusterState.PrimaryReadOnly
+                        : ClusterState.PrimaryReadWrite;
+                return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
+                    Settings.HostRecheckSecondsTranslated);
+            }
+            finally
+            {
+                if (async)
+                    await reader.DisposeAsync();
+                else
+                    reader.Dispose();
+            }
         }
 
         void WriteStartupMessage(string username)
