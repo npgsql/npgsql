@@ -152,9 +152,18 @@ namespace Npgsql
                 if (ConnectionState.Closed == originalState)
                     await activeConnection.Open(async, cancellationToken);
 
-                using var dataReader = await command.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
-
-                return await Fill(dataTable, dataReader, async, cancellationToken);
+                var dataReader = await command.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+                try
+                {
+                    return await Fill(dataTable, dataReader, async, cancellationToken);
+                }
+                finally
+                {
+                    if (async)
+                        await dataReader.DisposeAsync();
+                    else
+                        dataReader.Dispose();
+                }
             }
             finally
             {
