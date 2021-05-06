@@ -68,10 +68,6 @@ namespace Npgsql.Internal.TypeHandlers
         #region Read
 
         /// <inheritdoc />
-        public override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TAny>(buf, len, false, fieldDescription).Result;
-
-        /// <inheritdoc />
         public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => DoRead<TElement>(buf, len, async, fieldDescription);
 
@@ -110,18 +106,10 @@ namespace Npgsql.Internal.TypeHandlers
             if (!value.IsEmpty)
             {
                 if (!value.LowerBoundInfinite)
-                {
-                    totalLen += 4;
-                    if (!(value.LowerBound is null) && typeof(TElement) != typeof(DBNull))
-                        totalLen += _elementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
-                }
+                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
 
                 if (!value.UpperBoundInfinite)
-                {
-                    totalLen += 4;
-                    if (!(value.UpperBound is null) && typeof(TElement) != typeof(DBNull))
-                        totalLen += _elementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
-                }
+                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
             }
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
@@ -130,45 +118,6 @@ namespace Npgsql.Internal.TypeHandlers
                 lengthCache.Position = lengthCachePos;
 
             return totalLen;
-        }
-
-        public override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        {
-            if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);
-
-            if (value == null || typeof(TAny) == typeof(DBNull))
-            {
-                buf.WriteInt32(-1);
-                return Task.CompletedTask;
-            }
-
-            return WriteWithLengthCore(value, buf, lengthCache, parameter, async, cancellationToken);
-
-            async Task WriteWithLengthLong([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
-            {
-                if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
-
-                if (value == null || typeof(TAny) == typeof(DBNull))
-                {
-                    buf.WriteInt32(-1);
-                    return;
-                }
-
-                await WriteWithLengthCore(value, buf, lengthCache, parameter, async, cancellationToken);
-            }
-
-            Task WriteWithLengthCore(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
-            {
-                if (this is INpgsqlTypeHandler<TAny> typedHandler)
-                {
-                    buf.WriteInt32(typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter));
-                    return typedHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
-                }
-                else
-                    throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
-            }
         }
 
         /// <inheritdoc />
@@ -186,10 +135,10 @@ namespace Npgsql.Internal.TypeHandlers
                 return;
 
             if (!value.LowerBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
+                await _elementHandler.WriteWithLength(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
 
             if (!value.UpperBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
+                await _elementHandler.WriteWithLength(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion
@@ -221,25 +170,25 @@ namespace Npgsql.Internal.TypeHandlers
         public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => Write<TElement2>(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
                 NpgsqlRange<TElement1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement1>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
                 NpgsqlRange<TElement2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement2>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
 
-                DBNull => -1,
-                null => -1,
+                DBNull => 0,
+                null => 0,
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
             };
 
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value switch
             {
-                NpgsqlRange<TElement1> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                NpgsqlRange<TElement2> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlRange<TElement1> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlRange<TElement2> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
             };
     }

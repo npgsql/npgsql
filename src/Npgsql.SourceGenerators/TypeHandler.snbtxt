@@ -11,27 +11,27 @@ namespace {{ namespace }}
 {
     partial class {{ type_name }}
     {
-        {{ validate_access }} override int ValidateObjectAndGetLength(object value, {{ is_simple ? "" : "ref NpgsqlLengthCache? lengthCache, " }} NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
                 {{ for interface in interfaces }}
                 {{ interface.handled_type }} converted => (({{ interface.name }})this).ValidateAndGetLength(converted, {{ is_simple ? "" : "ref lengthCache, " }}parameter),
                 {{ end }}
 
-                DBNull => -1,
-                null => -1,
+                DBNull => 0,
+                null => 0,
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {{ type_name }}")
             };
 
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value switch
             {
                 {{ for interface in interfaces }}
-                {{ interface.handled_type }} converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                {{ interface.handled_type }} converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
                 {{ end }}
 
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {{ type_name }}")
             };
     }

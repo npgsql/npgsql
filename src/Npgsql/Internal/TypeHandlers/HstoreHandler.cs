@@ -91,7 +91,7 @@ namespace Npgsql.Internal.TypeHandlers
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
@@ -100,14 +100,14 @@ namespace Npgsql.Internal.TypeHandlers
                 Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
                 IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
 
-                DBNull => -1,
-                null => -1,
+                DBNull => 0,
+                null => 0,
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type HstoreHandler")
             };
 
         /// <inheritdoc />
         public override Task WriteObjectWithLength(
-            object value,
+            object? value,
             NpgsqlWriteBuffer buf,
             NpgsqlLengthCache? lengthCache,
             NpgsqlParameter? parameter,
@@ -116,13 +116,13 @@ namespace Npgsql.Internal.TypeHandlers
             => value switch
             {
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
-                ImmutableDictionary<string, string?> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                ImmutableDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 #endif
-                Dictionary<string, string?> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
-                IDictionary<string, string?> converted => WriteWithLengthInternal(converted, buf, lengthCache, parameter, async, cancellationToken),
+                Dictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+                IDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-                DBNull => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type BoolHandler")
             };
 
@@ -137,8 +137,8 @@ namespace Npgsql.Internal.TypeHandlers
 
             foreach (var kv in value)
             {
-                await _textHandler.WriteWithLengthInternal(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
-                await _textHandler.WriteWithLengthInternal(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
+                await _textHandler.WriteWithLength(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
+                await _textHandler.WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
             }
         }
 

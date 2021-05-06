@@ -86,7 +86,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
             if (NullableHandler<TMember>.Exists)
                 await NullableHandler<TMember>.WriteAsync(_handler, _get(composite), buffer, lengthCache, null, async, cancellationToken);
             else
-                await _handler.WriteWithLengthInternal(_get(composite), buffer, lengthCache, null, async, cancellationToken);
+                await _handler.WriteWithLength(_get(composite), buffer, lengthCache, null, async, cancellationToken);
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)

@@ -45,11 +45,13 @@ namespace Npgsql.Internal.TypeHandlers
 
         // Allow writing anything that is a string or can be converted to one via the unknown type handler
 
-        protected internal override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected internal override int ValidateAndGetLengthCustom<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
 
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
+            if (value is null || value is DBNull)
+                return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
             if (value is string asString)
                 return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
 
@@ -62,10 +64,10 @@ namespace Npgsql.Internal.TypeHandlers
             return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
         }
 
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
-            if (value is DBNull)
-                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
+            if (value is null || value is DBNull)
+                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
             var convertedValue = value is string asString
                 ? asString
@@ -77,7 +79,7 @@ namespace Npgsql.Internal.TypeHandlers
             buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
             return base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
-            async Task WriteWithLengthLong( object value, string convertedValue, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
+            async Task WriteWithLengthLong(object value, string convertedValue, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             {
                 await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(ValidateObjectAndGetLength(value!, ref lengthCache, parameter));

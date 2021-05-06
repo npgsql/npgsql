@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -98,7 +99,7 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected internal override int ValidateAndGetLengthCustom<TAny>([DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (typeof(TAny) == typeof(string)             ||
                 typeof(TAny) == typeof(char[])             ||
@@ -131,7 +132,7 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected override async Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        protected override async Task WriteWithLengthCustom<TAny>([DisallowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var spaceRequired = _isJsonb ? 5 : 4;
 
@@ -173,7 +174,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength<string>(value, ref lengthCache, parameter);
+            => ValidateAndGetLengthCustom(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
         public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -189,11 +190,11 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
-                DBNull                    => -1,
-                null                      => -1,
+                DBNull                    => 0,
+                null                      => 0,
                 string s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 char[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 ArraySegment<char> s      => ValidateAndGetLength(s, ref lengthCache, parameter),
@@ -204,7 +205,7 @@ namespace Npgsql.Internal.TypeHandlers
             };
 
         /// <inheritdoc />
-        public override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override async Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
             if (buf.WriteSpaceLeft < 4)
@@ -212,19 +213,20 @@ namespace Npgsql.Internal.TypeHandlers
 
             await (value switch
             {
-                DBNull                    => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-                string s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
-                char[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
-                ArraySegment<char> s      => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
-                char s                    => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
-                byte[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
-                JsonDocument jsonDocument => WriteWithLength(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
-                _                         => WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken),
+                null                      => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                DBNull                    => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                string s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+                char[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+                ArraySegment<char> s      => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+                char s                    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+                byte[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+                JsonDocument jsonDocument => WriteWithLengthCustom(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
+                _                         => WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken),
             });
         }
 
         /// <inheritdoc />
-        protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             if (_isJsonb)
             {
@@ -254,7 +256,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => Read<string>(buf, len, async, fieldDescription);
+            => ReadCustom<string>(buf, len, async, fieldDescription);
 
         /// <inheritdoc />
         public TextReader GetTextReader(Stream stream)

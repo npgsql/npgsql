@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 
@@ -33,7 +34,7 @@ namespace Npgsql.Internal.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        int ValidateAndGetLength(T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+        int ValidateAndGetLength([DisallowNull] T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer.
@@ -51,6 +52,6 @@ namespace Npgsql.Internal.TypeHandling
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-        Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
+        Task Write([DisallowNull] T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
     }
 }

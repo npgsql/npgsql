@@ -86,7 +86,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
             buffer.WriteUInt32(PostgresType.OID);
             await (NullableHandler<TMember>.Exists
                 ? NullableHandler<TMember>.WriteAsync(_handler, _get(ref composite), buffer, lengthCache, null, async, cancellationToken)
-                : _handler.WriteWithLengthInternal(_get(ref composite), buffer, lengthCache, null, async, cancellationToken));
+                : _handler.WriteWithLength(_get(ref composite), buffer, lengthCache, null, async, cancellationToken));
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)

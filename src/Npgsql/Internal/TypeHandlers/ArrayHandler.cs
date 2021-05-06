@@ -56,11 +56,7 @@ namespace Npgsql.Internal.TypeHandlers
         #region Read
 
         /// <inheritdoc />
-        public override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TRequestedArray>(buf, len, false, fieldDescription).GetAwaiter().GetResult();
-
-        /// <inheritdoc />
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
                 return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArrayFunc(this, buf, async);
@@ -295,9 +291,6 @@ namespace Npgsql.Internal.TypeHandlers
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             =>  await ReadArray<TElement>(buf, async, readAsObject: true);
 
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadArray<TElement>(buf, false, readAsObject: true).GetAwaiter().GetResult();
-
         #endregion
 
         #region Write
@@ -313,12 +306,14 @@ namespace Npgsql.Internal.TypeHandlers
         // we must use the bang operator here to tell the compiler that a null value will never be returned.
 
         /// <inheritdoc />
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength(value!, ref lengthCache);
+        protected internal override int ValidateAndGetLengthCustom<TAny>([DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLength(value, ref lengthCache);
 
         /// <inheritdoc />
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength(value!, ref lengthCache);
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value is null || value == DBNull.Value
+                ? 0
+                : ValidateAndGetLength(value!, ref lengthCache);
 
         int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache)
         {
@@ -350,9 +345,6 @@ namespace Npgsql.Internal.TypeHandlers
 
             foreach (var element in value)
             {
-                if (element is null || typeof(TElement) == typeof(DBNull))
-                    continue;
-
                 try
                 {
                     len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
@@ -386,60 +378,41 @@ namespace Npgsql.Internal.TypeHandlers
             NpgsqlLengthCache? elemLengthCache = lengthCache;
 
             foreach (var element in value)
-                if (element != null && element != DBNull.Value)
-                    try
-                    {
-                        len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
-                    }
-                    catch (Exception e)
-                    {
-                        throw MixedTypesOrJaggedArrayException(e);
-                    }
+            {
+                try
+                {
+                    len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
+                }
+                catch (Exception e)
+                {
+                    throw MixedTypesOrJaggedArrayException(e);
+                }
+            }
 
             lengthCache.Lengths[pos] = len;
             return len;
         }
 
-        public override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        protected override Task WriteWithLengthCustom<TAny>([DisallowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
         {
-            if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong(value,buf, lengthCache, parameter, async, cancellationToken);
+            buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
 
-            return WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
+            if (value is ICollection<TElement> list)
+                return WriteGeneric(list, buf, lengthCache, async, cancellationToken);
 
-            async Task WriteWithLengthLong([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
-            {
-                await buf.Flush(async, cancellationToken);
-                await WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
-            }
+            if (value is ICollection nonGeneric)
+                return WriteNonGeneric(nonGeneric, buf, lengthCache, async, cancellationToken);
 
-            Task WriteWithLength([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
-            {
-                if (value == null || typeof(TAny) == typeof(DBNull))
-                {
-                    buf.WriteInt32(-1);
-                    return Task.CompletedTask;
-                }
-
-                buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
-
-                if (value is ICollection<TElement> list)
-                    return WriteGeneric(list, buf, lengthCache, async, cancellationToken);
-
-                if (value is ICollection nonGeneric)
-                    return WriteNonGeneric(nonGeneric, buf, lengthCache, async, cancellationToken);
-
-                throw CantWriteTypeException(value.GetType());
-            }
+            throw CantWriteTypeException(value.GetType());
         }
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
         /// <inheritdoc />
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => value is DBNull
-                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
-                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async, cancellationToken);
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value is null || value is DBNull
+                ? WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
+                : WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
         async Task WriteGeneric(ICollection<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
         {
@@ -461,7 +434,7 @@ namespace Npgsql.Internal.TypeHandlers
             buf.WriteInt32(LowerBound); // We don't map .NET lower bounds to PG
 
             foreach (var element in value)
-                await ElementHandler.WriteWithLengthInternal(element, buf, lengthCache, null, async, cancellationToken);
+                await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
         }
 
         async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
@@ -499,7 +472,7 @@ namespace Npgsql.Internal.TypeHandlers
             }
 
             foreach (var element in value)
-                await ElementHandler.WriteObjectWithLength(element ?? DBNull.Value, buf, lengthCache, null, async, cancellationToken);
+                await ElementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion
@@ -515,7 +488,7 @@ namespace Npgsql.Internal.TypeHandlers
         public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
             : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }
 
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
             {
@@ -525,7 +498,7 @@ namespace Npgsql.Internal.TypeHandlers
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
                     return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async);
             }
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
+            return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
         }
 
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

@@ -507,8 +507,6 @@ namespace Npgsql
         {
             if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
-            if (_value is DBNull)
-                return 0;
 
             var lengthCache = LengthCache;
             var len = Handler!.ValidateObjectAndGetLength(_value, ref lengthCache, this);

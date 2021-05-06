@@ -60,8 +60,8 @@ namespace Npgsql.Internal.TypeHandling
         static Task WriteAsync<T>(NpgsqlTypeHandler handler, T? value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             where T : struct
             => value.HasValue
-                ? handler.WriteWithLengthInternal(value.Value, buffer, lengthCache, parameter, async, cancellationToken)
-                : handler.WriteWithLengthInternal(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
+                ? handler.WriteWithLength(value.Value, buffer, lengthCache, parameter, async, cancellationToken)
+                : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
 
         internal static TDelegate CreateDelegate<TDelegate>(Type underlyingType, MethodInfo method)
             where TDelegate : Delegate

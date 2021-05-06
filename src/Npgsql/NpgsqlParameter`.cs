@@ -83,13 +83,6 @@ namespace Npgsql
 
         internal override int ValidateAndGetLength()
         {
-            if (TypedValue == null)
-                return 0;
-
-            // TODO: Why do it like this rather than a handler?
-            if (typeof(T) == typeof(DBNull))
-                return 0;
-
             var lengthCache = LengthCache;
             var len = Handler!.ValidateAndGetLength(TypedValue, ref lengthCache, this);
             LengthCache = lengthCache;
@@ -97,7 +90,7 @@ namespace Npgsql
         }
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
-            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async, cancellationToken);
+            => Handler!.WriteWithLength(TypedValue, buf, LengthCache, this, async, cancellationToken);
 
         private protected override NpgsqlParameter CloneCore() =>
             // use fields instead of properties
