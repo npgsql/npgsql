@@ -2274,16 +2274,21 @@ namespace Npgsql
             byte[] rawName;
             byte[] rawValue;
 
-            foreach (var current in _rawParameters)
-                if (incomingName.SequenceEqual(current.Name))
+            for (var i = 0; i < _rawParameters.Count; i++)
+            {
+                (var currentName, var currentValue) = _rawParameters[i];
+                if (incomingName.SequenceEqual(currentName))
                 {
-                    if (incomingValue.SequenceEqual(current.Value))
+                    if (incomingValue.SequenceEqual(currentValue))
                         return;
 
-                    rawName = current.Name;
+                    rawName = currentName;
                     rawValue = incomingValue.ToArray();
+                    _rawParameters[i] = (rawName, rawValue);
+
                     goto ProcessParameter;
                 }
+            }
 
             rawName = incomingName.ToArray();
             rawValue = incomingValue.ToArray();
