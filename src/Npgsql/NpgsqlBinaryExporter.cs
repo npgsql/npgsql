@@ -17,7 +17,7 @@ namespace Npgsql
     /// Provides an API for a binary COPY TO operation, a high-performance data export mechanism from
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport(string)"/>
     /// </summary>
-    public sealed class NpgsqlBinaryExporter : ICancelable, IAsyncDisposable
+    public sealed class NpgsqlBinaryExporter : ICancelable
     {
         #region Fields and Properties
 
@@ -380,6 +380,15 @@ namespace Npgsql
         /// Cancels an ongoing export.
         /// </summary>
         public void Cancel() => _connector.PerformUserCancellation();
+
+        /// <summary>
+        /// Async cancels an ongoing export.
+        /// </summary>
+        public Task CancelAsync()
+        {
+            Cancel();
+            return Task.CompletedTask;
+        }
 
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state
