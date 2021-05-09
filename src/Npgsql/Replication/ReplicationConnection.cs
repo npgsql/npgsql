@@ -211,7 +211,7 @@ namespace Npgsql.Replication
                 .ConfigureAwait(false);
 
             // PG versions before 10 ignore cancellations during replication
-            _pgCancellationSupported = _npgsqlConnection.PostgreSqlVersion.IsGreaterOrEqual(10, 0, 0);
+            _pgCancellationSupported = _npgsqlConnection.PostgreSqlVersion.IsGreaterOrEqual(10, 0);
 
             SetTimeouts(CommandTimeout, CommandTimeout);
         }

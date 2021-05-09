@@ -32,7 +32,7 @@ namespace Npgsql.Schema
         static string GenerateColumnsQuery(Version pgVersion, string columnFieldFilter) =>
 $@"SELECT
      typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
-     {(pgVersion.IsGreaterOrEqual(10, 0, 0) ? "attidentity != ''" : "FALSE")} AS isidentity,
+     {(pgVersion.IsGreaterOrEqual(10, 0) ? "attidentity != ''" : "FALSE")} AS isidentity,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
      CASE WHEN col.is_updatable = 'YES' THEN true ELSE false END AS is_updatable,
@@ -46,7 +46,7 @@ $@"SELECT
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisunique AND
-             pg_index.{(pgVersion.IsGreaterOrEqual(11, 0, 0) ? "indnkeyatts" : "indnatts")} = 1 AND
+             pg_index.{(pgVersion.IsGreaterOrEqual(11, 0) ? "indnkeyatts" : "indnatts")} = 1 AND
              attnum = pg_index.indkey[0]
      ) AS isunique
 FROM pg_attribute AS attr
