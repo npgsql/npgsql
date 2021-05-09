@@ -483,14 +483,25 @@ namespace Npgsql
         async Task ICancelable.CancelAsync() => await CloseAsync();
 
         /// <summary>
-        /// Completes that binary import and sets the connection back to idle state
+        /// <para>
+        /// Terminates the ongoing binary import and puts the connection back into the idle state, where regular commands can be executed.
+        /// </para>
+        /// <para>
+        /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
+        /// be reverted. 
+        /// </para> 
         /// </summary>
         public void Dispose() => Close();
 
         /// <summary>
-        /// Async completes that binary import and sets the connection back to idle state
+        /// <para>
+        /// Async terminates the ongoing binary import and puts the connection back into the idle state, where regular commands can be executed.
+        /// </para>
+        /// <para>
+        /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
+        /// be reverted. 
+        /// </para> 
         /// </summary>
-        /// <returns></returns>
         public ValueTask DisposeAsync()
         {
             using (NoSynchronizationContextScope.Enter())
@@ -520,15 +531,25 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Completes the import process and signals to the database to write everything.
+        /// <para>
+        /// Terminates the ongoing binary import and puts the connection back into the idle state, where regular commands can be executed.
+        /// </para>
+        /// <para>
+        /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
+        /// be reverted. 
+        /// </para> 
         /// </summary>
         public void Close() => CloseAsync(false).GetAwaiter().GetResult();
 
         /// <summary>
-        /// Async completes the import process and signals to the database to write everything.
+        /// <para>
+        /// Async terminates the ongoing binary import and puts the connection back into the idle state, where regular commands can be executed.
+        /// </para>
+        /// <para>
+        /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
+        /// be reverted. 
+        /// </para> 
         /// </summary>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
         public ValueTask CloseAsync(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
