@@ -59,12 +59,12 @@ namespace Npgsql
         public bool IsRedshift { get; private set; }
 
         /// <inheritdoc />
-        public override bool SupportsUnlisten => Version >= new Version(6, 4, 0) && !IsRedshift;
+        public override bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4) && !IsRedshift;
 
         /// <summary>
         /// True if the 'pg_enum' table includes the 'enumsortorder' column; otherwise, false.
         /// </summary>
-        public virtual bool HasEnumSortOrder => Version >= new Version(9, 1, 0);
+        public virtual bool HasEnumSortOrder => Version.IsGreaterOrEqual(9, 1);
 
         /// <summary>
         /// True if the 'pg_type' table includes the 'typcategory' column; otherwise, false.
@@ -73,7 +73,7 @@ namespace Npgsql
         /// pg_type.typcategory is added after 8.4.
         /// see: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
         /// </remarks>
-        public virtual bool HasTypeCategory => Version >= new Version(8, 4, 0);
+        public virtual bool HasTypeCategory => Version.IsGreaterOrEqual(8, 4);
 
         internal PostgresDatabaseInfo(NpgsqlConnector conn)
             : base(conn.Host!, conn.Port, conn.Database!, ParseServerVersion(conn.PostgresParameters["server_version"]))
