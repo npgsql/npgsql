@@ -1336,10 +1336,13 @@ CREATE TABLE record ()");
                 return;
 
             using var conn = await OpenConnectionAsync();
+            var defaultApplicationName = conn.PostgresParameters["application_name"];
             await conn.ExecuteNonQueryAsync("SET application_name = 'some_test_value'");
             Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value"));
             await conn.ExecuteNonQueryAsync("SET application_name = 'some_test_value2'");
             Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value2"));
+            await conn.ExecuteNonQueryAsync($"SET application_name = '{defaultApplicationName}'");
+            Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(defaultApplicationName));
         }
 
         [Test]
