@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Npgsql.Util;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => _manager.Connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => _manager.Connection.PostgreSqlVersion.IsGreaterOrEqual(9, 3, 0);
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.

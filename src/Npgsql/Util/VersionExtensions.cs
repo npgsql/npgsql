@@ -12,6 +12,6 @@ namespace Npgsql.Util
                 ? version.Major > major
                 : version.Minor != minor
                     ? version.Minor > minor
-                    : version.Build >= build;
+                    : version.Build == -1 || version.Build >= build;
     }
 }

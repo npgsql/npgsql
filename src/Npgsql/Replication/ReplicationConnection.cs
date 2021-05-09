@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using static Npgsql.Util.Statics;
+using Npgsql.Util;
 
 namespace Npgsql.Replication
 {
@@ -210,7 +211,7 @@ namespace Npgsql.Replication
                 .ConfigureAwait(false);
 
             // PG versions before 10 ignore cancellations during replication
-            _pgCancellationSupported = _npgsqlConnection.PostgreSqlVersion >= new Version(10, 0);
+            _pgCancellationSupported = _npgsqlConnection.PostgreSqlVersion.IsGreaterOrEqual(10, 0, 0);
 
             SetTimeouts(CommandTimeout, CommandTimeout);
         }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Npgsql.Util;
+using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -239,7 +240,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => Connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => Connection.PostgreSqlVersion.IsGreaterOrEqual(9, 3, 0);
 
         /*
         internal enum Function : uint
