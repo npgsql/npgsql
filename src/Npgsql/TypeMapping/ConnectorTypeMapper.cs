@@ -14,7 +14,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
-    class ConnectorTypeMapper : TypeMapperBase
+    sealed class ConnectorTypeMapper : TypeMapperBase
     {
         /// <summary>
         /// The connector to which this type mapper belongs.
@@ -180,6 +180,8 @@ namespace Npgsql.TypeMapping
             return true;
         }
 
+        public override IEnumerable<NpgsqlTypeMapping> Mappings => InternalMappings.Values;
+
         void CheckReady()
         {
             if (_connector.State != ConnectorState.Ready)
@@ -192,9 +194,9 @@ namespace Npgsql.TypeMapping
             globalMapper.Lock.EnterReadLock();
             try
             {
-                Mappings.Clear();
-                foreach (var kv in globalMapper.Mappings)
-                    Mappings.Add(kv.Key, kv.Value);
+                InternalMappings.Clear();
+                foreach (var kv in globalMapper.InternalMappings)
+                    InternalMappings.Add(kv.Key, kv.Value);
             }
             finally
             {
@@ -234,7 +236,7 @@ namespace Npgsql.TypeMapping
 
         void BindTypes()
         {
-            foreach (var mapping in Mappings.Values)
+            foreach (var mapping in InternalMappings.Values)
                 BindType(mapping, _connector, externalCall: false);
 
             // Enums
@@ -424,10 +426,10 @@ namespace Npgsql.TypeMapping
         }
 
         bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out NpgsqlTypeMapping? mapping)
-            => Mappings.TryGetValue(pgType.Name, out mapping) ||
-               Mappings.TryGetValue(pgType.FullName, out mapping) ||
+            => InternalMappings.TryGetValue(pgType.Name, out mapping) ||
+               InternalMappings.TryGetValue(pgType.FullName, out mapping) ||
                pgType is PostgresDomainType domain && (
-                   Mappings.TryGetValue(domain.BaseType.Name, out mapping) ||
-                   Mappings.TryGetValue(domain.BaseType.FullName, out mapping));
+                   InternalMappings.TryGetValue(domain.BaseType.Name, out mapping) ||
+                   InternalMappings.TryGetValue(domain.BaseType.FullName, out mapping));
     }
 }

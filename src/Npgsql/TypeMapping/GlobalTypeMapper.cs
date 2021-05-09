@@ -24,7 +24,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
-    class GlobalTypeMapper : TypeMapperBase
+    sealed class GlobalTypeMapper : TypeMapperBase
     {
         public static GlobalTypeMapper Instance { get; }
 
@@ -103,12 +103,28 @@ namespace Npgsql.TypeMapping
             }
         }
 
+        public override IEnumerable<NpgsqlTypeMapping> Mappings
+        {
+            get
+            {
+                Lock.EnterReadLock();
+                try
+                {
+                    return InternalMappings.Values.ToArray();
+                }
+                finally
+                {
+                    Lock.ExitReadLock();
+                }
+            }
+        }
+
         public override void Reset()
         {
             Lock.EnterWriteLock();
             try
             {
-                Mappings.Clear();
+                InternalMappings.Clear();
                 SetupBuiltInHandlers();
                 RecordChange();
             }
