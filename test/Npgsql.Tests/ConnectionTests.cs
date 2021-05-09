@@ -1336,10 +1336,13 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
+                var defaultApplicationName = conn.PostgresParameters["application_name"];
                 conn.ExecuteNonQuery("SET application_name = 'some_test_value'");
                 Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value"));
                 conn.ExecuteNonQuery("SET application_name = 'some_test_value2'");
                 Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value2"));
+                conn.ExecuteNonQuery($"SET application_name = '{defaultApplicationName}'");
+                Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo(defaultApplicationName));
             }
         }
 
