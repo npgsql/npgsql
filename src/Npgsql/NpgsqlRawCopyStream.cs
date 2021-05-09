@@ -539,7 +539,7 @@ namespace Npgsql
         public ValueTask DisposeAsync()
         {
             Dispose();
-            return new ValueTask();
+            return default;
         }
 #endif
     }
@@ -576,7 +576,7 @@ namespace Npgsql
         public ValueTask DisposeAsync()
         {
             Dispose();
-            return new ValueTask();
+            return default;
         }
     }
 }
