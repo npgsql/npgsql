@@ -539,8 +539,8 @@ FROM pg_constraint c
 
             foreach (var baseType in connector.DatabaseInfo.BaseTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(baseType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(baseType.FullName, out mapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(baseType.Name, out var mapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(baseType.FullName, out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -556,8 +556,8 @@ FROM pg_constraint c
 
             foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.FullName, out elementMapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(arrayType.Element.FullName, out elementMapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -577,8 +577,8 @@ FROM pg_constraint c
 
             foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -598,8 +598,8 @@ FROM pg_constraint c
 
             foreach (var enumType in connector.DatabaseInfo.EnumTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(enumType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(enumType.FullName, out mapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(enumType.Name, out var mapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(enumType.FullName, out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -613,8 +613,8 @@ FROM pg_constraint c
 
             foreach (var compositeType in connector.DatabaseInfo.CompositeTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(compositeType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(compositeType.FullName, out mapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(compositeType.Name, out var mapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(compositeType.FullName, out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -628,8 +628,8 @@ FROM pg_constraint c
 
             foreach (var domainType in connector.DatabaseInfo.DomainTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.FullName, out baseMapping))
+                if (!connector.TypeMapper.InternalMappings.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
+                    !connector.TypeMapper.InternalMappings.TryGetValue(domainType.BaseType.FullName, out baseMapping))
                     continue;
 
                 var row = table.Rows.Add();

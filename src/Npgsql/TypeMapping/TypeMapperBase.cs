@@ -10,7 +10,7 @@ namespace Npgsql.TypeMapping
 {
     abstract class TypeMapperBase : INpgsqlTypeMapper
     {
-        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; } = new();
+        internal Dictionary<string, NpgsqlTypeMapping> InternalMappings { get; } = new();
 
         public INpgsqlNameTranslator DefaultNameTranslator { get; }
 
@@ -26,15 +26,15 @@ namespace Npgsql.TypeMapping
 
         public virtual INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping)
         {
-            if (Mappings.ContainsKey(mapping.PgTypeName))
+            if (InternalMappings.ContainsKey(mapping.PgTypeName))
                 RemoveMapping(mapping.PgTypeName);
-            Mappings[mapping.PgTypeName] = mapping;
+            InternalMappings[mapping.PgTypeName] = mapping;
             return this;
         }
 
-        public virtual bool RemoveMapping(string pgTypeName) => Mappings.Remove(pgTypeName);
+        public virtual bool RemoveMapping(string pgTypeName) => InternalMappings.Remove(pgTypeName);
 
-        IEnumerable<NpgsqlTypeMapping> INpgsqlTypeMapper.Mappings => Mappings.Values;
+        public abstract IEnumerable<NpgsqlTypeMapping> Mappings { get; }
 
         public abstract void Reset();
 
