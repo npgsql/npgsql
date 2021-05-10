@@ -1,4 +1,5 @@
-﻿using Npgsql.BackendMessages;
+﻿using System.Diagnostics.CodeAnalysis;
+using Npgsql.BackendMessages;
 
 namespace Npgsql.Internal.TypeHandling
 {
@@ -30,7 +31,7 @@ namespace Npgsql.Internal.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        int ValidateAndGetLength(T value, NpgsqlParameter? parameter);
+        int ValidateAndGetLength([DisallowNull] T value, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, with the assumption that there is enough space in the buffer
@@ -42,6 +43,6 @@ namespace Npgsql.Internal.TypeHandling
         /// The <see cref="NpgsqlParameter"/> instance where this value resides. Can be used to access additional
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
-        void Write(T value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter);
+        void Write([DisallowNull] T value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter);
     }
 }

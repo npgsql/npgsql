@@ -19,8 +19,7 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the strongly-typed value of the parameter.
         /// </summary>
-        [MaybeNull, AllowNull]
-        public T TypedValue { get; set; } = default!;
+        public T? TypedValue { get; set; }
 
         /// <summary>
         /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
@@ -83,11 +82,7 @@ namespace Npgsql
 
         internal override int ValidateAndGetLength()
         {
-            if (TypedValue == null)
-                return 0;
-
-            // TODO: Why do it like this rather than a handler?
-            if (typeof(T) == typeof(DBNull))
+            if (TypedValue is null or DBNull)
                 return 0;
 
             var lengthCache = LengthCache;
@@ -97,7 +92,7 @@ namespace Npgsql
         }
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
-            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async, cancellationToken);
+            => Handler!.WriteWithLength(TypedValue, buf, LengthCache, this, async, cancellationToken);
 
         private protected override NpgsqlParameter CloneCore() =>
             // use fields instead of properties

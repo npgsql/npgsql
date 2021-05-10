@@ -114,3 +114,4 @@ Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
+Npgsql.NpgsqlParameter<T>.TypedValue.get -> T?

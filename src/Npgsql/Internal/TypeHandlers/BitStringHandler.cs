@@ -123,13 +123,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? (object)await Read<bool>(buf, len, async, fieldDescription)
+                ? await Read<bool>(buf, len, async, fieldDescription)
                 : await Read<BitArray>(buf, len, async, fieldDescription);
-
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => fieldDescription?.TypeModifier == 1
-                ? (object)Read<bool>(buf, len, false, fieldDescription).Result
-                : Read<BitArray>(buf, len, false, fieldDescription).Result;
 
         #endregion
 
@@ -275,7 +270,7 @@ namespace Npgsql.Internal.TypeHandlers
             : base(postgresType, elementHandler, arrayNullabilityMode) {}
 
         /// <inheritdoc />
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
             {
@@ -295,11 +290,8 @@ namespace Npgsql.Internal.TypeHandlers
                     return (TRequestedArray)(object)await ReadList<bool>(buf, async);
             }
 
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
+            return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
         }
-
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadAsObject(buf, len, false, fieldDescription).Result;
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1

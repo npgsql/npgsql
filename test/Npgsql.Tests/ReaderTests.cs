@@ -2039,11 +2039,12 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         public override int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => throw new NotSupportedException();
-        protected override int ValidateObjectAndGetLength(object value, NpgsqlParameter? parameter) => throw new NotSupportedException();
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => throw new NotSupportedException();
         public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => throw new NotSupportedException();
 
         public override Task WriteObjectWithLength(
-            object value,
+            object? value,
             NpgsqlWriteBuffer buf,
             NpgsqlLengthCache? lengthCache,
             NpgsqlParameter? parameter,

@@ -29,7 +29,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Read
 
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TAny> ReadCustom<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             var s = await base.Read(buf, len, async, fieldDescription);
             if (typeof(TAny) == typeof(string))
@@ -52,12 +52,12 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Write
 
-        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => value == null || value is DBNull
-                ? -1
+        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value is null || value is DBNull
+                ? 0
                 : ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected internal override int ValidateAndGetLengthCustom<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value!, ref lengthCache, parameter);
 
         int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -75,13 +75,13 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         // TODO: This boxes the enum (again)
-        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        protected override Task WriteWithLengthCustom<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteObjectWithLength(value!, buf, lengthCache, parameter, async, cancellationToken);
 
-        public override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
-            if (value is DBNull)
-                return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
+            if (value is null || value is DBNull)
+                return WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
 
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);

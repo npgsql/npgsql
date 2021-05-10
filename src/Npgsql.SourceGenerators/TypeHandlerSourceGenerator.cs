@@ -73,7 +73,6 @@ namespace Npgsql.SourceGenerators
                     TypeName = FormatTypeName(typeSymbol),
                     Namespace = typeSymbol.ContainingNamespace.ToDisplayString(),
                     IsSimple = isSimple,
-                    ValidateAccess = isSimple ? "protected" : "public",
                     Interfaces = interfaces.Select(i => new
                     {
                         Name = FormatTypeName(i),
