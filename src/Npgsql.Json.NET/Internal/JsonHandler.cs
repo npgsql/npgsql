@@ -79,11 +79,9 @@ namespace Npgsql.Json.NET.Internal
             return base.WriteWithLengthCustom(serialized, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (value is null ||
-                value is DBNull ||
-                value is string ||
+            if (value is string ||
                 value is char[] ||
                 value is ArraySegment<char> ||
                 value is char ||

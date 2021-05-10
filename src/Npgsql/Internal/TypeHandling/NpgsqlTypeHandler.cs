@@ -132,14 +132,14 @@ namespace Npgsql.Internal.TypeHandling
         #region Write
 
         /// <summary>
-        /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
-        /// Returns 0 for <see langword="null"/>.
+        /// <para>Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.</para>
+        /// <para><see langword="null"/> and <see cref="DBNull"/> must be handled before calling into this.</para>
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected internal int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected internal int ValidateAndGetLength<TAny>(
+            [DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (value is null || typeof(TAny) == typeof(DBNull))
-                return 0;
+            Debug.Assert(value is not DBNull);
 
             return this switch
             {
@@ -149,8 +149,8 @@ namespace Npgsql.Internal.TypeHandling
             };
         }
 
-        protected internal virtual int ValidateAndGetLengthCustom<TAny>([DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache,
-            NpgsqlParameter? parameter)
+        protected internal virtual int ValidateAndGetLengthCustom<TAny>(
+            [DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var parameterName = parameter is null
                 ? null
@@ -172,11 +172,11 @@ namespace Npgsql.Internal.TypeHandling
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public async Task WriteWithLength<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
-            // TODO: Possibly do a sync path when we don't do I/O (simple type handler, no flush)
+            // TODO: Possibly do a sync path when we don't do I/O (e.g. simple type handler, no flush)
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async, cancellationToken);
 
-            if (value is null || typeof(TAny) == typeof(DBNull))
+            if (value is null or DBNull)
             {
                 buf.WriteInt32(-1);
                 return;
@@ -232,7 +232,7 @@ namespace Npgsql.Internal.TypeHandling
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
         // Source-generated
-        public abstract int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+        public abstract int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, using either sync or async I/O.

@@ -19,8 +19,7 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the strongly-typed value of the parameter.
         /// </summary>
-        [MaybeNull, AllowNull]
-        public T TypedValue { get; set; } = default!;
+        public T? TypedValue { get; set; }
 
         /// <summary>
         /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
@@ -83,6 +82,9 @@ namespace Npgsql
 
         internal override int ValidateAndGetLength()
         {
+            if (TypedValue is null or DBNull)
+                return 0;
+
             var lengthCache = LengthCache;
             var len = Handler!.ValidateAndGetLength(TypedValue, ref lengthCache, this);
             LengthCache = lengthCache;

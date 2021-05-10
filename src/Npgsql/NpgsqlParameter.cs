@@ -505,6 +505,8 @@ namespace Npgsql
 
         internal virtual int ValidateAndGetLength()
         {
+            if (_value is DBNull)
+                return 0;
             if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
 

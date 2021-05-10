@@ -11,15 +11,13 @@ namespace {{ namespace }}
 {
     partial class {{ type_name }}
     {
-        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
                 {{ for interface in interfaces }}
                 {{ interface.handled_type }} converted => (({{ interface.name }})this).ValidateAndGetLength(converted, {{ is_simple ? "" : "ref lengthCache, " }}parameter),
                 {{ end }}
 
-                DBNull => 0,
-                null => 0,
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {{ type_name }}")
             };
 

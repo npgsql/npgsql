@@ -345,6 +345,9 @@ namespace Npgsql.Internal.TypeHandlers
 
             foreach (var element in value)
             {
+                if (element is null)
+                    continue;
+
                 try
                 {
                     len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
@@ -379,6 +382,9 @@ namespace Npgsql.Internal.TypeHandlers
 
             foreach (var element in value)
             {
+                if (element is null)
+                    continue;
+
                 try
                 {
                     len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);

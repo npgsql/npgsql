@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -45,13 +46,12 @@ namespace Npgsql.Internal.TypeHandlers
 
         // Allow writing anything that is a string or can be converted to one via the unknown type handler
 
-        protected internal override int ValidateAndGetLengthCustom<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
+        protected internal override int ValidateAndGetLengthCustom<TAny>(
+            [DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateObjectAndGetLength(value, ref lengthCache, parameter);
 
-        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (value is null || value is DBNull)
-                return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
             if (value is string asString)
                 return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
 
@@ -66,7 +66,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
-            if (value is null || value is DBNull)
+            if (value is null or DBNull)
                 return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
             var convertedValue = value is string asString

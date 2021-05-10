@@ -95,7 +95,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
                 ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             var value = _get(composite);
-            if (value == null)
+            if (value is null)
                 return 0;
 
             return NullableHandler<TMember>.Exists

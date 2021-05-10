@@ -95,7 +95,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
                 ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             var value = _get(ref composite);
-            if (value == null)
+            if (value is null)
                 return 0;
 
             return NullableHandler<TMember>.Exists
@@ -105,8 +105,6 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Set(ByReference<TComposite> composite, TMember value)
-        {
-            _set!(ref composite.Value, value);
-        }
+            => _set!(ref composite.Value, value);
     }
 }

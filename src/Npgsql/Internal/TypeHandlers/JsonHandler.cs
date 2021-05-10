@@ -190,11 +190,9 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
-                DBNull                    => 0,
-                null                      => 0,
                 string s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 char[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
                 ArraySegment<char> s      => ValidateAndGetLength(s, ref lengthCache, parameter),
