@@ -279,6 +279,7 @@ namespace Npgsql
 
                     // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
                     // to wake it up, so it will try opening (and probably throw immediately)
+                    // Statement order is important since we have synchronous completions on the channel.
                     IdleConnectorWriter.TryWrite(null);
 
                     throw;
@@ -335,10 +336,6 @@ namespace Npgsql
                 Log.Warn("Exception while closing connector", e, connector.Id);
             }
 
-            // If a connector has been closed for any reason, we write a null to the idle connector channel to wake up
-            // a waiter, who will open a new physical connection
-            IdleConnectorWriter.TryWrite(null);
-
             var i = 0;
             for (; i < _max; i++)
                 if (Interlocked.CompareExchange(ref Connectors[i], null, connector) == connector)
@@ -350,6 +347,12 @@ namespace Npgsql
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);
+
+            // If a connector has been closed for any reason, we write a null to the idle connector channel to wake up
+            // a waiter, who will open a new physical connection
+            // Statement order is important since we have synchronous completions on the channel.
+            IdleConnectorWriter.TryWrite(null);
+
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (numConnectors == _min)
                 DisablePruning();
