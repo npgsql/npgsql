@@ -22,6 +22,10 @@ jobs:
 #            pg_major: 14
 #            pg_prerelease: prerelease
 
+    outputs:
+      is_release: ${{ steps.analyze_tag.outputs.is_release }}
+      is_prerelease: ${{ steps.analyze_tag.outputs.is_prerelease }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -164,11 +168,22 @@ jobs:
         run: dotnet test test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
         shell: bash
 
-  publish:
+      - id: analyze_tag
+        name: Analyze tag
+        shell: bash
+        run: |
+          if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "Release tag detected"
+              echo "::set-output name=is_release::true"
+              if [[ ${{ github.ref }} =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+.*- ]]; then
+                  echo "Prerelease tag detected"
+                  echo "::set-output name=is_prerelease::true"
+              fi
+          fi
+
+  publish-ci:
     needs: build
-
-    runs-on: windows-latest
-
+    runs-on: ubuntu-20.04
     if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
 
     steps:
@@ -188,30 +203,55 @@ jobs:
         with:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
-      - name: Pack NuGet packages (CI versions)
-        if: startsWith(github.ref, 'refs/heads/')
+      - name: Pack
         run: dotnet pack Npgsql.sln --configuration Release --output nupkgs --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
-        shell: bash
-
-      - name: Pack NuGet packages (Release versions)
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: dotnet pack Npgsql.sln --configuration Release --output nupkgs -p:ContinuousIntegrationBuild=true
-        shell: bash
 
       - name: Upload artifacts (nupkg)
         uses: actions/upload-artifact@v2
         with:
-          name: Npgsql.nupkgs
+          name: Npgsql.CI
           path: nupkgs
 
       - name: Publish packages to MyGet (vnext)
         if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
         run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql-unstable/api/v3/index.json
         working-directory: nupkgs
-        shell: bash
 
       - name: Publish packages to MyGet (patch)
         if: startsWith(github.ref, 'refs/heads/hotfix/')
         run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql/api/v3/index.json
         working-directory: nupkgs
-        shell: bash
+
+  release:
+    needs: build
+    runs-on: ubuntu-20.04
+    if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
+    environment: nuget.org
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
+
+      - name: Pack
+        run: dotnet pack --configuration Release --output nupkgs -p:ContinuousIntegrationBuild=true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: EFCore.PG.Release
+          path: nupkgs
+
+      - name: Create Github release
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: ${{ needs.build.outputs.is_prerelease }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to nuget.org
+        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_ORG_API_KEY }} --source https://api.nuget.org/v3/index.json
+        working-directory: nupkgs
