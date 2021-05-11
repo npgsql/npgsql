@@ -3,7 +3,7 @@
     <VersionPrefix>5.0.6</VersionPrefix>
 
     <!-- Packing -->
-    <Copyright>Copyright 2020 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2021 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
