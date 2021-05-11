@@ -963,6 +963,7 @@ namespace Npgsql
 
         /// <summary>
         /// The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
+        /// Zero for infinity, -1 to skip the wait.
         /// Defaults to 2000 milliseconds.
         /// </summary>
         [Category("Timeouts")]
@@ -975,8 +976,8 @@ namespace Npgsql
             get => _cancellationTimeout;
             set
             {
-                if (value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(CancellationTimeout)} can't be negative");
+                if (value < -1)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(CancellationTimeout)} can't less than -1");
 
                 _cancellationTimeout = value;
                 SetValue(nameof(CancellationTimeout), value);
