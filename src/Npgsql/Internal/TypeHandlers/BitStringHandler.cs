@@ -23,7 +23,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public partial class BitStringHandler : NpgsqlTypeHandler<BitArray>,
@@ -260,7 +260,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// </summary>
     /// <remarks>
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public class BitStringArrayHandler : ArrayHandler<BitArray>

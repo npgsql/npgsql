@@ -13,7 +13,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// See https://www.postgresql.org/docs/current/static/datatype-oid.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public partial class UInt32Handler : NpgsqlSimpleTypeHandler<uint>

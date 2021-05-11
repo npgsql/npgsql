@@ -11,7 +11,7 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
     /// See https://www.postgresql.org/docs/current/static/datatype-character.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public partial class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,

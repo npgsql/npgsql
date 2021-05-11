@@ -21,7 +21,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// https://www.postgresql.org/docs/current/static/arrays.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public abstract class ArrayHandler : NpgsqlTypeHandler
@@ -277,7 +277,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// https://www.postgresql.org/docs/current/static/arrays.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public class ArrayHandler<TElement> : ArrayHandler

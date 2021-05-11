@@ -14,7 +14,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
@@ -33,7 +33,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
     public partial class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
