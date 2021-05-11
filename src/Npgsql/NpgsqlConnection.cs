@@ -196,7 +196,7 @@ namespace Npgsql
             {
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                NpgsqlEventSource.Log.PoolCreated();
+                NpgsqlEventSource.Log.PoolCreated(newPool);
             }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
@@ -207,8 +207,8 @@ namespace Npgsql
             CheckClosed();
             Debug.Assert(Connector == null);
 
-            Log.Trace("Opening connection...");
             FullState = ConnectionState.Connecting;
+            Log.Trace("Opening connection...");
 
             if (Settings.Multiplexing)
             {
@@ -243,6 +243,8 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
 
+                    var enlistToTransaction = Settings.Enlist ? Transaction.Current : null;
+
                     if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
                         if (string.IsNullOrEmpty(_connectionString))
@@ -258,24 +260,15 @@ namespace Npgsql
                     {
                         _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-                        if (Settings.Enlist && Transaction.Current is Transaction transaction)
+                        // First, check to see if we there's an ambient transaction, and we have a connection enlisted
+                        // to this transaction which has been closed. If so, return that as an optimization rather than
+                        // opening a new one and triggering escalation to a distributed transaction.
+                        // Otherwise just get a new connector and enlist below.
+                        if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, out connector))
                         {
-                            // First, check to see if we there's an ambient transaction, and we have a connection enlisted
-                            // to this transaction which has been closed. If so, return that as an optimization rather than
-                            // opening a new one and triggering escalation to a distributed transaction.
-                            // Otherwise just get a new connector and enlist.
-                            if (_pool.TryRentEnlistedPending(transaction, out connector))
-                            {
-                                connector.Connection = this;
-                                EnlistedTransaction = transaction;
-                            }
-                            else
-                            {
-                                connector = await _pool.Rent(this, timeout, async, cancellationToken2);
-                                ConnectorBindingScope = ConnectorBindingScope.Connection;
-                                Connector = connector;
-                                EnlistTransaction(Transaction.Current);
-                            }
+                            connector.Connection = this;
+                            EnlistedTransaction = enlistToTransaction;
+                            enlistToTransaction = null;
                         }
                         else
                             connector = await _pool.Rent(this, timeout, async, cancellationToken2);
@@ -286,6 +279,9 @@ namespace Npgsql
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     Connector = connector;
+
+                    if (enlistToTransaction is not null)
+                        EnlistTransaction(enlistToTransaction);
 
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
@@ -334,7 +330,6 @@ namespace Npgsql
             {
                 Log.Debug("Connection opened (multiplexing)");
                 FullState = ConnectionState.Open;
-                OnStateChange(ClosedToOpenEventArgs);
             }
         }
 
@@ -471,7 +466,20 @@ namespace Npgsql
                         },
                     _ => _fullState
                 };
-            internal set => _fullState = value;
+            internal set
+            {
+                var originalOpen = _fullState.HasFlag(ConnectionState.Open);
+
+                _fullState = value;
+
+                var currentOpen = _fullState.HasFlag(ConnectionState.Open);
+                if (currentOpen != originalOpen)
+                {
+                    OnStateChange(currentOpen
+                        ? ClosedToOpenEventArgs
+                        : OpenToClosedEventArgs);
+                }
+            }
         }
 
         /// <summary>
@@ -483,11 +491,13 @@ namespace Npgsql
         {
             get
             {
-                var s = FullState;
-                if ((s & ConnectionState.Open) != 0)
-                    return ConnectionState.Open;
-                if ((s & ConnectionState.Connecting) != 0)
+                var fullState = FullState;
+                if (fullState.HasFlag(ConnectionState.Connecting))
                     return ConnectionState.Connecting;
+
+                if (fullState.HasFlag(ConnectionState.Open))
+                    return ConnectionState.Open;
+
                 return ConnectionState.Closed;
             }
         }
@@ -718,10 +728,11 @@ namespace Npgsql
                 // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
                 // and assignment but actual perf impact should be negligible (measure).
                 Debug.Assert(Connector == null);
+                Volatile.Write(ref _closing, 0);
+
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed (multiplexing)");
-                OnStateChange(OpenToClosedEventArgs);
-                Volatile.Write(ref _closing, 0);
+
                 return Task.CompletedTask;
             }
 
@@ -776,7 +787,11 @@ namespace Npgsql
                 else
                 {
                     if (_pool == null)
+                    {
+                        // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
+                        connector.Transaction?.UnbindIfNecessary();
                         connector.Close();
+                    }
                     else
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
@@ -802,7 +817,6 @@ namespace Npgsql
                 ConnectorBindingScope = ConnectorBindingScope.None;
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed", connector.Id);
-                OnStateChange(OpenToClosedEventArgs);
             }
         }
 

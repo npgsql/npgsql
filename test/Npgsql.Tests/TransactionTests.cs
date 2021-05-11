@@ -613,6 +613,29 @@ namespace Npgsql.Tests
             Assert.That(tx.Connection, Is.SameAs(conn));
         }
 
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3686")]
+        public async Task Bug3686()
+        {
+            if (IsMultiplexing)
+                return;
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false
+            };
+
+            await using var conn = await OpenConnectionAsync(csb);
+            await using var tx = await conn.BeginTransactionAsync();
+            await conn.ExecuteNonQueryAsync("SELECT 1", tx);
+            await tx.CommitAsync();
+            await conn.CloseAsync();
+            Assert.DoesNotThrow(() =>
+            {
+                _ = tx.Connection;
+            });
+        }
+
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
             public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)

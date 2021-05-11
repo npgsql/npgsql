@@ -201,11 +201,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         {
             var commandTimeout = 0;  // Default to infinity
             if (timeout.IsSet)
-            {
-                commandTimeout = (int)timeout.TimeLeft.TotalSeconds;
-                if (commandTimeout <= 0)
-                    throw new TimeoutException();
-            }
+                commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
             using var command = new NpgsqlCommand(typeLoadingQuery, conn)
@@ -215,38 +211,40 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             };
 
             timeout.CheckAndApply(conn.Connector!);
-            using var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
-            var byOID = new Dictionary<uint, PostgresType>();
-
-            // First the PostgreSQL version
-            if (async)
+            var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+            try
             {
-                await reader.ReadAsync();
-                LongVersion = reader.GetString(0);
-                await reader.NextResultAsync();
-            }
-            else
-            {
-                reader.Read();
-                LongVersion = reader.GetString(0);
-                reader.NextResult();
-            }
+                var byOID = new Dictionary<uint, PostgresType>();
 
-            // Then load the types
-            while (async ? await reader.ReadAsync() : reader.Read())
-            {
-                var ns = reader.GetString("nspname");
-                var internalName = reader.GetString("typname");
-                var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
-                Debug.Assert(oid != 0);
-
-                var elementOID = reader.IsDBNull("elemtypoid")
-                    ? 0
-                    : uint.Parse(reader.GetString("elemtypoid"), NumberFormatInfo.InvariantInfo);
-
-                var typeChar = reader.GetChar("typtype");
-                switch (typeChar)
+                // First the PostgreSQL version
+                if (async)
                 {
+                    await reader.ReadAsync();
+                    LongVersion = reader.GetString(0);
+                    await reader.NextResultAsync();
+                }
+                else
+                {
+                    reader.Read();
+                    LongVersion = reader.GetString(0);
+                    reader.NextResult();
+                }
+
+                // Then load the types
+                while (async ? await reader.ReadAsync() : reader.Read())
+                {
+                    var ns = reader.GetString("nspname");
+                    var internalName = reader.GetString("typname");
+                    var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
+                    Debug.Assert(oid != 0);
+
+                    var elementOID = reader.IsDBNull("elemtypoid")
+                        ? 0
+                        : uint.Parse(reader.GetString("elemtypoid"), NumberFormatInfo.InvariantInfo);
+
+                    var typeChar = reader.GetChar("typtype");
+                    switch (typeChar)
+                    {
                     case 'b':  // Normal base type
                         var baseType = new PostgresBaseType(ns, internalName, oid);
                         byOID[baseType.OID] = baseType;
@@ -306,27 +304,35 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
                     default:
                         throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");
+                    }
                 }
-            }
 
-            if (async)
-                await reader.NextResultAsync();
-            else
-                reader.NextResult();
-
-            LoadCompositeFields(reader, byOID);
-
-            if (SupportsEnumTypes)
-            {
                 if (async)
                     await reader.NextResultAsync();
                 else
                     reader.NextResult();
 
-                LoadEnumLabels(reader, byOID);
-            }
+                LoadCompositeFields(reader, byOID);
 
-            return byOID.Values.ToList();
+                if (SupportsEnumTypes)
+                {
+                    if (async)
+                        await reader.NextResultAsync();
+                    else
+                        reader.NextResult();
+
+                    LoadEnumLabels(reader, byOID);
+                }
+
+                return byOID.Values.ToList();
+            }
+            finally
+            {
+                if (async)
+                    await reader.DisposeAsync();
+                else
+                    reader.Dispose();
+            }
         }
 
         /// <summary>

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -534,8 +534,8 @@ namespace Npgsql
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
             {
                 var hasSemaphore = async
-                    ? await DatabaseInfoSemaphore.WaitAsync(timeout.TimeLeft, cancellationToken)
-                    : DatabaseInfoSemaphore.Wait(timeout.TimeLeft, cancellationToken);
+                    ? await DatabaseInfoSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+                    : DatabaseInfoSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
                 // We've timed out - calling Check, to throw the correct exception
                 if (!hasSemaphore)
@@ -607,7 +607,7 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-            if (!PGUtil.IsWindows)
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
                 if (username?.Length > 0)
@@ -696,12 +696,17 @@ namespace Npgsql
                         {
                             var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
+                            var sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+#if NETCOREAPP3_1_OR_GREATER
+                            sslProtocols |= SslProtocols.Tls13;
+#endif
+
                             if (async)
                                 await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                    SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                                    sslProtocols, Settings.CheckCertificateRevocation);
                             else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                    SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                                    sslProtocols, Settings.CheckCertificateRevocation);
 
                             _stream = sslStream;
                         }
@@ -749,12 +754,7 @@ namespace Npgsql
             // Give each endpoint an equal share of the remaining time
             var perEndpointTimeout = -1;  // Default to infinity
             if (timeout.IsSet)
-            {
-                var timeoutTicks = timeout.TimeLeft.Ticks;
-                if (timeoutTicks <= 0)
-                    throw new TimeoutException();
-                perEndpointTimeout = (int)(timeoutTicks / endpoints.Length / 10);
-            }
+                perEndpointTimeout = (int)(timeout.CheckAndGetTimeLeft().Ticks / endpoints.Length / 10);
 
             for (var i = 0; i < endpoints.Length; i++)
             {
@@ -823,10 +823,7 @@ namespace Npgsql
             var perIpTimeout = timeout;
             if (timeout.IsSet)
             {
-                var timeoutTicks = timeout.TimeLeft.Ticks;
-                if (timeoutTicks <= 0)
-                    throw new TimeoutException();
-                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Length);
+                perIpTimespan = new TimeSpan(timeout.CheckAndGetTimeLeft().Ticks / endpoints.Length);
                 perIpTimeout = new NpgsqlTimeout(perIpTimespan);
             }
 
@@ -856,7 +853,7 @@ namespace Npgsql
                     if (perIpTimeout.IsSet)
                     {
                         combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter((int)perIpTimeout.TimeLeft.TotalMilliseconds);
+                        combinedCts.CancelAfter((int)perIpTimeout.CheckAndGetTimeLeft().TotalMilliseconds);
                         finalCt = combinedCts.Token;
                     }
 
@@ -1675,6 +1672,10 @@ namespace Npgsql
                 {
                     try
                     {
+                        // At this point, there could be some prepended commands (like DISCARD ALL)
+                        // which make no sense to send on connection close
+                        // see https://github.com/npgsql/npgsql/issues/3592
+                        WriteBuffer.Clear();
                         WriteTerminate();
                         Flush();
                     }
@@ -1726,9 +1727,14 @@ namespace Npgsql
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
                     // the original reason for the break before actually closing the socket etc.
                     Interlocked.CompareExchange(ref _breakReason, reason, null);
-
                     State = ConnectorState.Broken;
+
+                    var connection = Connection;
+
                     Cleanup();
+
+                    if (connection is not null)
+                        connection.FullState = ConnectionState.Broken;
                 }
 
                 return reason;
@@ -1785,6 +1791,7 @@ namespace Npgsql
             }
 
             ClearTransaction();
+
 #pragma warning disable CS8625
 
             _stream = null;
@@ -1806,6 +1813,7 @@ namespace Npgsql
                 _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
+
 #pragma warning restore CS8625
         }
 
@@ -1977,6 +1985,13 @@ namespace Npgsql
 
             lock (this)
             {
+                if (!IsConnected)
+                {
+                    throw IsBroken
+                        ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
+                        : new NpgsqlException("The connection is closed");
+                }  
+
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -2106,17 +2121,18 @@ namespace Npgsql
                 if (!IsReady)
                     return;
 
-                Log.Trace("Performed keepalive", Id);
-                WritePregenerated(PregeneratedMessages.KeepAlive);
+                Log.Trace("Performing keepalive", Id);
+                WriteSync(async: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
+                Log.Trace("Performed keepalive", Id);
             }
             catch (Exception e)
             {
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e);
+                    Break(new NpgsqlException("Exception while sending a keepalive", e));
                 }
                 catch (Exception e2)
                 {
@@ -2166,7 +2182,7 @@ namespace Npgsql
 
                 // Time for a keepalive
                 var keepaliveTime = Stopwatch.StartNew();
-                await WritePregenerated(PregeneratedMessages.KeepAlive, async, cancellationToken);
+                await WriteSync(async, cancellationToken);
                 await Flush(async, cancellationToken);
 
                 var receivedNotification = false;
@@ -2193,25 +2209,9 @@ namespace Npgsql
                         continue;
                     }
 
-                    if (msg.Code != expectedMessageCode)
+                    if (msg.Code != BackendMessageCode.ReadyForQuery)
                         throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.RowDescription:
-                        expectedMessageCode = BackendMessageCode.DataRow;
-                        continue;
-                    case BackendMessageCode.DataRow:
-                        // DataRow is usually consumed by a reader, here we have to skip it manually.
-                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, async);
-                        expectedMessageCode = BackendMessageCode.CommandComplete;
-                        continue;
-                    case BackendMessageCode.CommandComplete:
-                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                        continue;
-                    case BackendMessageCode.ReadyForQuery:
-                        break;
-                    }
                     Log.Trace("Performed keepalive", Id);
 
                     if (receivedNotification)
@@ -2274,16 +2274,21 @@ namespace Npgsql
             byte[] rawName;
             byte[] rawValue;
 
-            foreach (var current in _rawParameters)
-                if (incomingName.SequenceEqual(current.Name))
+            for (var i = 0; i < _rawParameters.Count; i++)
+            {
+                (var currentName, var currentValue) = _rawParameters[i];
+                if (incomingName.SequenceEqual(currentName))
                 {
-                    if (incomingValue.SequenceEqual(current.Value))
+                    if (incomingValue.SequenceEqual(currentValue))
                         return;
 
-                    rawName = current.Name;
+                    rawName = currentName;
                     rawValue = incomingValue.ToArray();
+                    _rawParameters[i] = (rawName, rawValue);
+
                     goto ProcessParameter;
                 }
+            }
 
             rawName = incomingName.ToArray();
             rawValue = incomingValue.ToArray();
