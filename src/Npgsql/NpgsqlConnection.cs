@@ -282,7 +282,9 @@ namespace Npgsql
                 if (!((MultiplexingConnectorPool)Pool).IsBootstrapped)
                     return BootstrapMultiplexing(async, cancellationToken);
 
-                CompleteOpen();
+                Log.Debug("Connection opened (multipelxing)");
+                FullState = ConnectionState.Open;
+
                 return Task.CompletedTask;
             }
 
@@ -333,7 +335,8 @@ namespace Npgsql
                     if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                         await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
-                    CompleteOpen();
+                    Log.Debug("Connection opened");
+                    FullState = ConnectionState.Open;
                 }
                 catch
                 {
@@ -353,19 +356,14 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     await ((MultiplexingConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
-                    CompleteOpen();
+                    Log.Debug("Connection opened (multipelxing)");
+                    FullState = ConnectionState.Open;
                 }
                 catch
                 {
                     FullState = ConnectionState.Closed;
                     throw;
                 }
-            }
-
-            void CompleteOpen()
-            {
-                Log.Debug("Connection opened (multiplexing)");
-                FullState = ConnectionState.Open;
             }
         }
 
