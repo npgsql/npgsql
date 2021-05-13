@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using Npgsql.Util;
 
 namespace Npgsql
 {
@@ -15,9 +13,8 @@ namespace Npgsql
         internal static string? PassFile => Environment.GetEnvironmentVariable("PGPASSFILE");
 
         internal static string? PassFileDefault
-            => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                   ? Path.Combine(GetHomePostgresDir(), "pgpass.conf")
-                   : Path.Combine(GetHomeDir(), ".pgpass")) is var path &&
+            => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? GetHomePostgresDir() : GetHomeDir()) is string homedir &&
+               Path.Combine(homedir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "pgpass.conf" : ".pgpass") is var path &&
                File.Exists(path)
                 ? path
                 : null;
@@ -25,17 +22,23 @@ namespace Npgsql
         internal static string? SslCert => Environment.GetEnvironmentVariable("PGSSLCERT");
 
         internal static string? SslCertDefault
-            => Path.Combine(GetHomePostgresDir(), "postgresql.crt") is var path && File.Exists(path) ? path : null;
+            => GetHomePostgresDir() is string homedir && Path.Combine(homedir, "postgresql.crt") is var path && File.Exists(path)
+                ? path
+                : null;
 
         internal static string? SslKey => Environment.GetEnvironmentVariable("PGSSLKEY");
 
         internal static string? SslKeyDefault
-            => Path.Combine(GetHomePostgresDir(), "postgresql.key") is var path && File.Exists(path) ? path : null;
+            => GetHomePostgresDir() is string homedir && Path.Combine(homedir, "postgresql.key") is var path && File.Exists(path)
+                ? path
+                : null;
 
         internal static string? SslCertRoot => Environment.GetEnvironmentVariable("PGSSLROOTCERT");
 
         internal static string? SslCertRootDefault
-            => Path.Combine(GetHomePostgresDir(), "root.crt") is var path && File.Exists(path) ? path : null;
+            => GetHomePostgresDir() is string homedir && Path.Combine(homedir, "root.crt") is var path && File.Exists(path)
+                ? path
+                : null;
 
         internal static string? ClientEncoding => Environment.GetEnvironmentVariable("PGCLIENTENCODING");
 
@@ -45,15 +48,12 @@ namespace Npgsql
 
         internal static string? TargetSessionAttributes => Environment.GetEnvironmentVariable("PGTARGETSESSIONATTRS");
 
-        static string GetHomeDir()
-        {
-            var envVar = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME";
-            return Environment.GetEnvironmentVariable(envVar) is string homedir
-                ? homedir
-                : throw new InvalidOperationException($"Environment variable {envVar} not defined");
-        }
+        static string? GetHomeDir()
+            => Environment.GetEnvironmentVariable(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME");
 
-        static string GetHomePostgresDir()
-            => Path.Combine(GetHomeDir(), RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "postgresql" : ".postgresql");
+        static string? GetHomePostgresDir()
+            => GetHomeDir() is string homedir
+                ? Path.Combine(homedir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "postgresql" : ".postgresql")
+                : null;
     }
 }
