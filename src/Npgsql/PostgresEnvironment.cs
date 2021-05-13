@@ -49,10 +49,7 @@ namespace Npgsql
         internal static string? TargetSessionAttributes => Environment.GetEnvironmentVariable("PGTARGETSESSIONATTRS");
 
         static string? GetHomeDir()
-            => Environment.GetEnvironmentVariable(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME") is string
-                homedir
-                ? homedir
-                : null;
+            => Environment.GetEnvironmentVariable(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "APPDATA" : "HOME");
 
         static string? GetHomePostgresDir()
             => GetHomeDir() is string homedir
