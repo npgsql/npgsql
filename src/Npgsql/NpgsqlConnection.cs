@@ -791,6 +791,8 @@ namespace Npgsql
         async Task CloseAsync(bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Connector != null);
+            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None);
+
             try
             {
                 var connector = Connector;
@@ -800,6 +802,16 @@ namespace Npgsql
                 {
                     // This method could re-enter connection.Close() due to an underlying connection failure.
                     await connector.CloseOngoingOperations(async, cancellationToken);
+
+                    if (ConnectorBindingScope == ConnectorBindingScope.None)
+                    {
+                        Debug.Assert(Settings.Multiplexing);
+                        Debug.Assert(Connector is null);
+
+                        FullState = ConnectionState.Closed;
+                        Log.Debug("Connection closed (multiplexing, after closing reader)", connector.Id);
+                        return;
+                    }
                 }
 
                 Debug.Assert(connector.IsReady || connector.IsBroken);

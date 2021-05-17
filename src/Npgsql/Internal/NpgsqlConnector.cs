@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -1993,22 +1994,16 @@ namespace Npgsql.Internal
         {
             Debug.Assert(IsReady);
 
-            // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
+            // Our buffer may contain unsent prepended messages, so clear it out.
+            // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
             WriteBuffer.Clear();
             PendingPrependedResponses = 0;
 
-            // We may have allocated an oversize read buffer, switch back to the original one
-            // TODO: Replace this with array pooling, #2326
-            if (_origReadBuffer != null)
-            {
-                ReadBuffer.Dispose();
-                ReadBuffer = _origReadBuffer;
-                _origReadBuffer = null;
-            }
+            ResetReadBuffer();
 
             Transaction?.UnbindIfNecessary();
 
-            var endBindingScope = false;
+            bool endBindingScope;
 
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)
@@ -2057,6 +2052,21 @@ namespace Npgsql.Internal
                 // Connection is null if a connection enlisted in a TransactionScope was closed before the
                 // TransactionScope completed - the connector is still enlisted, but has no connection.
                 Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+            }
+        }
+
+        /// <summary>
+        /// The connector may have allocated an oversize read buffer, to hold big rows in non-sequential reading.
+        /// This switches us back to the original one and returns the buffer to <see cref="ArrayPool{T}" />.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ResetReadBuffer()
+        {
+            if (_origReadBuffer != null)
+            {
+                ReadBuffer.Dispose();
+                ReadBuffer = _origReadBuffer;
+                _origReadBuffer = null;
             }
         }
 

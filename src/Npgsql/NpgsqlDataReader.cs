@@ -998,6 +998,8 @@ namespace Npgsql
                 var connector = Connector;
                 UnbindIfNecessary();
 
+                connector.ResetReadBuffer();
+
                 // TODO: Refactor... Use proper scope
                 _connection.Connector = null;
                 connector.Connection = null;
