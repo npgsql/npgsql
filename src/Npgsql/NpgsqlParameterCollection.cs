@@ -32,12 +32,19 @@ namespace Npgsql
         /// </summary>
         internal void ReflectListMutationInLookup(NpgsqlParameter parameter, int? index = 0)
         {
-            if (_lookup is null) return;
+            if (_lookup is null)
+                return;
 
             // We can't go through IndexOf as we may query the same lookup that is now out of sync.
-            var i = index ?? IndexOfName(parameter.TrimmedName);
+            if (index == null)
+            {
+                index = -1;
+                for (var i = 0; i < _internalList.Count; i++)
+                    if (string.Equals(parameter.TrimmedName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+                        index = i;
+            }
 
-            if (i == -1)
+            if (index == -1)
             {
                 _lookup.Remove(parameter.TrimmedName);
                 return;
@@ -46,24 +53,15 @@ namespace Npgsql
             // Fill lookup on unknown name.
             if (!_lookup.TryGetValue(parameter.TrimmedName, out var lookupIndex))
             {
-                _lookup[parameter.TrimmedName] = i;
+                _lookup[parameter.TrimmedName] = index.Value;
             }
             // Lowest index should be returned, adjust lookup.
-            else if (lookupIndex > i)
+            else if (lookupIndex > index)
             {
-                _lookup[parameter.TrimmedName] = i;
+                _lookup[parameter.TrimmedName] = index.Value;
             }
 
             // Other cases don't need adjusting.
-
-            int IndexOfName(string parameterName)
-            {
-                for (var i = 0; i < _internalList.Count; i++)
-                    if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
-                        return i;
-
-                return -1;
-            }
         }
 
         #region NpgsqlParameterCollection Member
@@ -151,7 +149,7 @@ namespace Npgsql
 
             _internalList.Add(value);
             value.Collection = this;
-            ReflectListMutationInLookup(value);
+            ReflectListMutationInLookup(value, _internalList.Count - 1);
             return value;
         }
 
