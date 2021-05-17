@@ -473,7 +473,7 @@ namespace Npgsql
         internal void UnbindIfNecessary()
         {
             // We're closing the connection, but transaction is not yet disposed
-            // We have to unbind the transaction from the connector, otherwise there could be a concurency issues
+            // We have to unbind the transaction from the connector, otherwise there could be a concurrency issues
             // See #3306
             if (!IsDisposed)
             {
