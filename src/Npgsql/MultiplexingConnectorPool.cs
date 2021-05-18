@@ -68,7 +68,7 @@ namespace Npgsql
             _bootstrapSemaphore = new SemaphoreSlim(1);
 
             // Translate microseconds to ticks for cancellation token
-            _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
+            _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 10;
             _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
             var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
@@ -138,9 +138,9 @@ namespace Npgsql
             // on to the next connector.
             Debug.Assert(_multiplexCommandReader != null);
 
-            var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
-            var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
+            var baseTimeout = _writeCoalescingDelayTicks / 2;
+            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(baseTimeout));
+            var timeout = baseTimeout;
 
             while (true)
             {
@@ -247,7 +247,7 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (timeout == 0)
+                    if (baseTimeout == 0)
                     {
                         while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
@@ -259,7 +259,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        timeoutToken = timeoutTokenSource.Start();
+                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
+                        var timeoutToken = timeoutTokenSource.Start();
 
                         try
                         {
