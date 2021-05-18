@@ -138,9 +138,9 @@ namespace Npgsql
             // on to the next connector.
             Debug.Assert(_multiplexCommandReader != null);
 
-            var baseTimeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(baseTimeout));
-            var timeout = baseTimeout;
+            var startingTimeout = _writeCoalescingDelayTicks / 2;
+            var stopWatch = new Stopwatch();
+            var timeout = startingTimeout;
 
             while (true)
             {
@@ -247,7 +247,7 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (baseTimeout == 0)
+                    if (startingTimeout == 0)
                     {
                         while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
@@ -259,38 +259,51 @@ namespace Npgsql
                     }
                     else
                     {
-                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
-                        var timeoutToken = timeoutTokenSource.Start();
+                        var sw = new SpinWait();
+                        var timeoutHit = false;
+                        stopWatch.Start();
 
-                        try
-                        {
-                            while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
+                        while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                    writtenSynchronously)
+                        {
+                            if (!_multiplexCommandReader.TryRead(out command))
                             {
-                                if (!_multiplexCommandReader.TryRead(out command))
+                                stats.Waits++; 
+
+                                while (true)
                                 {
-                                    stats.Waits++;
-                                    command = await _multiplexCommandReader.ReadAsync(timeoutToken);
+                                    sw.SpinOnce();
+
+                                    if (_multiplexCommandReader.TryRead(out command))
+                                        break;
+
+                                    if (stopWatch.Elapsed.TotalMilliseconds * 10000 > timeout)
+                                    {
+                                        timeoutHit = true;
+                                        break;
+                                    }
                                 }
 
-                                Interlocked.Increment(ref connector.CommandsInFlightCount);
-                                writtenSynchronously = WriteCommand(connector, command, ref stats);
+                                if (timeoutHit)
+                                    break;
                             }
 
-                            // Increase the timeout slightly for next time: we're under load, so allow more
-                            // commands to get coalesced into the same packet (up to the hard limit)
-                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
+                            Interlocked.Increment(ref connector.CommandsInFlightCount);
+                            writtenSynchronously = WriteCommand(connector, command, ref stats);
                         }
-                        catch (OperationCanceledException)
+
+                        if (timeoutHit)
                         {
                             // Timeout fired, we're done writing.
                             // Reduce the timeout slightly for next time: we're under little load, so reduce impact
                             // on latency
                             timeout = Math.Max(timeout - WriteCoalescingDelayAdaptivityUs, 0);
                         }
-                        finally
+                        else
                         {
-                            timeoutTokenSource.Stop();
+                            // Increase the timeout slightly for next time: we're under load, so allow more
+                            // commands to get coalesced into the same packet (up to the hard limit)
+                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
                         }
                     }
 
