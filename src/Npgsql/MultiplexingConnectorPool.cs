@@ -289,7 +289,7 @@ namespace Npgsql
                             }
 
                             Interlocked.Increment(ref connector.CommandsInFlightCount);
-                            writtenSynchronously = WriteCommand(connector, command, ref stats);
+                            writtenSynchronously = WriteCommand(connector, command!, ref stats);
                         }
 
                         if (timeoutHit)
