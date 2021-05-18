@@ -138,9 +138,8 @@ namespace Npgsql
             // on to the next connector.
             Debug.Assert(_multiplexCommandReader != null);
 
-            var startingTimeout = _writeCoalescingDelayTicks / 2;
+            var timeout = _writeCoalescingDelayTicks / 2;
             var stopWatch = new Stopwatch();
-            var timeout = startingTimeout;
 
             while (true)
             {
@@ -247,7 +246,7 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (startingTimeout == 0)
+                    if (_writeCoalescingDelayTicks == 0)
                     {
                         while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
@@ -291,6 +290,8 @@ namespace Npgsql
                             Interlocked.Increment(ref connector.CommandsInFlightCount);
                             writtenSynchronously = WriteCommand(connector, command!, ref stats);
                         }
+
+                        stopWatch.Reset();
 
                         if (timeoutHit)
                         {
