@@ -258,6 +258,8 @@ namespace Npgsql
                     }
                     else
                     {
+                        // Note that we're using Stopwatch + SpinWait instead of CancellationTokenSource
+                        // because of it's limitations (it only supports down to 1ms)
                         var sw = new SpinWait();
                         var timeoutHit = false;
                         stopWatch.Start();
