@@ -139,7 +139,7 @@ namespace Npgsql
             Debug.Assert(_multiplexCommandReader != null);
 
             var timeout = _writeCoalescingDelayTicks / 2;
-            var stopWatch = new Stopwatch();
+            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
 
             while (true)
             {
@@ -258,54 +258,38 @@ namespace Npgsql
                     }
                     else
                     {
-                        // Note that we're using Stopwatch + Task.Yield instead of CancellationTokenSource
-                        // because of it's limitations (it only supports down to 1ms)
-                        var timeoutHit = false;
-                        stopWatch.Start();
+                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
+                        var timeoutToken = timeoutTokenSource.Start();
 
-                        while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
-                                   writtenSynchronously)
+                        try
                         {
-                            if (!_multiplexCommandReader.TryRead(out command))
+                            while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
+                                   writtenSynchronously)
                             {
-                                stats.Waits++; 
-
-                                while (true)
+                                if (!_multiplexCommandReader.TryRead(out command))
                                 {
-                                    await Task.Yield();
-
-                                    if (_multiplexCommandReader.TryRead(out command))
-                                        break;
-
-                                    if (stopWatch.Elapsed.TotalMilliseconds * 10000 > timeout)
-                                    {
-                                        timeoutHit = true;
-                                        break;
-                                    }
+                                    stats.Waits++;
+                                    command = await _multiplexCommandReader.ReadAsync(timeoutToken);
                                 }
 
-                                if (timeoutHit)
-                                    break;
+                                Interlocked.Increment(ref connector.CommandsInFlightCount);
+                                writtenSynchronously = WriteCommand(connector, command, ref stats);
                             }
 
-                            Interlocked.Increment(ref connector.CommandsInFlightCount);
-                            writtenSynchronously = WriteCommand(connector, command!, ref stats);
+                            // Increase the timeout slightly for next time: we're under load, so allow more
+                            // commands to get coalesced into the same packet (up to the hard limit)
+                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
                         }
-
-                        stopWatch.Reset();
-
-                        if (timeoutHit)
+                        catch (OperationCanceledException)
                         {
                             // Timeout fired, we're done writing.
                             // Reduce the timeout slightly for next time: we're under little load, so reduce impact
                             // on latency
                             timeout = Math.Max(timeout - WriteCoalescingDelayAdaptivityUs, 0);
                         }
-                        else
+                        finally
                         {
-                            // Increase the timeout slightly for next time: we're under load, so allow more
-                            // commands to get coalesced into the same packet (up to the hard limit)
-                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
+                            timeoutTokenSource.Stop();
                         }
                     }
 
