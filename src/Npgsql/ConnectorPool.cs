@@ -146,7 +146,7 @@ namespace Npgsql
                 _bootstrapSemaphore = new SemaphoreSlim(1);
 
                 // Translate microseconds to ticks for cancellation token
-                _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
+                _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 10;
                 _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
                 var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(

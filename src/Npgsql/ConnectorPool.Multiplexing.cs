@@ -88,7 +88,6 @@ namespace Npgsql
 
             var timeout = _writeCoalescingDelayTicks / 2;
             var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
-            var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
             while (true)
             {
@@ -195,7 +194,7 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (timeout == 0)
+                    if (_writeCoalescingDelayTicks == 0)
                     {
                         while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
@@ -207,7 +206,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        timeoutToken = timeoutTokenSource.Start();
+                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
+                        var timeoutToken = timeoutTokenSource.Start();
 
                         try
                         {
