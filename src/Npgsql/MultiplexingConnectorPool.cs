@@ -38,13 +38,6 @@ namespace Npgsql
         internal ConnectorTypeMapper? MultiplexingTypeMapper { get; private set; }
 
         /// <summary>
-        /// When multiplexing is enabled, determines the maximum amount of time to wait for further
-        /// commands before flushing to the network. In ticks (100ns), 0 disables waiting.
-        /// This is in 100ns ticks, not <see cref="Stopwatch"/> ticks whose meaning vary across platforms.
-        /// </summary>
-        readonly long _writeCoalescingDelayTicks;
-
-        /// <summary>
         /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
         /// flushing to the network.
         /// </summary>
@@ -67,8 +60,6 @@ namespace Npgsql
 
             _bootstrapSemaphore = new SemaphoreSlim(1);
 
-            // Translate microseconds to ticks for cancellation token
-            _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 10;
             _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
             var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
@@ -137,9 +128,6 @@ namespace Npgsql
             // application; whenever I/O cannot complete immediately, we chain a callback with ContinueWith and move
             // on to the next connector.
             Debug.Assert(_multiplexCommandReader != null);
-
-            var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
 
             while (true)
             {
@@ -246,51 +234,12 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (_writeCoalescingDelayTicks == 0)
-                    {
-                        while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
+                    while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
                                _multiplexCommandReader.TryRead(out command))
-                        {
-                            Interlocked.Increment(ref connector.CommandsInFlightCount);
-                            writtenSynchronously = WriteCommand(connector, command, ref stats);
-                        }
-                    }
-                    else
                     {
-                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
-                        var timeoutToken = timeoutTokenSource.Start();
-
-                        try
-                        {
-                            while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
-                                   writtenSynchronously)
-                            {
-                                if (!_multiplexCommandReader.TryRead(out command))
-                                {
-                                    stats.Waits++;
-                                    command = await _multiplexCommandReader.ReadAsync(timeoutToken);
-                                }
-
-                                Interlocked.Increment(ref connector.CommandsInFlightCount);
-                                writtenSynchronously = WriteCommand(connector, command, ref stats);
-                            }
-
-                            // Increase the timeout slightly for next time: we're under load, so allow more
-                            // commands to get coalesced into the same packet (up to the hard limit)
-                            timeout = Math.Min(timeout + WriteCoalescingDelayAdaptivityUs, _writeCoalescingDelayTicks);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // Timeout fired, we're done writing.
-                            // Reduce the timeout slightly for next time: we're under little load, so reduce impact
-                            // on latency
-                            timeout = Math.Max(timeout - WriteCoalescingDelayAdaptivityUs, 0);
-                        }
-                        finally
-                        {
-                            timeoutTokenSource.Stop();
-                        }
+                        Interlocked.Increment(ref connector.CommandsInFlightCount);
+                        writtenSynchronously = WriteCommand(connector, command, ref stats);
                     }
 
                     // If all commands were written synchronously (good path), complete the write here, flushing
