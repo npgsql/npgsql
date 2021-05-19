@@ -24,6 +24,8 @@ Npgsql.NpgsqlConnectionStringBuilder.SslPassword.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.SslPassword.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingDelayUs.get -> int
+*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingDelayUs.set -> void
 *REMOVED*Npgsql.INpgsqlDatabaseInfoFactory
 *REMOVED*Npgsql.INpgsqlDatabaseInfoFactory.Load(Npgsql.NpgsqlConnection! conn, Npgsql.Util.NpgsqlTimeout timeout, bool async) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDatabaseInfo?>!
 *REMOVED*Npgsql.NpgsqlDatabaseInfo

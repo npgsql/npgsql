@@ -1452,27 +1452,6 @@ namespace Npgsql
         bool _multiplexing;
 
         /// <summary>
-        /// When multiplexing is enabled, determines the maximum amount of time to wait for further
-        /// commands before flushing to the network. In microseconds, 0 disables waiting altogether.
-        /// </summary>
-        [Category("Multiplexing")]
-        [Description("When multiplexing is enabled, determines the maximum amount of time to wait for further " +
-                     "commands before flushing to the network. In microseconds, 0 disables waiting altogether.")]
-        [DisplayName("Write Coalescing Delay Us")]
-        [NpgsqlConnectionStringProperty]
-        [DefaultValue(0)]
-        public int WriteCoalescingDelayUs
-        {
-            get => _writeCoalescingDelayUs;
-            set
-            {
-                _writeCoalescingDelayUs = value;
-                SetValue(nameof(WriteCoalescingDelayUs), value);
-            }
-        }
-        int _writeCoalescingDelayUs;
-
-        /// <summary>
         /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
         /// flushing to the network.
         /// </summary>
