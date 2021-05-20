@@ -572,11 +572,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         Task Prepare(bool async, CancellationToken cancellationToken = default)
         {
-            var connection = CheckAndGetConnection();
-            Debug.Assert(connection is not null);
-            if (connection.Settings.Multiplexing)
-                throw new NotSupportedException("Explicit preparation not supported with multiplexing");
-            var connector = connection.Connector!;
+            var connector = _connector;
+            if (connector is null)
+            {
+                var connection = CheckAndGetConnection();
+                Debug.Assert(connection is not null);
+                if (connection.Settings.Multiplexing)
+                    throw new NotSupportedException("Explicit preparation not supported with multiplexing");
+                connector = connection.Connector!;
+            }
 
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
@@ -706,14 +710,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task Unprepare(bool async, CancellationToken cancellationToken = default)
         {
-            var connection = CheckAndGetConnection();
-            Debug.Assert(connection is not null);
-            if (connection.Settings.Multiplexing)
-                throw new NotSupportedException("Explicit preparation not supported with multiplexing");
+            var connector = _connector;
+            if (connector is null)
+            {
+                var connection = CheckAndGetConnection();
+                Debug.Assert(connection is not null);
+                if (connection.Settings.Multiplexing)
+                    throw new NotSupportedException("Explicit preparation not supported with multiplexing");
+
+                connector = connection.Connector!;
+            }
+
             if (_statements.All(s => !s.IsPrepared))
                 return;
-
-            var connector = connection.Connector!;
 
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction(cancellationToken))

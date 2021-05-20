@@ -1674,6 +1674,77 @@ CREATE TABLE record ()");
             Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
         }
 
+        [Test]
+        public async Task Physical_open_callback_prepare_unprepare()
+        {
+            if (IsMultiplexing)
+                return;
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                // Otherwise we're going to fail below because we only execute prepared query if we explicitly prepared it
+                // or MaxAutoPrepare is not 0
+                MaxAutoPrepare = 1,
+                AutoPrepareMinUsages = 100,
+            };
+            using var _ = CreateTempPool(csb.ToString(), out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+
+            conn.PhysicalOpenCallback = c =>
+            {
+                using var cmd = c.CreateCommand("SELECT 1");
+                cmd.Prepare();
+                cmd.ExecuteNonQuery();
+                Assert.IsTrue(cmd.Statements[0].IsPrepared);
+
+                cmd.Unprepare();
+                cmd.ExecuteNonQuery();
+                Assert.IsFalse(cmd.Statements[0].IsPrepared);
+
+                cmd.Prepare();
+            };
+
+            conn.Open();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            cmd.ExecuteNonQuery();
+            Assert.IsTrue(cmd.Statements[0].IsPrepared);
+        }
+
+        [Test]
+        public async Task Physical_open_async_callback_prepare_unprepare()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                // Otherwise we're going to fail below because we only execute prepared query if we explicitly prepared it
+                // or MaxAutoPrepare is not 0
+                MaxAutoPrepare = 1,
+                AutoPrepareMinUsages = 100,
+            };
+            using var _ = CreateTempPool(csb.ToString(), out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+
+            conn.PhysicalOpenAsyncCallback = async c =>
+            {
+                await using var cmd = c.CreateCommand("SELECT 1");
+                await cmd.PrepareAsync();
+                await cmd.ExecuteNonQueryAsync();
+                Assert.IsTrue(cmd.Statements[0].IsPrepared);
+
+                await cmd.UnprepareAsync();
+                await cmd.ExecuteNonQueryAsync();
+                Assert.IsFalse(cmd.Statements[0].IsPrepared);
+
+                await cmd.PrepareAsync();
+            };
+
+            await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await cmd.ExecuteNonQueryAsync();
+            Assert.IsTrue(cmd.Statements[0].IsPrepared);
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
