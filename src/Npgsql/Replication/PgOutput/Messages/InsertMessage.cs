@@ -1,5 +1,9 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -8,36 +12,40 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class InsertMessage : TransactionalMessage
     {
+        readonly ReplicationTuple _tupleEnumerable;
+
+        /// <summary>
+        /// The relation for this <see cref="InsertMessage" />.
+        /// </summary>
+        public RelationMessage Relation { get; private set; } = null!;
+
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
         /// </summary>
-        public uint RelationId { get; private set; }
+        [Obsolete("Use Relation.RelationId")]
+        public uint RelationId => Relation.RelationId;
 
         /// <summary>
         /// Columns representing the new row.
         /// </summary>
-        public ReadOnlyMemory<TupleData> NewRow { get; private set; } = default!;
+        public ReplicationTuple NewRow => _tupleEnumerable;
+
+        internal InsertMessage(NpgsqlConnector connector)
+            => _tupleEnumerable = new(connector);
 
         internal InsertMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
-            ReadOnlyMemory<TupleData> newRow)
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+            RelationMessage relation, ushort numColumns)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
-            RelationId = relationId;
-            NewRow = newRow;
+
+            Relation = relation;
+            _tupleEnumerable.Reset(numColumns, relation.RowDescription);
+
             return this;
         }
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override InsertMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new InsertMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray());
-            return clone;
-        }
+        internal Task Consume(CancellationToken cancellationToken)
+            => _tupleEnumerable.Consume(cancellationToken);
     }
 }

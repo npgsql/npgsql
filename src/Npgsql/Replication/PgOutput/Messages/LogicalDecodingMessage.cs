@@ -29,6 +29,8 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public Stream Data { get; private set; } = default!;
 
+        internal LogicalDecodingMessage() {}
+
         internal LogicalDecodingMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
             uint? transactionXid, byte flags, NpgsqlLogSequenceNumber messageLsn, string prefix, Stream data)
         {
@@ -38,18 +40,6 @@ namespace Npgsql.Replication.PgOutput.Messages
             Prefix = prefix;
             Data = data;
             return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override LogicalDecodingMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new LogicalDecodingMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Flags, MessageLsn, Prefix, Data);
-            return clone;
         }
     }
 }

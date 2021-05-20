@@ -9,9 +9,9 @@ namespace Npgsql.Replication.PgOutput.Messages
     public sealed class CommitMessage : PgOutputReplicationMessage
     {
         /// <summary>
-        /// Flags; currently unused (must be 0).
+        /// Flags; currently unused.
         /// </summary>
-        public byte Flags { get; private set; }
+        public CommitFlags Flags { get; private set; }
 
         /// <summary>
         /// The LSN of the commit.
@@ -28,8 +28,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public DateTime TransactionCommitTimestamp { get; private set; }
 
-        internal CommitMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, byte flags,
-            NpgsqlLogSequenceNumber commitLsn, NpgsqlLogSequenceNumber transactionEndLsn, DateTime transactionCommitTimestamp)
+        internal CommitMessage() {}
+
+        internal CommitMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
+            CommitFlags flags, NpgsqlLogSequenceNumber commitLsn, NpgsqlLogSequenceNumber transactionEndLsn,
+            DateTime transactionCommitTimestamp)
         {
             base.Populate(walStart, walEnd, serverClock);
 
@@ -41,16 +44,16 @@ namespace Npgsql.Replication.PgOutput.Messages
             return this;
         }
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override CommitMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
+        /// <summary>
+        /// Flags for the commit.
+        /// </summary>
+        [Flags]
+        public enum CommitFlags : byte
         {
-            var clone = new CommitMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, Flags, CommitLsn, TransactionEndLsn, TransactionCommitTimestamp);
-            return clone;
+            /// <summary>
+            /// No flags.
+            /// </summary>
+            None = 0
         }
     }
 }

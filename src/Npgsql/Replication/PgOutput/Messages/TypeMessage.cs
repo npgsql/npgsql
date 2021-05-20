@@ -23,6 +23,8 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public string Name { get; private set; } = string.Empty;
 
+        internal TypeMessage() {}
+
         internal TypeMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint typeId, string ns, string name)
         {
@@ -31,18 +33,6 @@ namespace Npgsql.Replication.PgOutput.Messages
             Namespace = ns;
             Name = name;
             return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override TypeMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new TypeMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, TypeId, Namespace, Name);
-            return clone;
         }
     }
 }

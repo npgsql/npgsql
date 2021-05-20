@@ -1,5 +1,7 @@
 ﻿#nullable enable
 *REMOVED*abstract Npgsql.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
+abstract Npgsql.Replication.PgOutput.Messages.UpdateMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*abstract Npgsql.Replication.PgOutput.Messages.PgOutputReplicationMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.PgOutputReplicationMessage!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 Npgsql.NpgsqlBatch
 Npgsql.NpgsqlBatch.BatchCommands.get -> Npgsql.NpgsqlBatchCommandCollection!
@@ -83,8 +85,79 @@ Npgsql.PhysicalOpenCallback
 Npgsql.Replication.ReplicationConnection.PostgreSqlVersion.get -> System.Version!
 Npgsql.Replication.ReplicationConnection.ServerVersion.get -> string!
 *REMOVED*Npgsql.Replication.PgOutput.Messages.BeginMessage.TransactionXid.get -> uint
-*REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.Columns.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.RelationMessage.Column>
+*REMOVED*Npgsql.Replication.PgOutput.Messages.BeginMessage.BeginMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitMessage() -> void
+Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
+Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
+Npgsql.Replication.PgOutput.Messages.CommitMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
+*REMOVED*Npgsql.Replication.PgOutput.Messages.CommitMessage.Flags.get -> byte
+*REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.RelationMessage() -> void
 Npgsql.Replication.PgOutput.Messages.RelationMessage.Columns.get -> System.Collections.Generic.IReadOnlyList<Npgsql.Replication.PgOutput.Messages.RelationMessage.Column>!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.Columns.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.RelationMessage.Column>
+Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags
+Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags
+Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags.PartOfKey = 1 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags
+*REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.Flags.get -> byte
+Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.Flags.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.ColumnFlags
+*REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.RelationReplicaIdentitySetting.get -> char
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentity.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting.Default = 100 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting.Nothing = 110 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting.AllColumns = 102 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting.IndexWithIndIsReplIdent = 105 -> Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting
+*REMOVED*Npgsql.Replication.PgOutput.Messages.DeleteMessage.DeleteMessage() -> void
+Npgsql.Replication.PgOutput.Messages.DeleteMessage.Relation.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage!
+Npgsql.Replication.PgOutput.Messages.DefaultUpdateMessage
+override Npgsql.Replication.PgOutput.Messages.DefaultUpdateMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.FullDeleteMessage.FullDeleteMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.FullDeleteMessage.OldRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+Npgsql.Replication.PgOutput.Messages.FullDeleteMessage.OldRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.FullUpdateMessage.FullUpdateMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.FullUpdateMessage.OldRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+override Npgsql.Replication.PgOutput.Messages.FullUpdateMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+Npgsql.Replication.PgOutput.Messages.FullUpdateMessage.OldRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.KeyDeleteMessage.KeyDeleteMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.KeyDeleteMessage.KeyRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+Npgsql.Replication.PgOutput.Messages.KeyDeleteMessage.Key.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage.IndexUpdateMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage.KeyRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+override Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage.Key.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.InsertMessage.InsertMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.InsertMessage.NewRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+Npgsql.Replication.PgOutput.Messages.InsertMessage.Relation.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage!
+Npgsql.Replication.PgOutput.Messages.InsertMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.OriginMessage.OriginMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TypeMessage.TypeMessage() -> void
+Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
+*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
+Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage
+Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Data.get -> System.IO.Stream!
+Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Flags.get -> byte
+Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.MessageLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Prefix.get -> string!
+Npgsql.Replication.PgOutput.Messages.StreamAbortMessage
+Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.SubtransactionXid.get -> uint
+Npgsql.Replication.PgOutput.Messages.StreamCommitMessage
+Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.CommitLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.Flags.get -> byte
+Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionCommitTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.StreamStartMessage
+Npgsql.Replication.PgOutput.Messages.StreamStartMessage.StreamSegmentIndicator.get -> byte
+Npgsql.Replication.PgOutput.Messages.StreamStopMessage
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateMessage.Options.get -> Npgsql.Replication.PgOutput.Messages.TruncateOptions
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.Options.get -> Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateOptions
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateOptions.Cascade = 1 -> Npgsql.Replication.PgOutput.Messages.TruncateOptions
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateOptions.None = 0 -> Npgsql.Replication.PgOutput.Messages.TruncateOptions
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateOptions.RestartIdentity = 2 -> Npgsql.Replication.PgOutput.Messages.TruncateOptions
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions.Cascade = 1 -> Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions.None = 0 -> Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions.RestartIdentity = 2 -> Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions
 Npgsql.Replication.PgOutput.Messages.TransactionalMessage
 Npgsql.Replication.PgOutput.Messages.TransactionalMessage.TransactionalMessage() -> void
 Npgsql.Replication.PgOutput.Messages.TransactionalMessage.TransactionXid.get -> uint?
@@ -92,32 +165,41 @@ Npgsql.Replication.PgOutput.Messages.TransactionalMessage.TransactionXid.get -> 
 Npgsql.Replication.PgOutput.Messages.TransactionControlMessage
 Npgsql.Replication.PgOutput.Messages.TransactionControlMessage.TransactionControlMessage() -> void
 Npgsql.Replication.PgOutput.Messages.TransactionControlMessage.TransactionXid.get -> uint
-Npgsql.Replication.PgOutput.Messages.TruncateMessage.RelationIds.get -> System.Collections.Generic.IReadOnlyList<uint>!
-Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
-*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Data.get -> System.IO.Stream!
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Flags.get -> byte
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.LogicalDecodingMessage() -> void
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.MessageLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Prefix.get -> string!
-Npgsql.Replication.PgOutput.Messages.StreamAbortMessage
-Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.StreamAbortMessage() -> void
-Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.SubtransactionXid.get -> uint
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.CommitLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.Flags.get -> byte
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.StreamCommitMessage() -> void
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionCommitTimestamp.get -> System.DateTime
-Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.StreamStartMessage
-Npgsql.Replication.PgOutput.Messages.StreamStartMessage.StreamSegmentIndicator.get -> byte
-Npgsql.Replication.PgOutput.Messages.StreamStartMessage.StreamStartMessage() -> void
-Npgsql.Replication.PgOutput.Messages.StreamStopMessage
-Npgsql.Replication.PgOutput.Messages.StreamStopMessage.StreamStopMessage() -> void
+Npgsql.Replication.PgOutput.Messages.TruncateMessage.Relations.get -> System.Collections.Generic.IReadOnlyList<Npgsql.Replication.PgOutput.Messages.RelationMessage!>!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleData
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleData.Kind.get -> Npgsql.Replication.PgOutput.Messages.TupleDataKind
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleData.TextValue.get -> string!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleData.TupleData() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleData.Value.get -> object?
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleDataKind
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleDataKind.Null = 110 -> Npgsql.Replication.PgOutput.Messages.TupleDataKind
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleDataKind.TextValue = 116 -> Npgsql.Replication.PgOutput.Messages.TupleDataKind
+*REMOVED*Npgsql.Replication.PgOutput.Messages.TupleDataKind.UnchangedToastedValue = 117 -> Npgsql.Replication.PgOutput.Messages.TupleDataKind
+Npgsql.Replication.PgOutput.TupleDataKind
+Npgsql.Replication.PgOutput.TupleDataKind.Null = 110 -> Npgsql.Replication.PgOutput.TupleDataKind
+Npgsql.Replication.PgOutput.TupleDataKind.TextValue = 116 -> Npgsql.Replication.PgOutput.TupleDataKind
+Npgsql.Replication.PgOutput.TupleDataKind.UnchangedToastedValue = 117 -> Npgsql.Replication.PgOutput.TupleDataKind
+Npgsql.Replication.PgOutput.TupleDataKind.BinaryValue = 98 -> Npgsql.Replication.PgOutput.TupleDataKind
+*REMOVED*Npgsql.Replication.PgOutput.Messages.UpdateMessage.UpdateMessage() -> void
+*REMOVED*Npgsql.Replication.PgOutput.Messages.UpdateMessage.NewRow.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.TupleData>
+Npgsql.Replication.PgOutput.Messages.UpdateMessage.Relation.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage!
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Messages.get -> bool?
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
+Npgsql.Replication.PgOutput.ReplicationTuple
+Npgsql.Replication.PgOutput.ReplicationTuple.NumColumns.get -> ushort
+Npgsql.Replication.PgOutput.ReplicationValue
+Npgsql.Replication.PgOutput.ReplicationValue.Get(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<object!>
+Npgsql.Replication.PgOutput.ReplicationValue.Get<T>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T>
+Npgsql.Replication.PgOutput.ReplicationValue.GetDataTypeName() -> string!
+Npgsql.Replication.PgOutput.ReplicationValue.GetFieldType() -> System.Type!
+Npgsql.Replication.PgOutput.ReplicationValue.GetPostgresType() -> Npgsql.PostgresTypes.PostgresType!
+Npgsql.Replication.PgOutput.ReplicationValue.GetStream() -> System.IO.Stream!
+Npgsql.Replication.PgOutput.ReplicationValue.GetTextReader() -> System.IO.TextReader!
+Npgsql.Replication.PgOutput.ReplicationValue.Kind.get -> Npgsql.Replication.PgOutput.TupleDataKind
+Npgsql.Replication.PgOutput.ReplicationValue.IsDBNull.get -> bool
+Npgsql.Replication.PgOutput.ReplicationValue.IsUnchangedToastedValue.get -> bool
+Npgsql.Replication.PgOutput.ReplicationValue.Length.get -> int
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddMapping(Npgsql.TypeMapping.NpgsqlTypeMapping! mapping) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*Npgsql.SslMode.Prefer = 1 -> Npgsql.SslMode
@@ -202,11 +284,21 @@ override Npgsql.NpgsqlFactory.CanCreateBatch.get -> bool
 override Npgsql.NpgsqlFactory.CreateBatch() -> System.Data.Common.DbBatch!
 override Npgsql.NpgsqlFactory.CreateBatchCommand() -> System.Data.Common.DbBatchCommand!
 override Npgsql.NpgsqlRawCopyStream.DisposeAsync() -> System.Threading.Tasks.ValueTask
-override Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage!
-override Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.StreamAbortMessage!
-override Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.StreamCommitMessage!
-override Npgsql.Replication.PgOutput.Messages.StreamStartMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.StreamStartMessage!
-override Npgsql.Replication.PgOutput.Messages.StreamStopMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.StreamStopMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.BeginMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.BeginMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.CommitMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.CommitMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.FullDeleteMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.FullDeleteMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.FullUpdateMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.FullUpdateMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.IndexUpdateMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.InsertMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.InsertMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.KeyDeleteMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.KeyDeleteMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.OriginMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.OriginMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.RelationMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.RelationMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.TruncateMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.TruncateMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.TupleData.ToString() -> string!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.TypeMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.TypeMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.UpdateMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.UpdateMessage!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.TupleData.ToString() -> string!
+*REMOVED*override Npgsql.Replication.PgOutput.Messages.UpdateMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.UpdateMessage!
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
 *REMOVED*static Npgsql.NpgsqlDatabaseInfo.ParseServerVersion(string! value) -> System.Version!
@@ -284,6 +376,7 @@ Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
+virtual Npgsql.Replication.PgOutput.ReplicationTuple.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerator<Npgsql.Replication.PgOutput.ReplicationValue!>!
 Npgsql.NpgsqlParameter<T>.TypedValue.get -> T?
 NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateOnly date) -> void
 static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly

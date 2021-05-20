@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Npgsql.BackendMessages;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -26,38 +27,34 @@ namespace Npgsql.Replication.PgOutput.Messages
         public string RelationName { get; private set; } = string.Empty;
 
         /// <summary>
-        /// Replica identity setting for the relation (same as relreplident in pg_class).
+        /// Replica identity setting for the relation (same as <c>relreplident</c> in <c>pg_class</c>):
+        /// columns used to form “replica identity” for rows.
         /// </summary>
-        public char RelationReplicaIdentitySetting { get; private set; }
+        public ReplicaIdentitySetting ReplicaIdentity { get; private set; }
 
         /// <summary>
         /// Relation columns
         /// </summary>
-        public IReadOnlyList<Column> Columns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty!;
+        public IReadOnlyList<Column> Columns => InternalColumns;
+
+        internal ReadOnlyArrayBuffer<Column> InternalColumns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty;
+
+        internal RowDescriptionMessage RowDescription { get; set; } = null!;
+
+        internal RelationMessage() {}
 
         internal RelationMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
-            string relationName, char relationReplicaIdentitySetting, ReadOnlyArrayBuffer<Column> columns)
+            string relationName, ReplicaIdentitySetting relationReplicaIdentitySetting)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
+
             RelationId = relationId;
             Namespace = ns;
             RelationName = relationName;
-            RelationReplicaIdentitySetting = relationReplicaIdentitySetting;
-            Columns = columns;
-            return this;
-        }
+            ReplicaIdentity = relationReplicaIdentitySetting;
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override RelationMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new RelationMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadOnlyArrayBuffer<Column>)Columns).Clone());
-            return clone;
+            return this;
         }
 
         /// <summary>
@@ -65,7 +62,7 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public readonly struct Column
         {
-            internal Column(byte flags, string columnName, uint dataTypeId, int typeModifier)
+            internal Column(ColumnFlags flags, string columnName, uint dataTypeId, int typeModifier)
             {
                 Flags = flags;
                 ColumnName = columnName;
@@ -74,9 +71,9 @@ namespace Npgsql.Replication.PgOutput.Messages
             }
 
             /// <summary>
-            /// Flags for the column. Currently can be either 0 for no flags or 1 which marks the column as part of the key.
+            /// Flags for the column.
             /// </summary>
-            public byte Flags { get; }
+            public ColumnFlags Flags { get; }
 
             /// <summary>
             /// Name of the column.
@@ -92,6 +89,52 @@ namespace Npgsql.Replication.PgOutput.Messages
             /// Type modifier of the column (atttypmod).
             /// </summary>
             public int TypeModifier { get; }
+
+            /// <summary>
+            /// Flags for the column.
+            /// </summary>
+            [Flags]
+            public enum ColumnFlags
+            {
+                /// <summary>
+                /// No flags.
+                /// </summary>
+                None = 0,
+
+                /// <summary>
+                /// Marks the column as part of the key.
+                /// </summary>
+                PartOfKey = 1
+            }
+        }
+
+        /// <summary>
+        /// Replica identity setting for the relation (same as <c>relreplident</c> in <c>pg_class</c>).
+        /// </summary>
+        /// <remarks>
+        /// See <see href="https://www.postgresql.org/docs/current/catalog-pg-class.html" />
+        /// </remarks>
+        public enum ReplicaIdentitySetting : byte
+        {
+            /// <summary>
+            /// Default (primary key, if any).
+            /// </summary>
+            Default = (byte)'d',
+
+            /// <summary>
+            /// Nothing.
+            /// </summary>
+            Nothing = (byte)'n',
+
+            /// <summary>
+            /// All columns.
+            /// </summary>
+            AllColumns = (byte)'f',
+
+            /// <summary>
+            /// Index with <c>indisreplident</c> set (same as nothing if the index used has been dropped)
+            /// </summary>
+            IndexWithIndIsReplIdent = (byte)'i'
         }
     }
 }
