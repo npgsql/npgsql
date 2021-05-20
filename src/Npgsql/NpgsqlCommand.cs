@@ -1137,12 +1137,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             => await ExecuteReaderAsync(behavior, cancellationToken);
 
         /// <summary>
+        /// Executes the <see cref="CommandText"/> using the default behavior against the <see cref="Connection"/>
+        /// and returns a <see cref="NpgsqlDataReader"/>.
+        /// </summary>
+        /// <returns>A task representing the operation.</returns>
+        public new NpgsqlDataReader ExecuteReader()
+            => ExecuteReader(CommandBehavior.Default);
+
+        /// <summary>
         /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
         /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
         /// <returns>A task representing the operation.</returns>
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
             => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
