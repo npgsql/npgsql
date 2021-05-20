@@ -14,12 +14,10 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
 
         internal FullDeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId, ReadOnlyMemory<TupleData> oldRow)
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, ReadOnlyMemory<TupleData> oldRow)
         {
-            base.Populate(walStart, walEnd, serverClock, relationId);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId);
             OldRow = oldRow;
-
             return this;
         }
 
@@ -31,7 +29,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new FullDeleteMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, OldRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, OldRow.ToArray());
             return clone;
         }
     }

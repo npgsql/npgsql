@@ -14,13 +14,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> KeyRow { get; private set; } = default!;
 
         internal KeyDeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
             ReadOnlyMemory<TupleData> keyRow)
         {
-            base.Populate(walStart, walEnd, serverClock, relationId);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId);
             KeyRow = keyRow;
-
             return this;
         }
 
@@ -32,7 +30,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new KeyDeleteMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, KeyRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, KeyRow.ToArray());
             return clone;
         }
     }

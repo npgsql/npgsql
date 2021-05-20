@@ -10,7 +10,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <remarks>
     /// This is the base type of all update messages containing only the tuples for the new row.
     /// </remarks>
-    public class UpdateMessage : PgOutputReplicationMessage
+    public class UpdateMessage : TransactionalPgOutputReplicationMessage
     {
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
@@ -23,14 +23,12 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> NewRow { get; private set; }
 
         internal UpdateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
             ReadOnlyMemory<TupleData> newRow)
         {
-            base.Populate(walStart, walEnd, serverClock);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid);
             RelationId = relationId;
             NewRow = newRow;
-
             return this;
         }
 
@@ -42,7 +40,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new UpdateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, NewRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray());
             return clone;
         }
     }

@@ -14,13 +14,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> KeyRow { get; private set; } = default!;
 
         internal IndexUpdateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
             ReadOnlyMemory<TupleData> newRow, ReadOnlyMemory<TupleData> keyRow)
         {
-            base.Populate(walStart, walEnd, serverClock, relationId, newRow);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId, newRow);
             KeyRow = keyRow;
-
             return this;
         }
 
@@ -32,7 +30,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new IndexUpdateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, NewRow.ToArray(), KeyRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray(), KeyRow.ToArray());
             return clone;
         }
     }

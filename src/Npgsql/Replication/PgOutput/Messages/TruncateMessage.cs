@@ -1,12 +1,13 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Immutable;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
     /// <summary>
     /// Logical Replication Protocol truncate message
     /// </summary>
-    public sealed class TruncateMessage : PgOutputReplicationMessage
+    public sealed class TruncateMessage : TransactionalPgOutputReplicationMessage
     {
         /// <summary>
         /// Option flags for TRUNCATE
@@ -16,17 +17,15 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// <summary>
         /// IDs of the relations corresponding to the ID in the relation message.
         /// </summary>
-        public uint[] RelationIds { get; private set; } = default!;
+        public ImmutableArray<uint> RelationIds { get; private set; } = ImmutableArray<uint>.Empty;
 
         internal TruncateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, TruncateOptions options,
-            uint[] relationIds)
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, TruncateOptions options,
+            ImmutableArray<uint> relationIds)
         {
-            base.Populate(walStart, walEnd, serverClock);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid);
             Options = options;
             RelationIds = relationIds;
-
             return this;
         }
 
@@ -38,7 +37,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new TruncateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, Options, RelationIds); // TODO: RelationIds...
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Options, RelationIds);
             return clone;
         }
     }
