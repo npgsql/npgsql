@@ -12,42 +12,20 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Tests.Replication
 {
-    [TestFixture(ProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-    //[TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-    [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+    [TestFixture(ProtocolVersionMode.ProtocolV1, ReplicationDataMode.DefaultReplicationData, TransactionStreamingMode.DefaultTransaction)]
+    //[TestFixture(ProtocolVersionMode.ProtocolV1, ReplicationDataMode.BinaryReplicationData, TransactionStreamingMode.DefaultTransaction)]
+    [TestFixture(ProtocolVersionMode.ProtocolV2, ReplicationDataMode.DefaultReplicationData, TransactionStreamingMode.StreamingTransaction)]
     // We currently don't execute all possible combinations of settings for efficiency reasons because they don't
     // interact in the current implementation.
     // Feel free to uncomment some or all of the following lines if the implementation changed or you suspect a
     // problem with some combination.
-    // [TestFixture(ProtocolVersion.V1, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
-    // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-    // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
-    // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-    // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
-    public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
+    // [TestFixture(ProtocolVersionMode.ProtocolV1, ReplicationDataMode.TextReplicationData, TransactionStreamingMode.NonStreamingTransaction)]
+    // [TestFixture(ProtocolVersionMode.ProtocolV2, ReplicationDataMode.DefaultReplicationData, TransactionStreamingMode.DefaultTransaction)]
+    // [TestFixture(ProtocolVersionMode.ProtocolV2, ReplicationDataMode.TextReplicationData, TransactionStreamingMode.NonStreamingTransaction)]
+    // [TestFixture(ProtocolVersionMode.ProtocolV2, ReplicationDataMode.BinaryReplicationData, TransactionStreamingMode.DefaultTransaction)]
+    // [TestFixture(ProtocolVersionMode.ProtocolV2, ReplicationDataMode.BinaryReplicationData, TransactionStreamingMode.StreamingTransaction)]
+    public class PgOutputReplicationTests : PgOutputReplicationTestBase
     {
-        readonly ulong _protocolVersion;
-        readonly bool? _binary;
-        readonly bool? _streaming;
-
-        bool IsBinary => _binary ?? false;
-        bool IsStreaming => _streaming ?? false;
-
-        public PgOutputReplicationTests(ProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
-        {
-            _protocolVersion = (ulong)protocolVersion;
-            _binary = dataMode == ReplicationDataMode.BinaryReplicationDataMode
-                ? true
-                : dataMode == ReplicationDataMode.TextReplicationDataMode
-                    ? false
-                    : null;
-            _streaming = transactionMode == TransactionMode.StreamingTransactionMode
-                ? true
-                : transactionMode == TransactionMode.NonStreamingTransactionMode
-                    ? false
-                    : null;
-        }
-
         [Test]
         public Task CreateReplicationSlot()
             => SafeReplicationTest(
@@ -108,16 +86,22 @@ namespace Npgsql.Tests.Replication
                     // Insert first value
                     var insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(insertMsg.NewRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(insertMsg.NewRow.Span[1].Value, Is.EqualTo("val1"));
+                    Assert.That(insertMsg.NewRow.FieldCount, Is.EqualTo(2));
+                    if (IsBinaryMode)
+                        Assert.That(await insertMsg.NewRow.GetFieldValueAsync<int>(0, streamingCts.Token), Is.EqualTo(1));
+                    else
+                        Assert.That(await insertMsg.NewRow.GetFieldValueAsync<string>(0, streamingCts.Token), Is.EqualTo("1"));
+                    Assert.That(await insertMsg.NewRow.GetFieldValueAsync<string>(1, streamingCts.Token), Is.EqualTo("val1"));
 
                     // Insert second value
                     insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(insertMsg.NewRow.Span[0].Value, Is.EqualTo("2"));
-                    Assert.That(insertMsg.NewRow.Span[1].Value, Is.EqualTo("val2"));
+                    Assert.That(insertMsg.NewRow.FieldCount, Is.EqualTo(2));
+                    if (IsBinaryMode)
+                        Assert.That(await insertMsg.NewRow.GetFieldValueAsync<int>(0, streamingCts.Token), Is.EqualTo(2));
+                    else
+                        Assert.That(await insertMsg.NewRow.GetFieldValueAsync<string>(0, streamingCts.Token), Is.EqualTo("2"));
+                    Assert.That(await insertMsg.NewRow.GetFieldValueAsync<string>(1, streamingCts.Token), Is.EqualTo("val2"));
 
                     // Remaining inserts
                     for (var insertCount = 0; insertCount < 14998; insertCount++)
@@ -695,136 +679,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }, $"{GetObjectName(nameof(LogicalDecodingMessage))}_m_{BoolToChar(writeMessages)}");
 
-        async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
+        public PgOutputReplicationTests(ProtocolVersionMode protocolVersion, ReplicationDataMode dataMode, TransactionStreamingMode transactionMode) : base(protocolVersion, dataMode, transactionMode)
         {
-            Assert.True(await messages.MoveNextAsync());
-            if (IsStreaming)
-            {
-                Assert.That(messages.Current, Is.TypeOf<StreamStartMessage>());
-                var streamStartMessage = (messages.Current as StreamStartMessage)!;
-                return streamStartMessage.TransactionXid;
-            }
-            Assert.That(messages.Current, Is.TypeOf<BeginMessage>());
-            var beginMessage = (messages.Current as BeginMessage)!;
-            return beginMessage.TransactionXid;
-        }
-
-        async Task AssertTransactionCommit(IAsyncEnumerator<PgOutputReplicationMessage> messages)
-        {
-            Assert.True(await messages.MoveNextAsync());
-            if (IsStreaming)
-            {
-                Assert.That(messages.Current, Is.TypeOf<StreamStopMessage>());
-                Assert.True(await messages.MoveNextAsync());
-                Assert.That(messages.Current, Is.TypeOf<StreamCommitMessage>());
-            }
-            else
-                Assert.That(messages.Current, Is.TypeOf<CommitMessage>());
-        }
-
-        async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator, bool expectRelationMessage = false)
-            where TExpected : PgOutputReplicationMessage
-        {
-            Assert.True(await enumerator.MoveNextAsync());
-            if (IsStreaming && enumerator.Current is StreamStopMessage)
-            {
-                Assert.True(await enumerator.MoveNextAsync());
-                Assert.That(enumerator.Current, Is.TypeOf<StreamStartMessage>());
-                Assert.True(await enumerator.MoveNextAsync());
-                if (expectRelationMessage)
-                {
-                    Assert.That(enumerator.Current, Is.TypeOf<RelationMessage>());
-                    Assert.True(await enumerator.MoveNextAsync());
-                }
-            }
-
-            Assert.That(enumerator.Current, Is.TypeOf<TExpected>());
-            return (TExpected)enumerator.Current!;
-        }
-
-        /// <summary>
-        /// Unfortunately, empty transactions may get randomly created by PG because of auto-vacuuming; these cause test failures as we
-        /// assert for specific expected message types. This filters them out.
-        /// </summary>
-        async IAsyncEnumerable<PgOutputReplicationMessage> SkipEmptyTransactions(IAsyncEnumerable<PgOutputReplicationMessage> messages)
-        {
-            var enumerator = messages.GetAsyncEnumerator();
-            while (await enumerator.MoveNextAsync())
-            {
-                if (enumerator.Current is BeginMessage)
-                {
-                    var current = enumerator.Current.Clone();
-                    if (!await enumerator.MoveNextAsync())
-                    {
-                        yield return current;
-                        yield break;
-                    }
-
-                    var next = enumerator.Current;
-                    if (next is CommitMessage)
-                        continue;
-
-                    yield return current;
-                    yield return next;
-                    continue;
-                }
-
-                yield return enumerator.Current;
-            }
-        }
-
-        PgOutputReplicationOptions GetOptions(string publicationName, bool? messages = null)
-            => new(publicationName, _protocolVersion, _binary, _streaming, messages);
-
-        Task SafePgOutputReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
-            => SafeReplicationTest(testAction, GetObjectName(memberName));
-
-        string GetObjectName(string memberName)
-        {
-            var sb = new StringBuilder(memberName)
-                .Append("_v").Append(_protocolVersion);
-            if (_binary.HasValue)
-                sb.Append("_b_").Append(BoolToChar(_binary.Value));
-            if (_streaming.HasValue)
-                sb.Append("_s_").Append(BoolToChar(_streaming.Value));
-            return sb.ToString();
-        }
-
-        static char BoolToChar(bool value)
-            => value ? 't' : 'f';
-
-
-        protected override string Postfix => "pgoutput_l";
-
-        [OneTimeSetUp]
-        public async Task SetUp()
-        {
-            await using var c = await OpenConnectionAsync();
-            TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
-            if (_protocolVersion > 1)
-                TestUtil.MinimumPgVersion(c, "14.0", "Logical Streaming Replication Protocol version 2 was introduced in PostgreSQL 14");
-            if (IsBinary)
-                TestUtil.MinimumPgVersion(c, "14.0", "Sending replication values in binary representation was introduced in PostgreSQL 14");
-            if (IsStreaming)
-                TestUtil.MinimumPgVersion(c, "14.0", "Streaming of in-progress transactions was introduced in PostgreSQL 14");
-        }
-
-        public enum ProtocolVersion : ulong
-        {
-            V1 = 1UL,
-            V2 = 2UL,
-        }
-        public enum ReplicationDataMode
-        {
-            DefaultReplicationDataMode,
-            TextReplicationDataMode,
-            BinaryReplicationDataMode,
-        }
-        public enum TransactionMode
-        {
-            DefaultTransactionMode,
-            NonStreamingTransactionMode,
-            StreamingTransactionMode,
         }
     }
 }

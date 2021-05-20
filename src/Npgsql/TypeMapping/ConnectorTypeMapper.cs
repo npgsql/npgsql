@@ -172,7 +172,7 @@ namespace Npgsql.TypeMapping
         internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
             => ResolveByDataTypeName(typeName, throwOnError: true)!;
 
-        NpgsqlTypeHandler? ResolveByDataTypeName(string typeName, bool throwOnError)
+        internal NpgsqlTypeHandler? ResolveByDataTypeName(string typeName, bool throwOnError)
         {
             if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
                 return handler;

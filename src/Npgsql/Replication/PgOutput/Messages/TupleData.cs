@@ -100,12 +100,10 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         TextValue = (byte)'t',
 
-#if PG14
         /// <summary>
         /// Identifies the data as binary value.
         /// </summary>
         /// <remarks>Added in PG14</remarks>
         BinaryValue = (byte)'b'
-#endif
     }
 }

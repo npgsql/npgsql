@@ -7,6 +7,7 @@ using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Replication.PgOutput.Messages;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 
@@ -47,12 +48,7 @@ namespace Npgsql.BackendMessages
             _insensitiveIndex?.Clear();
 
             var numFields = Count = buf.ReadInt16();
-            if (_fields.Length < numFields)
-            {
-                var oldFields = _fields;
-                _fields = new FieldDescription[numFields];
-                Array.Copy(oldFields, _fields, oldFields.Length);
-            }
+            EnsureFields(numFields);
 
             for (var i = 0; i < numFields; ++i)
             {
@@ -74,6 +70,47 @@ namespace Npgsql.BackendMessages
             }
 
             return this;
+        }
+
+        internal RowDescriptionMessage LoadForReplication(ConnectorTypeMapper typeMapper, RelationMessage relationMessage,
+            Dictionary<uint, TypeInfo> typeInfos)
+        {
+            _nameIndex.Clear();
+            _insensitiveIndex?.Clear();
+
+            var numFields = Count = relationMessage.Columns.Count;
+            EnsureFields(numFields);
+
+            for (var i = 0; i < numFields; ++i)
+            {
+                var field = _fields[i] ??= new();
+                var column = relationMessage.Columns[i];
+
+                field.PopulateForReplication(
+                    typeMapper,
+                    column.ColumnName, // Name
+                    relationMessage.RelationId, // TableOID
+                    checked((short)i), // ColumnAttributeNumber
+                    column.DataTypeId, // TypeOID
+                    column.TypeModifier, // TypeModifier
+                    typeInfos.TryGetValue(column.DataTypeId, out var typeInfo) ? typeInfo : null
+                );
+
+                if (!_nameIndex.ContainsKey(field.Name))
+                    _nameIndex.Add(field.Name, i);
+            }
+
+            return this;
+        }
+
+        void EnsureFields(int numFields)
+        {
+            if (_fields.Length >= numFields)
+                return;
+
+            var oldFields = _fields;
+            _fields = new FieldDescription[numFields];
+            Array.Copy(oldFields, _fields, oldFields.Length);
         }
 
         public FieldDescription this[int index]
@@ -226,6 +263,21 @@ namespace Npgsql.BackendMessages
             ResolveHandler();
         }
 
+        internal void PopulateForReplication(ConnectorTypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
+            uint oid, int typeModifier, TypeInfo? typeInfo)
+        {
+            _typeMapper = typeMapper;
+            Name = name;
+            TableOID = tableOID;
+            ColumnAttributeNumber = columnAttributeNumber;
+            TypeOID = oid;
+            TypeSize = 0;
+            TypeModifier = typeModifier;
+            FormatCode = FormatCode.Binary;
+
+            ResolveHandler(typeInfo);
+        }
+
         /// <summary>
         /// The field name.
         /// </summary>
@@ -278,8 +330,16 @@ namespace Npgsql.BackendMessages
 
         internal Type FieldType => Handler.GetFieldType(this);
 
-        internal void ResolveHandler()
-            => Handler = IsBinaryFormat ? _typeMapper.ResolveByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
+        internal void ResolveHandler(TypeInfo? typeInfo = null)
+            => Handler = IsBinaryFormat
+                ? _typeMapper.TryResolveByOID(TypeOID, out var result)
+                    ? result
+                    : typeInfo != null
+                        ? _typeMapper.ResolveByDataTypeName(typeInfo.FullName, throwOnError: false)
+                          ?? _typeMapper.ResolveByDataTypeName(typeInfo.Name, throwOnError: false)
+                          ?? _typeMapper.UnrecognizedTypeHandler
+                        : _typeMapper.UnrecognizedTypeHandler
+                : _typeMapper.UnrecognizedTypeHandler;
 
         ConnectorTypeMapper _typeMapper;
 

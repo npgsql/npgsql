@@ -193,7 +193,7 @@ namespace Npgsql.Internal
                 => DisposeAsync(disposing: true, async: true);
 #endif
 
-            async ValueTask DisposeAsync(bool disposing, bool async)
+            internal async ValueTask DisposeAsync(bool disposing, bool async)
             {
                 if (IsDisposed || !disposing)
                     return;

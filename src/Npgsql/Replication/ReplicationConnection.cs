@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
+using Npgsql.TypeMapping;
 using static Npgsql.Util.Statics;
 using Npgsql.Util;
 
@@ -91,15 +92,17 @@ namespace Npgsql.Replication
             set
             {
                 _userFacingConnectionString = value;
-                _npgsqlConnection.ConnectionString = new NpgsqlConnectionStringBuilder(value)
+                var cs = new NpgsqlConnectionStringBuilder(value)
                 {
                     Pooling = false,
                     Enlist = false,
                     Multiplexing = false,
                     KeepAlive = 0,
-                    ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                     ReplicationMode = ReplicationMode
-                }.ToString();
+                };
+                if (ReplicationMode == ReplicationMode.Physical)
+                    cs.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
+                _npgsqlConnection.ConnectionString = cs.ToString();
             }
         }
 
@@ -212,6 +215,12 @@ namespace Npgsql.Replication
         /// This can only be called when there is an active connection.
         /// </summary>
         public int ProcessID => _npgsqlConnection.Connector?.BackendProcessId ?? throw new InvalidOperationException($"The {nameof(ProcessID)} property can only be used when there is an active connection");
+
+        /// <summary>
+        /// The connection-specific type mapper - all modifications affect this connection only,
+        /// and are lost when it is closed.
+        /// </summary>
+        public INpgsqlTypeMapper TypeMapper => _npgsqlConnection.Connector?.TypeMapper ?? throw new InvalidOperationException($"The {TypeMapper} property can only be used when there is an active connection");
 
         #endregion Properties
 
