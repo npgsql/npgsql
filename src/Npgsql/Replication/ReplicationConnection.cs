@@ -116,6 +116,7 @@ namespace Npgsql.Replication
         public NpgsqlLogSequenceNumber LastFlushedLsn
         {
             get => (NpgsqlLogSequenceNumber)unchecked((ulong)Interlocked.Read(ref _lastFlushedLsn));
+            [Obsolete("Setting this property is deprecated and the setter will be removed in a future release. Please use the SetStatus() method instead.")]
             set => Interlocked.Exchange(ref _lastFlushedLsn, unchecked((long)(ulong)value));
         }
 
@@ -125,6 +126,7 @@ namespace Npgsql.Replication
         public NpgsqlLogSequenceNumber LastAppliedLsn
         {
             get => (NpgsqlLogSequenceNumber)unchecked((ulong)Interlocked.Read(ref _lastAppliedLsn));
+            [Obsolete("Setting this property is deprecated and the setter will be removed in a future release. Please use the SetStatus() method instead.")]
             set => Interlocked.Exchange(ref _lastAppliedLsn, unchecked((long)(ulong)value));
         }
 
@@ -536,6 +538,24 @@ namespace Npgsql.Replication
 
                 completionSource.SetResult(0);
             }
+        }
+
+        /// <summary>
+        /// Sets the current status of the replication as it is interpreted by the consuming client. The values supplied
+        /// in <see paramref="lastAppliedLsn" />  and <see paramref="lastFlushedLsn" />will be sent to the server with the
+        /// next status update which will happen upon server request, upon expiration of <see cref="WalReceiverStatusInterval"/>
+        /// our upon an enforced status update via <see cref="SendStatusUpdate"/>, whichever happens first.
+        /// </summary>
+        /// <remarks>
+        /// If you want the values you set here to be pushed to the server immediately (e. g. in synchronous replication scenarios)
+        /// call <see cref="SendStatusUpdate"/> after calling this method.
+        /// </remarks>
+        /// <param name="lastAppliedLsn">The location of the last WAL byte + 1 applied (e. g. written to disk) in the standby.</param>
+        /// <param name="lastFlushedLsn">The location of the last WAL byte + 1 flushed to disk in the standby.</param>
+        public void SetReplicationStatus(NpgsqlLogSequenceNumber lastAppliedLsn, NpgsqlLogSequenceNumber lastFlushedLsn)
+        {
+            Interlocked.Exchange(ref _lastAppliedLsn, unchecked((long)(ulong)lastAppliedLsn));
+            Interlocked.Exchange(ref _lastFlushedLsn, unchecked((long)(ulong)lastFlushedLsn));
         }
 
         /// <summary>
