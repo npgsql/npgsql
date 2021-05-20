@@ -36,6 +36,6 @@
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.12.1" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="2.1.2" />
-    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.12.1" />
+    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.0" />
   </ItemGroup>
 </Project>
