@@ -2000,7 +2000,7 @@ namespace Npgsql.Internal
             bool endBindingScope;
 
             // We start user action as a guard against keepalive
-            using (StartUserAction())
+            using (StartUserAction(cancellationToken))
             {
                 // Our buffer may contain unsent prepended messages, so clear it out.
                 // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
