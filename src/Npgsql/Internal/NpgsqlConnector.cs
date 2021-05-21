@@ -1997,62 +1997,63 @@ namespace Npgsql.Internal
         /// </summary>
         internal async Task Reset(bool async, CancellationToken cancellationToken = default)
         {
-            // We start user action as a guard against keepalive
-            using var _ = StartUserAction();
-
-            // Our buffer may contain unsent prepended messages, so clear it out.
-            // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
-            WriteBuffer.Clear();
-            PendingPrependedResponses = 0;
-
-            ResetReadBuffer();
-
-            Transaction?.UnbindIfNecessary();
-
             bool endBindingScope;
 
-            // Must rollback transaction before sending DISCARD ALL
-            switch (TransactionStatus)
+            // We start user action as a guard against keepalive
+            using (StartUserAction())
             {
-            case TransactionStatus.Idle:
-                // There is an undisposed transaction on multiplexing connection
-                endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
-                break;
-            case TransactionStatus.Pending:
-                // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
-                // Just clear the transaction state.
-                ProcessNewTransactionStatus(TransactionStatus.Idle);
-                ClearTransaction();
-                endBindingScope = true;
-                break;
-            case TransactionStatus.InTransactionBlock:
-            case TransactionStatus.InFailedTransactionBlock:
-                await Rollback(async, cancellationToken);
-                ClearTransaction();
-                endBindingScope = true;
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                // Our buffer may contain unsent prepended messages, so clear it out.
+                // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
+                WriteBuffer.Clear();
+                PendingPrependedResponses = 0;
+
+                ResetReadBuffer();
+
+                Transaction?.UnbindIfNecessary();
+
+                // Must rollback transaction before sending DISCARD ALL
+                switch (TransactionStatus)
+                {
+                case TransactionStatus.Idle:
+                    // There is an undisposed transaction on multiplexing connection
+                    endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
+                    break;
+                case TransactionStatus.Pending:
+                    // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
+                    // Just clear the transaction state.
+                    ProcessNewTransactionStatus(TransactionStatus.Idle);
+                    ClearTransaction();
+                    endBindingScope = true;
+                    break;
+                case TransactionStatus.InTransactionBlock:
+                case TransactionStatus.InFailedTransactionBlock:
+                    await Rollback(async, cancellationToken);
+                    ClearTransaction();
+                    endBindingScope = true;
+                    break;
+                default:
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                }
+
+                if (_sendResetOnClose)
+                {
+                    if (PreparedStatementManager.NumPrepared > 0)
+                    {
+                        // We have prepared statements, so we can't reset the connection state with DISCARD ALL
+                        // Note: the send buffer has been cleared above, and we assume all this will fit in it.
+                        PrependInternalMessage(_resetWithoutDeallocateMessage!, _resetWithoutDeallocateResponseCount);
+                    }
+                    else
+                    {
+                        // There are no prepared statements.
+                        // We simply send DISCARD ALL which is more efficient than sending the above messages separately
+                        PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
+                    }
+                }
+
+                DataReader.UnbindIfNecessary();
             }
 
-            if (_sendResetOnClose)
-            {
-                if (PreparedStatementManager.NumPrepared > 0)
-                {
-                    // We have prepared statements, so we can't reset the connection state with DISCARD ALL
-                    // Note: the send buffer has been cleared above, and we assume all this will fit in it.
-                    PrependInternalMessage(_resetWithoutDeallocateMessage!, _resetWithoutDeallocateResponseCount);
-                }
-                else
-                {
-                    // There are no prepared statements.
-                    // We simply send DISCARD ALL which is more efficient than sending the above messages separately
-                    PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
-                }
-            }
-
-            DataReader.UnbindIfNecessary();
-            
             if (endBindingScope)
             {
                 // Connection is null if a connection enlisted in a TransactionScope was closed before the
