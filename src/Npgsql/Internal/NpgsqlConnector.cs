@@ -1464,11 +1464,10 @@ namespace Npgsql.Internal
 
         #region Transactions
 
-        internal async Task Rollback(bool async, CancellationToken cancellationToken = default)
+        internal Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             Log.Debug("Rolling back transaction", Id);
-            using (StartUserAction(cancellationToken))
-                await ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
+            return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
         }
 
         internal bool InTransaction
@@ -1998,7 +1997,8 @@ namespace Npgsql.Internal
         /// </summary>
         internal async Task Reset(bool async, CancellationToken cancellationToken = default)
         {
-            Debug.Assert(IsReady);
+            // We start user action as a guard against keepalive
+            using var _ = StartUserAction();
 
             // Our buffer may contain unsent prepended messages, so clear it out.
             // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
