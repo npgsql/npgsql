@@ -1267,7 +1267,7 @@ CREATE TABLE record ()");
                 Assert.That(conn.Connector.ReadBuffer.Size, Is.GreaterThan(csb.ReadBufferSize));
 
                 // Even bigger oversize buffer
-                var bigString2 = new string('x', csb.ReadBufferSize + 20);
+                var bigString2 = new string('x', conn.Connector.ReadBuffer.Size + 20);
                 using (var cmd = new NpgsqlCommand($"SELECT '{bigString2}'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
