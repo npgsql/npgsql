@@ -1206,7 +1206,6 @@ LANGUAGE plpgsql VOLATILE";
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
 
-            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
             var pgMock = await postmasterMock.WaitForServerConnection();
             pgMock
                 .WriteParseComplete()
