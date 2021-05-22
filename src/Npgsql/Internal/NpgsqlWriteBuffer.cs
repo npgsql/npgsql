@@ -95,8 +95,9 @@ namespace Npgsql.Internal
             Underlying = stream;
             _underlyingSocket = socket;
             _timeoutCts = new ResettableCancellationTokenSource();
-            Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
+            // Rent might return us the buffer with the length more than requested
+            Size = Buffer.Length;
             TextEncoding = textEncoding;
             _textEncoder = TextEncoding.GetEncoder();
         }
