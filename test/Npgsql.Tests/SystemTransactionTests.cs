@@ -278,33 +278,43 @@ namespace Npgsql.Tests
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
         public void Bug1737()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            try
             {
-                Pooling = false,
-                Enlist = true
-            };
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false,
+                    Enlist = true
+                };
 
-            // Case 1
-            using (var scope = new TransactionScope())
-            {
-                using (var conn = OpenConnection(csb))
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-                    cmd.ExecuteNonQuery();
-                scope.Complete();
+                // Case 1
+                using (var scope = new TransactionScope())
+                {
+                    using (var conn = OpenConnection(csb))
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                        cmd.ExecuteNonQuery();
+                    scope.Complete();
+                }
+
+                // Case 2
+                using (var scope = new TransactionScope())
+                {
+                    using (var conn1 = OpenConnection(csb))
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
+                        cmd.ExecuteNonQuery();
+
+                    using (var conn2 = OpenConnection(csb))
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
+                        cmd.ExecuteNonQuery();
+
+                    scope.Complete();
+                }
             }
-
-            // Case 2
-            using (var scope = new TransactionScope())
+            catch (TransactionAbortedException e) when (e.InnerException is PostgresException { SqlState: "55000"/*object_not_in_prerequisite_state*/ })
             {
-                using (var conn1 = OpenConnection(csb))
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
-                    cmd.ExecuteNonQuery();
-
-                using (var conn2 = OpenConnection(csb))
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
-                    cmd.ExecuteNonQuery();
-
-                scope.Complete();
+                throw new IgnoreException(
+                    "Prepared transactions are disabled. " +
+                    "You need to set max_prepared_transactions to a value " +
+                    "greater than zero in your postgresql.conf to enable them.");
             }
         }
 

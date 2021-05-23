@@ -229,26 +229,35 @@ namespace Npgsql.Tests.Types
         [Test]
         public async Task Xml()
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            const string expected = "<root>foo</root>";
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Xml);
-            var p2 = new NpgsqlParameter("p2", DbType.Xml);
-            Assert.That(p1.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Xml));
-            Assert.That(p2.DbType, Is.EqualTo(DbType.Xml));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            p1.Value = p2.Value = expected;
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-
-            for (var i = 0; i < cmd.Parameters.Count; i++)
+            try
             {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
-                Assert.That(reader.GetDataTypeName(i), Is.EqualTo("xml"));
-                Assert.That(reader.GetString(i), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
-                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                using var conn = await OpenConnectionAsync();
+                using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+                const string expected = "<root>foo</root>";
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Xml);
+                var p2 = new NpgsqlParameter("p2", DbType.Xml);
+                Assert.That(p1.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Xml));
+                Assert.That(p2.DbType, Is.EqualTo(DbType.Xml));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                p1.Value = p2.Value = expected;
+                using var reader = await cmd.ExecuteReaderAsync();
+                reader.Read();
+
+                for (var i = 0; i < cmd.Parameters.Count; i++)
+                {
+                    Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                    Assert.That(reader.GetDataTypeName(i), Is.EqualTo("xml"));
+                    Assert.That(reader.GetString(i), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
+                    Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                }
+            }
+            catch (PostgresException e) when (e.SqlState == "0A000"/*feature_not_supported*/)
+            {
+                throw new IgnoreException(
+                    "The XML data type is not supported by your database." +
+                    " You need to rebuild PostgreSQL using --with-libxml to enable this test.");
             }
         }
 
