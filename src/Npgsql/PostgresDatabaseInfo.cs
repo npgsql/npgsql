@@ -154,7 +154,7 @@ FROM (
     LEFT JOIN pg_class AS elemcls ON (elemcls.oid = elemtyp.typrelid)
     LEFT JOIN pg_proc AS elemproc ON elemproc.oid = elemtyp.typreceive
 ) AS typ_and_elem_type
-JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
+JOIN pg_namespace AS ns ON (typname = typname AND ns.oid = typnamespace)
 WHERE
     typtype IN ('b', 'r', 'e', 'd') OR -- Base, range, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
@@ -169,7 +169,7 @@ ORDER BY ord;
 -- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
 FROM pg_type AS typ
-JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
+JOIN pg_namespace AS ns ON (typ.typname = typ.typname AND ns.oid = typ.typnamespace)
 JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
