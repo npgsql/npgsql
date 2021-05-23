@@ -60,9 +60,15 @@ jobs:
           dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
 
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main 13" >> /etc/apt/sources.list.d/pgdg.list'
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main 14" >> /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
+          export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
+          # Starting with PG14 the default password encryption mode is scram.
+          # Changing it to md5 for compatability.
+          if [ ${{ matrix.pg_major }} -ge 14 ]; then
+            sudo sed -i 's/#password_encryption = scram-sha-256/password_encryption = md5/' $PGDATA/postgresql.conf
+          fi
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
           sudo -u postgres psql -c "CREATE EXTENSION citext" npgsql_tests
@@ -75,10 +81,13 @@ jobs:
             sudo -u postgres psql -c "CREATE EXTENSION postgis" npgsql_tests
           fi
 
-          export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
+          if [ ${{ matrix.pg_major }} -ge 14 ]; then
+            sudo sed -i 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
+          else
+            sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
+          fi
           sudo sed -i 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
           sudo sed -i 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
@@ -139,6 +148,12 @@ jobs:
           sed -i "s|#synchronous_standby_names =|synchronous_standby_names = 'npgsql_test_sync_standby' #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#synchronous_commit =|synchronous_commit = local #|" pgsql/PGDATA/postgresql.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
+          
+          # Starting with PG14 the default password encryption mode is scram.
+          # Changing it to md5 for compatability.
+          if [ ${{ matrix.pg_major }} -ge 14 ]; then
+            sed -i "s|#password_encryption = scram-sha-256|password_encryption = md5|" pgsql/PGDATA/postgresql.conf
+          fi
 
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
@@ -149,7 +164,11 @@ jobs:
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
 
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
-          sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
+          if [ ${{ matrix.pg_major }} -ge 14 ]; then
+            sed -i "s|password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
+          else
+            sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
+          fi
 
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' restart
 
@@ -172,7 +191,10 @@ jobs:
         shell: bash
 
       - name: Test Plugins
-        run: dotnet test test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
+        run: |
+            if [ -z "${{ matrix.pg_prerelease }}" ]; then
+                dotnet test test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
+            fi
         shell: bash
 
       - id: analyze_tag
