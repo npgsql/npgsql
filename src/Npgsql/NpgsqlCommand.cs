@@ -243,7 +243,7 @@ namespace Npgsql
         /// Returns whether this query will execute as a prepared (compiled) query.
         /// </summary>
         public bool IsPrepared =>
-            _connectorPreparedOn == (_connection?.Connector  ?? _connector) &&
+            _connectorPreparedOn == (_connection?.Connector ?? _connector) &&
             _statements.Any() && _statements.All(s => s.PreparedStatement?.IsPrepared == true);
 
         #endregion Public properties
