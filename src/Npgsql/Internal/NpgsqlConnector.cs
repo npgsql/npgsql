@@ -1739,7 +1739,7 @@ namespace Npgsql.Internal
         /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
         /// part of a connection close.
         /// </summary>
-        internal async Task CloseOngoingOperations(bool async, CancellationToken cancellationToken = default)
+        internal async Task CloseOngoingOperations(bool async)
         {
             var reader = CurrentReader;
             var copyOperation = CurrentCopyOperation;
@@ -1995,12 +1995,12 @@ namespace Npgsql.Internal
         /// (e.g. prepared statements), resetting parameters to their defaults, and resetting client-side
         /// state
         /// </summary>
-        internal async Task Reset(bool async, CancellationToken cancellationToken = default)
+        internal async Task Reset(bool async)
         {
             bool endBindingScope;
 
-            // We start user action as a guard against keepalive
-            using (StartUserAction(cancellationToken))
+            // We start user action in case a keeplive happens concurrently, or a concurrent user command (bug)
+            using (StartUserAction(attemptPgCancellation: false))
             {
                 // Our buffer may contain unsent prepended messages, so clear it out.
                 // In practice, this is (currently) only done when beginning a transaction or a transaction savepoint.
@@ -2027,7 +2027,7 @@ namespace Npgsql.Internal
                     break;
                 case TransactionStatus.InTransactionBlock:
                 case TransactionStatus.InFailedTransactionBlock:
-                    await Rollback(async, cancellationToken);
+                    await Rollback(async);
                     ClearTransaction();
                     endBindingScope = true;
                     break;

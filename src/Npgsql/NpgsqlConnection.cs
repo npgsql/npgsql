@@ -745,7 +745,7 @@ namespace Npgsql
                 return Close(async: true);
         }
 
-        internal Task Close(bool async, CancellationToken cancellationToken = default)
+        internal Task Close(bool async)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
@@ -785,10 +785,10 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            return CloseAsync(async, cancellationToken);            
+            return CloseAsync(async);            
         }
 
-        async Task CloseAsync(bool async, CancellationToken cancellationToken)
+        async Task CloseAsync(bool async)
         {
             Debug.Assert(Connector != null);
             Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None);
@@ -801,7 +801,7 @@ namespace Npgsql
                 if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
                 {
                     // This method could re-enter connection.Close() due to an underlying connection failure.
-                    await connector.CloseOngoingOperations(async, cancellationToken);
+                    await connector.CloseOngoingOperations(async);
 
                     if (ConnectorBindingScope == ConnectorBindingScope.None)
                     {
@@ -849,7 +849,7 @@ namespace Npgsql
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                         // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                         // Note that we're doing this only for pooled connections
-                        await connector.Reset(async, cancellationToken);
+                        await connector.Reset(async);
                     }
                     else
                     {
