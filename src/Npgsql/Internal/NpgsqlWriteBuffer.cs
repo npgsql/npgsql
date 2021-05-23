@@ -86,7 +86,12 @@ namespace Npgsql.Internal
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, Socket? socket, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(
+            NpgsqlConnector connector,
+            Stream stream,
+            Socket? socket,
+            int size,
+            Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
@@ -95,8 +100,9 @@ namespace Npgsql.Internal
             Underlying = stream;
             _underlyingSocket = socket;
             _timeoutCts = new ResettableCancellationTokenSource();
+            Buffer = new byte[size];
             Size = size;
-            Buffer = ArrayPool<byte>.Shared.Rent(size);
+
             TextEncoding = textEncoding;
             _textEncoder = TextEncoding.GetEncoder();
         }
@@ -565,8 +571,6 @@ namespace Npgsql.Internal
         {
             if (_disposed)
                 return;
-
-            ArrayPool<byte>.Shared.Return(Buffer);
 
             _timeoutCts.Dispose();
             _disposed = true;

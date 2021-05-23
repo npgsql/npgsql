@@ -1256,7 +1256,7 @@ CREATE TABLE record ()");
                 Assert.That(conn.Connector!.ReadBuffer.Size, Is.EqualTo(csb.ReadBufferSize));
 
                 // Read a big row, we should now be using an oversize buffer
-                var bigString1 = new string('x', csb.ReadBufferSize + 10);
+                var bigString1 = new string('x', conn.Connector.ReadBuffer.Size + 1);
                 using (var cmd = new NpgsqlCommand($"SELECT '{bigString1}'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
@@ -1267,7 +1267,7 @@ CREATE TABLE record ()");
                 Assert.That(conn.Connector.ReadBuffer.Size, Is.GreaterThan(csb.ReadBufferSize));
 
                 // Even bigger oversize buffer
-                var bigString2 = new string('x', csb.ReadBufferSize + 20);
+                var bigString2 = new string('x', conn.Connector.ReadBuffer.Size + 1);
                 using (var cmd = new NpgsqlCommand($"SELECT '{bigString2}'", conn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
