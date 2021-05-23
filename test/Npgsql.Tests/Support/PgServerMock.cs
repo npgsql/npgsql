@@ -25,6 +25,7 @@ namespace Npgsql.Tests.Support
         internal int ProcessId { get; }
 
         internal NpgsqlReadBuffer ReadBuffer => _readBuffer;
+        internal NpgsqlWriteBuffer WriteBuffer => _writeBuffer;
 
         internal PgServerMock(
             NetworkStream stream,
@@ -249,7 +250,7 @@ namespace Npgsql.Tests.Support
         {
             CheckDisposed();
 
-            _writeBuffer.WriteByte((byte) BackendMessageCode.DataRow);
+            _writeBuffer.WriteByte((byte)BackendMessageCode.DataRow);
             _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
             _writeBuffer.WriteInt16(columnValues.Length);
 

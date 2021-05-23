@@ -1196,6 +1196,56 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3772")]
+        public async Task Bug3772()
+        {
+            if (!IsSequential)
+                return;
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4), new FieldDescription(PostgresTypeOIDs.Bytea));
+
+            var intValue = new byte[] { 0, 0, 0, 1 };
+            var byteValue = new byte[] { 1, 2, 3, 4 };
+
+            var writeBuffer = pgMock.WriteBuffer;
+            writeBuffer.WriteByte((byte)BackendMessageCode.DataRow);
+            writeBuffer.WriteInt32(4 + 2 + intValue.Length + byteValue.Length + 8);
+            writeBuffer.WriteInt16(2);
+            writeBuffer.WriteInt32(intValue.Length);
+            writeBuffer.WriteBytes(intValue);
+            await pgMock.FlushAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT some_int, some_byte FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+            await reader.ReadAsync();
+
+            reader.GetInt32(0);
+
+            Assert.Zero(reader.Connector.ReadBuffer.ReadBytesLeft);
+            Assert.NotZero(reader.Connector.ReadBuffer.ReadPosition);
+
+            writeBuffer.WriteInt32(byteValue.Length);
+            writeBuffer.WriteBytes(byteValue);
+            await pgMock
+                .WriteDataRow(intValue, Enumerable.Range(1, 100).Select(x => (byte)x).ToArray())
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            await reader.GetFieldValueAsync<byte[]>(1);
+
+            Assert.DoesNotThrowAsync(reader.ReadAsync);
+        }
+
         [Test]
         public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)
         {
