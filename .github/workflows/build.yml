@@ -23,11 +23,10 @@ jobs:
       matrix:
         os: [ ubuntu-20.04, windows-2019 ]
         pg_major: [ 13, 12, 11, 10 ]
-# For when a PG14 prerelease comes out:
-#        include:
-#          - os: ubuntu-20.04
-#            pg_major: 14
-#            pg_prerelease: prerelease
+        include:
+          - os: ubuntu-20.04
+            pg_major: 14
+            pg_prerelease: prerelease
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
@@ -71,9 +70,10 @@ jobs:
           sudo -u postgres psql -c "CREATE EXTENSION ltree" npgsql_tests
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
-          # if [ -z "${{ matrix.pg_prerelease }}" ]; then
+          if [ -z "${{ matrix.pg_prerelease }}" ]; then
             sudo apt-get install -qq postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
             sudo -u postgres psql -c "CREATE EXTENSION postgis" npgsql_tests
+          fi
 
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
