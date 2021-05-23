@@ -243,7 +243,7 @@ namespace Npgsql
         /// Returns whether this query will execute as a prepared (compiled) query.
         /// </summary>
         public bool IsPrepared =>
-            _connectorPreparedOn == _connection?.Connector &&
+            _connectorPreparedOn == (_connection?.Connector ?? _connector) &&
             _statements.Any() && _statements.All(s => s.PreparedStatement?.IsPrepared == true);
 
         #endregion Public properties
@@ -1177,22 +1177,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new();
 
-        NpgsqlConnector? GetBoundConnector(NpgsqlConnection? connection)
-        {
-            if (_connector is not null)
-            {
-                Debug.Assert(_connection is null);
-                return _connector;
-            }
-
-            Debug.Assert(connection is not null);
-            if (connection.TryGetBoundConnector(out var connector))
-                return connector;
-
-            Debug.Assert(connection.Settings.Multiplexing);
-            return null;
-        }
-
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var conn = CheckAndGetConnection();
@@ -1281,7 +1265,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         State = CommandState.InProgress;
 
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                            LogCommand();
+                            LogCommand(connector);
                         NpgsqlEventSource.Log.CommandStart(CommandText);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -1487,9 +1471,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
         }
 
-        void LogCommand()
+        void LogCommand(NpgsqlConnector connector)
         {
-            var connector = _connection!.Connector!;
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");
             foreach (var s in _statements)
