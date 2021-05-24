@@ -381,12 +381,13 @@ namespace Npgsql
         {
             CheckResultSet();
 
-            Buffer.ReadPosition = _nextRowBufferPos;
             if (_nextRowIndex == _numRows)
             {
                 _readerState = ReaderState.AfterRows;
                 return false;
             }
+
+            Buffer.ReadPosition = _nextRowBufferPos;
 
             if (_nextRowIndex++ != 0)
                 Buffer.ReadInt32(); // Length of record

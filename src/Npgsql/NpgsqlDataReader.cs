@@ -232,11 +232,19 @@ namespace Npgsql
             var readBuf = Connector.ReadBuffer;
             if (readBuf.ReadBytesLeft < 5)
                 return null;
+
+#if DEBUG
+            readBuf.NextFrame();
+#endif
+
             var messageCode = (BackendMessageCode)readBuf.ReadByte();
             var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
             if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
             {
                 readBuf.ReadPosition -= 5;
+#if DEBUG
+                readBuf.ResetFrame();
+#endif
                 return null;
             }
 

@@ -468,6 +468,10 @@ namespace Npgsql.Internal
                 {
                     await Authenticate(username, timeout, async, cancellationToken);
 
+#if DEBUG
+                    ReadBuffer.EnableFrameTracking = true;
+#endif
+
                     // We treat BackendKeyData as optional because some PostgreSQL-like database
                     // don't send it (CockroachDB, CrateDB)
                     var msg = await ReadMessage(async);
@@ -1178,6 +1182,10 @@ namespace Npgsql.Internal
                 return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: readingNotifications);
             }
 
+#if DEBUG
+            ReadBuffer.NextFrame();
+#endif
+
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
             switch (messageCode)
             {
@@ -1186,6 +1194,9 @@ namespace Npgsql.Internal
             case BackendMessageCode.ParameterStatus:
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
+#if DEBUG
+                ReadBuffer.ResetFrame();
+#endif
                 return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: false);
             case BackendMessageCode.ReadyForQuery:
                 break;
@@ -1196,6 +1207,9 @@ namespace Npgsql.Internal
             if (len > ReadBuffer.ReadBytesLeft)
             {
                 ReadBuffer.ReadPosition -= 5;
+#if DEBUG
+                ReadBuffer.ResetFrame();
+#endif
                 return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: false);
             }
 
@@ -1233,6 +1247,9 @@ namespace Npgsql.Internal
                     while (true)
                     {
                         await connector.ReadBuffer.Ensure(5, async, readingNotifications);
+#if DEBUG
+                        connector.ReadBuffer.NextFrame();
+#endif
                         var messageCode = (BackendMessageCode)connector.ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
                         var len = connector.ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1244,6 +1261,9 @@ namespace Npgsql.Internal
                             if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                             {
                                 await connector.ReadBuffer.Skip(len, async);
+#if DEBUG
+                                connector.ReadBuffer.ResetFrame();
+#endif
                                 continue;
                             }
                         }
@@ -1289,6 +1309,10 @@ namespace Npgsql.Internal
                                 throw connector.Break(error);
                             }
 
+#if DEBUG
+                            connector.ReadBuffer.ResetFrame();
+#endif
+
                             continue;
 
                         case BackendMessageCode.ReadyForQuery:
@@ -1307,7 +1331,12 @@ namespace Npgsql.Internal
                         case BackendMessageCode.ParameterStatus:
                             Debug.Assert(msg == null);
                             if (!readingNotifications)
+                            {
+#if DEBUG
+                                connector.ReadBuffer.ResetFrame();
+#endif
                                 continue;
+                            }
                             return null;
                         }
 

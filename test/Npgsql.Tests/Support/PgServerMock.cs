@@ -325,7 +325,7 @@ namespace Npgsql.Tests.Support
         {
             CheckDisposed();
             _writeBuffer.WriteByte((byte)BackendMessageCode.CopyInResponse);
-            _writeBuffer.WriteInt32(5);
+            _writeBuffer.WriteInt32(9);
             _writeBuffer.WriteByte(0);
             _writeBuffer.WriteInt16(1);
             _writeBuffer.WriteInt16(0);
@@ -341,9 +341,9 @@ namespace Npgsql.Tests.Support
             _writeBuffer.WriteByte((byte)BackendMessageCode.ErrorResponse);
             _writeBuffer.WriteInt32(
                 4 +
-                1 + Encoding.GetByteCount(code) +
-                1 + Encoding.GetByteCount(severity) +
-                1 + Encoding.GetByteCount(message) +
+                1 + Encoding.GetByteCount(code) + 1 +
+                1 + Encoding.GetByteCount(severity) + 1 +
+                1 + Encoding.GetByteCount(message) + 1 +
                 1);
             _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Code);
             _writeBuffer.WriteNullTerminatedString(code);

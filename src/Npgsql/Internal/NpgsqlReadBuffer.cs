@@ -74,7 +74,76 @@ namespace Npgsql.Internal
         /// </summary>
         internal Encoding RelaxedTextEncoding { get; }
 
+#if DEBUG
+        internal bool EnableFrameTracking { get; set; }
+
+        internal void NextFrame()
+        {
+            Debug.Assert(_frameLengthLeft == 0, "Protocol failure");
+            _inFrame = false;
+        }
+
+        internal void ResetFrame()
+        {
+            _inFrame = true;
+            _frameLength = 0;
+            _frameLengthLeft = 0;
+        }
+
+        bool _inFrame;
+
+        bool _bufferReset;
+
+        byte _frameCode;
+
+        int _frameLength;
+
+        int _frameLengthLeft;
+
+        int _readPosition;
+
+        internal int ReadPosition
+        {
+            get => _readPosition;
+            set
+            {
+                if (EnableFrameTracking)
+                {
+                    var positionDelta = value - _readPosition;
+
+                    // Setting the same position as the one we already have
+                    if (positionDelta == 0)
+                        return;
+
+                    // Buffer reset
+                    if (!_bufferReset)
+                    {
+                        if (!_inFrame)
+                        {
+                            Debug.Assert(positionDelta == 1, "Protocol failure");
+                            Debug.Assert(_frameLengthLeft == 0, "Protocol failure");
+
+                            Debug.Assert(ReadBytesLeft >= 5);
+                            _frameCode = Buffer[_readPosition];
+                            _frameLength = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[_readPosition + 1])) + 1;
+                            _frameLengthLeft = _frameLength - 1;
+                            _inFrame = true;
+                        }
+                        else
+                        {
+                            _frameLengthLeft -= positionDelta;
+                            Debug.Assert(_frameLengthLeft <= _frameLength && _frameLengthLeft >= 0, "Going outside of frame bounds");
+                        }
+                    }
+                }
+
+                _readPosition = value;
+            }
+        }
+#else
         internal int ReadPosition { get; set; }
+#endif
+
         internal int ReadBytesLeft => FilledBytes - ReadPosition;
 
         internal readonly byte[] Buffer;
@@ -159,9 +228,17 @@ namespace Npgsql.Internal
                 }
                 else if (count > buffer.Size - buffer.FilledBytes)
                 {
+#if DEBUG
+                    buffer._bufferReset = true;
+#endif
+
                     Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
                     buffer.FilledBytes = buffer.ReadBytesLeft;
                     buffer.ReadPosition = 0;
+
+#if DEBUG
+                    buffer._bufferReset = false;
+#endif
                 }
 
                 var finalCt = async && buffer.Timeout != TimeSpan.Zero
@@ -277,6 +354,16 @@ namespace Npgsql.Internal
                 tempBuf.Timeout = Timeout;
             CopyTo(tempBuf);
             Clear();
+
+#if DEBUG
+            tempBuf._frameCode = _frameCode;
+            tempBuf._frameLength = _frameLength;
+            tempBuf._frameLengthLeft = _frameLengthLeft;
+            tempBuf._inFrame = _inFrame;
+            tempBuf.EnableFrameTracking = EnableFrameTracking;
+            ResetFrame();
+#endif
+
             return tempBuf;
         }
 
@@ -637,8 +724,14 @@ namespace Npgsql.Internal
 
         internal void Clear()
         {
+#if DEBUG
+            _bufferReset = true;
+#endif
             ReadPosition = 0;
             FilledBytes = 0;
+#if DEBUG
+            _bufferReset = false;
+#endif
         }
 
         internal void CopyTo(NpgsqlReadBuffer other)
