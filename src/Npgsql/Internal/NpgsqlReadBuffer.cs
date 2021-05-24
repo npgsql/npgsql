@@ -79,26 +79,37 @@ namespace Npgsql.Internal
 
         internal void NextFrame()
         {
-            Debug.Assert(_frameLengthLeft == 0, "Protocol failure");
+            Debug.Assert(_currentFrame.LengthLeft == 0, "Protocol failure");
             _inFrame = false;
         }
 
         internal void ResetFrame()
         {
             _inFrame = true;
-            _frameLength = 0;
-            _frameLengthLeft = 0;
+            if (_previousFrame.HasValue)
+                _currentFrame = _previousFrame.Value;
         }
 
         bool _inFrame;
 
         bool _bufferReset;
 
-        byte _frameCode;
+        struct Frame
+        {
+            public Frame(byte code, int length, int lengthLeft)
+            {
+                Code = code;
+                Length = length;
+                LengthLeft = lengthLeft;
+            }
 
-        int _frameLength;
+            public readonly byte Code;
+            public readonly int Length;
+            public int LengthLeft;
+        }
 
-        int _frameLengthLeft;
+        Frame _currentFrame;
+        Frame? _previousFrame;
 
         int _readPosition;
 
@@ -121,18 +132,18 @@ namespace Npgsql.Internal
                         if (!_inFrame)
                         {
                             Debug.Assert(positionDelta == 1, "Protocol failure");
-                            Debug.Assert(_frameLengthLeft == 0, "Protocol failure");
-
                             Debug.Assert(ReadBytesLeft >= 5);
-                            _frameCode = Buffer[_readPosition];
-                            _frameLength = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[_readPosition + 1])) + 1;
-                            _frameLengthLeft = _frameLength - 1;
+                            var frameCode = Buffer[_readPosition];
+                            var frameLength = BinaryPrimitives.ReverseEndianness(Unsafe.ReadUnaligned<int>(ref Buffer[_readPosition + 1])) + 1;
+                            var frameLengthLeft = frameLength - 1;
+                            _previousFrame = _currentFrame;
+                            _currentFrame = new Frame(frameCode, frameLength, frameLengthLeft);
                             _inFrame = true;
                         }
                         else
                         {
-                            _frameLengthLeft -= positionDelta;
-                            Debug.Assert(_frameLengthLeft <= _frameLength && _frameLengthLeft >= 0, "Going outside of frame bounds");
+                            _currentFrame.LengthLeft -= positionDelta;
+                            Debug.Assert(_currentFrame.LengthLeft <= _currentFrame.Length && _currentFrame.LengthLeft >= 0, "Going outside of frame bounds");
                         }
                     }
                 }
@@ -356,9 +367,8 @@ namespace Npgsql.Internal
             Clear();
 
 #if DEBUG
-            tempBuf._frameCode = _frameCode;
-            tempBuf._frameLength = _frameLength;
-            tempBuf._frameLengthLeft = _frameLengthLeft;
+            tempBuf._currentFrame = _currentFrame;
+            tempBuf._previousFrame = _previousFrame;
             tempBuf._inFrame = _inFrame;
             tempBuf.EnableFrameTracking = EnableFrameTracking;
             ResetFrame();
