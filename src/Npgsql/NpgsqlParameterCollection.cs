@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using NpgsqlTypes;
 
@@ -87,12 +88,15 @@ namespace Npgsql
                     for (var i = 0; i < indices.Values.Count; i++)
                     {
                         var value = indices.Values[i];
-                        indices.Values[i] = index <= value ? value - 1 : value;
+                        Debug.Assert(index != value, "Values should not contain duplicates.");
+                        indices.Values[i] = index < value ? value - 1 : value;
                     }
                 }
-                else if (index <= indices.Value)
+                else
                 {
-                    indices = new MultiValue(indices.Value - 1);
+                    Debug.Assert(index != indices.Value, "Values should not contain duplicates.");
+                    if (index < indices.Value)
+                        indices = new MultiValue(indices.Value - 1);
                 }
 
                 _lookup[name] = indices;
