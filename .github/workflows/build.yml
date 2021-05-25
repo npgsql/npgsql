@@ -277,7 +277,7 @@ jobs:
           path: nupkgs
 
       - name: Create Github release
-        uses: ncipollo/release-action@v1.8.5
+        uses: ncipollo/release-action@v1.8.6
         with:
           prerelease: ${{ needs.build.outputs.is_prerelease }}
           token: ${{ secrets.GITHUB_TOKEN }}
