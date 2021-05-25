@@ -236,6 +236,42 @@ namespace Npgsql.PluginTests
             }
         }
 
+#if NET6_0_OR_GREATER
+        [Test]
+        public void Date_DateOnly()
+        {
+            using var conn = OpenConnection();
+            var localDate = new LocalDate(2002, 3, 4);
+            var dateOnly = new DateOnly(2002, 3, 4);
+
+            using (var cmd = new NpgsqlCommand("CREATE TEMP TABLE data (d1 DATE)", conn))
+                cmd.ExecuteNonQuery();
+
+            using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1)", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p1", Value = dateOnly });
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var cmd = new NpgsqlCommand("SELECT d1::TEXT FROM data", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetValue(0), Is.EqualTo("2002-03-04"));
+            }
+
+            using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(LocalDate)));
+                Assert.That(reader.GetValue(0), Is.EqualTo(localDate));
+                Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(dateOnly));
+            }
+        }
+#endif
+
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
         public void DateConvertInfinity()
         {
@@ -299,6 +335,26 @@ namespace Npgsql.PluginTests
                 Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(timeSpan));
             }
         }
+
+#if NET6_0_OR_GREATER
+        [Test]
+        public void Time_TimeOnly()
+        {
+            using var conn = OpenConnection();
+            var timeOnly = new TimeOnly(1, 2, 3, 500);
+            var localTime = new LocalTime(1, 2, 3, 500);
+
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p1", Value = timeOnly });
+
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(LocalTime)));
+            Assert.That(reader.GetFieldValue<TimeOnly>(0), Is.EqualTo(timeOnly));
+            Assert.That(reader.GetValue(0), Is.EqualTo(localTime));
+        }
+#endif
 
         #endregion Time
 
