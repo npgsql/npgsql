@@ -3,9 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -19,49 +17,107 @@ namespace Npgsql
         readonly List<NpgsqlParameter> _internalList = new(5);
 
         // Dictionary lookups for GetValue to improve performance
-        Dictionary<string, int>? _lookup;
+        Dictionary<string, MultiValue>? _lookup;
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
         /// </summary>
         internal NpgsqlParameterCollection() {}
 
-        /// <summary>
-        /// Revise the lookup. This should be done any time a change
-        /// may throw the lookup out of sync with the list.
-        /// </summary>
-        internal void ReflectListMutationInLookup(NpgsqlParameter parameter, int? index = 0)
+        void LookupAdd(string name, int index)
         {
             if (_lookup is null)
                 return;
 
-            // We can't go through IndexOf as we may query the same lookup that is now out of sync.
-            if (index == null)
+            if (!_lookup.TryGetValue(name, out var indices))
             {
-                index = -1;
-                for (var i = 0; i < _internalList.Count; i++)
-                    if (string.Equals(parameter.TrimmedName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
-                        index = i;
+                _lookup[name] = new MultiValue(index);
             }
-
-            if (index == -1)
+            else if (!indices.Contains(index))
             {
-                _lookup.Remove(parameter.TrimmedName);
+                indices.Add(index);
+                _lookup[name] = indices;
+            }
+        }
+
+        void LookupInsert(string name, int index)
+        {
+            if (_lookup is null)
                 return;
-            }
 
-            // Fill lookup on unknown name.
-            if (!_lookup.TryGetValue(parameter.TrimmedName, out var lookupIndex))
+            if (!_lookup.TryGetValue(name, out var indices))
             {
-                _lookup[parameter.TrimmedName] = index.Value;
+                _lookup[name] = new MultiValue(index);
             }
-            // Lowest index should be returned, adjust lookup.
-            else if (lookupIndex > index)
+            else
             {
-                _lookup[parameter.TrimmedName] = index.Value;
-            }
+                if (indices.HasMultiple)
+                {
+                    for (var i = 0; i < indices.Values.Count; i++)
+                    {
+                        var value = indices.Values[i];
+                        indices.Values[i] = index <= value ? value + 1 : value;
+                    }
+                }
+                else if (index <= indices.Value)
+                {
+                    indices = new MultiValue(indices.Value + 1);
+                }
 
-            // Other cases don't need adjusting.
+                indices.Add(index);
+                _lookup[name] = indices;
+            }
+        }
+
+        void LookupRemove(string name, int index)
+        {
+            if (_lookup is null)
+                return;
+
+            var nullableIndices = _lookup[name].Remove(index);
+            if (!nullableIndices.HasValue)
+            {
+                _lookup.Remove(name);
+            }
+            else
+            {
+                var indices = nullableIndices.Value;
+                if (indices.HasMultiple)
+                {
+                    for (var i = 0; i < indices.Values.Count; i++)
+                    {
+                        var value = indices.Values[i];
+                        indices.Values[i] = index <= value ? value - 1 : value;
+                    }
+                }
+                else if (index <= indices.Value)
+                {
+                    indices = new MultiValue(indices.Value - 1);
+                }
+
+                _lookup[name] = indices;
+            }
+        }
+
+        void LookupChangeName(string oldName, string name, int index)
+        {
+            if (string.Equals(oldName, name, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            LookupRemove(oldName, index);
+            LookupAdd(name, index);
+        }
+
+        internal void ChangeParameterName(NpgsqlParameter parameter, string oldTrimmedName)
+        {
+            if (_lookup is null)
+                return;
+
+            var index = IndexOf(parameter);
+            if (index == -1) // This would be weird.
+                return;
+
+            LookupChangeName(oldTrimmedName, parameter.TrimmedName, index);
         }
 
         #region NpgsqlParameterCollection Member
@@ -94,13 +150,11 @@ namespace Npgsql
                     throw new ArgumentNullException(nameof(value));
 
                 var index = IndexOf(parameterName);
-
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                // When names don't match lookup could get out of sync due to lookup only storing first value index.
-                if (_internalList[index].ParameterName != value.ParameterName)
-                    ReflectListMutationInLookup(value, index);
+                var oldValue = _internalList[index];
+                LookupChangeName(oldValue.TrimmedName, value.TrimmedName, index);
 
                 _internalList[index] = value;
             }
@@ -118,7 +172,7 @@ namespace Npgsql
             {
                 if (value is null)
                     throw new ArgumentNullException(nameof(value));
-                if (value.Collection != null)
+                if (value.Collection is not null)
                     throw new InvalidOperationException("The parameter already belongs to a collection");
 
                 var oldValue = _internalList[index];
@@ -126,8 +180,7 @@ namespace Npgsql
                 if (oldValue == value)
                     return;
 
-                if (value.ParameterName != oldValue.ParameterName)
-                    ReflectListMutationInLookup(value, index);
+                LookupChangeName(oldValue.TrimmedName, value.TrimmedName, index);
 
                 _internalList[index] = value;
                 value.Collection = this;
@@ -144,12 +197,12 @@ namespace Npgsql
         {
             if (value is null)
                 throw new ArgumentNullException(nameof(value));
-            if (value.Collection != null)
+            if (value.Collection is not null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
 
             _internalList.Add(value);
             value.Collection = this;
-            ReflectListMutationInLookup(value, _internalList.Count - 1);
+            LookupAdd(value.TrimmedName, _internalList.Count - 1);
             return value;
         }
 
@@ -274,32 +327,56 @@ namespace Npgsql
             if (parameterName.Length > 0 && (parameterName[0] == ':' || parameterName[0] == '@'))
                 parameterName = parameterName.Remove(0, 1);
 
-            // Using a dictionary is much faster for 5 or more items
+            // Using a dictionary is always faster after around 10 items when matched against reference equality.
+            // For string equality this is the case after ~3 items so we take a decent compromise going with 5.
             if (_internalList.Count >= 5)
-                EnsureLookup();
+            {
+                if (_lookup is null)
+                    BuildLookup();
 
-            if (_lookup != null)
-                return _lookup.TryGetValue(parameterName, out var retIndex) ? retIndex : -1;
+                if (_lookup!.TryGetValue(parameterName, out var indices))
+                {
+                    if (!indices.HasMultiple)
+                        return indices.Value;
 
+                    var values = indices.Values;
+                    var lowestIndex = int.MaxValue;
+                    for (var i = 0; i < values.Count; i++)
+                    {
+                        var index = values[i];
+                        if (index < lowestIndex) lowestIndex = index;
+                        if (string.Equals(parameterName, _internalList[index].TrimmedName))
+                            return index;
+                    }
 
-            // Do a case-insensitive match
+                    // If none is an exact match we take the lowest index.
+                    return lowestIndex;
+                }
+
+                return -1;
+            }
+
+            for (var i = 0; i < _internalList.Count; i++)
+            {
+                var name = _internalList[i].TrimmedName;
+                if (ReferenceEquals(parameterName, name) || string.Equals(parameterName, name))
+                    return i;
+            }
+
+            // Fall back to a case-insensitive search.
             for (var i = 0; i < _internalList.Count; i++)
                 if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                     return i;
 
             return -1;
 
-            void EnsureLookup()
+            void BuildLookup()
             {
-                if (_lookup == null)
+                _lookup = new Dictionary<string, MultiValue>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
+                for (var i = 0; i < _internalList.Count; i++)
                 {
-                    _lookup = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
-                    for (var i = _internalList.Count - 1; i >= 0; i--)
-                    {
-                        var item = _internalList[i];
-                        // Reverse add to store only the first value of each key.
-                        _lookup[item.TrimmedName] = i;
-                    }
+                    var item = _internalList[i];
+                    LookupAdd(item.TrimmedName, i);
                 }
             }
         }
@@ -493,7 +570,7 @@ namespace Npgsql
 
             _internalList.Insert(index, item);
             item.Collection = this;
-            ReflectListMutationInLookup(item, index);
+            LookupInsert(item.TrimmedName, index);
         }
 
         /// <summary>
@@ -515,10 +592,12 @@ namespace Npgsql
             if (item.Collection != this)
                 throw new InvalidOperationException("The item does not belong to this collection");
 
-            if (_internalList.Remove(item))
+            var index = IndexOf(item);
+            if (index >= 0)
             {
+                _internalList.RemoveAt(index);
+                LookupRemove(item.TrimmedName, index);
                 item.Collection = null;
-                ReflectListMutationInLookup(item, -1);
                 return true;
             }
 
@@ -571,6 +650,51 @@ namespace Npgsql
             catch (Exception)
             {
                 throw new InvalidCastException($"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
+            }
+        }
+
+        struct MultiValue
+        {
+            public int Value { get; private set; }
+            public List<int>? Values { get; private set; }
+
+            [MemberNotNullWhen(true, nameof(Values))]
+            public bool HasMultiple => Values is { Count: > 1 };
+
+            public MultiValue(int value)
+            {
+                Value = value;
+                Values = null;
+            }
+
+            public void Add(int value)
+            {
+                if (HasMultiple)
+                {
+                    Values.Add(value);
+                    return;
+                }
+                Values ??= new List<int>(2);
+                Values.Add(Value);
+                Values.Add(value);
+                Value = default;
+            }
+
+            public bool Contains(int value) => HasMultiple ? Values.Contains(value) : Value == value;
+
+            public MultiValue? Remove(int index)
+            {
+                if (!HasMultiple)
+                    return null;
+
+                // Demote the MultiValue but keep the list allocated.
+                if (Values.Remove(index) && !HasMultiple)
+                {
+                    Value = Values[0];
+                    Values.Clear();
+                }
+
+                return this;
             }
         }
     }

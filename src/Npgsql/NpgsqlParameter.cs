@@ -246,6 +246,7 @@ namespace Npgsql
             get => _name;
             set
             {
+                var oldTrimmedName = TrimmedName;
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 if (value == null)
                     _name = TrimmedName = string.Empty;
@@ -254,7 +255,7 @@ namespace Npgsql
                 else
                     _name = TrimmedName = value;
 
-                Collection?.ReflectListMutationInLookup(this);
+                Collection?.ChangeParameterName(this, oldTrimmedName);
             }
         }
 

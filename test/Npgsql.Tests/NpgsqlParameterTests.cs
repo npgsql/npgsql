@@ -12,6 +12,8 @@ namespace Npgsql.Tests
     [TestFixture]
     public class NpgsqlParameterTest : TestBase
     {
+        const int ParameterCollectionLookupThreshold = 5;
+
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
         public void ImplicitSettingOfDbTypes()
         {
@@ -771,14 +773,13 @@ namespace Npgsql.Tests
         {
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
             {
                 command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
             }
 
-            // Make sure both hash lookups have been generated.
+            // Make sure hash lookup is generated.
             Assert.AreEqual(command.Parameters["p03"].ParameterName, "p03");
-            Assert.AreEqual(command.Parameters["P03"].ParameterName, "p03");
 
             // Rename the target parameter.
             command.Parameters["p03"].ParameterName = "a_new_name";
@@ -794,6 +795,80 @@ namespace Npgsql.Tests
             {
                 throw new Exception("NpgsqlParameterCollection hash lookup/parameter rename bug detected", e);
             }
+        }
+
+        [Test]
+        public void RemovedDuplicateParameter([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        {
+            using var command = new NpgsqlCommand();
+            // Put plenty of parameters in the collection to turn on hash lookup functionality.
+            for (var i = 0; i < count; i++)
+            {
+                command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text,
+                    string.Format("String parameter value {0}", i + 1));
+            }
+
+            // Make sure lookup is generated.
+            Assert.AreEqual(command.Parameters["p02"].ParameterName, "p02");
+
+            // Add uppercased version causing a list to be created.
+            command.Parameters.AddWithValue("P02", NpgsqlDbType.Text, "String parameter value 2");
+
+            // Remove the original parameter by its name causing the multivalue to use a single value again.
+            command.Parameters.Remove(command.Parameters["p02"]);
+
+            // Test whether we can still find the last added parameter, and if its index is correctly shifted in the lookup.
+            Assert.IsTrue(command.Parameters.IndexOf("p02") == count - 1);
+            Assert.IsTrue(command.Parameters.IndexOf("P02") == count - 1);
+        }
+
+        [Test]
+        public void RemovedParameter([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        {
+            using var command = new NpgsqlCommand();
+            // Put plenty of parameters in the collection to turn on hash lookup functionality.
+            for (var i = 0; i < count; i++)
+            {
+                command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text,
+                    string.Format("String parameter value {0}", i + 1));
+            }
+
+            // Make sure lookup is generated.
+            Assert.AreEqual(command.Parameters["p02"].ParameterName, "p02");
+
+            // Remove the parameter by its name
+            command.Parameters.Remove(command.Parameters["p02"]);
+
+            // Make sure we cannot find it, also not case insensitively.
+            Assert.IsTrue(command.Parameters.IndexOf("p02") == -1);
+            Assert.IsTrue(command.Parameters.IndexOf("P02") == -1);
+        }
+
+        [Test]
+        public void CorrectIndexReturnedForDuplicateParameterName([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        {
+            using var command = new NpgsqlCommand();
+            // Put plenty of parameters in the collection to turn on hash lookup functionality.
+            for (var i = 0; i < count; i++)
+            {
+                command.Parameters.AddWithValue(string.Format("parameter{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
+            }
+
+            // Make sure lookup is generated.
+            Assert.AreEqual(command.Parameters["parameter02"].ParameterName, "parameter02");
+
+            // Add uppercased version.
+            command.Parameters.AddWithValue("Parameter02", NpgsqlDbType.Text, "String parameter value 2");
+
+            // Insert another case insensitive before the original.
+            command.Parameters.Insert(0, new NpgsqlParameter("ParameteR02", NpgsqlDbType.Text) { Value = "String parameter value 2" });
+
+            // Try to find the exact index.
+            Assert.IsTrue(command.Parameters.IndexOf("parameter02") == 2);
+            Assert.IsTrue(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
+            Assert.IsTrue(command.Parameters.IndexOf("ParameteR02") == 0);
+            // This name does not exist so we expect the first case insensitive match to be returned.
+            Assert.IsTrue(command.Parameters.IndexOf("ParaMeteR02") == 0);
         }
 
         [Test]
