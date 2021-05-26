@@ -820,6 +820,8 @@ namespace Npgsql.Tests
             // Test whether we can still find the last added parameter, and if its index is correctly shifted in the lookup.
             Assert.IsTrue(command.Parameters.IndexOf("p02") == count - 1);
             Assert.IsTrue(command.Parameters.IndexOf("P02") == count - 1);
+            // And finally test whether other parameters were also correctly shifted.
+            Assert.IsTrue(command.Parameters.IndexOf("p03") == 1);
         }
 
         [Test]
@@ -869,6 +871,9 @@ namespace Npgsql.Tests
             Assert.IsTrue(command.Parameters.IndexOf("ParameteR02") == 0);
             // This name does not exist so we expect the first case insensitive match to be returned.
             Assert.IsTrue(command.Parameters.IndexOf("ParaMeteR02") == 0);
+
+            // And finally test whether other parameters were also correctly shifted.
+            Assert.IsTrue(command.Parameters.IndexOf("parameter03") == 3);
         }
 
         [Test]

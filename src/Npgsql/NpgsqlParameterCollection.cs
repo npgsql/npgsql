@@ -25,6 +25,8 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlParameterCollection() {}
 
+        bool LookupEnabled => _internalList.Count >= 5;
+
         void LookupAdd(string name, int index)
         {
             if (_lookup is null)
@@ -34,7 +36,7 @@ namespace Npgsql
             {
                 _lookup[name] = new MultiValue(index);
             }
-            else if (!indices.Contains(index))
+            else
             {
                 indices.Add(index);
                 _lookup[name] = indices;
@@ -46,25 +48,31 @@ namespace Npgsql
             if (_lookup is null)
                 return;
 
+            foreach (var kv in _lookup)
+            {
+                var existing = kv.Value;
+                if (existing.HasMultiple)
+                {
+                    for (var i = 0; i < existing.Values.Count; i++)
+                    {
+                        var value = existing.Values[i];
+                        if (index <= value)
+                            existing.Values[i] = value + 1;
+                    }
+                }
+                else if (index <= existing.Value)
+                {
+                    existing.Value++;
+                }
+                _lookup[kv.Key] = existing;
+            }
+
             if (!_lookup.TryGetValue(name, out var indices))
             {
                 _lookup[name] = new MultiValue(index);
             }
             else
             {
-                if (indices.HasMultiple)
-                {
-                    for (var i = 0; i < indices.Values.Count; i++)
-                    {
-                        var value = indices.Values[i];
-                        indices.Values[i] = index <= value ? value + 1 : value;
-                    }
-                }
-                else if (index <= indices.Value)
-                {
-                    indices = new MultiValue(indices.Value + 1);
-                }
-
                 indices.Add(index);
                 _lookup[name] = indices;
             }
@@ -72,10 +80,10 @@ namespace Npgsql
 
         void LookupRemove(string name, int index)
         {
-            if (_lookup is null)
+            if (_lookup is null || !_lookup.TryGetValue(name, out var item))
                 return;
 
-            var nullableIndices = _lookup[name].Remove(index);
+            var nullableIndices = item.Remove(index);
             if (!nullableIndices.HasValue)
             {
                 _lookup.Remove(name);
@@ -83,24 +91,31 @@ namespace Npgsql
             else
             {
                 var indices = nullableIndices.Value;
-                if (indices.HasMultiple)
+                _lookup[name] = indices;
+            }
+
+            foreach (var kv in _lookup)
+            {
+                var existing = kv.Value;
+                if (existing.HasMultiple)
                 {
-                    for (var i = 0; i < indices.Values.Count; i++)
+                    for (var i = 0; i < existing.Values.Count; i++)
                     {
-                        var value = indices.Values[i];
+                        var value = existing.Values[i];
                         Debug.Assert(index != value, "Values should not contain duplicates.");
-                        indices.Values[i] = index < value ? value - 1 : value;
+                        if (index < value)
+                            existing.Values[i] = value - 1;
                     }
                 }
                 else
                 {
-                    Debug.Assert(index != indices.Value, "Values should not contain duplicates.");
-                    if (index < indices.Value)
-                        indices = new MultiValue(indices.Value - 1);
+                    Debug.Assert(index != existing.Value, "Values should not contain duplicates.");
+                    if (index < existing.Value)
+                        existing.Value--;
                 }
-
-                _lookup[name] = indices;
+                _lookup[kv.Key] = existing;
             }
+
         }
 
         void LookupChangeName(string oldName, string name, int index)
@@ -114,7 +129,7 @@ namespace Npgsql
 
         internal void ChangeParameterName(NpgsqlParameter parameter, string oldTrimmedName)
         {
-            if (_lookup is null)
+            if (_lookup is null || _lookup.Count == 0)
                 return;
 
             var index = IndexOf(parameter);
@@ -333,7 +348,7 @@ namespace Npgsql
 
             // Using a dictionary is always faster after around 10 items when matched against reference equality.
             // For string equality this is the case after ~3 items so we take a decent compromise going with 5.
-            if (_internalList.Count >= 5)
+            if (LookupEnabled)
             {
                 if (_lookup is null)
                     BuildLookup();
@@ -474,7 +489,7 @@ namespace Npgsql
                 toRemove.Collection = null;
 
             _internalList.Clear();
-            _lookup = null;
+            _lookup?.Clear();
         }
 
         /// <inheritdoc />
@@ -600,6 +615,8 @@ namespace Npgsql
             if (index >= 0)
             {
                 _internalList.RemoveAt(index);
+                if (!LookupEnabled)
+                    _lookup?.Clear();
                 LookupRemove(item.TrimmedName, index);
                 item.Collection = null;
                 return true;
@@ -659,7 +676,7 @@ namespace Npgsql
 
         struct MultiValue
         {
-            public int Value { get; private set; }
+            public int Value { get; set; }
             public List<int>? Values { get; private set; }
 
             [MemberNotNullWhen(true, nameof(Values))]
@@ -683,8 +700,6 @@ namespace Npgsql
                 Values.Add(value);
                 Value = default;
             }
-
-            public bool Contains(int value) => HasMultiple ? Values.Contains(value) : Value == value;
 
             public MultiValue? Remove(int index)
             {
