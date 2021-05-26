@@ -745,7 +745,7 @@ namespace Npgsql
                 return Close(async: true);
         }
 
-        internal Task Close(bool async)
+        internal Task Close(bool async, bool force = false)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
@@ -757,8 +757,11 @@ namespace Npgsql
             case ConnectionState.Open:
             case ConnectionState.Open | ConnectionState.Executing:
             case ConnectionState.Open | ConnectionState.Fetching:
-            case ConnectionState.Broken:
+            case ConnectionState.Broken when force:
                 break;
+            case ConnectionState.Broken:
+                FullState = ConnectionState.Closed;
+                goto case ConnectionState.Closed;
             case ConnectionState.Closed:
                 Volatile.Write(ref _closing, 0);
                 return Task.CompletedTask;
@@ -1771,7 +1774,8 @@ namespace Npgsql
         /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
-            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None, $"Ending binding scope {scope} but connection's scope is null");
+            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None || FullState == ConnectionState.Broken,
+                $"Ending binding scope {scope} but connection's scope is null");
 
             if (scope != ConnectorBindingScope)
                 return;

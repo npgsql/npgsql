@@ -899,6 +899,9 @@ namespace Npgsql
                 return;
             }
 
+            // Whenever a connector is broken, it also closes the current reader.
+            Connector.CurrentReader = null;
+
             switch (Connector.State)
             {
             case ConnectorState.Ready:
@@ -973,7 +976,6 @@ namespace Npgsql
 
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
-            Connector.CurrentReader = null;
             if (Log.IsEnabled(NpgsqlLogLevel.Debug)) {
                 Connector.QueryLogStopWatch.Stop();
                 Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);

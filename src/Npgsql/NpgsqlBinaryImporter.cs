@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -136,20 +137,11 @@ namespace Npgsql
             if (_column != -1 && _column != NumColumns)
                 ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
-            try
-            {
-                if (_buf.WriteSpaceLeft < 2)
-                    await _buf.Flush(async, cancellationToken);
-                _buf.WriteInt16(NumColumns);
+            if (_buf.WriteSpaceLeft < 2)
+                await _buf.Flush(async, cancellationToken);
+            _buf.WriteInt16(NumColumns);
 
-                _column = 0;
-            }
-            catch
-            {
-                // An exception here will have already broken the connection etc.
-                Cleanup();
-                throw;
-            }
+            _column = 0;
         }
 
         /// <summary>
@@ -319,35 +311,26 @@ namespace Npgsql
                 return;
             }
 
-            try
+            if (typeof(T) == typeof(object))
             {
-                if (typeof(T) == typeof(object))
-                {
-                    param.Value = value;
-                }
-                else
-                {
-                    if (param is not NpgsqlParameter<T> typedParam)
-                    {
-                        _params[_column] = typedParam = new NpgsqlParameter<T>();
-                        typedParam.NpgsqlDbType = param.NpgsqlDbType;
-                        param = typedParam;
-                    }
-                    typedParam.TypedValue = value;
-                }
-                param.ResolveHandler(_connector.TypeMapper);
-                param.ValidateAndGetLength();
-                param.LengthCache?.Rewind();
-                await param.WriteWithLength(_buf, async, cancellationToken);
-                param.LengthCache?.Clear();
-                _column++;
+                param.Value = value;
             }
-            catch
+            else
             {
-                // An exception here will have already broken the connection etc.
-                Cleanup();
-                throw;
+                if (param is not NpgsqlParameter<T> typedParam)
+                {
+                    _params[_column] = typedParam = new NpgsqlParameter<T>();
+                    typedParam.NpgsqlDbType = param.NpgsqlDbType;
+                    param = typedParam;
+                }
+                typedParam.TypedValue = value;
             }
+            param.ResolveHandler(_connector.TypeMapper);
+            param.ValidateAndGetLength();
+            param.LengthCache?.Rewind();
+            await param.WriteWithLength(_buf, async, cancellationToken);
+            param.LengthCache?.Clear();
+            _column++;
         }
 
         /// <summary>
@@ -372,20 +355,11 @@ namespace Npgsql
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
-            try
-            {
-                if (_buf.WriteSpaceLeft < 4)
-                    await _buf.Flush(async, cancellationToken);
+            if (_buf.WriteSpaceLeft < 4)
+                await _buf.Flush(async, cancellationToken);
 
-                _buf.WriteInt32(-1);
-                _column++;
-            }
-            catch
-            {
-                // An exception here will have already broken the connection etc.
-                Cleanup();
-                throw;
-            }
+            _buf.WriteInt32(-1);
+            _column++;
         }
 
         /// <summary>
@@ -472,8 +446,8 @@ namespace Npgsql
             }
             catch
             {
-                // An exception here will have already broken the connection etc.
-                Cleanup();
+                if (_state != ImporterState.Disposed)
+                    Cleanup();
                 throw;
             }
         }
@@ -581,6 +555,7 @@ namespace Npgsql
 #pragma warning disable CS8625
         void Cleanup()
         {
+            Debug.Assert(_state != ImporterState.Disposed);
             var connector = _connector;
             Log.Debug("COPY operation ended", connector?.Id ?? -1);
 

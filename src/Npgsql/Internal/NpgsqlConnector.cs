@@ -1871,7 +1871,10 @@ namespace Npgsql.Internal
                     Cleanup();
 
                     if (connection is not null)
+                    {
+                        connection.Close(async: false, force: true);
                         connection.FullState = ConnectionState.Broken;
+                    }
                 }
 
                 return reason;
@@ -1925,6 +1928,20 @@ namespace Npgsql.Internal
                     // ignored
                 }
                 CurrentReader = null;
+            }
+
+            if (CurrentCopyOperation != null)
+            {
+                try
+                {
+                    // Will never complete asynchronously (stream is already closed)
+                    CurrentCopyOperation.Dispose();
+                }
+                catch
+                {
+                    // ignored
+                }
+                CurrentCopyOperation = null;
             }
 
             ClearTransaction();

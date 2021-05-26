@@ -1674,6 +1674,34 @@ CREATE TABLE record ()");
             Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3705")]
+        public async Task Bug3705()
+        {
+            if (IsMultiplexing)
+                return;
+
+            using var _ = CreateTempPool(ConnectionString, out var connString);
+            await using var conn = new NpgsqlConnection(connString);
+
+            await conn.OpenAsync();
+
+            Assert.AreEqual(1, conn.Pool.Statistics.Total);
+
+            var sleep = conn.ExecuteNonQueryAsync("SELECT pg_sleep(5)");
+
+            await using (var killingConn = await OpenConnectionAsync())
+                killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+
+            Assert.ThrowsAsync<PostgresException>(() => sleep);
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(conn.Connector is null);
+            Assert.AreEqual(0, conn.Pool.Statistics.Total);
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            Assert.AreEqual(1, conn.Pool.Statistics.Total);
+            Assert.DoesNotThrowAsync(conn.CloseAsync);
+        }
+
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
