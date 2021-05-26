@@ -272,6 +272,13 @@ namespace Npgsql.Tests
             Assert.AreEqual(calendar.IsLeapYear(2009), date.IsLeapYear);
             Assert.AreEqual(dateTime.Month, date.Month);
             Assert.AreEqual(dateTime.Year, date.Year);
+
+#if NET6_0_OR_GREATER
+            date = new NpgsqlDate(new DateOnly(2012, 3, 4));
+            Assert.That(date.Year, Is.EqualTo(2012));
+            Assert.That(date.Month, Is.EqualTo(3));
+            Assert.That(date.Day, Is.EqualTo(4));
+#endif
         }
 
         [Test]

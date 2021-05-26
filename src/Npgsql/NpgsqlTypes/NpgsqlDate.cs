@@ -442,6 +442,32 @@ namespace NpgsqlTypes
 
         #endregion
 
+#if NET6_0_OR_GREATER
+        public NpgsqlDate(DateOnly date) : this(date.Year, date.Month, date.Day) {}
+
+        public static DateOnly ToDateOnly(NpgsqlDate date)
+        {
+            switch (date._type)
+            {
+            case InternalType.Infinity:
+            case InternalType.NegativeInfinity:
+                throw new InvalidCastException("Infinity values can't be cast to DateTime");
+            case InternalType.Finite:
+                try { return new DateOnly(date.Year, date.Month, date.Day); }
+                catch { throw new InvalidCastException(); }
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {date._type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
+            }
+        }
+
+        public static explicit operator DateOnly(NpgsqlDate date) => ToDateOnly(date);
+
+        public static NpgsqlDate ToNpgsqlDate(DateOnly date)
+            => new(date.Year, date.Month, date.Day);
+
+        public static explicit operator NpgsqlDate(DateOnly date) => ToNpgsqlDate(date);
+#endif
+
         enum InternalType
         {
             Finite,

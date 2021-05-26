@@ -16,6 +16,9 @@ namespace Npgsql.NodaTime.Internal
     }
 
     sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
+#if NET6_0_OR_GREATER
+        , INpgsqlSimpleTypeHandler<DateOnly>
+#endif
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
@@ -84,5 +87,16 @@ namespace Npgsql.NodaTime.Internal
 
         void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
+
+#if NET6_0_OR_GREATER
+        DateOnly INpgsqlSimpleTypeHandler<DateOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _bclHandler.Read<DateOnly>(buf, len, fieldDescription);
+
+        public int ValidateAndGetLength(DateOnly value, NpgsqlParameter? parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        public void Write(DateOnly value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => _bclHandler.Write(value, buf, parameter);
+#endif
     }
 }

@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Data;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
@@ -36,6 +34,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// Use it at your own risk.
     /// </remarks>
     public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+#if NET6_0_OR_GREATER
+        , INpgsqlSimpleTypeHandler<DateOnly>
+#endif
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
@@ -122,5 +123,40 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         }
 
         #endregion Write
+
+#if NET6_0_OR_GREATER
+        DateOnly INpgsqlSimpleTypeHandler<DateOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+        {
+            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
+
+            if (npgsqlDate.IsFinite)
+                return (DateOnly)npgsqlDate;
+            if (!_convertInfinityDateTime)
+                throw new InvalidCastException("Can't convert infinite date values to DateOnly");
+            if (npgsqlDate.IsInfinity)
+                return DateOnly.MaxValue;
+            return DateOnly.MinValue;
+        }
+
+        public int ValidateAndGetLength(DateOnly value, NpgsqlParameter? parameter) => 4;
+
+        public void Write(DateOnly value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+        {
+            NpgsqlDate value2;
+            if (_convertInfinityDateTime)
+            {
+                if (value == DateOnly.MaxValue)
+                    value2 = NpgsqlDate.Infinity;
+                else if (value == DateOnly.MinValue)
+                    value2 = NpgsqlDate.NegativeInfinity;
+                else
+                    value2 = new NpgsqlDate(value);
+            }
+            else
+                value2 = new NpgsqlDate(value);
+
+            Write(value2, buf, parameter);
+        }
+#endif
     }
 }

@@ -72,7 +72,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public async Task DateConvertInfinity()
+        public async Task DateConvertInfinity_DateTime()
         {
             using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
             conn.Open();
@@ -87,6 +87,48 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
             Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
         }
+
+#if NET6_0_OR_GREATER
+        [Test]
+        public async Task Date_DateOnly()
+        {
+            using var conn = await OpenConnectionAsync();
+            var dateOnly = new DateOnly(2002, 3, 4);
+            var dateTime = dateOnly.ToDateTime(default);
+
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+            var p1 = new NpgsqlParameter { ParameterName = "p1", Value = dateOnly };
+            Assert.That(p1.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
+            Assert.That(p1.DbType, Is.EqualTo(DbType.Date));
+            cmd.Parameters.Add(p1);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+
+            Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(dateOnly));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime)));
+            Assert.That(reader.GetDateTime(0), Is.EqualTo(dateTime));
+            Assert.That(reader[0], Is.EqualTo(dateTime));
+            Assert.That(reader.GetValue(0), Is.EqualTo(dateTime));
+        }
+
+        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
+        public async Task DateConvertInfinity_DateOnly()
+        {
+            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
+            conn.Open();
+
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateOnly.MaxValue);
+            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateOnly.MinValue);
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
+            Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
+            Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(DateOnly.MaxValue));
+            Assert.That(reader.GetFieldValue<DateOnly>(1), Is.EqualTo(DateOnly.MinValue));
+        }
+#endif
 
         #endregion
 
@@ -113,6 +155,29 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetValue(i), Is.EqualTo(expected));
             }
         }
+
+#if NET6_0_OR_GREATER
+        [Test]
+        public async Task Time_TimeOnly()
+        {
+            using var conn = await OpenConnectionAsync();
+            var timeOnly = new TimeOnly(10, 45, 34, 500);
+            var timeSpan = timeOnly.ToTimeSpan();
+
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p1", Value = timeOnly });
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+
+            Assert.That(reader.GetFieldValue<TimeOnly>(0), Is.EqualTo(timeOnly));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(TimeSpan)));
+            Assert.That(reader.GetTimeSpan(0), Is.EqualTo(timeSpan));
+            Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(timeSpan));
+            Assert.That(reader[0], Is.EqualTo(timeSpan));
+            Assert.That(reader.GetValue(0), Is.EqualTo(timeSpan));
+        }
+#endif
 
         #endregion
 

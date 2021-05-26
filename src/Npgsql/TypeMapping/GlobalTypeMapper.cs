@@ -394,7 +394,13 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "date",
                     NpgsqlDbType = NpgsqlDbType.Date,
                     DbTypes = new[] { DbType.Date },
-                    ClrTypes = new[] { typeof(NpgsqlDate) },
+                    ClrTypes = new[]
+                    {
+                        typeof(NpgsqlDate),
+#if NET6_0_OR_GREATER
+                        typeof(DateOnly)
+#endif
+                    },
                     TypeHandlerFactory = new DateHandlerFactory()
                 }.Build());
 
@@ -403,6 +409,9 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "time without time zone",
                     NpgsqlDbType = NpgsqlDbType.Time,
                     DbTypes = new[] { DbType.Time },
+#if NET6_0_OR_GREATER
+                    ClrTypes = new[] { typeof(TimeOnly) },
+#endif
                     TypeHandlerFactory = new TimeHandlerFactory()
                 }.Build());
 

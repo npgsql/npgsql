@@ -38,6 +38,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// Use it at your own risk.
     /// </remarks>
     public partial class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
+#if NET6_0_OR_GREATER
+        , INpgsqlSimpleTypeHandler<TimeOnly>
+#endif
     {
         /// <summary>
         /// Constructs a <see cref="TimeHandler"/>.
@@ -50,11 +53,20 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             => new(buf.ReadInt64() * 10);
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
-            => 8;
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 8;
 
         /// <inheritdoc />
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteInt64(value.Ticks / 10);
+
+#if NET6_0_OR_GREATER
+        TimeOnly INpgsqlSimpleTypeHandler<TimeOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => new(buf.ReadInt64() * 10);
+
+        public int ValidateAndGetLength(TimeOnly value, NpgsqlParameter? parameter) => 8;
+
+        public void Write(TimeOnly value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => buf.WriteInt64(value.Ticks / 10);
+#endif
     }
 }

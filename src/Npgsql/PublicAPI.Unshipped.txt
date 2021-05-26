@@ -117,3 +117,8 @@ Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
 *REMOVED*virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
 Npgsql.NpgsqlParameter<T>.TypedValue.get -> T?
+NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateOnly date) -> void
+static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
+static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
+static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
+static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly

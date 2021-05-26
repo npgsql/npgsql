@@ -20,6 +20,9 @@ namespace Npgsql.NodaTime.Internal
     }
 
     sealed partial class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+#if NET6_0_OR_GREATER
+        , INpgsqlSimpleTypeHandler<TimeOnly>
+#endif
     {
         readonly BclTimeHandler _bclHandler;
 
@@ -44,5 +47,16 @@ namespace Npgsql.NodaTime.Internal
 
         void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
+
+#if NET6_0_OR_GREATER
+        TimeOnly INpgsqlSimpleTypeHandler<TimeOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _bclHandler.Read<TimeOnly>(buf, len, fieldDescription);
+
+        public int ValidateAndGetLength(TimeOnly value, NpgsqlParameter? parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        public void Write(TimeOnly value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => _bclHandler.Write(value, buf, parameter);
+#endif
     }
 }
