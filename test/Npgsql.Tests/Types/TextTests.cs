@@ -229,7 +229,9 @@ namespace Npgsql.Tests.Types
         [Test]
         public async Task Xml()
         {
-            using var conn = await OpenConnectionAsync();
+            await using var conn = await OpenConnectionAsync();
+            await IgnoreIfFeatureNotSupportedAsync(conn, "SELECT '<x>t</x>'::xml::text");
+
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
             const string expected = "<root>foo</root>";
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Xml);
@@ -239,7 +241,7 @@ namespace Npgsql.Tests.Types
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             p1.Value = p2.Value = expected;
-            using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 
             for (var i = 0; i < cmd.Parameters.Count; i++)

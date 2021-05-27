@@ -98,6 +98,39 @@ namespace Npgsql.Tests
             conn.ReloadTypes();
         }
 
+        /// <summary>
+        /// Causes the test to be ignored if the supplied query fails with SqlState 0A000 (feature_not_supported)
+        /// </summary>
+        /// <param name="conn">The connection to execute the test query. The connection needs to be open.</param>
+        /// <param name="testQuery">The query to test for the feature.
+        /// This query needs to fail with SqlState 0A000 (feature_not_supported) if the feature isn't present.</param>
+        public static void IgnoreIfFeatureNotSupported(NpgsqlConnection conn, string testQuery)
+            => IgnoreIfFeatureNotSupported(conn, testQuery, async: false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Causes the test to be ignored if the supplied query fails with SqlState 0A000 (feature_not_supported)
+        /// </summary>
+        /// <param name="conn">The connection to execute the test query. The connection needs to be open.</param>
+        /// <param name="testQuery">The query to test for the feature.
+        /// This query needs to fail with SqlState 0A000 (feature_not_supported) if the feature isn't present.</param>
+        public static Task IgnoreIfFeatureNotSupportedAsync(NpgsqlConnection conn, string testQuery)
+            => IgnoreIfFeatureNotSupported(conn, testQuery, async: true);
+
+        static async Task IgnoreIfFeatureNotSupported(NpgsqlConnection conn, string testQuery, bool async)
+        {
+            try
+            {
+                if (async)
+                    await conn.ExecuteNonQueryAsync(testQuery);
+                else
+                    conn.ExecuteNonQuery(testQuery);
+            }
+            catch (PostgresException e) when (e.SqlState == "0A000"/*feature_not_supported*/)
+            {
+                Assert.Ignore(e.Message);
+            }
+        }
+
         public static async Task EnsurePostgis(NpgsqlConnection conn)
         {
             try
