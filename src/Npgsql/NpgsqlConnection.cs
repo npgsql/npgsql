@@ -1681,11 +1681,6 @@ namespace Npgsql
         #region Connector binding
 
         /// <summary>
-        /// Returns whether the connection is currently bound to a connector.
-        /// </summary>
-        internal bool IsBound => ConnectorBindingScope != ConnectorBindingScope.None;
-
-        /// <summary>
         /// Checks whether the connection is currently bound to a connector, and if so, returns it via
         /// <paramref name="connector"/>.
         /// </summary>

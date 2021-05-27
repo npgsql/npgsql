@@ -1662,6 +1662,55 @@ LANGUAGE plpgsql VOLATILE";
 
         #region Cancellation
 
+        [Test, Description("Cancels ReadAsync via the NpgsqlCommand.Cancel, with successful PG cancellation")]
+        public async Task ReadAsync_cancel_command_soft()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+                .FlushAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                // Successfully read the first row
+                Assert.True(await reader.ReadAsync());
+                Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+
+                // Attempt to read the second row - simulate blocking and cancellation
+                var task = reader.ReadAsync();
+                cmd.Cancel();
+
+                var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
+                Assert.That(processId, Is.EqualTo(conn.ProcessID));
+
+                await pgMock
+                    .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+                    .WriteReadyForQuery()
+                    .FlushAsync();
+
+                var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
+                Assert.That(exception.InnerException,
+                    Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
+
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
+            }
+
+            await pgMock.WriteScalarResponseAndFlush(1);
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test, Description("Cancels ReadAsync via the cancellation token, with successful PG cancellation")]
         public async Task ReadAsync_cancel_soft()
         {
@@ -1928,6 +1977,25 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        [Test, Description("Cancellation does not work with the multiplexing")]
+        public async Task Cancel_multiplexing_disabled()
+        {
+            if (!IsMultiplexing)
+                return;
+
+            using var _ = CreateTempPool(ConnectionString, out var connString);
+            await using var conn = await OpenConnectionAsync(connString);
+            await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
+            using var cts = new CancellationTokenSource();
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            Assert.IsTrue(await reader.ReadAsync());
+            cts.Cancel();
+            while (await reader.ReadAsync(cts.Token)) { }
+            Assert.IsTrue(await reader.NextResultAsync(cts.Token));
+            while (await reader.ReadAsync(cts.Token)) { }
+            Assert.IsFalse(conn.Connector!.UserCancellationRequested);
         }
 
         #endregion Cancellation

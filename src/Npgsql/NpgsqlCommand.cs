@@ -1408,10 +1408,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (State != CommandState.InProgress)
                 return;
 
-            var connection = Connection;
-            if (connection is not null && !connection.IsBound)
-                throw new NotSupportedException("Cancellation not supported with multiplexing");
-            var connector = connection?.Connector ?? _connector;
+            var connector = Connection?.Connector ?? _connector;
             if (connector is null)
                 return;
 
