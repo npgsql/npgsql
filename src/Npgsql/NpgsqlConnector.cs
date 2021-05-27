@@ -1460,6 +1460,10 @@ namespace Npgsql
 
         internal void PerformUserCancellation()
         {
+            var connection = Connection;
+            if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+                return;
+
             lock (CancelLock)
             {
                 _userCancellationRequested = true;
