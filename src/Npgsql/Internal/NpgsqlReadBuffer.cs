@@ -82,6 +82,7 @@ namespace Npgsql.Internal
 
         ColumnStream? _columnStream;
 
+        bool _usePool;
         bool _disposed;
 
         /// <summary>
@@ -100,7 +101,8 @@ namespace Npgsql.Internal
             Socket? socket,
             int size,
             Encoding textEncoding,
-            Encoding relaxedTextEncoding)
+            Encoding relaxedTextEncoding,
+            bool usePool = false)
         {
             if (size < MinimumSize)
             {
@@ -111,8 +113,10 @@ namespace Npgsql.Internal
             Underlying = stream;
             _underlyingSocket = socket;
             Cts = new ResettableCancellationTokenSource();
-            Size = size;
-            Buffer = ArrayPool<byte>.Shared.Rent(size);
+            Buffer = usePool ? ArrayPool<byte>.Shared.Rent(size) : new byte[size];
+            Size = Buffer.Length;
+            _usePool = usePool;
+
             TextEncoding = textEncoding;
             RelaxedTextEncoding = relaxedTextEncoding;
         }
@@ -272,7 +276,7 @@ namespace Npgsql.Internal
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding, usePool: true);
             if (_underlyingSocket != null)
                 tempBuf.Timeout = Timeout;
             CopyTo(tempBuf);
@@ -625,7 +629,8 @@ namespace Npgsql.Internal
             if (_disposed)
                 return;
 
-            ArrayPool<byte>.Shared.Return(Buffer);
+            if (_usePool)
+                ArrayPool<byte>.Shared.Return(Buffer);
 
             Cts.Dispose();
             _disposed = true;
