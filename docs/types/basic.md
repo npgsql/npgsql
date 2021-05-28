@@ -20,7 +20,7 @@ integer                     | int                        |                      
 bigint                      | long                       |                        | long, byte, short, int, float, double, decimal
 real                        | float                      |                        | double
 double precision            | double                     |                        |
-numeric                     | decimal                    |                        | byte, short, int, long, float, double
+numeric                     | decimal                    |                        | byte, short, int, long, float, double, Big Integer (6.0 and above)
 money                       | decimal                    |                        |
 text                        | string                     |                        | char[]
 character varying           | string                     |                        | char[]
