@@ -630,9 +630,7 @@ namespace Npgsql.Internal
                 return;
 
             if (_usePool)
-            {
                 ArrayPool<byte>.Shared.Return(Buffer);
-            }
 
             Cts.Dispose();
             _disposed = true;
