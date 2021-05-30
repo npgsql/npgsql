@@ -83,11 +83,19 @@ namespace Npgsql.Tests.Replication
             var slotName = $"s_{name}".ToLowerInvariant();
             var tableName = $"t_{name}".ToLowerInvariant();
             var publicationName = $"p_{name}".ToLowerInvariant();
+
+            await Cleanup();
+
             try
             {
                 await testAction(slotName, tableName, publicationName);
             }
             finally
+            {
+                await Cleanup();
+            }
+
+            async Task Cleanup()
             {
                 await using var c = await OpenConnectionAsync();
                 try
