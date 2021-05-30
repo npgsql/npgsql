@@ -392,6 +392,27 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(nDateTimeLocal, nDateTimeUnspecified.ToLocalTime());
         }
 
+        static readonly TestCaseData[] TimeStampTzSpecialCases = {
+            new TestCaseData(NpgsqlDateTime.Infinity).SetName(nameof(TimeStampTzSpecialCases) + "Infinity"),
+            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName(nameof(TimeStampTzSpecialCases) + "NegativeInfinity"),
+            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0, DateTimeKind.Local)).SetName(nameof(TimeStampTzSpecialCases) + "BC"),
+        };
+
+        [Test, TestCaseSource(nameof(TimeStampTzSpecialCases))]
+        public async Task TimeStampTzSpecial(NpgsqlDateTime value)
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value, NpgsqlDbType = NpgsqlDbType.TimestampTz });
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                reader.Read();
+                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
+                Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
+            }
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
         public async Task TimeStampTzConvertInfinity()
         {
@@ -403,6 +424,8 @@ namespace Npgsql.Tests.Types
             cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTz, DateTime.MinValue);
             using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
+            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
+            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
             Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
             Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
         }

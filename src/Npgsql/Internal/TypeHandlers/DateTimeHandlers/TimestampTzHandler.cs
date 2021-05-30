@@ -78,7 +78,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
-            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
+            return ts.IsFinite ? new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime() : ts;
         }
 
         DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
