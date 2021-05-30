@@ -154,7 +154,19 @@ namespace NpgsqlTypes
                     return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.GetUtcOffset(new DateTime(ToDateTime().Ticks, DateTimeKind.Local))).Ticks, DateTimeKind.Utc);
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
-                return new NpgsqlDateTime(Subtract(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Utc);
+                var timeTicks = _time.Ticks - TimeZoneInfo.Local.BaseUtcOffset.Ticks;
+                var date = _date;
+                if (timeTicks < 0)
+                {
+                    timeTicks += NpgsqlTimeSpan.TicksPerDay;
+                    date = date.AddDays(-1);
+                }
+                else if (timeTicks > NpgsqlTimeSpan.TicksPerDay)
+                {
+                    timeTicks -= NpgsqlTimeSpan.TicksPerDay;
+                    date = date.AddDays(1);
+                }
+                return new NpgsqlDateTime(date, TimeSpan.FromTicks(timeTicks), DateTimeKind.Utc);
             case InternalType.FiniteUtc:
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
@@ -185,7 +197,19 @@ namespace NpgsqlTypes
                     return new NpgsqlDateTime(TimeZoneInfo.ConvertTime(new DateTime(ToDateTime().Ticks, DateTimeKind.Utc), TimeZoneInfo.Local));
                 }
                 // Else there are no DST rules available in the system for outside the DateTime range, so just use the base offset
-                return new NpgsqlDateTime(Add(TimeZoneInfo.Local.BaseUtcOffset).Ticks, DateTimeKind.Local);
+                var timeTicks = _time.Ticks + TimeZoneInfo.Local.BaseUtcOffset.Ticks;
+                var date = _date;
+                if (timeTicks < 0)
+                {
+                    timeTicks += NpgsqlTimeSpan.TicksPerDay;
+                    date = date.AddDays(-1);
+                }
+                else if (timeTicks > NpgsqlTimeSpan.TicksPerDay)
+                {
+                    timeTicks -= NpgsqlTimeSpan.TicksPerDay;
+                    date = date.AddDays(1);
+                }
+                return new NpgsqlDateTime(date, TimeSpan.FromTicks(timeTicks), DateTimeKind.Local);
             case InternalType.FiniteLocal:
             case InternalType.Infinity:
             case InternalType.NegativeInfinity:
