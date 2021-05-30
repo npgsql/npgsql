@@ -36,7 +36,9 @@ namespace Npgsql.Replication
         Timer? _sendFeedbackTimer;
         Timer? _requestFeedbackTimer;
         TimeSpan _requestFeedbackInterval;
-        Task _replicationCompletion = Task.CompletedTask;
+
+        IAsyncEnumerator<XLogDataMessage>? _currentEnumerator;
+        CancellationTokenSource? _replicationCancellationTokenSource;
         bool _pgCancellationSupported;
         bool _isDisposed;
 
@@ -231,14 +233,39 @@ namespace Npgsql.Replication
 
                 if (_npgsqlConnection.Connector?.State == ConnectorState.Replication)
                 {
-                    Connector.PerformPostgresCancellation();
-                    await _replicationCompletion;
+                    Debug.Assert(_currentEnumerator is not null);
+                    Debug.Assert(_replicationCancellationTokenSource is not null);
+
+                    // Replication is in progress; cancel it (soft or hard) and iterate the enumerator until we get the cancellation
+                    // exception. Note: this isn't thread-safe: a user calling DisposeAsync and enumerating at the same time is violating
+                    // our contract.
+                    _replicationCancellationTokenSource.Cancel();
+                    try
+                    {
+                        while (await _currentEnumerator.MoveNextAsync())
+                        {
+                            // Do nothing with messages - simply enumerate until cancellation/termination
+                        }
+                    }
+                    catch
+                    {
+                        // Cancellation/termination occurred
+                    }
                 }
 
                 Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
                 Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
                 _feedbackSemaphore.Dispose();
-                await _npgsqlConnection.Close(async: true);
+
+                try
+                {
+                    await _npgsqlConnection.Close(async: true);
+                }
+                catch
+                {
+                    // Dispose
+                }
+
                 _isDisposed = true;
             }
         }
@@ -393,20 +420,28 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async IAsyncEnumerable<XLogDataMessage> StartReplicationInternal(
+        internal IAsyncEnumerator<XLogDataMessage> StartReplicationInternalWrapper(
             string command,
             bool bypassingStream,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
+        {
+            _currentEnumerator = StartReplicationInternal(command, bypassingStream, cancellationToken);
+            return _currentEnumerator;
+        }
+
+        internal async IAsyncEnumerator<XLogDataMessage> StartReplicationInternal(
+            string command,
+            bool bypassingStream,
+            CancellationToken cancellationToken)
         {
             CheckDisposed();
 
             var connector = _npgsqlConnection.Connector!;
 
-            using var _ = Connector.StartUserAction(
-                ConnectorState.Replication, cancellationToken, attemptPgCancellation: _pgCancellationSupported);
+            _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            var completionSource = new TaskCompletionSource<int>();
-            _replicationCompletion = completionSource.Task;
+            using var _ = Connector.StartUserAction(
+                ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
 
             try
             {
@@ -530,7 +565,10 @@ namespace Npgsql.Replication
 
                 SetTimeouts(CommandTimeout, CommandTimeout);
 
-                completionSource.SetResult(0);
+                _replicationCancellationTokenSource.Dispose();
+                _replicationCancellationTokenSource = null;
+
+                _currentEnumerator = null;
             }
         }
 

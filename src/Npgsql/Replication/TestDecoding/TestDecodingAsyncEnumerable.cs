@@ -35,8 +35,10 @@ namespace Npgsql.Replication.TestDecoding
             CancellationToken cancellationToken = new CancellationToken())
         {
             using (NoSynchronizationContextScope.Enter())
+            {
                 return StartReplicationInternal(
                     CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
+            }
         }
 
         async IAsyncEnumerator<TestDecodingData> StartReplicationInternal(CancellationToken cancellationToken)
