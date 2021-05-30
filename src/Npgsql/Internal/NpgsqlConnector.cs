@@ -1872,7 +1872,8 @@ namespace Npgsql.Internal
 
                     if (connection is not null)
                     {
-                        connection.Close(async: false, force: true);
+                        if (Settings.ReplicationMode == ReplicationMode.Off)
+                            connection.Close(async: false, force: true);
                         connection.FullState = ConnectionState.Broken;
                     }
                 }
