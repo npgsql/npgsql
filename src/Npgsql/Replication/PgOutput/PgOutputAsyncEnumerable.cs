@@ -56,8 +56,10 @@ namespace Npgsql.Replication.PgOutput
         public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
+            {
                 return StartReplicationInternal(
                     CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
+            }
         }
 
         async IAsyncEnumerator<PgOutputReplicationMessage> StartReplicationInternal(CancellationToken cancellationToken)

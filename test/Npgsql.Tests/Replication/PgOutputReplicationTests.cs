@@ -423,6 +423,29 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
 
+        [Test(Description = "Tests whether disposing while replicating will get us stuck forever.")]
+        public Task DisposeWhileReplicating()
+            => SafeReplicationTest(
+                async (slotName, tableName, publicationName) =>
+                {
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync(@$"
+CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
+CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
+");
+                    var rc = await OpenReplicationConnectionAsync();
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('value 1'), ('value 2');");
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, new PgOutputReplicationOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await NextMessage<BeginMessage>(messages);
+
+                    await rc.DisposeAsync();
+                }, nameof(DisposeWhileReplicating));
+
         async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator)
             where TExpected : PgOutputReplicationMessage
         {
