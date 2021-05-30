@@ -340,11 +340,16 @@ namespace Npgsql
                 }
                 catch
                 {
+                    if (connector is not null)
+                    {
+                        await connector.Reset(async);
+                        connector.Connection = null;
+                        Connector = null;
+                        connector.Return();
+                    }
+
                     FullState = ConnectionState.Closed;
                     ConnectorBindingScope = ConnectorBindingScope.None;
-                    Connector = null;
-
-                    connector?.Return();
 
                     throw;
                 }

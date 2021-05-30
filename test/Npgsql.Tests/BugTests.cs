@@ -289,40 +289,25 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore("Multiplexing: fails")]
         public void Bug1761()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Enlist = true,
                 Pooling = true,
                 MinPoolSize = 1,
                 MaxPoolSize = 1
-            }.ConnectionString;
+            };
+            using var _ = CreateTempPool(csb.ToString(), out var connString);
 
             for (var i = 0; i < 2; i++)
             {
-                try
-                {
-                    using var scope = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromMilliseconds(100));
-                    Thread.Sleep(1000);
+                using var scope = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(2000);
 
-                    // Ambient transaction is now unusable, attempts to enlist to it will fail. We should recover
-                    // properly from this failure.
-
-                    using (var connection = OpenConnection(connString))
-                    using (var cmd = new NpgsqlCommand("SELECT 1", connection))
-                    {
-                        cmd.CommandText = "select 1;";
-                        cmd.ExecuteNonQuery();
-                    }
-
-                    scope.Complete();
-                }
-                catch (TransactionException)
-                {
-                    //do nothing
-                }
+                // Ambient transaction is now unusable, attempts to enlist to it will fail. We should recover
+                // properly from this failure.
+                Assert.Throws<TransactionException>(() => OpenConnection(connString));
             }
         }
 
