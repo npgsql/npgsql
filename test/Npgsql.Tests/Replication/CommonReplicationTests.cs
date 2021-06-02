@@ -336,14 +336,14 @@ namespace Npgsql.Tests.Replication
                     Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
 
                     // Report last applied LSN
-                    rc.SetReplicationStatus(commitLsn, rc.LastFlushedLsn);
+                    rc.LastAppliedLsn = commitLsn;
                     await rc.SendStatusUpdate(CancellationToken.None);
 
                     result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
                     Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
 
                     // Report last flushed LSN
-                    rc.SetReplicationStatus(commitLsn, commitLsn);
+                    rc.LastFlushedLsn = commitLsn;
                     await rc.SendStatusUpdate(CancellationToken.None);
 
                     await insertTask;
@@ -372,7 +372,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(result, Is.EqualTo(value1String)); // Not committed yet because we still didn't report apply yet
 
                     // Report last applied LSN
-                    rc.SetReplicationStatus(commitLsn, rc.LastFlushedLsn);
+                    rc.LastAppliedLsn = commitLsn;
                     await rc.SendStatusUpdate(CancellationToken.None);
 
                     await insertTask;
