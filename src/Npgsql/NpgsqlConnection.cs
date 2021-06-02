@@ -1017,6 +1017,7 @@ namespace Npgsql
 
         /// <summary>
         /// PostgreSQL server version.
+        /// This can only be called when there is an active connection.
         /// </summary>
         public override string ServerVersion => PostgreSqlVersion.ToString();
 

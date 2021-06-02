@@ -37,6 +37,8 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 Npgsql.NpgsqlCopyTextReader.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Npgsql.PhysicalOpenAsyncCallback
 Npgsql.PhysicalOpenCallback
+Npgsql.Replication.ReplicationConnection.PostgreSqlVersion.get -> System.Version!
+Npgsql.Replication.ReplicationConnection.ServerVersion.get -> string!
 Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override Npgsql.NpgsqlRawCopyStream.DisposeAsync() -> System.Threading.Tasks.ValueTask
