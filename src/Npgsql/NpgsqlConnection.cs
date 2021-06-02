@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -189,10 +190,15 @@ namespace Npgsql
                 }
 
                 var portSeparator = settings.Host!.IndexOf(':');
-                if (!Path.IsPathRooted(settings.Host) && portSeparator != -1)
+                if (portSeparator != -1 && !Path.IsPathRooted(settings.Host) && !IPAddress.TryParse(settings.Host, out _))
                 {
-                    settings.Port = int.Parse(settings.Host.Substring(portSeparator + 1));
-                    settings.Host = settings.Host.Substring(0, portSeparator);
+                    var span = settings.Host.AsSpan();
+                    settings.Port = int.Parse(span.Slice(portSeparator + 1)
+#if NETSTANDARD2_0
+                    .ToString()
+#endif
+                    );
+                    settings.Host = span.Slice(0, portSeparator).ToString();
                 }
             }
 
