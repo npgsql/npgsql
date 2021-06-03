@@ -26,11 +26,21 @@ namespace Npgsql
             {
                 var host = hosts[i].Trim();
                 var port = settings.Port;
-                var portSeparator = host.IndexOf(':');
+                var portSeparator = host.LastIndexOf(':');
                 if (portSeparator != -1)
                 {
-                    port = int.Parse(host.Substring(portSeparator + 1));
-                    host = host.Substring(0, portSeparator);
+                    var otherColon = host.LastIndexOf(':', portSeparator - 1);
+                    var ipv6End = host.LastIndexOf(']');
+                    if (otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End)
+                    {
+                        var span = host.AsSpan();
+                        port = int.Parse(span.Slice(portSeparator + 1)
+#if NETSTANDARD2_0
+                                .ToString()
+#endif
+                        );
+                        host = span.Slice(0, portSeparator).ToString();
+                    }
                 }
                 var poolSettings = settings.Clone();
                 poolSettings.Host = host;

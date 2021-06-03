@@ -528,6 +528,69 @@ namespace Npgsql.Tests
 
         #endregion Timezone
 
+        #region ConnectionString - Host
+
+        [TestCase("127.0.0.1", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
+        [TestCase("127.0.0.1:5432", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
+        [TestCase("::1", ExpectedResult = new []{"tcp://::1:5432"})]
+        [TestCase("[::1]", ExpectedResult = new []{"tcp://[::1]:5432"})]
+        [TestCase("[::1]:5432", ExpectedResult = new []{"tcp://[::1]:5432"})]
+        [TestCase("localhost", ExpectedResult = new []{"tcp://localhost:5432"})]
+        [TestCase("localhost:5432", ExpectedResult = new []{"tcp://localhost:5432"})]
+        [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1]:5432,localhost,localhost:5432",
+            ExpectedResult = new []
+            {
+                "tcp://127.0.0.1:5432",
+                "tcp://127.0.0.1:5432",
+                "tcp://::1:5432",
+                "tcp://[::1]:5432",
+                "tcp://localhost:5432",
+                "tcp://localhost:5432"
+            })]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802")]
+        public async Task<string[]> ConnectionString_Host(string host)
+        {
+            var numberOfHosts = host.Split(',').Length;
+            if (IsMultiplexing && numberOfHosts > 1)
+                throw new SuccessException("Multiple hosts in connection string is ignored for Multiplexing");
+
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Host = host,
+                LoadBalanceHosts = numberOfHosts > 1
+            }.ConnectionString;
+
+            var connections = new NpgsqlConnection?[numberOfHosts];
+            var returnValues = new string[numberOfHosts];
+            try
+            {
+                for (var i = 0; i < connections.Length; i++)
+                {
+                    var c = new NpgsqlConnection(connectionString);
+                    await c.OpenAsync();
+                    returnValues[i] = c.DataSource;
+                    connections[i] = c;
+                }
+
+                // When multiplexing NpgsqlConnection.DataSource is not set so we succeed
+                // if we successfully connected and reached this point
+                if (IsMultiplexing)
+                    throw new SuccessException("DataSource is ignored for Multiplexing");
+
+                return returnValues;
+            }
+            finally
+            {
+                foreach (var connection in connections)
+                {
+                    if (connection != null)
+                        await connection.DisposeAsync();
+                }
+            }
+        }
+
+        #endregion ConnectionString - Host
+
         [Test]
         public async Task UnixDomainSocket()
         {

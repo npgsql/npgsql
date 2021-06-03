@@ -181,7 +181,7 @@ namespace Npgsql
             Settings = settings;
 
             var hostsSeparator = settings.Host?.IndexOf(',');
-            if (hostsSeparator.HasValue && hostsSeparator == -1)
+            if (hostsSeparator is -1)
             {
                 if (settings.TargetSessionAttributesParsed is not null &&
                     settings.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
@@ -189,16 +189,21 @@ namespace Npgsql
                     throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
                 }
 
-                var portSeparator = settings.Host!.IndexOf(':');
-                if (portSeparator != -1 && !Path.IsPathRooted(settings.Host) && !IPAddress.TryParse(settings.Host, out _))
+                var portSeparator = settings.Host!.LastIndexOf(':');
+                if (portSeparator != -1 && !Path.IsPathRooted(settings.Host))
                 {
-                    var span = settings.Host.AsSpan();
-                    settings.Port = int.Parse(span.Slice(portSeparator + 1)
+                    var otherColon = settings.Host!.LastIndexOf(':', portSeparator - 1);
+                    var ipv6End = settings.Host!.LastIndexOf(']');
+                    if ((otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End))
+                    {
+                        var span = settings.Host.AsSpan();
+                        settings.Port = int.Parse(span.Slice(portSeparator + 1)
 #if NETSTANDARD2_0
-                    .ToString()
+                                .ToString()
 #endif
-                    );
-                    settings.Host = span.Slice(0, portSeparator).ToString();
+                        );
+                        settings.Host = span.Slice(0, portSeparator).ToString();
+                    }
                 }
             }
 
