@@ -537,12 +537,13 @@ namespace Npgsql.Tests
         [TestCase("[::1]:5432", ExpectedResult = new []{"tcp://[::1]:5432"})]
         [TestCase("localhost", ExpectedResult = new []{"tcp://localhost:5432"})]
         [TestCase("localhost:5432", ExpectedResult = new []{"tcp://localhost:5432"})]
-        [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1]:5432,localhost,localhost:5432",
+        [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1],[::1]:5432,localhost,localhost:5432",
             ExpectedResult = new []
             {
                 "tcp://127.0.0.1:5432",
                 "tcp://127.0.0.1:5432",
                 "tcp://::1:5432",
+                "tcp://[::1]:5432",
                 "tcp://[::1]:5432",
                 "tcp://localhost:5432",
                 "tcp://localhost:5432"
@@ -557,7 +558,7 @@ namespace Npgsql.Tests
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Host = host,
-                LoadBalanceHosts = numberOfHosts > 1
+                MaxPoolSize = 1
             }.ConnectionString;
 
             var connections = new NpgsqlConnection?[numberOfHosts];
