@@ -31,6 +31,8 @@ namespace Npgsql
         internal static void RemoveClusterState(string host, int port)
             => Clusters.TryRemove(new ClusterIdentifier(host, port), out _);
 
+        internal static void Clear()  => Clusters.Clear();
+
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
         {
             readonly string _host;

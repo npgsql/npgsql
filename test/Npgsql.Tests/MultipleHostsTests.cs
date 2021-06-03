@@ -518,6 +518,9 @@ namespace Npgsql.Tests
         public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
         {
             PoolManager.Reset();
+            // We reset the cluster's state for multiple hosts
+            // Because other tests might have marked some of the hosts as disabled
+            ClusterStateCache.Clear();
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {

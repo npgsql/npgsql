@@ -548,12 +548,18 @@ namespace Npgsql.Tests
                 "tcp://localhost:5432",
                 "tcp://localhost:5432"
             })]
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802")]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
         public async Task<string[]> ConnectionString_Host(string host)
         {
             var numberOfHosts = host.Split(',').Length;
-            if (IsMultiplexing && numberOfHosts > 1)
-                throw new SuccessException("Multiple hosts in connection string is ignored for Multiplexing");
+            if (numberOfHosts > 1)
+            {
+                if (IsMultiplexing)
+                    throw new SuccessException("Multiple hosts in connection string is ignored for Multiplexing");
+                // We reset the cluster's state for multiple hosts
+                // Because other tests might have marked some of the hosts as disabled
+                ClusterStateCache.Clear();
+            }
 
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
