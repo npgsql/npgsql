@@ -1090,7 +1090,7 @@ namespace Npgsql.Internal
                         // have executed yet, and the flush may still be in progress. We know all I/O has already
                         // been sent - because the reader has already consumed the entire resultset. So we wait until
                         // the connector's write lock has been released (long waiting will never occur here).
-                        SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0);
+                        SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
                         _connectorSource.Return(this);
                     }
