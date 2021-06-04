@@ -401,9 +401,6 @@ namespace Npgsql
                 Debug.Assert(connector.IsBroken);
 
                 Log.Error("Exception while writing commands", exception, connector.Id);
-
-                // Resetting the flag as a means to free the connector's reading loop and allow it to return connector to the pool
-                connector.FlagAsWritableForMultiplexing();
             }
 
             static void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)
