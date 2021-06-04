@@ -1,4 +1,4 @@
 ﻿using NUnit.Framework;
 
-[assembly: NonParallelizable]
+[assembly: Parallelizable(ParallelScope.Children), Timeout(15000)]
 

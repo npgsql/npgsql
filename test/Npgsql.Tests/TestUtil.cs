@@ -167,7 +167,8 @@ namespace Npgsql.Tests
         internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlConnection conn, string columns, out string tableName)
         {
             tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-            return conn.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName} CASCADE; CREATE TABLE {tableName} ({columns})")
+            return conn.ExecuteNonQueryAsync(@$"START TRANSACTION; SELECT pg_advisory_xact_lock(0);
+                    DROP TABLE IF EXISTS {tableName} CASCADE; COMMIT; CREATE TABLE {tableName} ({columns})")
                 .ContinueWith(
                     (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
                     tableName,
@@ -198,7 +199,8 @@ namespace Npgsql.Tests
         internal static Task<IAsyncDisposable> GetTempTableName(NpgsqlConnection conn, out string tableName)
         {
             tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-            return conn.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName} CASCADE")
+            return conn.ExecuteNonQueryAsync(@$"START TRANSACTION; SELECT pg_advisory_xact_lock(0);
+                    DROP TABLE IF EXISTS {tableName} CASCADE; COMMIT")
                 .ContinueWith(
                     (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
                     tableName,
@@ -271,7 +273,7 @@ namespace Npgsql.Tests
             {
                 try
                 {
-                    await _conn.ExecuteNonQueryAsync($"DROP {_type} {_name} CASCADE");
+                    await _conn.ExecuteNonQueryAsync($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
                 }
                 catch
                 {

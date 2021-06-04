@@ -354,6 +354,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
+        [NonParallelizable]
         public async Task GetDataTypeName_enum()
         {
             if (IsMultiplexing)
@@ -1343,8 +1344,8 @@ LANGUAGE plpgsql VOLATILE";
 
         [Test]
         public async Task GetStream<T>(
-            [ValueSource(nameof(GetStreamCases))] (T Generic, byte[] Binary) value,
-            [Values(true, false)] bool isAsync)
+            [Values(true, false)] bool isAsync,
+            [ValueSource(nameof(GetStreamCases))] (T Generic, byte[] Binary) value)
         {
             var streamGetter = BuildStreamGetter(isAsync);
             var expected = value.Binary;
@@ -1589,7 +1590,6 @@ LANGUAGE plpgsql VOLATILE";
 
 #if DEBUG
         [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
-        [Timeout(5000)]
         public async Task SafeReadException()
         {
             if (IsMultiplexing)
@@ -1607,7 +1607,6 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Tests that when a type handler generates an exception that isn't a NpgsqlSafeReadException, the connection is properly broken")]
-        [Timeout(5000)]
         public async Task Non_SafeReadException()
         {
             if (IsMultiplexing)
@@ -1968,7 +1967,6 @@ LANGUAGE plpgsql VOLATILE";
         #region Timeout
 
         [Test, Description("Timeouts sequential ReadAsGetFieldValueAsync")]
-        [Timeout(10000)]
         public async Task GetFieldValueAsync_sequential_timeout()
         {
             if (IsMultiplexing)
@@ -2007,7 +2005,6 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Timeouts sequential IsDBNullAsync")]
-        [Timeout(10000)]
         public async Task IsDBNullAsync_sequential_timeout()
         {
             if (IsMultiplexing)
