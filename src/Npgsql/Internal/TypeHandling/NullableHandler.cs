@@ -20,7 +20,7 @@ namespace Npgsql.Internal.TypeHandling
                 {
                     if (UnderlyingType is null)
                         return null!;
-                    _derivedInstance = (NullableHandler<T>?)Activator.CreateInstance(typeof(UnderlingType<>).MakeGenericType(typeof(T), UnderlyingType));
+                    _derivedInstance = (NullableHandler<T>?)Activator.CreateInstance(typeof(NullableHandler<,>).MakeGenericType(typeof(T), UnderlyingType));
                     return _derivedInstance!;
                 }
             }
@@ -39,23 +39,23 @@ namespace Npgsql.Internal.TypeHandling
         protected abstract ValueTask<T> ReadAsyncImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription? fieldDescription = null);
         protected abstract int ValidateAndGetLengthImpl(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
         protected abstract Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
+    }
 
-        class UnderlingType<TUnderlying> : NullableHandler<T>
-            where TUnderlying : struct
-        {
-            protected override T ReadImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null)
-                => (T)(object)handler.Read<TUnderlying>(buffer, columnLength, fieldDescription);
+    class NullableHandler<T, TUnderlying> : NullableHandler<T>
+        where TUnderlying : struct
+    {
+        protected override T ReadImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null)
+            => (T)(object)handler.Read<TUnderlying>(buffer, columnLength, fieldDescription);
 
-            protected override async ValueTask<T> ReadAsyncImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription = null)
-                => (T)(object)await handler.Read<TUnderlying>(buffer, columnLength, async, fieldDescription);
+        protected override async ValueTask<T> ReadAsyncImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription = null)
+            => (T)(object)await handler.Read<TUnderlying>(buffer, columnLength, async, fieldDescription);
 
-            protected override int ValidateAndGetLengthImpl(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
-                value != null ? handler.ValidateAndGetLength(((TUnderlying?)(object)value).Value, ref lengthCache, parameter) : 0;
+        protected override int ValidateAndGetLengthImpl(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+            value != null ? handler.ValidateAndGetLength(((TUnderlying?)(object)value).Value, ref lengthCache, parameter) : 0;
 
-            protected override Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-                => value != null
-                    ? handler.WriteWithLength(((TUnderlying?)(object)value).Value, buffer, lengthCache, parameter, async, cancellationToken)
-                    : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
-        }
+        protected override Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value != null
+                ? handler.WriteWithLength(((TUnderlying?)(object)value).Value, buffer, lengthCache, parameter, async, cancellationToken)
+                : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
     }
 }
