@@ -68,7 +68,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <summary>
         /// Reads an array of element type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, bool readAsObject = false)
+        protected async ValueTask<object> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, bool readAsObject = false)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -196,7 +196,7 @@ namespace Npgsql.Internal.TypeHandlers
         internal static class ElementTypeInfo<TElement>
         {
             public static readonly bool IsNonNullable =
-                typeof(TElement).IsValueType && default(TElement) != null;
+                typeof(TElement).IsValueType && default(TElement) is not null;
 
             public static readonly Type NullableElementType = IsNonNullable
                 ? typeof(Nullable<>).MakeGenericType(typeof(TElement))
@@ -228,18 +228,18 @@ namespace Npgsql.Internal.TypeHandlers
                 }
             }
 
-            public static ValueTask<Array> ReadArray(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false) =>
-                DerivedInstance.ReadArrayImpl(handler, buf, async, readAsObject);
+            public static ValueTask<object> ReadArray(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false)
+                => DerivedInstance.ReadArrayImpl(handler, buf, async, readAsObject);
 
-            protected abstract ValueTask<Array> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false);
+            protected abstract ValueTask<object> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false);
 
             class ElementInfo<TElement> : ArrayTypeInfo<TArray>
             {
                 readonly int _arrayRank;
                 public ElementInfo(int arrayRank) => _arrayRank = arrayRank;
 
-                protected override ValueTask<Array> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false) =>
-                    handler.ReadArray<TElement>(buf, async, _arrayRank, readAsObject);
+                protected override ValueTask<object> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false)
+                    => handler.ReadArray<TElement>(buf, async, _arrayRank, readAsObject);
             }
         }
 
@@ -270,8 +270,8 @@ namespace Npgsql.Internal.TypeHandlers
                 }
             }
 
-            public static ValueTask<object> ReadList(ArrayHandler handler, NpgsqlReadBuffer buf, bool async) =>
-                DerivedInstance.ReadListImpl(handler, buf, async);
+            public static ValueTask<object> ReadList(ArrayHandler handler, NpgsqlReadBuffer buf, bool async)
+                => DerivedInstance.ReadListImpl(handler, buf, async);
 
             protected abstract ValueTask<object> ReadListImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async);
 
@@ -303,7 +303,7 @@ namespace Npgsql.Internal.TypeHandlers
         #region Read
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            =>  await ReadArray<TElement>(buf, async, readAsObject: true);
+            => await ReadArray<TElement>(buf, async, readAsObject: true);
 
         #endregion
 
@@ -513,9 +513,9 @@ namespace Npgsql.Internal.TypeHandlers
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
             {
                 if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
-                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
+                    return (TRequestedArray)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
 
-                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
+                return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
             }
 
             // We evaluate List last to better support reflection free mode
