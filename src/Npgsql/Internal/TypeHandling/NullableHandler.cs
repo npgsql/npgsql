@@ -1,70 +1,61 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 
-// ReSharper disable StaticMemberInGenericType
 namespace Npgsql.Internal.TypeHandling
 {
-    delegate T ReadDelegate<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null);
-    delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription? fieldDescription = null);
-
-    delegate int ValidateAndGetLengthDelegate<T>(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
-    delegate Task WriteAsyncDelegate<T>(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
-
-    static class NullableHandler<T>
+    abstract class NullableHandler<T>
     {
-        public static readonly Type? UnderlyingType;
-        public static readonly ReadDelegate<T> Read = null!;
-        public static readonly ReadAsyncDelegate<T> ReadAsync = null!;
-        public static readonly ValidateAndGetLengthDelegate<T> ValidateAndGetLength = null!;
-        public static readonly WriteAsyncDelegate<T> WriteAsync = null!;
-
+        static NullableHandler<T>? _derivedInstance;
+        public static readonly Type? UnderlyingType = Nullable.GetUnderlyingType(typeof(T));
         public static bool Exists => UnderlyingType != null;
 
-        static NullableHandler()
+        static NullableHandler<T> DerivedInstance
         {
-            UnderlyingType = Nullable.GetUnderlyingType(typeof(T));
-
-            if (UnderlyingType == null)
-                return;
-
-            Read = NullableHandler.CreateDelegate<ReadDelegate<T>>(UnderlyingType, NullableHandler.ReadMethod);
-            ReadAsync = NullableHandler.CreateDelegate<ReadAsyncDelegate<T>>(UnderlyingType, NullableHandler.ReadAsyncMethod);
-            ValidateAndGetLength = NullableHandler.CreateDelegate<ValidateAndGetLengthDelegate<T>>(UnderlyingType, NullableHandler.ValidateMethod);
-            WriteAsync = NullableHandler.CreateDelegate<WriteAsyncDelegate<T>>(UnderlyingType, NullableHandler.WriteAsyncMethod);
+            get
+            {
+                return _derivedInstance ?? CreateInstance();
+                static NullableHandler<T> CreateInstance()
+                {
+                    if (UnderlyingType is null)
+                        return null!;
+                    _derivedInstance = (NullableHandler<T>?)Activator.CreateInstance(typeof(UnderlingType<>).MakeGenericType(typeof(T), UnderlyingType));
+                    return _derivedInstance!;
+                }
+            }
         }
-    }
 
-    static class NullableHandler
-    {
-        internal static readonly MethodInfo ReadMethod = new ReadDelegate<int?>(Read<int>).Method.GetGenericMethodDefinition();
-        internal static readonly MethodInfo ReadAsyncMethod = new ReadAsyncDelegate<int?>(ReadAsync<int>).Method.GetGenericMethodDefinition();
-        internal static readonly MethodInfo ValidateMethod = new ValidateAndGetLengthDelegate<int?>(ValidateAndGetLength).Method.GetGenericMethodDefinition();
-        internal static readonly MethodInfo WriteAsyncMethod = new WriteAsyncDelegate<int?>(WriteAsync).Method.GetGenericMethodDefinition();
+        public static T Read(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null) =>
+            DerivedInstance.ReadImpl(handler, buffer, columnLength, fieldDescription);
+        public static ValueTask<T> ReadAsync(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription = null) =>
+            DerivedInstance.ReadAsyncImpl(handler, buffer, columnLength, async, fieldDescription);
+        public static int ValidateAndGetLength(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+            DerivedInstance.ValidateAndGetLengthImpl(handler, value, ref lengthCache, parameter);
+        public static Task WriteAsync(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default) =>
+            DerivedInstance.WriteAsyncImpl(handler, value, buffer, lengthCache, parameter, async, cancellationToken);
 
-        static T? Read<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription)
-            where T : struct
-            => handler.Read<T>(buffer, columnLength, fieldDescription);
+        protected abstract T ReadImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null);
+        protected abstract ValueTask<T> ReadAsyncImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription? fieldDescription = null);
+        protected abstract int ValidateAndGetLengthImpl(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+        protected abstract Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
 
-        static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription)
-            where T : struct
-            => await handler.Read<T>(buffer, columnLength, async, fieldDescription);
+        class UnderlingType<TUnderlying> : NullableHandler<T>
+            where TUnderlying : struct
+        {
+            protected override T ReadImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null)
+                => (T)(object)handler.Read<TUnderlying>(buffer, columnLength, fieldDescription);
 
-        static int ValidateAndGetLength<T>(NpgsqlTypeHandler handler, T? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            where T : struct
-            => value.HasValue ? handler.ValidateAndGetLength(value.Value, ref lengthCache, parameter) : 0;
+            protected override async ValueTask<T> ReadAsyncImpl(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription = null)
+                => (T)(object)await handler.Read<TUnderlying>(buffer, columnLength, async, fieldDescription);
 
-        static Task WriteAsync<T>(NpgsqlTypeHandler handler, T? value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            where T : struct
-            => value.HasValue
-                ? handler.WriteWithLength(value.Value, buffer, lengthCache, parameter, async, cancellationToken)
-                : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
+            protected override int ValidateAndGetLengthImpl(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+                value != null ? handler.ValidateAndGetLength(((TUnderlying?)(object)value).Value, ref lengthCache, parameter) : 0;
 
-        internal static TDelegate CreateDelegate<TDelegate>(Type underlyingType, MethodInfo method)
-            where TDelegate : Delegate
-            => (TDelegate)method.MakeGenericMethod(underlyingType).CreateDelegate(typeof(TDelegate));
+            protected override Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+                => value != null
+                    ? handler.WriteWithLength(((TUnderlying?)(object)value).Value, buffer, lengthCache, parameter, async, cancellationToken)
+                    : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
+        }
     }
 }

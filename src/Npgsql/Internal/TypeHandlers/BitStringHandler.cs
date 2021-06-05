@@ -273,7 +273,7 @@ namespace Npgsql.Internal.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async);
+                    return (TRequestedArray)await ReadList<BitArray>(buf, async);
             }
 
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
@@ -282,7 +282,7 @@ namespace Npgsql.Internal.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<bool>(buf, async);
+                    return (TRequestedArray)await ReadList<bool>(buf, async);
             }
 
             return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
