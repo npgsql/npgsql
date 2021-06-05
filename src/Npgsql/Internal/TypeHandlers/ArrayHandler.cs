@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -29,9 +27,6 @@ namespace Npgsql.Internal.TypeHandlers
         private protected int LowerBound { get; } // The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but is 0 for OIDVector.
         private protected NpgsqlTypeHandler ElementHandler { get; }
         private protected ArrayNullabilityMode ArrayNullabilityMode { get; }
-
-        static readonly MethodInfo ReadArrayMethod = typeof(ArrayHandler).GetMethod(nameof(ReadArray), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        static readonly MethodInfo ReadListMethod = typeof(ArrayHandler).GetMethod(nameof(ReadList), BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         /// <inheritdoc />
         protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
@@ -63,10 +58,10 @@ namespace Npgsql.Internal.TypeHandlers
         protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArrayFunc(this, buf, async);
+                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
 
             if (ArrayTypeInfo<TRequestedArray>.IsList)
-                return await ArrayTypeInfo<TRequestedArray>.ReadListFunc(this, buf, async);
+                return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadList(this, buf, async);
 
             throw new InvalidCastException(fieldDescription == null
                 ? $"Can't cast database type to {typeof(TRequestedArray).Name}"
@@ -145,7 +140,7 @@ namespace Npgsql.Internal.TypeHandlers
                 var element = len == -1
                     ? (object?)null
                     : NullableHandler<TRequestedElement>.Exists
-                        ? await NullableHandler<TRequestedElement>.ReadAsync!(ElementHandler, buf, len, async)
+                        ? await NullableHandler<TRequestedElement>.ReadAsync(ElementHandler, buf, len, async)
                         : await ElementHandler.Read<TRequestedElement>(buf, len, async);
 
                 result.SetValue(element, indices);
@@ -170,7 +165,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <summary>
         /// Reads a generic list containing elements of type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<List<TRequestedElement>> ReadList<TRequestedElement>(NpgsqlReadBuffer buf, bool async)
+        protected async ValueTask<object> ReadList<TRequestedElement>(NpgsqlReadBuffer buf, bool async)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -288,70 +283,63 @@ namespace Npgsql.Internal.TypeHandlers
         internal static class ElementTypeInfo<TElement>
         {
             public static readonly bool IsNonNullable =
-                typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
+                typeof(TElement).IsValueType && default(TElement) != null;
 
             public static readonly Type NullableElementType = IsNonNullable
                 ? typeof(Nullable<>).MakeGenericType(typeof(TElement))
                 : typeof(TElement);
         }
 
-        internal static class ArrayTypeInfo<TArrayOrList>
+        internal abstract class ArrayTypeInfo<TArrayOrList>
         {
-            // ReSharper disable StaticMemberInGenericType
-            public static readonly bool IsArray;
-            public static readonly bool IsList;
-            public static readonly Type? ElementType;
+            static ArrayTypeInfo<TArrayOrList>? _derivedInstance;
+            public static readonly bool IsArray = typeof(TArrayOrList).IsArray;
+            public static readonly bool IsList = typeof(TArrayOrList).IsGenericType && typeof(TArrayOrList).GetGenericTypeDefinition() == typeof(List<>);
 
-            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>> ReadArrayFunc = default!;
-            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<TArrayOrList>> ReadListFunc = default!;
+            // ReSharper disable StaticMemberInGenericType
+            public static readonly Type? ElementType = GetElementType();
             // ReSharper restore StaticMemberInGenericType
 
-            static ArrayTypeInfo()
+            static Type? GetElementType() =>
+                IsArray ? typeof(TArrayOrList).GetElementType() :
+                IsList ? typeof(TArrayOrList).GetGenericArguments()[0] : null;
+
+            static ArrayTypeInfo<TArrayOrList> DerivedInstance
             {
-                var type = typeof(TArrayOrList);
-                IsArray = type.IsArray;
-                IsList = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
-
-                ElementType = IsArray
-                    ? type.GetElementType()
-                    : IsList
-                        ? type.GetGenericArguments()[0]
-                        : null;
-
-                if (ElementType == null)
-                    return;
-
-                // Initialize delegates
-                var arrayHandlerParam = Expression.Parameter(typeof(ArrayHandler), "arrayHandler");
-                var bufferParam = Expression.Parameter(typeof(NpgsqlReadBuffer), "buf");
-                var asyncParam = Expression.Parameter(typeof(bool), "async");
-
-                if (IsArray)
+                get
                 {
-                    ReadArrayFunc = Expression
-                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
-                            Expression.Call(
-                                arrayHandlerParam,
-                                ReadArrayMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank()), Expression.Constant(false, typeof(bool))),
-                            arrayHandlerParam, bufferParam, asyncParam)
-                        .Compile();
-                }
+                    return _derivedInstance ?? CreateInstance();
+                    static ArrayTypeInfo<TArrayOrList> CreateInstance()
+                    {
+                        if (ElementType is null)
+                            return null!;
 
-                if (IsList)
-                {
-                    ReadListFunc = Expression
-                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<TArrayOrList>>>(
-                            Expression.Call(
-                                arrayHandlerParam,
-                                ReadListMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam),
-                            arrayHandlerParam, bufferParam, asyncParam)
-                        .Compile();
+                        _derivedInstance = (ArrayTypeInfo<TArrayOrList>?)Activator.CreateInstance(typeof(ElementInfo<>).MakeGenericType(typeof(TArrayOrList), ElementType), IsArray ? typeof(TArrayOrList).GetArrayRank() : 0);
+                        return _derivedInstance!;
+                    }
                 }
             }
-        }
 
+            public static ValueTask<Array> ReadArray(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false) =>
+                DerivedInstance.ReadArrayImpl(handler, buf, async, readAsObject);
+            public static ValueTask<object> ReadList(ArrayHandler handler, NpgsqlReadBuffer buf, bool async) =>
+                DerivedInstance.ReadListImpl(handler, buf, async);
+
+            protected abstract ValueTask<Array> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false);
+            protected abstract ValueTask<object> ReadListImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async);
+
+            class ElementInfo<TElement> : ArrayTypeInfo<TArrayOrList>
+            {
+                readonly int _arrayRank;
+                public ElementInfo(int arrayRank) => _arrayRank = arrayRank;
+
+                protected override ValueTask<Array> ReadArrayImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async, bool readAsObject = false) =>
+                    handler.ReadArray<TElement>(buf, async, _arrayRank, readAsObject);
+
+                protected override ValueTask<object> ReadListImpl(ArrayHandler handler, NpgsqlReadBuffer buf, bool async) =>
+                    handler.ReadList<TElement>(buf, async);
+            }
+        }
         #endregion Static generic caching helpers
     }
 
