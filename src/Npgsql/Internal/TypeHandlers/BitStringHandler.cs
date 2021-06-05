@@ -272,12 +272,12 @@ namespace Npgsql.Internal.TypeHandlers
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
             {
                 if(ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
-                    return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
+                    return (TRequestedArray)await ReadArray<BitArray>(buf, async);
 
                 if(ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
-                    return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
+                    return (TRequestedArray)await ReadArray<bool>(buf, async);
 
-                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
+                return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
             }
 
             // We evaluate List last to better support reflection free mode
