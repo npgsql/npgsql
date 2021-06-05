@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -1190,57 +1191,53 @@ CREATE TABLE record ()");
             }
         }
 
-// TODO: Port this test to .NET Core somehow
-#if NET461
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
         public async Task NonUTF8Encoding()
         {
-            using (var adminConn = await OpenConnectionAsync())
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            await using var adminConn = await OpenConnectionAsync();
+            // Create the database with server encoding sql-ascii
+            await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
+            await adminConn.ExecuteNonQueryAsync("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+            try
             {
-                // Create the database with server encoding sql-ascii
-                await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
-                await adminConn.ExecuteNonQueryAsync("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
-                try
+                // Insert some win1252 data
+                var goodBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
                 {
-                    // Insert some win1252 data
-                    var goodBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        Database = "sqlascii",
-                        Encoding = "windows-1252",
-                        ClientEncoding = "sql-ascii",
-                    };
+                    Database = "sqlascii",
+                    Encoding = "windows-1252",
+                    ClientEncoding = "sql-ascii",
+                };
 
-                    using var _ = CreateTempPool(goodBuilder, out var goodConnectionString);
+                using var _ = CreateTempPool(goodBuilder, out var goodConnectionString);
 
-                    using (var conn = await OpenConnectionAsync(goodConnectionString))
-                    {
-                        await conn.ExecuteNonQueryAsync("CREATE TABLE foo (bar TEXT)");
-                        await conn.ExecuteNonQueryAsync("INSERT INTO foo (bar) VALUES ('éàç')");
-                        Assert.That(await conn.ExecuteScalarAsync("SELECT * FROM foo"), Is.EqualTo("éàç"));
-                    }
-
-                    // A normal connection with the default UTF8 encoding and client_encoding should fail
-                    var badBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        Database = "sqlascii",
-                    };
-                    using var __ = CreateTempPool(badBuilder, out var badConnectionString);
-                    using (var conn = await OpenConnectionAsync(badConnectionString))
-                    {
-                        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM foo"),
-                            Throws.Exception.TypeOf<PostgresException>()
-                                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
-                                .Or.TypeOf<DecoderFallbackException>()
-                        );
-                    }
+                await using (var conn = await OpenConnectionAsync(goodConnectionString))
+                {
+                    await conn.ExecuteNonQueryAsync("CREATE TABLE foo (bar TEXT)");
+                    await conn.ExecuteNonQueryAsync("INSERT INTO foo (bar) VALUES ('éàç')");
+                    Assert.That(await conn.ExecuteScalarAsync("SELECT * FROM foo"), Is.EqualTo("éàç"));
                 }
-                finally
+
+                // A normal connection with the default UTF8 encoding and client_encoding should fail
+                var badBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
                 {
-                    await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
+                    Database = "sqlascii",
+                };
+                using var __ = CreateTempPool(badBuilder, out var badConnectionString);
+                await using (var conn = await OpenConnectionAsync(badConnectionString))
+                {
+                    Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM foo"),
+                        Throws.Exception.TypeOf<PostgresException>()
+                            .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
+                            .Or.TypeOf<DecoderFallbackException>()
+                    );
                 }
             }
+            finally
+            {
+                await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
+            }
         }
-#endif
 
         [Test]
         public async Task OversizeBuffer()
