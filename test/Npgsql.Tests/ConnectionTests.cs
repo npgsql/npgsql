@@ -1194,9 +1194,7 @@ CREATE TABLE record ()");
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
         public async Task NonUTF8Encoding()
         {
-#if !NET461
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-#endif
             await using var adminConn = await OpenConnectionAsync();
             // Create the database with server encoding sql-ascii
             await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
