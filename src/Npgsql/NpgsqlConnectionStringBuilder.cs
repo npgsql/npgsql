@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using Npgsql.Internal;
 using Npgsql.Replication;
 
@@ -18,25 +17,9 @@ namespace Npgsql
     /// Provides a simple way to create and manage the contents of connection strings used by
     /// the <see cref="NpgsqlConnection"/> class.
     /// </summary>
-    public sealed class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object?>
+    public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBuilder, IDictionary<string, object?>
     {
         #region Fields
-
-        /// <summary>
-        /// Makes all valid keywords for a property to that property (e.g. User Name -> Username, UserId -> Username...)
-        /// </summary>
-        static readonly Dictionary<string, PropertyInfo> PropertiesByKeyword;
-
-        /// <summary>
-        /// Maps CLR property names (e.g. BufferSize) to their canonical keyword name, which is the
-        /// property's [DisplayName] (e.g. Buffer Size)
-        /// </summary>
-        static readonly Dictionary<string, string> PropertyNameToCanonicalKeyword;
-
-        /// <summary>
-        /// Maps each property to its [DefaultValue]
-        /// </summary>
-        static readonly Dictionary<PropertyInfo, object?> PropertyDefaults;
 
         /// <summary>
         /// Cached DataSource value to reduce allocations on NpgsqlConnection.DataSource.get
@@ -62,13 +45,13 @@ namespace Npgsql
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class.
         /// </summary>
-        public NpgsqlConnectionStringBuilder() { Init(); }
+        public NpgsqlConnectionStringBuilder() => Init();
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
         /// <param name="useOdbcRules">true to use {} to delimit fields; false to use quotation marks.</param>
-        public NpgsqlConnectionStringBuilder(bool useOdbcRules) : base(useOdbcRules) { Init(); }
+        public NpgsqlConnectionStringBuilder(bool useOdbcRules) : base(useOdbcRules) => Init();
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class and sets its <see cref="DbConnectionStringBuilder.ConnectionString"/>.
@@ -79,57 +62,8 @@ namespace Npgsql
             ConnectionString = connectionString;
         }
 
-        void Init()
-        {
-            // Set the strongly-typed properties to their default values
-            foreach (var kv in PropertyDefaults)
-                kv.Key.SetValue(this, kv.Value);
-            // Setting the strongly-typed properties here also set the string-based properties in the base class.
-            // Clear them (default settings = empty connection string)
-            base.Clear();
-        }
-
-        #endregion
-
-        #region Static initialization
-
-        static NpgsqlConnectionStringBuilder()
-        {
-            var properties = typeof(NpgsqlConnectionStringBuilder)
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
-                .ToArray();
-
-            Debug.Assert(properties.All(p => p.CanRead && p.CanWrite));
-            Debug.Assert(properties.All(p => p.GetCustomAttribute<DisplayNameAttribute>() != null));
-
-            PropertiesByKeyword = (
-                from p in properties
-                let displayName = p.GetCustomAttribute<DisplayNameAttribute>()!.DisplayName.ToUpperInvariant()
-                let propertyName = p.Name.ToUpperInvariant()
-                from k in new[] { displayName }
-                  .Concat(propertyName != displayName ? new[] { propertyName } : EmptyStringArray )
-                  .Concat(p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>()!.Synonyms
-                    .Select(a => a.ToUpperInvariant())
-                  )
-                  .Select(k => new { Property = p, Keyword = k })
-                select k
-            ).ToDictionary(t => t.Keyword, t => t.Property);
-
-            PropertyNameToCanonicalKeyword = properties.ToDictionary(
-                p => p.Name,
-                p => p.GetCustomAttribute<DisplayNameAttribute>()!.DisplayName
-            );
-
-            PropertyDefaults = properties
-                .Where(p => p.GetCustomAttribute<ObsoleteAttribute>() == null)
-                .ToDictionary(
-                p => p,
-                p => p.GetCustomAttribute<DefaultValueAttribute>() != null
-                    ? p.GetCustomAttribute<DefaultValueAttribute>()!.Value
-                    : (p.PropertyType.GetTypeInfo().IsValueType ? Activator.CreateInstance(p.PropertyType) : null)
-            );
-        }
+        // Method fake-returns an int only to make sure it's code-generated
+        private partial int Init();
 
         #endregion
 
@@ -157,13 +91,9 @@ namespace Npgsql
                     return;
                 }
 
-                var p = GetProperty(keyword);
                 try
                 {
-                    var convertedValue = p.PropertyType.GetTypeInfo().IsEnum && value is string str
-                        ? Enum.Parse(p.PropertyType, str)
-                        : Convert.ChangeType(value, p.PropertyType);
-                    p.SetValue(this, convertedValue);
+                    GeneratedSetter(keyword.ToUpperInvariant(), value);
                 }
                 catch (Exception e)
                 {
@@ -171,6 +101,9 @@ namespace Npgsql
                 }
             }
         }
+
+        // Method fake-returns an int only to make sure it's code-generated
+        private partial int GeneratedSetter(string keyword, object? value);
 
         object? IDictionary<string, object?>.this[string keyword]
         {
@@ -194,15 +127,9 @@ namespace Npgsql
         /// <param name="keyword">The key of the key/value pair to be removed from the connection string in this DbConnectionStringBuilder.</param>
         /// <returns><b>true</b> if the key existed within the connection string and was removed; <b>false</b> if the key did not exist.</returns>
         public override bool Remove(string keyword)
-        {
-            var p = GetProperty(keyword);
-            var canonicalName = PropertyNameToCanonicalKeyword[p.Name];
-            var removed = base.ContainsKey(canonicalName);
-            // Note that string property setters call SetValue, which itself calls base.Remove().
-            p.SetValue(this, PropertyDefaults[p]);
-            base.Remove(canonicalName);
-            return removed;
-        }
+            => RemoveGenerated(keyword.ToUpperInvariant());
+
+        private partial bool RemoveGenerated(string keyword);
 
         /// <summary>
         /// Removes the entry from the DbConnectionStringBuilder instance.
@@ -218,9 +145,8 @@ namespace Npgsql
         public override void Clear()
         {
             Debug.Assert(Keys != null);
-            foreach (var k in Keys.ToArray()) {
+            foreach (var k in Keys.ToArray())
                 Remove(k);
-            }
         }
 
         /// <summary>
@@ -231,7 +157,9 @@ namespace Npgsql
         public override bool ContainsKey(string keyword)
             => keyword is null
                 ? throw new ArgumentNullException(nameof(keyword))
-                : PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
+                : ContainsKeyGenerated(keyword.ToUpperInvariant());
+
+        private partial bool ContainsKeyGenerated(string keyword);
 
         /// <summary>
         /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key-value pair.
@@ -241,11 +169,6 @@ namespace Npgsql
         public bool Contains(KeyValuePair<string, object?> item)
             => TryGetValue(item.Key, out var value) &&
                ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
-
-        PropertyInfo GetProperty(string keyword)
-            => PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out var p)
-                ? p
-                : throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
 
         /// <summary>
         /// Retrieves a value corresponding to the supplied key from this <see cref="NpgsqlConnectionStringBuilder"/>.
@@ -258,25 +181,21 @@ namespace Npgsql
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
 
-            if (!PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant()))
-            {
-                value = null;
-                return false;
-            }
-
-            value = GetProperty(keyword).GetValue(this) ?? "";
-            return true;
-
+            return TryGetValueGenerated(keyword.ToUpperInvariant(), out value);
         }
+
+        private partial bool TryGetValueGenerated(string keyword, [NotNullWhen(true)] out object? value);
 
         void SetValue(string propertyName, object? value)
         {
-            var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
+            var canonicalKeyword = ToCanonicalKeyword(propertyName.ToUpperInvariant());
             if (value == null)
                 base.Remove(canonicalKeyword);
             else
                 base[canonicalKeyword] = value;
         }
+
+        private partial string ToCanonicalKeyword(string keyword);
 
         #endregion
 
