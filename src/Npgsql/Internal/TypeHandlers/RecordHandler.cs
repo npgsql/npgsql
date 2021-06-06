@@ -31,8 +31,8 @@ namespace Npgsql.Internal.TypeHandlers
         readonly ConnectorTypeMapper _typeMapper;
 
         public RecordHandler(PostgresType postgresType, ConnectorTypeMapper typeMapper)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _typeMapper = typeMapper;
         }
 

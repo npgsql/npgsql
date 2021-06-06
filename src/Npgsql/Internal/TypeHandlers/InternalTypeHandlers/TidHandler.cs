@@ -1,16 +1,12 @@
 ﻿using System.Diagnostics;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
     partial class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
     {
-        public TidHandler(PostgresType postgresType) : base(postgresType) {}
-
         #region Read
 
         public override NpgsqlTid Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

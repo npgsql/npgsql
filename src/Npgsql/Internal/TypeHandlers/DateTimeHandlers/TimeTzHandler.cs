@@ -43,7 +43,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// <summary>
         /// Constructs an <see cref="TimeTzHandler"/>.
         /// </summary>
-        public TimeTzHandler(PostgresType postgresType) : base(postgresType) {}
+        public TimeTzHandler(PostgresType postgresType)
+            => PostgresType = postgresType;
 
         #region Read
 

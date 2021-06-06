@@ -61,7 +61,10 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected internal TextHandler(PostgresType postgresType, Encoding encoding)
-            : base(postgresType) => _encoding = encoding;
+        {
+            PostgresType = postgresType;
+            _encoding = encoding;
+        }
 
         #region Read
 

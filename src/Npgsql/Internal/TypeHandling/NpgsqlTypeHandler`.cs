@@ -22,11 +22,6 @@ namespace Npgsql.Internal.TypeHandling
     /// </typeparam>
     public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTypeHandler<TDefault>
     {
-        /// <summary>
-        /// Constructs an <see cref="NpgsqlTypeHandler{TDefault}"/>.
-        /// </summary>
-        protected NpgsqlTypeHandler(PostgresType postgresType) : base(postgresType) {}
-
         #region Read
 
         /// <summary>

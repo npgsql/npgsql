@@ -26,8 +26,11 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclTimeHandler _bclHandler;
 
-        internal TimeHandler(PostgresType postgresType) : base(postgresType)
-            => _bclHandler = new BclTimeHandler(postgresType);
+        internal TimeHandler(PostgresType postgresType)
+        {
+            PostgresType = postgresType;
+            _bclHandler = new BclTimeHandler(postgresType);
+        }
 
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
         public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

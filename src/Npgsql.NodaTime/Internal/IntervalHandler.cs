@@ -26,8 +26,11 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclIntervalHandler _bclHandler;
 
-        internal IntervalHandler(PostgresType postgresType) : base(postgresType)
-            => _bclHandler = new BclIntervalHandler(postgresType);
+        internal IntervalHandler(PostgresType postgresType)
+        {
+            PostgresType = postgresType;
+            _bclHandler = new BclIntervalHandler(postgresType);
+        }
 
         public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {

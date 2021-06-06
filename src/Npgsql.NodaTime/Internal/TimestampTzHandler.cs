@@ -33,8 +33,8 @@ namespace Npgsql.NodaTime.Internal
         readonly bool _convertInfinityDateTime;
 
         public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
             _convertInfinityDateTime = convertInfinityDateTime;
             _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);

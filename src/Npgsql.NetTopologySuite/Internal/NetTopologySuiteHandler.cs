@@ -25,8 +25,8 @@ namespace Npgsql.NetTopologySuite.Internal
         readonly LengthStream _lengthStream = new();
 
         internal NetTopologySuiteHandler(PostgresType postgresType, PostGisReader reader, PostGisWriter writer)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _reader = reader;
             _writer = writer;
         }

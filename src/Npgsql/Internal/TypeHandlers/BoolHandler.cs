@@ -1,6 +1,5 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
@@ -16,9 +15,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// </remarks>
     public partial class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
-        /// <inheritdoc />
-        public BoolHandler(PostgresType postgresType) : base(postgresType) {}
-
         /// <inheritdoc />
         public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => buf.ReadByte() != 0;

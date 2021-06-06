@@ -28,8 +28,8 @@ namespace Npgsql.NodaTime.Internal
         readonly BclDateHandler _bclHandler;
 
         internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _convertInfinityDateTime = convertInfinityDateTime;
             _bclHandler = new BclDateHandler(postgresType, convertInfinityDateTime);
         }

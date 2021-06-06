@@ -90,8 +90,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected internal JsonHandler(PostgresType postgresType, NpgsqlConnector connector, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _serializerOptions = serializerOptions ?? DefaultSerializerOptions;
             _isJsonb = isJsonb;
             _headerLen = isJsonb ? 1 : 0;

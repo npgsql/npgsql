@@ -48,8 +48,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler, Type[] supportedElementClrTypes)
-            : base(rangePostgresType)
         {
+            PostgresType = rangePostgresType;
             _elementHandler = elementHandler;
             SupportedRangeClrTypes = supportedElementClrTypes;
         }

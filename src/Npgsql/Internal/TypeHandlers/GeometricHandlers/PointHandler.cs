@@ -1,6 +1,5 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
@@ -17,9 +16,6 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// </remarks>
     public partial class PointHandler : NpgsqlSimpleTypeHandler<NpgsqlPoint>
     {
-        /// <inheritdoc />
-        public PointHandler(PostgresType postgresType) : base(postgresType) {}
-
         /// <inheritdoc />
         public override NpgsqlPoint Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new(buf.ReadDouble(), buf.ReadDouble());

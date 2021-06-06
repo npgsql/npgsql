@@ -48,7 +48,10 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected internal JsonPathHandler(PostgresType postgresType, NpgsqlConnector connector)
-            : base(postgresType) => _textHandler = new TextHandler(postgresType, connector);
+        {
+            PostgresType = postgresType;
+            _textHandler = new TextHandler(postgresType, connector);
+        }
 
         /// <inheritdoc />
         public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

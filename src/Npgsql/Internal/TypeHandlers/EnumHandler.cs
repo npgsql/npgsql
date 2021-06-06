@@ -32,9 +32,9 @@ namespace Npgsql.Internal.TypeHandlers
         #region Construction
 
         internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
-            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
+            PostgresType = postgresType;
             _enumToLabel = enumToLabel;
             _labelToEnum = labelToEnum;
         }

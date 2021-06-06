@@ -56,7 +56,10 @@ namespace Npgsql.Internal.TypeHandlers
         readonly TextHandler _textHandler;
 
         internal HstoreHandler(PostgresType postgresType, NpgsqlConnector connector)
-            : base(postgresType) => _textHandler = new TextHandler(postgresType, connector);
+        {
+            PostgresType = postgresType;
+            _textHandler = new TextHandler(postgresType, connector);
+        }
 
         #region Write
 

@@ -220,7 +220,7 @@ namespace Npgsql.TypeMapping
                     DbTypes = new[] { DbType.Int16, DbType.Byte, DbType.SByte },
                     InferredDbType = DbType.Int16,
                     ClrTypes = new[] { typeof(short), typeof(byte), typeof(sbyte) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(Int16Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int16Handler, short>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -229,7 +229,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Integer,
                     DbTypes = new[] { DbType.Int32 },
                     ClrTypes = new[] { typeof(int) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(Int32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int32Handler, int>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -238,7 +238,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Bigint,
                     DbTypes = new[] { DbType.Int64 },
                     ClrTypes = new[] { typeof(long) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(Int64Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int64Handler, long>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -247,7 +247,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Real,
                     DbTypes = new[] { DbType.Single },
                     ClrTypes = new[] { typeof(float) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(SingleHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<SingleHandler, float>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -256,7 +256,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Double,
                     DbTypes = new[] { DbType.Double },
                     ClrTypes = new[] { typeof(double) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(DoubleHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<DoubleHandler, double>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -266,7 +266,7 @@ namespace Npgsql.TypeMapping
                     DbTypes = new[] { DbType.Decimal, DbType.VarNumeric },
                     InferredDbType = DbType.Decimal,
                     ClrTypes = new[] { typeof(decimal), typeof(BigInteger) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(NumericHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<NumericHandler, decimal>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -274,7 +274,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "money",
                     NpgsqlDbType = NpgsqlDbType.Money,
                     DbTypes = new[] { DbType.Currency },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(MoneyHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MoneyHandler, decimal>()
                 }.Build());
             }
 
@@ -365,7 +365,6 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.JsonPath,
                     TypeHandlerFactory = new JsonPathHandlerFactory()
                 }.Build());
-
             }
 
             void SetupDateTimeHandlers()
@@ -437,7 +436,7 @@ namespace Npgsql.TypeMapping
                 {
                     PgTypeName = "cidr",
                     NpgsqlDbType = NpgsqlDbType.Cidr,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(CidrHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<CidrHandler, (IPAddress Address, int Subnet)>()
                 }.Build());
 
                 var inetClrTypes = new List<Type>
@@ -457,14 +456,14 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "inet",
                     NpgsqlDbType = NpgsqlDbType.Inet,
                     ClrTypes = inetClrTypes.ToArray(),
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(InetHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<InetHandler, IPAddress>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "macaddr8",
                     NpgsqlDbType = NpgsqlDbType.MacAddr8,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(MacaddrHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MacaddrHandler, PhysicalAddress>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -472,7 +471,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "macaddr",
                     NpgsqlDbType = NpgsqlDbType.MacAddr,
                     ClrTypes = new[] { typeof(PhysicalAddress) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(MacaddrHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MacaddrHandler, PhysicalAddress>()
                 }.Build());
             }
 
@@ -487,7 +486,7 @@ namespace Npgsql.TypeMapping
                         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
                         typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp)
                     },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(TsQueryHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TsQueryHandler, NpgsqlTsQuery>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -495,7 +494,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "tsvector",
                     NpgsqlDbType = NpgsqlDbType.TsVector,
                     ClrTypes = new[] { typeof(NpgsqlTsVector) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(TsVectorHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TsVectorHandler, NpgsqlTsVector>()
                 }.Build());
             }
 
@@ -506,7 +505,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "box",
                     NpgsqlDbType = NpgsqlDbType.Box,
                     ClrTypes = new[] { typeof(NpgsqlBox) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(BoxHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BoxHandler, NpgsqlBox>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -514,7 +513,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "circle",
                     NpgsqlDbType = NpgsqlDbType.Circle,
                     ClrTypes = new[] { typeof(NpgsqlCircle) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(CircleHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<CircleHandler, NpgsqlCircle>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -522,7 +521,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "line",
                     NpgsqlDbType = NpgsqlDbType.Line,
                     ClrTypes = new[] { typeof(NpgsqlLine) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(LineHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<LineHandler, NpgsqlLine>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -530,7 +529,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "lseg",
                     NpgsqlDbType = NpgsqlDbType.LSeg,
                     ClrTypes = new[] { typeof(NpgsqlLSeg) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(LineSegmentHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<LineSegmentHandler, NpgsqlLSeg>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -538,7 +537,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "path",
                     NpgsqlDbType = NpgsqlDbType.Path,
                     ClrTypes = new[] { typeof(NpgsqlPath) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(PathHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PathHandler, NpgsqlPath>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -546,7 +545,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "point",
                     NpgsqlDbType = NpgsqlDbType.Point,
                     ClrTypes = new[] { typeof(NpgsqlPoint) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(PointHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PointHandler, NpgsqlPoint>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -554,7 +553,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "polygon",
                     NpgsqlDbType = NpgsqlDbType.Polygon,
                     ClrTypes = new[] { typeof(NpgsqlPolygon) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(PolygonHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PolygonHandler, NpgsqlPolygon>()
                 }.Build());
             }
 
@@ -588,35 +587,35 @@ namespace Npgsql.TypeMapping
                 {
                     PgTypeName = "oid",
                     NpgsqlDbType = NpgsqlDbType.Oid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UInt32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "xid",
                     NpgsqlDbType = NpgsqlDbType.Xid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UInt32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "cid",
                     NpgsqlDbType = NpgsqlDbType.Cid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UInt32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "regtype",
                     NpgsqlDbType = NpgsqlDbType.Regtype,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UInt32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "regconfig",
                     NpgsqlDbType = NpgsqlDbType.Regconfig,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UInt32Handler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
                 }.Build());
             }
 
@@ -628,7 +627,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Boolean,
                     DbTypes = new[] { DbType.Boolean },
                     ClrTypes = new[] { typeof(bool) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(BoolHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BoolHandler, bool>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -645,7 +644,7 @@ namespace Npgsql.TypeMapping
                         typeof(Memory<byte>)
 #endif
                     },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(ByteaHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<ByteaHandler, byte[]>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -653,14 +652,14 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "bit varying",
                     NpgsqlDbType = NpgsqlDbType.Varbit,
                     ClrTypes = new[] { typeof(BitArray), typeof(BitVector32) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(BitStringHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BitStringHandler, BitArray>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "bit",
                     NpgsqlDbType = NpgsqlDbType.Bit,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(BitStringHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BitStringHandler, BitArray>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -684,7 +683,7 @@ namespace Npgsql.TypeMapping
                     NpgsqlDbType = NpgsqlDbType.Uuid,
                     DbTypes = new[] { DbType.Guid },
                     ClrTypes = new[] { typeof(Guid) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(UuidHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UuidHandler, Guid>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -696,7 +695,7 @@ namespace Npgsql.TypeMapping
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "void",
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(VoidHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<VoidHandler, DBNull>()
                 }.Build());
             }
 
@@ -721,7 +720,7 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "pg_lsn",
                     NpgsqlDbType = NpgsqlDbType.PgLsn,
                     ClrTypes = new[] { typeof(NpgsqlLogSequenceNumber) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(PgLsnHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PgLsnHandler, NpgsqlLogSequenceNumber>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
@@ -729,14 +728,14 @@ namespace Npgsql.TypeMapping
                     PgTypeName = "tid",
                     NpgsqlDbType = NpgsqlDbType.Tid,
                     ClrTypes = new[] { typeof(NpgsqlTid) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(TidHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TidHandler, NpgsqlTid>()
                 }.Build());
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "char",
                     NpgsqlDbType = NpgsqlDbType.InternalChar,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory(typeof(InternalCharHandler))
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<InternalCharHandler, char>()
                 }.Build());
             }
         }

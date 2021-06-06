@@ -25,8 +25,8 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
         public Type CompositeType => typeof(T);
 
         public CompositeHandler(PostgresCompositeType postgresType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _typeMapper = typeMapper;
             _nameTranslator = nameTranslator;
         }

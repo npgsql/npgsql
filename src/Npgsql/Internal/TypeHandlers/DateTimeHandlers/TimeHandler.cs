@@ -45,7 +45,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// <summary>
         /// Constructs a <see cref="TimeHandler"/>.
         /// </summary>
-        public TimeHandler(PostgresType postgresType) : base(postgresType) {}
+        public TimeHandler(PostgresType postgresType)
+            => PostgresType = postgresType;
 
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
         /// <inheritdoc />

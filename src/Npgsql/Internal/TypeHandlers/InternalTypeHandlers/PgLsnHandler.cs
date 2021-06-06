@@ -1,15 +1,12 @@
 ﻿using System.Diagnostics;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
     partial class PgLsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLogSequenceNumber>
     {
-        public PgLsnHandler(PostgresType postgresType) : base(postgresType) {}
-
         #region Read
 
         public override NpgsqlLogSequenceNumber Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

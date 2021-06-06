@@ -1,11 +1,6 @@
-﻿using System;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Net;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 #pragma warning disable 618
@@ -24,9 +19,6 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// </remarks>
     public partial class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
-        /// <inheritdoc />
-        public CidrHandler(PostgresType postgresType) : base(postgresType) {}
-
         /// <inheritdoc />
         public override (IPAddress Address, int Subnet) Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => InetHandler.DoRead(buf, len, fieldDescription, true);

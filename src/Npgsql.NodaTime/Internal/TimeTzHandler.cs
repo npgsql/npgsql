@@ -22,8 +22,11 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclTimeTzHandler _bclHandler;
 
-        internal TimeTzHandler(PostgresType postgresType) : base(postgresType)
-            => _bclHandler = new BclTimeTzHandler(postgresType);
+        internal TimeTzHandler(PostgresType postgresType)
+        {
+            PostgresType = postgresType;
+            _bclHandler = new BclTimeTzHandler(postgresType);
+        }
 
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
