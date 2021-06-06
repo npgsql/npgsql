@@ -56,7 +56,7 @@ namespace Npgsql.Internal.TypeHandling
     /// <summary>
     /// A type handler factory used to instantiate Npgsql's built-in type handlers.
     /// </summary>
-    class DefaultTypeHandlerFactory<THandler, TDefault> : NpgsqlTypeHandlerFactory
+    sealed class DefaultTypeHandlerFactory<THandler, TDefault> : NpgsqlTypeHandlerFactory
         where THandler : NpgsqlTypeHandler<TDefault>, new()
     {
         public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
