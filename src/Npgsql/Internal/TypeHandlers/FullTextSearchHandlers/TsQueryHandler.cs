@@ -5,8 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 // TODO: Need to work on the nullability here
@@ -34,9 +32,6 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
         const int MaxSingleTokenBytes = 2050;
 
         readonly Stack<NpgsqlTsQuery> _stack = new();
-
-        /// <inheritdoc />
-        public TsQueryHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 

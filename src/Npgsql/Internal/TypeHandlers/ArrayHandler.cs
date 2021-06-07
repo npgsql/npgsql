@@ -35,8 +35,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
-            : base(arrayPostgresType)
         {
+            PostgresType = arrayPostgresType;
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
             ArrayNullabilityMode = arrayNullabilityMode;

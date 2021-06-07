@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
@@ -29,9 +27,6 @@ namespace Npgsql.Internal.TypeHandlers
     public partial class BitStringHandler : NpgsqlTypeHandler<BitArray>,
         INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
-        /// <inheritdoc />
-        public BitStringHandler(PostgresType postgresType) : base(postgresType) {}
-
         internal override Type GetFieldType(FieldDescription? fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 

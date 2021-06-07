@@ -60,8 +60,8 @@ namespace Npgsql.GeoJSON.Internal
         int _lastSrid;
 
         internal GeoJsonHandler(PostgresType postgresType, GeoJSONOptions options, CrsMap crsMap)
-            : base(postgresType)
         {
+            PostgresType = postgresType;
             _options = options;
             _crsMap = crsMap;
         }

@@ -20,7 +20,8 @@ namespace Npgsql.LegacyPostgis.Internal
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
         INpgsqlTypeHandler<PostgisGeometryCollection>
     {
-        public LegacyPostgisHandler(PostgresType postgresType) : base(postgresType) {}
+        public LegacyPostgisHandler(PostgresType postgresType)
+            => PostgresType = postgresType;
 
         #region Read
 

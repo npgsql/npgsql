@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Data;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 {
@@ -21,9 +17,6 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     public partial class MoneyHandler : NpgsqlSimpleTypeHandler<decimal>
     {
         const int MoneyScale = 2;
-
-        /// <inheritdoc />
-        public MoneyHandler(PostgresType postgresType) : base(postgresType) {}
 
         /// <inheritdoc />
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

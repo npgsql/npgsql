@@ -2,8 +2,6 @@
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
@@ -20,9 +18,6 @@ namespace Npgsql.Internal.TypeHandlers.GeometricHandlers
     /// </remarks>
     public partial class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
-        /// <inheritdoc />
-        public PolygonHandler(PostgresType postgresType) : base(postgresType) {}
-
         #region Read
 
         /// <inheritdoc />

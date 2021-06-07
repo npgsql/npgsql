@@ -231,8 +231,8 @@ CHECK
             readonly MyInt32HandlerFactory _factory;
 
             public MyInt32Handler(PostgresType postgresType, MyInt32HandlerFactory factory)
-                : base(postgresType)
             {
+                PostgresType = postgresType;
                 _factory = factory;
             }
 

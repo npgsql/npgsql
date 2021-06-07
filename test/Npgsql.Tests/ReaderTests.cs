@@ -2145,7 +2145,10 @@ LANGUAGE plpgsql VOLATILE";
     {
         readonly bool _safe;
         internal ExplodingTypeHandler(PostgresType postgresType, bool safe)
-            : base(postgresType) => _safe = safe;
+        {
+            PostgresType = postgresType;
+            _safe = safe;
+        }
 
         public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {

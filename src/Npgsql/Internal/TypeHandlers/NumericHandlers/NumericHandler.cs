@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Data;
 using System.Globalization;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 {
@@ -26,9 +22,6 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         INpgsqlTypeHandler<byte>, INpgsqlTypeHandler<short>, INpgsqlTypeHandler<int>, INpgsqlTypeHandler<long>,
         INpgsqlTypeHandler<float>, INpgsqlTypeHandler<double>, INpgsqlTypeHandler<BigInteger>
     {
-        /// <inheritdoc />
-        public NumericHandler(PostgresType postgresType) : base(postgresType) { }
-
         const int MaxDecimalScale = 28;
 
         const int SignPositive = 0x0000;

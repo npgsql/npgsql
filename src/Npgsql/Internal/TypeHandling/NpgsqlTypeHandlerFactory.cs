@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 
@@ -42,9 +43,25 @@ namespace Npgsql.Internal.TypeHandling
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
-            => Create(pgType, conn);
+        {
+            var handler = Create(pgType, conn);
+            Debug.Assert(handler.PostgresType is not null);
+            return handler;
+        }
 
         /// <inheritdoc />
+        public override Type DefaultValueType => typeof(TDefault);
+    }
+
+    /// <summary>
+    /// A type handler factory used to instantiate Npgsql's built-in type handlers.
+    /// </summary>
+    sealed class DefaultTypeHandlerFactory<THandler, TDefault> : NpgsqlTypeHandlerFactory
+        where THandler : NpgsqlTypeHandler<TDefault>, new()
+    {
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnector conn)
+            => new THandler { PostgresType = pgType };
+
         public override Type DefaultValueType => typeof(TDefault);
     }
 }
