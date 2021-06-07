@@ -1,0 +1,123 @@
+using System;
+using System.Collections.Generic;
+
+#nullable disable
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable RS0016 // Add public types and members to the declared API
+#pragma warning disable 618 // Member is obsolete
+
+namespace Npgsql
+{
+    public sealed partial class NpgsqlConnectionStringBuilder
+    {
+        private partial int Init()
+        {
+            // Set the strongly-typed properties to their default values
+            {{
+               for p in properties
+                 if p.is_obsolete
+                   continue
+                 end
+
+                 if (p.default_value != null)
+            }}
+            {{ p.name }} = {{ p.default_value }};
+            {{
+                 end
+               end }}
+
+            // Setting the strongly-typed properties here also set the string-based properties in the base class.
+            // Clear them (default settings = empty connection string)
+            base.Clear();
+
+            return 0;
+        }
+
+        private partial int GeneratedSetter(string keyword, object value)
+        {
+            switch (keyword)
+            {
+            {{ for kv in properties_by_keyword }}
+            case "{{ kv.key }}":
+            {{ p = kv.value }}
+            {{ if p.is_enum }}
+            {
+                {{ p.name }} = value is string s
+                    ? ({{ p.type_name }})Enum.Parse(typeof({{ p.type_name }}), s)
+                    : ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
+            }
+            {{ else }}
+                {{ p.name }} = ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
+            {{ end }}
+                break;
+            {{ end }}
+
+                default:
+                    throw new KeyNotFoundException();
+            }
+
+            return 0;
+        }
+
+        private partial bool TryGetValueGenerated(string keyword, out object value)
+        {
+            switch (keyword)
+            {
+            {{ for kv in properties_by_keyword }}
+            case "{{ kv.key }}":
+            {{ p = kv.value }}
+                value = (object){{ p.name }} ?? "";
+                return true;
+            {{ end }}
+            }
+
+            value = null;
+            return false;
+        }
+
+        private partial bool ContainsKeyGenerated(string keyword)
+            => keyword switch
+            {
+                {{ for kv in properties_by_keyword }}
+                "{{ kv.key }}" => true,
+                {{ end }}
+
+                _ => false
+            };
+
+        private partial bool RemoveGenerated(string keyword)
+        {
+            switch (keyword)
+            {
+            {{ for kv in properties_by_keyword }}
+            case "{{ kv.key }}":
+            {
+                {{ p = kv.value }}
+                var removed = base.ContainsKey("{{ p.canonical_name }}");
+                // Note that string property setters call SetValue, which itself calls base.Remove().
+                {{ if p.default_value == null }}
+                {{ p.name }} = default;
+                {{ else }}
+                {{ p.name }} = {{ p.default_value }};
+                {{ end }}
+                base.Remove("{{ p.canonical_name }}");
+                return removed;
+            }
+            {{ end }}
+
+            default:
+                throw new KeyNotFoundException();
+            }
+        }
+
+        private partial string ToCanonicalKeyword(string keyword)
+            => keyword switch
+            {
+                {{ for kv in properties_by_keyword }}
+                "{{ kv.key }}" => "{{ kv.value.canonical_name }}",
+                {{ end }}
+
+                _ => throw new KeyNotFoundException()
+            };
+    }
+}
