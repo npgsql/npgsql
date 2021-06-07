@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Npgsql.Internal;
+using Npgsql.Netstandard20;
 using Npgsql.Replication;
 
 namespace Npgsql
@@ -1658,6 +1659,26 @@ namespace Npgsql
         }
 
         internal NpgsqlConnectionStringBuilder Clone() => new(ConnectionString);
+
+        internal static bool TrySplitHostPort(ReadOnlySpan<char> originalHost, [NotNullWhen(true)] out string? host, out int port)
+        {
+            var portSeparator = originalHost.LastIndexOf(':');
+            if (portSeparator != -1)
+            {
+                var otherColon = originalHost.Slice(0, portSeparator).LastIndexOf(':');
+                var ipv6End = originalHost.LastIndexOf(']');
+                if (otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End)
+                {
+                    port = originalHost.Slice(portSeparator + 1).ParseInt();
+                    host = originalHost.Slice(0, portSeparator).ToString();
+                    return true;
+                }
+            }
+
+            port = -1;
+            host = null;
+            return false;
+        }
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.

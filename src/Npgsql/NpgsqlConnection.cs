@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -16,6 +17,7 @@ using System.Transactions;
 using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
+using Npgsql.Netstandard20;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -180,7 +182,7 @@ namespace Npgsql
             Settings = settings;
 
             var hostsSeparator = settings.Host?.IndexOf(',');
-            if (hostsSeparator.HasValue && hostsSeparator == -1)
+            if (hostsSeparator is -1)
             {
                 if (settings.TargetSessionAttributesParsed is not null &&
                     settings.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
@@ -188,11 +190,10 @@ namespace Npgsql
                     throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
                 }
 
-                var portSeparator = settings.Host!.IndexOf(':');
-                if (!Path.IsPathRooted(settings.Host) && portSeparator != -1)
+                if (!Path.IsPathRooted(settings.Host) && NpgsqlConnectionStringBuilder.TrySplitHostPort(settings.Host!.AsSpan(), out var newHost, out var newPort))
                 {
-                    settings.Port = int.Parse(settings.Host.Substring(portSeparator + 1));
-                    settings.Host = settings.Host.Substring(0, portSeparator);
+                    settings.Host = newHost;
+                    settings.Port = newPort;
                 }
             }
 

@@ -2,8 +2,6 @@
 using Npgsql.Util;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
@@ -24,18 +22,17 @@ namespace Npgsql
             _pools = new ConnectorPool[hosts.Length];
             for (var i = 0; i < hosts.Length; i++)
             {
-                var host = hosts[i].Trim();
-                var port = settings.Port;
-                var portSeparator = host.IndexOf(':');
-                if (portSeparator != -1)
-                {
-                    port = int.Parse(host.Substring(portSeparator + 1));
-                    host = host.Substring(0, portSeparator);
-                }
                 var poolSettings = settings.Clone();
-                poolSettings.Host = host;
-                poolSettings.Port = port;
                 Debug.Assert(!poolSettings.Multiplexing);
+                var host = hosts[i].AsSpan().Trim();
+                if (NpgsqlConnectionStringBuilder.TrySplitHostPort(host, out var newHost, out var newPort))
+                {
+                    poolSettings.Host = newHost;
+                    poolSettings.Port = newPort;
+                }
+                else
+                    poolSettings.Host = host.ToString();
+
                 _pools[i] = new ConnectorPool(poolSettings, poolSettings.ConnectionString, this);
             }
         }
