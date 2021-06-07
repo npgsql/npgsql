@@ -37,6 +37,7 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 Npgsql.NpgsqlCopyTextReader.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Npgsql.PhysicalOpenAsyncCallback
 Npgsql.PhysicalOpenCallback
+Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override Npgsql.NpgsqlRawCopyStream.DisposeAsync() -> System.Threading.Tasks.ValueTask
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool

@@ -577,6 +577,29 @@ namespace Npgsql.Replication
         }
 
         /// <summary>
+        /// Sets the current status of the replication as it is interpreted by the consuming client. The value supplied
+        /// in <see paramref="lastAppliedAndFlushedLsn" /> will be sent to the server via <see cref="LastAppliedLsn"/> and
+        /// <see cref="LastFlushedLsn"/> with the next status update.
+        /// <para>
+        /// A status update which will happen upon server request, upon expiration of <see cref="WalReceiverStatusInterval"/>
+        /// our upon an enforced status update via <see cref="SendStatusUpdate"/>, whichever happens first.
+        /// If you want the value you set here to be pushed to the server immediately (e. g. in synchronous replication scenarios),
+        /// call <see cref="SendStatusUpdate"/> after calling this method.
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// This is a convenience method setting both <see cref="LastAppliedLsn"/> and <see cref="LastFlushedLsn"/> in one operation.
+        /// You can use it if your application processes replication messages in  a way that doesn't care about the difference between
+        /// writing a message and flushing it to a permanent storage medium.
+        /// </remarks>
+        /// <param name="lastAppliedAndFlushedLsn">The location of the last WAL byte + 1 applied (e. g. processed or written to disk) and flushed to disk in the standby.</param>
+        public void SetReplicationStatus(NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn)
+        {
+            Interlocked.Exchange(ref _lastAppliedLsn, unchecked((long)(ulong)lastAppliedAndFlushedLsn));
+            Interlocked.Exchange(ref _lastFlushedLsn, unchecked((long)(ulong)lastAppliedAndFlushedLsn));
+        }
+
+        /// <summary>
         /// Sends a forced status update to PostgreSQL with the current WAL tracking information.
         /// </summary>
         /// <exception cref="InvalidOperationException">The connection currently isn't streaming</exception>
