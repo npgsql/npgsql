@@ -17,6 +17,7 @@ using System.Transactions;
 using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
+using Npgsql.Netstandard20;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -197,11 +198,7 @@ namespace Npgsql
                     if ((otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End))
                     {
                         var span = settings.Host.AsSpan();
-                        settings.Port = int.Parse(span.Slice(portSeparator + 1)
-#if NETSTANDARD2_0
-                                .ToString()
-#endif
-                        );
+                        settings.Port = span.Slice(portSeparator + 1).ParseInt();
                         settings.Host = span.Slice(0, portSeparator).ToString();
                     }
                 }

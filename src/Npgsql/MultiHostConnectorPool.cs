@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Netstandard20;
 
 namespace Npgsql
 {
@@ -34,11 +35,7 @@ namespace Npgsql
                     if (otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End)
                     {
                         var span = host.AsSpan();
-                        port = int.Parse(span.Slice(portSeparator + 1)
-#if NETSTANDARD2_0
-                                .ToString()
-#endif
-                        );
+                        port = span.Slice(portSeparator + 1).ParseInt();
                         host = span.Slice(0, portSeparator).ToString();
                     }
                 }
