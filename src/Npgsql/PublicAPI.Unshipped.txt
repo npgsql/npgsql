@@ -19,6 +19,7 @@ override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.Po
 override Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
 *REMOVED*override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
+Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
 Npgsql.NpgsqlConnectionStringBuilder.ArrayNullabilityMode.get -> Npgsql.ArrayNullabilityMode
 Npgsql.NpgsqlConnectionStringBuilder.ArrayNullabilityMode.set -> void
 Npgsql.ArrayNullabilityMode
