@@ -197,7 +197,7 @@ namespace Npgsql.Internal
             var versionString = value.Trim();
             for (var idx = 0; idx != versionString.Length; ++idx)
             {
-                var c = value[idx];
+                var c = versionString[idx];
                 if (!char.IsDigit(c) && c != '.')
                 {
                     versionString = versionString.Substring(0, idx);
