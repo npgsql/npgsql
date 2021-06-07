@@ -190,17 +190,10 @@ namespace Npgsql
                     throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
                 }
 
-                var portSeparator = settings.Host!.LastIndexOf(':');
-                if (portSeparator != -1 && !Path.IsPathRooted(settings.Host))
+                if (!Path.IsPathRooted(settings.Host) && NpgsqlConnectionStringBuilder.TrySplitHostPort(settings.Host!.AsSpan(), out var newHost, out var newPort))
                 {
-                    var otherColon = settings.Host!.LastIndexOf(':', portSeparator - 1);
-                    var ipv6End = settings.Host!.LastIndexOf(']');
-                    if ((otherColon == -1 || portSeparator > ipv6End && otherColon < ipv6End))
-                    {
-                        var span = settings.Host.AsSpan();
-                        settings.Port = span.Slice(portSeparator + 1).ParseInt();
-                        settings.Host = span.Slice(0, portSeparator).ToString();
-                    }
+                    settings.Host = newHost;
+                    settings.Port = newPort;
                 }
             }
 
