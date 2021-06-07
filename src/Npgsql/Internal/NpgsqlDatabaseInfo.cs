@@ -229,9 +229,15 @@ namespace Npgsql.Internal
                 versionString = versionString.Slice(0, idx);
                 break;
             }
+#if NETSTANDARD2_0 || NETSTANDARD2_1
+            if (!versionString.Contains(".".AsSpan(), StringComparison.Ordinal))
+                return new Version(versionString.ToString() + ".0");
+            return new Version(versionString.ToString());
+#else
             if (!versionString.Contains('.'))
                 return new Version(string.Concat(versionString, ".0".AsSpan()));
-            return new Version(versionString.ToString());
+            return Version.Parse(versionString);
+#endif
         }
 
         #endregion Misc
