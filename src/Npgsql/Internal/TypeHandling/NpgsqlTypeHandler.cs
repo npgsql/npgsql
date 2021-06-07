@@ -22,7 +22,7 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// The PostgreSQL type handled by this type handler.
         /// </summary>
-        public PostgresType PostgresType { get; init; } = null!;
+        public PostgresType PostgresType { get; set; } = null!;
 
         #region Read
 
