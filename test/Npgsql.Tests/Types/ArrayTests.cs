@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Npgsql.Internal.TypeHandlers;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
@@ -23,14 +22,14 @@ namespace Npgsql.Tests.Types
     public class ArrayTests : MultiplexingTestBase
     {
         [Test, Description("Resolves an array type handler via the different pathways")]
-        public async Task ArrayTypeResolution()
+        public async Task Array_resolution()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ArrayTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Array_resolution),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -57,6 +56,18 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
             }
 
+            // Resolve type by DataTypeName
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "integer[]", Value = DBNull.Value });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
+                }
+            }
+
             // Resolve type by OID (read)
             conn.ReloadTypes();
             using (var cmd = new NpgsqlCommand("SELECT '{1, 3}'::INTEGER[]", conn))
@@ -64,7 +75,22 @@ namespace Npgsql.Tests.Types
             {
                 reader.Read();
                 Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
+                Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] { 1, 3 }));
             }
+        }
+
+        [Test]
+        public async Task Bind_int_then_array_of_int()
+        {
+            using var pool = CreateTempPool(ConnectionString, out var connString);
+            using var conn = new NpgsqlConnection(connString);
+            await conn.OpenAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            _ = await cmd.ExecuteScalarAsync();
+
+            cmd.CommandText = "SELECT ARRAY[1,2]";
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new[] { 1, 2 }));
         }
 
         [Test, Description("Roundtrips a simple, one-dimensional array of ints")]

@@ -69,11 +69,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
-        public async Task EnumTypeResolutionWithGlobalMapping()
+        public async Task Enum_resolution_with_global_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(EnumTypeResolutionWithGlobalMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Enum_resolution_with_global_mapping),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -130,11 +130,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Resolves an enum type handler via the different pathways, with late mapping")]
-        public async Task EnumTypeResolutionWithLateMapping()
+        public async Task Enum_resolution_with_late_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(EnumTypeResolutionWithLateMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Enum_resolution_with_late_mapping),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 

@@ -84,8 +84,7 @@ namespace Npgsql.Tests
         static async Task EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion, bool async)
         {
             if (minVersion != null)
-                MinimumPgVersion(conn, minVersion,
-                    $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher.");
+                MinimumPgVersion(conn, minVersion, $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher.");
 
             if (conn.PostgreSqlVersion < MinCreateExtensionVersion)
                 Assert.Ignore($"The 'CREATE EXTENSION' command only works for PostgreSQL {MinCreateExtensionVersion} and higher.");

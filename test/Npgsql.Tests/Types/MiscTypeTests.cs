@@ -14,18 +14,19 @@ namespace Npgsql.Tests.Types
     class MiscTypeTests : MultiplexingTestBase
     {
         [Test, Description("Resolves a base type handler via the different pathways")]
-        public async Task BaseTypeResolution()
+        public async Task Base_type_resolution()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(BaseTypeResolution),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Base_type_resolution),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
             using var conn = await OpenConnectionAsync(csb);
+
             // Resolve type by NpgsqlDbType
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
@@ -58,6 +59,19 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                }
+            }
+
+            // Resolve type by DataTypeName
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "integer", Value = DBNull.Value });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                 }
             }
 
@@ -68,6 +82,7 @@ namespace Npgsql.Tests.Types
             {
                 reader.Read();
                 Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
+                Assert.That(reader.GetInt32(0), Is.EqualTo(8));
             }
         }
 
@@ -194,15 +209,6 @@ namespace Npgsql.Tests.Types
             Assert.That(arr.Length, Is.EqualTo(2));
             Assert.That(arr[0][0], Is.EqualTo(1));
             Assert.That(arr[1][0], Is.EqualTo(1));
-        }
-
-        [Test]
-        public async Task Domain()
-        {
-            using var conn = await OpenConnectionAsync();
-            await using var _ = await GetTempTypeName(conn, out var type);
-            await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {type} AS text");
-            Assert.That(await conn.ExecuteScalarAsync($"SELECT 'foo'::{type}"), Is.EqualTo("foo"));
         }
 
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]

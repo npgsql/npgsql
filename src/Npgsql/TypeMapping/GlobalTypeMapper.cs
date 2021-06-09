@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Data;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -28,6 +31,20 @@ namespace Npgsql.TypeMapping
     {
         public static GlobalTypeMapper Instance { get; }
 
+        [MemberNotNullWhen(false,
+            nameof(_mappingsByNameBuilder),
+            nameof(_mappingsByNpgsqlDbTypeBuilder),
+            nameof(_mappingsByClrTypeBuilder))]
+        bool Initialized { get; }
+
+        internal ImmutableDictionary<string, NpgsqlTypeMapping> MappingsByName { get; private set; }
+        internal ImmutableDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
+        internal ImmutableDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
+
+        ImmutableDictionary<string, NpgsqlTypeMapping>.Builder? _mappingsByNameBuilder;
+        ImmutableDictionary<NpgsqlDbType, NpgsqlTypeMapping>.Builder? _mappingsByNpgsqlDbTypeBuilder;
+        ImmutableDictionary<Type, NpgsqlTypeMapping>.Builder? _mappingsByClrTypeBuilder;
+
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
         /// Used to invalidate bound type mappers.
@@ -40,13 +57,26 @@ namespace Npgsql.TypeMapping
         int _changeCounter;
 
         static GlobalTypeMapper()
-        {
-            var instance = new GlobalTypeMapper();
-            instance.SetupBuiltInHandlers();
-            Instance = instance;
-        }
+            => Instance = new GlobalTypeMapper();
 
-        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator()) {}
+        GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+        {
+            _mappingsByNameBuilder = ImmutableDictionary.CreateBuilder<string, NpgsqlTypeMapping>();
+            _mappingsByNpgsqlDbTypeBuilder = ImmutableDictionary.CreateBuilder<NpgsqlDbType, NpgsqlTypeMapping>();
+            _mappingsByClrTypeBuilder = ImmutableDictionary.CreateBuilder<Type, NpgsqlTypeMapping>();
+
+            SetupBuiltInHandlers();
+
+            MappingsByName = _mappingsByNameBuilder.ToImmutable();
+            MappingsByNpgsqlDbType = _mappingsByNpgsqlDbTypeBuilder.ToImmutable();
+            MappingsByClrType = _mappingsByClrTypeBuilder.ToImmutable();
+
+            _mappingsByNameBuilder = null;
+            _mappingsByNpgsqlDbTypeBuilder = null;
+            _mappingsByClrTypeBuilder = null;
+
+            Initialized = true;
+        }
 
         #region Mapping management
 
@@ -55,8 +85,24 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                base.AddMapping(mapping);
-                RecordChange();
+                if (Initialized)
+                {
+                    MappingsByName = MappingsByName.SetItem(mapping.PgTypeName, mapping);
+                    if (mapping.NpgsqlDbType is not null)
+                        MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.SetItem(mapping.NpgsqlDbType.Value, mapping);
+                    foreach (var clrType in mapping.ClrTypes)
+                        MappingsByClrType = MappingsByClrType.SetItem(clrType, mapping);
+
+                    RecordChange();
+                }
+                else
+                {
+                    _mappingsByNameBuilder[mapping.PgTypeName] = mapping;
+                    if (mapping.NpgsqlDbType is not null)
+                        _mappingsByNpgsqlDbTypeBuilder[mapping.NpgsqlDbType.Value] = mapping;
+                    foreach (var clrType in mapping.ClrTypes)
+                        _mappingsByClrTypeBuilder[clrType] = mapping;
+                }
 
                 if (mapping.NpgsqlDbType.HasValue)
                 {
@@ -90,12 +136,16 @@ namespace Npgsql.TypeMapping
 
         public override bool RemoveMapping(string pgTypeName)
         {
+            Debug.Assert(Initialized);
+
             Lock.EnterWriteLock();
             try
             {
-                var result = base.RemoveMapping(pgTypeName);
+                var oldMappingsByName = MappingsByName;
+                MappingsByName = MappingsByName.Remove(pgTypeName);
+                var changed = ReferenceEquals(MappingsByName, oldMappingsByName);
                 RecordChange();
-                return result;
+                return changed;
             }
             finally
             {
@@ -110,7 +160,7 @@ namespace Npgsql.TypeMapping
                 Lock.EnterReadLock();
                 try
                 {
-                    return InternalMappings.Values.ToArray();
+                    return MappingsByName.Values.ToArray();
                 }
                 finally
                 {
@@ -124,7 +174,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                InternalMappings.Clear();
+                MappingsByName.Clear();
                 SetupBuiltInHandlers();
                 RecordChange();
             }

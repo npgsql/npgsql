@@ -567,8 +567,8 @@ namespace Npgsql.Internal
                 }
             }
 
-            DatabaseInfo = database!;
-            TypeMapper.Bind(DatabaseInfo);
+            DatabaseInfo = TypeMapper.DatabaseInfo = database!;
+            TypeMapper.Reset();
         }
 
         internal async ValueTask<ClusterState> QueryClusterState(
