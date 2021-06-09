@@ -35,7 +35,7 @@ namespace Npgsql.TypeMapping
             nameof(_mappingsByNameBuilder),
             nameof(_mappingsByNpgsqlDbTypeBuilder),
             nameof(_mappingsByClrTypeBuilder))]
-        bool Initialized { get; }
+        bool Initialized { get; set; }
 
         internal ImmutableDictionary<string, NpgsqlTypeMapping> MappingsByName { get; private set; }
         internal ImmutableDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
@@ -60,23 +60,7 @@ namespace Npgsql.TypeMapping
             => Instance = new GlobalTypeMapper();
 
         GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
-        {
-            _mappingsByNameBuilder = ImmutableDictionary.CreateBuilder<string, NpgsqlTypeMapping>();
-            _mappingsByNpgsqlDbTypeBuilder = ImmutableDictionary.CreateBuilder<NpgsqlDbType, NpgsqlTypeMapping>();
-            _mappingsByClrTypeBuilder = ImmutableDictionary.CreateBuilder<Type, NpgsqlTypeMapping>();
-
-            SetupBuiltInHandlers();
-
-            MappingsByName = _mappingsByNameBuilder.ToImmutable();
-            MappingsByNpgsqlDbType = _mappingsByNpgsqlDbTypeBuilder.ToImmutable();
-            MappingsByClrType = _mappingsByClrTypeBuilder.ToImmutable();
-
-            _mappingsByNameBuilder = null;
-            _mappingsByNpgsqlDbTypeBuilder = null;
-            _mappingsByClrTypeBuilder = null;
-
-            Initialized = true;
-        }
+            => Reset();
 
         #region Mapping management
 
@@ -169,13 +153,31 @@ namespace Npgsql.TypeMapping
             }
         }
 
+
+        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         public override void Reset()
         {
             Lock.EnterWriteLock();
             try
             {
-                MappingsByName.Clear();
+                Initialized = false;
+
+                _mappingsByNameBuilder = ImmutableDictionary.CreateBuilder<string, NpgsqlTypeMapping>();
+                _mappingsByNpgsqlDbTypeBuilder = ImmutableDictionary.CreateBuilder<NpgsqlDbType, NpgsqlTypeMapping>();
+                _mappingsByClrTypeBuilder = ImmutableDictionary.CreateBuilder<Type, NpgsqlTypeMapping>();
+
                 SetupBuiltInHandlers();
+
+                MappingsByName = _mappingsByNameBuilder.ToImmutable();
+                MappingsByNpgsqlDbType = _mappingsByNpgsqlDbTypeBuilder.ToImmutable();
+                MappingsByClrType = _mappingsByClrTypeBuilder.ToImmutable();
+
+                _mappingsByNameBuilder = null;
+                _mappingsByNpgsqlDbTypeBuilder = null;
+                _mappingsByClrTypeBuilder = null;
+
+                Initialized = true;
+
                 RecordChange();
             }
             finally
