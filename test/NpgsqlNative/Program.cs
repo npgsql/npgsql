@@ -15,9 +15,9 @@ var ConnectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? D
 
 await using var conn = new NpgsqlConnection(ConnectionString);
 await conn.OpenAsync();
-await using var reader = await new NpgsqlCommand("SELECT '{1,2,3,NULL}'::bigint[]", conn).ExecuteReaderAsync();
+await using var reader = await new NpgsqlCommand("SELECT 'Hello World'", conn).ExecuteReaderAsync();
 while (await reader.ReadAsync())
 {
-    var value = reader.GetFieldValue<long?[]>(0);
+    var value = reader.GetFieldValue<string>(0);
     Console.WriteLine(value);
 }

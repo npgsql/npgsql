@@ -448,8 +448,8 @@ namespace Npgsql.TypeMapping
                 };
 
                 // Support ReadOnlyIPAddress, which was added to .NET Core 3.0 as an internal subclass of IPAddress
-                if (typeof(IPAddress).GetNestedType("ReadOnlyIPAddress", BindingFlags.NonPublic) is Type readOnlyIpType)
-                    inetClrTypes.Add(readOnlyIpType);
+                // if (typeof(IPAddress).GetNestedType("ReadOnlyIPAddress", BindingFlags.NonPublic) is Type readOnlyIpType)
+                //     inetClrTypes.Add(readOnlyIpType);
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {

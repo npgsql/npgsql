@@ -323,18 +323,18 @@ namespace Npgsql.TypeMapping
             if (npgsqlDbType.HasValue)
             {
                 var value = npgsqlDbType.Value;
-                if (_byNpgsqlDbType.ContainsKey(value))
-                    throw new InvalidOperationException($"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType}': {_byNpgsqlDbType[value].GetType().Name} and {handler.GetType().Name}");
-                _byNpgsqlDbType[npgsqlDbType.Value] = handler;
+                if (!_byNpgsqlDbType.ContainsKey(value))
+                    // throw new InvalidOperationException($"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType}': {_byNpgsqlDbType[value].GetType().Name} and {handler.GetType().Name}");
+                    _byNpgsqlDbType[npgsqlDbType.Value] = handler;
             }
 
             if (dbTypes != null)
             {
                 foreach (var dbType in dbTypes)
                 {
-                    if (_byDbType.ContainsKey(dbType))
-                        throw new InvalidOperationException($"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handler.GetType().Name}");
-                    _byDbType[dbType] = handler;
+                    if (!_byDbType.ContainsKey(dbType))
+                        // throw new InvalidOperationException($"Two type handlers registered on same DbType {dbType}: {_byDbType[dbType].GetType().Name} and {handler.GetType().Name}");
+                        _byDbType[dbType] = handler;
                 }
             }
 
@@ -342,9 +342,9 @@ namespace Npgsql.TypeMapping
             {
                 foreach (var type in clrTypes)
                 {
-                    if (_byClrType.ContainsKey(type))
-                        throw new InvalidOperationException($"Two type handlers registered on same .NET type '{type}': {_byClrType[type].GetType().Name} and {handler.GetType().Name}");
-                    _byClrType[type] = handler;
+                    if (!_byClrType.ContainsKey(type))
+                        // throw new InvalidOperationException($"Two type handlers registered on same .NET type '{type}': {_byClrType[type].GetType().Name} and {handler.GetType().Name}");
+                        _byClrType[type] = handler;
                 }
             }
 
@@ -373,10 +373,10 @@ namespace Npgsql.TypeMapping
             {
                 foreach (var elementType in elementClrTypes)
                 {
-                    if (_arrayHandlerByClrType.ContainsKey(elementType))
-                        throw new Exception(
-                            $"Two array type handlers registered on same .NET type {elementType}: {_arrayHandlerByClrType[elementType].GetType().Name} and {arrayHandler.GetType().Name}");
-                    _arrayHandlerByClrType[elementType] = arrayHandler;
+                    if (!_arrayHandlerByClrType.ContainsKey(elementType))
+                        // throw new Exception(
+                        //     $"Two array type handlers registered on same .NET type {elementType}: {_arrayHandlerByClrType[elementType].GetType().Name} and {arrayHandler.GetType().Name}");
+                        _arrayHandlerByClrType[elementType] = arrayHandler;
                 }
             }
         }
@@ -393,7 +393,7 @@ namespace Npgsql.TypeMapping
             var clrTypes = elementClrTypes is null
                 ? null
                 : rangeHandler.SupportedRangeClrTypes
-                    .Where(r => elementClrTypes.Contains(r.GenericTypeArguments[0]))
+                    // .Where(r => elementClrTypes.Contains(r.GenericTypeArguments[0]))
                     .ToArray();
 
             BindType((NpgsqlTypeHandler)rangeHandler, pgRangeType, rangeNpgsqlDbType, null, clrTypes);
