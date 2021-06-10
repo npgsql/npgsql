@@ -16,7 +16,7 @@ namespace Npgsql
     public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
         internal const int LookupThreshold = 5;
-        readonly List<NpgsqlParameter> _internalList = new(5);
+        internal List<NpgsqlParameter> InternalList { get; } = new(5);
 #if DEBUG
         internal static bool CaseInsensitiveCompatMode;
 #else
@@ -25,7 +25,7 @@ namespace Npgsql
 
         static NpgsqlParameterCollection()
         {
-            AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsenstiveDbParameters", out var enabled);
+            AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsensitiveDbParameters", out var enabled);
             CaseInsensitiveCompatMode = enabled;
         }
 
@@ -38,7 +38,7 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlParameterCollection() {}
 
-        bool LookupEnabled => _internalList.Count >= LookupThreshold;
+        bool LookupEnabled => InternalList.Count >= LookupThreshold;
 
         void LookupClear()
         {
@@ -101,9 +101,9 @@ namespace Npgsql
                         _caseInsensitiveLookup[kv.Key] = kv.Value - 1;
                 }
 
-                for (var i = 0; i < _internalList.Count; i++)
+                for (var i = 0; i < InternalList.Count; i++)
                 {
-                    var value = _internalList[i];
+                    var value = InternalList[i];
                     if (string.Equals(name, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
                     {
                         _caseInsensitiveLookup[value.TrimmedName] = i;
@@ -156,7 +156,7 @@ namespace Npgsql
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                return _internalList[index];
+                return InternalList[index];
             }
             set
             {
@@ -169,10 +169,10 @@ namespace Npgsql
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                var oldValue = _internalList[index];
+                var oldValue = InternalList[index];
                 LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
-                _internalList[index] = value;
+                InternalList[index] = value;
             }
         }
 
@@ -183,7 +183,7 @@ namespace Npgsql
         /// <value>The <see cref="NpgsqlParameter"/> at the specified index.</value>
         public new NpgsqlParameter this[int index]
         {
-            get => _internalList[index];
+            get => InternalList[index];
             set
             {
                 if (value is null)
@@ -191,14 +191,14 @@ namespace Npgsql
                 if (value.Collection is not null)
                     throw new InvalidOperationException("The parameter already belongs to a collection");
 
-                var oldValue = _internalList[index];
+                var oldValue = InternalList[index];
 
                 if (oldValue == value)
                     return;
 
                 LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
-                _internalList[index] = value;
+                InternalList[index] = value;
                 value.Collection = this;
                 oldValue.Collection = null;
             }
@@ -216,10 +216,10 @@ namespace Npgsql
             if (value.Collection is not null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
 
-            _internalList.Add(value);
+            InternalList.Add(value);
             value.Collection = this;
             if (!value.IsPositional)
-                LookupAdd(value.TrimmedName, _internalList.Count - 1);
+                LookupAdd(value.TrimmedName, InternalList.Count - 1);
             return value;
         }
 
@@ -360,30 +360,30 @@ namespace Npgsql
                 return -1;
             }
 
-            for (var i = 0; i < _internalList.Count; i++)
+            for (var i = 0; i < InternalList.Count; i++)
             {
-                var name = _internalList[i].TrimmedName;
+                var name = InternalList[i].TrimmedName;
                 if (ReferenceEquals(parameterName, name) || string.Equals(parameterName, name))
                     return i;
             }
 
             // Fall back to a case-insensitive search.
             if (CaseInsensitiveCompatMode)
-                for (var i = 0; i < _internalList.Count; i++)
-                    if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+                for (var i = 0; i < InternalList.Count; i++)
+                    if (string.Equals(parameterName, InternalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                         return i;
 
             return -1;
 
             void BuildLookup()
             {
-                _lookup = new Dictionary<string, int>(_internalList.Count, StringComparer.Ordinal);
+                _lookup = new Dictionary<string, int>(InternalList.Count, StringComparer.Ordinal);
                 if (CaseInsensitiveCompatMode)
-                    _caseInsensitiveLookup = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
+                    _caseInsensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
 
-                for (var i = 0; i < _internalList.Count; i++)
+                for (var i = 0; i < InternalList.Count; i++)
                 {
-                    var item = _internalList[i];
+                    var item = InternalList[i];
                     if (!item.IsPositional)
                         LookupAdd(item.TrimmedName, i);
                 }
@@ -403,10 +403,10 @@ namespace Npgsql
         /// <param name="index">The zero-based index of the parameter.</param>
         public override void RemoveAt(int index)
         {
-            if (_internalList.Count - 1 < index)
+            if (InternalList.Count - 1 < index)
                 throw new ArgumentOutOfRangeException(nameof(index));
 
-            Remove(_internalList[index]);
+            Remove(InternalList[index]);
         }
 
         /// <inheritdoc />
@@ -438,7 +438,7 @@ namespace Npgsql
 
         /// <inheritdoc />
         public override bool Contains(object value)
-            => value is NpgsqlParameter param && _internalList.Contains(param);
+            => value is NpgsqlParameter param && InternalList.Contains(param);
 
         /// <summary>
         /// Gets a value indicating whether a <see cref="NpgsqlParameter"/> with the specified parameter name exists in the collection.
@@ -461,7 +461,7 @@ namespace Npgsql
 
             if (index != -1)
             {
-                parameter = _internalList[index];
+                parameter = InternalList[index];
                 return true;
             }
 
@@ -475,10 +475,10 @@ namespace Npgsql
         public override void Clear()
         {
             // clean up parameters so they can be added to another command if required.
-            foreach (var toRemove in _internalList)
+            foreach (var toRemove in InternalList)
                 toRemove.Collection = null;
 
-            _internalList.Clear();
+            InternalList.Clear();
             LookupClear();
         }
 
@@ -501,33 +501,33 @@ namespace Npgsql
         #region ICollection Member
 
         /// <inheritdoc />
-        public override bool IsSynchronized => (_internalList as ICollection).IsSynchronized;
+        public override bool IsSynchronized => (InternalList as ICollection).IsSynchronized;
 
         /// <summary>
         /// Gets the number of <see cref="NpgsqlParameter"/> objects in the collection.
         /// </summary>
         /// <value>The number of <see cref="NpgsqlParameter"/> objects in the collection.</value>
-        public override int Count => _internalList.Count;
+        public override int Count => InternalList.Count;
 
         /// <inheritdoc />
         public override void CopyTo(Array array, int index)
-            => ((ICollection)_internalList).CopyTo(array, index);
+            => ((ICollection)InternalList).CopyTo(array, index);
 
         /// <inheritdoc />
         bool ICollection<NpgsqlParameter>.IsReadOnly => false;
 
         /// <inheritdoc />
-        public override object SyncRoot => ((ICollection)_internalList).SyncRoot;
+        public override object SyncRoot => ((ICollection)InternalList).SyncRoot;
 
         #endregion
 
         #region IEnumerable Member
 
         IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
-            => _internalList.GetEnumerator();
+            => InternalList.GetEnumerator();
 
         /// <inheritdoc />
-        public override IEnumerator GetEnumerator() => _internalList.GetEnumerator();
+        public override IEnumerator GetEnumerator() => InternalList.GetEnumerator();
 
         #endregion
 
@@ -563,7 +563,7 @@ namespace Npgsql
         /// <param name="item">Parameter to find.</param>
         /// <returns>Index of the parameter, or -1 if the parameter is not present.</returns>
         public int IndexOf(NpgsqlParameter item)
-            => _internalList.IndexOf(item);
+            => InternalList.IndexOf(item);
 
         /// <summary>
         /// Insert the specified parameter into the collection.
@@ -577,7 +577,7 @@ namespace Npgsql
             if (item.Collection != null)
                 throw new Exception("The parameter already belongs to a collection");
 
-            _internalList.Insert(index, item);
+            InternalList.Insert(index, item);
             item.Collection = this;
             if (!item.IsPositional)
                 LookupInsert(item.TrimmedName, index);
@@ -588,7 +588,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="item">Parameter to find.</param>
         /// <returns>True if the parameter was found, otherwise false.</returns>
-        public bool Contains(NpgsqlParameter item) => _internalList.Contains(item);
+        public bool Contains(NpgsqlParameter item) => InternalList.Contains(item);
 
         /// <summary>
         /// Remove the specified parameter from the collection.
@@ -605,7 +605,7 @@ namespace Npgsql
             var index = IndexOf(item);
             if (index >= 0)
             {
-                _internalList.RemoveAt(index);
+                InternalList.RemoveAt(index);
                 if (!LookupEnabled)
                     LookupClear();
                 if (!item.IsPositional)
@@ -623,36 +623,72 @@ namespace Npgsql
         /// <param name="array">Destination array.</param>
         /// <param name="arrayIndex">Starting index in destination array.</param>
         public void CopyTo(NpgsqlParameter[] array, int arrayIndex)
-            => _internalList.CopyTo(array, arrayIndex);
+            => InternalList.CopyTo(array, arrayIndex);
 
         /// <summary>
         /// Convert collection to a System.Array.
         /// </summary>
         /// <returns>NpgsqlParameter[]</returns>
-        public NpgsqlParameter[] ToArray() => _internalList.ToArray();
+        public NpgsqlParameter[] ToArray() => InternalList.ToArray();
 
         internal void CloneTo(NpgsqlParameterCollection other)
         {
-            other._internalList.Clear();
-            foreach (var param in _internalList)
+            other.InternalList.Clear();
+            foreach (var param in InternalList)
             {
                 var newParam = param.Clone();
                 newParam.Collection = this;
-                other._internalList.Add(newParam);
+                other.InternalList.Add(newParam);
             }
             other._lookup = _lookup;
         }
 
-        internal bool HasOutputParameters
+        internal void CalculatePlaceholderType(NpgsqlParameter p)
         {
-            get
+            if (p.IsPositional)
             {
-                foreach (var p in _internalList)
-                    if (p.IsOutputDirection)
-                        return true;
-                return false;
+                switch (PlaceholderType)
+                {
+                case PlaceholderType.NoParameters:
+                    PlaceholderType = PlaceholderType.Positional;
+                    break;
+
+                case PlaceholderType.Named:
+                    PlaceholderType = PlaceholderType.Mixed;
+                    break;
+
+                case PlaceholderType.Positional:
+                case PlaceholderType.Mixed:
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                }
+            }
+            else
+            {
+                switch (PlaceholderType)
+                {
+                case PlaceholderType.NoParameters:
+                    PlaceholderType = PlaceholderType.Named;
+                    break;
+
+                case PlaceholderType.Positional:
+                    PlaceholderType = PlaceholderType.Mixed;
+                    break;
+
+                case PlaceholderType.Named:
+                case PlaceholderType.Mixed:
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException($"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                }
             }
         }
+
+        internal bool HasOutputParameters { get; set; }
+        internal PlaceholderType PlaceholderType { get; set; }
 
         static NpgsqlParameter Cast(object? value)
         {
@@ -665,5 +701,29 @@ namespace Npgsql
                 throw new InvalidCastException($"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
             }
         }
+    }
+
+    enum PlaceholderType
+    {
+        /// <summary>
+        /// The parameter collection includes no parameters.
+        /// </summary>
+        NoParameters,
+
+        /// <summary>
+        /// The parameter collection includes only named parameters.
+        /// </summary>
+        Named,
+
+        /// <summary>
+        /// The parameter collection includes only positional parameters.
+        /// </summary>
+        Positional,
+
+        /// <summary>
+        /// The parameter collection includes both named and positional parameters.
+        /// This is only supported when <see cref="NpgsqlCommand.CommandType" /> is set to <see cref="CommandType.StoredProcedure" />.
+        /// </summary>
+        Mixed
     }
 }

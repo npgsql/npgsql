@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
@@ -27,8 +28,6 @@ namespace Npgsql
 
         readonly ChannelReader<NpgsqlCommand>? _multiplexCommandReader;
         internal ChannelWriter<NpgsqlCommand>? MultiplexCommandWriter { get; }
-
-        const int WriteCoalescingDelayAdaptivityUs = 10;
 
         /// <summary>
         /// A pool-wide type mapper used when multiplexing. This is necessary because binding parameters
@@ -388,9 +387,9 @@ namespace Npgsql
 
             void FailWrite(NpgsqlConnector connector, Exception exception)
             {
-                // Note that all commands already passed validation before being enqueued. This means any error
-                // here is either an unrecoverable network issue (in which case we're already broken), or some other
-                // issue while writing (e.g. invalid UTF8 characters in the SQL query) - unrecoverable in any case.
+                // Note that all commands already passed validation. This means any error here is either an unrecoverable network issue
+                // (in which case we're already broken), or some other issue while writing (e.g. invalid UTF8 characters in the SQL query) -
+                // unrecoverable in any case.
 
                 // All commands enqueued in CommandsInFlightWriter will be drained by the reader and failed.
                 // Note that some of these commands where only written to the connector's buffer, but never

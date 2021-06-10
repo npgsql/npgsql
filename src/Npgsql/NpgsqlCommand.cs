@@ -386,6 +386,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var conn = CheckAndGetConnection();
             Debug.Assert(conn is not null);
 
+            if (string.IsNullOrEmpty(CommandText))
+                throw new InvalidOperationException("CommandText property has not been initialized");
+
             using var _ = conn.StartTemporaryBindingScope(out var connector);
 
             if (Statements.Any(s => s.PreparedStatement?.IsExplicit == true))
@@ -482,7 +485,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using (connector.StartUserAction())
             {
                 Log.Debug($"Deriving Parameters for query: {CommandText}", connector.Id);
-                ProcessRawQuery(connector.UseConformingStrings, deriveParameters: true);
+
+                connector.SqlQueryParser.ParseRawQuery(CommandText, _parameters, _statements, connector.UseConformingStrings, deriveParameters: true);
 
                 var sendTask = SendDeriveParameters(connector, false);
                 if (sendTask.IsFaulted)
@@ -579,10 +583,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var connector = connection.Connector!;
 
             for (var i = 0; i < Parameters.Count; i++)
-                Parameters[i].Bind(connector.TypeMapper);
+            {
+                var p = Parameters[i];
+                Parameters.CalculatePlaceholderType(p);
+                p.Bind(connector.TypeMapper);
+            }
 
-            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
-            Log.Debug($"Preparing: {CommandText}", connector.Id);
+            ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings);
+
+            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+                Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             var needToPrepare = false;
             foreach (var statement in _statements)
@@ -740,31 +750,40 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Query analysis
 
-        internal void ProcessRawQuery(bool standardConformingStrings, bool deriveParameters)
+        internal void ProcessRawQuery(SqlQueryParser? parser, bool standardConformingStrings)
         {
             if (string.IsNullOrEmpty(CommandText))
                 throw new InvalidOperationException("CommandText property has not been initialized");
 
             NpgsqlStatement statement;
+
             switch (CommandType) {
             case CommandType.Text:
-                var parser = new SqlQueryParser();
-                parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings, deriveParameters);
+                switch (Parameters.PlaceholderType)
+                {
+                case PlaceholderType.Positional:
+                    // In positional parameter mode, we don't need to parse/rewrite the CommandText or reorder the parameters - just use
+                    // them as is. Note that queries with no parameters are parsed below, since they may contain a semicolon (legacy
+                    // batching). If the user includes a semicolon (legacy batching) when positional parameters are in use, we'll just send
+                    // that and PostgreSQL will error (this behavior is by-design - use the new batching API).
+                    statement = TruncateStatementsToOne();
+                    statement.SQL = CommandText;
+                    statement.InputParameters = Parameters.InternalList;
+                    return;
+
+                case PlaceholderType.Mixed:
+                    throw new NotSupportedException("Mixing named and positional parameters isn't supported");
+                }
+
+                parser ??= new SqlQueryParser();
+                parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings);
 
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
 
             case CommandType.TableDirect:
-                if (_statements.Count == 0)
-                    statement = new NpgsqlStatement();
-                else
-                {
-                    statement = _statements[0];
-                    statement.Reset();
-                    _statements.Clear();
-                }
-                _statements.Add(statement);
+                statement = TruncateStatementsToOne();
                 statement.SQL = "SELECT * FROM " + CommandText;
                 break;
 
@@ -804,17 +823,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                 sb.Append(')');
 
-                if (_statements.Count == 0)
-                    statement = new NpgsqlStatement();
-                else
-                {
-                    statement = _statements[0];
-                    statement.Reset();
-                    _statements.Clear();
-                }
+                statement = TruncateStatementsToOne();
                 statement.SQL = sb.ToString();
                 statement.InputParameters.AddRange(inputList);
-                _statements.Add(statement);
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
@@ -831,15 +842,45 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void ValidateParameters(ConnectorTypeMapper typeMapper)
         {
+            var hasOutputParameters = false;
+
             for (var i = 0; i < Parameters.Count; i++)
             {
                 var p = Parameters[i];
-                if (!p.IsInputDirection)
+
+                Parameters.CalculatePlaceholderType(p);
+
+                switch (p.Direction)
+                {
+                case ParameterDirection.Input:
+                    break;
+
+                case ParameterDirection.InputOutput:
+                    if (Parameters.PlaceholderType == PlaceholderType.Positional)
+                        throw new NotSupportedException("Output parameters are not supported in positional mode");
+                    hasOutputParameters = true;
+                    break;
+
+                case ParameterDirection.Output:
+                    if (Parameters.PlaceholderType == PlaceholderType.Positional)
+                        throw new NotSupportedException("Output parameters are not supported in positional mode");
+                    hasOutputParameters = true;
                     continue;
+
+                case ParameterDirection.ReturnValue:
+                    continue;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(ParameterDirection),
+                        $"Unhandled {nameof(ParameterDirection)} value: {p.Direction}");
+                }
+
                 p.Bind(typeMapper);
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
             }
+
+            Parameters.HasOutputParameters = hasOutputParameters;
         }
 
         #endregion
@@ -1224,7 +1265,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             break;
 
                         case false:
-                            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
+                            ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
                             {
@@ -1317,7 +1358,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     ValidateParameters(pool.MultiplexingTypeMapper!);
-                    ProcessRawQuery(standardConformingStrings: true, deriveParameters: false);
+                    ProcessRawQuery(null, standardConformingStrings: true);
 
                     State = CommandState.InProgress;
 
@@ -1439,6 +1480,29 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #endregion
 
         #region Misc
+
+        NpgsqlStatement TruncateStatementsToOne()
+        {
+            switch (_statements.Count)
+            {
+            case 0:
+                var statement = new NpgsqlStatement();
+                _statements.Add(statement);
+                return statement;
+
+            case 1:
+                statement = _statements[0];
+                statement.Reset();
+                return statement;
+
+            default:
+                statement = _statements[0];
+                statement.Reset();
+                _statements.Clear();
+                _statements.Add(statement);
+                return statement;
+            }
+        }
 
         /// <summary>
         /// Fixes up the text/binary flag on result columns.

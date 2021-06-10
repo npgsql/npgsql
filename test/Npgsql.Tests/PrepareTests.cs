@@ -103,22 +103,52 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Parameters()
+        public void Named_parameters()
         {
             using var conn = OpenConnectionAndUnprepare();
-            using var command = new NpgsqlCommand("SELECT @a, @b", conn);
-            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-            command.Parameters.Add(new NpgsqlParameter("b", 8));
-            command.Prepare();
-            command.Parameters[0].Value = 3;
-            command.Parameters[1].Value = 5;
-            using (var reader = command.ExecuteReader())
+
+            for (var i = 0; i < 2; i++)
             {
-                Assert.That(reader.Read(), Is.True);
-                Assert.That(reader.GetInt32(0), Is.EqualTo(3));
-                Assert.That(reader.GetInt64(1), Is.EqualTo(5));
+                using var command = new NpgsqlCommand("SELECT @a, @b", conn);
+                command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+                command.Parameters.Add(new NpgsqlParameter("b", 8));
+                command.Prepare();
+                command.Parameters[0].Value = 3;
+                command.Parameters[1].Value = 5;
+                using (var reader = command.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(3));
+                    Assert.That(reader.GetInt64(1), Is.EqualTo(5));
+                }
+                if (i == 1)
+                    command.Unprepare();
             }
-            command.Unprepare();
+        }
+
+        [Test]
+        public void Positional_parameters()
+        {
+            using var conn = OpenConnectionAndUnprepare();
+
+            for (var i = 0; i < 2; i++)
+            {
+                using var command = new NpgsqlCommand("SELECT $1, $2", conn);
+                command.Parameters.Add(new NpgsqlParameter { DbType = DbType.Int32 });
+                command.Parameters.Add(new NpgsqlParameter { Value = 8 });
+                command.Prepare();
+                command.Parameters[0].Value = 3;
+                command.Parameters[1].Value = 5;
+                using (var reader = command.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(3));
+                    Assert.That(reader.GetInt64(1), Is.EqualTo(5));
+                }
+
+                if (i == 1)
+                    command.Unprepare();
+            }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1207")]

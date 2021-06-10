@@ -16,11 +16,8 @@ namespace Npgsql.Tests
 {
     public class CommandTests : MultiplexingTestBase
     {
-        #region Multiple Statements in a Command
+        #region Batching
 
-        /// <summary>
-        /// Tests various configurations of queries and non-queries within a multiquery
-        /// </summary>
         [Test]
         [TestCase(new[] { true }, TestName = "SingleQuery")]
         [TestCase(new[] { false }, TestName = "SingleNonQuery")]
@@ -540,13 +537,71 @@ namespace Npgsql.Tests
             Assert.That(reader.Read(), Is.False);
         }
 
+        #region Parameters
+
+        [Test]
+        public async Task Positional_parameter()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+        }
+
+        [Test]
+        public async Task Positional_parameters_arent_supported_with_legacy_batching()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1; SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
+        }
+
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
-        public async Task ParameterUnset()
+        public async Task Parameter_without_Value()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
             cmd.Parameters.Add(new NpgsqlParameter("@p", NpgsqlDbType.Integer));
             Assert.That(() => cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>());
+        }
+
+        [Test]
+        public async Task Unreferenced_named_parameter_works()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            cmd.Parameters.AddWithValue("not_used", 8);
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task Unreferenced_positional_parameter_works()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8 });
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task Mixing_positional_and_named_parameters_is_not_supported()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1, @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8 });
+            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = 9 });
+            Assert.That(() => cmd.ExecuteNonQueryAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+        }
+
+        [Test]
+        public async Task Positional_output_parameters_are_not_supported()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8, Direction = ParameterDirection.InputOutput });
+            Assert.That(() => cmd.ExecuteNonQueryAsync(), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test]
@@ -606,6 +661,8 @@ namespace Npgsql.Tests
             Assert.That(reader.GetString(3), Is.EqualTo("foo"));
         }
 
+        #endregion Parameters
+
         [Test]
         public async Task CommandTextNotSet()
         {
@@ -654,9 +711,6 @@ namespace Npgsql.Tests
             Assert.That(cmd.ExecuteNonQueryAsync, Is.EqualTo(2));
 
             cmd.CommandText = $"INSERT INTO {table} (name) VALUES ('{new string('x', conn.Settings.WriteBufferSize)}')";
-            Assert.That(cmd.ExecuteNonQueryAsync, Is.EqualTo(1));
-
-            cmd.Parameters.AddWithValue("not_used", DBNull.Value);
             Assert.That(cmd.ExecuteNonQueryAsync, Is.EqualTo(1));
         }
 

@@ -43,6 +43,7 @@ namespace Npgsql
             bool deriveParameters)
         {
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
+            Debug.Assert(parameters.PlaceholderType != PlaceholderType.Positional);
 
             NpgsqlStatement statement = null!;
             var statementIndex = -1;
@@ -85,12 +86,12 @@ namespace Npgsql
                     goto DoubleQuoted;
                 case ':':
                     if (lastChar != ':')
-                        goto ParamStart;
+                        goto NamedParamStart;
                     else
                         break;
                 case '@':
                     if (lastChar != '@')
-                        goto ParamStart;
+                        goto NamedParamStart;
                     else
                         break;
                 case ';':
@@ -115,7 +116,7 @@ namespace Npgsql
                     goto Finish;
             }
 
-        ParamStart:
+        NamedParamStart:
             if (currCharOfs < end)
             {
                 lastChar = ch;
@@ -125,14 +126,14 @@ namespace Npgsql
                     if (currCharOfs - 1 > currTokenBeg)
                         _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     currTokenBeg = currCharOfs++ - 1;
-                    goto Param;
+                    goto NamedParam;
                 }
                 currCharOfs++;
                 goto NoneContinue;
             }
             goto Finish;
 
-        Param:
+        NamedParam:
             // We have already at least one character of the param name
             for (;;)
             {

@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
@@ -133,6 +132,32 @@ namespace Npgsql.Tests
                 using var conn = new NpgsqlConnection(connString);
                 NpgsqlConnection.ClearPool(conn);
             }
+        }
+
+        [Test]
+        public async Task Positional_parameter()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                AutoPrepareMinUsages = 2,
+                MaxAutoPrepare = 2
+            };
+
+            using var pool = CreateTempPool(csb, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
+            await checkCmd.PrepareAsync();
+
+            await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
+
+            Assert.That(cmd.IsPrepared, Is.False);
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+            Assert.That(cmd.IsPrepared, Is.False);
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+            Assert.That(cmd.IsPrepared, Is.True);
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+            Assert.That(cmd.IsPrepared, Is.True);
         }
 
         [Test]
@@ -284,7 +309,8 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Integer, 8);
-                cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery();
+                cmd.ExecuteNonQuery();
+                cmd.ExecuteNonQuery();
                 Assert.That(cmd.IsPrepared, Is.True);
             }
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
