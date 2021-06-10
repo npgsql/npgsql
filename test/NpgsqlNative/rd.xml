@@ -1,0 +1,8 @@
+<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
+<Application>
+    <Assembly Name="Npgsql">
+        <Type Name="Npgsql.Internal.TypeHandling.NullableHandler`2[[System.Nullable`1[[System.Int64, System.Runtime]], System.Runtime],[System.Int64, System.Runtime]]" Dynamic="Required All" />
+        <Type Name="Npgsql.Internal.TypeHandlers.ArrayHandler`2[[System.Nullable`1[[System.Int64, System.Runtime]][], System.Runtime],[System.Nullable`1[[System.Int64, System.Runtime]], System.Runtime]]" Dynamic="Required All" />
+    </Assembly>
+</Application>
+</Directives>

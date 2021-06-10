@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <TrimMode>link</TrimMode>
+    <!-- <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally> -->
+
+   <!-- <IlcDisableReflection>true</IlcDisableReflection>
+   <InvariantGlobalization>true</InvariantGlobalization>
+   <IlcInvariantGlobalization>true</IlcInvariantGlobalization>
+   <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+   <UseSystemResourceKeys>true</UseSystemResourceKeys>
+   <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+   <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
+   <DebuggerSupport>false</DebuggerSupport>
+   <EventSourceSupport>false</EventSourceSupport>
+   <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+   <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+   <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+   <IlcDisableUnhandledExceptionExperience>true</IlcDisableUnhandledExceptionExperience> -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- <TrimmerRootDescriptor Include="TrimmerRoots.xml" /> -->
+    <RdXmlFile Include="rd.xml" />
+    <PackageReference Include="Microsoft.DotNet.ILCompiler" />
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+  </ItemGroup>
+
+</Project>

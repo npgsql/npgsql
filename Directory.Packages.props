@@ -37,5 +37,8 @@
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="3.0.0" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.0" />
+
+    <!-- Native tests -->
+    <PackageVersion Include="Microsoft.DotNet.ILCompiler" Version="6.0.0-preview.6.21309.2" />
   </ItemGroup>
 </Project>
