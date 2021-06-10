@@ -7,7 +7,7 @@ namespace Npgsql
 {
     class SqlQueryParser
     {
-        readonly Dictionary<string, int> _paramIndexMap = new();
+        readonly Dictionary<string, int> _namedParameterMap = new();
         readonly StringBuilder _rewrittenSql = new();
 
         /// <summary>
@@ -33,23 +33,17 @@ namespace Npgsql
             List<NpgsqlStatement> statements,
             bool standardConformingStrings,
             bool deriveParameters = false)
-            => ParseRawQuery(sql.AsSpan(), parameters, statements, standardConformingStrings, deriveParameters);
-
-        void ParseRawQuery(
-            ReadOnlySpan<char> sql,
-            NpgsqlParameterCollection parameters,
-            List<NpgsqlStatement> statements,
-            bool standardConformingStrings,
-            bool deriveParameters)
         {
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
+            var span = sql.AsSpan();
 
-            NpgsqlStatement statement = null!;
+            var positionalParameters = parameters.Count > 0 && parameters[0].ParameterName.Length == 0;
+            NpgsqlStatement statement;
             var statementIndex = -1;
             MoveToNextStatement();
 
             var currCharOfs = 0;
-            var end = sql.Length;
+            var end = span.Length;
             var ch = '\0';
             int dollarTagStart;
             int dollarTagEnd;
@@ -61,9 +55,9 @@ namespace Npgsql
             if (currCharOfs >= end)
                 goto Finish;
             var lastChar = ch;
-            ch = sql[currCharOfs++];
+            ch = span[currCharOfs++];
         NoneContinue:
-            for (; ; lastChar = ch, ch = sql[currCharOfs++])
+            for (; ; lastChar = ch, ch = span[currCharOfs++])
             {
                 switch (ch)
                 {
@@ -84,12 +78,12 @@ namespace Npgsql
                 case '"':
                     goto DoubleQuoted;
                 case ':':
-                    if (lastChar != ':')
+                    if (lastChar != ':' && !positionalParameters)
                         goto ParamStart;
                     else
                         break;
                 case '@':
-                    if (lastChar != '@')
+                    if (lastChar != '@' && !positionalParameters)
                         goto ParamStart;
                     else
                         break;
@@ -119,11 +113,11 @@ namespace Npgsql
             if (currCharOfs < end)
             {
                 lastChar = ch;
-                ch = sql[currCharOfs];
+                ch = span[currCharOfs];
                 if (IsParamNameChar(ch))
                 {
                     if (currCharOfs - 1 > currTokenBeg)
-                        _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        _rewrittenSql.Append(span.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
                 }
@@ -137,11 +131,11 @@ namespace Npgsql
             for (;;)
             {
                 lastChar = ch;
-                if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
+                if (currCharOfs >= end || !IsParamNameChar(ch = span[currCharOfs]))
                 {
-                    var paramName = sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
+                    var paramName = span.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
 
-                    if (!_paramIndexMap.TryGetValue(paramName, out var index))
+                    if (!_namedParameterMap.TryGetValue(paramName, out var index))
                     {
                         // Parameter hasn't been seen before in this query
                         if (!parameters.TryGetValue(paramName, out var parameter))
@@ -155,7 +149,7 @@ namespace Npgsql
                             {
                                 // Parameter placeholder does not match a parameter on this command.
                                 // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                                _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg));
+                                _rewrittenSql.Append(span.Slice(currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;
@@ -169,7 +163,7 @@ namespace Npgsql
                             throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
                         statement.InputParameters.Add(parameter);
-                        index = _paramIndexMap[paramName] = statement.InputParameters.Count;
+                        index = _namedParameterMap[paramName] = statement.InputParameters.Count;
                     }
                     _rewrittenSql.Append('$');
                     _rewrittenSql.Append(index);
@@ -188,7 +182,7 @@ namespace Npgsql
         Quoted:
             while (currCharOfs < end)
             {
-                if (sql[currCharOfs++] == '\'')
+                if (span[currCharOfs++] == '\'')
                 {
                     ch = '\0';
                     goto None;
@@ -199,7 +193,7 @@ namespace Npgsql
         DoubleQuoted:
             while (currCharOfs < end)
             {
-                if (sql[currCharOfs++] == '"')
+                if (span[currCharOfs++] == '"')
                 {
                     ch = '\0';
                     goto None;
@@ -211,7 +205,7 @@ namespace Npgsql
             if (currCharOfs < end)
             {
                 lastChar = ch;
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '\'')
                     goto Escaped;
                 goto NoneContinue;
@@ -221,7 +215,7 @@ namespace Npgsql
         Escaped:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 switch (ch)
                 {
                 case '\'':
@@ -240,7 +234,7 @@ namespace Npgsql
         MaybeConcatenatedEscaped:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 switch (ch)
                 {
                 case '\r':
@@ -260,7 +254,7 @@ namespace Npgsql
         MaybeConcatenatedEscaped2:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 switch (ch)
                 {
                 case '\'':
@@ -269,7 +263,7 @@ namespace Npgsql
                 {
                     if (currCharOfs >= end)
                         goto Finish;
-                    ch = sql[currCharOfs++];
+                    ch = span[currCharOfs++];
                     if (ch == '-')
                         goto MaybeConcatenatedEscapeAfterComment;
                     lastChar = '\0';
@@ -291,7 +285,7 @@ namespace Npgsql
         MaybeConcatenatedEscapeAfterComment:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
                     goto MaybeConcatenatedEscaped2;
             }
@@ -300,7 +294,7 @@ namespace Npgsql
         DollarQuotedStart:
             if (currCharOfs < end)
             {
-                ch = sql[currCharOfs];
+                ch = span[currCharOfs];
                 if (ch == '$')
                 {
                     // Empty tag
@@ -324,7 +318,7 @@ namespace Npgsql
             while (currCharOfs < end)
             {
                 lastChar = ch;
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '$')
                 {
                     dollarTagEnd = currCharOfs - 1;
@@ -336,8 +330,8 @@ namespace Npgsql
             goto Finish;
 
         DollarQuoted:
-            var tag = sql.Slice(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
-            var pos = sql.Slice(dollarTagEnd + 1).IndexOf(tag);
+            var tag = span.Slice(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+            var pos = span.Slice(dollarTagEnd + 1).IndexOf(tag);
             if (pos == -1)
             {
                 currCharOfs = end;
@@ -351,7 +345,7 @@ namespace Npgsql
         LineCommentBegin:
             if (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '-')
                     goto LineComment;
                 lastChar = '\0';
@@ -362,7 +356,7 @@ namespace Npgsql
         LineComment:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
                     goto None;
             }
@@ -371,7 +365,7 @@ namespace Npgsql
         BlockCommentBegin:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '*')
                 {
                     blockCommentLevel++;
@@ -390,7 +384,7 @@ namespace Npgsql
         BlockComment:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 switch (ch)
                 {
                 case '*':
@@ -404,7 +398,7 @@ namespace Npgsql
         BlockCommentEnd:
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs++];
+                ch = span[currCharOfs++];
                 if (ch == '/')
                 {
                     if (--blockCommentLevel > 0)
@@ -417,11 +411,11 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
+            _rewrittenSql.Append(span.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
             statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end)
             {
-                ch = sql[currCharOfs];
+                ch = span[currCharOfs];
                 if (char.IsWhiteSpace(ch))
                 {
                     currCharOfs++;
@@ -439,14 +433,25 @@ namespace Npgsql
             return;
 
         Finish:
-            _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
-            statement.SQL = _rewrittenSql.ToString();
+            if (statementIndex == 0 && _rewrittenSql.Length == 0 && !parameters.HasOutputParameters)
+            {
+                statement.SQL = sql;
+                statement.InputParameters = parameters.InternalList;
+            }
+            else
+            {
+                _rewrittenSql.Append(span.Slice(currTokenBeg, end - currTokenBeg));
+                statement.SQL = _rewrittenSql.ToString();
+                _rewrittenSql.Clear();
+            }
+
             if (statements.Count > statementIndex + 1)
                statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
 
             void MoveToNextStatement()
             {
                 statementIndex++;
+
                 if (statements.Count > statementIndex)
                 {
                     statement = statements[statementIndex];
@@ -457,7 +462,20 @@ namespace Npgsql
                     statement = new NpgsqlStatement();
                     statements.Add(statement);
                 }
-                _paramIndexMap.Clear();
+
+                // In positional parameter mode, legacy batching (multi-statement commands) isn't supported, and single-statement commands
+                // don't need to be rewritten.
+                if (positionalParameters)
+                {
+                    if (statementIndex > 0)
+                    {
+                        throw new NotSupportedException(
+                            "Positional parameters aren't supported in legacy batching mode. Either use named parameters or use NpgsqlBatch");
+                    }
+                }
+                else
+                    _namedParameterMap.Clear();
+
                 _rewrittenSql.Clear();
             }
         }

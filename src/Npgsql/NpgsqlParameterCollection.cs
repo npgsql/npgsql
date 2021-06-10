@@ -15,7 +15,7 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
-        readonly List<NpgsqlParameter> _internalList = new(5);
+        internal List<NpgsqlParameter> InternalList { get; } = new(5);
 
         // Dictionary lookups for GetValue to improve performance
         Dictionary<string, int>? _lookup;
@@ -56,7 +56,7 @@ namespace Npgsql
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                return _internalList[index];
+                return InternalList[index];
             }
             set
             {
@@ -70,11 +70,11 @@ namespace Npgsql
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
-                var oldValue = _internalList[index];
+                var oldValue = InternalList[index];
                 if (oldValue.ParameterName != value.ParameterName)
                     InvalidateHashLookups();
 
-                _internalList[index] = value;
+                InternalList[index] = value;
             }
         }
 
@@ -85,7 +85,7 @@ namespace Npgsql
         /// <value>The <see cref="NpgsqlParameter"/> at the specified index.</value>
         public new NpgsqlParameter this[int index]
         {
-            get => _internalList[index];
+            get => InternalList[index];
             set
             {
                 if (value is null)
@@ -93,7 +93,7 @@ namespace Npgsql
                 if (value.Collection != null)
                     throw new InvalidOperationException("The parameter already belongs to a collection");
 
-                var oldValue = _internalList[index];
+                var oldValue = InternalList[index];
 
                 if (oldValue == value)
                     return;
@@ -101,7 +101,7 @@ namespace Npgsql
                 if (value.ParameterName != oldValue.ParameterName)
                     InvalidateHashLookups();
 
-                _internalList[index] = value;
+                InternalList[index] = value;
                 value.Collection = this;
                 oldValue.Collection = null;
             }
@@ -119,7 +119,7 @@ namespace Npgsql
             if (value.Collection != null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
 
-            _internalList.Add(value);
+            InternalList.Add(value);
             value.Collection = this;
             InvalidateHashLookups();
             return value;
@@ -247,14 +247,14 @@ namespace Npgsql
                 parameterName = parameterName.Remove(0, 1);
 
             // Using a dictionary is much faster for 5 or more items
-            if (_internalList.Count >= 5)
+            if (InternalList.Count >= 5)
             {
                 if (_lookup == null)
                 {
                     _lookup = new Dictionary<string, int>();
-                    for (var i = 0 ; i < _internalList.Count ; i++)
+                    for (var i = 0 ; i < InternalList.Count ; i++)
                     {
-                        var item = _internalList[i];
+                        var item = InternalList[i];
 
                         // Store only the first of each distinct value
                         if (!_lookup.ContainsKey(item.TrimmedName))
@@ -269,10 +269,10 @@ namespace Npgsql
                 // Case sensitive lookup failed, generate a case insensitive lookup
                 if (_lookupIgnoreCase == null)
                 {
-                    _lookupIgnoreCase = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
-                    for (var i = 0 ; i < _internalList.Count ; i++)
+                    _lookupIgnoreCase = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
+                    for (var i = 0 ; i < InternalList.Count ; i++)
                     {
-                        var item = _internalList[i];
+                        var item = InternalList[i];
 
                         // Store only the first of each distinct value
                         if (!_lookupIgnoreCase.ContainsKey(item.TrimmedName))
@@ -288,13 +288,13 @@ namespace Npgsql
             }
 
             // First try a case-sensitive match
-            for (var i = 0; i < _internalList.Count; i++)
-                if (parameterName == _internalList[i].TrimmedName)
+            for (var i = 0; i < InternalList.Count; i++)
+                if (parameterName == InternalList[i].TrimmedName)
                     return i;
 
             // If not fond, try a case-insensitive match
-            for (var i = 0; i < _internalList.Count; i++)
-                if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+            for (var i = 0; i < InternalList.Count; i++)
+                if (string.Equals(parameterName, InternalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                     return i;
 
             return -1;
@@ -313,10 +313,10 @@ namespace Npgsql
         /// <param name="index">The zero-based index of the parameter.</param>
         public override void RemoveAt(int index)
         {
-            if (_internalList.Count - 1 < index)
+            if (InternalList.Count - 1 < index)
                 throw new ArgumentOutOfRangeException(nameof(index));
 
-            Remove(_internalList[index]);
+            Remove(InternalList[index]);
         }
 
         /// <inheritdoc />
@@ -348,7 +348,7 @@ namespace Npgsql
 
         /// <inheritdoc />
         public override bool Contains(object value)
-            => value is NpgsqlParameter param && _internalList.Contains(param);
+            => value is NpgsqlParameter param && InternalList.Contains(param);
 
         /// <summary>
         /// Gets a value indicating whether a <see cref="NpgsqlParameter"/> with the specified parameter name exists in the collection.
@@ -371,7 +371,7 @@ namespace Npgsql
 
             if (index != -1)
             {
-                parameter = _internalList[index];
+                parameter = InternalList[index];
                 return true;
             }
 
@@ -385,10 +385,10 @@ namespace Npgsql
         public override void Clear()
         {
             // clean up parameters so they can be added to another command if required.
-            foreach (var toRemove in _internalList)
+            foreach (var toRemove in InternalList)
                 toRemove.Collection = null;
 
-            _internalList.Clear();
+            InternalList.Clear();
             InvalidateHashLookups();
         }
 
@@ -411,33 +411,33 @@ namespace Npgsql
         #region ICollection Member
 
         /// <inheritdoc />
-        public override bool IsSynchronized => (_internalList as ICollection).IsSynchronized;
+        public override bool IsSynchronized => (InternalList as ICollection).IsSynchronized;
 
         /// <summary>
         /// Gets the number of <see cref="NpgsqlParameter"/> objects in the collection.
         /// </summary>
         /// <value>The number of <see cref="NpgsqlParameter"/> objects in the collection.</value>
-        public override int Count => _internalList.Count;
+        public override int Count => InternalList.Count;
 
         /// <inheritdoc />
         public override void CopyTo(Array array, int index)
-            => ((ICollection)_internalList).CopyTo(array, index);
+            => ((ICollection)InternalList).CopyTo(array, index);
 
         /// <inheritdoc />
         bool ICollection<NpgsqlParameter>.IsReadOnly => false;
 
         /// <inheritdoc />
-        public override object SyncRoot => ((ICollection)_internalList).SyncRoot;
+        public override object SyncRoot => ((ICollection)InternalList).SyncRoot;
 
         #endregion
 
         #region IEnumerable Member
 
         IEnumerator<NpgsqlParameter> IEnumerable<NpgsqlParameter>.GetEnumerator()
-            => _internalList.GetEnumerator();
+            => InternalList.GetEnumerator();
 
         /// <inheritdoc />
-        public override IEnumerator GetEnumerator() => _internalList.GetEnumerator();
+        public override IEnumerator GetEnumerator() => InternalList.GetEnumerator();
 
         #endregion
 
@@ -473,7 +473,7 @@ namespace Npgsql
         /// <param name="item">Parameter to find.</param>
         /// <returns>Index of the parameter, or -1 if the parameter is not present.</returns>
         public int IndexOf(NpgsqlParameter item)
-            => _internalList.IndexOf(item);
+            => InternalList.IndexOf(item);
 
         /// <summary>
         /// Insert the specified parameter into the collection.
@@ -487,7 +487,7 @@ namespace Npgsql
             if (item.Collection != null)
                 throw new Exception("The parameter already belongs to a collection");
 
-            _internalList.Insert(index, item);
+            InternalList.Insert(index, item);
             item.Collection = this;
             InvalidateHashLookups();
         }
@@ -497,7 +497,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="item">Parameter to find.</param>
         /// <returns>True if the parameter was found, otherwise false.</returns>
-        public bool Contains(NpgsqlParameter item) => _internalList.Contains(item);
+        public bool Contains(NpgsqlParameter item) => InternalList.Contains(item);
 
         /// <summary>
         /// Remove the specified parameter from the collection.
@@ -511,7 +511,7 @@ namespace Npgsql
             if (item.Collection != this)
                 throw new InvalidOperationException("The item does not belong to this collection");
 
-            if (_internalList.Remove(item))
+            if (InternalList.Remove(item))
             {
                 item.Collection = null;
                 InvalidateHashLookups();
@@ -527,37 +527,28 @@ namespace Npgsql
         /// <param name="array">Destination array.</param>
         /// <param name="arrayIndex">Starting index in destination array.</param>
         public void CopyTo(NpgsqlParameter[] array, int arrayIndex)
-            => _internalList.CopyTo(array, arrayIndex);
+            => InternalList.CopyTo(array, arrayIndex);
 
         /// <summary>
         /// Convert collection to a System.Array.
         /// </summary>
         /// <returns>NpgsqlParameter[]</returns>
-        public NpgsqlParameter[] ToArray() => _internalList.ToArray();
+        public NpgsqlParameter[] ToArray() => InternalList.ToArray();
 
         internal void CloneTo(NpgsqlParameterCollection other)
         {
-            other._internalList.Clear();
-            foreach (var param in _internalList)
+            other.InternalList.Clear();
+            foreach (var param in InternalList)
             {
                 var newParam = param.Clone();
                 newParam.Collection = this;
-                other._internalList.Add(newParam);
+                other.InternalList.Add(newParam);
             }
             other._lookup = _lookup;
             other._lookupIgnoreCase = _lookupIgnoreCase;
         }
 
-        internal bool HasOutputParameters
-        {
-            get
-            {
-                foreach (var p in _internalList)
-                    if (p.IsOutputDirection)
-                        return true;
-                return false;
-            }
-        }
+        internal bool HasOutputParameters { get; set; }
 
         static NpgsqlParameter Cast(object? value)
         {

@@ -139,6 +139,8 @@ namespace Npgsql.Internal
 
         internal PreparedStatementManager PreparedStatementManager;
 
+        internal SqlQueryParser SqlQueryParser { get; } = new();
+
         /// <summary>
         /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
         /// Otherwise null.

@@ -37,7 +37,6 @@ namespace Npgsql.Tests
         [TestCase("SELECT $$:str$$", TestName = "DollarQuotesNoTag")]
         public void Untouched(string sql)
         {
-            _params.AddWithValue(":param", "foo");
             _parser.ParseRawQuery(sql, _params, _queries, standardConformingStrings: true);
             Assert.That(_queries.Single().SQL, Is.EqualTo(sql));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
@@ -64,16 +63,18 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [TestCase(@"SELECT e'ab\'c:param'", TestName = "Estring")]
-        [TestCase(@"SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/1")]
-        [TestCase(@"SELECT 1,
--- Comment, @param and also :param
+        [TestCase(@"SELECT :p, e'ab\'c:not_referenced'", TestName = "Estring")]
+        [TestCase(@"SELECT :p, /*/* -- nested comment :not_referenced /*/* *//*/ **/*/*/*/1", TestName = "BlockComment")]
+        [TestCase(@"SELECT :p,
+-- Comment, @not_referenced and also :not_referenced
 2", TestName = "LineComment")]
         public void ParamDoesntGetBound(string sql)
         {
-            _params.AddWithValue(":param", "foo");
+            _params.AddWithValue(":p", "foo");
+            _params.AddWithValue(":not_referenced", "foo");
             _parser.ParseRawQuery(sql, _params, _queries, standardConformingStrings: true);
-            Assert.That(_queries.Single().InputParameters, Is.Empty);
+            var boundParameter = _queries.Single().InputParameters.Single();
+            Assert.That(boundParameter.ParameterName, Is.EqualTo(":p"));
         }
 
         [Test]
@@ -165,6 +166,16 @@ namespace Npgsql.Tests
             Assert.That(_queries, Has.Count.EqualTo(2));
             _parser.ParseRawQuery("SELECT 1", _params, _queries, standardConformingStrings: true);
             Assert.That(_queries, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void Single_statement_with_positional_parameter()
+        {
+            _params.Add(new NpgsqlParameter { Value = 8 });
+            var commandText = "SELECT $1";
+            _parser.ParseRawQuery("SELECT $1", _params, _queries, standardConformingStrings: true);
+            Assert.That(_queries.Single().SQL, Is.SameAs(commandText));
+            Assert.That(_queries.Single().InputParameters, Is.SameAs(_params.InternalList));
         }
 
 #if TODO

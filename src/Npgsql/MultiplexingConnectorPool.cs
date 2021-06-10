@@ -1,4 +1,5 @@
 using System;
+using System.Data;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
@@ -27,8 +28,6 @@ namespace Npgsql
 
         readonly ChannelReader<NpgsqlCommand>? _multiplexCommandReader;
         internal ChannelWriter<NpgsqlCommand>? MultiplexCommandWriter { get; }
-
-        const int WriteCoalescingDelayAdaptivityUs = 10;
 
         /// <summary>
         /// A pool-wide type mapper used when multiplexing. This is necessary because binding parameters
@@ -261,25 +260,20 @@ namespace Npgsql
                 // to buffer in memory), and the actual flush will occur at the level above. For cases where the
                 // command overflows the buffer, async I/O is done, and we schedule continuations separately -
                 // but the main thread continues to handle other commands on other connectors.
-                if (_autoPrepare)
+
+                try
                 {
-                    var numPrepared = 0;
-                    foreach (var statement in command._statements)
-                    {
-                        // If this statement isn't prepared, see if it gets implicitly prepared.
-                        // Note that this may return null (not enough usages for automatic preparation).
-                        if (!statement.IsPrepared)
-                            statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement);
-                        if (statement.PreparedStatement is PreparedStatement pStatement)
-                        {
-                            numPrepared++;
-                            if (pStatement?.State == PreparedState.NotPrepared)
-                            {
-                                pStatement.State = PreparedState.BeingPrepared;
-                                statement.IsPreparing = true;
-                            }
-                        }
-                    }
+                    if (_autoPrepare)
+                        command.AutoPrepare(connector);
+                    else
+                        command.ProcessRawQuery(connector, deriveParameters: false);
+                }
+                catch (Exception e)
+                {
+                    // We have a validation failure before even beginning to write the command to the buffer (e.g. too many parameters),
+                    // no harm no foul. Fail the command and move on to the next one.
+                    command.ExecutionCompletion.SetException(e);
+                    return true;
                 }
 
                 var written = connector.CommandsInFlightWriter!.TryWrite(command);
@@ -388,9 +382,9 @@ namespace Npgsql
 
             void FailWrite(NpgsqlConnector connector, Exception exception)
             {
-                // Note that all commands already passed validation before being enqueued. This means any error
-                // here is either an unrecoverable network issue (in which case we're already broken), or some other
-                // issue while writing (e.g. invalid UTF8 characters in the SQL query) - unrecoverable in any case.
+                // Note that all commands already passed validation. This means any error here is either an unrecoverable network issue
+                // (in which case we're already broken), or some other issue while writing (e.g. invalid UTF8 characters in the SQL query) -
+                // unrecoverable in any case.
 
                 // All commands enqueued in CommandsInFlightWriter will be drained by the reader and failed.
                 // Note that some of these commands where only written to the connector's buffer, but never

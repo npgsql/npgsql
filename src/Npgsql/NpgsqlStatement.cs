@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -53,7 +55,14 @@ namespace Npgsql
         /// <summary>
         /// The input parameters sent with this statement.
         /// </summary>
-        public List<NpgsqlParameter> InputParameters { get; } = new();
+        public List<NpgsqlParameter> InputParameters
+        {
+            get => _inputParameters ??= _ownedInputParameters ??= new();
+            internal set => _inputParameters = value;
+        }
+
+        List<NpgsqlParameter>? _ownedInputParameters;
+        List<NpgsqlParameter>? _inputParameters;
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
@@ -105,8 +114,12 @@ namespace Npgsql
             _description = null;
             LongRows = 0;
             OID = 0;
-            InputParameters.Clear();
             PreparedStatement = null;
+
+            if (ReferenceEquals(_inputParameters, _ownedInputParameters))
+                InputParameters.Clear();
+            else if (_inputParameters is not null)
+                _inputParameters = null; // We're pointing at a user's NpgsqlParameterCollection
         }
 
         internal void ApplyCommandComplete(CommandCompleteMessage msg)
