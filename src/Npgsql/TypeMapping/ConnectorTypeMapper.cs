@@ -29,8 +29,6 @@ namespace Npgsql.TypeMapping
 
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
-        bool _changedMappings;
-
         internal IDictionary<string, NpgsqlTypeMapping> MappingsByName { get; private set; }
         internal IDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
         internal IDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
@@ -271,8 +269,6 @@ namespace Npgsql.TypeMapping
         {
             CheckReady();
 
-            CopyOnWriteMappings();
-
             if (MappingsByName.ContainsKey(mapping.PgTypeName))
                 RemoveMapping(mapping.PgTypeName);
 
@@ -292,8 +288,6 @@ namespace Npgsql.TypeMapping
         {
             CheckReady();
 
-            CopyOnWriteMappings();
-
             if (!MappingsByName.TryGetValue(pgTypeName, out var mapping))
                 return false;
 
@@ -308,22 +302,6 @@ namespace Npgsql.TypeMapping
             ClearBindings();
             ChangeCounter = -1;
             return true;
-        }
-
-        void CopyOnWriteMappings()
-        {
-            if (!_changedMappings)
-            {
-                // Mappings are being changed on this connector for the first time.
-                // Copy-on-write the global mappings to a mutable local Dictionary.
-                Debug.Assert(MappingsByName is IImmutableDictionary<string, NpgsqlTypeMapping>);
-
-                MappingsByName = new Dictionary<string, NpgsqlTypeMapping>(MappingsByName);
-                MappingsByNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeMapping>(MappingsByNpgsqlDbType);
-                MappingsByClrType = new Dictionary<Type, NpgsqlTypeMapping>(MappingsByClrType);
-
-                _changedMappings = true;
-            }
         }
 
         public override IEnumerable<NpgsqlTypeMapping> Mappings => MappingsByName.Values;
@@ -341,16 +319,15 @@ namespace Npgsql.TypeMapping
             globalMapper.Lock.EnterReadLock();
             try
             {
-                MappingsByName = globalMapper.MappingsByName;
-                MappingsByNpgsqlDbType = globalMapper.MappingsByNpgsqlDbType;
-                MappingsByClrType = globalMapper.MappingsByClrType;
+                MappingsByName = new Dictionary<string, NpgsqlTypeMapping>(globalMapper.MappingsByName);
+                MappingsByNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeMapping>(globalMapper.MappingsByNpgsqlDbType);
+                MappingsByClrType = new Dictionary<Type, NpgsqlTypeMapping>(globalMapper.MappingsByClrType);
             }
             finally
             {
                 globalMapper.Lock.ExitReadLock();
             }
             ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
-            _changedMappings = false;
         }
 
         void ClearBindings()
