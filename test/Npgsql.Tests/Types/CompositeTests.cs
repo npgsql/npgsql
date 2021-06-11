@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
         #region Test Types
 
 #pragma warning disable CS8618
-        class SomeComposite
+        record SomeComposite
         {
             public int X { get; set; }
             public string SomeText { get; set; }
@@ -119,6 +119,7 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
+                    Assert.That(reader.GetFieldValue<SomeComposite>(0), Is.EqualTo(new SomeComposite { X = 1, SomeText = "foo" }));
                 }
             }
             finally

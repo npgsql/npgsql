@@ -328,6 +328,7 @@ namespace Npgsql
                         EnlistTransaction(enlistToTransaction);
 
                     timeout = new NpgsqlTimeout(connectionTimeout);
+
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
                     // Bring this up to date if needed.

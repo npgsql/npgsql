@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Data;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -28,6 +31,10 @@ namespace Npgsql.TypeMapping
     {
         public static GlobalTypeMapper Instance { get; }
 
+        internal ImmutableDictionary<string, NpgsqlTypeMapping> MappingsByName { get; private set; }
+        internal ImmutableDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
+        internal ImmutableDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
+
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
         /// Used to invalidate bound type mappers.
@@ -40,13 +47,10 @@ namespace Npgsql.TypeMapping
         int _changeCounter;
 
         static GlobalTypeMapper()
-        {
-            var instance = new GlobalTypeMapper();
-            instance.SetupBuiltInHandlers();
-            Instance = instance;
-        }
+            => Instance = new GlobalTypeMapper();
 
-        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator()) {}
+        GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+            => Reset();
 
         #region Mapping management
 
@@ -55,30 +59,14 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                base.AddMapping(mapping);
+                MappingsByName = MappingsByName.SetItem(mapping.PgTypeName, mapping);
+                if (mapping.NpgsqlDbType is not null)
+                    MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.SetItem(mapping.NpgsqlDbType.Value, mapping);
+                MappingsByClrType =
+                    MappingsByClrType.SetItems(mapping.ClrTypes.Select(t => new KeyValuePair<Type, NpgsqlTypeMapping>(t, mapping)));
                 RecordChange();
 
-                if (mapping.NpgsqlDbType.HasValue)
-                {
-                    _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
-                    _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value | NpgsqlDbType.Array] = mapping.PgTypeName + "[]";
-
-                    foreach (var dbType in mapping.DbTypes)
-                        _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
-
-                    if (mapping.InferredDbType.HasValue)
-                        _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
-
-                    foreach (var clrType in mapping.ClrTypes)
-                    {
-                        _typeToNpgsqlDbType[clrType] = mapping.NpgsqlDbType.Value;
-                        _typeToPgTypeName[clrType] = mapping.PgTypeName;
-                    }
-                }
-
-                if (mapping.InferredDbType.HasValue)
-                    foreach (var clrType in mapping.ClrTypes)
-                        _typeToDbType[clrType] = mapping.InferredDbType.Value;
+                UpdateNonMappingTables(mapping);
 
                 return this;
             }
@@ -88,14 +76,58 @@ namespace Npgsql.TypeMapping
             }
         }
 
+        void UpdateNonMappingTables(NpgsqlTypeMapping mapping)
+        {
+            if (mapping.NpgsqlDbType.HasValue)
+            {
+                _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
+                _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value | NpgsqlDbType.Array] = mapping.PgTypeName + "[]";
+
+                foreach (var dbType in mapping.DbTypes)
+                    _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
+
+                if (mapping.InferredDbType.HasValue)
+                    _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
+
+                foreach (var clrType in mapping.ClrTypes)
+                {
+                    _typeToNpgsqlDbType[clrType] = mapping.NpgsqlDbType.Value;
+                    _typeToPgTypeName[clrType] = mapping.PgTypeName;
+                }
+            }
+
+            if (mapping.InferredDbType.HasValue)
+                foreach (var clrType in mapping.ClrTypes)
+                    _typeToDbType[clrType] = mapping.InferredDbType.Value;
+        }
+
         public override bool RemoveMapping(string pgTypeName)
         {
             Lock.EnterWriteLock();
             try
             {
-                var result = base.RemoveMapping(pgTypeName);
+                if (!MappingsByName.TryGetValue(pgTypeName, out var mapping))
+                    return false;
+
+                MappingsByName = MappingsByName.Remove(pgTypeName);
+                if (mapping.NpgsqlDbType is not null &&
+                    MappingsByNpgsqlDbType.TryGetValue(mapping.NpgsqlDbType.Value, out var mappingToBeRemoved) &&
+                    mappingToBeRemoved.PgTypeName == pgTypeName)
+                {
+                    MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.Remove(mapping.NpgsqlDbType.Value);
+                }
+
+                foreach (var clrType in mapping.ClrTypes)
+                {
+                    if (MappingsByClrType.TryGetValue(clrType, out mappingToBeRemoved) &&
+                        mappingToBeRemoved.PgTypeName == pgTypeName)
+                    {
+                        MappingsByClrType = MappingsByClrType.Remove(clrType);
+                    }
+                }
+
                 RecordChange();
-                return result;
+                return true;
             }
             finally
             {
@@ -110,7 +142,7 @@ namespace Npgsql.TypeMapping
                 Lock.EnterReadLock();
                 try
                 {
-                    return InternalMappings.Values.ToArray();
+                    return MappingsByName.Values.ToArray();
                 }
                 finally
                 {
@@ -119,12 +151,13 @@ namespace Npgsql.TypeMapping
             }
         }
 
+
+        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         public override void Reset()
         {
             Lock.EnterWriteLock();
             try
             {
-                InternalMappings.Clear();
                 SetupBuiltInHandlers();
                 RecordChange();
             }
@@ -198,8 +231,13 @@ namespace Npgsql.TypeMapping
 
         #region Setup for built-in handlers
 
+        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         void SetupBuiltInHandlers()
         {
+            var mappingsByNameBuilder = ImmutableDictionary.CreateBuilder<string, NpgsqlTypeMapping>();
+            var mappingsByNpgsqlDbTypeBuilder = ImmutableDictionary.CreateBuilder<NpgsqlDbType, NpgsqlTypeMapping>();
+            var mappingsByClrTypeBuilder = ImmutableDictionary.CreateBuilder<Type, NpgsqlTypeMapping>();
+
             SetupNumericHandlers();
             SetupTextHandlers();
             SetupDateTimeHandlers();
@@ -210,6 +248,21 @@ namespace Npgsql.TypeMapping
             SetupUIntHandlers();
             SetupMiscHandlers();
             SetupInternalHandlers();
+
+            MappingsByName = mappingsByNameBuilder.ToImmutable();
+            MappingsByNpgsqlDbType = mappingsByNpgsqlDbTypeBuilder.ToImmutable();
+            MappingsByClrType = mappingsByClrTypeBuilder.ToImmutable();
+
+            void AddMapping(NpgsqlTypeMapping mapping)
+            {
+                mappingsByNameBuilder[mapping.PgTypeName] = mapping;
+                if (mapping.NpgsqlDbType is not null)
+                    mappingsByNpgsqlDbTypeBuilder[mapping.NpgsqlDbType.Value] = mapping;
+                foreach (var clrType in mapping.ClrTypes)
+                    mappingsByClrTypeBuilder![clrType] = mapping;
+
+                UpdateNonMappingTables(mapping);
+            }
 
             void SetupNumericHandlers()
             {

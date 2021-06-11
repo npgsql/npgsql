@@ -14,18 +14,19 @@ namespace Npgsql.Tests.Types
     class RangeTests : MultiplexingTestBase
     {
         [Test, NUnit.Framework.Description("Resolves a range type handler via the different pathways")]
-        public async Task RangeTypeResolution()
+        public async Task Range_resolution()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(RangeTypeResolution), // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Range_resolution), // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
             using var conn = await OpenConnectionAsync(csb);
+
             // Resolve type by NpgsqlDbType
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
@@ -49,6 +50,18 @@ namespace Npgsql.Tests.Types
                 }
             }
 
+            // Resolve type by DataTypeName
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "int4range", Value = DBNull.Value });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                }
+            }
+
             // Resolve type by OID (read)
             conn.ReloadTypes();
             using (var cmd = new NpgsqlCommand("SELECT int4range(3, 5)", conn))
@@ -56,6 +69,7 @@ namespace Npgsql.Tests.Types
             {
                 reader.Read();
                 Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                Assert.That(reader.GetFieldValue<NpgsqlRange<int>>(0), Is.EqualTo(new NpgsqlRange<int>(3, true, 5, false)));
             }
         }
 

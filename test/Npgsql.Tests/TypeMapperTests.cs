@@ -79,7 +79,9 @@ namespace Npgsql.Tests
         [Test]
         public void RemoveGlobalMapping()
         {
-            NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer");
+            Assert.That(NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer"), Is.True);
+            Assert.That(NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer"), Is.False);
+
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             using var conn = OpenConnection(connectionString);
             Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());

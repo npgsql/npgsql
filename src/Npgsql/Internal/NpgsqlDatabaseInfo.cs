@@ -141,6 +141,33 @@ namespace Npgsql.Internal
             Version = version;
         }
 
+        internal PostgresType GetPostgresTypeByName(string pgName)
+        {
+            // Full type name with namespace
+            if (pgName.IndexOf('.') > -1)
+            {
+                if (ByFullName.TryGetValue(pgName, out var pgType))
+                    return pgType;
+            }
+            // No dot, partial type name
+            else if (ByName.TryGetValue(pgName, out var pgType))
+            {
+                if (pgType is not null)
+                    return pgType;
+
+                // If the name was found but the value is null, that means that there are
+                // two db types with the same name (different schemas).
+                // Try to fall back to pg_catalog, otherwise fail.
+                if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
+                    return pgType;
+
+                throw new ArgumentException($"More than one PostgreSQL type was found with the name {pgName}, " +
+                                            "please specify a full name including schema");
+            }
+
+            throw new ArgumentException($"A PostgreSQL type with the name {pgName} was not found in the database");
+        }
+
         internal void ProcessTypes()
         {
             foreach (var type in GetTypes())

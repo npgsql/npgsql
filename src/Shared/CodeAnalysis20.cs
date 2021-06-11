@@ -1,8 +1,9 @@
-﻿#if NETSTANDARD2_0
+﻿using System;
 
 #pragma warning disable 1591
 
-// ReSharper disable once CheckNamespace
+#if NETSTANDARD2_0
+
 namespace System.Diagnostics.CodeAnalysis
 {
     [AttributeUsageAttribute(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property)]
@@ -69,5 +70,41 @@ namespace System.Diagnostics.CodeAnalysis
 namespace System.Runtime.CompilerServices
 {
       internal static class IsExternalInit {}
+}
+
+namespace System.Diagnostics.CodeAnalysis
+{
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true, Inherited = false)]
+    sealed class MemberNotNullAttribute : Attribute
+    {
+        public MemberNotNullAttribute(string member) => Members = new string[]
+        {
+            member
+        };
+
+        public MemberNotNullAttribute(params string[] members) => Members = members;
+
+        public string[] Members { get; }
+    }
+
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = true, Inherited = false)]
+    sealed class MemberNotNullWhenAttribute : Attribute
+    {
+        public MemberNotNullWhenAttribute(bool returnValue, string member)
+        {
+            ReturnValue = returnValue;
+            Members = new string[1] { member };
+        }
+
+        public MemberNotNullWhenAttribute(bool returnValue, params string[] members)
+        {
+            ReturnValue = returnValue;
+            Members = members;
+        }
+
+        public bool ReturnValue { get; }
+
+        public string[] Members { get; }
+    }
 }
 #endif

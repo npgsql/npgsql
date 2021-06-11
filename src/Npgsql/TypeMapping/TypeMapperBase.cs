@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Reflection;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.CompositeHandlers;
@@ -10,8 +11,6 @@ namespace Npgsql.TypeMapping
 {
     abstract class TypeMapperBase : INpgsqlTypeMapper
     {
-        internal Dictionary<string, NpgsqlTypeMapping> InternalMappings { get; } = new();
-
         public INpgsqlNameTranslator DefaultNameTranslator { get; }
 
         protected TypeMapperBase(INpgsqlNameTranslator defaultNameTranslator)
@@ -24,18 +23,9 @@ namespace Npgsql.TypeMapping
 
         #region Mapping management
 
-        public virtual INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping)
-        {
-            if (InternalMappings.ContainsKey(mapping.PgTypeName))
-                RemoveMapping(mapping.PgTypeName);
-            InternalMappings[mapping.PgTypeName] = mapping;
-            return this;
-        }
-
-        public virtual bool RemoveMapping(string pgTypeName) => InternalMappings.Remove(pgTypeName);
-
+        public abstract INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping);
+        public abstract bool RemoveMapping(string pgTypeName);
         public abstract IEnumerable<NpgsqlTypeMapping> Mappings { get; }
-
         public abstract void Reset();
 
         #endregion Mapping management
