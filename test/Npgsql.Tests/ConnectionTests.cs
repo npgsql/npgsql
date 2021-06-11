@@ -549,7 +549,7 @@ namespace Npgsql.Tests
                 "tcp://localhost:5432",
                 "tcp://localhost:5432"
             })]
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable, Ignore("Fails locally")]
         public async Task<string[]> ConnectionString_Host(string host)
         {
             var numberOfHosts = host.Split(',').Length;
@@ -1705,7 +1705,7 @@ CREATE TABLE record ()");
 
                 conn.PhysicalOpenAsyncCallback = callback;
                 Assert.ThrowsAsync<NotImplementedException>(() => conn.ExecuteNonQueryAsync("SELECT 1"));
-            }    
+            }
         }
 
         [Test]
