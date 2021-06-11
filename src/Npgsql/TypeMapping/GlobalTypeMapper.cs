@@ -62,8 +62,8 @@ namespace Npgsql.TypeMapping
                 MappingsByName = MappingsByName.SetItem(mapping.PgTypeName, mapping);
                 if (mapping.NpgsqlDbType is not null)
                     MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.SetItem(mapping.NpgsqlDbType.Value, mapping);
-                foreach (var clrType in mapping.ClrTypes)
-                    MappingsByClrType = MappingsByClrType.SetItem(clrType, mapping);
+                MappingsByClrType =
+                    MappingsByClrType.SetItems(mapping.ClrTypes.Select(t => new KeyValuePair<Type, NpgsqlTypeMapping>(t, mapping)));
                 RecordChange();
 
                 UpdateNonMappingTables(mapping);
@@ -106,11 +106,28 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                var oldMappingsByName = MappingsByName;
+                if (!MappingsByName.TryGetValue(pgTypeName, out var mapping))
+                    return false;
+
                 MappingsByName = MappingsByName.Remove(pgTypeName);
-                var changed = ReferenceEquals(MappingsByName, oldMappingsByName);
+                if (mapping.NpgsqlDbType is not null &&
+                    MappingsByNpgsqlDbType.TryGetValue(mapping.NpgsqlDbType.Value, out var mappingToBeRemoved) &&
+                    mappingToBeRemoved.PgTypeName == pgTypeName)
+                {
+                    MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.Remove(mapping.NpgsqlDbType.Value);
+                }
+
+                foreach (var clrType in mapping.ClrTypes)
+                {
+                    if (MappingsByClrType.TryGetValue(clrType, out mappingToBeRemoved) &&
+                        mappingToBeRemoved.PgTypeName == pgTypeName)
+                    {
+                        MappingsByClrType = MappingsByClrType.Remove(clrType);
+                    }
+                }
+
                 RecordChange();
-                return changed;
+                return true;
             }
             finally
             {

@@ -58,8 +58,7 @@ namespace Npgsql.TypeMapping
         {
             _connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector);
-            ClearBindings();
-            ResetMappings();
+            Reset();
         }
 
         #endregion Constructors
@@ -341,6 +340,7 @@ namespace Npgsql.TypeMapping
             _handlersByClrType[typeof(DBNull)] = UnrecognizedTypeHandler;
         }
 
+        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         public override void Reset()
         {
             ClearBindings();
