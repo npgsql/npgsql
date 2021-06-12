@@ -825,8 +825,8 @@ namespace Npgsql.Internal
         void Connect(NpgsqlTimeout timeout)
         {
             // Note that there aren't any timeout-able or cancellable DNS methods
-            var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+            var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
                 : Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
             timeout.Check();
 
@@ -892,8 +892,8 @@ namespace Npgsql.Internal
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             // Note that there aren't any timeout-able or cancellable DNS methods
-            var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+            var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
                 : (await GetHostAddressesAsync(timeout, cancellationToken))
                 .Select(a => new IPEndPoint(a, Port)).ToArray();
 

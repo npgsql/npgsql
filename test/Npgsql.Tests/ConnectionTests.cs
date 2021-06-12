@@ -642,6 +642,41 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public async Task UnixAbstractDomainSocket()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093)
+                    Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
+            }
+
+            // We first need a classic IP connection to make sure we're running against the
+            // right backend version
+            using var versionConnection = await OpenConnectionAsync();
+            MinimumPgVersion(versionConnection, "14.0", "Abstract unix-domain sockets support was introduced in PostgreSQL 14");
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Host = "@/npgsql_unix"
+            };
+            var port = csb.Port;
+
+            try
+            {
+                await using var conn = await OpenConnectionAsync(csb);
+                await using var tx = await conn.BeginTransactionAsync();
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1", tx), Is.EqualTo(1));
+                Assert.That(conn.DataSource, Is.EqualTo(Path.Combine($"\0{csb.Host.Substring(1)}", $".s.PGSQL.{port}")));
+            }
+            catch (Exception)
+            {
+                if (TestUtil.IsOnBuildServer)
+                    throw;
+                Assert.Ignore("Connection via abstract unix domain socket failed");
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
         public async Task DataSource()
         {

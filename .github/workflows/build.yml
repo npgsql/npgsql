@@ -80,6 +80,10 @@ jobs:
             sudo apt-get install -qq postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
             sudo -u postgres psql -c "CREATE EXTENSION postgis" npgsql_tests
           fi
+          
+          if [ ${{ matrix.pg_major }} -ge 14 ]; then
+            sudo sed -i "s|unix_socket_directories = '/var/run/postgresql'|unix_socket_directories = '/var/run/postgresql, @/npgsql_unix'|" $PGDATA/postgresql.conf
+          fi
 
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
