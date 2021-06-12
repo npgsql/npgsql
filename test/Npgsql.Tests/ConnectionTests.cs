@@ -660,14 +660,13 @@ namespace Npgsql.Tests
             {
                 Host = "@/npgsql_unix"
             };
-            var port = csb.Port;
 
             try
             {
                 await using var conn = await OpenConnectionAsync(csb);
                 await using var tx = await conn.BeginTransactionAsync();
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1", tx), Is.EqualTo(1));
-                Assert.That(conn.DataSource, Is.EqualTo(Path.Combine($"\0{csb.Host.Substring(1)}", $".s.PGSQL.{port}")));
+                Assert.That(conn.DataSource, Is.EqualTo(Path.Combine(csb.Host, $".s.PGSQL.{csb.Port}")));
             }
             catch (Exception)
             {
