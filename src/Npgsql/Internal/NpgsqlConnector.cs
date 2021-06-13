@@ -1872,7 +1872,8 @@ namespace Npgsql.Internal
 
                     if (connection is not null)
                     {
-                        Debug.Assert(connection.TakeCloseLock());
+                        var closeLockTaken = connection.TakeCloseLock();
+                        Debug.Assert(closeLockTaken);
                         if (Settings.ReplicationMode == ReplicationMode.Off)
                         {
                             Connection = null;
@@ -1931,7 +1932,8 @@ namespace Npgsql.Internal
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    Debug.Assert(CurrentReader.CloseAsync().IsCompleted);
+                    var readerCloseTask = CurrentReader.CloseAsync();
+                    Debug.Assert(readerCloseTask.IsCompleted);
                 }
                 catch
                 {
@@ -1945,7 +1947,8 @@ namespace Npgsql.Internal
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    Debug.Assert(CurrentCopyOperation.DisposeAsync().IsCompleted);
+                    var copyOperationDisposeTask = CurrentCopyOperation.DisposeAsync();
+                    Debug.Assert(copyOperationDisposeTask.IsCompleted);
                 }
                 catch
                 {
