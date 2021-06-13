@@ -88,7 +88,6 @@ namespace Npgsql
 
             var timeout = _writeCoalescingDelayTicks / 2;
             var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
-            var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
             while (true)
             {
@@ -195,7 +194,7 @@ namespace Npgsql
                     // CommandsInFlightCount. Now write that command.
                     var writtenSynchronously = WriteCommand(connector, command, ref stats);
 
-                    if (timeout == 0)
+                    if (_writeCoalescingDelayTicks == 0)
                     {
                         while (connector.WriteBuffer.WritePosition < _writeCoalescingBufferThresholdBytes &&
                                writtenSynchronously &&
@@ -207,7 +206,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        timeoutToken = timeoutTokenSource.Start();
+                        timeoutTokenSource.Timeout = TimeSpan.FromTicks(timeout);
+                        var timeoutToken = timeoutTokenSource.Start();
 
                         try
                         {
@@ -224,10 +224,6 @@ namespace Npgsql
                                 writtenSynchronously = WriteCommand(connector, command, ref stats);
                             }
 
-                            // The cancellation token (presumably!) has not fired, reset its timer so
-                            // we can reuse the cancellation token source instead of reallocating
-                            timeoutTokenSource.Stop();
-
                             // Increase the timeout slightly for next time: we're under load, so allow more
                             // commands to get coalesced into the same packet (up to the hard limit)
                             timeout = Math.Min(timeout + WriteCoalescineDelayAdaptivityUs, _writeCoalescingDelayTicks);
@@ -238,6 +234,10 @@ namespace Npgsql
                             // Reduce the timeout slightly for next time: we're under little load, so reduce impact
                             // on latency
                             timeout = Math.Max(timeout - WriteCoalescineDelayAdaptivityUs, 0);
+                        }
+                        finally
+                        {
+                            timeoutTokenSource.Stop();
                         }
                     }
 

@@ -57,8 +57,10 @@ namespace Npgsql.Replication.PgOutput
             CancellationToken cancellationToken = new CancellationToken())
         {
             using (NoSynchronizationContextScope.Enter())
+            {
                 return StartReplicationInternal(
                     CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
+            }
         }
 
         async IAsyncEnumerator<PgOutputReplicationMessage> StartReplicationInternal(CancellationToken cancellationToken)

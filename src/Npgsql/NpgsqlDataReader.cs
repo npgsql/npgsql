@@ -875,6 +875,9 @@ namespace Npgsql
                 return;
             }
 
+            // Whenever a connector is broken, it also closes the current reader.
+            Connector.CurrentReader = null;
+
             switch (Connector.State)
             {
             case ConnectorState.Ready:
@@ -967,6 +970,8 @@ namespace Npgsql
                 // We may unbind the current reader, which also sets the connector to null
                 var connector = Connector;
                 UnbindIfNecessary();
+
+                connector.ResetReadBuffer();
 
                 // TODO: Refactor... Use proper scope
                 _connection.Connector = null;

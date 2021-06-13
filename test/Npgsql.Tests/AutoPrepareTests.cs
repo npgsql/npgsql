@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
@@ -466,6 +467,39 @@ SELECT COUNT(*) FROM pg_prepared_statements
             }
 
             conn.UnprepareAll();
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3002")]
+        public void ReplaceWithBadSql()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 2,
+                AutoPrepareMinUsages = 1
+            };
+
+            using var conn = OpenConnection(csb);
+            conn.UnprepareAll();
+
+            conn.ExecuteNonQuery("SELECT 1");
+            conn.ExecuteNonQuery("SELECT 2");
+
+            // Attempt to replace SELECT 1, but fail because of bad SQL.
+            // Because of the issue, PreparedStatementManager.NumPrepared is reduced from 2 to 1
+            Assert.That(() => conn.ExecuteNonQuery("SELECTBAD"), Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            // Prevent SELECT 2 from being the LRU
+            conn.ExecuteNonQuery("SELECT 2");
+            // And attempt to replace again, reducing PreparedStatementManager.NumPrepared to 0
+            Assert.That(() => conn.ExecuteNonQuery("SELECTBAD"), Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+
+            // Since PreparedStatementManager.NumPrepared is 0, Npgsql will now send DISCARD ALL, but our internal state thinks
+            // SELECT 2 is still prepared.
+            conn.Close();
+            conn.Open();
+
+            Assert.That(conn.ExecuteScalar("SELECT 2"), Is.EqualTo(2));
         }
 
         void DumpPreparedStatements(NpgsqlConnection conn)

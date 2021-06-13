@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -87,9 +88,9 @@ namespace Npgsql.Replication
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
-        public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
+        public async IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
-            CancellationToken cancellationToken,
+            [EnumeratorCancellation] CancellationToken cancellationToken,
             uint timeline = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
@@ -101,7 +102,9 @@ namespace Npgsql.Replication
             if (timeline != default)
                 builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
 
-            return StartReplicationInternal(builder.ToString(), bypassingStream: false, cancellationToken);
+            var enumerator = StartReplicationInternalWrapper(builder.ToString(), bypassingStream: false, cancellationToken);
+            while (await enumerator.MoveNextAsync())
+                yield return enumerator.Current;
         }
 
         /// <summary>

@@ -228,7 +228,9 @@ namespace Npgsql
                 if (!_pool.IsBootstrapped)
                     return BootstrapMultiplexing(cancellationToken);
 
-                CompleteOpen();
+                Log.Debug("Connection opened (multipelxing)");
+                FullState = ConnectionState.Open;
+
                 return Task.CompletedTask;
             }
 
@@ -291,7 +293,8 @@ namespace Npgsql
                     if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                         await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
-                    CompleteOpen();
+                    Log.Debug("Connection opened");
+                    FullState = ConnectionState.Open;
                 }
                 catch
                 {
@@ -317,19 +320,14 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken2);
-                    CompleteOpen();
+                    Log.Debug("Connection opened (multipelxing)");
+                    FullState = ConnectionState.Open;
                 }
                 catch
                 {
                     FullState = ConnectionState.Closed;
                     throw;
                 }
-            }
-
-            void CompleteOpen()
-            {
-                Log.Debug("Connection opened (multiplexing)");
-                FullState = ConnectionState.Open;
             }
         }
 
@@ -680,7 +678,7 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(async: false);
+        public override void Close() => Close(async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
@@ -696,11 +694,15 @@ namespace Npgsql
                 return Close(async: true);
         }
 
-        internal Task Close(bool async, CancellationToken cancellationToken = default)
+        internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
+
+        internal void ReleaseCloseLock() => Volatile.Write(ref _closing, 0);
+
+        internal Task Close(bool async)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
-            if (Interlocked.Exchange(ref _closing, 1) == 1)
+            if (!TakeCloseLock())
                 return Task.CompletedTask;
 
             switch (FullState)
@@ -708,16 +710,18 @@ namespace Npgsql
             case ConnectionState.Open:
             case ConnectionState.Open | ConnectionState.Executing:
             case ConnectionState.Open | ConnectionState.Fetching:
-            case ConnectionState.Broken:
                 break;
+            case ConnectionState.Broken:
+                FullState = ConnectionState.Closed;
+                goto case ConnectionState.Closed;
             case ConnectionState.Closed:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 return Task.CompletedTask;
             case ConnectionState.Connecting:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new InvalidOperationException("Can't close, connection is in state " + FullState);
             default:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
@@ -728,7 +732,7 @@ namespace Npgsql
                 // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
                 // and assignment but actual perf impact should be negligible (measure).
                 Debug.Assert(Connector == null);
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
 
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed (multiplexing)");
@@ -736,11 +740,12 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            return CloseAsync(cancellationToken);
+            return CloseAsync();
 
-            async Task CloseAsync(CancellationToken cancellationToken)
+            async Task CloseAsync()
             {
                 Debug.Assert(Connector != null);
+                Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None);
                 var connector = Connector;
                 Log.Trace("Closing connection...", connector.Id);
 
@@ -749,25 +754,24 @@ namespace Npgsql
                 if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
                 {
                     // This method could re-enter connection.Close() due to an underlying connection failure.
-                    await connector.CloseOngoingOperations(async, cancellationToken);
+                    await connector.CloseOngoingOperations(async);
+
+                    if (ConnectorBindingScope == ConnectorBindingScope.None)
+                    {
+                        Debug.Assert(Settings.Multiplexing);
+                        Debug.Assert(Connector is null);
+
+                        FullState = ConnectionState.Closed;
+                        Log.Debug("Connection closed (multiplexing, after closing reader)", connector.Id);
+                        return;
+                    }
                 }
 
                 Debug.Assert(connector.IsReady || connector.IsBroken);
                 Debug.Assert(connector.CurrentReader == null);
                 Debug.Assert(connector.CurrentCopyOperation == null);
 
-                if (connector.IsBroken)
-                {
-                    connector.Connection = null;
-
-                    if (_pool == null)
-                        connector.Close();
-                    else
-                        _pool.Return(connector);
-
-                    EnlistedTransaction = null;
-                }
-                else if (EnlistedTransaction != null)
+                if (EnlistedTransaction != null)
                 {
                     // A System.Transactions transaction is still in progress
 
@@ -796,7 +800,7 @@ namespace Npgsql
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                         // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
-                        await connector.Reset(async, cancellationToken);
+                        await connector.Reset(async);
 
                         if (Settings.Multiplexing)
                         {
@@ -1501,11 +1505,6 @@ namespace Npgsql
         #region Connector binding
 
         /// <summary>
-        /// Returns whether the connection is currently bound to a connector.
-        /// </summary>
-        internal bool IsBound => ConnectorBindingScope != ConnectorBindingScope.None;
-
-        /// <summary>
         /// Checks whether the connection is currently bound to a connector, and if so, returns it via
         /// <paramref name="connector"/>.
         /// </summary>
@@ -1581,7 +1580,8 @@ namespace Npgsql
         /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
-            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None, $"Ending binding scope {scope} but connection's scope is null");
+            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None || FullState == ConnectionState.Broken,
+                $"Ending binding scope {scope} but connection's scope is null");
 
             if (scope != ConnectorBindingScope)
                 return;

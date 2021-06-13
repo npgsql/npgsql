@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -103,10 +104,10 @@ namespace Npgsql.Replication.Internal
         /// </param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
-        public static IAsyncEnumerable<XLogDataMessage> StartLogicalReplication(
+        public static async IAsyncEnumerable<XLogDataMessage> StartLogicalReplication(
             this LogicalReplicationConnection connection,
             LogicalReplicationSlot slot,
-            CancellationToken cancellationToken,
+            [EnumeratorCancellation] CancellationToken cancellationToken,
             NpgsqlLogSequenceNumber? walLocation = null,
             IEnumerable<KeyValuePair<string, string?>>? options = null,
             bool bypassingStream = false)
@@ -124,7 +125,9 @@ namespace Npgsql.Replication.Internal
                     .Append(')');
             }
 
-            return connection.StartReplicationInternal(builder.ToString(), bypassingStream, cancellationToken);
+            var enumerator = connection.StartReplicationInternalWrapper(builder.ToString(), bypassingStream, cancellationToken);
+            while (await enumerator.MoveNextAsync())
+                yield return enumerator.Current;
         }
     }
 }

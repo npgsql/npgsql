@@ -1361,13 +1361,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (State != CommandState.InProgress)
                 return;
 
-            var connection = Connection;
-            if (connection is null)
+            var connector = Connection?.Connector;
+            if (connector is null)
                 return;
-            if (!connection.IsBound)
-                throw new NotSupportedException("Cancellation not supported with multiplexing");
 
-            connection.Connector?.PerformUserCancellation();
+            connector.PerformUserCancellation();
         }
 
         #endregion Cancel

@@ -36,7 +36,9 @@ namespace Npgsql.Replication
         Timer? _sendFeedbackTimer;
         Timer? _requestFeedbackTimer;
         TimeSpan _requestFeedbackInterval;
-        Task _replicationCompletion = Task.CompletedTask;
+
+        IAsyncEnumerator<XLogDataMessage>? _currentEnumerator;
+        CancellationTokenSource? _replicationCancellationTokenSource;
         bool _pgCancellationSupported;
         bool _isDisposed;
 
@@ -231,14 +233,39 @@ namespace Npgsql.Replication
 
                 if (_npgsqlConnection.Connector?.State == ConnectorState.Replication)
                 {
-                    Connector.PerformPostgresCancellation();
-                    await _replicationCompletion;
+                    Debug.Assert(_currentEnumerator is not null);
+                    Debug.Assert(_replicationCancellationTokenSource is not null);
+
+                    // Replication is in progress; cancel it (soft or hard) and iterate the enumerator until we get the cancellation
+                    // exception. Note: this isn't thread-safe: a user calling DisposeAsync and enumerating at the same time is violating
+                    // our contract.
+                    _replicationCancellationTokenSource.Cancel();
+                    try
+                    {
+                        while (await _currentEnumerator.MoveNextAsync())
+                        {
+                            // Do nothing with messages - simply enumerate until cancellation/termination
+                        }
+                    }
+                    catch
+                    {
+                        // Cancellation/termination occurred
+                    }
                 }
 
                 Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
                 Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
                 _feedbackSemaphore.Dispose();
-                await _npgsqlConnection.Close(async: true);
+
+                try
+                {
+                    await _npgsqlConnection.Close(async: true);
+                }
+                catch
+                {
+                    // Dispose
+                }
+
                 _isDisposed = true;
             }
         }
@@ -393,20 +420,28 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async IAsyncEnumerable<XLogDataMessage> StartReplicationInternal(
+        internal IAsyncEnumerator<XLogDataMessage> StartReplicationInternalWrapper(
             string command,
             bool bypassingStream,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
+        {
+            _currentEnumerator = StartReplicationInternal(command, bypassingStream, cancellationToken);
+            return _currentEnumerator;
+        }
+
+        internal async IAsyncEnumerator<XLogDataMessage> StartReplicationInternal(
+            string command,
+            bool bypassingStream,
+            CancellationToken cancellationToken)
         {
             CheckDisposed();
 
             var connector = _npgsqlConnection.Connector!;
 
-            using var _ = Connector.StartUserAction(
-                ConnectorState.Replication, cancellationToken, attemptPgCancellation: _pgCancellationSupported);
+            _replicationCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            var completionSource = new TaskCompletionSource<int>();
-            _replicationCompletion = completionSource.Task;
+            using var _ = Connector.StartUserAction(
+                ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
 
             try
             {
@@ -530,8 +565,34 @@ namespace Npgsql.Replication
 
                 SetTimeouts(CommandTimeout, CommandTimeout);
 
-                completionSource.SetResult(0);
+                _replicationCancellationTokenSource.Dispose();
+                _replicationCancellationTokenSource = null;
+
+                _currentEnumerator = null;
             }
+        }
+
+        /// <summary>
+        /// Sets the current status of the replication as it is interpreted by the consuming client. The value supplied
+        /// in <see paramref="lastAppliedAndFlushedLsn" /> will be sent to the server via <see cref="LastAppliedLsn"/> and
+        /// <see cref="LastFlushedLsn"/> with the next status update.
+        /// <para>
+        /// A status update which will happen upon server request, upon expiration of <see cref="WalReceiverStatusInterval"/>
+        /// our upon an enforced status update via <see cref="SendStatusUpdate"/>, whichever happens first.
+        /// If you want the value you set here to be pushed to the server immediately (e. g. in synchronous replication scenarios),
+        /// call <see cref="SendStatusUpdate"/> after calling this method.
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// This is a convenience method setting both <see cref="LastAppliedLsn"/> and <see cref="LastFlushedLsn"/> in one operation.
+        /// You can use it if your application processes replication messages in  a way that doesn't care about the difference between
+        /// writing a message and flushing it to a permanent storage medium.
+        /// </remarks>
+        /// <param name="lastAppliedAndFlushedLsn">The location of the last WAL byte + 1 applied (e. g. processed or written to disk) and flushed to disk in the standby.</param>
+        public void SetReplicationStatus(NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn)
+        {
+            Interlocked.Exchange(ref _lastAppliedLsn, unchecked((long)(ulong)lastAppliedAndFlushedLsn));
+            Interlocked.Exchange(ref _lastFlushedLsn, unchecked((long)(ulong)lastAppliedAndFlushedLsn));
         }
 
         /// <summary>

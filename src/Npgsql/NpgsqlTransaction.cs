@@ -155,12 +155,15 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        Task Rollback(bool async, CancellationToken cancellationToken = default)
+        async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-            return _connector.DatabaseInfo.SupportsTransactions
-                ? _connector.Rollback(async, cancellationToken)
-                : Task.CompletedTask;
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
+            using (_connector.StartUserAction(cancellationToken))
+                await _connector.Rollback(async, cancellationToken);
         }
 
         /// <summary>
@@ -464,7 +467,7 @@ namespace Npgsql
         internal void UnbindIfNecessary()
         {
             // We're closing the connection, but transaction is not yet disposed
-            // We have to unbind the transaction from the connector, otherwise there could be a concurency issues
+            // We have to unbind the transaction from the connector, otherwise there could be a concurrency issues
             // See #3306
             if (!IsDisposed)
             {
