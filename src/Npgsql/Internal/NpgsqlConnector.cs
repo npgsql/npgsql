@@ -1875,7 +1875,8 @@ namespace Npgsql.Internal
                         if (Settings.ReplicationMode == ReplicationMode.Off)
                         {
                             Connection = null;
-                            Return();
+                            if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
+                                Return();
                             connection.EnlistedTransaction = null;
                             connection.Connector = null;
                             connection.ConnectorBindingScope = ConnectorBindingScope.None;
