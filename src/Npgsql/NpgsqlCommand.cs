@@ -581,8 +581,24 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
 
+            if (connector.PreparedStatementManager.BySql.TryGetValue(CommandText, out var preparedStatement) &&
+                preparedStatement.IsExplicit &&
+                // !Parameters.HasOutputParameters &&
+                (Parameters.Count == 0 || Parameters[0].ParameterName.Length == 0) &&
+                preparedStatement.DoParametersMatch(Parameters.InternalList))
+            {
+                // The SQL is prepared, and we're in positional parameter mode.
+                // This is the optimized mode, where we don't need to parse/rewrite the CommandText or reorder the
+                // parameters - just use them as is.
+                var statement = TruncateStatementsToOne();
+                statement.SQL = CommandText;
+                statement.InputParameters = Parameters.InternalList;
+                statement.PreparedStatement = preparedStatement;
+
+                return Task.CompletedTask;
+            }
+
             ProcessRawQuery(connector, deriveParameters: false);
-            Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             var needToPrepare = false;
             foreach (var statement in _statements)
@@ -599,6 +615,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             _connectorPreparedOn = connector;
+
+            Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
