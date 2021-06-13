@@ -1738,7 +1738,21 @@ namespace Npgsql
                     Cleanup();
 
                     if (connection is not null)
+                    {
+                        var closeLockTaken = connection.TakeCloseLock();
+                        Debug.Assert(closeLockTaken);
+                        if (Settings.ReplicationMode == ReplicationMode.Off)
+                        {
+                            Connection = null;
+                            if (connection.ConnectorBindingScope != ConnectorBindingScope.None && _pool != null)
+                                _pool.Return(this);
+                            connection.EnlistedTransaction = null;
+                            connection.Connector = null;
+                            connection.ConnectorBindingScope = ConnectorBindingScope.None;
+                        }
                         connection.FullState = ConnectionState.Broken;
+                        connection.ReleaseCloseLock();
+                    }
                 }
 
                 return reason;
@@ -1785,13 +1799,28 @@ namespace Npgsql
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    CurrentReader.Close();
+                    var readerCloseTask = CurrentReader.CloseAsync();
+                    Debug.Assert(readerCloseTask.IsCompleted);
                 }
                 catch
                 {
                     // ignored
                 }
                 CurrentReader = null;
+            }
+
+            if (CurrentCopyOperation != null)
+            {
+                try
+                {
+                    // Will never complete asynchronously (stream is already closed)
+                    CurrentCopyOperation.Dispose();
+                }
+                catch
+                {
+                    // ignored
+                }
+                CurrentCopyOperation = null;
             }
 
             ClearTransaction();

@@ -678,7 +678,7 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(async: false);
+        public override void Close() => Close(async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
@@ -694,11 +694,15 @@ namespace Npgsql
                 return Close(async: true);
         }
 
+        internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
+
+        internal void ReleaseCloseLock() => Volatile.Write(ref _closing, 0);
+
         internal Task Close(bool async)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
-            if (Interlocked.Exchange(ref _closing, 1) == 1)
+            if (!TakeCloseLock())
                 return Task.CompletedTask;
 
             switch (FullState)
@@ -706,16 +710,18 @@ namespace Npgsql
             case ConnectionState.Open:
             case ConnectionState.Open | ConnectionState.Executing:
             case ConnectionState.Open | ConnectionState.Fetching:
-            case ConnectionState.Broken:
                 break;
+            case ConnectionState.Broken:
+                FullState = ConnectionState.Closed;
+                goto case ConnectionState.Closed;
             case ConnectionState.Closed:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 return Task.CompletedTask;
             case ConnectionState.Connecting:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new InvalidOperationException("Can't close, connection is in state " + FullState);
             default:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
@@ -726,7 +732,7 @@ namespace Npgsql
                 // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
                 // and assignment but actual perf impact should be negligible (measure).
                 Debug.Assert(Connector == null);
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
 
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed (multiplexing)");
@@ -765,18 +771,7 @@ namespace Npgsql
                 Debug.Assert(connector.CurrentReader == null);
                 Debug.Assert(connector.CurrentCopyOperation == null);
 
-                if (connector.IsBroken)
-                {
-                    connector.Connection = null;
-
-                    if (_pool == null)
-                        connector.Close();
-                    else
-                        _pool.Return(connector);
-
-                    EnlistedTransaction = null;
-                }
-                else if (EnlistedTransaction != null)
+                if (EnlistedTransaction != null)
                 {
                     // A System.Transactions transaction is still in progress
 
@@ -1585,7 +1580,8 @@ namespace Npgsql
         /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
-            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None, $"Ending binding scope {scope} but connection's scope is null");
+            Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None || FullState == ConnectionState.Broken,
+                $"Ending binding scope {scope} but connection's scope is null");
 
             if (scope != ConnectorBindingScope)
                 return;

@@ -875,6 +875,9 @@ namespace Npgsql
                 return;
             }
 
+            // Whenever a connector is broken, it also closes the current reader.
+            Connector.CurrentReader = null;
+
             switch (Connector.State)
             {
             case ConnectorState.Ready:
