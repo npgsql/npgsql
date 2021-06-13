@@ -446,8 +446,7 @@ namespace Npgsql
             }
             catch
             {
-                if (_state != ImporterState.Disposed)
-                    Cleanup();
+                Cleanup();
                 throw;
             }
         }
@@ -555,7 +554,8 @@ namespace Npgsql
 #pragma warning disable CS8625
         void Cleanup()
         {
-            Debug.Assert(_state != ImporterState.Disposed);
+            if (_state == ImporterState.Disposed)
+                return;
             var connector = _connector;
             Log.Debug("COPY operation ended", connector?.Id ?? -1);
 
