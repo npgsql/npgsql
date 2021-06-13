@@ -1872,6 +1872,7 @@ namespace Npgsql.Internal
 
                     if (connection is not null)
                     {
+                        Debug.Assert(connection.TakeCloseLock());
                         if (Settings.ReplicationMode == ReplicationMode.Off)
                         {
                             Connection = null;
@@ -1882,6 +1883,7 @@ namespace Npgsql.Internal
                             connection.ConnectorBindingScope = ConnectorBindingScope.None;
                         }
                         connection.FullState = ConnectionState.Broken;
+                        connection.ReleaseCloseLock();
                     }
                 }
 
@@ -1929,7 +1931,7 @@ namespace Npgsql.Internal
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    CurrentReader.Close();
+                    Debug.Assert(CurrentReader.CloseAsync().IsCompleted);
                 }
                 catch
                 {
@@ -1943,7 +1945,7 @@ namespace Npgsql.Internal
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    CurrentCopyOperation.Dispose();
+                    Debug.Assert(CurrentCopyOperation.DisposeAsync().IsCompleted);
                 }
                 catch
                 {

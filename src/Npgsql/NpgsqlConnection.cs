@@ -254,7 +254,7 @@ namespace Npgsql
         internal Task Open(bool async, CancellationToken cancellationToken)
         {
             CheckClosed();
-            Debug.Assert(Connector == null || Connector.IsBroken);
+            Debug.Assert(Connector == null);
 
             if (_pool == null)
             {
@@ -745,11 +745,15 @@ namespace Npgsql
                 return Close(async: true);
         }
 
+        internal bool TakeCloseLock() => Interlocked.Exchange(ref _closing, 1) == 0;
+
+        internal void ReleaseCloseLock() => Volatile.Write(ref _closing, 0);
+
         internal Task Close(bool async)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
-            if (Interlocked.Exchange(ref _closing, 1) == 1)
+            if (!TakeCloseLock())
                 return Task.CompletedTask;
 
             switch (FullState)
@@ -762,13 +766,13 @@ namespace Npgsql
                 FullState = ConnectionState.Closed;
                 goto case ConnectionState.Closed;
             case ConnectionState.Closed:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 return Task.CompletedTask;
             case ConnectionState.Connecting:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new InvalidOperationException("Can't close, connection is in state " + FullState);
             default:
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
@@ -779,7 +783,7 @@ namespace Npgsql
                 // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
                 // and assignment but actual perf impact should be negligible (measure).
                 Debug.Assert(Connector == null);
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
 
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed (multiplexing)");
@@ -874,7 +878,7 @@ namespace Npgsql
             }
             finally
             {
-                Volatile.Write(ref _closing, 0);
+                ReleaseCloseLock();
             }
         }
 
