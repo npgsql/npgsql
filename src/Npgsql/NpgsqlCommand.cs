@@ -1373,8 +1373,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var numPrepared = 0;
 
-            if (connector.PreparedStatementManager.BySql.TryGetValue(CommandText, out var cachedSqlEntry) &&
-                cachedSqlEntry.IsPrepared &&
+            if (connector.PreparedStatementManager.BySql.TryGetValue(CommandText, out var preparedStatement) &&
+                preparedStatement.IsPrepared &&
                 !Parameters.HasOutputParameters &&
                 (Parameters.Count == 0 || Parameters[0].ParameterName.Length == 0))
             {
@@ -1386,7 +1386,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 statement.InputParameters = Parameters.InternalList;
 
                 // We still do TryAutoPrepare to test parameter matching, update the last-used timestamp, etc.
-                TryAutoPrepare(statement, cachedSqlEntry);
+                TryAutoPrepare(statement, preparedStatement);
             }
             else
             {
@@ -1399,24 +1399,24 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Legacy batching mode (semicolon found in NpgsqlCommand.CommandText).
                     // Enumerate over the statements we've parsed out above, and auto-prepare them.
                     // Note that while the individual statements may get cached, the command as a whole isn't.
-                    Debug.Assert(cachedSqlEntry is null);
+                    Debug.Assert(preparedStatement is null);
 
                     foreach (var statement in _statements)
                     {
-                        if (!connector.PreparedStatementManager.BySql.TryGetValue(statement.SQL, out cachedSqlEntry))
-                            cachedSqlEntry = connector.PreparedStatementManager.CreateAutoPrepareCandidate(statement.SQL);
+                        if (!connector.PreparedStatementManager.BySql.TryGetValue(statement.SQL, out preparedStatement))
+                            preparedStatement = connector.PreparedStatementManager.CreateAutoPrepareCandidate(statement.SQL);
 
                         if (!statement.IsPrepared)
-                            TryAutoPrepare(statement, cachedSqlEntry);
+                            TryAutoPrepare(statement, preparedStatement);
                     }
                 }
                 else
                 {
                     // This is a single-statement command we haven't seen before.
                     // Create a SQL cache entry for it.
-                    cachedSqlEntry ??= connector.PreparedStatementManager.CreateAutoPrepareCandidate(CommandText);
+                    preparedStatement ??= connector.PreparedStatementManager.CreateAutoPrepareCandidate(CommandText);
 
-                    TryAutoPrepare(_statements[0], cachedSqlEntry);
+                    TryAutoPrepare(_statements[0], preparedStatement);
                 }
             }
 
