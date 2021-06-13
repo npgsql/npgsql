@@ -581,9 +581,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
 
+            _connectorPreparedOn = connector;
+
             if (connector.PreparedStatementManager.BySql.TryGetValue(CommandText, out var preparedStatement) &&
                 preparedStatement.IsExplicit &&
-                // !Parameters.HasOutputParameters &&
                 (Parameters.Count == 0 || Parameters[0].ParameterName.Length == 0) &&
                 preparedStatement.DoParametersMatch(Parameters.InternalList))
             {
@@ -613,8 +614,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     needToPrepare = true;
                 }
             }
-
-            _connectorPreparedOn = connector;
 
             Log.Debug($"Preparing: {CommandText}", connector.Id);
 
