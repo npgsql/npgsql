@@ -1875,7 +1875,21 @@ namespace Npgsql.Internal
                     Cleanup();
 
                     if (connection is not null)
+                    {
+                        var closeLockTaken = connection.TakeCloseLock();
+                        Debug.Assert(closeLockTaken);
+                        if (Settings.ReplicationMode == ReplicationMode.Off)
+                        {
+                            Connection = null;
+                            if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
+                                Return();
+                            connection.EnlistedTransaction = null;
+                            connection.Connector = null;
+                            connection.ConnectorBindingScope = ConnectorBindingScope.None;
+                        }
                         connection.FullState = ConnectionState.Broken;
+                        connection.ReleaseCloseLock();
+                    }
                 }
 
                 return reason;
@@ -1922,13 +1936,29 @@ namespace Npgsql.Internal
                 try
                 {
                     // Will never complete asynchronously (stream is already closed)
-                    CurrentReader.Close();
+                    var readerCloseTask = CurrentReader.CloseAsync();
+                    Debug.Assert(readerCloseTask.IsCompleted);
                 }
                 catch
                 {
                     // ignored
                 }
                 CurrentReader = null;
+            }
+
+            if (CurrentCopyOperation != null)
+            {
+                try
+                {
+                    // Will never complete asynchronously (stream is already closed)
+                    var copyOperationDisposeTask = CurrentCopyOperation.DisposeAsync();
+                    Debug.Assert(copyOperationDisposeTask.IsCompleted);
+                }
+                catch
+                {
+                    // ignored
+                }
+                CurrentCopyOperation = null;
             }
 
             ClearTransaction();

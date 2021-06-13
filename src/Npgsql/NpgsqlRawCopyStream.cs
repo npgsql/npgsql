@@ -159,7 +159,6 @@ namespace Npgsql
             catch (Exception e)
             {
                 _connector.Break(e);
-                Cleanup();
                 throw;
             }
         }
@@ -205,7 +204,6 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     _connector.Break(e);
-                    Cleanup();
                     throw;
                 }
             }
@@ -299,7 +297,8 @@ namespace Npgsql
                 }
                 catch
                 {
-                    Cleanup();
+                    if (!_isDisposed)
+                        Cleanup();
                     throw;
                 }
 
@@ -375,9 +374,8 @@ namespace Npgsql
                     _connector.EndUserAction();
                     Cleanup();
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled)
-                        return;
-                    throw;
+                    if (e.SqlState != PostgresErrorCodes.QueryCanceled)
+                        throw;
                 }
             }
             else
@@ -402,10 +400,13 @@ namespace Npgsql
 
         async ValueTask DisposeAsync(bool disposing, bool async)
         {
-            if (_isDisposed || !disposing) { return; }
+            if (_isDisposed || !disposing)
+                return;
 
             try
             {
+                _connector.CurrentCopyOperation = null;
+
                 if (CanWrite)
                 {
                     await FlushAsync(async);
@@ -448,6 +449,7 @@ namespace Npgsql
 #pragma warning disable CS8625
         void Cleanup()
         {
+            Debug.Assert(!_isDisposed);
             Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
             _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
@@ -461,7 +463,7 @@ namespace Npgsql
         void CheckDisposed()
         {
             if (_isDisposed) {
-                throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
+                throw new ObjectDisposedException(nameof(NpgsqlRawCopyStream), "The COPY operation has already ended.");
             }
         }
 

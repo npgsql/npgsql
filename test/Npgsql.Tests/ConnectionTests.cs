@@ -68,13 +68,13 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-        //[Timeout(5000)]
-        public async Task BrokenLifecycle()
+        public async Task BrokenLifecycle([Values] bool openFromClose)
         {
             if (IsMultiplexing)
                 return;
 
-            await using var conn = new NpgsqlConnection(ConnectionString);
+            using var _ = CreateTempPool(ConnectionString, out var connString);
+            await using var conn = new NpgsqlConnection(connString);
 
             var eventOpen = false;
             var eventClosed = false;
@@ -110,12 +110,22 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(eventClosed, Is.True);
+            Assert.That(conn.Connector is null);
+            Assert.AreEqual(0, conn.Pool.Statistics.Total);
 
-            await conn.CloseAsync();
+            if (openFromClose)
+            {
+                await conn.CloseAsync();
 
-            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-            Assert.That(eventClosed, Is.True);
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+                Assert.That(eventClosed, Is.True);
+            }
+
+            Assert.DoesNotThrowAsync(conn.OpenAsync);
+            Assert.AreEqual(1, await conn.ExecuteScalarAsync("SELECT 1"));
+            Assert.AreEqual(1, conn.Pool.Statistics.Total);
+            Assert.DoesNotThrowAsync(conn.CloseAsync);
         }
 
         [Test]

@@ -307,7 +307,6 @@ namespace Npgsql
             catch (Exception e)
             {
                 _connector.Break(e);
-                Cleanup();
                 throw;
             }
         }
@@ -410,7 +409,7 @@ namespace Npgsql
             if (_isDisposed)
                 return;
 
-            if (!_isConsumed)
+            if (!_isConsumed && !_connector.IsBroken)
             {
                 try
                 {
@@ -440,6 +439,7 @@ namespace Npgsql
 #pragma warning disable CS8625
         void Cleanup()
         {
+            Debug.Assert(!_isDisposed);
             var connector = _connector;
             Log.Debug("COPY operation ended", connector?.Id ?? -1);
 
