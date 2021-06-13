@@ -976,6 +976,7 @@ namespace Npgsql
 
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
+            Connector.CurrentReader = null;
             if (Log.IsEnabled(NpgsqlLogLevel.Debug)) {
                 Connector.QueryLogStopWatch.Stop();
                 Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);

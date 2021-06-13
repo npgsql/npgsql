@@ -1351,10 +1351,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 var reader = connector?.CurrentReader;
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
-                {
-                    connector!.CurrentReader = null;
                     await reader.Cleanup(async);
-                }
 
                 State = CommandState.Idle;
 
