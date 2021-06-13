@@ -1,6 +1,6 @@
 ﻿<Project>
   <PropertyGroup>
-    <VersionPrefix>5.0.7</VersionPrefix>
+    <VersionPrefix>5.0.8</VersionPrefix>
 
     <!-- Packing -->
     <Copyright>Copyright 2021 © The Npgsql Development Team</Copyright>
