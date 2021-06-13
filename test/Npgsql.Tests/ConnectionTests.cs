@@ -122,6 +122,7 @@ namespace Npgsql.Tests
             }
 
             Assert.DoesNotThrowAsync(conn.OpenAsync);
+            Assert.AreEqual(1, await conn.ExecuteScalarAsync("SELECT 1"));
             Assert.AreEqual(1, conn.Pool.Statistics.Total);
             Assert.DoesNotThrowAsync(conn.CloseAsync);
         }
