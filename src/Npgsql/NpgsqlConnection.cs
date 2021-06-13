@@ -254,7 +254,7 @@ namespace Npgsql
         internal Task Open(bool async, CancellationToken cancellationToken)
         {
             CheckClosed();
-            Debug.Assert(Connector == null);
+            Debug.Assert(Connector == null || Connector.IsBroken);
 
             if (_pool == null)
             {
@@ -745,7 +745,7 @@ namespace Npgsql
                 return Close(async: true);
         }
 
-        internal Task Close(bool async, bool force = false)
+        internal Task Close(bool async)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
@@ -757,7 +757,6 @@ namespace Npgsql
             case ConnectionState.Open:
             case ConnectionState.Open | ConnectionState.Executing:
             case ConnectionState.Open | ConnectionState.Fetching:
-            case ConnectionState.Broken when force:
                 break;
             case ConnectionState.Broken:
                 FullState = ConnectionState.Closed;
@@ -821,14 +820,7 @@ namespace Npgsql
                 Debug.Assert(connector.CurrentReader == null);
                 Debug.Assert(connector.CurrentCopyOperation == null);
 
-                if (connector.IsBroken)
-                {
-                    connector.Connection = null;
-                    connector.Return();
-
-                    EnlistedTransaction = null;
-                }
-                else if (EnlistedTransaction != null)
+                if (EnlistedTransaction != null)
                 {
                     // A System.Transactions transaction is still in progress
 
