@@ -634,21 +634,19 @@ namespace Npgsql.Tests
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1", tx), Is.EqualTo(1));
                 Assert.That(conn.DataSource, Is.EqualTo(Path.Combine(csb.Host, $".s.PGSQL.{port}")));
             }
-            catch (PostgresException e) when (e.SqlState.StartsWith("28"))
+            catch (Exception ex)
             {
-                if (TestUtil.IsOnBuildServer)
-                    throw;
-                Assert.Ignore("Connection via unix domain socket failed");
+                IgnoreExceptOnBuildServer($"Connection via unix domain socket failed: {ex}");
             }
         }
 
         [Test]
         public async Task UnixAbstractDomainSocket()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
+                (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093))
             {
-                if (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093)
-                    Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
+                Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
             }
 
             // We first need a classic IP connection to make sure we're running against the
@@ -668,11 +666,9 @@ namespace Npgsql.Tests
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1", tx), Is.EqualTo(1));
                 Assert.That(conn.DataSource, Is.EqualTo(Path.Combine(csb.Host, $".s.PGSQL.{csb.Port}")));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                if (TestUtil.IsOnBuildServer)
-                    throw;
-                Assert.Ignore("Connection via abstract unix domain socket failed");
+                IgnoreExceptOnBuildServer($"Connection via abstract unix domain socket failed: {ex}");
             }
         }
 
