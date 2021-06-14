@@ -30,8 +30,8 @@ namespace Npgsql
         internal string DataSourceCached
             => _dataSourceCached ??= _host is null
                 ? string.Empty
-                : Path.IsPathRooted(_host)
-                    ? Path.Combine(_host, $".s.PGSQL.{_port}")
+                : IsUnixSocket(_host, _port, out var socketPath, replaceForAbstract: false)
+                    ? socketPath
                     : $"tcp://{_host}:{_port}";
 
         TimeSpan? _hostRecheckSecondsTranslated;
@@ -1596,6 +1596,30 @@ namespace Npgsql
 
             port = -1;
             host = null;
+            return false;
+        }
+
+        internal static bool IsUnixSocket(string host, int port, [NotNullWhen(true)] out string? socketPath, bool replaceForAbstract = true)
+        {
+            socketPath = null;
+            if (string.IsNullOrEmpty(host))
+                return false;
+
+            var isPathRooted = Path.IsPathRooted(host);
+
+            if (host[0] == '@')
+            {
+                if (replaceForAbstract)
+                    host = $"\0{host.Substring(1)}";
+                isPathRooted = true;
+            }
+
+            if (isPathRooted)
+            {
+                socketPath = Path.Combine(host, $".s.PGSQL.{port}");
+                return true;
+            }
+
             return false;
         }
 

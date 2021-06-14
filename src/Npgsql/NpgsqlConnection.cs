@@ -190,7 +190,8 @@ namespace Npgsql
                     throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
                 }
 
-                if (!Path.IsPathRooted(settings.Host) && NpgsqlConnectionStringBuilder.TrySplitHostPort(settings.Host!.AsSpan(), out var newHost, out var newPort))
+                if (!NpgsqlConnectionStringBuilder.IsUnixSocket(settings.Host!, settings.Port, out _) &&
+                    NpgsqlConnectionStringBuilder.TrySplitHostPort(settings.Host!.AsSpan(), out var newHost, out var newPort))
                 {
                     settings.Host = newHost;
                     settings.Port = newPort;
