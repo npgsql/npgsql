@@ -579,13 +579,14 @@ namespace Npgsql
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         _stream = sslStream;
                         timeout.Check();
-                        ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
                         IsSecure = true;
                         Log.Trace("SSL negotiation successful");
                         break;
                     }
+
+                    ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                 }
 
                 Log.Trace($"Socket connected to {Host}:{Port}");
