@@ -716,13 +716,14 @@ namespace Npgsql
                             throw new NpgsqlException("Exception while performing SSL handshake", e);
                         }
 
-                        ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
                         IsSecure = true;
                         Log.Trace("SSL negotiation successful");
                         break;
                     }
+
+                    ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                 }
 
                 Log.Trace($"Socket connected to {Host}:{Port}");
