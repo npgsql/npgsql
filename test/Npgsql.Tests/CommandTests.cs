@@ -567,13 +567,40 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task Unreferenced_parameter_does_not_work()
+        public async Task Unreferenced_named_parameter_works()
         {
             await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT 1", conn);
-            cmd.Parameters.AddWithValue("not_used", DBNull.Value);
-            Assert.That(() => cmd.ExecuteNonQueryAsync(), Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.IndeterminateDatatype));
+            cmd.Parameters.AddWithValue("not_used", 8);
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task Unreferenced_positional_parameter_works()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8 });
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        [Test]
+        public async Task Mixing_positional_and_named_parameters_is_not_supported()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1, @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8 });
+            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = 9 });
+            Assert.That(() => cmd.ExecuteNonQueryAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+        }
+
+        [Test]
+        public async Task Positional_output_parameters_are_not_supported()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { Value = 8, Direction = ParameterDirection.InputOutput });
+            Assert.That(() => cmd.ExecuteNonQueryAsync(), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test]

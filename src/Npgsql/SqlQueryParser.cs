@@ -79,12 +79,12 @@ namespace Npgsql
                     goto DoubleQuoted;
                 case ':':
                     if (lastChar != ':' && !positionalParameters)
-                        goto ParamStart;
+                        goto NamedParamStart;
                     else
                         break;
                 case '@':
                     if (lastChar != '@' && !positionalParameters)
-                        goto ParamStart;
+                        goto NamedParamStart;
                     else
                         break;
                 case ';':
@@ -109,7 +109,7 @@ namespace Npgsql
                     goto Finish;
             }
 
-        ParamStart:
+        NamedParamStart:
             if (currCharOfs < end)
             {
                 lastChar = ch;
@@ -119,14 +119,14 @@ namespace Npgsql
                     if (currCharOfs - 1 > currTokenBeg)
                         _rewrittenSql.Append(span.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     currTokenBeg = currCharOfs++ - 1;
-                    goto Param;
+                    goto NamedParam;
                 }
                 currCharOfs++;
                 goto NoneContinue;
             }
             goto Finish;
 
-        Param:
+        NamedParam:
             // We have already at least one character of the param name
             for (;;)
             {
@@ -433,8 +433,9 @@ namespace Npgsql
             return;
 
         Finish:
-            if (statementIndex == 0 && _rewrittenSql.Length == 0 && !parameters.HasOutputParameters)
+            if (positionalParameters)
             {
+                Debug.Assert(statementIndex == 0);
                 statement.SQL = sql;
                 statement.InputParameters = parameters.InternalList;
             }

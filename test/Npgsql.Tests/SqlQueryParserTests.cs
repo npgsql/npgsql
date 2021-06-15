@@ -63,18 +63,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [TestCase(@"SELECT :p, e'ab\'c:not_referenced'", TestName = "Estring")]
-        [TestCase(@"SELECT :p, /*/* -- nested comment :not_referenced /*/* *//*/ **/*/*/*/1", TestName = "BlockComment")]
-        [TestCase(@"SELECT :p,
--- Comment, @not_referenced and also :not_referenced
+        [TestCase(@"SELECT e'ab\'c:param'", TestName = "Estring")]
+        [TestCase(@"SELECT/*/* -- nested comment :int /*/* *//*/ **/*/*/*/1")]
+        [TestCase(@"SELECT 1,
+-- Comment, @param and also :param
 2", TestName = "LineComment")]
         public void ParamDoesntGetBound(string sql)
         {
-            _params.AddWithValue(":p", "foo");
-            _params.AddWithValue(":not_referenced", "foo");
+            _params.AddWithValue(":param", "foo");
             _parser.ParseRawQuery(sql, _params, _queries, standardConformingStrings: true);
-            var boundParameter = _queries.Single().InputParameters.Single();
-            Assert.That(boundParameter.ParameterName, Is.EqualTo(":p"));
+            Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
 
         [Test]

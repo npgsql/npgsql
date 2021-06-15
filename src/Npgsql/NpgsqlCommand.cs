@@ -615,7 +615,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Log.Debug($"Preparing: {CommandText}", connector.Id);
+            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+                Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
@@ -831,24 +832,46 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void ValidateParameters(ConnectorTypeMapper typeMapper)
         {
+            bool? positionalMode = null;
             Parameters.HasOutputParameters = false;
 
             for (var i = 0; i < Parameters.Count; i++)
             {
                 var p = Parameters[i];
 
+                if (p.ParameterName.Length == 0)
+                {
+                    if (positionalMode == false && CommandType != CommandType.StoredProcedure)
+                        throw new NotSupportedException("Mixing named and positional parameters isn't supported");
+                    positionalMode = true;
+                }
+                else
+                {
+                    if (positionalMode == true && CommandType != CommandType.StoredProcedure)
+                        throw new NotSupportedException("Mixing named and positional parameters isn't supported");
+                    positionalMode = false;
+                }
+
                 switch (p.Direction)
                 {
                 case ParameterDirection.Input:
                     break;
+
                 case ParameterDirection.InputOutput:
+                    if (positionalMode == true)
+                        throw new NotSupportedException("Output parameters are not supported in positional mode");
                     Parameters.HasOutputParameters = true;
                     break;
+
                 case ParameterDirection.Output:
+                    if (positionalMode == true)
+                        throw new NotSupportedException("Output parameters are not supported in positional mode");
                     Parameters.HasOutputParameters = true;
                     continue;
+
                 case ParameterDirection.ReturnValue:
                     continue;
+
                 default:
                     throw new ArgumentOutOfRangeException(nameof(ParameterDirection),
                         $"Unhandled {nameof(ParameterDirection)} value: {p.Direction}");
