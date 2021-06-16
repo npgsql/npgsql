@@ -113,16 +113,18 @@ namespace Npgsql
             }
         }
 
-        void LookupChangeName(string oldName, string name, int index)
+        void LookupChangeName(NpgsqlParameter parameter, string oldName, string oldTrimmedName, int index)
         {
-            if (string.Equals(oldName, name, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            if (string.Equals(oldName, parameter.TrimmedName, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 return;
 
-            LookupRemove(oldName, index);
-            LookupAdd(name, index);
+            if (oldName != "")
+                LookupRemove(oldTrimmedName, index);
+            if (parameter.IsPositionalParameter)
+                LookupAdd(parameter.TrimmedName, index);
         }
 
-        internal void ChangeParameterName(NpgsqlParameter parameter, string oldTrimmedName)
+        internal void ChangeParameterName(NpgsqlParameter parameter, string oldName, string oldTrimmedName)
         {
             if (_lookup is null || _lookup.Count == 0)
                 return;
@@ -131,7 +133,7 @@ namespace Npgsql
             if (index == -1) // This would be weird.
                 return;
 
-            LookupChangeName(oldTrimmedName, parameter.TrimmedName, index);
+            LookupChangeName(parameter, oldName, oldTrimmedName, index);
         }
 
         #region NpgsqlParameterCollection Member
@@ -168,7 +170,7 @@ namespace Npgsql
                     throw new ArgumentException("Parameter not found");
 
                 var oldValue = _internalList[index];
-                LookupChangeName(oldValue.TrimmedName, value.TrimmedName, index);
+                LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
                 _internalList[index] = value;
             }
@@ -194,7 +196,7 @@ namespace Npgsql
                 if (oldValue == value)
                     return;
 
-                LookupChangeName(oldValue.TrimmedName, value.TrimmedName, index);
+                LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
                 _internalList[index] = value;
                 value.Collection = this;
@@ -216,7 +218,8 @@ namespace Npgsql
 
             _internalList.Add(value);
             value.Collection = this;
-            LookupAdd(value.TrimmedName, _internalList.Count - 1);
+            if (!value.IsPositionalParameter)
+                LookupAdd(value.TrimmedName, _internalList.Count - 1);
             return value;
         }
 
@@ -343,7 +346,7 @@ namespace Npgsql
 
             // Using a dictionary is always faster after around 10 items when matched against reference equality.
             // For string equality this is the case after ~3 items so we take a decent compromise going with 5.
-            if (LookupEnabled)
+            if (LookupEnabled && parameterName != "")
             {
                 if (_lookup is null)
                     BuildLookup();
@@ -381,7 +384,8 @@ namespace Npgsql
                 for (var i = 0; i < _internalList.Count; i++)
                 {
                     var item = _internalList[i];
-                    LookupAdd(item.TrimmedName, i);
+                    if (item.ParameterName != "")
+                        LookupAdd(item.TrimmedName, i);
                 }
             }
         }
@@ -575,7 +579,8 @@ namespace Npgsql
 
             _internalList.Insert(index, item);
             item.Collection = this;
-            LookupInsert(item.TrimmedName, index);
+            if (!item.IsPositionalParameter)
+                LookupInsert(item.TrimmedName, index);
         }
 
         /// <summary>
@@ -603,7 +608,8 @@ namespace Npgsql
                 _internalList.RemoveAt(index);
                 if (!LookupEnabled)
                     LookupClear();
-                LookupRemove(item.TrimmedName, index);
+                if (!item.IsPositionalParameter)
+                    LookupRemove(item.TrimmedName, index);
                 item.Collection = null;
                 return true;
             }

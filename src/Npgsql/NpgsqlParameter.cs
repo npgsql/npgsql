@@ -246,6 +246,7 @@ namespace Npgsql
             get => _name;
             set
             {
+                var oldName = _name;
                 var oldTrimmedName = TrimmedName;
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
                 if (value == null)
@@ -255,9 +256,11 @@ namespace Npgsql
                 else
                     _name = TrimmedName = value;
 
-                Collection?.ChangeParameterName(this, oldTrimmedName);
+                Collection?.ChangeParameterName(this, oldName, oldTrimmedName);
             }
         }
+
+        internal bool IsPositionalParameter => ParameterName == "";
 
         #endregion Name
 

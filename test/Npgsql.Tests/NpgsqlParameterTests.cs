@@ -899,6 +899,17 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void PositionalParameterLookupReturnsFirstMatch([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        {
+            using var command = new NpgsqlCommand();
+            var parameters = command.Parameters;
+            for (var i = 0; i < count; i++)
+                parameters.Add(new NpgsqlParameter("", i));
+
+            Assert.That(command.Parameters.IndexOf(""), Is.EqualTo(0));
+        }
+
+        [Test]
         public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
         {
             if (_compatMode == CompatMode.CaseSensitive)
