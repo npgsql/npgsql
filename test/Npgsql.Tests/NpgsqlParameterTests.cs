@@ -9,10 +9,12 @@ using System.Data.Common;
 
 namespace Npgsql.Tests
 {
-    [TestFixture]
+    [TestFixture(CompatMode.CaseSensitive)]
+    [TestFixture(CompatMode.CaseInsensitive)]
     public class NpgsqlParameterTest : TestBase
     {
-        const int ParameterCollectionLookupThreshold = 5;
+        readonly CompatMode _compatMode;
+        const int LookupThreshold = NpgsqlParameterCollection.LookupThreshold;
 
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
         public void ImplicitSettingOfDbTypes()
@@ -773,7 +775,7 @@ namespace Npgsql.Tests
         {
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
+            for (var i = 0; i < LookupThreshold; i++)
             {
                 command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
             }
@@ -798,8 +800,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void RemovedDuplicateParameter([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        public void RemovedDuplicateParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
+            if (_compatMode == CompatMode.CaseSensitive)
+                return;
+
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
             for (var i = 0; i < count; i++)
@@ -825,7 +830,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void RemovedParameter([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        public void RemovedParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
@@ -847,8 +852,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CorrectIndexReturnedForDuplicateParameterName([Values(ParameterCollectionLookupThreshold, ParameterCollectionLookupThreshold - 2)] int count)
+        public void CorrectIndexReturnedForDuplicateParameterName([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
+            if (_compatMode == CompatMode.CaseSensitive)
+                return;
+
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
             for (var i = 0; i < count; i++)
@@ -877,18 +885,35 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void CaseSensitiveFailsInsensitiveLookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        {
+            if (_compatMode == CompatMode.CaseInsensitive)
+                return;
+
+            using var command = new NpgsqlCommand();
+            var parameters = command.Parameters;
+            for (var i = 0; i < count; i++)
+                parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+            Assert.That(command.Parameters.IndexOf("P1"), Is.EqualTo(-1));
+        }
+
+        [Test]
         public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
         {
+            if (_compatMode == CompatMode.CaseSensitive)
+                return;
+
             using var command = new NpgsqlCommand();
             var parameters = command.Parameters;
 
             parameters.Add(new NpgsqlParameter("foo", 8));
             parameters.Add(new NpgsqlParameter("bar", 8));
             parameters.Add(new NpgsqlParameter("BAR", 8));
-            Assert.That(parameters, Has.Count.LessThan(ParameterCollectionLookupThreshold));
+            Assert.That(parameters, Has.Count.LessThan(LookupThreshold));
 
             if (manyParams)
-                for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
+                for (var i = 0; i < LookupThreshold; i++)
                     parameters.Add(new NpgsqlParameter($"p{i}", i));
 
             Assert.That(parameters.IndexOf("Bar"), Is.EqualTo(1));
@@ -902,10 +927,10 @@ namespace Npgsql.Tests
 
             parameters.Add(new NpgsqlParameter("FOO", 8));
             parameters.Add(new NpgsqlParameter("foo", 8));
-            Assert.That(parameters, Has.Count.LessThan(ParameterCollectionLookupThreshold));
+            Assert.That(parameters, Has.Count.LessThan(LookupThreshold));
 
             if (manyParams)
-                for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
+                for (var i = 0; i < LookupThreshold; i++)
                     parameters.Add(new NpgsqlParameter($"p{i}", i));
 
             Assert.That(parameters.IndexOf("foo"), Is.EqualTo(1));
@@ -1028,5 +1053,17 @@ namespace Npgsql.Tests
             Assert.That(reader.Read(), Is.True);
             Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
         }
+
+        public NpgsqlParameterTest(CompatMode compatMode)
+        {
+            _compatMode = compatMode;
+            NpgsqlParameterCollection.CaseInsensitiveCompatMode = compatMode == CompatMode.CaseInsensitive;
+        }
+    }
+
+    public enum CompatMode
+    {
+        CaseInsensitive,
+        CaseSensitive
     }
 }

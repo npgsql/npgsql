@@ -15,112 +15,107 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
+        internal const int LookupThreshold = 5;
         readonly List<NpgsqlParameter> _internalList = new(5);
+#if DEBUG
+        internal static bool CaseInsensitiveCompatMode;
+#else
+        static readonly bool CaseInsensitiveCompatMode;
+#endif
+
+        static NpgsqlParameterCollection()
+        {
+            AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsenstiveDbParameters", out var enabled);
+            CaseInsensitiveCompatMode = enabled;
+        }
 
         // Dictionary lookups for GetValue to improve performance
-        Dictionary<string, MultiValue>? _lookup;
+        Dictionary<string, int>? _lookup;
+        Dictionary<string, int>? _caseInsensitiveLookup;
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
         /// </summary>
         internal NpgsqlParameterCollection() {}
 
-        bool LookupEnabled => _internalList.Count >= 5;
+        bool LookupEnabled => _internalList.Count >= LookupThreshold;
+
+        void LookupClear()
+        {
+            _lookup?.Clear();
+            _caseInsensitiveLookup?.Clear();
+        }
 
         void LookupAdd(string name, int index)
         {
-            if (_lookup is null)
-                return;
+            if (_lookup is not null && !_lookup.ContainsKey(name))
+                _lookup[name] = index;
 
-            if (!_lookup.TryGetValue(name, out var indices))
-            {
-                _lookup[name] = new MultiValue(index);
-            }
-            else
-            {
-                indices.Add(index);
-                _lookup[name] = indices;
-            }
+            if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null && !_caseInsensitiveLookup.ContainsKey(name))
+                _caseInsensitiveLookup[name] = index;
         }
 
         void LookupInsert(string name, int index)
         {
-            if (_lookup is null)
-                return;
-
-            foreach (var kv in _lookup)
+            if (_lookup is not null && (!_lookup.TryGetValue(name, out var indexCs) || index < indexCs))
             {
-                var existing = kv.Value;
-                if (existing.HasMultiple)
+                foreach (var kv in _lookup)
                 {
-                    for (var i = 0; i < existing.Values.Count; i++)
-                    {
-                        var value = existing.Values[i];
-                        if (index <= value)
-                            existing.Values[i] = value + 1;
-                    }
+                    if (index <= kv.Value)
+                        _lookup[kv.Key] = kv.Value + 1;
                 }
-                else if (index <= existing.Value)
-                {
-                    existing.Value++;
-                }
-                _lookup[kv.Key] = existing;
+                _lookup[name] = index;
             }
 
-            if (!_lookup.TryGetValue(name, out var indices))
+            if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null &&
+                (!_caseInsensitiveLookup.TryGetValue(name, out var indexCi) || index < indexCi))
             {
-                _lookup[name] = new MultiValue(index);
-            }
-            else
-            {
-                indices.Add(index);
-                _lookup[name] = indices;
+                foreach (var kv in _caseInsensitiveLookup)
+                {
+                    if (index <= kv.Value)
+                        _caseInsensitiveLookup[kv.Key] = kv.Value + 1;
+                }
+                _caseInsensitiveLookup[name] = index;
             }
         }
 
         void LookupRemove(string name, int index)
         {
-            if (_lookup is null || !_lookup.TryGetValue(name, out var item))
-                return;
-
-            var nullableIndices = item.Remove(index);
-            if (!nullableIndices.HasValue)
+            if (_lookup is not null && _lookup.ContainsKey(name))
             {
                 _lookup.Remove(name);
-            }
-            else
-            {
-                var indices = nullableIndices.Value;
-                _lookup[name] = indices;
+                foreach (var kv in _lookup)
+                {
+                    if (index < kv.Value)
+                        _lookup[kv.Key] = kv.Value - 1;
+                }
             }
 
-            foreach (var kv in _lookup)
+            if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null &&
+                _caseInsensitiveLookup.TryGetValue(name, out var indexCi) && indexCi == index)
             {
-                var existing = kv.Value;
-                if (existing.HasMultiple)
+                _caseInsensitiveLookup.Remove(name);
+                foreach (var kv in _caseInsensitiveLookup)
                 {
-                    for (var i = 0; i < existing.Values.Count; i++)
+                    if (index < kv.Value)
+                        _caseInsensitiveLookup[kv.Key] = kv.Value - 1;
+                }
+
+                for (var i = 0; i < _internalList.Count; i++)
+                {
+                    var value = _internalList[i];
+                    if (string.Equals(name, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
                     {
-                        var value = existing.Values[i];
-                        Debug.Assert(index != value, "Values should not contain duplicates.");
-                        if (index < value)
-                            existing.Values[i] = value - 1;
+                        _caseInsensitiveLookup[value.TrimmedName] = i;
+                        break;
                     }
                 }
-                else
-                {
-                    Debug.Assert(index != existing.Value, "Values should not contain duplicates.");
-                    if (index < existing.Value)
-                        existing.Value--;
-                }
-                _lookup[kv.Key] = existing;
             }
-
         }
 
         void LookupChangeName(string oldName, string name, int index)
         {
-            if (string.Equals(oldName, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(oldName, name, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 return;
 
             LookupRemove(oldName, index);
@@ -353,24 +348,11 @@ namespace Npgsql
                 if (_lookup is null)
                     BuildLookup();
 
-                if (_lookup!.TryGetValue(parameterName, out var indices))
-                {
-                    if (!indices.HasMultiple)
-                        return indices.Value;
+                if (_lookup!.TryGetValue(parameterName, out var indexCs))
+                    return indexCs;
 
-                    var values = indices.Values;
-                    var lowestIndex = int.MaxValue;
-                    for (var i = 0; i < values.Count; i++)
-                    {
-                        var index = values[i];
-                        if (index < lowestIndex) lowestIndex = index;
-                        if (string.Equals(parameterName, _internalList[index].TrimmedName))
-                            return index;
-                    }
-
-                    // If none is an exact match we take the lowest index.
-                    return lowestIndex;
-                }
+                if (CaseInsensitiveCompatMode && _caseInsensitiveLookup!.TryGetValue(parameterName, out var indexCi))
+                    return indexCi;
 
                 return -1;
             }
@@ -383,15 +365,19 @@ namespace Npgsql
             }
 
             // Fall back to a case-insensitive search.
-            for (var i = 0; i < _internalList.Count; i++)
-                if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
-                    return i;
+            if (CaseInsensitiveCompatMode)
+                for (var i = 0; i < _internalList.Count; i++)
+                    if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+                        return i;
 
             return -1;
 
             void BuildLookup()
             {
-                _lookup = new Dictionary<string, MultiValue>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
+                _lookup = new Dictionary<string, int>(_internalList.Count, StringComparer.Ordinal);
+                if (CaseInsensitiveCompatMode)
+                    _caseInsensitiveLookup = new Dictionary<string, int>(_internalList.Count, StringComparer.OrdinalIgnoreCase);
+
                 for (var i = 0; i < _internalList.Count; i++)
                 {
                     var item = _internalList[i];
@@ -489,7 +475,7 @@ namespace Npgsql
                 toRemove.Collection = null;
 
             _internalList.Clear();
-            _lookup?.Clear();
+            LookupClear();
         }
 
         /// <inheritdoc />
@@ -616,7 +602,7 @@ namespace Npgsql
             {
                 _internalList.RemoveAt(index);
                 if (!LookupEnabled)
-                    _lookup?.Clear();
+                    LookupClear();
                 LookupRemove(item.TrimmedName, index);
                 item.Collection = null;
                 return true;
@@ -671,49 +657,6 @@ namespace Npgsql
             catch (Exception)
             {
                 throw new InvalidCastException($"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
-            }
-        }
-
-        struct MultiValue
-        {
-            public int Value { get; set; }
-            public List<int>? Values { get; private set; }
-
-            [MemberNotNullWhen(true, nameof(Values))]
-            public bool HasMultiple => Values is { Count: > 1 };
-
-            public MultiValue(int value)
-            {
-                Value = value;
-                Values = null;
-            }
-
-            public void Add(int value)
-            {
-                if (HasMultiple)
-                {
-                    Values.Add(value);
-                    return;
-                }
-                Values ??= new List<int>(2);
-                Values.Add(Value);
-                Values.Add(value);
-                Value = default;
-            }
-
-            public MultiValue? Remove(int index)
-            {
-                if (!HasMultiple)
-                    return null;
-
-                // Demote the MultiValue but keep the list allocated.
-                if (Values.Remove(index) && !HasMultiple)
-                {
-                    Value = Values[0];
-                    Values.Clear();
-                }
-
-                return this;
             }
         }
     }
