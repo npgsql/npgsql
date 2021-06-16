@@ -9,6 +9,8 @@ using System.Data.Common;
 
 namespace Npgsql.Tests
 {
+    // This test class has global effects on case sensitive matching in param collection.
+    [NonParallelizable]
     [TestFixture(CompatMode.CaseSensitive)]
     [TestFixture(CompatMode.CaseInsensitive)]
     public class NpgsqlParameterTest : TestBase
