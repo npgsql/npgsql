@@ -846,14 +846,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Message Creation / Population
 
-        internal bool FlushOccurred { get; set; }
-
         void BeginSend(NpgsqlConnector connector)
-        {
-            connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
-            connector.WriteBuffer.CurrentCommand = this;
-            FlushOccurred = false;
-        }
+            => connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
 
         void CleanupSend()
         {
@@ -873,7 +867,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 for (var i = 0; i < _statements.Count; i++)
                 {
                     // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
-                    async = ForceAsyncIfNecessary(async, i);
+                    ForceAsyncIfNecessary(ref async, i);
 
                     var statement = _statements[i];
                     var pStatement = statement.PreparedStatement;
@@ -919,7 +913,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var wroteSomething = false;
                 for (var i = 0; i < _statements.Count; i++)
                 {
-                    async = ForceAsyncIfNecessary(async, i);
+                    ForceAsyncIfNecessary(ref async, i);
 
                     var statement = _statements[i];
 
@@ -943,7 +937,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 var statement = _statements[i];
 
@@ -963,7 +957,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
@@ -989,33 +983,34 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool ForceAsyncIfNecessary(bool async, int numberOfStatementInBatch)
+        void ForceAsyncIfNecessary(ref bool async, int numberOfStatementInBatch)
         {
-            if (!async && FlushOccurred && numberOfStatementInBatch > 0)
+            if (!async && numberOfStatementInBatch > 0)
             {
-                // We're synchronously sending the non-first statement in a batch and a flush
-                // has already occured. Switch to async. See long comment in Execute() above.
+                // We're synchronously sending the non-first statement in a batch - switch to async writing.
+                // See long comment in Execute() above.
+
+                // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
+                // For now, writing the first statement synchronously gives us a better chance of handle and bubbling up errors correctly
+                // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
+                // be written asynchronously.
                 async = true;
                 SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
             }
-
-            return async;
         }
 
         async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             BeginSend(connector);
 
+            var i = 0;
             foreach (var statement in _statements.Where(s => s.IsPrepared))
             {
-                if (!async && FlushOccurred)
-                {
-                    async = true;
-                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-                }
+                ForceAsyncIfNecessary(ref async, i);
 
                 await connector.WriteClose(StatementOrPortal.Statement, statement.StatementName, async, cancellationToken);
                 statement.PreparedStatement!.State = PreparedState.BeingUnprepared;
+                i++;
             }
 
             await connector.WriteSync(async, cancellationToken);
@@ -1278,11 +1273,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // entire send to complete would trigger a deadlock for multi-statement commands,
                         // where PostgreSQL sends large results for the first statement, while we're sending large
                         // parameter data for the second. See #641.
-                        // Instead, all sends for non-first statements and for non-first buffers are performed
-                        // asynchronously (even if the user requested sync), in a special synchronization context
-                        // to prevents a dependency on the thread pool (which would also trigger deadlocks).
-                        // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
-                        // send functions can switch to the special async mode when needed.
+                        // Instead, all sends for non-first statements are performed asynchronously (even if the user requested sync),
+                        // in a special synchronization context to prevents a dependency on the thread pool (which would also trigger
+                        // deadlocks).
                         sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
