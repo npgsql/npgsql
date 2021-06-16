@@ -877,6 +877,40 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
+        {
+            using var command = new NpgsqlCommand();
+            var parameters = command.Parameters;
+
+            parameters.Add(new NpgsqlParameter("foo", 8));
+            parameters.Add(new NpgsqlParameter("bar", 8));
+            parameters.Add(new NpgsqlParameter("BAR", 8));
+            Assert.That(parameters, Has.Count.LessThan(ParameterCollectionLookupThreshold));
+
+            if (manyParams)
+                for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
+                    parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+            Assert.That(parameters.IndexOf("Bar"), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void IndexOf_prefers_case_sensitive_match([Values] bool manyParams)
+        {
+            using var command = new NpgsqlCommand();
+            var parameters = command.Parameters;
+
+            parameters.Add(new NpgsqlParameter("FOO", 8));
+            parameters.Add(new NpgsqlParameter("foo", 8));
+            Assert.That(parameters, Has.Count.LessThan(ParameterCollectionLookupThreshold));
+
+            if (manyParams)
+                for (var i = 0; i < ParameterCollectionLookupThreshold; i++)
+                    parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+            Assert.That(parameters.IndexOf("foo"), Is.EqualTo(1));
+        }
+        [Test]
         public void NpgsqlParameterCloneTest()
         {
             var param = new NpgsqlParameter();
