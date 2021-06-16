@@ -120,7 +120,7 @@ namespace Npgsql
 
             if (!ReferenceEquals(oldName, ""))
                 LookupRemove(oldName, index);
-            if (parameter.IsPositionalParameter)
+            if (parameter.IsPositional)
                 LookupAdd(parameter.ParameterName, index);
         }
 
@@ -218,7 +218,7 @@ namespace Npgsql
 
             _internalList.Add(value);
             value.Collection = this;
-            if (!value.IsPositionalParameter)
+            if (!value.IsPositional)
                 LookupAdd(value.ParameterName, _internalList.Count - 1);
             return value;
         }
@@ -576,7 +576,7 @@ namespace Npgsql
 
             _internalList.Insert(index, item);
             item.Collection = this;
-            if (!item.IsPositionalParameter)
+            if (!item.IsPositional)
                 LookupInsert(item.ParameterName, index);
         }
 
@@ -605,7 +605,7 @@ namespace Npgsql
                 _internalList.RemoveAt(index);
                 if (!LookupEnabled)
                     LookupClear();
-                if (!item.IsPositionalParameter)
+                if (!item.IsPositional)
                     LookupRemove(item.ParameterName, index);
                 item.Collection = null;
                 return true;

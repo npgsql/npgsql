@@ -259,7 +259,7 @@ namespace Npgsql
             }
         }
 
-        internal bool IsPositionalParameter => ReferenceEquals(ParameterName, "");
+        internal bool IsPositional => ReferenceEquals(ParameterName, "");
 
         #endregion Name
 
