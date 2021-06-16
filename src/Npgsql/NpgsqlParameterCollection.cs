@@ -104,27 +104,27 @@ namespace Npgsql
                 for (var i = 0; i < _internalList.Count; i++)
                 {
                     var value = _internalList[i];
-                    if (string.Equals(name, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(name, value.ParameterName, StringComparison.OrdinalIgnoreCase))
                     {
-                        _caseInsensitiveLookup[value.TrimmedName] = i;
+                        _caseInsensitiveLookup[value.ParameterName] = i;
                         break;
                     }
                 }
             }
         }
 
-        void LookupChangeName(NpgsqlParameter parameter, string oldName, string oldTrimmedName, int index)
+        void LookupChangeName(NpgsqlParameter parameter, string oldName, int index)
         {
-            if (string.Equals(oldName, parameter.TrimmedName, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            if (string.Equals(oldName, parameter.ParameterName, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 return;
 
-            if (oldName != "")
-                LookupRemove(oldTrimmedName, index);
+            if (!ReferenceEquals(oldName, ""))
+                LookupRemove(oldName, index);
             if (parameter.IsPositionalParameter)
-                LookupAdd(parameter.TrimmedName, index);
+                LookupAdd(parameter.ParameterName, index);
         }
 
-        internal void ChangeParameterName(NpgsqlParameter parameter, string oldName, string oldTrimmedName)
+        internal void ChangeParameterName(NpgsqlParameter parameter, string oldName)
         {
             if (_lookup is null || _lookup.Count == 0)
                 return;
@@ -133,7 +133,7 @@ namespace Npgsql
             if (index == -1) // This would be weird.
                 return;
 
-            LookupChangeName(parameter, oldName, oldTrimmedName, index);
+            LookupChangeName(parameter, oldName, index);
         }
 
         #region NpgsqlParameterCollection Member
@@ -170,7 +170,7 @@ namespace Npgsql
                     throw new ArgumentException("Parameter not found");
 
                 var oldValue = _internalList[index];
-                LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
+                LookupChangeName(value, oldValue.ParameterName, index);
 
                 _internalList[index] = value;
             }
@@ -196,7 +196,7 @@ namespace Npgsql
                 if (oldValue == value)
                     return;
 
-                LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
+                LookupChangeName(value, oldValue.ParameterName, index);
 
                 _internalList[index] = value;
                 value.Collection = this;
@@ -219,7 +219,7 @@ namespace Npgsql
             _internalList.Add(value);
             value.Collection = this;
             if (!value.IsPositionalParameter)
-                LookupAdd(value.TrimmedName, _internalList.Count - 1);
+                LookupAdd(value.ParameterName, _internalList.Count - 1);
             return value;
         }
 
@@ -341,12 +341,9 @@ namespace Npgsql
             if (parameterName is null)
                 return -1;
 
-            if (parameterName.Length > 0 && (parameterName[0] == ':' || parameterName[0] == '@'))
-                parameterName = parameterName.Remove(0, 1);
-
             // Using a dictionary is always faster after around 10 items when matched against reference equality.
             // For string equality this is the case after ~3 items so we take a decent compromise going with 5.
-            if (LookupEnabled && parameterName != "")
+            if (LookupEnabled && !ReferenceEquals(parameterName, ""))
             {
                 if (_lookup is null)
                     BuildLookup();
@@ -362,7 +359,7 @@ namespace Npgsql
 
             for (var i = 0; i < _internalList.Count; i++)
             {
-                var name = _internalList[i].TrimmedName;
+                var name = _internalList[i].ParameterName;
                 if (ReferenceEquals(parameterName, name) || string.Equals(parameterName, name))
                     return i;
             }
@@ -370,7 +367,7 @@ namespace Npgsql
             // Fall back to a case-insensitive search.
             if (CaseInsensitiveCompatMode)
                 for (var i = 0; i < _internalList.Count; i++)
-                    if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(parameterName, _internalList[i].ParameterName, StringComparison.OrdinalIgnoreCase))
                         return i;
 
             return -1;
@@ -384,8 +381,8 @@ namespace Npgsql
                 for (var i = 0; i < _internalList.Count; i++)
                 {
                     var item = _internalList[i];
-                    if (item.ParameterName != "")
-                        LookupAdd(item.TrimmedName, i);
+                    if (!ReferenceEquals(item.ParameterName, ""))
+                        LookupAdd(item.ParameterName, i);
                 }
             }
         }
@@ -580,7 +577,7 @@ namespace Npgsql
             _internalList.Insert(index, item);
             item.Collection = this;
             if (!item.IsPositionalParameter)
-                LookupInsert(item.TrimmedName, index);
+                LookupInsert(item.ParameterName, index);
         }
 
         /// <summary>
@@ -609,7 +606,7 @@ namespace Npgsql
                 if (!LookupEnabled)
                     LookupClear();
                 if (!item.IsPositionalParameter)
-                    LookupRemove(item.TrimmedName, index);
+                    LookupRemove(item.ParameterName, index);
                 item.Collection = null;
                 return true;
             }
