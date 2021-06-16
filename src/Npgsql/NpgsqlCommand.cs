@@ -805,15 +805,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Message Creation / Population
 
-        internal bool FlushOccurred { get; set; }
-
-        void BeginSend()
-        {
-            Debug.Assert(Connection?.Connector != null);
-            Connection.Connector.WriteBuffer.CurrentCommand = this;
-            FlushOccurred = false;
-        }
-
         void CleanupSend()
         {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
@@ -823,14 +814,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task SendExecute(bool async)
         {
-            BeginSend();
-            var connector = Connection.Connector;
+            var connector = Connection!.Connector;
             Debug.Assert(connector != null);
 
             var buf = connector.WriteBuffer;
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
@@ -876,8 +866,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task SendExecuteSchemaOnly(bool async)
         {
-            BeginSend();
-            var connector = Connection.Connector;
+            var connector = Connection!.Connector;
             Debug.Assert(connector != null);
 
             var wroteSomething = false;
@@ -885,7 +874,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var buf = connector.WriteBuffer;
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 var statement = _statements[i];
 
@@ -913,13 +902,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task SendDeriveParameters(bool async)
         {
-            BeginSend();
-            var connector = Connection.Connector;
+            var connector = Connection!.Connector;
             Debug.Assert(connector != null);
             var buf = connector.WriteBuffer;
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 await connector.ParseMessage
                     .Populate(_statements[i].SQL, string.Empty)
@@ -936,13 +924,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task SendPrepare(bool async)
         {
-            BeginSend();
-            var connector = Connection.Connector;
+            var connector = Connection!.Connector;
             Debug.Assert(connector != null);
             var buf = connector.WriteBuffer;
             for (var i = 0; i < _statements.Count; i++)
             {
-                async = ForceAsyncIfNecessary(async, i);
+                ForceAsyncIfNecessary(ref async, i);
 
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
@@ -976,38 +963,39 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CleanupSend();
         }
 
-        bool ForceAsyncIfNecessary(bool async, int numberOfStatementInBatch)
+        void ForceAsyncIfNecessary(ref bool async, int numberOfStatementInBatch)
         {
-            if (!async && FlushOccurred && numberOfStatementInBatch > 0)
+            if (!async && numberOfStatementInBatch > 0)
             {
-                // We're synchronously sending the non-first statement in a batch and a flush
-                // has already occured. Switch to async. See long comment in Execute() above.
+                // We're synchronously sending the non-first statement in a batch - switch to async writing.
+                // See long comment in Execute() above.
+
+                // TODO: we can simply do all batch writing asynchronously, instead of starting with the 2nd statement.
+                // For now, writing the first statement synchronously gives us a better chance of handle and bubbling up errors correctly
+                // (see sendTask.IsFaulted in Execute()). Once #1323 is done, that shouldn't be needed any more and entire batches should
+                // be written asynchronously.
                 async = true;
                 SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
             }
-            return async;
         }
 
         async Task SendClose(bool async)
         {
-            BeginSend();
-            var connector = Connection.Connector;
+            var connector = Connection!.Connector;
             Debug.Assert(connector != null);
 
             var buf = connector.WriteBuffer;
+            var i = 0;
             foreach (var statement in _statements.Where(s => s.IsPrepared))
             {
-                if (FlushOccurred)
-                {
-                    async = true;
-                    SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
-                }
+                ForceAsyncIfNecessary(ref async, i);
 
                 await connector.CloseMessage
                     .Populate(StatementOrPortal.Statement, statement.StatementName)
                     .Write(buf, async);
                 Debug.Assert(statement.PreparedStatement != null);
                 statement.PreparedStatement.State = PreparedState.BeingUnprepared;
+                i++;
             }
             await SyncMessage.Instance.Write(buf, async);
             await buf.Flush(async);

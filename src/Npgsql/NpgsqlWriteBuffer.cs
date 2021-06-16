@@ -134,19 +134,11 @@ namespace Npgsql
             }
 
             WritePosition = 0;
-            if (CurrentCommand != null)
-            {
-                CurrentCommand.FlushOccurred = true;
-                CurrentCommand = null;
-            }
             if (_copyMode)
                 WriteCopyDataHeader();
         }
 
         internal void Flush() => Flush(false).GetAwaiter().GetResult();
-
-        [CanBeNull]
-        internal NpgsqlCommand CurrentCommand { get; set; }
 
         internal void DirectWrite(byte[] buffer, int offset, int count)
         {

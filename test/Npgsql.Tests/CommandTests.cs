@@ -988,7 +988,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that Npgsql doesn't attempt to send all data before the user can start reading. That would cause a deadlock.")]
-        public void ReadWriteDeadlock()
+        public void Batched_big_statements_do_not_deadlock()
         {
             // We're going to send a large multistatement query that would exhaust both the client's and server's
             // send and receive buffers (assume 64k per buffer).
@@ -1046,6 +1046,19 @@ namespace Npgsql.Tests
                     Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));
                 }
             }
+        }
+
+        [Test, Timeout(10000)]
+        public void Batched_small_then_big_statements_do_not_deadlock_in_sync_io()
+        {
+            // This makes sure we switch to async writing for batches, starting from the 2nd statement at the latest.
+            // Otherwise, a small first first statement followed by a huge big one could cause us to deadlock, as we're stuck
+            // synchronously sending the 2nd statement while PG is stuck sending the results of the 1st.
+            using var conn = OpenConnection();
+            var data = new string('x', 5_000_000);
+            using var cmd = new NpgsqlCommand("SELECT generate_series(1, 500000); SELECT @p", conn);
+            cmd.Parameters.AddWithValue("p", NpgsqlDbType.Text, data);
+            cmd.ExecuteNonQuery();
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]
