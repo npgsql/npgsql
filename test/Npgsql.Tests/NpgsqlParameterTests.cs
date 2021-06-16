@@ -946,6 +946,25 @@ namespace Npgsql.Tests
 
             Assert.That(parameters.IndexOf("foo"), Is.EqualTo(1));
         }
+
+        [Test]
+        public void IndexOfMatchesAllParameterSyntaxes()
+        {
+            using var command = new NpgsqlCommand();
+            var parameters = command.Parameters;
+
+            parameters.Add(new NpgsqlParameter("@foo0", 8));
+            parameters.Add(new NpgsqlParameter(":foo1", 8));
+            parameters.Add(new NpgsqlParameter("foo2", 8));
+
+            for (var i = 0; i < parameters.Count; i++)
+            {
+                Assert.That(parameters.IndexOf("foo" + i), Is.EqualTo(i));
+                Assert.That(parameters.IndexOf("@foo" + i), Is.EqualTo(i));
+                Assert.That(parameters.IndexOf(":foo" + i), Is.EqualTo(i));
+            }
+        }
+
         [Test]
         public void NpgsqlParameterCloneTest()
         {
