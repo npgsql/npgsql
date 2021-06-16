@@ -1008,7 +1008,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             foreach (var statement in _statements.Where(s => s.IsPrepared))
             {
-                if (FlushOccurred)
+                if (!async && FlushOccurred)
                 {
                     async = true;
                     SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
