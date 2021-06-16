@@ -120,7 +120,7 @@ namespace Npgsql
 
             if (!ReferenceEquals(oldName, ""))
                 LookupRemove(oldName, index);
-            if (parameter.IsPositional)
+            if (!parameter.IsPositional)
                 LookupAdd(parameter.ParameterName, index);
         }
 
