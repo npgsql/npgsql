@@ -1408,7 +1408,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 statement.InputParameters = Parameters.InternalList;
 
                 // We still do TryAutoPrepare to test parameter matching, update the last-used timestamp, etc.
-                TryAutoPrepare(statement, preparedStatement);
+                var prepared = TryAutoPrepare(statement, preparedStatement);
+                Debug.Assert(prepared);
+                _connectorPreparedOn = connector;
+                NpgsqlEventSource.Log.CommandStartPrepared();
             }
             else
             {
@@ -1423,13 +1426,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Note that while the individual statements may get cached, the command as a whole isn't.
                     Debug.Assert(preparedStatement is null);
 
+                    var prepared = false;
                     foreach (var statement in _statements)
                     {
                         if (!connector.PreparedStatementManager.BySql.TryGetValue(statement.SQL, out preparedStatement))
                             preparedStatement = connector.PreparedStatementManager.CreateAutoPrepareCandidate(statement.SQL);
 
                         if (!statement.IsPrepared)
-                            TryAutoPrepare(statement, preparedStatement);
+                            prepared = TryAutoPrepare(statement, preparedStatement) || prepared;
+                    }
+
+                    if (prepared)
+                    {
+                        _connectorPreparedOn = connector;
+                        if (numPrepared == _statements.Count)
+                            NpgsqlEventSource.Log.CommandStartPrepared();
                     }
                 }
                 else
@@ -1438,22 +1449,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Create a SQL cache entry for it.
                     preparedStatement ??= connector.PreparedStatementManager.CreateAutoPrepareCandidate(CommandText);
 
-                    TryAutoPrepare(_statements[0], preparedStatement);
+                    if (TryAutoPrepare(_statements[0], preparedStatement))
+                    {
+                        _connectorPreparedOn = connector;
+                        NpgsqlEventSource.Log.CommandStartPrepared();
+                    }
                 }
             }
 
-            if (numPrepared > 0)
-            {
-                _connectorPreparedOn = connector;
-                if (numPrepared == _statements.Count)
-                    NpgsqlEventSource.Log.CommandStartPrepared();
-            }
-
-            void TryAutoPrepare(NpgsqlStatement statement, PreparedStatement cachedSqlEntry)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            bool TryAutoPrepare(NpgsqlStatement statement, PreparedStatement cachedSqlEntry)
             {
                 if (connector!.PreparedStatementManager.TryAutoPrepare(cachedSqlEntry, statement.InputParameters))
                 {
-                    numPrepared++;
                     if (cachedSqlEntry.State == PreparedState.NotPrepared)
                     {
                         cachedSqlEntry.State = PreparedState.BeingPrepared;
@@ -1461,7 +1469,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     statement.PreparedStatement = cachedSqlEntry;
+
+                    return true;
                 }
+
+                return false;
             }
         }
 
