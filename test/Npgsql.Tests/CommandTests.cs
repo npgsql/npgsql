@@ -751,16 +751,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task CaseInsensitiveParameterNames()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var command = new NpgsqlCommand("select :p1", conn);
-            command.Parameters.Add(new NpgsqlParameter("P1", NpgsqlDbType.Integer)).Value = 5;
-            var result = await command.ExecuteScalarAsync();
-            Assert.AreEqual(5, result);
-        }
-
-        [Test]
         public async Task TestBug1006158OutputParameters()
         {
             using var conn = await OpenConnectionAsync();
