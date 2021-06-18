@@ -124,6 +124,7 @@ namespace Npgsql
             else if (_inputParameters is not null)
                 _inputParameters = null; // We're pointing at a user's NpgsqlParameterCollection
             Debug.Assert(_inputParameters is null || _inputParameters.Count == 0);
+            Debug.Assert(_ownedInputParameters is null || _ownedInputParameters.Count == 0);
         }
 
         internal void ApplyCommandComplete(CommandCompleteMessage msg)
