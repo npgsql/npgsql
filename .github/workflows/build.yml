@@ -86,7 +86,6 @@ jobs:
           fi
 
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-          sudo sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
           if [ ${{ matrix.pg_major }} -ge 14 ]; then
             sudo sed -i 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
           else
@@ -151,7 +150,7 @@ jobs:
           sed -i "s|#wal_sender_timeout =|wal_sender_timeout = 3s #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#synchronous_standby_names =|synchronous_standby_names = 'npgsql_test_sync_standby' #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#synchronous_commit =|synchronous_commit = local #|" pgsql/PGDATA/postgresql.conf
-          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
+          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
           
           # Starting with PG14 the default password encryption mode is scram.
           # Changing it to md5 for compatability.
@@ -174,7 +173,7 @@ jobs:
             sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
           fi
 
-          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' restart
+          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' restart
 
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_scram SUPERUSER LOGIN PASSWORD 'npgsql_tests_scram'"
 
