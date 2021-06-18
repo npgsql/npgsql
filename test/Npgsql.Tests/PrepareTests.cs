@@ -115,14 +115,15 @@ namespace Npgsql.Tests
                 command.Prepare();
                 command.Parameters[0].Value = 3;
                 command.Parameters[1].Value = 5;
+
                 using (var reader = command.ExecuteReader())
                 {
                     Assert.That(reader.Read(), Is.True);
                     Assert.That(reader.GetInt32(0), Is.EqualTo(3));
                     Assert.That(reader.GetInt64(1), Is.EqualTo(5));
                 }
-                if (i == 1)
-                    command.Unprepare();
+
+                command.Unprepare();
             }
         }
 
@@ -139,6 +140,7 @@ namespace Npgsql.Tests
                 command.Prepare();
                 command.Parameters[0].Value = 3;
                 command.Parameters[1].Value = 5;
+
                 using (var reader = command.ExecuteReader())
                 {
                     Assert.That(reader.Read(), Is.True);
@@ -146,8 +148,7 @@ namespace Npgsql.Tests
                     Assert.That(reader.GetInt64(1), Is.EqualTo(5));
                 }
 
-                if (i == 1)
-                    command.Unprepare();
+                command.Unprepare();
             }
         }
 

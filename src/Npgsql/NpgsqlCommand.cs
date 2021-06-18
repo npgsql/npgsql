@@ -853,10 +853,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var hasOutputParameters = false;
 
-            for (var i = 0; i < Parameters.Count; i++)
+            foreach (var p in Parameters.InternalList)
             {
-                var p = Parameters[i];
-
                 Parameters.CalculatePlaceholderType(p);
 
                 switch (p.Direction)
