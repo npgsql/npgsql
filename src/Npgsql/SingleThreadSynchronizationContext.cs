@@ -49,6 +49,8 @@ namespace Npgsql
 
         void WorkLoop()
         {
+            SetSynchronizationContext(this);
+
             try
             {
                 while (true)
