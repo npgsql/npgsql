@@ -1,5 +1,3 @@
-#define NET_2_0
-
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
@@ -9,15 +7,8 @@ using System.Data.Common;
 
 namespace Npgsql.Tests
 {
-    // This test class has global effects on case sensitive matching in param collection.
-    [NonParallelizable]
-    [TestFixture(CompatMode.CaseSensitive)]
-    [TestFixture(CompatMode.CaseInsensitive)]
     public class NpgsqlParameterTest : TestBase
     {
-        readonly CompatMode _compatMode;
-        const int LookupThreshold = NpgsqlParameterCollection.LookupThreshold;
-
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
         public void ImplicitSettingOfDbTypes()
         {
@@ -131,25 +122,6 @@ namespace Npgsql.Tests
         }
 
         // Older tests
-
-        /// <summary>
-        /// Test which validates that Clear() indeed cleans up the parameters in a command so they can be added to other commands safely.
-        /// </summary>
-        [Test]
-        public void NpgsqlParameterCollectionClearTest()
-        {
-            var p = new NpgsqlParameter();
-            var c1 = new NpgsqlCommand();
-            var c2 = new NpgsqlCommand();
-            c1.Parameters.Add(p);
-            Assert.AreEqual(1, c1.Parameters.Count);
-            Assert.AreEqual(0, c2.Parameters.Count);
-            c1.Parameters.Clear();
-            Assert.AreEqual(0, c1.Parameters.Count);
-            c2.Parameters.Add(p);
-            Assert.AreEqual(0, c1.Parameters.Count);
-            Assert.AreEqual(1, c2.Parameters.Count);
-        }
 
         #region Constructors
 
@@ -336,144 +308,6 @@ namespace Npgsql.Tests
 
         #endregion
 
-#if NeedsPorting
-
-        [Test]
-#if NET_2_0
-        [Category ("NotWorking")]
-#endif
-        public void InferType_Char()
-        {
-            Char value = 'X';
-
-#if NET_2_0
-            String string_value = "X";
-
-            NpgsqlParameter p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
-            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
-            Assert.AreEqual (string_value, p.Value, "#A:Value");
-
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#B:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#B:Value2");
-
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#C:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
-            Assert.AreEqual (string_value, p.Value, "#C:Value2");
-
-            p = new NpgsqlParameter ("name", value);
-            Assert.AreEqual (value, p.Value, "#D:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#D:Value2");
-
-            p = new NpgsqlParameter ("name", 5);
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#E:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#E:Value2");
-
-            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
-            Assert.AreEqual (value, p.Value, "#F:Value");
-#else
-            NpgsqlParameter p = new NpgsqlParameter();
-            try
-            {
-                p.Value = value;
-                Assert.Fail("#1");
-            }
-            catch (ArgumentException ex)
-            {
-                // The parameter data type of Char is invalid
-                Assert.AreEqual(typeof(ArgumentException), ex.GetType(), "#2");
-                Assert.IsNull(ex.InnerException, "#3");
-                Assert.IsNotNull(ex.Message, "#4");
-                Assert.IsNull(ex.ParamName, "#5");
-            }
-#endif
-        }
-
-        [Test]
-#if NET_2_0
-        [Category ("NotWorking")]
-#endif
-        public void InferType_CharArray()
-        {
-            Char[] value = new Char[] { 'A', 'X' };
-
-#if NET_2_0
-            String string_value = "AX";
-
-            NpgsqlParameter p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#A:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
-            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
-            Assert.AreEqual (string_value, p.Value, "#A:Value2");
-
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#B:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#B:Value2");
-
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#C:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
-            Assert.AreEqual (string_value, p.Value, "#C:Value2");
-
-            p = new NpgsqlParameter ("name", value);
-            Assert.AreEqual (value, p.Value, "#D:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#D:Value2");
-
-            p = new NpgsqlParameter ("name", 5);
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#E:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#E:Value2");
-
-            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
-            Assert.AreEqual (value, p.Value, "#F:Value");
-#else
-            NpgsqlParameter p = new NpgsqlParameter();
-            try
-            {
-                p.Value = value;
-                Assert.Fail("#1");
-            }
-            catch (FormatException)
-            {
-                // appears to be bug in .NET 1.1 while constructing
-                // exception message
-            }
-            catch (ArgumentException ex)
-            {
-                // The parameter data type of Char[] is invalid
-                Assert.AreEqual(typeof(ArgumentException), ex.GetType(), "#2");
-                Assert.IsNull(ex.InnerException, "#3");
-                Assert.IsNotNull(ex.Message, "#4");
-                Assert.IsNull(ex.ParamName, "#5");
-            }
-#endif
-        }
-
-#endif
-
         [Test]
         [Ignore("")]
         public void InferType_Invalid()
@@ -512,32 +346,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if NeedsPorting
-        [Test]
-        public void InferType_Object()
-        {
-            Object value = new Object();
-
-            NpgsqlParameter param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Variant, param.NpgsqlDbType, "#1");
-            Assert.AreEqual(DbType.Object, param.DbType, "#2");
-        }
-#endif
-
-#if NeedsPorting
-#if NET_2_0
-        [Test]
-        public void LocaleId ()
-        {
-            NpgsqlParameter parameter = new NpgsqlParameter ();
-            Assert.AreEqual (0, parameter.LocaleId, "#1");
-            parameter.LocaleId = 15;
-            Assert.AreEqual(15, parameter.LocaleId, "#2");
-        }
-#endif
-#endif
-
         [Test] // bug #320196
         public void ParameterNullTest()
         {
@@ -571,35 +379,20 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Int32, p.DbType, "#C1");
             Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#C2");
             p.Value = DBNull.Value;
-#if NET_2_0
             Assert.AreEqual(DbType.String, p.DbType, "#D1");
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#D2");
-#else
-            Assert.AreEqual(DbType.Int32, p.DbType, "#D1");
-            Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#D2");
-#endif
             p.Value = new byte[] { 0x0a };
             Assert.AreEqual(DbType.Binary, p.DbType, "#E1");
             Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#E2");
             p.Value = null;
-#if NET_2_0
             Assert.AreEqual(DbType.String, p.DbType, "#F1");
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#F2");
-#else
-            Assert.AreEqual(DbType.Binary, p.DbType, "#F1");
-            Assert.AreEqual(NpgsqlDbType.VarBinary, p.NpgsqlDbType, "#F2");
-#endif
             p.Value = DateTime.Now;
             Assert.AreEqual(DbType.DateTime, p.DbType, "#G1");
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#G2");
             p.Value = null;
-#if NET_2_0
             Assert.AreEqual(DbType.String, p.DbType, "#H1");
             Assert.AreEqual(NpgsqlDbType.Text, p.NpgsqlDbType, "#H2");
-#else
-            Assert.AreEqual(DbType.DateTime, p.DbType, "#H1");
-            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#H2");
-#endif
 
             // If DbType is set, then the NpgsqlDbType should not be
             // inferred from the value assigned.
@@ -652,7 +445,6 @@ namespace Npgsql.Tests
             Assert.AreEqual(string.Empty, p.SourceColumn, "#E:SourceColumn");
         }
 
-#if NET_2_0
         [Test]
         public void ResetDbType()
         {
@@ -716,8 +508,6 @@ namespace Npgsql.Tests
             Assert.IsNull(p.Value, "#G:Value");
         }
 
-#endif
-
         [Test]
         public void ParameterNameRetainsPrefix()
             => Assert.That(new NpgsqlParameter("@p", DbType.String).ParameterName, Is.EqualTo("@p"));
@@ -773,201 +563,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ParameterCollectionHashLookupParameterRenameBug()
-        {
-            using var command = new NpgsqlCommand();
-            // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < LookupThreshold; i++)
-            {
-                command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
-            }
-
-            // Make sure hash lookup is generated.
-            Assert.AreEqual(command.Parameters["p03"].ParameterName, "p03");
-
-            // Rename the target parameter.
-            command.Parameters["p03"].ParameterName = "a_new_name";
-
-            try
-            {
-                // Try to exploit the hash lookup bug.
-                // If the bug exists, the hash lookups will be out of sync with the list, and be unable
-                // to find the parameter by its new name.
-                Assert.IsTrue(command.Parameters.IndexOf("a_new_name") >= 0);
-            }
-            catch (Exception e)
-            {
-                throw new Exception("NpgsqlParameterCollection hash lookup/parameter rename bug detected", e);
-            }
-        }
-
-        [Test]
-        public void RemovedDuplicateParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
-        {
-            if (_compatMode == CompatMode.CaseSensitive)
-                return;
-
-            using var command = new NpgsqlCommand();
-            // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < count; i++)
-            {
-                command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text,
-                    string.Format("String parameter value {0}", i + 1));
-            }
-
-            // Make sure lookup is generated.
-            Assert.AreEqual(command.Parameters["p02"].ParameterName, "p02");
-
-            // Add uppercased version causing a list to be created.
-            command.Parameters.AddWithValue("P02", NpgsqlDbType.Text, "String parameter value 2");
-
-            // Remove the original parameter by its name causing the multivalue to use a single value again.
-            command.Parameters.Remove(command.Parameters["p02"]);
-
-            // Test whether we can still find the last added parameter, and if its index is correctly shifted in the lookup.
-            Assert.IsTrue(command.Parameters.IndexOf("p02") == count - 1);
-            Assert.IsTrue(command.Parameters.IndexOf("P02") == count - 1);
-            // And finally test whether other parameters were also correctly shifted.
-            Assert.IsTrue(command.Parameters.IndexOf("p03") == 1);
-        }
-
-        [Test]
-        public void RemovedParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
-        {
-            using var command = new NpgsqlCommand();
-            // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < count; i++)
-            {
-                command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text,
-                    string.Format("String parameter value {0}", i + 1));
-            }
-
-            // Make sure lookup is generated.
-            Assert.AreEqual(command.Parameters["p02"].ParameterName, "p02");
-
-            // Remove the parameter by its name
-            command.Parameters.Remove(command.Parameters["p02"]);
-
-            // Make sure we cannot find it, also not case insensitively.
-            Assert.IsTrue(command.Parameters.IndexOf("p02") == -1);
-            Assert.IsTrue(command.Parameters.IndexOf("P02") == -1);
-        }
-
-        [Test]
-        public void CorrectIndexReturnedForDuplicateParameterName([Values(LookupThreshold, LookupThreshold - 2)] int count)
-        {
-            if (_compatMode == CompatMode.CaseSensitive)
-                return;
-
-            using var command = new NpgsqlCommand();
-            // Put plenty of parameters in the collection to turn on hash lookup functionality.
-            for (var i = 0; i < count; i++)
-            {
-                command.Parameters.AddWithValue(string.Format("parameter{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
-            }
-
-            // Make sure lookup is generated.
-            Assert.AreEqual(command.Parameters["parameter02"].ParameterName, "parameter02");
-
-            // Add uppercased version.
-            command.Parameters.AddWithValue("Parameter02", NpgsqlDbType.Text, "String parameter value 2");
-
-            // Insert another case insensitive before the original.
-            command.Parameters.Insert(0, new NpgsqlParameter("ParameteR02", NpgsqlDbType.Text) { Value = "String parameter value 2" });
-
-            // Try to find the exact index.
-            Assert.IsTrue(command.Parameters.IndexOf("parameter02") == 2);
-            Assert.IsTrue(command.Parameters.IndexOf("Parameter02") == command.Parameters.Count - 1);
-            Assert.IsTrue(command.Parameters.IndexOf("ParameteR02") == 0);
-            // This name does not exist so we expect the first case insensitive match to be returned.
-            Assert.IsTrue(command.Parameters.IndexOf("ParaMeteR02") == 0);
-
-            // And finally test whether other parameters were also correctly shifted.
-            Assert.IsTrue(command.Parameters.IndexOf("parameter03") == 3);
-        }
-
-        [Test]
-        public void CaseSensitiveFailsInsensitiveLookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
-        {
-            if (_compatMode == CompatMode.CaseInsensitive)
-                return;
-
-            using var command = new NpgsqlCommand();
-            var parameters = command.Parameters;
-            for (var i = 0; i < count; i++)
-                parameters.Add(new NpgsqlParameter($"p{i}", i));
-
-            Assert.That(command.Parameters.IndexOf("P1"), Is.EqualTo(-1));
-        }
-
-        [Test]
-        public void PositionalParameterLookupReturnsFirstMatch([Values(LookupThreshold, LookupThreshold - 2)] int count)
-        {
-            using var command = new NpgsqlCommand();
-            var parameters = command.Parameters;
-            for (var i = 0; i < count; i++)
-                parameters.Add(new NpgsqlParameter("", i));
-
-            Assert.That(command.Parameters.IndexOf(""), Is.EqualTo(0));
-        }
-
-        [Test]
-        public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
-        {
-            if (_compatMode == CompatMode.CaseSensitive)
-                return;
-
-            using var command = new NpgsqlCommand();
-            var parameters = command.Parameters;
-
-            parameters.Add(new NpgsqlParameter("foo", 8));
-            parameters.Add(new NpgsqlParameter("bar", 8));
-            parameters.Add(new NpgsqlParameter("BAR", 8));
-            Assert.That(parameters, Has.Count.LessThan(LookupThreshold));
-
-            if (manyParams)
-                for (var i = 0; i < LookupThreshold; i++)
-                    parameters.Add(new NpgsqlParameter($"p{i}", i));
-
-            Assert.That(parameters.IndexOf("Bar"), Is.EqualTo(1));
-        }
-
-        [Test]
-        public void IndexOf_prefers_case_sensitive_match([Values] bool manyParams)
-        {
-            using var command = new NpgsqlCommand();
-            var parameters = command.Parameters;
-
-            parameters.Add(new NpgsqlParameter("FOO", 8));
-            parameters.Add(new NpgsqlParameter("foo", 8));
-            Assert.That(parameters, Has.Count.LessThan(LookupThreshold));
-
-            if (manyParams)
-                for (var i = 0; i < LookupThreshold; i++)
-                    parameters.Add(new NpgsqlParameter($"p{i}", i));
-
-            Assert.That(parameters.IndexOf("foo"), Is.EqualTo(1));
-        }
-
-        [Test]
-        public void IndexOfMatchesAllParameterSyntaxes()
-        {
-            using var command = new NpgsqlCommand();
-            var parameters = command.Parameters;
-
-            parameters.Add(new NpgsqlParameter("@foo0", 8));
-            parameters.Add(new NpgsqlParameter(":foo1", 8));
-            parameters.Add(new NpgsqlParameter("foo2", 8));
-
-            for (var i = 0; i < parameters.Count; i++)
-            {
-                Assert.That(parameters.IndexOf("foo" + i), Is.EqualTo(i));
-                Assert.That(parameters.IndexOf("@foo" + i), Is.EqualTo(i));
-                Assert.That(parameters.IndexOf(":foo" + i), Is.EqualTo(i));
-            }
-        }
-
-        [Test]
         public void NpgsqlParameterCloneTest()
         {
             var param = new NpgsqlParameter();
@@ -1000,20 +595,6 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
 
-        }
-
-        [Test]
-        public void CleanName()
-        {
-            var param = new NpgsqlParameter();
-            var command = new NpgsqlCommand();
-            command.Parameters.Add(param);
-
-            param.ParameterName = "";
-
-            // These should not throw exceptions
-            Assert.AreEqual(0, command.Parameters.IndexOf(""));
-            Assert.AreEqual("", param.ParameterName);
         }
 
         [Test]
@@ -1086,16 +667,117 @@ namespace Npgsql.Tests
             Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
         }
 
-        public NpgsqlParameterTest(CompatMode compatMode)
+#if NeedsPorting
+        [Test]
+        [Category ("NotWorking")]
+        public void InferType_Char()
         {
-            _compatMode = compatMode;
-            NpgsqlParameterCollection.CaseInsensitiveCompatMode = compatMode == CompatMode.CaseInsensitive;
-        }
-    }
+            Char value = 'X';
 
-    public enum CompatMode
-    {
-        CaseInsensitive,
-        CaseSensitive
+            String string_value = "X";
+
+            NpgsqlParameter p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
+            Assert.AreEqual (string_value, p.Value, "#A:Value");
+
+            p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#B:Value1");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#B:Value2");
+
+            p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#C:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
+            Assert.AreEqual (string_value, p.Value, "#C:Value2");
+
+            p = new NpgsqlParameter ("name", value);
+            Assert.AreEqual (value, p.Value, "#D:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#D:Value2");
+
+            p = new NpgsqlParameter ("name", 5);
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#E:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#E:Value2");
+
+            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
+            p.Value = value;
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
+            Assert.AreEqual (value, p.Value, "#F:Value");
+        }
+
+        [Test]
+        [Category ("NotWorking")]
+        public void InferType_CharArray()
+        {
+            Char[] value = new Char[] { 'A', 'X' };
+
+            String string_value = "AX";
+
+            NpgsqlParameter p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#A:Value1");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
+            Assert.AreEqual (string_value, p.Value, "#A:Value2");
+
+            p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#B:Value1");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#B:Value2");
+
+            p = new NpgsqlParameter ();
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#C:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
+            Assert.AreEqual (string_value, p.Value, "#C:Value2");
+
+            p = new NpgsqlParameter ("name", value);
+            Assert.AreEqual (value, p.Value, "#D:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#D:Value2");
+
+            p = new NpgsqlParameter ("name", 5);
+            p.Value = value;
+            Assert.AreEqual (value, p.Value, "#E:Value1");
+            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
+            Assert.AreEqual (string_value, p.Value, "#E:Value2");
+
+            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
+            p.Value = value;
+            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
+            Assert.AreEqual (value, p.Value, "#F:Value");
+        }
+
+        [Test]
+        public void InferType_Object()
+        {
+            Object value = new Object();
+
+            NpgsqlParameter param = new NpgsqlParameter();
+            param.Value = value;
+            Assert.AreEqual(NpgsqlDbType.Variant, param.NpgsqlDbType, "#1");
+            Assert.AreEqual(DbType.Object, param.DbType, "#2");
+        }
+
+        [Test]
+        public void LocaleId ()
+        {
+            NpgsqlParameter parameter = new NpgsqlParameter ();
+            Assert.AreEqual (0, parameter.LocaleId, "#1");
+            parameter.LocaleId = 15;
+            Assert.AreEqual(15, parameter.LocaleId, "#2");
+        }
+#endif
     }
 }
