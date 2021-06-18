@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.BackendMessages;
 
@@ -122,6 +123,7 @@ namespace Npgsql
                 InputParameters.Clear();
             else if (_inputParameters is not null)
                 _inputParameters = null; // We're pointing at a user's NpgsqlParameterCollection
+            Debug.Assert(_inputParameters is null || _inputParameters.Count == 0);
         }
 
         internal void ApplyCommandComplete(CommandCompleteMessage msg)
