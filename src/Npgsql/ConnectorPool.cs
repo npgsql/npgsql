@@ -108,8 +108,6 @@ namespace Npgsql
             _pruningSamples = new int[_pruningSampleSize];
             _pruningTimerEnabled = false;
 
-            _max = settings.MaxPoolSize;
-            _min = settings.MinPoolSize;
             _connectionLifetime = TimeSpan.FromSeconds(settings.ConnectionLifetime);
             Connectors = new NpgsqlConnector[_max];
         }
