@@ -582,9 +582,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw new NotSupportedException("Explicit preparation not supported with multiplexing");
             var connector = connection.Connector!;
 
-            for (var i = 0; i < Parameters.Count; i++)
+            foreach (var p in Parameters.InternalList)
             {
-                var p = Parameters[i];
                 Parameters.CalculatePlaceholderType(p);
                 p.Bind(connector.TypeMapper);
             }
