@@ -662,7 +662,8 @@ namespace Npgsql
                     break;
 
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
                 }
             }
             else
@@ -682,7 +683,8 @@ namespace Npgsql
                     break;
 
                 default:
-                    throw new ArgumentOutOfRangeException($"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
                 }
             }
         }

@@ -763,23 +763,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                 case PlaceholderType.Positional:
                     // In positional parameter mode, we don't need to parse/rewrite the CommandText or reorder the parameters - just use
-                    // them as is. Note that queries with no parameters are parsed below, since they may contain a semicolon (legacy
-                    // batching). If the user includes a semicolon (legacy batching) when positional parameters are in use, we'll just send
+                    // them as is. If the SQL contains a semicolon (legacy batching) when positional parameters are in use, we just send
                     // that and PostgreSQL will error (this behavior is by-design - use the new batching API).
                     statement = TruncateStatementsToOne();
                     statement.SQL = CommandText;
                     statement.InputParameters = Parameters.InternalList;
-                    return;
+                    break;
+
+                case PlaceholderType.NoParameters:
+                    // Note that queries with no parameters are parsed just like queries with named parameters, since they may contain a
+                    // semicolon (legacy batching).
+                case PlaceholderType.Named:
+                    parser ??= new SqlQueryParser();
+                    parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings);
+
+                    if (_statements.Count > 1 && _parameters.HasOutputParameters)
+                        throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
+                    break;
 
                 case PlaceholderType.Mixed:
                     throw new NotSupportedException("Mixing named and positional parameters isn't supported");
+
+                default:
+                    throw new ArgumentOutOfRangeException(
+                        nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {Parameters.PlaceholderType}");
                 }
 
-                parser ??= new SqlQueryParser();
-                parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings);
-
-                if (_statements.Count > 1 && _parameters.HasOutputParameters)
-                    throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
 
             case CommandType.TableDirect:
@@ -797,7 +806,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
-                    if (param.TrimmedName == "")
+                    if (param.IsPositional)
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
@@ -809,7 +818,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 for (var i = 1; i <= numInput; i++)
                 {
                     var param = inputList[i - 1];
-                    if (param.TrimmedName != "")
+                    if (!param.IsPositional)
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
