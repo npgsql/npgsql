@@ -117,8 +117,6 @@ namespace Npgsql
             OID = 0;
             PreparedStatement = null;
 
-            _ownedInputParameters?.Clear();
-
             if (ReferenceEquals(_inputParameters, _ownedInputParameters))
                 InputParameters.Clear();
             else if (_inputParameters is not null)
