@@ -1,4 +1,7 @@
 using System;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -12,6 +15,15 @@ namespace Npgsql.Tests
     {
         readonly CompatMode _compatMode;
         const int LookupThreshold = NpgsqlParameterCollection.LookupThreshold;
+
+        [Test]
+        public void Can_only_add_NpgsqlParameter()
+        {
+            using var command = new NpgsqlCommand();
+            Assert.That(() => command.Parameters.Add("hello"), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => command.Parameters.Add(new SomeOtherDbParameter()), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => command.Parameters.Add(null!), Throws.Exception.TypeOf<ArgumentNullException>());
+        }
 
         /// <summary>
         /// Test which validates that Clear() indeed cleans up the parameters in a command so they can be added to other commands safely.
@@ -245,6 +257,20 @@ namespace Npgsql.Tests
         {
             _compatMode = compatMode;
             NpgsqlParameterCollection.CaseInsensitiveCompatMode = compatMode == CompatMode.CaseInsensitive;
+        }
+
+        class SomeOtherDbParameter : DbParameter
+        {
+            public override void ResetDbType() {}
+
+            public override DbType DbType { get; set; }
+            public override ParameterDirection Direction { get; set; }
+            public override bool IsNullable { get; set; }
+            [AllowNull] public override string ParameterName { get; set; } = "";
+            [AllowNull] public override string SourceColumn { get; set; } = "";
+            public override object? Value { get; set; }
+            public override bool SourceColumnNullMapping { get; set; }
+            public override int Size { get; set; }
         }
     }
 

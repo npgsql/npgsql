@@ -387,10 +387,10 @@ namespace Npgsql.Tests.Types
 
             class SimpleTypeConverter : TypeConverter
             {
-                public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+                public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
                     => typeof(string) == sourceType;
 
-                public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+                public override object ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
                     => new SimpleType(value.ToString());
             }
         }

@@ -49,6 +49,20 @@ namespace Npgsql
 #endif
             => InnerException is IOException || InnerException is SocketException || InnerException is TimeoutException;
 
+#if NET6_0_OR_GREATER
+        /// <inheritdoc cref="DbException.BatchCommand"/>
+        public new NpgsqlBatchCommand? BatchCommand { get; set; }
+
+        /// <inheritdoc/>
+        protected override DbBatchCommand? DbBatchCommand => BatchCommand;
+#else
+        /// <summary>
+        /// If the exception was thrown as a result of executing a <see cref="DbBatch"/>, references the <see cref="DbBatchCommand"/> within
+        /// the batch which triggered the exception. Otherwise <see langword="null"/>.
+        /// </summary>
+        public NpgsqlBatchCommand? BatchCommand { get; set; }
+#endif
+
         #region Serialization
 
         /// <summary>

@@ -153,51 +153,9 @@ namespace Npgsql.Tests
             Assert.That(reader.RecordsAffected, Is.EqualTo(4));
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
-        public async Task Statements()
-        {
-            using var conn = await OpenConnectionAsync();
-            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
-
-            var query =
-$@"INSERT INTO {table} (name) VALUES ('a');
-UPDATE {table} SET name='b' WHERE name='doesnt_exist';
-UPDATE {table} SET name='b';
-BEGIN;
-SELECT name FROM {table};
-DELETE FROM {table};
-COMMIT;";
-            using var cmd = new NpgsqlCommand(query, conn);
-            using var reader = await cmd.ExecuteReaderAsync(Behavior);
-
-            var i = 0;
-            Assert.That(reader.Statements, Has.Count.EqualTo(7));
-            Assert.That(reader.Statements[i].SQL, Is.EqualTo($"INSERT INTO {table} (name) VALUES ('a')"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Insert));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo($"UPDATE {table} SET name='b' WHERE name='doesnt_exist'"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo($"UPDATE {table} SET name='b'"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("BEGIN"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Other));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
-            await reader.NextResultAsync(); // Consume SELECT result set to parse the CommandComplete
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo($"SELECT name FROM {table}"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Select));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo($"DELETE FROM {table}"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Delete));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
-            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("COMMIT"));
-            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Other));
-            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
-        }
-
+#pragma warning disable CS0618
         [Test]
-        public async Task StatementOID()
+        public async Task StatementOID_legacy_batching()
         {
             using var conn = await OpenConnectionAsync();
 
@@ -229,6 +187,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
                 Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
             }
         }
+#pragma warning restore CS0618
 
         [Test]
         public async Task GetStringWithParameter()
@@ -317,9 +276,9 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1096")]
         public async Task GetFieldTypeSchemaOnly()
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn);
-            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
             reader.Read();
             Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
         }
@@ -606,12 +565,12 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         [Test]
         public async Task SingleResult()
         {
-            using var conn = await OpenConnectionAsync();
-            var cmd = new NpgsqlCommand(@"SELECT 1; SELECT 2", conn);
-            var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult);
-            Assert.That(rdr.Read(), Is.True);
-            Assert.That(rdr.GetInt32(0), Is.EqualTo(1));
-            Assert.That(rdr.NextResult(), Is.False);
+            await using var conn = await OpenConnectionAsync();
+            await using var command = new NpgsqlCommand(@"SELECT 1; SELECT 2", conn);
+            var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleResult | Behavior);
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+            Assert.That(reader.NextResult(), Is.False);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/400")]
@@ -657,56 +616,63 @@ LANGUAGE 'plpgsql';
             Assert.That((TestDelegate)(() => reader.NextResult()), Throws.Exception.TypeOf<PostgresException>());
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
-        public async Task NpgsqlExceptionReferencesStatement()
+        [Test]
+        public async Task NpgsqlException_BatchCommand_is_null()
         {
-            using var conn = await OpenConnectionAsync();
+            await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
 
             await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
-LANGUAGE 'plpgsql';
-                ");
+LANGUAGE 'plpgsql'");
 
-            // Exception in single-statement command
-            using (var cmd = new NpgsqlCommand($"SELECT {function}()", conn))
+            await using var cmd = new NpgsqlCommand($"SELECT {function}()", conn);
+
+            try
             {
-                try
-                {
-                    await cmd.ExecuteReaderAsync(Behavior);
-                    Assert.Fail();
-                }
-                catch (PostgresException e)
-                {
-                    Assert.That(e.Statement, Is.SameAs(cmd.Statements[0]));
-                }
+                await cmd.ExecuteReaderAsync(Behavior);
+                Assert.Fail();
             }
-
-            // Exception in multi-statement command
-            using (var cmd = new NpgsqlCommand($"SELECT 1; {function}()", conn))
-            using (var reader = await cmd.ExecuteReaderAsync(Behavior))
+            catch (PostgresException e)
             {
-                try
-                {
-                    await reader.NextResultAsync();
-                    Assert.Fail();
-                }
-                catch (PostgresException e)
-                {
-                    Assert.That(e.Statement, Is.SameAs(cmd.Statements[1]));
-                }
+                Assert.That(e.BatchCommand, Is.Null);
+            }
+        }
+
+        [Test]
+        public async Task NpgsqlException_BatchCommand_is_null_with_legacy_batching()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = GetTempFunctionName(conn, out var function);
+
+            await conn.ExecuteNonQueryAsync($@"
+CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
+   'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+LANGUAGE 'plpgsql'");
+
+            await using var cmd = new NpgsqlCommand($"SELECT 1; {function}()", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+            try
+            {
+                await reader.NextResultAsync();
+                Assert.Fail();
+            }
+            catch (PostgresException e)
+            {
+                Assert.That(e.BatchCommand, Is.Null);
             }
         }
 
         #region SchemaOnly
 
         [Test]
-        public async Task SchemaOnlyReturnsNoData()
+        public async Task SchemaOnly_returns_no_data()
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT 1", conn);
-            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
             Assert.That(reader.Read(), Is.False);
         }
 

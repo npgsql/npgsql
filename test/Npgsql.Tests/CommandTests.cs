@@ -75,7 +75,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task MultipleStatementsSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task SingleRow_legacy_batching([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -1126,30 +1126,6 @@ LANGUAGE 'plpgsql' VOLATILE;";
             using var cmd = new NpgsqlCommand("SELECT generate_series(1, 500000); SELECT @p", conn);
             cmd.Parameters.AddWithValue("p", NpgsqlDbType.Text, data);
             cmd.ExecuteNonQuery();
-        }
-
-        [Test]
-        public async Task StatementOID()
-        {
-            using var conn = await OpenConnectionAsync();
-
-            MaximumPgVersionExclusive(conn, "12.0",
-                "Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
-
-            await using var _ = await GetTempTableName(conn, out var table);
-            await conn.ExecuteNonQueryAsync($"CREATE TABLE {table} (name TEXT) WITH OIDS");
-
-            using var cmd = new NpgsqlCommand(
-                $"INSERT INTO {table} (name) VALUES (@p1);" +
-                $"UPDATE {table} SET name='b' WHERE name=@p2",
-                conn);
-
-            cmd.Parameters.AddWithValue("p1", "foo");
-            cmd.Parameters.AddWithValue("p2", "bar");
-            await cmd.ExecuteNonQueryAsync();
-
-            Assert.That(cmd.Statements[0].OID, Is.Not.EqualTo(0));
-            Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]

@@ -245,7 +245,7 @@ namespace Npgsql.Tests
                 cmd1.Prepare();
                 Assert.That(cmd1.IsPrepared, Is.True);
                 Assert.That(cmd1.ExecuteScalar(), Is.EqualTo(8));
-                preparedStatement = cmd1.Statements[0].PreparedStatement!.Name!;
+                preparedStatement = cmd1.InternalBatchCommands[0].PreparedStatement!.Name!;
             }
 
             using (var cmd2 = new NpgsqlCommand("SELECT @p", conn1))
@@ -253,16 +253,65 @@ namespace Npgsql.Tests
                 cmd2.Parameters.AddWithValue("p", 8);
                 cmd2.Prepare();
                 Assert.That(cmd2.IsPrepared, Is.True);
-                Assert.That(cmd2.Statements[0].PreparedStatement!.Name, Is.EqualTo(preparedStatement));
+                Assert.That(cmd2.InternalBatchCommands[0].PreparedStatement!.Name, Is.EqualTo(preparedStatement));
                 Assert.That(cmd2.ExecuteScalar(), Is.EqualTo(8));
             }
             NpgsqlConnection.ClearPool(conn1);
         }
 
         [Test]
-        public void Multistatement()
+        public void Legacy_batching()
         {
             using var conn = OpenConnectionAndUnprepare();
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+            {
+                cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                    reader.NextResult();
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+                }
+            }
+
+            AssertNumPreparedStatements(conn, 2);
+
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+            {
+                cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                    reader.NextResult();
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+                }
+            }
+
+            AssertNumPreparedStatements(conn, 2);
+            conn.UnprepareAll();
+        }
+
+        [Test]
+        public void Batch()
+        {
+            using var conn = OpenConnectionAndUnprepare();
+            using (var batch = new NpgsqlBatch(conn) { BatchCommands = { new("SELECT 1"), new("SELECT 2") } })
+            {
+                batch.Prepare();
+                using (var reader = batch.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                    reader.NextResult();
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+                }
+            }
+
             using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
             {
                 cmd.Prepare();
