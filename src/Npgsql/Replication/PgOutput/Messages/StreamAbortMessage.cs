@@ -6,15 +6,15 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol stream abort message
     /// </summary>
-    public sealed class StreamAbortMessage : TransactionalPgOutputReplicationMessage
+    public sealed class StreamAbortMessage : TransactionChangingPgOutputReplicationMessage
     {
         /// <summary>
         /// Xid of the subtransaction (will be same as xid of the transaction for top-level transactions).
         /// </summary>
-        public uint? SubtransactionXid { get; private set; }
+        public uint SubtransactionXid { get; private set; }
 
         internal StreamAbortMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            uint? transactionXid, uint? subtransactionXid)
+            uint transactionXid, uint subtransactionXid)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             SubtransactionXid = subtransactionXid;

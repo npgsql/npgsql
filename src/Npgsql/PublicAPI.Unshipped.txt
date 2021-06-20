@@ -41,12 +41,16 @@ Npgsql.PhysicalOpenAsyncCallback
 Npgsql.PhysicalOpenCallback
 Npgsql.Replication.ReplicationConnection.PostgreSqlVersion.get -> System.Version!
 Npgsql.Replication.ReplicationConnection.ServerVersion.get -> string!
+*REMOVED*Npgsql.Replication.PgOutput.Messages.BeginMessage.TransactionXid.get -> uint
 *REMOVED*Npgsql.Replication.PgOutput.Messages.RelationMessage.Columns.get -> System.ReadOnlyMemory<Npgsql.Replication.PgOutput.Messages.RelationMessage.Column>
 Npgsql.Replication.PgOutput.Messages.RelationMessage.Columns.get -> System.Collections.Immutable.ImmutableArray<Npgsql.Replication.PgOutput.Messages.RelationMessage.Column>
 Npgsql.Replication.PgOutput.Messages.TransactionalPgOutputReplicationMessage
 Npgsql.Replication.PgOutput.Messages.TransactionalPgOutputReplicationMessage.TransactionalPgOutputReplicationMessage() -> void
 Npgsql.Replication.PgOutput.Messages.TransactionalPgOutputReplicationMessage.TransactionXid.get -> uint?
 *REMOVED*Npgsql.Replication.PgOutput.Messages.TruncateMessage.RelationIds.get -> uint[]!
+Npgsql.Replication.PgOutput.Messages.TransactionChangingPgOutputReplicationMessage
+Npgsql.Replication.PgOutput.Messages.TransactionChangingPgOutputReplicationMessage.TransactionChangingPgOutputReplicationMessage() -> void
+Npgsql.Replication.PgOutput.Messages.TransactionChangingPgOutputReplicationMessage.TransactionXid.get -> uint
 Npgsql.Replication.PgOutput.Messages.TruncateMessage.RelationIds.get -> System.Collections.Immutable.ImmutableArray<uint>
 Npgsql.Replication.ReplicationConnection.SetReplicationStatus(NpgsqlTypes.NpgsqlLogSequenceNumber lastAppliedAndFlushedLsn) -> void
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
@@ -58,7 +62,7 @@ Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.MessageLsn.get -> Np
 Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Prefix.get -> string!
 Npgsql.Replication.PgOutput.Messages.StreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.StreamAbortMessage() -> void
-Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.SubtransactionXid.get -> uint?
+Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.SubtransactionXid.get -> uint
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.CommitLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.Flags.get -> byte

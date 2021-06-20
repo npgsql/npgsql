@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol stream commit message
     /// </summary>
-    public sealed class StreamCommitMessage : TransactionalPgOutputReplicationMessage
+    public sealed class StreamCommitMessage : TransactionChangingPgOutputReplicationMessage
     {
         /// <summary>
         /// Flags; currently unused (must be 0).
@@ -29,7 +29,7 @@ namespace Npgsql.Replication.PgOutput.Messages
         public DateTime TransactionCommitTimestamp { get; private set; }
 
         internal StreamCommitMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            uint? transactionXid, byte flags, NpgsqlLogSequenceNumber commitLsn, NpgsqlLogSequenceNumber transactionEndLsn, DateTime transactionCommitTimestamp)
+            uint transactionXid, byte flags, NpgsqlLogSequenceNumber commitLsn, NpgsqlLogSequenceNumber transactionEndLsn, DateTime transactionCommitTimestamp)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             Flags = flags;
