@@ -53,15 +53,16 @@ namespace Npgsql
             }
         }
 
-        internal virtual void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        internal virtual bool TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)
             {
                 if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    return;
+                    return false;
                 list.Remove(connector);
                 if (list.Count == 0)
                     _pendingEnlistedConnectors.Remove(transaction);
+                return true;
             }
         }
 

@@ -261,8 +261,9 @@ namespace Npgsql
             {
                 // We're here for connections which were closed before their TransactionScope completes.
                 // These need to be closed now.
-                _connector.TryRemovePendingEnlistedConnector(_transaction);
-                _connector.Return();
+                // We should return the connector to the pool only if we've successfully removed it from the pending list
+                if (_connector.TryRemovePendingEnlistedConnector(_transaction))
+                    _connector.Return();
             }
 
             _connector = null!;

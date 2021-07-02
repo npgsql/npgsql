@@ -1516,9 +1516,9 @@ namespace Npgsql.Internal
             }
         }
 
-        internal void ClearTransaction()
+        internal void ClearTransaction(Exception? disposeReason = null)
         {
-            Transaction?.DisposeImmediately();
+            Transaction?.DisposeImmediately(disposeReason);
             TransactionStatus = TransactionStatus.Idle;
         }
 
@@ -1829,7 +1829,7 @@ namespace Npgsql.Internal
             }
         }
 
-        internal void TryRemovePendingEnlistedConnector(Transaction transaction)
+        internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
             => _connectorSource.TryRemovePendingEnlistedConnector(this, transaction);
 
         internal void Return() => _connectorSource.Return(this);
@@ -1964,7 +1964,7 @@ namespace Npgsql.Internal
                 CurrentCopyOperation = null;
             }
 
-            ClearTransaction();
+            ClearTransaction(_breakReason);
 
 #pragma warning disable CS8625
 

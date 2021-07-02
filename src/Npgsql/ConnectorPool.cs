@@ -356,13 +356,10 @@ namespace Npgsql
                 DisablePruning();
         }
 
-        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        {
-            if (_parentPool is null)
-                base.TryRemovePendingEnlistedConnector(connector, transaction);
-            else
-                _parentPool.TryRemovePendingEnlistedConnector(connector, transaction);
-        }
+        internal override bool TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+            => _parentPool is null
+                    ? base.TryRemovePendingEnlistedConnector(connector, transaction)
+                    : _parentPool.TryRemovePendingEnlistedConnector(connector, transaction);
 
         #region Pruning
 

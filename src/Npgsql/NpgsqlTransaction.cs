@@ -46,6 +46,8 @@ namespace Npgsql
 
         internal bool IsDisposed;
 
+        Exception? _disposeReason;
+
         /// <summary>
         /// Specifies the isolation level for this transaction.
         /// </summary>
@@ -431,7 +433,11 @@ namespace Npgsql
         /// Disposes the transaction, without rolling back. Used only in special circumstances, e.g. when
         /// the connection is broken.
         /// </summary>
-        internal void DisposeImmediately() => IsDisposed = true;
+        internal void DisposeImmediately(Exception? disposeReason)
+        {
+            IsDisposed = true;
+            _disposeReason = disposeReason;
+        }
 
         #endregion
 
@@ -447,7 +453,7 @@ namespace Npgsql
         void CheckDisposed()
         {
             if (IsDisposed)
-                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
+                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name, _disposeReason);
         }
 
         static bool RequiresQuoting(string identifier)
