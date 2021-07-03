@@ -1,4 +1,3 @@
-using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,8 +42,6 @@ namespace Npgsql
             return false;
         }
 
-        internal override void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        {
-        }
+        internal override bool TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction) => false;
     }
 }
