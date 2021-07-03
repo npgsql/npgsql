@@ -326,6 +326,46 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
+        public void BreakConnectorWhileInTransactionScopeWithRollback([Values] bool pooling)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
+            {
+                Pooling = pooling,
+            };
+
+            using var scope = new TransactionScope();
+            var conn = OpenConnection(csb);
+
+            conn.ExecuteNonQuery("SELECT 1");
+            conn.Connector!.Break(new Exception(nameof(BreakConnectorWhileInTransactionScopeWithRollback)));
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
+        public void BreakConnectorWhileInTransactionScopeWithCommit([Values] bool pooling)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
+            {
+                Pooling = pooling,
+            };
+
+            var ex = Assert.Throws<TransactionInDoubtException>(() =>
+            {
+                using var scope = new TransactionScope();
+                var conn = OpenConnection(csb);
+
+                conn.ExecuteNonQuery("SELECT 1");
+                conn.Connector!.Break(new Exception(nameof(BreakConnectorWhileInTransactionScopeWithCommit)));
+
+                scope.Complete();
+            })!;
+            Assert.That(ex.InnerException, Is.TypeOf<ObjectDisposedException>());
+            Assert.That(ex.InnerException!.InnerException, Is.TypeOf<Exception>());
+            Assert.That(ex.InnerException!.InnerException!.Message, Is.EqualTo(nameof(BreakConnectorWhileInTransactionScopeWithCommit)));
+        }
+
         #region Utilities
 
         void AssertNoPreparedTransactions()

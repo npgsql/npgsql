@@ -1412,9 +1412,9 @@ namespace Npgsql
             }
         }
 
-        internal void ClearTransaction()
+        internal void ClearTransaction(Exception? disposeReason = null)
         {
-            Transaction?.DisposeImmediately();
+            Transaction?.DisposeImmediately(disposeReason);
             TransactionStatus = TransactionStatus.Idle;
         }
 
@@ -1824,7 +1824,7 @@ namespace Npgsql
                 CurrentCopyOperation = null;
             }
 
-            ClearTransaction();
+            ClearTransaction(_breakReason);
 
 #pragma warning disable CS8625
 
