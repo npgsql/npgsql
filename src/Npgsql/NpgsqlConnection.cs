@@ -653,6 +653,20 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously begins a database transaction.
         /// </summary>
+        /// <param name="isolationLevel">The isolation level under which the transaction should run.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>A task whose <see cref="ValueTask{T}.Result"/> property is an object representing the new transaction.</returns>
+        /// <remarks>
+        /// Nested transactions are not supported.
+        /// </remarks>
+        protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
+            => await BeginTransactionAsync(isolationLevel, cancellationToken);
+
+        /// <summary>
+        /// Asynchronously begins a database transaction.
+        /// </summary>
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
