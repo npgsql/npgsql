@@ -93,7 +93,7 @@ $$ LANGUAGE 'plpgsql';");
         [Test]
         public async Task IncludeErrorDetails()
         {
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IncludeErrorDetails = true };
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IncludeErrorDetail = true };
             using var _ = CreateTempPool(builder, out var connectionStringWithDetails);
             await using var conn = await OpenConnectionAsync(connectionStringWithDetails);
             await using var __ = GetTempFunctionName(conn, out var raiseExceptionFunc);
