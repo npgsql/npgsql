@@ -1276,7 +1276,7 @@ namespace Npgsql.Internal
 
                             // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                             // and throw it as an exception when the ReadyForQuery is received (next).
-                            error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetails);
+                            error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetail);
 
                             if (connector.State == ConnectorState.Connecting)
                             {
@@ -1391,7 +1391,7 @@ namespace Npgsql.Internal
                     ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetails);
+                    var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail);
                     Log.Debug($"Received notice: {notice.MessageText}", Id);
                     Connection?.OnNotice(notice);
                     return null;
