@@ -720,17 +720,30 @@ namespace Npgsql
         [Description("When enabled, PostgreSQL error and notice details are included on PostgresException.Detail and PostgresNotice.Detail. These can contain sensitive data.")]
         [DisplayName(IncludeExceptionDetailDisplayName)]
         [NpgsqlConnectionStringProperty]
-        public bool IncludeErrorDetails
+        public bool IncludeErrorDetail
         {
-            get => _includeErrorDetails;
+            get => _includeErrorDetail;
             set
             {
-                _includeErrorDetails = value;
-                SetValue(nameof(IncludeErrorDetails), value);
+                _includeErrorDetail = value;
+                SetValue(nameof(IncludeErrorDetail), value);
             }
         }
-        bool _includeErrorDetails;
+        bool _includeErrorDetail;
 
+        /// <summary>
+        /// When enabled, PostgreSQL error details are included on <see cref="PostgresException.Detail" /> and
+        /// <see cref="PostgresNotice.Detail" />. These can contain sensitive data.
+        /// </summary>
+        [Category("Security")]
+        [Description("When enabled, PostgreSQL error and notice details are included on PostgresException.Detail and PostgresNotice.Detail. These can contain sensitive data.")]
+        [DisplayName("Include Error Details")]
+        [NpgsqlConnectionStringProperty]
+        public bool IncludeErrorDetails
+        {
+            get => IncludeErrorDetail;
+            set => IncludeErrorDetail = value;
+        }
 
         #endregion
 
