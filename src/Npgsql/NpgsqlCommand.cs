@@ -970,10 +970,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
 
                 if (wroteSomething)
+                {
                     await connector.WriteSync(async, cancellationToken);
-
-                if (flush)
-                    await connector.Flush(async, cancellationToken);
+                    if (flush)
+                        await connector.Flush(async, cancellationToken);
+                }
             }
         }
 
@@ -1316,7 +1317,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // Instead, all sends for non-first statements are performed asynchronously (even if the user requested sync),
                         // in a special synchronization context to prevents a dependency on the thread pool (which would also trigger
                         // deadlocks).
-                        sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
+                        BeginSend(connector);
+                        sendTask = Write(connector, async, flush: true, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1398,12 +1400,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                     
                 throw;
-            }
-
-            Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
-            {
-                BeginSend(connector);
-                return Write(connector, async, flush: true, cancellationToken);
             }
         }
 
