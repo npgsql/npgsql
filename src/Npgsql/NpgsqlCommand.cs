@@ -896,49 +896,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         void BeginSend(NpgsqlConnector connector)
             => connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
 
-        internal Task<bool> Write(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
+        internal Task Write(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken = default)
         {
-            // Note that for the methods below we implement both sync and async paths to prevent deadlocks while using a single threaded synchronization context
-            // See #3839
             return (_behavior & CommandBehavior.SchemaOnly) == 0
-                ? WriteExecute(connector, async, cancellationToken)
-                : WriteExecuteSchemaOnly(connector, async, cancellationToken);
+                ? WriteExecute(connector, async, flush, cancellationToken)
+                : WriteExecuteSchemaOnly(connector, async, flush, cancellationToken);
 
-            Task<bool> WriteExecute(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
+            async Task WriteExecute(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
             {
                 for (var i = 0; i < _statements.Count; i++)
                 {
                     // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
                     ForceAsyncIfNecessary(ref async, i);
-                    if (async)
-                        return WriteExecuteAsync(connector, i, cancellationToken);
 
-                    var executeTask = WriteExecute(connector, i, async: false, cancellationToken);
-                    Debug.Assert(executeTask.IsCompleted);
-                    executeTask.GetAwaiter().GetResult();
-                }
-
-                var syncTask = connector.WriteSync(async: false, cancellationToken);
-                Debug.Assert(syncTask.IsCompleted);
-                syncTask.GetAwaiter().GetResult();
-
-                return Task.FromResult(false);
-
-                async Task<bool> WriteExecuteAsync(NpgsqlConnector connector, int statementIndex, CancellationToken cancellationToken)
-                {
-                    for (var i = statementIndex; i < _statements.Count; i++)
-                    {
-                        await WriteExecute(connector, i, async: true, cancellationToken);
-                    }
-
-                    await connector.WriteSync(async: true, cancellationToken);
-
-                    return true;
-                }
-
-                async Task WriteExecute(NpgsqlConnector connector, int statementIndex, bool async, CancellationToken cancellationToken)
-                {
-                    var statement = _statements[statementIndex];
+                    var statement = _statements[i];
                     var pStatement = statement.PreparedStatement;
 
                     if (pStatement == null || statement.IsPreparing)
@@ -954,7 +925,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         await connector.WriteBind(
                             statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
-                            statementIndex == 0 ? UnknownResultTypeList : null,
+                            i == 0 ? UnknownResultTypeList : null,
                             async, cancellationToken);
 
                         await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken);
@@ -964,7 +935,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // The statement is already prepared, only a Bind is needed
                         await connector.WriteBind(
                             statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
-                            statementIndex == 0 ? UnknownResultTypeList : null,
+                            i == 0 ? UnknownResultTypeList : null,
                             async, cancellationToken);
                     }
 
@@ -973,56 +944,36 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (pStatement != null)
                         pStatement.LastUsed = DateTime.UtcNow;
                 }
+
+                await connector.WriteSync(async, cancellationToken);
+
+                if (flush)
+                    await connector.Flush(async, cancellationToken);
             }
 
-            Task<bool> WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
+            async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
             {
                 var wroteSomething = false;
                 for (var i = 0; i < _statements.Count; i++)
                 {
                     ForceAsyncIfNecessary(ref async, i);
-                    if (async)
-                        return WriteExecuteSchemaOnlyAsync(connector, i, wroteSomething, cancellationToken);
-                    
-                    var executeSchemaOnlyTask = WriteExecuteSchemaOnly(connector, i, async: false, cancellationToken);
-                    Debug.Assert(executeSchemaOnlyTask.IsCompleted);
-                    wroteSomething = executeSchemaOnlyTask.GetAwaiter().GetResult();
-                }
 
-                if (wroteSomething)
-                {
-                    var syncTask = connector.WriteSync(async: false, cancellationToken);
-                    Debug.Assert(syncTask.IsCompleted);
-                    syncTask.GetAwaiter().GetResult();
-                }
-
-                return Task.FromResult(false);
-
-                async Task<bool> WriteExecuteSchemaOnlyAsync(NpgsqlConnector connector, int statementIndex, bool wroteSomething, CancellationToken cancellationToken)
-                {
-                    for (var i = statementIndex; i < _statements.Count; i++)
-                    {
-                        wroteSomething = await WriteExecuteSchemaOnly(connector, i, async: true, cancellationToken);
-                    }
-
-                    if (wroteSomething)
-                        await connector.WriteSync(async: true, cancellationToken);
-
-                    return true;
-                }
-
-                async Task<bool> WriteExecuteSchemaOnly(NpgsqlConnector connector, int statementIndex, bool async, CancellationToken cancellationToken)
-                {
-                    var statement = _statements[statementIndex];
+                    var statement = _statements[i];
 
                     if (statement.PreparedStatement?.State == PreparedState.Prepared)
-                        return false;   // Prepared, we already have the RowDescription
+                        continue;   // Prepared, we already have the RowDescription
                     Debug.Assert(statement.PreparedStatement == null);
 
                     await connector.WriteParse(statement.SQL, string.Empty, statement.InputParameters, async, cancellationToken);
                     await connector.WriteDescribe(StatementOrPortal.Statement, statement.StatementName, async, cancellationToken);
-                    return true;
+                    wroteSomething = true;
                 }
+
+                if (wroteSomething)
+                    await connector.WriteSync(async, cancellationToken);
+
+                if (flush)
+                    await connector.Flush(async, cancellationToken);
             }
         }
 
@@ -1449,11 +1400,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw;
             }
 
-            async Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
+            Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
             {
                 BeginSend(connector);
-                async = await Write(connector, async, cancellationToken);
-                await connector.Flush(async, cancellationToken);
+                return Write(connector, async, flush: true, cancellationToken);
             }
         }
 

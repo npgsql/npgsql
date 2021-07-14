@@ -1325,9 +1325,9 @@ $$;");
 
         [Test, Timeout(5000)]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3839")]
-        public async Task SingleTreadedSynchronizationContextDeadlock()
+        public async Task SingleThreadedSynchronizationContextDeadlock()
         {
-            var syncContext = new SingleThreadSynchronizationContext(nameof(SingleTreadedSynchronizationContextDeadlock));
+            var syncContext = new SingleThreadSynchronizationContext(nameof(SingleThreadedSynchronizationContextDeadlock));
             using (var _ = syncContext.Enter())
             {
                 // We have to Yield, so the current thread is changed to the one used by SingleThreadSynchronizationContext
