@@ -896,20 +896,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         void BeginSend(NpgsqlConnector connector)
             => connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
 
-        void CleanupSend()
-        {
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            if (SynchronizationContext.Current != null)  // Check first because SetSynchronizationContext allocates
-                SynchronizationContext.SetSynchronizationContext(null);
-        }
-
-        internal Task Write(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
+        internal Task Write(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken = default)
         {
             return (_behavior & CommandBehavior.SchemaOnly) == 0
-                ? WriteExecute(connector, async, cancellationToken)
-                : WriteExecuteSchemaOnly(connector, async, cancellationToken);
+                ? WriteExecute(connector, async, flush, cancellationToken)
+                : WriteExecuteSchemaOnly(connector, async, flush, cancellationToken);
 
-            async Task WriteExecute(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
+            async Task WriteExecute(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
             {
                 for (var i = 0; i < _statements.Count; i++)
                 {
@@ -953,9 +946,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
 
                 await connector.WriteSync(async, cancellationToken);
+
+                if (flush)
+                    await connector.Flush(async, cancellationToken);
             }
 
-            async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, CancellationToken cancellationToken)
+            async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
             {
                 var wroteSomething = false;
                 for (var i = 0; i < _statements.Count; i++)
@@ -974,7 +970,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
 
                 if (wroteSomething)
+                {
                     await connector.WriteSync(async, cancellationToken);
+                    if (flush)
+                        await connector.Flush(async, cancellationToken);
+                }
             }
         }
 
@@ -994,8 +994,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             await connector.WriteSync(async, cancellationToken);
             await connector.Flush(async, cancellationToken);
-
-            CleanupSend();
         }
 
         async Task SendPrepare(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
@@ -1025,8 +1023,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             await connector.WriteSync(async, cancellationToken);
             await connector.Flush(async, cancellationToken);
-
-            CleanupSend();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1062,8 +1058,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             await connector.WriteSync(async, cancellationToken);
             await connector.Flush(async, cancellationToken);
-
-            CleanupSend();
         }
 
         #endregion
@@ -1323,7 +1317,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // Instead, all sends for non-first statements are performed asynchronously (even if the user requested sync),
                         // in a special synchronization context to prevents a dependency on the thread pool (which would also trigger
                         // deadlocks).
-                        sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
+                        BeginSend(connector);
+                        sendTask = Write(connector, async, flush: true, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1405,14 +1400,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                     
                 throw;
-            }
-
-            async Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken2)
-            {
-                BeginSend(connector);
-                await Write(connector, async, cancellationToken2);
-                await connector.Flush(async, cancellationToken2);
-                CleanupSend();
             }
         }
 

@@ -284,7 +284,7 @@ namespace Npgsql
                 Debug.Assert(written, $"Failed to enqueue command to {connector.CommandsInFlightWriter}");
 
                 // Purposefully don't wait for I/O to complete
-                var task = command.Write(connector, async: true);
+                var task = command.Write(connector, async: true, flush: false);
                 stats.NumCommands++;
 
                 switch (task.Status)
