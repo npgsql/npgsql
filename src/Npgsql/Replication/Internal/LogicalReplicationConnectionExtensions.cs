@@ -104,30 +104,42 @@ namespace Npgsql.Replication.Internal
         /// </param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
-        public static async IAsyncEnumerable<XLogDataMessage> StartLogicalReplication(
+        public static IAsyncEnumerable<XLogDataMessage> StartLogicalReplication(
             this LogicalReplicationConnection connection,
             LogicalReplicationSlot slot,
-            [EnumeratorCancellation] CancellationToken cancellationToken,
+            CancellationToken cancellationToken,
             NpgsqlLogSequenceNumber? walLocation = null,
             IEnumerable<KeyValuePair<string, string?>>? options = null,
             bool bypassingStream = false)
         {
-            var builder = new StringBuilder("START_REPLICATION ")
-                .Append("SLOT ").Append(slot.Name)
-                .Append(" LOGICAL ")
-                .Append(walLocation ?? slot.ConsistentPoint);
+            using (NoSynchronizationContextScope.Enter())
+                return StartLogicalReplicationInternal(connection, slot, cancellationToken, walLocation, options, bypassingStream);
 
-            if (options?.Any() == true)
+            static async IAsyncEnumerable<XLogDataMessage> StartLogicalReplicationInternal(
+                LogicalReplicationConnection connection,
+                LogicalReplicationSlot slot,
+                [EnumeratorCancellation] CancellationToken cancellationToken,
+                NpgsqlLogSequenceNumber? walLocation,
+                IEnumerable<KeyValuePair<string, string?>>? options,
+                bool bypassingStream)
             {
-                builder
-                    .Append(" (")
-                    .Append(string.Join(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}")))
-                    .Append(')');
-            }
+                var builder = new StringBuilder("START_REPLICATION ")
+                    .Append("SLOT ").Append(slot.Name)
+                    .Append(" LOGICAL ")
+                    .Append(walLocation ?? slot.ConsistentPoint);
 
-            var enumerator = connection.StartReplicationInternalWrapper(builder.ToString(), bypassingStream, cancellationToken);
-            while (await enumerator.MoveNextAsync())
-                yield return enumerator.Current;
+                if (options?.Any() == true)
+                {
+                    builder
+                        .Append(" (")
+                        .Append(string.Join(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}")))
+                        .Append(')');
+                }
+
+                var enumerator = connection.StartReplicationInternalWrapper(builder.ToString(), bypassingStream, cancellationToken);
+                while (await enumerator.MoveNextAsync())
+                    yield return enumerator.Current;
+            }
         }
     }
 }

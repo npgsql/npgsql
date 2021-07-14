@@ -88,23 +88,30 @@ namespace Npgsql.Replication
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
-        public async IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
+        public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
-            [EnumeratorCancellation] CancellationToken cancellationToken,
+            CancellationToken cancellationToken,
             uint timeline = default)
         {
-            using var _ = NoSynchronizationContextScope.Enter();
+            using (NoSynchronizationContextScope.Enter())
+                return StartPhysicalReplication(slot, walLocation, cancellationToken, timeline);
 
-            var builder = new StringBuilder("START_REPLICATION");
-            if (slot != null)
-                builder.Append(" SLOT ").Append(slot.Name);
-            builder.Append(" PHYSICAL ").Append(walLocation);
-            if (timeline != default)
-                builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
+            async IAsyncEnumerable<XLogDataMessage> StartPhysicalReplication(PhysicalReplicationSlot? slot,
+                NpgsqlLogSequenceNumber walLocation,
+                [EnumeratorCancellation] CancellationToken cancellationToken,
+                uint timeline)
+            {
+                var builder = new StringBuilder("START_REPLICATION");
+                if (slot != null)
+                    builder.Append(" SLOT ").Append(slot.Name);
+                builder.Append(" PHYSICAL ").Append(walLocation);
+                if (timeline != default)
+                    builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
 
-            var enumerator = StartReplicationInternalWrapper(builder.ToString(), bypassingStream: false, cancellationToken);
-            while (await enumerator.MoveNextAsync())
-                yield return enumerator.Current;
+                var enumerator = StartReplicationInternalWrapper(builder.ToString(), bypassingStream: false, cancellationToken);
+                while (await enumerator.MoveNextAsync())
+                    yield return enumerator.Current;
+            }
         }
 
         /// <summary>
