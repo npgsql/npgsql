@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -10,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
+using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -695,6 +697,89 @@ namespace Npgsql.Tests
             await using var _ = await conn.BeginTransactionAsync();
             Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
         }
+
+        #region Server version
+
+        [Test]
+        public async Task PostgreSqlVersion_ServerVersion()
+        {
+            await using var c = new NpgsqlConnection(ConnectionString);
+
+            Assert.That(() => c.PostgreSqlVersion, Throws.InvalidOperationException
+                .With.Message.EqualTo("Connection is not open"));
+
+            Assert.That(() => c.ServerVersion, Throws.InvalidOperationException
+                .With.Message.EqualTo("Connection is not open"));
+
+            await c.OpenAsync();
+            var backendVersionString = (string)(await c.ExecuteScalarAsync("SHOW server_version"))!;
+
+            Assert.That(backendVersionString, Is.EqualTo(c.ServerVersion));
+            if (backendVersionString.Contains("beta") || backendVersionString.Contains("devel"))
+                Assert.That(backendVersionString, Does.Contain(c.PostgreSqlVersion.Major.ToString()));
+            else
+                Assert.That(backendVersionString, Does.Contain(c.PostgreSqlVersion.ToString()));
+        }
+
+        [TestCase("X13.0")]
+        [TestCase("13.")]
+        [TestCase("13.1.")]
+        [TestCase("13.1.1.")]
+        [TestCase("13.1.1.1.")]
+        [TestCase("13.1.1.1.1")]
+        public void ParseVersionFails(string versionString)
+            => Assert.That(() => TestDbInfo.ParseServerVersion(versionString), Throws.Exception);
+
+        [TestCase("13.3", ExpectedResult = "13.3")]
+        [TestCase("13.3X", ExpectedResult = "13.3")]
+        [TestCase("9.6.4", ExpectedResult = "9.6.4")]
+        [TestCase("9.6.4X", ExpectedResult = "9.6.4")]
+        [TestCase("9.5alpha2", ExpectedResult = "9.5")]
+        [TestCase("9.5alpha2X", ExpectedResult = "9.5")]
+        [TestCase("9.5devel", ExpectedResult = "9.5")]
+        [TestCase("9.5develX", ExpectedResult = "9.5")]
+        [TestCase("9.5deveX", ExpectedResult = "9.5")]
+        [TestCase("9.4beta3", ExpectedResult = "9.4")]
+        [TestCase("9.4rc1", ExpectedResult = "9.4")]
+        [TestCase("9.4rc1X", ExpectedResult = "9.4")]
+        [TestCase("13devel", ExpectedResult = "13.0")]
+        [TestCase("13beta1", ExpectedResult = "13.0")]
+        // The following should not occur as PostgreSQL version string in the wild these days but we support it.
+        [TestCase("13", ExpectedResult = "13.0")]
+        [TestCase("13X", ExpectedResult = "13.0")]
+        [TestCase("13alpha1", ExpectedResult = "13.0")]
+        [TestCase("13alpha", ExpectedResult = "13.0")]
+        [TestCase("13alphX", ExpectedResult = "13.0")]
+        [TestCase("13beta", ExpectedResult = "13.0")]
+        [TestCase("13betX", ExpectedResult = "13.0")]
+        [TestCase("13rc1", ExpectedResult = "13.0")]
+        [TestCase("13rc", ExpectedResult = "13.0")]
+        [TestCase("13rX", ExpectedResult = "13.0")]
+        [TestCase("99999.99999.99999.99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999X", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999devel", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999alpha99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999alpha99999", ExpectedResult = "99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999beta99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999beta99999", ExpectedResult = "99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999")]
+        public string ParseVersionSucceeds(string versionString)
+            => TestDbInfo.ParseServerVersion(versionString).ToString();
+
+        class TestDbInfo : NpgsqlDatabaseInfo
+        {
+            public TestDbInfo(string host, int port, string databaseName, Version version) : base(host, port, databaseName, version)
+                => throw new NotImplementedException();
+
+            protected override IEnumerable<PostgresType> GetTypes()
+                => throw new NotImplementedException();
+
+            public new static Version ParseServerVersion(string versionString)
+                => NpgsqlDatabaseInfo.ParseServerVersion(versionString);
+        }
+
+        #endregion Server version
 
         [Test]
         public void SetConnectionString()

@@ -32,19 +32,27 @@ namespace Npgsql.Internal
         /// The hostname of IP address of the database.
         /// </summary>
         public string Host { get; }
+
         /// <summary>
         /// The TCP port of the database.
         /// </summary>
         public int Port { get; }
+
         /// <summary>
         /// The database name.
         /// </summary>
         public string Name { get; }
+
         /// <summary>
         /// The version of the PostgreSQL database we're connected to, as reported in the "server_version" parameter.
         /// Exposed via <see cref="NpgsqlConnection.PostgreSqlVersion"/>.
         /// </summary>
         public Version Version { get; }
+
+        /// <summary>
+        /// The PostgreSQL version string as returned by the server_version option. Populated during loading.
+        /// </summary>
+        public string ServerVersion { get; }
 
         #endregion General database info
 
@@ -134,11 +142,28 @@ namespace Npgsql.Internal
         /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
         /// </summary>
         protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version)
+            : this(host, port, databaseName, version, version.ToString())
+        { }
+
+        /// <summary>
+        /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
+        /// </summary>
+        protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version, string serverVersion)
         {
             Host = host;
             Port = port;
             Name = databaseName;
             Version = version;
+            ServerVersion = serverVersion;
+        }
+
+        private protected NpgsqlDatabaseInfo(string host, int port, string databaseName, string serverVersion)
+        {
+            Host = host;
+            Port = port;
+            Name = databaseName;
+            ServerVersion = serverVersion;
+            Version = ParseServerVersion(serverVersion);
         }
 
         internal PostgresType GetPostgresTypeByName(string pgName)
@@ -221,10 +246,10 @@ namespace Npgsql.Internal
         /// </summary>
         protected static Version ParseServerVersion(string value)
         {
-            var versionString = value.Trim();
+            var versionString = value.TrimStart();
             for (var idx = 0; idx != versionString.Length; ++idx)
             {
-                var c = value[idx];
+                var c = versionString[idx];
                 if (!char.IsDigit(c) && c != '.')
                 {
                     versionString = versionString.Substring(0, idx);
