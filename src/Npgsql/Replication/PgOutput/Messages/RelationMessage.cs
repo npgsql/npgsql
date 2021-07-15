@@ -8,7 +8,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol relation message
     /// </summary>
-    public sealed class RelationMessage : TransactionalPgOutputReplicationMessage
+    public sealed class RelationMessage : TransactionalMessage
     {
         /// <summary>
         /// ID of the relation.
@@ -33,11 +33,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// <summary>
         /// Relation columns
         /// </summary>
-        public ImmutableArray<Column> Columns { get; private set; } = default!;
+        public IReadOnlyList<Column> Columns { get; private set; } = ReadonlyArrayBuffer<Column>.Empty!;
 
         internal RelationMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
-            string relationName, char relationReplicaIdentitySetting, ImmutableArray<Column> columns)
+            string relationName, char relationReplicaIdentitySetting, ReadonlyArrayBuffer<Column> columns)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             RelationId = relationId;
@@ -56,7 +56,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new RelationMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, Columns);
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadonlyArrayBuffer<Column>)Columns).Clone());
             return clone;
         }
 

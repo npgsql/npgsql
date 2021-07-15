@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol stream commit message
     /// </summary>
-    public sealed class StreamCommitMessage : TransactionChangingPgOutputReplicationMessage
+    public sealed class StreamCommitMessage : TransactionControlMessage
     {
         /// <summary>
         /// Flags; currently unused (must be 0).

@@ -10,7 +10,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <remarks>
     /// This is the base type of all update messages containing only the tuples for the new row.
     /// </remarks>
-    public class UpdateMessage : TransactionalPgOutputReplicationMessage
+    public class UpdateMessage : TransactionalMessage
     {
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.

@@ -40,8 +40,8 @@ namespace Npgsql.Replication.PgOutput
         readonly StreamStopMessage _streamStopMessage = new();
         readonly StreamCommitMessage _streamCommitMessage = new();
         readonly StreamAbortMessage _streamAbortMessage = new();
-        readonly ImmutableArray<RelationMessage.Column>.Builder _relationMessageColumns = ImmutableArray.CreateBuilder<RelationMessage.Column>();
-        readonly ImmutableArray<uint>.Builder _truncateMessageRelationIds = ImmutableArray.CreateBuilder<uint>();
+        readonly ReadonlyArrayBuffer<RelationMessage.Column> _relationMessageColumns = new();
+        readonly ReadonlyArrayBuffer<uint> _truncateMessageRelationIds = new();
 
         TupleData[] _tupleDataArray1 = Array.Empty<TupleData>();
         TupleData[] _tupleDataArray2 = Array.Empty<TupleData>();
@@ -154,7 +154,7 @@ namespace Npgsql.Replication.PgOutput
                     await buf.EnsureAsync(3);
                     var relationReplicaIdentitySetting = (char)buf.ReadByte();
                     var numColumns = buf.ReadUInt16();
-                    _relationMessageColumns.Capacity = numColumns;
+                    _relationMessageColumns.Count = numColumns;
                     for (var i = 0; i < numColumns; i++)
                     {
                         await buf.EnsureAsync(2);
@@ -163,12 +163,12 @@ namespace Npgsql.Replication.PgOutput
                         await buf.EnsureAsync(8);
                         var dateTypeId = buf.ReadUInt32();
                         var typeModifier = buf.ReadInt32();
-                        _relationMessageColumns.Add(new RelationMessage.Column(flags, columnName, dateTypeId, typeModifier));
+                        _relationMessageColumns[i] = new RelationMessage.Column(flags, columnName, dateTypeId, typeModifier);
                     }
 
                     yield return _relationMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, transactionXid,
                         relationId, ns, relationName, relationReplicaIdentitySetting,
-                        columns: _relationMessageColumns.MoveToImmutable());
+                        columns: _relationMessageColumns);
                     continue;
                 }
                 case BackendReplicationMessageCode.Type:
@@ -311,15 +311,15 @@ namespace Npgsql.Replication.PgOutput
                     // Don't dare to truncate more than 2147483647 tables at once!
                     var numRels = checked((int)buf.ReadUInt32());
                     var truncateOptions = (TruncateOptions)buf.ReadByte();
-                    _truncateMessageRelationIds.Capacity = numRels;
-                    for (var i = 0L; i < numRels; i++)
+                    _truncateMessageRelationIds.Count = numRels;
+                    for (var i = 0; i < numRels; i++)
                     {
                         await buf.EnsureAsync(4);
-                        _truncateMessageRelationIds.Add(buf.ReadUInt32());
+                        _truncateMessageRelationIds[i] = buf.ReadUInt32();
                     }
 
                     yield return _truncateMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, transactionXid,
-                        truncateOptions, relationIds: _truncateMessageRelationIds.MoveToImmutable());
+                        truncateOptions, relationIds: _truncateMessageRelationIds);
                     continue;
                 }
                 case BackendReplicationMessageCode.StreamStart:

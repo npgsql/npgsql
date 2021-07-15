@@ -7,7 +7,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol logical decoding message
     /// </summary>
-    public sealed class LogicalDecodingMessage : TransactionalPgOutputReplicationMessage
+    public sealed class LogicalDecodingMessage : TransactionalMessage
     {
         /// <summary>
         /// Flags; Either 0 for no flags or 1 if the logical decoding message is transactional.

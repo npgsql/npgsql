@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol insert message
     /// </summary>
-    public sealed class InsertMessage : TransactionalPgOutputReplicationMessage
+    public sealed class InsertMessage : TransactionalMessage
     {
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.

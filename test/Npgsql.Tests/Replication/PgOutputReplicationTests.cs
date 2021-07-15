@@ -101,7 +101,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -161,7 +161,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -217,7 +217,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -274,7 +274,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -333,7 +333,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -389,7 +389,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -443,7 +443,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -506,7 +506,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Length, Is.EqualTo(2));
+                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
                     Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
@@ -514,7 +514,7 @@ namespace Npgsql.Tests.Replication
                     var truncateMsg = await NextMessage<TruncateMessage>(messages);
                     Assert.That(truncateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
                     Assert.That(truncateMsg.Options, Is.EqualTo(truncateOptionFlags));
-                    Assert.That(truncateMsg.RelationIds.Length, Is.EqualTo(1));
+                    Assert.That(truncateMsg.RelationIds.Count, Is.EqualTo(1));
 
                     // Remaining inserts
                     // Since the inserts run in the same transaction as the truncate, we'll

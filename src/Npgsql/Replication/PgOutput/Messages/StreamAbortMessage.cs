@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol stream abort message
     /// </summary>
-    public sealed class StreamAbortMessage : TransactionChangingPgOutputReplicationMessage
+    public sealed class StreamAbortMessage : TransactionControlMessage
     {
         /// <summary>
         /// Xid of the subtransaction (will be same as xid of the transaction for top-level transactions).

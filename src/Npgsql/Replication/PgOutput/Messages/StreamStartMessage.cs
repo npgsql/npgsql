@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol stream start message
     /// </summary>
-    public sealed class StreamStartMessage : TransactionChangingPgOutputReplicationMessage
+    public sealed class StreamStartMessage : TransactionControlMessage
     {
         /// <summary>
         /// A value of 1 indicates this is the first stream segment for this XID, 0 for any other stream segment.

@@ -4,10 +4,9 @@ using NpgsqlTypes;
 namespace Npgsql.Replication.PgOutput.Messages
 {
     /// <summary>
-    /// The common base class for all replication messages
-    /// that set the transation xid of a transaction
+    /// The common base class for all replication messages that set the transaction xid of a transaction
     /// </summary>
-    public abstract class TransactionChangingPgOutputReplicationMessage : PgOutputReplicationMessage
+    public abstract class TransactionControlMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// Xid of the transaction.
