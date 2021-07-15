@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -33,15 +34,15 @@ namespace Npgsql.TypeMapping
         internal IDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
         internal IDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
 
-        readonly Dictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
-        readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _handlersByNpgsqlDbType = new();
-        readonly Dictionary<string, NpgsqlTypeHandler> _handlersByTypeName = new();
-        readonly Dictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
+        readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
+        readonly ConcurrentDictionary<NpgsqlDbType, NpgsqlTypeHandler> _handlersByNpgsqlDbType = new();
+        readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByTypeName = new();
+        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
 
         /// <summary>
         /// Maps CLR types to their array handlers.
         /// </summary>
-        readonly Dictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
+        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
@@ -355,14 +356,13 @@ namespace Npgsql.TypeMapping
         {
             pgType ??= GetPostgresType(mapping);
             var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, _connector);
-            Bind(handler, pgType, mapping.NpgsqlDbType, mapping.ClrTypes);
-
-            return handler;
+            return GetOrBind(handler, pgType, mapping.NpgsqlDbType, mapping.ClrTypes);
         }
 
-        void Bind(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
+        T GetOrBind<T>(T handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
+            where T : NpgsqlTypeHandler
         {
-            if (_handlersByOID.TryGetValue(pgType.OID, out var existingHandler))
+            if (!TryBind(handler, pgType, out var existingHandler, npgsqlDbType, clrTypes))
             {
                 if (handler.GetType() != existingHandler.GetType())
                 {
@@ -370,39 +370,49 @@ namespace Npgsql.TypeMapping
                                                         $"{existingHandler.GetType().Name} and {handler.GetType().Name}");
                 }
 
-                return;
+                // We can cast safely as we just compared a subtype of T (handler.GetType()) against existingHandler.GetType().
+                return (T)existingHandler;
             }
 
-            _handlersByOID[pgType.OID] = handler;
-            _handlersByTypeName[pgType.FullName] = handler;
-            _handlersByTypeName[pgType.Name] = handler;
+            return handler;
 
-            if (npgsqlDbType.HasValue)
+            bool TryBind(NpgsqlTypeHandler handler, PostgresType pgType, [NotNullWhen(false)]out NpgsqlTypeHandler? existingHandler, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
             {
-                var value = npgsqlDbType.Value;
-                if (_handlersByNpgsqlDbType.ContainsKey(npgsqlDbType.Value))
+                var returnedHandler = _handlersByOID.GetOrAdd(pgType.OID, handler);
+                if (!ReferenceEquals(handler, returnedHandler))
                 {
-                    throw new InvalidOperationException($"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType.Value}': " +
-                                                        $"{_handlersByNpgsqlDbType[value].GetType().Name} and {handler.GetType().Name}");
+                    existingHandler = returnedHandler;
+                    return false;
                 }
 
-                _handlersByNpgsqlDbType[npgsqlDbType.Value] = handler;
-            }
+                // From this point on we know our handler is the one in _handlersByOID.
+                _handlersByTypeName[pgType.FullName] = handler;
+                _handlersByTypeName[pgType.Name] = handler;
 
-            if (clrTypes != null)
-            {
-                foreach (var type in clrTypes)
+                if (npgsqlDbType.HasValue)
                 {
-                    if (_handlersByClrType.ContainsKey(type))
+                    returnedHandler = _handlersByNpgsqlDbType.GetOrAdd(npgsqlDbType.Value, handler);
+                    if (handler.GetType() != returnedHandler.GetType())
+                        throw new InvalidOperationException($"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType.Value}': " +
+                                                            $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
+                }
+
+                if (clrTypes != null)
+                {
+                    foreach (var type in clrTypes)
                     {
-                        throw new InvalidOperationException($"Two type handlers registered on same .NET type '{type}': " +
-                                                            $"{_handlersByClrType[type].GetType().Name} and {handler.GetType().Name}");
+                        returnedHandler = _handlersByClrType.GetOrAdd(type, handler);
+                        if (handler.GetType() != returnedHandler.GetType())
+                            throw new InvalidOperationException($"Two type handlers registered on same .NET type '{type}': " +
+                                                                $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
                     }
-
-                    _handlersByClrType[type] = handler;
                 }
+
+                existingHandler = null;
+                return true;
             }
         }
+
 
         ArrayHandler BindArray(NpgsqlTypeMapping elementMapping)
         {
@@ -424,9 +434,9 @@ namespace Npgsql.TypeMapping
             NpgsqlDbType? arrayNpgsqlDbType = null,
             Type[]? elementClrTypes = null)
         {
-            var arrayHandler = elementHandler.CreateArrayHandler(arrayPgType, _connector.Settings.ArrayNullabilityMode);
 
-            Bind(arrayHandler, arrayPgType, arrayNpgsqlDbType);
+            var arrayHandler = elementHandler.CreateArrayHandler(arrayPgType, _connector.Settings.ArrayNullabilityMode);
+            arrayHandler = GetOrBind(arrayHandler, arrayPgType, arrayNpgsqlDbType);
 
             // Note that array handlers aren't registered in ByClrType like base types, because they handle all
             // dimension types and not just one CLR type (e.g. int[], int[,], int[,,]).
@@ -436,17 +446,13 @@ namespace Npgsql.TypeMapping
             {
                 foreach (var elementType in elementClrTypes)
                 {
-                    if (_arrayHandlerByClrType.TryGetValue(elementType, out var existingArrayHandler))
+                    var returnedHandler = _arrayHandlerByClrType.GetOrAdd(elementType, arrayHandler);
+                    if (arrayHandler.GetType() != returnedHandler.GetType())
                     {
-                        if (arrayHandler.GetType() != existingArrayHandler.GetType())
-                        {
-                            throw new Exception(
-                                $"Two array type handlers registered on same .NET type {elementType}: " +
-                                $"{existingArrayHandler.GetType().Name} and {arrayHandler.GetType().Name}");
-                        }
+                        throw new Exception(
+                            $"Two array type handlers registered on same .NET type {elementType}: " +
+                            $"{returnedHandler.GetType().Name} and {arrayHandler.GetType().Name}");
                     }
-                    else
-                        _arrayHandlerByClrType[elementType] = arrayHandler;
                 }
             }
 
@@ -470,19 +476,14 @@ namespace Npgsql.TypeMapping
                 .Where(r => subtypeMapping.ClrTypes.Contains(r.GenericTypeArguments[0]))
                 .ToArray();
 
-            var asTypeHandler = (NpgsqlTypeHandler)rangeHandler;
-            Bind(asTypeHandler, rangePgType, rangeNpgsqlDbType, clrTypes: clrTypes);
-
-            return asTypeHandler;
+            return GetOrBind((NpgsqlTypeHandler)rangeHandler, rangePgType, rangeNpgsqlDbType, clrTypes: clrTypes);
         }
 
         NpgsqlTypeHandler BindUnmappedEnum(PostgresEnumType pgEnumType)
         {
             var unmappedEnumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
-            var handler = unmappedEnumFactory.Create(pgEnumType, _connector);
             // TODO: Can map the enum's CLR type to prevent future lookups
-            Bind(handler, pgEnumType);
-            return handler;
+            return GetOrBind(unmappedEnumFactory.Create(pgEnumType, _connector), pgEnumType);
         }
 
         PostgresType GetPostgresType(NpgsqlTypeMapping mapping)
