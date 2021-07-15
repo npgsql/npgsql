@@ -690,121 +690,42 @@ namespace Npgsql.Tests
         public void ParseVersionFails(string versionString)
             => Assert.That(() => TestDbInfo.ParseServerVersion(versionString), Throws.Exception);
 
-        [TestCaseSource(nameof(ParseVersionSucceedsData))]
-        public Version ParseVersionSucceeds(string versionString)
-            => TestDbInfo.ParseServerVersion(versionString);
-
-        static IEnumerable<TestCaseData> ParseVersionSucceedsData
-        {
-            get
-            {
-                yield return new TestCaseData("13.3")
-                    .Returns(new Version(13,3));
-
-                yield return new TestCaseData("13.3X")
-                    .Returns(new Version(13,3));
-
-                yield return new TestCaseData("9.6.4")
-                    .Returns(new Version(9,6,4));
-
-                yield return new TestCaseData("9.6.4X")
-                    .Returns(new Version(9,6,4));
-
-                yield return new TestCaseData("9.5alpha2")
-                    .Returns(new Version(9,5));
-
-                yield return new TestCaseData("9.5alpha2X")
-                    .Returns(new Version(9,5));
-
-                yield return new TestCaseData("9.5devel")
-                    .Returns(new Version(9,5));
-
-                yield return new TestCaseData("9.5develX")
-                    .Returns(new Version(9,5));
-
-                yield return new TestCaseData("9.5deveX")
-                    .Returns(new Version(9,5));
-
-                yield return new TestCaseData("9.4beta3")
-                    .Returns(new Version(9,4));
-
-                yield return new TestCaseData("9.4rc1")
-                    .Returns(new Version(9,4));
-
-                yield return new TestCaseData("9.4rc1X")
-                    .Returns(new Version(9,4));
-
-                yield return new TestCaseData("13devel")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13beta1")
-                    .Returns(new Version(13,0));
-
-                // The following should not occur as PostgreSQL version string in the wild these days but we support it.
-                yield return new TestCaseData("13")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13X")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13alpha1")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13alpha")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13alphX")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13beta")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13betX")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13rc1")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13rc")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData("13rX")
-                    .Returns(new Version(13,0));
-
-                yield return new TestCaseData(" 13.3")
-                    .Returns(new Version(13,3));
-
-                yield return new TestCaseData("99999.99999.99999.99999")
-                    .Returns(new Version(99999,99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999.99999X")
-                    .Returns(new Version(99999,99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999.99999devel")
-                    .Returns(new Version(99999,99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999devel")
-                    .Returns(new Version(99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999.99999alpha99999")
-                    .Returns(new Version(99999,99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999alpha99999")
-                    .Returns(new Version(99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999.99999beta99999")
-                    .Returns(new Version(99999,99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999beta99999")
-                    .Returns(new Version(99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999rc99999")
-                    .Returns(new Version(99999,99999,99999));
-
-                yield return new TestCaseData("99999.99999.99999.99999rc99999")
-                    .Returns(new Version(99999,99999,99999,99999));
-            }
-        }
+        [TestCase("13.3", ExpectedResult = "13.3")]
+        [TestCase("13.3X", ExpectedResult = "13.3")]
+        [TestCase("9.6.4", ExpectedResult = "9.6.4")]
+        [TestCase("9.6.4X", ExpectedResult = "9.6.4")]
+        [TestCase("9.5alpha2", ExpectedResult = "9.5")]
+        [TestCase("9.5alpha2X", ExpectedResult = "9.5")]
+        [TestCase("9.5devel", ExpectedResult = "9.5")]
+        [TestCase("9.5develX", ExpectedResult = "9.5")]
+        [TestCase("9.5deveX", ExpectedResult = "9.5")]
+        [TestCase("9.4beta3", ExpectedResult = "9.4")]
+        [TestCase("9.4rc1", ExpectedResult = "9.4")]
+        [TestCase("9.4rc1X", ExpectedResult = "9.4")]
+        [TestCase("13devel", ExpectedResult = "13.0")]
+        [TestCase("13beta1", ExpectedResult = "13.0")]
+        // The following should not occur as PostgreSQL version string in the wild these days but we support it.
+        [TestCase("13", ExpectedResult = "13.0")]
+        [TestCase("13X", ExpectedResult = "13.0")]
+        [TestCase("13alpha1", ExpectedResult = "13.0")]
+        [TestCase("13alpha", ExpectedResult = "13.0")]
+        [TestCase("13alphX", ExpectedResult = "13.0")]
+        [TestCase("13beta", ExpectedResult = "13.0")]
+        [TestCase("13betX", ExpectedResult = "13.0")]
+        [TestCase("13rc1", ExpectedResult = "13.0")]
+        [TestCase("13rc", ExpectedResult = "13.0")]
+        [TestCase("13rX", ExpectedResult = "13.0")]
+        [TestCase("99999.99999.99999.99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999X", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999devel", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999alpha99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999alpha99999", ExpectedResult = "99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999beta99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999beta99999", ExpectedResult = "99999.99999.99999")]
+        [TestCase("99999.99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999.99999")]
+        [TestCase("99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999")]
+        public string ParseVersionSucceeds(string versionString)
+            => TestDbInfo.ParseServerVersion(versionString).ToString();
 
         class TestDbInfo : NpgsqlDatabaseInfo
         {

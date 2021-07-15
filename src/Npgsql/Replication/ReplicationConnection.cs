@@ -155,14 +155,24 @@ namespace Npgsql.Replication
         private protected abstract ReplicationMode ReplicationMode { get; }
 
         /// <summary>
-        /// Version of the PostgreSQL backend.
-        /// This can only be called when there is an active connection.
+        /// The version of the PostgreSQL server we're connected to.
+        /// <remarks>
+        /// <p>
+        /// This can only be called when the connection is open.
+        /// </p>
+        /// <p>
+        /// In case of a development or pre-release version this field will contain
+        /// the version of the next version to be released from this branch.
+        /// </p>
+        /// </remarks>
         /// </summary>
         public Version PostgreSqlVersion => _npgsqlConnection.PostgreSqlVersion;
 
         /// <summary>
-        /// PostgreSQL server version.
-        /// This can only be called when there is an active connection.
+        /// The PostgreSQL server version as returned by the server_version option.
+        /// <remarks>
+        /// This can only be called when the connection is open.
+        /// </remarks>
         /// </summary>
         public string ServerVersion => _npgsqlConnection.ServerVersion;
 

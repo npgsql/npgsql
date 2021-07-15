@@ -219,25 +219,19 @@ namespace Npgsql.Internal
         /// </summary>
         protected static Version ParseServerVersion(string value)
         {
-            var versionString = value.AsSpan().TrimStart();
+            var versionString = value.TrimStart();
             for (var idx = 0; idx != versionString.Length; ++idx)
             {
                 var c = versionString[idx];
-                if (char.IsDigit(c) || c == '.')
-                    continue;
-
-                versionString = versionString.Slice(0, idx);
-                break;
+                if (!char.IsDigit(c) && c != '.')
+                {
+                    versionString = versionString.Substring(0, idx);
+                    break;
+                }
             }
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-            if (!versionString.Contains(".".AsSpan(), StringComparison.Ordinal))
-                return new Version(versionString.ToString() + ".0");
-            return new Version(versionString.ToString());
-#else
-            if (!versionString.Contains('.'))
-                return new Version(string.Concat(versionString, ".0".AsSpan()));
-            return Version.Parse(versionString);
-#endif
+            if (!versionString.Contains("."))
+                versionString += ".0";
+            return new Version(versionString);
         }
 
         #endregion Misc

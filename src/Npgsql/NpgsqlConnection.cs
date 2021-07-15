@@ -1009,19 +1009,25 @@ namespace Npgsql
         // TODO: We should probably move DatabaseInfo from each connector to the pool (but remember unpooled)
 
         /// <summary>
-        /// The version of the PostgreSQL database we're connected to.
+        /// The version of the PostgreSQL server we're connected to.
+        /// <remarks>
+        /// <p>
+        /// This can only be called when the connection is open.
+        /// </p>
+        /// <p>
         /// In case of a development or pre-release version this field will contain
         /// the version of the next version to be released from this branch.
-        /// <remarks>
-        /// This can only be called when there is an active connection.
+        /// </p>
         /// </remarks>
         /// </summary>
         [Browsable(false)]
         public Version PostgreSqlVersion => CheckOpenAndRunInTemporaryScope(c => c.DatabaseInfo.Version);
 
         /// <summary>
-        /// PostgreSQL server version.
-        /// This can only be called when there is an active connection.
+        /// The PostgreSQL server version as returned by the server_version option.
+        /// <remarks>
+        /// This can only be called when the connection is open.
+        /// </remarks>
         /// </summary>
         public override string ServerVersion => CheckOpenAndRunInTemporaryScope(
             c => c.DatabaseInfo.ServerVersion);
