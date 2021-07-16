@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol begin message
     /// </summary>
-    public sealed class BeginMessage : PgOutputReplicationMessage
+    public sealed class BeginMessage : TransactionControlMessage
     {
         /// <summary>
         /// The final LSN of the transaction.
@@ -19,20 +19,12 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public DateTime TransactionCommitTimestamp { get; private set; }
 
-        /// <summary>
-        /// Xid of the transaction.
-        /// </summary>
-        public uint TransactionXid { get; private set; }
-
         internal BeginMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
             NpgsqlLogSequenceNumber transactionFinalLsn, DateTime transactionCommitTimestamp, uint transactionXid)
         {
-            base.Populate(walStart, walEnd, serverClock);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid);
             TransactionFinalLsn = transactionFinalLsn;
             TransactionCommitTimestamp = transactionCommitTimestamp;
-            TransactionXid = transactionXid;
-
             return this;
         }
 

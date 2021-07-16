@@ -15,9 +15,10 @@ namespace Npgsql.Replication.PgOutput
         /// <param name="publicationName">The publication names to include into the stream</param>
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
-        /// <param name="streaming">Enable streaming output</param>
-        public PgOutputReplicationOptions(string publicationName, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
-            : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming)
+        /// <param name="streaming">Enable streaming of in-progress transactions</param>
+        /// <param name="messages">Write logical decoding messages into the replication stream</param>
+        public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null)
+            : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming, messages)
         { }
 
         /// <summary>
@@ -26,8 +27,9 @@ namespace Npgsql.Replication.PgOutput
         /// <param name="publicationNames">The publication names to include into the stream</param>
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
-        /// <param name="streaming">Enable streaming output</param>
-        public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
+        /// <param name="streaming">Enable streaming of in-progress transactions</param>
+        /// <param name="messages">Write logical decoding messages into the replication stream</param>
+        public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null)
         {
             var publicationNamesList = new List<string>(publicationNames);
             if (publicationNamesList.Count < 1)
@@ -43,10 +45,11 @@ namespace Npgsql.Replication.PgOutput
             ProtocolVersion = protocolVersion;
             Binary = binary;
             Streaming = streaming;
+            Messages = messages;
         }
 
         /// <summary>
-        /// The version of the logical streaming replication protocol
+        /// The version of the Logical Streaming Replication Protocol
         /// </summary>
         public ulong ProtocolVersion { get; }
 
@@ -61,15 +64,26 @@ namespace Npgsql.Replication.PgOutput
         /// <remarks>
         /// This works in PostgreSQL versions 14+
         /// </remarks>
+        // See: https://github.com/postgres/postgres/commit/9de77b5453130242654ff0b30a551c9c862ed661
         public bool? Binary { get; }
 
         /// <summary>
-        /// Enable streaming output
+        /// Enable streaming of in-progress transactions
+        /// </summary>
+        /// <remarks>
+        /// This works as of logical streaming replication protocol version 2 (PostgreSQL 14+)
+        /// </remarks>
+        // See: https://github.com/postgres/postgres/commit/464824323e57dc4b397e8b05854d779908b55304
+        public bool? Streaming { get; }
+
+        /// <summary>
+        /// Write logical decoding messages into the replication stream
         /// </summary>
         /// <remarks>
         /// This works in PostgreSQL versions 14+
         /// </remarks>
-        public bool? Streaming { get; }
+        // See: https://github.com/postgres/postgres/commit/ac4645c0157fc5fcef0af8ff571512aa284a2cec
+        public bool? Messages { get; }
 
         internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
         {
@@ -77,9 +91,11 @@ namespace Npgsql.Replication.PgOutput
             yield return new KeyValuePair<string, string?>("publication_names", "\"" + string.Join("\",\"", PublicationNames) + "\"");
 
             if (Binary != null)
-                yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "t" : "f");
+                yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "on" : "off");
             if (Streaming != null)
-                yield return new KeyValuePair<string, string?>("streaming", Streaming.Value ? "t" : "f");
+                yield return new KeyValuePair<string, string?>("streaming", Streaming.Value ? "on" : "off");
+            if (Messages != null)
+                yield return new KeyValuePair<string, string?>("messages", Messages.Value ? "on" : "off");
         }
 
         /// <inheritdoc />

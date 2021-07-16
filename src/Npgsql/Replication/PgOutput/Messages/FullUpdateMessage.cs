@@ -14,13 +14,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
 
         internal FullUpdateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
             ReadOnlyMemory<TupleData> newRow, ReadOnlyMemory<TupleData> oldRow)
         {
-            base.Populate(walStart, walEnd, serverClock, relationId, newRow);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId, newRow);
             OldRow = oldRow;
-
             return this;
         }
 
@@ -32,7 +30,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new FullUpdateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, NewRow.ToArray(), OldRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray(), OldRow.ToArray());
             return clone;
         }
     }

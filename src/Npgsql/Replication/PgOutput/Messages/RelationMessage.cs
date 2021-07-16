@@ -1,13 +1,14 @@
 ﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
     /// <summary>
     /// Logical Replication Protocol relation message
     /// </summary>
-    public sealed class RelationMessage : PgOutputReplicationMessage
+    public sealed class RelationMessage : TransactionalMessage
     {
         /// <summary>
         /// ID of the relation.
@@ -32,20 +33,18 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// <summary>
         /// Relation columns
         /// </summary>
-        public ReadOnlyMemory<Column> Columns { get; private set; } = default!;
+        public IReadOnlyList<Column> Columns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty!;
 
         internal RelationMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId, string ns,
-            string relationName, char relationReplicaIdentitySetting, ReadOnlyMemory<Column> columns)
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
+            string relationName, char relationReplicaIdentitySetting, ReadOnlyArrayBuffer<Column> columns)
         {
-            base.Populate(walStart, walEnd, serverClock);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid);
             RelationId = relationId;
             Namespace = ns;
             RelationName = relationName;
             RelationReplicaIdentitySetting = relationReplicaIdentitySetting;
             Columns = columns;
-
             return this;
         }
 
@@ -57,7 +56,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new RelationMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, Columns.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadOnlyArrayBuffer<Column>)Columns).Clone());
             return clone;
         }
 

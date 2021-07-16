@@ -46,7 +46,7 @@ namespace Npgsql.Tests.Replication
             return c;
         }
 
-        private protected static async Task AssertReplicationCancellation<T>(IAsyncEnumerator<T> enumerator)
+        private protected static async Task AssertReplicationCancellation<T>(IAsyncEnumerator<T> enumerator, bool streamingStarted = true)
         {
             try
             {
@@ -57,7 +57,7 @@ namespace Npgsql.Tests.Replication
             }
             catch (Exception e)
             {
-                Assert.That(e, CurrentServerVersion >= Pg10Version
+                Assert.That(e, streamingStarted && CurrentServerVersion >= Pg10Version
                     ? Is.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))

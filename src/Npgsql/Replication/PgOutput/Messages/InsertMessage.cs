@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol insert message
     /// </summary>
-    public sealed class InsertMessage : PgOutputReplicationMessage
+    public sealed class InsertMessage : TransactionalMessage
     {
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
@@ -19,14 +19,12 @@ namespace Npgsql.Replication.PgOutput.Messages
         public ReadOnlyMemory<TupleData> NewRow { get; private set; } = default!;
 
         internal InsertMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
             ReadOnlyMemory<TupleData> newRow)
         {
-            base.Populate(walStart, walEnd, serverClock);
-
+            base.Populate(walStart, walEnd, serverClock, transactionXid);
             RelationId = relationId;
             NewRow = newRow;
-
             return this;
         }
 
@@ -38,7 +36,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new InsertMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, NewRow.ToArray());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray());
             return clone;
         }
     }
