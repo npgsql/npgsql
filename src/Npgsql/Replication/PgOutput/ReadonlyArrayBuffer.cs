@@ -7,14 +7,14 @@ namespace Npgsql.Replication.PgOutput
 {
     class ReadOnlyArrayBuffer<T> : IReadOnlyList<T>
     {
-        public static readonly ReadonlyArrayBuffer<T> Empty = new(Array.Empty<T>());
+        public static readonly ReadOnlyArrayBuffer<T> Empty = new(Array.Empty<T>());
         T[] _items;
         int _size;
 
-        public ReadonlyArrayBuffer()
+        public ReadOnlyArrayBuffer()
             => _items = Array.Empty<T>();
 
-        ReadonlyArrayBuffer(T[] items)
+        ReadOnlyArrayBuffer(T[] items)
         {
             _items = items;
             _size = items.Length;
@@ -48,7 +48,7 @@ namespace Npgsql.Replication.PgOutput
             internal set => _items[index] = value;
         }
 
-        public ReadonlyArrayBuffer<T> Clone()
+        public ReadOnlyArrayBuffer<T> Clone()
         {
             var newItems = new T[_size];
             if (_size > 0)
