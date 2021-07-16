@@ -40,8 +40,8 @@ namespace Npgsql.Replication.PgOutput
         readonly StreamStopMessage _streamStopMessage = new();
         readonly StreamCommitMessage _streamCommitMessage = new();
         readonly StreamAbortMessage _streamAbortMessage = new();
-        readonly ReadonlyArrayBuffer<RelationMessage.Column> _relationMessageColumns = new();
-        readonly ReadonlyArrayBuffer<uint> _truncateMessageRelationIds = new();
+        readonly ReadOnlyArrayBuffer<RelationMessage.Column> _relationMessageColumns = new();
+        readonly ReadOnlyArrayBuffer<uint> _truncateMessageRelationIds = new();
 
         TupleData[] _tupleDataArray1 = Array.Empty<TupleData>();
         TupleData[] _tupleDataArray2 = Array.Empty<TupleData>();
