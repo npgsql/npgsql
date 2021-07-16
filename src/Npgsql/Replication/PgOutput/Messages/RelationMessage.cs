@@ -33,11 +33,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// <summary>
         /// Relation columns
         /// </summary>
-        public IReadOnlyList<Column> Columns { get; private set; } = ReadonlyArrayBuffer<Column>.Empty!;
+        public IReadOnlyList<Column> Columns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty!;
 
         internal RelationMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
-            string relationName, char relationReplicaIdentitySetting, ReadonlyArrayBuffer<Column> columns)
+            string relationName, char relationReplicaIdentitySetting, ReadOnlyArrayBuffer<Column> columns)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             RelationId = relationId;
@@ -56,7 +56,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new RelationMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadonlyArrayBuffer<Column>)Columns).Clone());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadOnlyArrayBuffer<Column>)Columns).Clone());
             return clone;
         }
 

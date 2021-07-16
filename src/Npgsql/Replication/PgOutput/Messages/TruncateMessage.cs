@@ -17,11 +17,11 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// <summary>
         /// IDs of the relations corresponding to the ID in the relation message.
         /// </summary>
-        public IReadOnlyList<uint> RelationIds { get; private set; } = ReadonlyArrayBuffer<uint>.Empty;
+        public IReadOnlyList<uint> RelationIds { get; private set; } = ReadOnlyArrayBuffer<uint>.Empty;
 
         internal TruncateMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, TruncateOptions options,
-            ReadonlyArrayBuffer<uint> relationIds)
+            ReadOnlyArrayBuffer<uint> relationIds)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             Options = options;
@@ -37,7 +37,7 @@ namespace Npgsql.Replication.PgOutput.Messages
 #endif
         {
             var clone = new TruncateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Options, ((ReadonlyArrayBuffer<uint>)RelationIds).Clone());
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Options, ((ReadOnlyArrayBuffer<uint>)RelationIds).Clone());
             return clone;
         }
     }

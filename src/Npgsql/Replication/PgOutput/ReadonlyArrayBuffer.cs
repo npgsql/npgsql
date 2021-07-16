@@ -5,7 +5,7 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput
 {
-    class ReadonlyArrayBuffer<T> : IReadOnlyList<T>
+    class ReadOnlyArrayBuffer<T> : IReadOnlyList<T>
     {
         public static readonly ReadonlyArrayBuffer<T> Empty = new(Array.Empty<T>());
         T[] _items;
@@ -44,7 +44,7 @@ namespace Npgsql.Replication.PgOutput
 
         public T this[int index]
         {
-            get => index >= _size ? throw new IndexOutOfRangeException() : _items[index];
+            get => index < _size ? _items[index] : throw new IndexOutOfRangeException();
             internal set => _items[index] = value;
         }
 
