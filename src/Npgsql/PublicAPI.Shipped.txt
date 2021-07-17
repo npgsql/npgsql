@@ -1319,6 +1319,8 @@ Npgsql.TypeHandlers.NumericHandlers.SingleHandler.ValidateAndGetLength(double va
 Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Write(double value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.UInt32Handler
 Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.UInt32Handler(Npgsql.PostgresTypes.PostgresType! postgresType) -> void
+Npgsql.TypeHandlers.NumericHandlers.UInt64Handler
+Npgsql.TypeHandlers.NumericHandlers.UInt64Handler.UInt64Handler(Npgsql.PostgresTypes.PostgresType! postgresType) -> void
 Npgsql.TypeHandlers.RangeHandler<TElement1, TElement2>
 Npgsql.TypeHandlers.RangeHandler<TElement1, TElement2>.RangeHandler(Npgsql.PostgresTypes.PostgresType! rangePostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler) -> void
 Npgsql.TypeHandlers.RangeHandler<TElement1, TElement2>.ValidateAndGetLength(NpgsqlTypes.NpgsqlRange<TElement2> value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
@@ -1558,6 +1560,7 @@ NpgsqlTypes.NpgsqlDbType.Uuid = 27 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Varbit = 39 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Varchar = 22 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Xid = 42 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.Xid8 = 64 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Xml = 28 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlInet
 NpgsqlTypes.NpgsqlInet.Address.get -> System.Net.IPAddress!
@@ -2148,6 +2151,9 @@ override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Write(float value, Np
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> uint
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.ValidateAndGetLength(uint value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.Write(uint value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
+override Npgsql.TypeHandlers.NumericHandlers.UInt64Handler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> ulong
+override Npgsql.TypeHandlers.NumericHandlers.UInt64Handler.ValidateAndGetLength(ulong value, Npgsql.NpgsqlParameter? parameter) -> int
+override Npgsql.TypeHandlers.NumericHandlers.UInt64Handler.Write(ulong value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateRangeHandler(Npgsql.PostgresTypes.PostgresType! rangeBackendType) -> Npgsql.TypeHandlers.IRangeHandler!
 override Npgsql.TypeHandlers.RangeHandler<TElement>.Read(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<NpgsqlTypes.NpgsqlRange<TElement>>

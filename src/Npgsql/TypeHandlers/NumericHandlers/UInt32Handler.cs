@@ -7,7 +7,7 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <summary>
-    /// A type handler for the PostgreSQL real data type.
+    /// A type handler for PostgreSQL unsigned 32-bit data types. This is only used for internal types.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/datatype-oid.html.

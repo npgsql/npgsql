@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
 {
@@ -114,6 +115,23 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(uint)));
                 }
             }
+        }
+
+        [Test]
+        [TestCase(NpgsqlDbType.Xid8, TestName="XID8")]
+        public async Task UInt64(NpgsqlDbType npgsqlDbType)
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "13.0", "The xid8 type was introduced in PostgreSQL 13");
+
+            var expected = 8ul;
+            await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", npgsqlDbType) { Value = expected });
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader[0], Is.EqualTo(expected));
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(ulong)));
         }
 
         [Test]

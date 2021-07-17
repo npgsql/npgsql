@@ -77,6 +77,7 @@ namespace Npgsql
         internal const uint Int2vector  = 22;
         internal const uint Oid         = 26;
         internal const uint Xid         = 28;
+        internal const uint Xid8        = 5069;
         internal const uint Cid         = 29;
         internal const uint Regtype     = 2206;
         internal const uint Tid         = 27;
