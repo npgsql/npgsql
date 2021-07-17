@@ -96,6 +96,37 @@ namespace Npgsql.Tests.Types
 
         #endregion NpgsqlLogSequenceNumber / PgLsn
 
+        #region NpgsqlTransactionId / PgTxn8
+
+        static readonly TestCaseData[] EqualsTransactionIdCases = {
+            new TestCaseData(new NpgsqlTransactionId(1ul), null).Returns(false),
+            new TestCaseData(new NpgsqlTransactionId(1ul), new object()).Returns(false),
+            new TestCaseData(new NpgsqlTransactionId(1ul), 1ul).Returns(false), // no implicit cast
+            new TestCaseData(new NpgsqlTransactionId(1ul), new NpgsqlTransactionId(1ul)).Returns(true),
+        };
+
+        [Test, TestCaseSource(nameof(EqualsTransactionIdCases))]
+        public bool NpgsqlTransactionIdEquals(NpgsqlTransactionId lsn, object? obj)
+            => lsn.Equals(obj);
+
+
+        [Test]
+        public async Task PgTxn8()
+        {
+            var expected1 = new NpgsqlTransactionId(42949672971ul);
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT @p";
+            cmd.Parameters.AddWithValue("p", NpgsqlDbType.PgXid8, expected1);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            var result1 = reader.GetFieldValue<NpgsqlTransactionId>(0);
+            Assert.AreEqual(expected1, result1);
+            Assert.AreEqual(42949672971ul, (ulong)result1);
+        }
+
+        #endregion NpgsqlTransactionId / PgTxn8
+
         public InternalTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
