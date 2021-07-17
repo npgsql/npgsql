@@ -652,6 +652,13 @@ namespace Npgsql.TypeMapping
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
+                    PgTypeName = "xid8",
+                    NpgsqlDbType = NpgsqlDbType.Xid8,
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt64Handler, ulong>()
+                }.Build());
+
+                AddMapping(new NpgsqlTypeMappingBuilder
+                {
                     PgTypeName = "cid",
                     NpgsqlDbType = NpgsqlDbType.Cid,
                     TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()

@@ -104,6 +104,21 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [TestCase(NpgsqlDbType.Xid8, TestName="XID8")]
+        public async Task UInt64(NpgsqlDbType npgsqlDbType)
+        {
+            var expected = 8ul;
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", npgsqlDbType) { Value = expected });
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader[0], Is.EqualTo(expected));
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(ulong)));
+        }
+
+        [Test]
         public async Task Int64()
         {
             using var conn = await OpenConnectionAsync();

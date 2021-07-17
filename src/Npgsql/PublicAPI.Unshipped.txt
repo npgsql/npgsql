@@ -168,3 +168,4 @@ static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.
 static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
+NpgsqlTypes.NpgsqlDbType.Xid8 = 64 -> NpgsqlTypes.NpgsqlDbType

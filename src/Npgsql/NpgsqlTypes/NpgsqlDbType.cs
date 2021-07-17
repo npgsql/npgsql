@@ -466,6 +466,13 @@ namespace NpgsqlTypes
         Xid = 42,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL "xid8" type, an internal transaction identifier.
+        /// </summary>
+        /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
+        [BuiltInPostgresType("xid8", PostgresTypeOIDs.Xid8)]
+        Xid8 = 64,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "cid" type, an internal command identifier.
         /// </summary>
         /// <remarks>See https://www.postgresql.org/docs/current/static/datatype-oid.html</remarks>
