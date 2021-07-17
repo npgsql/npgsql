@@ -485,6 +485,12 @@ namespace NpgsqlTypes
         Tid = 53,
 
         /// <summary>
+        /// Corresponds to the PostgreSQL "xid8" type, which can be used to store Transaction Id data.
+        /// </summary>
+        [BuiltInPostgresType("xid8", 5069)]
+        PgXid8 = 58,
+
+        /// <summary>
         /// Corresponds to the PostgreSQL "pg_lsn" type, which can be used to store LSN (Log Sequence Number) data which
         /// is a pointer to a location in the WAL.
         /// </summary>

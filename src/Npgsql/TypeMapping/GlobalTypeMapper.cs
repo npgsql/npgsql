@@ -778,6 +778,14 @@ namespace Npgsql.TypeMapping
 
                 AddMapping(new NpgsqlTypeMappingBuilder
                 {
+                    PgTypeName = "xid8",
+                    NpgsqlDbType = NpgsqlDbType.PgXid8,
+                    ClrTypes = new[] { typeof(NpgsqlTransactionId) },
+                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PgXid8Handler, NpgsqlTransactionId>()
+                }.Build());
+
+                AddMapping(new NpgsqlTypeMappingBuilder
+                {
                     PgTypeName = "tid",
                     NpgsqlDbType = NpgsqlDbType.Tid,
                     ClrTypes = new[] { typeof(NpgsqlTid) },
