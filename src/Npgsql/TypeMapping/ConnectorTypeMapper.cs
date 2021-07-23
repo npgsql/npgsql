@@ -2,11 +2,10 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
@@ -34,15 +33,26 @@ namespace Npgsql.TypeMapping
         internal IDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
         internal IDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
 
-        readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
-        readonly ConcurrentDictionary<NpgsqlDbType, NpgsqlTypeHandler> _handlersByNpgsqlDbType = new();
-        readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByTypeName = new();
-        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
+        class HandlerState
+        {
+            public ConcurrentDictionary<uint, Lazy<NpgsqlTypeHandler>> ByOID { get; } = new();
+            public ConcurrentDictionary<NpgsqlDbType, NpgsqlTypeHandler> ByNpgsqlDbType { get; } = new();
+            public ConcurrentDictionary<string, NpgsqlTypeHandler> ByTypeName { get; } = new();
+            public ConcurrentDictionary<Type, NpgsqlTypeHandler> ByClrType { get; } = new();
 
-        /// <summary>
-        /// Maps CLR types to their array handlers.
-        /// </summary>
-        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
+            /// <summary>
+            /// Maps CLR types to their array handlers.
+            /// </summary>
+            public ConcurrentDictionary<Type, NpgsqlTypeHandler> ByArrayElementClrType { get; } = new();
+
+            public HandlerState(NpgsqlTypeHandler unrecognizedTypeHandler)
+            {
+                ByNpgsqlDbType[NpgsqlDbType.Unknown] = unrecognizedTypeHandler;
+                ByClrType[typeof(DBNull)] = unrecognizedTypeHandler;
+            }
+        }
+
+        HandlerState _handlers;
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
@@ -59,6 +69,7 @@ namespace Npgsql.TypeMapping
         {
             _connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector);
+            _handlers = new(UnrecognizedTypeHandler);
             Reset();
         }
 
@@ -76,8 +87,12 @@ namespace Npgsql.TypeMapping
 
         internal bool TryGetByOID(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
         {
-            if (_handlersByOID.TryGetValue(oid, out handler))
+            var handlers = _handlers;
+            if (handlers.ByOID.TryGetValue(oid, out var lazy))
+            {
+                handler = lazy.Value;
                 return true;
+            }
 
             if (DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
             {
@@ -114,19 +129,22 @@ namespace Npgsql.TypeMapping
                     // However, when a domain is part of a composite type, the domain's type OID is sent, so we support this here.
                     if (TryGetByOID(pgDomainType.BaseType.OID, out handler))
                     {
-                        _handlersByOID[oid] = handler;
+                        var handlerValue = handler;
+                        handlers.ByOID[oid] = new Lazy<NpgsqlTypeHandler>(() => handlerValue);
                         return true;
                     }
                     return false;
                 }
             }
 
+            handler = null;
             return false;
         }
 
         internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
         {
-            if (_handlersByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
+            var handlers = _handlers;
+            if (handlers.ByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
                 return handler;
 
             // TODO: revisit externalCall - things are changing. No more "binding at global time" which only needs to log - always throw?
@@ -157,7 +175,8 @@ namespace Npgsql.TypeMapping
 
         internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
         {
-            if (_handlersByTypeName.TryGetValue(typeName, out var handler))
+            var handlers = _handlers;
+            if (handlers.ByTypeName.TryGetValue(typeName, out var handler))
                 return handler;
 
             if (MappingsByName.TryGetValue(typeName, out var mapping))
@@ -183,7 +202,7 @@ namespace Npgsql.TypeMapping
                     return BindArray(elementHandler, pgArrayType);
 
                 case PostgresDomainType pgDomainType:
-                    return _handlersByTypeName[typeName] = GetByDataTypeName(pgDomainType.BaseType.Name);
+                    return handlers.ByTypeName[typeName] = GetByDataTypeName(pgDomainType.BaseType.Name);
                 }
             }
 
@@ -192,7 +211,8 @@ namespace Npgsql.TypeMapping
 
         internal NpgsqlTypeHandler GetByClrType(Type type)
         {
-            if (_handlersByClrType.TryGetValue(type, out var handler))
+            var handlers = _handlers;
+            if (handlers.ByClrType.TryGetValue(type, out var handler))
                 return handler;
 
             if (MappingsByClrType.TryGetValue(type, out var mapping))
@@ -202,7 +222,7 @@ namespace Npgsql.TypeMapping
             var arrayElementType = GetArrayElementType(type);
             if (arrayElementType is not null)
             {
-                if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out handler))
+                if (handlers.ByArrayElementClrType.TryGetValue(arrayElementType, out handler))
                     return handler;
 
                 return MappingsByClrType.TryGetValue(arrayElementType, out var elementMapping)
@@ -213,7 +233,7 @@ namespace Npgsql.TypeMapping
             }
 
             if (Nullable.GetUnderlyingType(type) is { } underlyingType && GetByClrType(underlyingType) is { } underlyingHandler)
-                return _handlersByClrType[type] = underlyingHandler;
+                return handlers.ByClrType[type] = underlyingHandler;
 
             if (type.IsEnum)
             {
@@ -330,16 +350,7 @@ namespace Npgsql.TypeMapping
             ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
-        void ClearBindings()
-        {
-            _handlersByOID.Clear();
-            _handlersByNpgsqlDbType.Clear();
-            _handlersByClrType.Clear();
-            _arrayHandlerByClrType.Clear();
-
-            _handlersByNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
-            _handlersByClrType[typeof(DBNull)] = UnrecognizedTypeHandler;
-        }
+        void ClearBindings() => _handlers = new HandlerState(UnrecognizedTypeHandler);
 
         [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         public override void Reset()
@@ -359,10 +370,10 @@ namespace Npgsql.TypeMapping
             return GetOrBind(handler, pgType, mapping.NpgsqlDbType, mapping.ClrTypes);
         }
 
-        T GetOrBind<T>(T handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
+        T GetOrBind<T>(T handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null, bool isArray = false)
             where T : NpgsqlTypeHandler
         {
-            if (!TryBind(handler, pgType, out var existingHandler, npgsqlDbType, clrTypes))
+            if (!TryBind(handler, pgType, out var existingHandler, npgsqlDbType, clrTypes, isArray))
             {
                 if (handler.GetType() != existingHandler.GetType())
                 {
@@ -370,46 +381,97 @@ namespace Npgsql.TypeMapping
                                                         $"{existingHandler.GetType().Name} and {handler.GetType().Name}");
                 }
 
-                // We can cast safely as we just compared a subtype of T (handler.GetType()) against existingHandler.GetType().
+                // We can safely cast as we just compared a subtype of T (handler.GetType()) against existingHandler.GetType().
                 return (T)existingHandler;
             }
 
             return handler;
 
-            bool TryBind(NpgsqlTypeHandler handler, PostgresType pgType, [NotNullWhen(false)]out NpgsqlTypeHandler? existingHandler, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
+            bool TryBind(NpgsqlTypeHandler handler, PostgresType pgType, [NotNullWhen(false)]out NpgsqlTypeHandler? existingHandler, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null, bool isArray = false)
             {
-                var returnedHandler = _handlersByOID.GetOrAdd(pgType.OID, handler);
+                var handlers = _handlers;
+                if (handlers.ByOID.TryGetValue(pgType.OID, out var lazy))
+                {
+                    // Always wait for publication to make sure all underlying data structures reflect the complete binding.
+                    existingHandler = lazy.Value;
+                    return false;
+                }
+
+                // Any exception happens out of band to make sure the Lazy initializer always succeeds
+                // as we don't have a sensible recovery path for a cached exception in a lazy.
+                InvalidOperationException? addException = null;
+                var returnedHandler = handlers.ByOID.GetOrAdd(pgType.OID, _ => Add()).Value;
+
                 if (!ReferenceEquals(handler, returnedHandler))
                 {
                     existingHandler = returnedHandler;
                     return false;
                 }
 
-                // From this point on we know our handler is the one in _handlersByOID.
-                _handlersByTypeName[pgType.FullName] = handler;
-                _handlersByTypeName[pgType.Name] = handler;
-
-                if (npgsqlDbType.HasValue)
-                {
-                    returnedHandler = _handlersByNpgsqlDbType.GetOrAdd(npgsqlDbType.Value, handler);
-                    if (handler.GetType() != returnedHandler.GetType())
-                        throw new InvalidOperationException($"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType.Value}': " +
-                                                            $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
-                }
-
-                if (clrTypes != null)
-                {
-                    foreach (var type in clrTypes)
-                    {
-                        returnedHandler = _handlersByClrType.GetOrAdd(type, handler);
-                        if (handler.GetType() != returnedHandler.GetType())
-                            throw new InvalidOperationException($"Two type handlers registered on same .NET type '{type}': " +
-                                                                $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
-                    }
-                }
+                // At this point we know our handler init was registered in _handlers.ByOID which may have produced an exception just for us.
+                // This isn't ideal but with multiplexing sharing the ConnectorTypeMapper across all connections it would need a redesign to fix.
+                // The result is that we allow partial registrations and signal once to the registering caller that something is wrong with their mappings.
+                if (addException is not null)
+                    throw addException;
 
                 existingHandler = null;
                 return true;
+
+                Lazy<NpgsqlTypeHandler> Add() => new(() =>
+                {
+                    handlers.ByTypeName[pgType.FullName] = handler;
+                    handlers.ByTypeName[pgType.Name] = handler;
+
+                    if (npgsqlDbType.HasValue)
+                    {
+                        var returnedHandler = handlers.ByNpgsqlDbType.GetOrAdd(npgsqlDbType.Value, handler);
+                        if (handler.GetType() != returnedHandler.GetType())
+                        {
+                            addException = new InvalidOperationException(
+                                $"Two type handlers registered on same NpgsqlDbType '{npgsqlDbType.Value}': " +
+                                $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
+                            return handler;
+                        }
+                    }
+
+                    if (clrTypes is not null)
+                    {
+                        if (isArray)
+                        {
+                            // Note that array handlers aren't registered in ByClrType like base types, because they handle all
+                            // dimension types and not just one CLR type (e.g. int[], int[,], int[,,]).
+                            // So the by-type lookup is special and goes via _arrayHandlerByClrType, see this[Type type]
+                            // TODO: register single-dimensional in _byType as a specific optimization? But avoid MakeArrayType for reflection-free mode?
+                            foreach (var elementType in clrTypes)
+                            {
+                                var returnedNpgsqlTypeHandler = handlers.ByArrayElementClrType.GetOrAdd(elementType, handler);
+                                if (handler.GetType() != returnedNpgsqlTypeHandler.GetType())
+                                {
+                                    addException = new InvalidOperationException(
+                                        $"Two array type handlers registered on same .NET type {elementType}: " +
+                                        $"{returnedNpgsqlTypeHandler.GetType().Name} and {handler.GetType().Name}");
+                                    return handler;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (var type in clrTypes)
+                            {
+                                var returnedHandler = handlers.ByClrType.GetOrAdd(type, handler);
+                                if (handler.GetType() != returnedHandler.GetType())
+                                {
+                                    addException = new InvalidOperationException(
+                                        $"Two type handlers registered on same .NET type '{type}': " +
+                                        $"{returnedHandler.GetType().Name} and {handler.GetType().Name}");
+                                    return handler;
+                                }
+                            }
+                        }
+                    }
+
+                    return handler;
+                }, LazyThreadSafetyMode.ExecutionAndPublication);
             }
         }
 
@@ -434,29 +496,8 @@ namespace Npgsql.TypeMapping
             NpgsqlDbType? arrayNpgsqlDbType = null,
             Type[]? elementClrTypes = null)
         {
-
             var arrayHandler = elementHandler.CreateArrayHandler(arrayPgType, _connector.Settings.ArrayNullabilityMode);
-            arrayHandler = GetOrBind(arrayHandler, arrayPgType, arrayNpgsqlDbType);
-
-            // Note that array handlers aren't registered in ByClrType like base types, because they handle all
-            // dimension types and not just one CLR type (e.g. int[], int[,], int[,,]).
-            // So the by-type lookup is special and goes via _arrayHandlerByClrType, see this[Type type]
-            // TODO: register single-dimensional in _byType as a specific optimization? But avoid MakeArrayType for reflection-free mode?
-            if (elementClrTypes is not null)
-            {
-                foreach (var elementType in elementClrTypes)
-                {
-                    var returnedHandler = _arrayHandlerByClrType.GetOrAdd(elementType, arrayHandler);
-                    if (arrayHandler.GetType() != returnedHandler.GetType())
-                    {
-                        throw new Exception(
-                            $"Two array type handlers registered on same .NET type {elementType}: " +
-                            $"{returnedHandler.GetType().Name} and {arrayHandler.GetType().Name}");
-                    }
-                }
-            }
-
-            return arrayHandler;
+            return GetOrBind(arrayHandler, arrayPgType, arrayNpgsqlDbType, clrTypes: elementClrTypes, isArray: true);
         }
 
         NpgsqlTypeHandler BindRange(NpgsqlTypeMapping subtypeMapping)
