@@ -585,31 +585,26 @@ namespace Npgsql.Internal
             var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
             try
             {
-                bool isInRecovery;
-
                 if (async)
                 {
                     await reader.ReadAsync(cancellationToken);
-                    isInRecovery = reader.GetBoolean(0);
+                    _isHotStandBy = reader.GetBoolean(0);
                     await reader.NextResultAsync(cancellationToken);
                     await reader.ReadAsync(cancellationToken);
                 }
                 else
                 {
                     reader.Read();
-                    isInRecovery = reader.GetBoolean(0);
+                    _isHotStandBy = reader.GetBoolean(0);
                     reader.NextResult();
                     reader.Read();
                 }
                 
-                var transactionReadOnly = reader.GetString(0) != "off";
+                _isTransactionReadOnly = reader.GetString(0) != "off";
 
-                var state = isInRecovery ? ClusterState.Standby :
-                    transactionReadOnly
-                        ? ClusterState.PrimaryReadOnly
-                        : ClusterState.PrimaryReadWrite;
-                return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                    Settings.HostRecheckSecondsTranslated);
+                var clusterState = UpdateClusterState();
+                Debug.Assert(clusterState.HasValue);
+                return clusterState.Value;
             }
             finally
             {
@@ -2421,6 +2416,10 @@ namespace Npgsql.Internal
         /// </summary>
         internal string Timezone { get; private set; } = default!;
 
+        bool? _isTransactionReadOnly;
+
+        bool? _isHotStandBy;
+
         #endregion Supported features and PostgreSQL settings
 
         #region Execute internal command
@@ -2503,7 +2502,33 @@ namespace Npgsql.Internal
             case "TimeZone":
                 Timezone = value;
                 return;
+
+            case "default_transaction_read_only":
+                _isTransactionReadOnly = value == "on";
+                UpdateClusterState();
+                return;
+
+            case "in_hot_standby":
+                _isHotStandBy = value == "on";
+                UpdateClusterState();
+                return;
             }
+        }
+
+        ClusterState? UpdateClusterState()
+        {
+            if (_isTransactionReadOnly.HasValue && _isHotStandBy.HasValue)
+            {
+                var state = _isHotStandBy.Value
+                    ? ClusterState.Standby
+                    : _isTransactionReadOnly.Value
+                        ? ClusterState.PrimaryReadOnly
+                        : ClusterState.PrimaryReadWrite;
+                return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow,
+                    DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
+            }
+
+            return null;
         }
 
         #endregion Misc

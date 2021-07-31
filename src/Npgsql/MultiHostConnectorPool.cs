@@ -67,7 +67,7 @@ namespace Npgsql
         static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
             => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
 
-        async ValueTask<NpgsqlConnector?> TryGetIdle(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
+        async ValueTask<NpgsqlConnector?> TryGetIdle(TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
             Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
             IList<Exception> exceptions, CancellationToken cancellationToken)
         {
@@ -217,10 +217,10 @@ namespace Npgsql
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
 
-            var connector = await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+            var connector = await TryGetIdle(timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGetIdle(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken) ??
+                                await TryGetIdle(timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken) ??
                                 await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
                             : null) ??
                             await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
