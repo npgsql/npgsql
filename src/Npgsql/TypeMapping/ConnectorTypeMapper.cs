@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
@@ -18,6 +20,7 @@ namespace Npgsql.TypeMapping
     sealed class ConnectorTypeMapper : TypeMapperBase
     {
         readonly NpgsqlConnector _connector;
+        readonly object _writeLock = new();
 
         NpgsqlDatabaseInfo? _databaseInfo;
 
@@ -33,15 +36,11 @@ namespace Npgsql.TypeMapping
         internal IDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
         internal IDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
 
-        readonly Dictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
-        readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _handlersByNpgsqlDbType = new();
-        readonly Dictionary<string, NpgsqlTypeHandler> _handlersByTypeName = new();
-        readonly Dictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
-
-        /// <summary>
-        /// Maps CLR types to their array handlers.
-        /// </summary>
-        readonly Dictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
+        readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
+        readonly ConcurrentDictionary<NpgsqlDbType, NpgsqlTypeHandler> _handlersByNpgsqlDbType = new();
+        readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByTypeName = new();
+        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
+        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
@@ -82,29 +81,28 @@ namespace Npgsql.TypeMapping
             {
                 if (MappingsByName.TryGetValue(pgType.Name, out var mapping))
                 {
-                    handler = Bind(mapping, pgType);
+                    handler = GetOrBindBaseHandler(mapping, pgType);
                     return true;
                 }
 
                 switch (pgType)
                 {
                 case PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping:
-                    handler = BindArray(elementMapping);
+                    handler = GetOrBindArrayHandler(elementMapping);
                     return true;
 
                 case PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping:
-                    handler = BindRange(subtypeMapping);
+                    handler = GetOrBindRangeHandler(subtypeMapping);
                     return true;
 
                 case PostgresEnumType pgEnumType:
                     // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
-                    handler = BindUnmappedEnum(pgEnumType);
+                    handler = GetOrBindUnmappedEnumHandler(pgEnumType);
                     return true;
 
-                case PostgresArrayType { Element: PostgresEnumType pgEnumElementType } pgArrayType:
+                case PostgresArrayType { Element: PostgresEnumType } pgArrayType:
                     // Array over unmapped enum
-                    var elementHandler = BindUnmappedEnum(pgEnumElementType);
-                    handler = BindArray(elementHandler, pgArrayType);
+                    handler = GetOrBindUnmappedEnumArrayHandler(pgArrayType);
                     return true;
 
                 case PostgresDomainType pgDomainType:
@@ -130,14 +128,14 @@ namespace Npgsql.TypeMapping
 
             // TODO: revisit externalCall - things are changing. No more "binding at global time" which only needs to log - always throw?
             if (MappingsByNpgsqlDbType.TryGetValue(npgsqlDbType, out var mapping))
-                return Bind(mapping);
+                return GetOrBindBaseHandler(mapping);
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
             {
                 var elementNpgsqlDbType = npgsqlDbType & ~NpgsqlDbType.Array;
 
                 return MappingsByNpgsqlDbType.TryGetValue(elementNpgsqlDbType, out var elementMapping)
-                    ? BindArray(elementMapping)
+                    ? GetOrBindArrayHandler(elementMapping)
                     : throw new ArgumentException($"Could not find a mapping for array element NpgsqlDbType {elementNpgsqlDbType}");
             }
 
@@ -146,7 +144,7 @@ namespace Npgsql.TypeMapping
                 var subtypeNpgsqlDbType = npgsqlDbType & ~NpgsqlDbType.Range;
 
                 return MappingsByNpgsqlDbType.TryGetValue(subtypeNpgsqlDbType, out var subtypeMapping)
-                    ? BindRange(subtypeMapping)
+                    ? GetOrBindRangeHandler(subtypeMapping)
                     : throw new ArgumentException($"Could not find a mapping for range subtype NpgsqlDbType {subtypeNpgsqlDbType}");
             }
 
@@ -160,26 +158,25 @@ namespace Npgsql.TypeMapping
                 return handler;
 
             if (MappingsByName.TryGetValue(typeName, out var mapping))
-                return Bind(mapping);
+                return GetOrBindBaseHandler(mapping);
 
             if (DatabaseInfo.GetPostgresTypeByName(typeName) is { } pgType)
             {
                 switch (pgType)
                 {
                 case PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping:
-                    return BindArray(elementMapping);
+                    return GetOrBindArrayHandler(elementMapping);
 
                 case PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping:
-                    return BindRange(subtypeMapping);
+                    return GetOrBindRangeHandler(subtypeMapping);
 
                 case PostgresEnumType pgEnumType:
                     // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
-                    return BindUnmappedEnum(pgEnumType);
+                    return GetOrBindUnmappedEnumHandler(pgEnumType);
 
-                case PostgresArrayType { Element: PostgresEnumType pgEnumElementType } pgArrayType:
+                case PostgresArrayType { Element: PostgresEnumType } pgArrayType:
                     // Array over unmapped enum
-                    var elementHandler = BindUnmappedEnum(pgEnumElementType);
-                    return BindArray(elementHandler, pgArrayType);
+                    return GetOrBindUnmappedEnumArrayHandler(pgArrayType);
 
                 case PostgresDomainType pgDomainType:
                     return _handlersByTypeName[typeName] = GetByDataTypeName(pgDomainType.BaseType.Name);
@@ -195,7 +192,7 @@ namespace Npgsql.TypeMapping
                 return handler;
 
             if (MappingsByClrType.TryGetValue(type, out var mapping))
-                return Bind(mapping);
+                return GetOrBindBaseHandler(mapping);
 
             // Try to see if it is an array type
             var arrayElementType = GetArrayElementType(type);
@@ -205,7 +202,7 @@ namespace Npgsql.TypeMapping
                     return handler;
 
                 return MappingsByClrType.TryGetValue(arrayElementType, out var elementMapping)
-                    ? BindArray(elementMapping)
+                    ? GetOrBindArrayHandler(elementMapping)
                     : throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
                                                       "If you wish to map it to a PostgreSQL composite type array you need to register " +
                                                       "it before usage, please refer to the documentation.");
@@ -217,7 +214,7 @@ namespace Npgsql.TypeMapping
             if (type.IsEnum)
             {
                 return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, DefaultNameTranslator)) is PostgresEnumType pgEnumType
-                    ? BindUnmappedEnum(pgEnumType)
+                    ? GetOrBindUnmappedEnumHandler(pgEnumType)
                     : throw new NotSupportedException(
                         $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
                         "Consider mapping the enum before usage, refer to the documentation for more details.");
@@ -230,7 +227,7 @@ namespace Npgsql.TypeMapping
                 var subtypeType = type.GetGenericArguments()[0];
 
                 return MappingsByClrType.TryGetValue(subtypeType, out var subtypeMapping)
-                    ? BindRange(subtypeMapping)
+                    ? GetOrBindRangeHandler(subtypeMapping)
                     : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
             }
 
@@ -277,7 +274,7 @@ namespace Npgsql.TypeMapping
             foreach (var clrType in mapping.ClrTypes)
                 MappingsByClrType[clrType] = mapping;
 
-            Bind(mapping);
+            GetOrBindBaseHandler(mapping);
 
             ChangeCounter = -1;
             return this;
@@ -331,13 +328,16 @@ namespace Npgsql.TypeMapping
 
         void ClearBindings()
         {
-            _handlersByOID.Clear();
-            _handlersByNpgsqlDbType.Clear();
-            _handlersByClrType.Clear();
-            _arrayHandlerByClrType.Clear();
+            lock (_writeLock)
+            {
+                _handlersByOID.Clear();
+                _handlersByNpgsqlDbType.Clear();
+                _handlersByClrType.Clear();
+                _arrayHandlerByClrType.Clear();
 
-            _handlersByNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
-            _handlersByClrType[typeof(DBNull)] = UnrecognizedTypeHandler;
+                _handlersByNpgsqlDbType[NpgsqlDbType.Unknown] = UnrecognizedTypeHandler;
+                _handlersByClrType[typeof(DBNull)] = UnrecognizedTypeHandler;
+            }
         }
 
         [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
@@ -351,17 +351,20 @@ namespace Npgsql.TypeMapping
 
         #region Binding
 
-        NpgsqlTypeHandler Bind(NpgsqlTypeMapping mapping, PostgresType? pgType = null)
+        NpgsqlTypeHandler GetOrBindBaseHandler(NpgsqlTypeMapping mapping, PostgresType? pgType = null)
         {
-            pgType ??= GetPostgresType(mapping);
-            var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, _connector);
-            Bind(handler, pgType, mapping.NpgsqlDbType, mapping.ClrTypes);
-
-            return handler;
+            lock (_writeLock)
+            {
+                pgType ??= GetPostgresType(mapping);
+                var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, _connector);
+                return GetOrBindHandler(handler, pgType, mapping.NpgsqlDbType, mapping.ClrTypes);
+            }
         }
 
-        void Bind(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
+        NpgsqlTypeHandler GetOrBindHandler(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, Type[]? clrTypes = null)
         {
+            Debug.Assert(Monitor.IsEntered(_writeLock));
+
             if (_handlersByOID.TryGetValue(pgType.OID, out var existingHandler))
             {
                 if (handler.GetType() != existingHandler.GetType())
@@ -370,7 +373,7 @@ namespace Npgsql.TypeMapping
                                                         $"{existingHandler.GetType().Name} and {handler.GetType().Name}");
                 }
 
-                return;
+                return existingHandler;
             }
 
             _handlersByOID[pgType.OID] = handler;
@@ -402,31 +405,35 @@ namespace Npgsql.TypeMapping
                     _handlersByClrType[type] = handler;
                 }
             }
+
+            return handler;
         }
 
-        ArrayHandler BindArray(NpgsqlTypeMapping elementMapping)
+        NpgsqlTypeHandler GetOrBindArrayHandler(NpgsqlTypeMapping elementMapping)
         {
             if (GetPostgresType(elementMapping).Array is not { } arrayPgType)
                 throw new ArgumentException($"No array type could be found in the database for element {elementMapping.PgTypeName}");
 
-            var elementHandler = Bind(elementMapping);
+            lock (_writeLock)
+            {
+                var elementHandler = GetOrBindBaseHandler(elementMapping);
+                var arrayNpgsqlDbType = NpgsqlDbType.Array | elementMapping.NpgsqlDbType;
 
-            var arrayNpgsqlDbType = elementMapping.NpgsqlDbType.HasValue
-                ? NpgsqlDbType.Array | elementMapping.NpgsqlDbType.Value
-                : (NpgsqlDbType?)null;
-
-            return BindArray(elementHandler, arrayPgType, arrayNpgsqlDbType, elementMapping.ClrTypes);
+                return GetOrBindArrayHandler(elementHandler, arrayPgType, arrayNpgsqlDbType, elementMapping.ClrTypes);
+            }
         }
 
-        ArrayHandler BindArray(
+        NpgsqlTypeHandler GetOrBindArrayHandler(
             NpgsqlTypeHandler elementHandler,
             PostgresArrayType arrayPgType,
             NpgsqlDbType? arrayNpgsqlDbType = null,
             Type[]? elementClrTypes = null)
         {
-            var arrayHandler = elementHandler.CreateArrayHandler(arrayPgType, _connector.Settings.ArrayNullabilityMode);
+            Debug.Assert(Monitor.IsEntered(_writeLock));
 
-            Bind(arrayHandler, arrayPgType, arrayNpgsqlDbType);
+            NpgsqlTypeHandler arrayHandler = elementHandler.CreateArrayHandler(arrayPgType, _connector.Settings.ArrayNullabilityMode);
+
+            arrayHandler = GetOrBindHandler(arrayHandler, arrayPgType, arrayNpgsqlDbType);
 
             // Note that array handlers aren't registered in ByClrType like base types, because they handle all
             // dimension types and not just one CLR type (e.g. int[], int[,], int[,,]).
@@ -453,36 +460,48 @@ namespace Npgsql.TypeMapping
             return arrayHandler;
         }
 
-        NpgsqlTypeHandler BindRange(NpgsqlTypeMapping subtypeMapping)
+        NpgsqlTypeHandler GetOrBindRangeHandler(NpgsqlTypeMapping subtypeMapping)
         {
             if (GetPostgresType(subtypeMapping).Range is not { } rangePgType)
                 throw new ArgumentException($"No range type could be found in the database for subtype {subtypeMapping.PgTypeName}");
 
-            var subtypeHandler = Bind(subtypeMapping);
-            var rangeHandler = subtypeHandler.CreateRangeHandler(rangePgType);
+            lock (_writeLock)
+            {
+                var subtypeHandler = GetOrBindBaseHandler(subtypeMapping);
+                var rangeHandler = subtypeHandler.CreateRangeHandler(rangePgType);
 
-            var rangeNpgsqlDbType = subtypeMapping.NpgsqlDbType.HasValue
-                ? NpgsqlDbType.Range | subtypeMapping.NpgsqlDbType.Value
-                : (NpgsqlDbType?)null;
+                var rangeNpgsqlDbType = subtypeMapping.NpgsqlDbType.HasValue
+                    ? NpgsqlDbType.Range | subtypeMapping.NpgsqlDbType.Value
+                    : (NpgsqlDbType?)null;
 
-            // We only want to bind supported range CLR types whose element CLR types are being bound as well.
-            var clrTypes = rangeHandler.SupportedRangeClrTypes
-                .Where(r => subtypeMapping.ClrTypes.Contains(r.GenericTypeArguments[0]))
-                .ToArray();
+                // We only want to bind supported range CLR types whose element CLR types are being bound as well.
+                var clrTypes = rangeHandler.SupportedRangeClrTypes
+                    .Where(r => subtypeMapping.ClrTypes.Contains(r.GenericTypeArguments[0]))
+                    .ToArray();
 
-            var asTypeHandler = (NpgsqlTypeHandler)rangeHandler;
-            Bind(asTypeHandler, rangePgType, rangeNpgsqlDbType, clrTypes: clrTypes);
-
-            return asTypeHandler;
+                var asTypeHandler = (NpgsqlTypeHandler)rangeHandler;
+                return GetOrBindHandler(asTypeHandler, rangePgType, rangeNpgsqlDbType, clrTypes: clrTypes);
+            }
         }
 
-        NpgsqlTypeHandler BindUnmappedEnum(PostgresEnumType pgEnumType)
+        NpgsqlTypeHandler GetOrBindUnmappedEnumHandler(PostgresEnumType pgEnumType)
         {
-            var unmappedEnumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
-            var handler = unmappedEnumFactory.Create(pgEnumType, _connector);
-            // TODO: Can map the enum's CLR type to prevent future lookups
-            Bind(handler, pgEnumType);
-            return handler;
+            lock (_writeLock)
+            {
+                var unmappedEnumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
+                var handler = unmappedEnumFactory.Create(pgEnumType, _connector);
+                // TODO: Can map the enum's CLR type to prevent future lookups
+                return GetOrBindHandler(handler, pgEnumType);
+            }
+        }
+
+        NpgsqlTypeHandler GetOrBindUnmappedEnumArrayHandler(PostgresArrayType pgArrayType)
+        {
+            lock (_writeLock)
+            {
+                var elementHandler = GetOrBindUnmappedEnumHandler((PostgresEnumType)pgArrayType.Element);
+                return GetOrBindArrayHandler(elementHandler, pgArrayType);
+            }
         }
 
         PostgresType GetPostgresType(NpgsqlTypeMapping mapping)
