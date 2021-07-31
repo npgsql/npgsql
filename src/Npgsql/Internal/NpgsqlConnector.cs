@@ -588,26 +588,23 @@ namespace Npgsql.Internal
                 if (async)
                 {
                     await reader.ReadAsync(cancellationToken);
-                    _hotStandby = reader.GetBoolean(0);
+                    _isHotStandBy = reader.GetBoolean(0);
                     await reader.NextResultAsync(cancellationToken);
                     await reader.ReadAsync(cancellationToken);
                 }
                 else
                 {
                     reader.Read();
-                    _hotStandby = reader.GetBoolean(0);
+                    _isHotStandBy = reader.GetBoolean(0);
                     reader.NextResult();
                     reader.Read();
                 }
                 
-                _transactionReadOnly = reader.GetString(0) != "off";
+                _isTransactionReadOnly = reader.GetString(0) != "off";
 
-                var state = _hotStandby.Value ? ClusterState.Standby :
-                    _transactionReadOnly.Value
-                        ? ClusterState.PrimaryReadOnly
-                        : ClusterState.PrimaryReadWrite;
-                return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                    DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
+                var clusterState = UpdateClusterState();
+                Debug.Assert(clusterState.HasValue);
+                return clusterState.Value;
             }
             finally
             {
@@ -2419,9 +2416,9 @@ namespace Npgsql.Internal
         /// </summary>
         internal string Timezone { get; private set; } = default!;
 
-        bool? _transactionReadOnly;
+        bool? _isTransactionReadOnly;
 
-        bool? _hotStandby;
+        bool? _isHotStandBy;
 
         #endregion Supported features and PostgreSQL settings
 
@@ -2507,29 +2504,31 @@ namespace Npgsql.Internal
                 return;
 
             case "default_transaction_read_only":
-                _transactionReadOnly = value == "on";
-                UpdateClusterState(this);
+                _isTransactionReadOnly = value == "on";
+                UpdateClusterState();
                 return;
 
             case "in_hot_standby":
-                _hotStandby = value == "on";
-                UpdateClusterState(this);
+                _isHotStandBy = value == "on";
+                UpdateClusterState();
                 return;
             }
+        }
 
-            static void UpdateClusterState(NpgsqlConnector connector)
+        ClusterState? UpdateClusterState()
+        {
+            if (_isTransactionReadOnly.HasValue && _isHotStandBy.HasValue)
             {
-                if (connector._transactionReadOnly.HasValue && connector._hotStandby.HasValue)
-                {
-                    var settings = connector.Settings;
-                    var state = connector._hotStandby.Value ? ClusterState.Standby :
-                        connector._transactionReadOnly.Value
-                            ? ClusterState.PrimaryReadOnly
-                            : ClusterState.PrimaryReadWrite;
-                    ClusterStateCache.UpdateClusterState(settings.Host!, settings.Port, state, DateTime.UtcNow,
-                        TimeSpan.Zero);
-                }
+                var state = _isHotStandBy.Value
+                    ? ClusterState.Standby
+                    : _isTransactionReadOnly.Value
+                        ? ClusterState.PrimaryReadOnly
+                        : ClusterState.PrimaryReadWrite;
+                return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow,
+                    DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
             }
+
+            return null;
         }
 
         #endregion Misc
