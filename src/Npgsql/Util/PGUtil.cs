@@ -146,12 +146,15 @@ namespace Npgsql.Util
     public readonly struct NpgsqlTimeout
     {
         readonly DateTime _expiration;
-        internal DateTime Expiration => _expiration;
 
         internal static NpgsqlTimeout Infinite = new(TimeSpan.Zero);
 
         internal NpgsqlTimeout(TimeSpan expiration)
-            => _expiration = expiration == TimeSpan.Zero ? DateTime.MaxValue : DateTime.UtcNow + expiration;
+            => _expiration = expiration > TimeSpan.Zero
+                ? DateTime.UtcNow + expiration
+                : expiration == TimeSpan.Zero
+                    ? DateTime.MaxValue
+                    : DateTime.MinValue;
 
         internal void Check()
         {
@@ -176,13 +179,13 @@ namespace Npgsql.Util
 
         internal bool IsSet => _expiration != DateTime.MaxValue;
 
-        internal bool HasExpired => DateTime.UtcNow >= Expiration;
+        internal bool HasExpired => DateTime.UtcNow >= _expiration;
 
         internal TimeSpan CheckAndGetTimeLeft()
         {
             if (!IsSet)
                 return Timeout.InfiniteTimeSpan;
-            var timeLeft = Expiration - DateTime.UtcNow;
+            var timeLeft = _expiration - DateTime.UtcNow;
             if (timeLeft <= TimeSpan.Zero)
                 Check();
             return timeLeft;
