@@ -585,31 +585,29 @@ namespace Npgsql.Internal
             var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
             try
             {
-                bool isInRecovery;
-
                 if (async)
                 {
                     await reader.ReadAsync(cancellationToken);
-                    isInRecovery = reader.GetBoolean(0);
+                    _hotStandby = reader.GetBoolean(0);
                     await reader.NextResultAsync(cancellationToken);
                     await reader.ReadAsync(cancellationToken);
                 }
                 else
                 {
                     reader.Read();
-                    isInRecovery = reader.GetBoolean(0);
+                    _hotStandby = reader.GetBoolean(0);
                     reader.NextResult();
                     reader.Read();
                 }
                 
-                var transactionReadOnly = reader.GetString(0) != "off";
+                _transactionReadOnly = reader.GetString(0) != "off";
 
-                var state = isInRecovery ? ClusterState.Standby :
-                    transactionReadOnly
+                var state = _hotStandby.Value ? ClusterState.Standby :
+                    _transactionReadOnly.Value
                         ? ClusterState.PrimaryReadOnly
                         : ClusterState.PrimaryReadWrite;
                 return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, timeStamp,
-                    Settings.HostRecheckSecondsTranslated);
+                    DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
             }
             finally
             {
@@ -2421,6 +2419,10 @@ namespace Npgsql.Internal
         /// </summary>
         internal string Timezone { get; private set; } = default!;
 
+        bool? _transactionReadOnly;
+
+        bool? _hotStandby;
+
         #endregion Supported features and PostgreSQL settings
 
         #region Execute internal command
@@ -2503,6 +2505,30 @@ namespace Npgsql.Internal
             case "TimeZone":
                 Timezone = value;
                 return;
+
+            case "default_transaction_read_only":
+                _transactionReadOnly = value == "on";
+                UpdateClusterState(this);
+                return;
+
+            case "in_hot_standby":
+                _hotStandby = value == "on";
+                UpdateClusterState(this);
+                return;
+            }
+
+            static void UpdateClusterState(NpgsqlConnector connector)
+            {
+                if (connector._transactionReadOnly.HasValue && connector._hotStandby.HasValue)
+                {
+                    var settings = connector.Settings;
+                    var state = connector._hotStandby.Value ? ClusterState.Standby :
+                        connector._transactionReadOnly.Value
+                            ? ClusterState.PrimaryReadOnly
+                            : ClusterState.PrimaryReadWrite;
+                    ClusterStateCache.UpdateClusterState(settings.Host!, settings.Port, state, DateTime.UtcNow,
+                        TimeSpan.Zero);
+                }
             }
         }
 
