@@ -602,7 +602,7 @@ namespace Npgsql.Internal
                 
                 _isTransactionReadOnly = reader.GetString(0) != "off";
 
-                var clusterState = UpdateClusterState();
+                var clusterState = UpdateClusterState(ignoreDatabaseVersion: false);
                 Debug.Assert(clusterState.HasValue);
                 return clusterState.Value;
             }
@@ -2505,17 +2505,17 @@ namespace Npgsql.Internal
 
             case "default_transaction_read_only":
                 _isTransactionReadOnly = value == "on";
-                UpdateClusterState();
+                UpdateClusterState(ignoreDatabaseVersion: true);
                 return;
 
             case "in_hot_standby":
                 _isHotStandBy = value == "on";
-                UpdateClusterState();
+                UpdateClusterState(ignoreDatabaseVersion: true);
                 return;
             }
         }
 
-        ClusterState? UpdateClusterState()
+        ClusterState? UpdateClusterState(bool ignoreDatabaseVersion)
         {
             if (_isTransactionReadOnly.HasValue && _isHotStandBy.HasValue)
             {
@@ -2525,7 +2525,7 @@ namespace Npgsql.Internal
                         ? ClusterState.PrimaryReadOnly
                         : ClusterState.PrimaryReadWrite;
                 return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow,
-                    DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
+                    ignoreDatabaseVersion || DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
             }
 
             return null;
