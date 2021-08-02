@@ -343,6 +343,7 @@ namespace Npgsql
         [DbProviderSpecificTypeProperty(true)]
         public NpgsqlDbType NpgsqlDbType
         {
+            [RequiresUnreferencedCodeAttribute("The NpgsqlDbType getter isn't trimming-safe")]
             get
             {
                 if (_npgsqlDbType.HasValue)

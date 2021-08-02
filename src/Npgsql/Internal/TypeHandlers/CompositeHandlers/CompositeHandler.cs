@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -10,6 +11,32 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+
+#region Trimming warning suppressions
+
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2046", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2080", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2026", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2090", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2087", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2055", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+[module: UnconditionalSuppressMessage(
+    "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.",
+    "IL2077", Scope = "type", Target = "Npgsql.Internal.TypeHandlers.CompositeHandlers.CompositeHandler")]
+
+#endregion
 
 namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
 {

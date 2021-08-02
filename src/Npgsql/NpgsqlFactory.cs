@@ -1,5 +1,6 @@
 using System;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Npgsql.Logging;
 
@@ -68,7 +69,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="serviceType">An object that specifies the type of service object to get.</param>
         /// <returns>A service object of type serviceType, or null if there is no service object of type serviceType.</returns>
-
+        [RequiresUnreferencedCode("Legacy EF5 method, not trimming-safe.")]
         public object? GetService(Type serviceType)
         {
             if (serviceType == null)

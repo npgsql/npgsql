@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -1931,12 +1932,16 @@ namespace Npgsql
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
+        [UnconditionalSuppressMessage(
+            "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
         public override DataTable? GetSchemaTable()
             => GetSchemaTable(async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
+        [UnconditionalSuppressMessage(
+            "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
 #if NET5_0_OR_GREATER
         public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
@@ -1947,6 +1952,8 @@ namespace Npgsql
                 return GetSchemaTable(async: true, cancellationToken);
         }
 
+        [UnconditionalSuppressMessage(
+            "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
         async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
         {
             if (FieldCount == 0) // No resultset
