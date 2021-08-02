@@ -1692,8 +1692,8 @@ namespace Npgsql
         #endregion IDictionary<string, object>
 
         #region ICustomTypeDescriptor
-#nullable disable
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+        /// <inheritdoc />
         protected override void GetProperties(Hashtable propertyDescriptors)
         {
             // Tweak which properties are exposed via TypeDescriptor. This affects the VS DDEX
@@ -1710,8 +1710,7 @@ namespace Npgsql
             foreach (var o in toRemove)
                 propertyDescriptors.Remove(o.DisplayName);
         }
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-#nullable enable
+
         #endregion
 
         internal static readonly string[] EmptyStringArray = new string[0];
