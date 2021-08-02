@@ -435,7 +435,6 @@ namespace NpgsqlTypes
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }
 
-#nullable disable
         /// <summary>
         /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
         /// </summary>
@@ -450,23 +449,22 @@ namespace NpgsqlTypes
                     new TypeConverterAttribute(typeof(RangeTypeConverter)));
 
             /// <inheritdoc />
-            public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
                 => sourceType == typeof(string);
 
             /// <inheritdoc />
-            public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+            public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType)
                 => destinationType == typeof(string);
 
             /// <inheritdoc />
-            public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+            public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
                 => value is string s ? Parse(s) : base.ConvertFrom(context, culture, value);
 
             /// <inheritdoc />
-            public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
-                => value.ToString();
+            public override object? ConvertTo(ITypeDescriptorContext? context, CultureInfo? culture, object? value, Type destinationType)
+                => value is null ? string.Empty : value.ToString();
         }
     }
-#nullable restore
 
     /// <summary>
     /// Represents characteristics of range type boundaries.

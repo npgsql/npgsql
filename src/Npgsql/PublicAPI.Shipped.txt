@@ -1900,7 +1900,7 @@ virtual Npgsql.NpgsqlDatabaseInfo.SupportsRangeTypes.get -> bool
 virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.get -> bool
 virtual Npgsql.NpgsqlDatabaseInfo.SupportsTransactions.set -> void
 virtual Npgsql.NpgsqlDatabaseInfo.SupportsUnlisten.get -> bool
-~override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.CanConvertFrom(System.ComponentModel.ITypeDescriptorContext context, System.Type sourceType) -> bool
-~override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.CanConvertTo(System.ComponentModel.ITypeDescriptorContext context, System.Type destinationType) -> bool
-~override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.ConvertFrom(System.ComponentModel.ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value) -> object
-~override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.ConvertTo(System.ComponentModel.ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, System.Type destinationType) -> object
+override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.CanConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Type! sourceType) -> bool
+override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.CanConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Type? destinationType) -> bool
+override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.ConvertFrom(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object! value) -> object?
+override NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.ConvertTo(System.ComponentModel.ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, System.Type! destinationType) -> object?
