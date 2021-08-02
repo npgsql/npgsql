@@ -1492,6 +1492,7 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public void MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => TypeMapper.MapComposite<T>(pgName, nameTranslator);
 
@@ -1518,6 +1519,7 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public static void MapCompositeGlobally<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
@@ -1533,6 +1535,7 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
 
@@ -1820,6 +1823,8 @@ namespace Npgsql
         /// <summary>
         /// Returns the supported collections
         /// </summary>
+        [UnconditionalSuppressMessage(
+            "Composite type mapping currently isn't trimming-safe, and warnings are generated at the MapComposite level.", "IL2026")]
         public override DataTable GetSchema()
             => GetSchema("MetaDataCollections", null);
 

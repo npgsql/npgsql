@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.CompositeHandlers;
@@ -69,9 +70,11 @@ namespace Npgsql.TypeMapping
 
         #region Composite mapping
 
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             => MapComposite(pgName, nameTranslator, typeof(T), t => new CompositeTypeHandlerFactory<T>(t));
 
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             => MapComposite(pgName, nameTranslator, clrType, t => (NpgsqlTypeHandlerFactory)
                 Activator.CreateInstance(typeof(CompositeTypeHandlerFactory<>).MakeGenericType(clrType), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { t }, null)!);
@@ -94,9 +97,11 @@ namespace Npgsql.TypeMapping
                 .Build());
         }
 
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             => UnmapComposite(typeof(T), pgName, nameTranslator);
 
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         {
             if (pgName != null && string.IsNullOrWhiteSpace(pgName))

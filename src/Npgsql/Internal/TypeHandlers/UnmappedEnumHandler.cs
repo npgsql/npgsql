@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -60,6 +61,7 @@ namespace Npgsql.Internal.TypeHandlers
         protected internal override int ValidateAndGetLengthCustom<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value!, ref lengthCache, parameter);
 
+        [UnconditionalSuppressMessage("Unmapped enums currently aren't trimming-safe.", "IL2072")]
         int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var type = value.GetType();
@@ -97,6 +99,7 @@ namespace Npgsql.Internal.TypeHandlers
             }
         }
 
+        [UnconditionalSuppressMessage("Unmapped enums currently aren't trimming-safe.", "IL2072")]
         internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = value.GetType();
@@ -115,7 +118,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Misc
 
-        void Map(Type type)
+        void Map([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type type)
         {
             Debug.Assert(_resolvedType != type);
 

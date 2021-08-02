@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -98,6 +99,7 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         INpgsqlTypeMapper MapComposite<T>(
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
@@ -113,6 +115,7 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         bool UnmapComposite<T>(
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
@@ -136,6 +139,7 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         INpgsqlTypeMapper MapComposite(
             Type clrType,
             string? pgName = null,
@@ -153,6 +157,7 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
         bool UnmapComposite(
             Type clrType,
             string? pgName = null,

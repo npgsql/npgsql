@@ -199,6 +199,7 @@ namespace Npgsql.TypeMapping
         internal string? ToPgTypeName(Type type)
             => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;
 
+        [RequiresUnreferencedCodeAttribute("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
         internal NpgsqlDbType ToNpgsqlDbType(Type type)
         {
             if (_typeToNpgsqlDbType.TryGetValue(type, out var npgsqlDbType))

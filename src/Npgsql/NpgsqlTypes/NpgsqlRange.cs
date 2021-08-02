@@ -429,8 +429,8 @@ namespace NpgsqlTypes
                 string.Equals(upperSegment, NullLiteral, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(upperSegment, UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
-            var lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment);
-            var upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment);
+            var lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment)!;
+            var upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment)!;
 
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }
