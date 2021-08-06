@@ -456,7 +456,7 @@ namespace Npgsql.Internal
 
             try
             {
-                await RawOpen(timeout, async, cancellationToken);
+                await RawOpen(timeout, async, cancellationToken).ConfigureAwait(false);
 
                 var username = GetUsername();
                 if (Settings.Database == null)
@@ -464,21 +464,21 @@ namespace Npgsql.Internal
 
                 timeout.CheckAndApply(this);
                 WriteStartupMessage(username);
-                await Flush(async, cancellationToken);
+                await Flush(async, cancellationToken).ConfigureAwait(false);
 
                 using (StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
                 {
-                    await Authenticate(username, timeout, async, cancellationToken);
+                    await Authenticate(username, timeout, async, cancellationToken).ConfigureAwait(false);
 
                     // We treat BackendKeyData as optional because some PostgreSQL-like database
                     // don't send it (CockroachDB, CrateDB)
-                    var msg = await ReadMessage(async);
+                    var msg = await ReadMessage(async).ConfigureAwait(false);
                     if (msg.Code == BackendMessageCode.BackendKeyData)
                     {
                         var keyDataMsg = (BackendKeyDataMessage)msg;
                         BackendProcessId = keyDataMsg.BackendProcessId;
                         _backendSecretKey = keyDataMsg.BackendSecretKey;
-                        msg = await ReadMessage(async);
+                        msg = await ReadMessage(async).ConfigureAwait(false);
                     }
 
                     if (msg.Code != BackendMessageCode.ReadyForQuery)
@@ -487,7 +487,7 @@ namespace Npgsql.Internal
                     State = ConnectorState.Ready;
                 }
 
-                await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
+                await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken).ConfigureAwait(false);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -499,7 +499,7 @@ namespace Npgsql.Internal
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 if (async && PhysicalOpenAsyncCallback is not null)
-                    await PhysicalOpenAsyncCallback(this);
+                    await PhysicalOpenAsyncCallback(this).ConfigureAwait(false);
                 else if (!async && PhysicalOpenCallback is not null)
                     PhysicalOpenCallback(this);
 
@@ -549,7 +549,7 @@ namespace Npgsql.Internal
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
             {
                 var hasSemaphore = async
-                    ? await DatabaseInfoSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+                    ? await DatabaseInfoSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken).ConfigureAwait(false)
                     : DatabaseInfoSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
                 // We've timed out - calling Check, to throw the correct exception
@@ -560,7 +560,7 @@ namespace Npgsql.Internal
                 {
                     if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out database))
                     {
-                        NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(this, timeout, async);
+                        NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(this, timeout, async).ConfigureAwait(false);
                     }
                 }
                 finally
@@ -582,15 +582,15 @@ namespace Npgsql.Internal
             // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
             var timeStamp = DateTime.UtcNow;
 
-            var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
+            var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false) : cmd.ExecuteReader();
             try
             {
                 if (async)
                 {
-                    await reader.ReadAsync(cancellationToken);
+                    await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                     _isHotStandBy = reader.GetBoolean(0);
-                    await reader.NextResultAsync(cancellationToken);
-                    await reader.ReadAsync(cancellationToken);
+                    await reader.NextResultAsync(cancellationToken).ConfigureAwait(false);
+                    await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -609,7 +609,7 @@ namespace Npgsql.Internal
             finally
             {
                 if (async)
-                    await reader.DisposeAsync();
+                    await reader.DisposeAsync().ConfigureAwait(false);
                 else
                     reader.Dispose();
             }
@@ -683,7 +683,7 @@ namespace Npgsql.Internal
             try
             {
                 if (async)
-                    await ConnectAsync(timeout, cancellationToken);
+                    await ConnectAsync(timeout, cancellationToken).ConfigureAwait(false);
                 else
                     Connect(timeout);
 
@@ -709,9 +709,9 @@ namespace Npgsql.Internal
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     WriteSslRequest();
-                    await Flush(async, cancellationToken);
+                    await Flush(async, cancellationToken).ConfigureAwait(false);
 
-                    await ReadBuffer.Ensure(1, async);
+                    await ReadBuffer.Ensure(1, async).ConfigureAwait(false);
                     var response = (char)ReadBuffer.ReadByte();
                     timeout.CheckAndApply(this);
 
@@ -778,11 +778,15 @@ namespace Npgsql.Internal
 #endif
 
                             if (async)
-                                await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                            {
+                                await sslStream.AuthenticateAsClientAsync(
+                                    Host, clientCertificates, sslProtocols, Settings.CheckCertificateRevocation)
+                                    .ConfigureAwait(false);
+                            }
                             else
-                                sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                            {
+                                sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, Settings.CheckCertificateRevocation);
+                            }
 
                             _stream = sslStream;
                         }
@@ -892,7 +896,7 @@ namespace Npgsql.Internal
             // Note that there aren't any timeout-able or cancellable DNS methods
             var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
                 ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-                : (await GetHostAddressesAsync(timeout, cancellationToken))
+                : (await GetHostAddressesAsync(timeout, cancellationToken).ConfigureAwait(false))
                 .Select(a => new IPEndPoint(a, Port)).ToArray();
 
             // Give each IP an equal share of the remaining time
@@ -916,7 +920,7 @@ namespace Npgsql.Internal
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
                 try
                 {
-                    await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken);
+                    await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken).ConfigureAwait(false);
                     SetSocketOptions(socket);
                     _socket = socket;
                     return;
@@ -1053,7 +1057,7 @@ namespace Npgsql.Internal
 
             try
             {
-                while (await CommandsInFlightReader.WaitToReadAsync())
+                while (await CommandsInFlightReader.WaitToReadAsync().ConfigureAwait(false))
                 {
                     commandsRead = 0;
                     Debug.Assert(!InTransaction);
@@ -1062,7 +1066,7 @@ namespace Npgsql.Internal
                     {
                         commandsRead++;
 
-                        await ReadBuffer.Ensure(5, true);
+                        await ReadBuffer.Ensure(5, true).ConfigureAwait(false);
 
                         // We have a resultset for the command - hand back control to the command (which will
                         // return it to the user)
@@ -1073,7 +1077,7 @@ namespace Npgsql.Internal
                         // true, so that the user code calling NpgsqlDataReader.Dispose will not continue executing
                         // synchronously here. The prevents issues if the code after the next command's execution
                         // completion blocks.
-                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
+                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version).ConfigureAwait(false);
                         Debug.Assert(!InTransaction);
                     }
 
@@ -1114,7 +1118,7 @@ namespace Npgsql.Internal
                 {
                     while (true)
                     {
-                        var pendingCommand = await CommandsInFlightReader.ReadAsync();
+                        var pendingCommand = await CommandsInFlightReader.ReadAsync().ConfigureAwait(false);
 
                         // TODO: the exception we have here is sometimes just the result of the write loop breaking
                         // the connector, so it doesn't represent the actual root cause.
@@ -1214,7 +1218,10 @@ namespace Npgsql.Internal
                         // TODO: There could be room for optimization here, rather than the async call(s)
                         connector.ReadBuffer.Timeout = TimeSpan.FromMilliseconds(connector.InternalCommandTimeout);
                         for (; connector.PendingPrependedResponses > 0; connector.PendingPrependedResponses--)
-                            await ReadMessageLong(connector, async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true);
+                        {
+                            await ReadMessageLong(connector, async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true)
+                                .ConfigureAwait(false);
+                        }
                     }
                     catch (PostgresException e)
                     {
@@ -1230,7 +1237,7 @@ namespace Npgsql.Internal
 
                     while (true)
                     {
-                        await connector.ReadBuffer.Ensure(5, async, readingNotifications);
+                        await connector.ReadBuffer.Ensure(5, async, readingNotifications).ConfigureAwait(false);
                         var messageCode = (BackendMessageCode)connector.ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
                         var len = connector.ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -2302,7 +2309,7 @@ namespace Npgsql.Internal
                     return;
 
                 Log.Trace("Performing keepalive", Id);
-                WriteSync(async: false);
+                WriteSync(async: false, syncOverAsync: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 Log.Trace("Performed keepalive", Id);

@@ -4,6 +4,9 @@ root = false
 
 [*.cs]
 
+# Consider calling ConfigureAwait on the awaited task
+dotnet_diagnostic.CA2007.severity = error
+
 # Constructor make noninheritable base class inheritable
 dotnet_diagnostic.RS0022.severity = none
 

@@ -1893,10 +1893,7 @@ namespace Npgsql
 #else
         public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
-        }
+            => NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
 
         #endregion Schema operations
 
