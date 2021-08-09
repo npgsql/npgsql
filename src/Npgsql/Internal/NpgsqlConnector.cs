@@ -503,8 +503,6 @@ namespace Npgsql.Internal
             }
             catch (Exception e)
             {
-                ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline,
-                    DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 Break(e);
                 throw;
             }

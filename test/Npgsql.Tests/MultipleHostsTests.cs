@@ -513,6 +513,20 @@ namespace Npgsql.Tests
             Assert.AreEqual(ClusterState.PrimaryReadWrite, ClusterStateCache.GetClusterState(host, 5432, ignoreExpiration: true));
         }
 
+        [Test]
+        public async Task ClusterUnknownStateOnConnectionFailure()
+        {
+            await using var server = PgPostmasterMock.Start(ConnectionString, state: Primary, startupErrorCode: PostgresErrorCodes.ConnectionFailure);
+            var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
+            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+
+            var ex = Assert.ThrowsAsync<PostgresException>(conn.OpenAsync)!;
+            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.ConnectionFailure));
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+        }
+
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
         public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)

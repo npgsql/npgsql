@@ -29,6 +29,7 @@ namespace Npgsql.Tests.Support
 
         readonly bool _completeCancellationImmediately;
         readonly MockState _state;
+        readonly string? _startupErrorCode;
 
         ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
         internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
@@ -40,9 +41,10 @@ namespace Npgsql.Tests.Support
         internal static PgPostmasterMock Start(
             string? connectionString = null,
             bool completeCancellationImmediately = true,
-            MockState state = MockState.MultipleHostsDisabled)
+            MockState state = MockState.MultipleHostsDisabled,
+            string? startupErrorCode = null)
         {
-            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state);
+            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state, startupErrorCode);
             mock.AcceptClients();
             return mock;
         }
@@ -50,7 +52,8 @@ namespace Npgsql.Tests.Support
         internal PgPostmasterMock(
             string? connectionString = null,
             bool completeCancellationImmediately = true,
-            MockState state = MockState.MultipleHostsDisabled)
+            MockState state = MockState.MultipleHostsDisabled,
+            string? startupErrorCode = null)
         {
             var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
             PendingRequestsReader = pendingRequestsChannel.Reader;
@@ -60,6 +63,7 @@ namespace Npgsql.Tests.Support
 
             _completeCancellationImmediately = completeCancellationImmediately;
             _state = state;
+            _startupErrorCode = startupErrorCode;
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
@@ -101,7 +105,10 @@ namespace Npgsql.Tests.Support
                     {
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
-                        _ = server.Startup(_state).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        if (string.IsNullOrEmpty(_startupErrorCode))
+                            _ = server.Startup(_state).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        else
+                            _ = server.FailedStartup(_startupErrorCode);
                     }
                     else
                     {
