@@ -840,10 +840,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             for (var statementIndex = 0; statementIndex < _statements.Count; statementIndex++)
-            {
                 if (_statements[statementIndex].InputParameters.Count > ushort.MaxValue)
                     throw new NpgsqlException($"A statement cannot have more than {ushort.MaxValue} parameters");
-            }
         }
 
         #endregion
