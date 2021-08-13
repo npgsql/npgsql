@@ -262,8 +262,9 @@ namespace Npgsql
                 if (_autoPrepare)
                 {
                     var numPrepared = 0;
-                    foreach (var statement in command._statements)
+                    for (var statementIndex = 0; statementIndex < command._statements.Count; statementIndex++)
                     {
+                        var statement = command._statements[statementIndex];
                         // If this statement isn't prepared, see if it gets implicitly prepared.
                         // Note that this may return null (not enough usages for automatic preparation).
                         if (!statement.IsPrepared)
