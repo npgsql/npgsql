@@ -140,6 +140,15 @@ namespace Npgsql
         internal bool IsPrepared => PreparedStatement?.IsPrepared == true;
 
         /// <summary>
+        /// Returns a prepared statement for this statement (including automatic preparation).
+        /// </summary>
+        internal bool TryGetPrepared([NotNullWhen(true)] out PreparedStatement? preparedStatement)
+        {
+            preparedStatement = PreparedStatement;
+            return preparedStatement?.IsPrepared == true;
+        }
+
+        /// <summary>
         /// Initializes a new <see cref="NpgsqlBatchCommand"/>.
         /// </summary>
         public NpgsqlBatchCommand() : this(string.Empty) {}
@@ -173,11 +182,11 @@ namespace Npgsql
         {
             // If this statement isn't prepared, see if it gets implicitly prepared.
             // Note that this may return null (not enough usages for automatic preparation).
-            if (!IsPrepared)
-                PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(this);
-            if (PreparedStatement is PreparedStatement pStatement)
+            if (!TryGetPrepared(out var preparedStatement))
+                preparedStatement = PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(this);
+            if (preparedStatement is PreparedStatement pStatement)
             {
-                if (pStatement?.State == PreparedState.NotPrepared)
+                if (pStatement.State == PreparedState.NotPrepared)
                 {
                     pStatement.State = PreparedState.BeingPrepared;
                     IsPreparing = true;
