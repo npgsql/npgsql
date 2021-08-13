@@ -172,11 +172,12 @@ namespace Npgsql.Internal
 
             var formatCodesSum = 0;
             var paramsLength = 0;
-            foreach (var p in inputParameters)
+            for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
             {
-                formatCodesSum += (int)p.FormatCode;
-                p.LengthCache?.Rewind();
-                paramsLength += p.ValidateAndGetLength();
+                var param = inputParameters[paramIndex];
+                formatCodesSum += (int)param.FormatCode;
+                param.LengthCache?.Rewind();
+                paramsLength += param.ValidateAndGetLength();
             }
 
             var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == inputParameters.Count ? 1 : inputParameters.Count;
@@ -206,11 +207,11 @@ namespace Npgsql.Internal
             }
             else if (formatCodeListLength > 1)
             {
-                foreach (var p in inputParameters)
+                for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
                 {
                     if (WriteBuffer.WriteSpaceLeft < 2)
                         await Flush(async, cancellationToken);
-                    WriteBuffer.WriteInt16((short)p.FormatCode);
+                    WriteBuffer.WriteInt16((short)inputParameters[paramIndex].FormatCode);
                 }
             }
 
@@ -219,8 +220,9 @@ namespace Npgsql.Internal
 
             WriteBuffer.WriteUInt16((ushort)inputParameters.Count);
 
-            foreach (var param in inputParameters)
+            for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
             {
+                var param = inputParameters[paramIndex];
                 param.LengthCache?.Rewind();
                 await param.WriteWithLength(WriteBuffer, async, cancellationToken);
             }
