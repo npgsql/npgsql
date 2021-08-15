@@ -25,8 +25,8 @@ namespace Npgsql
 
         volatile bool _isBootstrapped;
 
-        readonly ChannelReader<NpgsqlCommand>? _multiplexCommandReader;
-        internal ChannelWriter<NpgsqlCommand>? MultiplexCommandWriter { get; }
+        readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
+        internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
 
         /// <summary>
         /// A pool-wide type mapper used when multiplexing. This is necessary because binding parameters
@@ -127,9 +127,10 @@ namespace Npgsql
             // on to the next connector.
             Debug.Assert(_multiplexCommandReader != null);
 
+            var stats = new MultiplexingStats { Stopwatch = new Stopwatch() };
+
             while (true)
             {
-                var stats = new MultiplexingStats { Stopwatch = new Stopwatch() };
                 NpgsqlConnector? connector;
 
                 // Get a first command out.
@@ -396,7 +397,7 @@ namespace Npgsql
                 // for over-capacity write.
                 connector.FlagAsWritableForMultiplexing();
 
-                NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Waits, stats.Stopwatch!);
+                NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Stopwatch);
             }
 
             // ReSharper disable once FunctionNeverReturns
@@ -406,13 +407,11 @@ namespace Npgsql
         {
             internal Stopwatch Stopwatch;
             internal int NumCommands;
-            internal int Waits;
 
             internal void Reset()
             {
-                Stopwatch.Restart();
                 NumCommands = 0;
-                Waits = 0;
+                Stopwatch.Reset();
             }
 
             internal MultiplexingStats Clone()

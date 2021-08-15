@@ -31,10 +31,9 @@ namespace Npgsql
         PollingCounter? _busyConnectionsCounter;
 
         PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
-        PollingCounter? _multiplexingAverageWaitsPerBatchCounter;
         PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
-
 #endif
+
         long _bytesWritten;
         long _bytesRead;
 
@@ -48,7 +47,6 @@ namespace Npgsql
 
         long _multiplexingBatchesSent;
         long _multiplexingCommandsSent;
-        long _multiplexingWaits;
         long _multiplexingTicksWritten;
 
         internal NpgsqlEventSource() : base(EventSourceName) {}
@@ -89,12 +87,11 @@ namespace Npgsql
             }
         }
 
-        internal void MultiplexingBatchSent(int numCommands, int waits, Stopwatch stopwatch)
+        internal void MultiplexingBatchSent(int numCommands, Stopwatch stopwatch)
         {
-            // TODO: CAS loop instead of 4 separate interlocked operations?
+            // TODO: CAS loop instead of 3 separate interlocked operations?
             Interlocked.Increment(ref _multiplexingBatchesSent);
             Interlocked.Add(ref _multiplexingCommandsSent, numCommands);
-            Interlocked.Add(ref _multiplexingWaits, waits);
             Interlocked.Add(ref _multiplexingTicksWritten, stopwatch.ElapsedTicks);
         }
 
@@ -207,11 +204,6 @@ namespace Npgsql
                 _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, () => (double)Interlocked.Read(ref _multiplexingCommandsSent) / Interlocked.Read(ref _multiplexingBatchesSent))
                 {
                     DisplayName = "Average commands per multiplexing batch"
-                };
-
-                _multiplexingAverageWaitsPerBatchCounter = new PollingCounter("multiplexing-average-waits-per-batch", this, () => (double)Interlocked.Read(ref _multiplexingWaits) / Interlocked.Read(ref _multiplexingBatchesSent))
-                {
-                    DisplayName = "Average waits per multiplexing batch"
                 };
 
                 _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, () => (double)Interlocked.Read(ref _multiplexingTicksWritten) / Interlocked.Read(ref _multiplexingBatchesSent) / 1000)

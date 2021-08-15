@@ -184,19 +184,18 @@ namespace Npgsql.Internal
         /// <seealso cref="MultiplexAsyncWritingLock"/>
         internal void FlagAsNotWritableForMultiplexing()
         {
-            if (Settings.Multiplexing)
-            {
-                Debug.Assert(CommandsInFlightCount > 0 || IsBroken || IsClosed,
+            Debug.Assert(Settings.Multiplexing);
+            Debug.Assert(CommandsInFlightCount > 0 || IsBroken || IsClosed,
                     $"About to mark multiplexing connector as non-writable, but {nameof(CommandsInFlightCount)} is {CommandsInFlightCount}");
 
-                Interlocked.Exchange(ref MultiplexAsyncWritingLock, 1);
-            }
+            Interlocked.Exchange(ref MultiplexAsyncWritingLock, 1);
         }
 
         /// <seealso cref="MultiplexAsyncWritingLock"/>
         internal void FlagAsWritableForMultiplexing()
         {
-            if (Settings.Multiplexing && Interlocked.CompareExchange(ref MultiplexAsyncWritingLock, 0, 1) != 1)
+            Debug.Assert(Settings.Multiplexing);
+            if (Interlocked.CompareExchange(ref MultiplexAsyncWritingLock, 0, 1) != 1)
                 throw new Exception("Multiplexing lock was not taken when releasing. Please report a bug.");
         }
 
