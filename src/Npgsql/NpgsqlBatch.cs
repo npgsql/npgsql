@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 
 namespace Npgsql
 {
@@ -53,6 +54,17 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Marks all of the batch's result columns as either known or unknown.
+        /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+        /// attempt to parse them. They will be accessible as strings only.
+        /// </summary>
+        public bool AllResultTypesAreUnknown
+        {
+            get => _command.AllResultTypesAreUnknown;
+            set => _command.AllResultTypesAreUnknown = value;
+        }
+
+        /// <summary>
         /// Initializes a new <see cref="NpgsqlBatch"/>.
         /// </summary>
         /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
@@ -65,6 +77,13 @@ namespace Npgsql
 
             Connection = connection;
             Transaction = transaction;
+        }
+
+        internal NpgsqlBatch(NpgsqlConnector connector)
+        {
+            var batchCommands = new List<NpgsqlBatchCommand>(5);
+            _command = new(connector, batchCommands);
+            BatchCommands = new NpgsqlBatchCommandCollection(batchCommands);
         }
 
         /// <inheritdoc />

@@ -26,10 +26,8 @@ namespace Npgsql
 #endif
 
         static NpgsqlParameterCollection()
-        {
-            AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsensitiveDbParameters", out var enabled);
-            CaseInsensitiveCompatMode = enabled;
-        }
+            => CaseInsensitiveCompatMode = AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsensitiveDbParameters", out var enabled)
+                                           && enabled;
 
         // Dictionary lookups for GetValue to improve performance
         Dictionary<string, int>? _lookup;
