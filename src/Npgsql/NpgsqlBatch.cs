@@ -58,7 +58,7 @@ namespace Npgsql
         /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
         /// attempt to parse them. They will be accessible as strings only.
         /// </summary>
-        public bool AllResultTypesAreUnknown
+        internal bool AllResultTypesAreUnknown
         {
             get => _command.AllResultTypesAreUnknown;
             set => _command.AllResultTypesAreUnknown = value;
