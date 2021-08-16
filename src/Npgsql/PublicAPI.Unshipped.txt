@@ -11,8 +11,6 @@ Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Threading.CancellationToken cancell
 Npgsql.NpgsqlBatch.NpgsqlBatch(Npgsql.NpgsqlConnection? connection = null, Npgsql.NpgsqlTransaction? transaction = null) -> void
 Npgsql.NpgsqlBatch.Transaction.get -> Npgsql.NpgsqlTransaction?
 Npgsql.NpgsqlBatch.Transaction.set -> void
-Npgsql.NpgsqlBatch.AllResultTypesAreUnknown.get -> bool
-Npgsql.NpgsqlBatch.AllResultTypesAreUnknown.set -> void
 Npgsql.NpgsqlBatchCommand
 Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand() -> void
 Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand(string! commandText) -> void
