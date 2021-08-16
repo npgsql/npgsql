@@ -70,6 +70,12 @@ namespace Npgsql
         /// </summary>
         bool _isCached;
 
+#if DEBUG
+        internal static bool EnableSqlRewriting;
+#else
+        static readonly bool EnableSqlRewriting;
+#endif
+
         static readonly List<NpgsqlParameter> EmptyParameters = new();
 
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
@@ -85,6 +91,9 @@ namespace Npgsql
         #endregion
 
         #region Constructors
+
+        static NpgsqlCommand()
+            => EnableSqlRewriting = !AppContext.TryGetSwitch("Npgsql.EnableSqlRewriting", out var enabled) || enabled;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class.
@@ -140,7 +149,15 @@ namespace Npgsql
             _parameters = null!;
         }
 
-        internal NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText) => _connector = connector;
+        internal NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText)
+            => _connector = connector;
+
+        /// <summary>
+        /// Used when this <see cref="NpgsqlCommand"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
+        /// </summary>
+        internal NpgsqlCommand(NpgsqlConnector connector, List<NpgsqlBatchCommand> batchCommands)
+            : this(batchCommands)
+            => _connector = connector;
 
         internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
             => new(null, connection) { _isCached = true };
@@ -818,9 +835,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     break;
 
                 case PlaceholderType.NoParameters:
-                    // Note that queries with no parameters are parsed just like queries with named parameters, since they may contain a
-                    // semicolon (legacy batching).
+                    // Unless the EnableSqlRewriting AppContext switch is explicitly disabled, queries with no parameters are parsed just
+                    // like queries with named parameters, since they may contain a semicolon (legacy batching).
+                    if (EnableSqlRewriting)
+                        goto case PlaceholderType.Named;
+                    else
+                        goto case PlaceholderType.Positional;
+
                 case PlaceholderType.Named:
+                    if (!EnableSqlRewriting)
+                        throw new NotSupportedException($"Named parameters are not supported when Npgsql.{nameof(EnableSqlRewriting)} is disabled");
+
                     // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
                     parser ??= new SqlQueryParser();
 

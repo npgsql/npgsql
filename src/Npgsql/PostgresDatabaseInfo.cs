@@ -103,8 +103,6 @@ namespace Npgsql
         /// Generates a raw SQL query string to select type information.
         /// </summary>
         /// <param name="withRange">True to load range types.</param>
-        /// <param name="withEnum">True to load enum types.</param>
-        /// <param name="withEnumSortOrder"></param>
         /// <param name="loadTableComposites">True to load table composites.</param>
         /// <returns>
         /// A raw SQL query string that selects type information.
@@ -116,11 +114,8 @@ namespace Npgsql
         /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         /// types).
         /// </remarks>
-        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder,
-            bool loadTableComposites)
+        static string GenerateLoadTypesQuery(bool withRange, bool loadTableComposites)
             => $@"
-SELECT version();
-
 SELECT ns.nspname, typ_and_elem_type.*,
    CASE
        WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
@@ -165,8 +160,10 @@ WHERE
         (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
         (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
     ))
-ORDER BY ord;
+ORDER BY ord;";
 
+        static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
+            => $@"
 -- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
 FROM pg_type AS typ
@@ -177,15 +174,15 @@ WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
   attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
-ORDER BY typ.oid, att.attnum;
+ORDER BY typ.oid, att.attnum;";
 
-{(withEnum ? $@"
+        static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
+            => $@"
 -- Load enum fields
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
-ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
-";
+ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
         /// <summary>
         /// Loads type information from the backend specified by <paramref name="conn"/>.
@@ -204,13 +201,24 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             if (timeout.IsSet)
                 commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
-            using var command = conn.CreateCommand(typeLoadingQuery);
-            command.CommandTimeout = commandTimeout;
-            command.AllResultTypesAreUnknown = true;
+            using var batch = new NpgsqlBatch(conn)
+            {
+                BatchCommands =
+                {
+                    new("SELECT version()"),
+                    new(GenerateLoadTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites)),
+                    new(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites)),
+                }
+            };
+
+            if (SupportsEnumTypes)
+                batch.BatchCommands.Add(new(GenerateLoadEnumFieldsQuery(HasEnumSortOrder)));
+
+            batch.Timeout = commandTimeout;
+            batch.AllResultTypesAreUnknown = true;
 
             timeout.CheckAndApply(conn);
-            var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+            var reader = async ? await batch.ExecuteReaderAsync() : batch.ExecuteReader();
             try
             {
                 var byOID = new Dictionary<uint, PostgresType>();

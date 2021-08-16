@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
@@ -324,8 +323,14 @@ namespace Npgsql.Tests
             return resetter;
         }
 
-        internal static IDisposable SetCurrentCulture(CultureInfo culture) =>
-            new CultureSetter(culture);
+        internal static IDisposable SetCurrentCulture(CultureInfo culture)
+            => new CultureSetter(culture);
+
+        internal static IDisposable DisableSqlRewriting()
+        {
+            NpgsqlCommand.EnableSqlRewriting = false;
+            return new SqlRewritingEnabler();
+        }
 
         class EnvironmentVariableResetter : IDisposable
         {
@@ -338,8 +343,7 @@ namespace Npgsql.Tests
                 _value = value;
             }
 
-            public void Dispose() =>
-                Environment.SetEnvironmentVariable(_name, _value);
+            public void Dispose() => Environment.SetEnvironmentVariable(_name, _value);
         }
 
         class CultureSetter : IDisposable
@@ -352,8 +356,12 @@ namespace Npgsql.Tests
                 CultureInfo.CurrentCulture = newCulture;
             }
 
-            public void Dispose() =>
-                CultureInfo.CurrentCulture = _oldCulture;
+            public void Dispose() => CultureInfo.CurrentCulture = _oldCulture;
+        }
+
+        class SqlRewritingEnabler : IDisposable
+        {
+            public void Dispose() => NpgsqlCommand.EnableSqlRewriting = true;
         }
     }
 

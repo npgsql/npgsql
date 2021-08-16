@@ -16,7 +16,7 @@ namespace Npgsql.Tests
 {
     public class CommandTests : MultiplexingTestBase
     {
-        #region Batching
+        #region Legacy batching
 
         [Test]
         [TestCase(new[] { true }, TestName = "SingleQuery")]
@@ -117,6 +117,17 @@ namespace Npgsql.Tests
             reader.NextResult();
             reader.Read();
             Assert.That(reader.GetString(0), Is.EqualTo(expected2));
+        }
+
+        [Test, NonParallelizable]
+        public async Task Legacy_batching_is_not_supported_when_EnableSqlParsing_is_disabled()
+        {
+            using var _ = DisableSqlRewriting();
+
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
         }
 
         #endregion
@@ -549,13 +560,35 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task Positional_parameters_arent_supported_with_legacy_batching()
+        public async Task Positional_parameters_are_not_supported_with_legacy_batching()
         {
             await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT $1; SELECT $1", conn);
             cmd.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
             Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
+        }
+
+        [Test, NonParallelizable]
+        public async Task Positional_parameters_are_supported_when_EnableSqlParsing_is_disabled()
+        {
+            using var _ = DisableSqlRewriting();
+
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT $1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter { NpgsqlDbType = NpgsqlDbType.Integer, Value = 8 });
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
+        }
+
+        [Test, NonParallelizable]
+        public async Task Named_parameters_are_not_supported_when_EnableSqlParsing_is_disabled()
+        {
+            using var _ = DisableSqlRewriting();
+
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", 8));
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Makes sure writing an unset parameter isn't allowed")]
