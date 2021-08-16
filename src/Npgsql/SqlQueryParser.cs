@@ -11,43 +11,85 @@ namespace Npgsql
         readonly StringBuilder _rewrittenSql = new();
 
         /// <summary>
-        /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
-        /// before sending to the backend.
-        /// This includes doing parameter placeholder processing (@p => $1), and splitting the query
-        /// up by semicolons if needed (SELECT 1; SELECT 2)
+        /// <p>
+        /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommand.CommandText"/> or
+        /// <see cref="NpgsqlBatchCommand.CommandText"/>, and rewrites it for PostgreSQL compatibility.
+        /// </p>
+        /// <p>
+        /// This includes doing rewriting named parameter placeholders to positional (@p => $1), and splitting the query
+        /// up by semicolons (legacy batching, SELECT 1; SELECT 2).
+        /// </p>
         /// </summary>
-        /// <param name="sql">Raw user-provided query.</param>
-        /// <param name="parameters">
-        /// The parameters configured on the <see cref="NpgsqlCommand"/> of this query or an empty <see cref="NpgsqlParameterCollection"/>
-        /// if deriveParameters is set to true.
-        /// </param>
-        /// <param name="statements">An empty list to be populated with the statements parsed by this method.</param>
+        /// <param name="command">The user-facing <see cref="NpgsqlCommand"/> being executed.</param>
         /// <param name="standardConformingStrings">Whether PostgreSQL standards-conforming are used.</param>
         /// <param name="deriveParameters">
         /// A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived
         /// parameters.
         /// </param>
         internal void ParseRawQuery(
-            string sql,
-            NpgsqlParameterCollection parameters,
-            List<NpgsqlStatement> statements,
-            bool standardConformingStrings,
+            NpgsqlCommand? command,
+            bool standardConformingStrings = true,
             bool deriveParameters = false)
-            => ParseRawQuery(sql.AsSpan(), parameters, statements, standardConformingStrings, deriveParameters);
+            => ParseRawQuery(command, batchCommand: null, standardConformingStrings, deriveParameters);
+
+        /// <summary>
+        /// <p>
+        /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommand.CommandText"/> or
+        /// <see cref="NpgsqlBatchCommand.CommandText"/>, and rewrites it for PostgreSQL compatibility.
+        /// </p>
+        /// <p>
+        /// This includes doing rewriting named parameter placeholders to positional (@p => $1), and splitting the query
+        /// up by semicolons (legacy batching, SELECT 1; SELECT 2).
+        /// </p>
+        /// </summary>
+        /// <param name="batchCommand"> The user-facing <see cref="NpgsqlBatchCommand"/> being executed.</param>
+        /// <param name="standardConformingStrings">Whether PostgreSQL standards-conforming are used.</param>
+        /// <param name="deriveParameters">
+        /// A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived
+        /// parameters.
+        /// </param>
+        internal void ParseRawQuery(
+            NpgsqlBatchCommand? batchCommand,
+            bool standardConformingStrings = true,
+            bool deriveParameters = false)
+            => ParseRawQuery(command: null, batchCommand, standardConformingStrings, deriveParameters);
 
         void ParseRawQuery(
-            ReadOnlySpan<char> sql,
-            NpgsqlParameterCollection parameters,
-            List<NpgsqlStatement> statements,
-            bool standardConformingStrings,
-            bool deriveParameters)
+            NpgsqlCommand? command,
+            NpgsqlBatchCommand? batchCommand,
+            bool standardConformingStrings = true,
+            bool deriveParameters = false)
         {
-            Debug.Assert(deriveParameters == false || parameters.Count == 0);
-            Debug.Assert(parameters.PlaceholderType != PlaceholderType.Positional);
+            ReadOnlySpan<char> sql;
+            NpgsqlParameterCollection parameters;
+            List<NpgsqlBatchCommand>? batchCommands;
 
-            NpgsqlStatement statement = null!;
-            var statementIndex = -1;
-            MoveToNextStatement();
+            var statementIndex = 0;
+            if (command is null)
+            {
+                // Batching mode. We're processing only one batch - if we encounter a semicolon (legacy batching), that's an error.
+                Debug.Assert(batchCommand is not null);
+                sql = batchCommand.CommandText.AsSpan();
+                parameters = batchCommand.Parameters;
+                batchCommands = null;
+            }
+            else
+            {
+                // Command mode. Semicolons (legacy batching) may occur.
+                Debug.Assert(batchCommand is null);
+                sql = command.CommandText.AsSpan();
+                parameters = command.Parameters;
+                batchCommands = command.InternalBatchCommands;
+                MoveToNextBatchCommand();
+            }
+
+            Debug.Assert(batchCommand is not null);
+            Debug.Assert(parameters.PlaceholderType != PlaceholderType.Positional);
+            Debug.Assert(deriveParameters == false || parameters.Count == 0);
+            // Debug.Assert(batchCommand.PositionalParameters is not null && batchCommand.PositionalParameters.Count == 0);
+
+            _paramIndexMap.Clear();
+            _rewrittenSql.Clear();
 
             var currCharOfs = 0;
             var end = sql.Length;
@@ -169,8 +211,8 @@ namespace Npgsql
                         if (!parameter.IsInputDirection)
                             throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
-                        statement.InputParameters.Add(parameter);
-                        index = _paramIndexMap[paramName] = statement.InputParameters.Count;
+                        batchCommand.PositionalParameters.Add(parameter);
+                        index = _paramIndexMap[paramName] = batchCommand.PositionalParameters.Count;
                     }
                     _rewrittenSql.Append('$');
                     _rewrittenSql.Append(index);
@@ -419,7 +461,7 @@ namespace Npgsql
 
         SemiColon:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            statement.SQL = _rewrittenSql.ToString();
+            batchCommand.FinalCommandText = _rewrittenSql.ToString();
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs];
@@ -430,36 +472,46 @@ namespace Npgsql
                 }
                 // TODO: Handle end of line comment? Although psql doesn't seem to handle them...
 
+                // We've found a non-whitespace character after a semicolon - this is legacy batching.
+
+                if (command is null)
+                {
+                    throw new NotSupportedException(
+                        $"Specifying multiple SQL statements in a single {nameof(NpgsqlBatchCommand)} isn't supported, " +
+                        "please remove all semicolons.");
+                }
+
+                statementIndex++;
+                MoveToNextBatchCommand();
+                _paramIndexMap.Clear();
+                _rewrittenSql.Clear();
+
                 currTokenBeg = currCharOfs;
-                if (_rewrittenSql.Length > 0)
-                    MoveToNextStatement();
                 goto None;
             }
-            if (statements.Count > statementIndex + 1)
-                statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
+            if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
+                batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
             return;
 
         Finish:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
-            statement.SQL = _rewrittenSql.ToString();
-            if (statements.Count > statementIndex + 1)
-               statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
+            batchCommand.FinalCommandText = _rewrittenSql.ToString();
+            if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
+                batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
 
-            void MoveToNextStatement()
+            void MoveToNextBatchCommand()
             {
-                statementIndex++;
-                if (statements.Count > statementIndex)
+                Debug.Assert(batchCommands is not null);
+                if (batchCommands.Count > statementIndex)
                 {
-                    statement = statements[statementIndex];
-                    statement.Reset();
+                    batchCommand = batchCommands[statementIndex];
+                    batchCommand.Reset();
                 }
                 else
                 {
-                    statement = new NpgsqlStatement();
-                    statements.Add(statement);
+                    batchCommand = new NpgsqlBatchCommand();
+                    batchCommands.Add(batchCommand);
                 }
-                _paramIndexMap.Clear();
-                _rewrittenSql.Clear();
             }
         }
 

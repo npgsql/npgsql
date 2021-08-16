@@ -1,12 +1,38 @@
 ﻿#nullable enable
 *REMOVED*abstract Npgsql.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+Npgsql.NpgsqlBatch
+Npgsql.NpgsqlBatch.BatchCommands.get -> Npgsql.NpgsqlBatchCommandCollection!
+Npgsql.NpgsqlBatch.Connection.get -> Npgsql.NpgsqlConnection?
+Npgsql.NpgsqlBatch.Connection.set -> void
+Npgsql.NpgsqlBatch.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReader!
+Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
+Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
+Npgsql.NpgsqlBatch.NpgsqlBatch(Npgsql.NpgsqlConnection? connection = null, Npgsql.NpgsqlTransaction? transaction = null) -> void
+Npgsql.NpgsqlBatch.Transaction.get -> Npgsql.NpgsqlTransaction?
+Npgsql.NpgsqlBatch.Transaction.set -> void
+Npgsql.NpgsqlBatchCommand
+Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand() -> void
+Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand(string! commandText) -> void
+Npgsql.NpgsqlBatchCommand.OID.get -> uint
+Npgsql.NpgsqlBatchCommand.Parameters.get -> Npgsql.NpgsqlParameterCollection!
+Npgsql.NpgsqlBatchCommand.Rows.get -> ulong
+Npgsql.NpgsqlBatchCommand.StatementType.get -> Npgsql.StatementType
+Npgsql.NpgsqlBatchCommandCollection
+Npgsql.NpgsqlBatchCommandCollection.Add(Npgsql.NpgsqlBatchCommand! item) -> void
+Npgsql.NpgsqlBatchCommandCollection.Contains(Npgsql.NpgsqlBatchCommand! item) -> bool
+Npgsql.NpgsqlBatchCommandCollection.CopyTo(Npgsql.NpgsqlBatchCommand![]! array, int arrayIndex) -> void
+Npgsql.NpgsqlBatchCommandCollection.IndexOf(Npgsql.NpgsqlBatchCommand! item) -> int
+Npgsql.NpgsqlBatchCommandCollection.Insert(int index, Npgsql.NpgsqlBatchCommand! item) -> void
+Npgsql.NpgsqlBatchCommandCollection.Remove(Npgsql.NpgsqlBatchCommand! item) -> bool
 Npgsql.NpgsqlBinaryExporter.CancelAsync() -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlCommand.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
 Npgsql.NpgsqlConnection.BeginBinaryImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryImporter!>!
 Npgsql.NpgsqlConnection.BeginRawBinaryCopyAsync(string! copyCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlRawCopyStream!>!
 Npgsql.NpgsqlConnection.BeginTextExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
 Npgsql.NpgsqlConnection.BeginTextImportAsync(string! copyFromCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextWriter!>!
+Npgsql.NpgsqlConnection.CreateBatch() -> Npgsql.NpgsqlBatch!
 Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.get -> Npgsql.PhysicalOpenAsyncCallback?
 Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
 Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
@@ -37,6 +63,10 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Port.get -> int
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Version.get -> System.Version!
 Npgsql.NpgsqlCopyTextReader.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Npgsql.NpgsqlDataReader.Rows.get -> ulong
+Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
+Npgsql.NpgsqlException.BatchCommand.get -> Npgsql.NpgsqlBatchCommand?
+Npgsql.NpgsqlException.BatchCommand.set -> void
 Npgsql.PhysicalOpenAsyncCallback
 Npgsql.PhysicalOpenCallback
 Npgsql.Replication.ReplicationConnection.PostgreSqlVersion.get -> System.Version!
@@ -79,6 +109,47 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOption
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
+override Npgsql.NpgsqlBatch.Cancel() -> void
+override Npgsql.NpgsqlBatch.CreateDbBatchCommand() -> System.Data.Common.DbBatchCommand!
+override Npgsql.NpgsqlBatch.DbBatchCommands.get -> System.Data.Common.DbBatchCommandCollection!
+override Npgsql.NpgsqlBatch.DbConnection.get -> System.Data.Common.DbConnection?
+override Npgsql.NpgsqlBatch.DbConnection.set -> void
+override Npgsql.NpgsqlBatch.DbTransaction.get -> System.Data.Common.DbTransaction?
+override Npgsql.NpgsqlBatch.DbTransaction.set -> void
+override Npgsql.NpgsqlBatch.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
+override Npgsql.NpgsqlBatch.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
+override Npgsql.NpgsqlBatch.ExecuteNonQuery() -> int
+override Npgsql.NpgsqlBatch.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+override Npgsql.NpgsqlBatch.ExecuteScalar() -> object?
+override Npgsql.NpgsqlBatch.ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<object?>!
+override Npgsql.NpgsqlBatch.Prepare() -> void
+override Npgsql.NpgsqlBatch.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Npgsql.NpgsqlBatch.Timeout.get -> int
+override Npgsql.NpgsqlBatch.Timeout.set -> void
+override Npgsql.NpgsqlBatchCommand.CommandText.get -> string!
+override Npgsql.NpgsqlBatchCommand.CommandText.set -> void
+override Npgsql.NpgsqlBatchCommand.CommandType.get -> System.Data.CommandType
+override Npgsql.NpgsqlBatchCommand.CommandType.set -> void
+override Npgsql.NpgsqlBatchCommand.RecordsAffected.get -> int
+override Npgsql.NpgsqlBatchCommand.ToString() -> string!
+override Npgsql.NpgsqlBatchCommandCollection.Add(System.Data.Common.DbBatchCommand! item) -> void
+override Npgsql.NpgsqlBatchCommandCollection.Clear() -> void
+override Npgsql.NpgsqlBatchCommandCollection.Contains(System.Data.Common.DbBatchCommand! item) -> bool
+override Npgsql.NpgsqlBatchCommandCollection.CopyTo(System.Data.Common.DbBatchCommand![]! array, int arrayIndex) -> void
+override Npgsql.NpgsqlBatchCommandCollection.Count.get -> int
+override Npgsql.NpgsqlBatchCommandCollection.GetEnumerator() -> System.Collections.Generic.IEnumerator<System.Data.Common.DbBatchCommand!>!
+override Npgsql.NpgsqlBatchCommandCollection.IndexOf(System.Data.Common.DbBatchCommand! item) -> int
+override Npgsql.NpgsqlBatchCommandCollection.Insert(int index, System.Data.Common.DbBatchCommand! item) -> void
+override Npgsql.NpgsqlBatchCommandCollection.IsReadOnly.get -> bool
+override Npgsql.NpgsqlBatchCommandCollection.Remove(System.Data.Common.DbBatchCommand! item) -> bool
+override Npgsql.NpgsqlBatchCommandCollection.RemoveAt(int index) -> void
+override Npgsql.NpgsqlBatchCommandCollection.this[int index].get -> System.Data.Common.DbBatchCommand!
+override Npgsql.NpgsqlBatchCommandCollection.this[int index].set -> void
+override Npgsql.NpgsqlConnection.CanCreateBatch.get -> bool
+override Npgsql.NpgsqlException.DbBatchCommand.get -> System.Data.Common.DbBatchCommand?
+override Npgsql.NpgsqlFactory.CanCreateBatch.get -> bool
+override Npgsql.NpgsqlFactory.CreateBatch() -> System.Data.Common.DbBatch!
+override Npgsql.NpgsqlFactory.CreateBatchCommand() -> System.Data.Common.DbBatchCommand!
 override Npgsql.NpgsqlRawCopyStream.DisposeAsync() -> System.Threading.Tasks.ValueTask
 override Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.LogicalDecodingMessage!
 override Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.Clone() -> Npgsql.Replication.PgOutput.Messages.StreamAbortMessage!
@@ -169,3 +240,16 @@ static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.
 static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
 NpgsqlTypes.NpgsqlDbType.Xid8 = 64 -> NpgsqlTypes.NpgsqlDbType
+*REMOVED*Npgsql.NpgsqlCommand.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlStatement!>!
+*REMOVED*Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlStatement!>!
+*REMOVED*Npgsql.NpgsqlStatement
+*REMOVED*Npgsql.NpgsqlStatement.InputParameters.get -> System.Collections.Generic.List<Npgsql.NpgsqlParameter!>!
+*REMOVED*Npgsql.NpgsqlStatement.LongRows.get -> ulong
+*REMOVED*Npgsql.NpgsqlStatement.NpgsqlStatement() -> void
+*REMOVED*Npgsql.NpgsqlStatement.OID.get -> uint
+*REMOVED*Npgsql.NpgsqlStatement.Rows.get -> uint
+*REMOVED*Npgsql.NpgsqlStatement.SQL.get -> string!
+*REMOVED*Npgsql.NpgsqlStatement.SQL.set -> void
+*REMOVED*Npgsql.NpgsqlStatement.StatementType.get -> Npgsql.StatementType
+*REMOVED*override Npgsql.NpgsqlStatement.ToString() -> string!
+*REMOVED*Npgsql.PostgresException.Statement.get -> Npgsql.NpgsqlStatement?

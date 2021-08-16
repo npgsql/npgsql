@@ -556,7 +556,7 @@ namespace Npgsql
 
         #endregion State management
 
-        #region Commands
+        #region Command / Batch creation
 
         /// <summary>
         /// Creates and returns a <see cref="System.Data.Common.DbCommand"/>
@@ -583,7 +583,24 @@ namespace Npgsql
             return NpgsqlCommand.CreateCachedCommand(this);
         }
 
-        #endregion Commands
+#if NET6_0_OR_GREATER
+        /// <inheritdoc/>
+        public override bool CanCreateBatch => true;
+
+        /// <inheritdoc/>
+        protected override DbBatch CreateDbBatch() => CreateBatch();
+
+        /// <inheritdoc cref="DbConnection.CreateBatch"/>
+        public new NpgsqlBatch CreateBatch() => new(this);
+#else
+        /// <summary>
+        /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnection"/>.
+        /// </summary>
+        /// <returns>A <see cref="NpgsqlBatch"/> object.</returns>
+        public NpgsqlBatch CreateBatch() => new(this);
+#endif
+
+        #endregion Command / Batch creation
 
         #region Transactions
 

@@ -22,7 +22,6 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         /// <inheritdoc />

@@ -230,11 +230,6 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Returns the statement which triggered this exception.
-        /// </summary>
-        public NpgsqlStatement? Statement { get; internal set; }
-
         #region Message Fields
 
         /// <summary>

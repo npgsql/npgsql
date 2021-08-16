@@ -146,7 +146,7 @@ namespace Npgsql.Internal
         }
 
         internal async Task WriteBind(
-            List<NpgsqlParameter> inputParameters,
+            List<NpgsqlParameter> parameters,
             string portal,
             string statement,
             bool allResultTypesAreUnknown,
@@ -172,20 +172,20 @@ namespace Npgsql.Internal
 
             var formatCodesSum = 0;
             var paramsLength = 0;
-            for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
+            for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
             {
-                var param = inputParameters[paramIndex];
+                var param = parameters[paramIndex];
                 formatCodesSum += (int)param.FormatCode;
                 param.LengthCache?.Rewind();
                 paramsLength += param.ValidateAndGetLength();
             }
 
-            var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == inputParameters.Count ? 1 : inputParameters.Count;
+            var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == parameters.Count ? 1 : parameters.Count;
 
             var messageLength = headerLength         +
                 sizeof(short) * formatCodeListLength +                  // List of format codes
                 sizeof(short)                        +                  // Number of parameters
-                sizeof(int) * inputParameters.Count  +                  // Parameter lengths
+                sizeof(int) * parameters.Count  +                       // Parameter lengths
                 paramsLength                         +                  // Parameter values
                 sizeof(short)                        +                  // Number of result format codes
                 sizeof(short) * (unknownResultTypeList?.Length ?? 1);   // Result format codes
@@ -207,22 +207,22 @@ namespace Npgsql.Internal
             }
             else if (formatCodeListLength > 1)
             {
-                for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
+                for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
                 {
                     if (WriteBuffer.WriteSpaceLeft < 2)
                         await Flush(async, cancellationToken);
-                    WriteBuffer.WriteInt16((short)inputParameters[paramIndex].FormatCode);
+                    WriteBuffer.WriteInt16((short)parameters[paramIndex].FormatCode);
                 }
             }
 
             if (WriteBuffer.WriteSpaceLeft < 2)
                 await Flush(async, cancellationToken);
 
-            WriteBuffer.WriteUInt16((ushort)inputParameters.Count);
+            WriteBuffer.WriteUInt16((ushort)parameters.Count);
 
-            for (var paramIndex = 0; paramIndex < inputParameters.Count; paramIndex++)
+            for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
             {
-                var param = inputParameters[paramIndex];
+                var param = parameters[paramIndex];
                 param.LengthCache?.Rewind();
                 await param.WriteWithLength(WriteBuffer, async, cancellationToken);
             }
