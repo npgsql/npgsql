@@ -203,37 +203,34 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (timeout.IsSet)
                 commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-            var batchQuery = new StringBuilder("SELECT version();")
-                .Append(GenerateLoadTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites))
-                .Append(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
+            var batchQuery = new StringBuilder()
+                .AppendLine("SELECT version();")
+                .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites))
+                .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
 
             if (SupportsEnumTypes)
-                batchQuery.Append(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
+                batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
 
             conn.WriteBuffer.Timeout = TimeSpan.FromSeconds(commandTimeout);
             timeout.CheckAndApply(conn);
 
-            var q = batchQuery.ToString();
-            Debug.WriteLine($"Type loading query:{Environment.NewLine}{q}");
-            await conn.WriteQuery(q, async);
+            await conn.WriteQuery(batchQuery.ToString(), async);
             await conn.Flush(async);
             var byOID = new Dictionary<uint, PostgresType>();
             var buf = conn.ReadBuffer;
 
             // First read the PostgreSQL version
-            var rowDescription = Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-            Debug.Assert(rowDescription.Count == 1, "The 'version query' should return exactly one column.");
+            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
             // We read the message in non-sequential mode which buffers the whole message.
             // There is no need to ensure data within the message boundaries
             Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
-            buf.Skip(2);
-            LongVersion = buf.ReadString(buf.ReadInt32());
+            buf.Skip(2); // Column count
+            LongVersion = ReadNonNullableString(buf);
             Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
 
             // Then load the types
-            rowDescription = Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-            Debug.Assert(rowDescription.Count == 6, "The 'type loading query' should return exactly 6 columns.");
+            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
             IBackendMessage msg;
             while (true)
             {
@@ -241,13 +238,13 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                buf.Skip(2);
-                var nspname = buf.ReadString(buf.ReadInt32());
-                var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
+                buf.Skip(2); // Column count
+                var nspname = ReadNonNullableString(buf);
+                var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
                 Debug.Assert(oid != 0);
-                var typname = buf.ReadString(buf.ReadInt32());
-                var typtype = buf.ReadString(buf.ReadInt32())[0];
-                var typnotnull = buf.ReadString(buf.ReadInt32())[0] == 't';
+                var typname = ReadNonNullableString(buf);
+                var typtype = ReadNonNullableString(buf)[0];
+                var typnotnull = ReadNonNullableString(buf)[0] == 't';
                 var len = buf.ReadInt32();
                 var elemtypoid = len == -1 ? 0 : uint.Parse(buf.ReadString(len), NumberFormatInfo.InvariantInfo);
 
@@ -318,8 +315,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             Expect<CommandCompleteMessage>(msg, conn);
 
             // Then load the composite type fields
-            rowDescription = Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-            Debug.Assert(rowDescription.Count == 3, "The 'composite type loading query' should return exactly 3 columns.");
+            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
             var currentOID = uint.MaxValue;
             PostgresCompositeType? currentComposite = null;
@@ -331,10 +327,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                buf.Skip(2);
-                var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
-                var attname = buf.ReadString(buf.ReadInt32());
-                var atttypid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
+                buf.Skip(2); // Column count
+                var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+                var attname = ReadNonNullableString(buf);
+                var atttypid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
 
                 if (oid != currentOID)
                 {
@@ -378,8 +374,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (SupportsEnumTypes)
             {
                 // Then load the enum fields
-                rowDescription = Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-                Debug.Assert(rowDescription.Count == 2, "The 'enum type loading query' should return exactly 2 columns.");
+                Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
                 currentOID = uint.MaxValue;
                 PostgresEnumType? currentEnum = null;
@@ -391,9 +386,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     if (msg is not DataRowMessage)
                         break;
 
-                    buf.Skip(2);
-                    var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
-                    var enumlabel = buf.ReadString(buf.ReadInt32());
+                    buf.Skip(2); // Column count
+                    var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+                    var enumlabel = ReadNonNullableString(buf);
                     if (oid != currentOID)
                     {
                         currentOID = oid;
@@ -428,6 +423,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
             return byOID.Values.ToList();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static string ReadNonNullableString(NpgsqlReadBuffer buffer)
+                => buffer.ReadString(buffer.ReadInt32());
         }
     }
 }
