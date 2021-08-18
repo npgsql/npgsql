@@ -211,9 +211,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (SupportsEnumTypes)
                 batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
 
-            conn.WriteBuffer.Timeout = TimeSpan.FromSeconds(commandTimeout);
             timeout.CheckAndApply(conn);
-
             await conn.WriteQuery(batchQuery.ToString(), async);
             await conn.Flush(async);
             var byOID = new Dictionary<uint, PostgresType>();
@@ -424,7 +422,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
             return byOID.Values.ToList();
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static string ReadNonNullableString(NpgsqlReadBuffer buffer)
                 => buffer.ReadString(buffer.ReadInt32());
         }
