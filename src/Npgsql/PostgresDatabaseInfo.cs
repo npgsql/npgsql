@@ -227,7 +227,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             // We read the message in non-sequential mode which buffers the whole message.
             // There is no need to ensure data within the message boundaries
             Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
-            Debug.Assert(buf.ReadInt16() == 1, "The 'version query' should return exactly one column.");
+            buf.Skip(2);
             LongVersion = buf.ReadString(buf.ReadInt32());
             Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
 
@@ -241,7 +241,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                Debug.Assert(buf.ReadInt16() == 6, "The 'type loading query' should return exactly 6 columns.");
+                buf.Skip(2);
                 var nspname = buf.ReadString(buf.ReadInt32());
                 var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
                 Debug.Assert(oid != 0);
@@ -331,7 +331,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                Debug.Assert(buf.ReadInt16() == 3, "The 'composite type loading query' should return exactly 3 columns.");
+                buf.Skip(2);
                 var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
                 var attname = buf.ReadString(buf.ReadInt32());
                 var atttypid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
@@ -391,7 +391,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     if (msg is not DataRowMessage)
                         break;
 
-                    Debug.Assert(buf.ReadInt16() == 2, "The 'enum type loading query' should return exactly 2 columns.");
+                    buf.Skip(2);
                     var oid = uint.Parse(buf.ReadString(buf.ReadInt32()), NumberFormatInfo.InvariantInfo);
                     var enumlabel = buf.ReadString(buf.ReadInt32());
                     if (oid != currentOID)
