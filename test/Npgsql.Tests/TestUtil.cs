@@ -328,8 +328,13 @@ namespace Npgsql.Tests
 
         internal static IDisposable DisableSqlRewriting()
         {
+#if DEBUG
             NpgsqlCommand.EnableSqlRewriting = false;
             return new SqlRewritingEnabler();
+#else
+            Assert.Ignore("Cannot disable SQL rewriting in RELEASE builds");
+            throw new NotSupportedException("Cannot disable SQL rewriting in RELEASE builds");
+#endif
         }
 
         class EnvironmentVariableResetter : IDisposable
@@ -361,7 +366,12 @@ namespace Npgsql.Tests
 
         class SqlRewritingEnabler : IDisposable
         {
-            public void Dispose() => NpgsqlCommand.EnableSqlRewriting = true;
+            public void Dispose()
+            {
+#if DEBUG
+                NpgsqlCommand.EnableSqlRewriting = true;
+#endif
+            }
         }
     }
 

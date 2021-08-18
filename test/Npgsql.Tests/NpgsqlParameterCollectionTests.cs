@@ -256,7 +256,13 @@ namespace Npgsql.Tests
         public NpgsqlParameterCollectionTests(CompatMode compatMode)
         {
             _compatMode = compatMode;
+
+#if DEBUG
             NpgsqlParameterCollection.CaseInsensitiveCompatMode = compatMode == CompatMode.CaseInsensitive;
+#else
+            if (compatMode == CompatMode.CaseInsensitive)
+                Assert.Ignore("Cannot test case-insensitive NpgsqlParameterCollection behavior in RELEASE");
+#endif
         }
 
         class SomeOtherDbParameter : DbParameter
