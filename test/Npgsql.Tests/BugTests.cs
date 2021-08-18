@@ -1343,5 +1343,43 @@ $$;");
             // We have to make another Yield to change the current thread from the one used by SingleThreadSynchronizationContext
             await Task.Yield();
         }
+
+        [Test, Timeout(10000)]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3924")]
+        public async Task Bug3924()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                CommandTimeout = 10,
+                KeepAlive = 2,
+            };
+
+            await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
+            await using var conn = await OpenConnectionAsync(postmaster.ConnectionString);
+            using var serverMock = await postmaster.WaitForServerConnection();
+
+            await serverMock.WriteScalarResponseAndFlush(1);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandTimeout = 2;
+                cmd.CommandText = "SELECT 1";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Giving some time for keepalive to send a query and wait for a response for a little bit
+            // (2 seconds for keepalive performing, 2 seconds for a timeout, and 1 second just in case)
+            await Task.Delay(5000);
+
+            await serverMock.WriteReadyForQuery().FlushAsync();
+            await serverMock.WriteScalarResponseAndFlush(1);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandTimeout = 2;
+                cmd.CommandText = "SELECT 1";
+                Assert.DoesNotThrowAsync(cmd.ExecuteNonQueryAsync);
+            } 
+        }
     }
 }

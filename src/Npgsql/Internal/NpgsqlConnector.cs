@@ -2302,6 +2302,10 @@ namespace Npgsql.Internal
                     return;
 
                 Log.Trace("Performing keepalive", Id);
+                AttemptPostgresCancellation = false;
+                var timeout = InternalCommandTimeout;
+                WriteBuffer.Timeout = TimeSpan.FromSeconds(timeout);
+                UserTimeout = timeout;
                 WriteSync(async: false);
                 Flush();
                 SkipUntil(BackendMessageCode.ReadyForQuery);
