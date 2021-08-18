@@ -1344,7 +1344,7 @@ $$;");
             await Task.Yield();
         }
 
-        [Test]
+        [Test, Timeout(10000)]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3924")]
         public async Task Bug3924()
         {
