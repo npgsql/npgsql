@@ -184,11 +184,11 @@ namespace Npgsql
             // Note that this may return null (not enough usages for automatic preparation).
             if (!TryGetPrepared(out var preparedStatement))
                 preparedStatement = PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(this);
-            if (preparedStatement is PreparedStatement pStatement)
+            if (preparedStatement is not null)
             {
-                if (pStatement.State == PreparedState.NotPrepared)
+                if (preparedStatement.State == PreparedState.NotPrepared)
                 {
-                    pStatement.State = PreparedState.BeingPrepared;
+                    preparedStatement.State = PreparedState.BeingPrepared;
                     IsPreparing = true;
                 }
 
