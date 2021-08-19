@@ -403,10 +403,10 @@ namespace Npgsql
                 {
                     var statement = _statements[StatementIndex];
 
-                    if (statement.IsPrepared)
+                    if (statement.TryGetPrepared(out var preparedStatement))
                     {
                         Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
-                        RowDescription = statement.Description;
+                        RowDescription = preparedStatement.Description;
                     }
                     else // Non-prepared/preparing flow
                     {
@@ -602,11 +602,11 @@ namespace Npgsql
                 for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)
                 {
                     var statement = _statements[StatementIndex];
-                    if (statement.IsPrepared)
+                    if (statement.TryGetPrepared(out var preparedStatement))
                     {
                         // Row descriptions have already been populated in the statement objects at the
                         // Prepare phase
-                        RowDescription = _statements[StatementIndex].Description;
+                        RowDescription = preparedStatement.Description;
                     }
                     else
                     {
