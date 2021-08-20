@@ -230,8 +230,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(decimal value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
@@ -402,8 +401,7 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 
         public int ValidateAndGetLength(BigInteger value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 

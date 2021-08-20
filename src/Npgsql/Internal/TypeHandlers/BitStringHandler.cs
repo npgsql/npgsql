@@ -35,8 +35,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType, ArrayNullabilityMode arrayNullabilityMode)
-            => new BitStringArrayHandler(backendType, this, arrayNullabilityMode);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+            => new BitStringArrayHandler(pgArrayType, this, arrayNullabilityMode);
 
         #region Read
 

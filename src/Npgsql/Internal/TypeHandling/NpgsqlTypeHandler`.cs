@@ -62,12 +62,16 @@ namespace Npgsql.Internal.TypeHandling
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
-            => new ArrayHandler<TDefault>(arrayBackendType, this, arrayNullabilityMode);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandler<TDefault>(pgArrayType, this, arrayNullabilityMode);
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
-            => new RangeHandler<TDefault>(rangeBackendType, this);
+        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+            => new RangeHandler<TDefault>(pgRangeType, this);
+
+        /// <inheritdoc />
+        public override IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
+            => new MultirangeHandler<TDefault>(pgMultirangeType, (RangeHandler<TDefault>)CreateRangeHandler(pgMultirangeType.Subrange));
 
         #endregion Misc
     }

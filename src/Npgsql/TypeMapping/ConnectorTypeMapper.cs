@@ -77,48 +77,53 @@ namespace Npgsql.TypeMapping
             if (_handlersByOID.TryGetValue(oid, out handler))
                 return true;
 
-            if (DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
+            if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
+                return false;
+
+            if (MappingsByName.TryGetValue(pgType.Name, out var mapping))
             {
-                if (MappingsByName.TryGetValue(pgType.Name, out var mapping))
-                {
-                    handler = GetOrBindBaseHandler(mapping, pgType);
-                    return true;
-                }
-
-                switch (pgType)
-                {
-                case PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping:
-                    handler = GetOrBindArrayHandler(elementMapping);
-                    return true;
-
-                case PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping:
-                    handler = GetOrBindRangeHandler(subtypeMapping);
-                    return true;
-
-                case PostgresEnumType pgEnumType:
-                    // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
-                    handler = GetOrBindUnmappedEnumHandler(pgEnumType);
-                    return true;
-
-                case PostgresArrayType { Element: PostgresEnumType } pgArrayType:
-                    // Array over unmapped enum
-                    handler = GetOrBindUnmappedEnumArrayHandler(pgArrayType);
-                    return true;
-
-                case PostgresDomainType pgDomainType:
-                    // Note that when when sending back domain types, PG sends back the type OID of their base type - so in regular
-                    // circumstances we never need to resolve domains from a type OID.
-                    // However, when a domain is part of a composite type, the domain's type OID is sent, so we support this here.
-                    if (TryGetByOID(pgDomainType.BaseType.OID, out handler))
-                    {
-                        _handlersByOID[oid] = handler;
-                        return true;
-                    }
-                    return false;
-                }
+                handler = GetOrBindBaseHandler(mapping, pgType);
+                return true;
             }
 
-            return false;
+            switch (pgType)
+            {
+            case PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping:
+                handler = GetOrBindArrayHandler(elementMapping);
+                return true;
+
+            case PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping:
+                handler = GetOrBindRangeHandler(subtypeMapping);
+                return true;
+
+            case PostgresMultirangeType pgMultirangeType when GetMapping(pgMultirangeType.Subrange.Subtype) is { } subtypeMapping:
+                handler = GetOrBindMultirangeHandler(subtypeMapping);
+                return true;
+
+            case PostgresEnumType pgEnumType:
+                // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
+                handler = GetOrBindUnmappedEnumHandler(pgEnumType);
+                return true;
+
+            case PostgresArrayType { Element: PostgresEnumType } pgArrayType:
+                // Array over unmapped enum
+                handler = GetOrBindUnmappedEnumArrayHandler(pgArrayType);
+                return true;
+
+            case PostgresDomainType pgDomainType:
+                // Note that when when sending back domain types, PG sends back the type OID of their base type - so in regular
+                // circumstances we never need to resolve domains from a type OID.
+                // However, when a domain is part of a composite type, the domain's type OID is sent, so we support this here.
+                if (TryGetByOID(pgDomainType.BaseType.OID, out handler))
+                {
+                    _handlersByOID[oid] = handler;
+                    return true;
+                }
+                return false;
+
+            default:
+                return false;
+            }
         }
 
         internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
@@ -148,6 +153,15 @@ namespace Npgsql.TypeMapping
                     : throw new ArgumentException($"Could not find a mapping for range subtype NpgsqlDbType {subtypeNpgsqlDbType}");
             }
 
+            if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
+            {
+                var subtypeNpgsqlDbType = npgsqlDbType & ~NpgsqlDbType.Multirange;
+
+                return MappingsByNpgsqlDbType.TryGetValue(subtypeNpgsqlDbType, out var subtypeMapping)
+                    ? GetOrBindMultirangeHandler(subtypeMapping)
+                    : throw new ArgumentException($"Could not find a mapping for range subtype NpgsqlDbType {subtypeNpgsqlDbType}");
+            }
+
             throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                       "You may need to install an extension or upgrade to a newer version.");
         }
@@ -160,30 +174,31 @@ namespace Npgsql.TypeMapping
             if (MappingsByName.TryGetValue(typeName, out var mapping))
                 return GetOrBindBaseHandler(mapping);
 
-            if (DatabaseInfo.GetPostgresTypeByName(typeName) is { } pgType)
+            if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
+                throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
+
+            return pgType switch
             {
-                switch (pgType)
-                {
-                case PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping:
-                    return GetOrBindArrayHandler(elementMapping);
+                PostgresArrayType pgArrayType when GetMapping(pgArrayType.Element) is { } elementMapping
+                    => GetOrBindArrayHandler(elementMapping),
+                PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping
+                    => GetOrBindRangeHandler(subtypeMapping),
+                PostgresMultirangeType pgMultirangeType when GetMapping(pgMultirangeType.Subrange.Subtype) is { } subtypeMapping
+                    => GetOrBindMultirangeHandler(subtypeMapping),
+                // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
+                PostgresEnumType pgEnumType
+                    => GetOrBindUnmappedEnumHandler(pgEnumType),
+                // Array over unmapped enum
+                PostgresArrayType { Element: PostgresEnumType } pgArrayType
+                    => GetOrBindUnmappedEnumArrayHandler(pgArrayType),
+                PostgresDomainType pgDomainType
+                    => _handlersByTypeName[typeName] = GetByDataTypeName(pgDomainType.BaseType.Name),
+                // Unmapped base type
+                PostgresBaseType
+                    => throw new NotSupportedException("Could not find PostgreSQL type " + typeName),
 
-                case PostgresRangeType pgRangeType when GetMapping(pgRangeType.Subtype) is { } subtypeMapping:
-                    return GetOrBindRangeHandler(subtypeMapping);
-
-                case PostgresEnumType pgEnumType:
-                    // A mapped enum would have been registered in InternalMappings and bound above - this is unmapped.
-                    return GetOrBindUnmappedEnumHandler(pgEnumType);
-
-                case PostgresArrayType { Element: PostgresEnumType } pgArrayType:
-                    // Array over unmapped enum
-                    return GetOrBindUnmappedEnumArrayHandler(pgArrayType);
-
-                case PostgresDomainType pgDomainType:
-                    return _handlersByTypeName[typeName] = GetByDataTypeName(pgDomainType.BaseType.Name);
-                }
-            }
-
-            throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
+                _ => throw new ArgumentOutOfRangeException($"Unhandled PostgreSQL type type: {pgType.GetType()}")
+            };
         }
 
         internal NpgsqlTypeHandler GetByClrType(Type type)
@@ -195,11 +210,21 @@ namespace Npgsql.TypeMapping
                 return GetOrBindBaseHandler(mapping);
 
             // Try to see if it is an array type
-            var arrayElementType = GetArrayElementType(type);
+            var arrayElementType = GetArrayListElementType(type);
             if (arrayElementType is not null)
             {
                 if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out handler))
                     return handler;
+
+                // Arrays over range types are multiranges, not regular arrays.
+                if (arrayElementType.IsGenericType && arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                {
+                    var subtypeType = type.GetGenericArguments()[0];
+
+                    return MappingsByClrType.TryGetValue(subtypeType, out var subtypeMapping)
+                        ? GetOrBindMultirangeHandler(subtypeMapping)
+                        : throw new NotSupportedException($"The CLR multirange type {type} isn't supported by Npgsql or your PostgreSQL.");
+                }
 
                 return MappingsByClrType.TryGetValue(arrayElementType, out var elementMapping)
                     ? GetOrBindArrayHandler(elementMapping)
@@ -238,7 +263,7 @@ namespace Npgsql.TypeMapping
                                             $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
         }
 
-        static Type? GetArrayElementType(Type type)
+        static Type? GetArrayListElementType(Type type)
         {
             var typeInfo = type.GetTypeInfo();
             if (typeInfo.IsArray)
@@ -411,7 +436,7 @@ namespace Npgsql.TypeMapping
 
         NpgsqlTypeHandler GetOrBindArrayHandler(NpgsqlTypeMapping elementMapping)
         {
-            if (GetPostgresType(elementMapping).Array is not { } arrayPgType)
+            if (GetPostgresType(elementMapping).Array is not { } pgArrayType)
                 throw new ArgumentException($"No array type could be found in the database for element {elementMapping.PgTypeName}");
 
             lock (_writeLock)
@@ -419,7 +444,7 @@ namespace Npgsql.TypeMapping
                 var elementHandler = GetOrBindBaseHandler(elementMapping);
                 var arrayNpgsqlDbType = NpgsqlDbType.Array | elementMapping.NpgsqlDbType;
 
-                return GetOrBindArrayHandler(elementHandler, arrayPgType, arrayNpgsqlDbType, elementMapping.ClrTypes);
+                return GetOrBindArrayHandler(elementHandler, pgArrayType, arrayNpgsqlDbType, elementMapping.ClrTypes);
             }
         }
 
@@ -462,25 +487,43 @@ namespace Npgsql.TypeMapping
 
         NpgsqlTypeHandler GetOrBindRangeHandler(NpgsqlTypeMapping subtypeMapping)
         {
-            if (GetPostgresType(subtypeMapping).Range is not { } rangePgType)
+            if (GetPostgresType(subtypeMapping).Range is not { } pgRangeType)
                 throw new ArgumentException($"No range type could be found in the database for subtype {subtypeMapping.PgTypeName}");
 
             lock (_writeLock)
             {
                 var subtypeHandler = GetOrBindBaseHandler(subtypeMapping);
-                var rangeHandler = subtypeHandler.CreateRangeHandler(rangePgType);
+                var rangeHandler = subtypeHandler.CreateRangeHandler(pgRangeType);
 
-                var rangeNpgsqlDbType = subtypeMapping.NpgsqlDbType.HasValue
-                    ? NpgsqlDbType.Range | subtypeMapping.NpgsqlDbType.Value
-                    : (NpgsqlDbType?)null;
+                var rangeNpgsqlDbType = NpgsqlDbType.Range | subtypeMapping.NpgsqlDbType;
 
                 // We only want to bind supported range CLR types whose element CLR types are being bound as well.
                 var clrTypes = rangeHandler.SupportedRangeClrTypes
                     .Where(r => subtypeMapping.ClrTypes.Contains(r.GenericTypeArguments[0]))
                     .ToArray();
 
-                var asTypeHandler = (NpgsqlTypeHandler)rangeHandler;
-                return GetOrBindHandler(asTypeHandler, rangePgType, rangeNpgsqlDbType, clrTypes: clrTypes);
+                return GetOrBindHandler((NpgsqlTypeHandler)rangeHandler, pgRangeType, rangeNpgsqlDbType, clrTypes: clrTypes);
+            }
+        }
+
+        NpgsqlTypeHandler GetOrBindMultirangeHandler(NpgsqlTypeMapping subtypeMapping)
+        {
+            if (GetPostgresType(subtypeMapping).Range?.Multirange is not { } pgMultirangeType)
+                throw new ArgumentException($"No range type could be found in the database for subtype {subtypeMapping.PgTypeName}");
+
+            lock (_writeLock)
+            {
+                var subtypeHandler = GetOrBindBaseHandler(subtypeMapping);
+                var multirangeHandler = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
+
+                var rangeNpgsqlDbType = NpgsqlDbType.Multirange | subtypeMapping.NpgsqlDbType;
+
+                // We only want to bind supported range CLR types whose element CLR types are being bound as well.
+                var clrTypes = multirangeHandler.SupportedMultirangeClrTypes
+                    .Where(r => subtypeMapping.ClrTypes.Contains(GetArrayListElementType(r)))
+                    .ToArray();
+
+                return GetOrBindHandler((NpgsqlTypeHandler)multirangeHandler, pgMultirangeType, rangeNpgsqlDbType, clrTypes: clrTypes);
             }
         }
 
@@ -506,9 +549,7 @@ namespace Npgsql.TypeMapping
 
         PostgresType GetPostgresType(NpgsqlTypeMapping mapping)
         {
-            var pgName = mapping.PgTypeName;
-
-            var pgType = DatabaseInfo.GetPostgresTypeByName(pgName);
+            var pgType = DatabaseInfo.GetPostgresTypeByName(mapping.PgTypeName);
 
             // TODO: Revisit this
             if (pgType is PostgresDomainType)

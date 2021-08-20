@@ -14,8 +14,7 @@ namespace Npgsql.Tests.Types
         public LTreeTests(MultiplexingMode multiplexingMode, bool useTypeName) : base(
             multiplexingMode,
             useTypeName ? null : NpgsqlDbType.LTree,
-            useTypeName ? "ltree" : null,
-            minVersion: "13.0")
+            useTypeName ? "ltree" : null)
         { }
 
         public static IEnumerable TestCases() => new[]
@@ -27,6 +26,7 @@ namespace Npgsql.Tests.Types
         public async Task SetUp()
         {
             using var conn = await OpenConnectionAsync();
+            TestUtil.MinimumPgVersion(conn, "13.0");
             await TestUtil.EnsureExtensionAsync(conn, "ltree");
         }
     }

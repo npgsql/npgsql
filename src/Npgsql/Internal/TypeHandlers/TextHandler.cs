@@ -206,8 +206,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <inheritdoc />
         public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
@@ -220,8 +219,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <inheritdoc />
         public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
@@ -235,8 +233,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <inheritdoc />
         public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
