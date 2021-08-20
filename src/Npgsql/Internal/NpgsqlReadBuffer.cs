@@ -572,39 +572,72 @@ namespace Npgsql.Internal
         /// </summary>
         ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
         {
-            return ReadFromBuffer(this, encoding, out var s)
-                ? new ValueTask<string>(s)
-                : ReadLong(this, async, encoding, s);
-
-            static bool ReadFromBuffer(NpgsqlReadBuffer buffer, Encoding encoding, out string s)
+            for (var i = ReadPosition; i < FilledBytes; i++)
             {
-                var start = buffer.ReadPosition;
-                while (buffer.ReadPosition < buffer.FilledBytes)
+                if (Buffer[i] == 0)
                 {
-                    if (buffer.Buffer[buffer.ReadPosition++] == 0)
-                    {
-                        s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start - 1);
-                        return true;
-                    }
+                    var byteLen = i - ReadPosition;
+                    var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, byteLen));
+                    ReadPosition += byteLen + 1;
+                    return result;
                 }
-
-                s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start);
-                return false;
             }
 
-            static async ValueTask<string> ReadLong(NpgsqlReadBuffer buffer, bool async, Encoding encoding, string s)
-            {
-                var builder = new StringBuilder(s);
-                bool complete;
-                do
-                {
-                    await buffer.ReadMore(async);
-                    complete = ReadFromBuffer(buffer, encoding, out s);
-                    builder.Append(s);
-                }
-                while (!complete);
+            return ReadLong(async);
 
-                return builder.ToString();
+            async ValueTask<string> ReadLong(bool async)
+            {
+                var chunkSize = FilledBytes - ReadPosition;
+                var tempBuf = ArrayPool<byte>.Shared.Rent(chunkSize + 1024);
+
+                try
+                {
+                    bool foundTerminator;
+                    var byteLen = 0;
+
+                    Array.Copy(Buffer, ReadPosition, tempBuf, 0, chunkSize);
+                    byteLen += chunkSize;
+                    ReadPosition += chunkSize;
+
+                    do
+                    {
+                        await ReadMore(async);
+                        Debug.Assert(ReadPosition == 0);
+
+                        foundTerminator = false;
+                        int i;
+                        for (i = ReadPosition; i < FilledBytes; i++)
+                        {
+                            if (Buffer[i] == 0)
+                            {
+                                foundTerminator = true;
+                                break;
+                            }
+                        }
+
+                        chunkSize = i - ReadPosition;
+                        if (byteLen + chunkSize > tempBuf.Length)
+                        {
+                            var newTempBuf = ArrayPool<byte>.Shared.Rent(
+                                foundTerminator ? byteLen + chunkSize : byteLen + chunkSize + 1024);
+
+                            Array.Copy(tempBuf, 0, newTempBuf, 0, byteLen);
+                            ArrayPool<byte>.Shared.Return(tempBuf);
+                            tempBuf = newTempBuf;
+                        }
+
+                        Array.Copy(Buffer, ReadPosition, tempBuf, byteLen, chunkSize);
+                        byteLen += chunkSize;
+                        ReadPosition += chunkSize;
+                    } while (!foundTerminator);
+
+                    ReadPosition++;
+                    return encoding.GetString(tempBuf, 0, byteLen);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(tempBuf);
+                }
             }
         }
 
