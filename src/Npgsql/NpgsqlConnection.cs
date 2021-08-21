@@ -2024,9 +2024,15 @@ namespace Npgsql
                     NpgsqlTimeout.Infinite,
                     async: false,
                     CancellationToken.None).GetAwaiter().GetResult();
+
             // Increment the change counter on the global type mapper. This will make conn.Open() pick up the
             // new DatabaseInfo and set up a new connection type mapper
             TypeMapping.GlobalTypeMapper.Instance.RecordChange();
+
+            if (Settings.Multiplexing)
+            {
+                ((MultiplexingConnectorPool)Pool).MultiplexingTypeMapper!.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
+            }
         }
 
         /// <summary>
