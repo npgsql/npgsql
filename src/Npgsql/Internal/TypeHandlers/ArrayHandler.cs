@@ -46,11 +46,15 @@ namespace Npgsql.Internal.TypeHandlers
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => throw new NotSupportedException();
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
+        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+            => throw new NotSupportedException();
+
+        /// <inheritdoc />
+        public override IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
             => throw new NotSupportedException();
 
         #region Read
@@ -219,8 +223,6 @@ namespace Npgsql.Internal.TypeHandlers
             public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<TArrayOrList>> ReadListFunc = default!;
             // ReSharper restore StaticMemberInGenericType
 
-            public static bool IsArrayOrList => IsArray || IsList;
-
             static ArrayTypeInfo()
             {
                 var type = typeof(TArrayOrList);
@@ -289,7 +291,7 @@ namespace Npgsql.Internal.TypeHandlers
         #region Read
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            =>  await ReadArray<TElement>(buf, async, readAsObject: true);
+            => await ReadArray<TElement>(buf, async, readAsObject: true);
 
         #endregion
 
@@ -317,8 +319,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache)
         {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
             if (value is ICollection<TElement> generic)
@@ -341,7 +342,7 @@ namespace Npgsql.Internal.TypeHandlers
                 4 * value.Count; // sum of element lengths
 
             lengthCache.Set(0);
-            NpgsqlLengthCache? elemLengthCache = lengthCache;
+            var elemLengthCache = lengthCache;
 
             foreach (var element in value)
             {

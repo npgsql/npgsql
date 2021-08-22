@@ -46,8 +46,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             : base(postgresType, convertInfinityDateTime) {}
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
-            => new RangeHandler<DateTime, DateTimeOffset>(rangeBackendType, this);
+        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+            => new RangeHandler<DateTime, DateTimeOffset>(pgRangeType, this);
 
         #region Read
 

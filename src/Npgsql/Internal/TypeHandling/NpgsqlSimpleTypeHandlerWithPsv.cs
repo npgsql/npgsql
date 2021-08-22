@@ -94,8 +94,8 @@ namespace Npgsql.Internal.TypeHandling
             => typeof(TPsv);
 
         /// <inheeritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
-            => new ArrayHandlerWithPsv<TDefault, TPsv>(arrayBackendType, this, arrayNullabilityMode);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandlerWithPsv<TDefault, TPsv>(pgArrayType, this, arrayNullabilityMode);
 
         #endregion Misc
     }

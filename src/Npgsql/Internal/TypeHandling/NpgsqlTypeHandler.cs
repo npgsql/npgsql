@@ -259,12 +259,17 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode);
+        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        public abstract IRangeHandler CreateRangeHandler(PostgresType rangeBackendType);
+        public abstract IRangeHandler CreateRangeHandler(PostgresType pgRangeType);
+
+        /// <summary>
+        /// Creates a type handler for multiranges of this handler's type.
+        /// </summary>
+        public abstract IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType);
 
         /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an

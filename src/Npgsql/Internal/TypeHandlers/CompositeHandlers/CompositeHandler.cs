@@ -110,9 +110,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
         {
             Initialize();
 
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
-
+            lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 

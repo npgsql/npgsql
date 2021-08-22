@@ -62,30 +62,42 @@ namespace Npgsql.Internal
         /// Whether the backend supports range types.
         /// </summary>
         public virtual bool SupportsRangeTypes => Version.IsGreaterOrEqual(9, 2);
+
+        /// <summary>
+        /// Whether the backend supports multirange types.
+        /// </summary>
+        public virtual bool SupportsMultirangeTypes => Version.IsGreaterOrEqual(14, 0);
+
         /// <summary>
         /// Whether the backend supports enum types.
         /// </summary>
         public virtual bool SupportsEnumTypes => Version.IsGreaterOrEqual(8, 3);
+
         /// <summary>
         /// Whether the backend supports the CLOSE ALL statement.
         /// </summary>
         public virtual bool SupportsCloseAll => Version.IsGreaterOrEqual(8, 3);
+
         /// <summary>
         /// Whether the backend supports advisory locks.
         /// </summary>
         public virtual bool SupportsAdvisoryLocks => Version.IsGreaterOrEqual(8, 2);
+
         /// <summary>
         /// Whether the backend supports the DISCARD SEQUENCES statement.
         /// </summary>
         public virtual bool SupportsDiscardSequences => Version.IsGreaterOrEqual(9, 4);
+
         /// <summary>
         /// Whether the backend supports the UNLISTEN statement.
         /// </summary>
         public virtual bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4);  // overridden by PostgresDatabase
+
         /// <summary>
         /// Whether the backend supports the DISCARD TEMP statement.
         /// </summary>
         public virtual bool SupportsDiscardTemp => Version.IsGreaterOrEqual(8, 3);
+
         /// <summary>
         /// Whether the backend supports the DISCARD statement.
         /// </summary>
@@ -105,19 +117,21 @@ namespace Npgsql.Internal
 
         #region Types
 
-        readonly List<PostgresBaseType>      _baseTypesMutable      = new();
-        readonly List<PostgresArrayType>     _arrayTypesMutable     = new();
-        readonly List<PostgresRangeType>     _rangeTypesMutable     = new();
-        readonly List<PostgresEnumType>      _enumTypesMutable      = new();
-        readonly List<PostgresCompositeType> _compositeTypesMutable = new();
-        readonly List<PostgresDomainType>    _domainTypesMutable    = new();
+        readonly List<PostgresBaseType>       _baseTypesMutable       = new();
+        readonly List<PostgresArrayType>      _arrayTypesMutable      = new();
+        readonly List<PostgresRangeType>      _rangeTypesMutable      = new();
+        readonly List<PostgresMultirangeType> _multirangeTypesMutable = new();
+        readonly List<PostgresEnumType>       _enumTypesMutable       = new();
+        readonly List<PostgresCompositeType>  _compositeTypesMutable  = new();
+        readonly List<PostgresDomainType>     _domainTypesMutable     = new();
 
-        internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypesMutable;
-        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypesMutable;
-        internal IReadOnlyList<PostgresRangeType>     RangeTypes     => _rangeTypesMutable;
-        internal IReadOnlyList<PostgresEnumType>      EnumTypes      => _enumTypesMutable;
-        internal IReadOnlyList<PostgresCompositeType> CompositeTypes => _compositeTypesMutable;
-        internal IReadOnlyList<PostgresDomainType>    DomainTypes    => _domainTypesMutable;
+        internal IReadOnlyList<PostgresBaseType>       BaseTypes       => _baseTypesMutable;
+        internal IReadOnlyList<PostgresArrayType>      ArrayTypes      => _arrayTypesMutable;
+        internal IReadOnlyList<PostgresRangeType>      RangeTypes      => _rangeTypesMutable;
+        internal IReadOnlyList<PostgresMultirangeType> MultirangeTypes => _multirangeTypesMutable;
+        internal IReadOnlyList<PostgresEnumType>       EnumTypes       => _enumTypesMutable;
+        internal IReadOnlyList<PostgresCompositeType>  CompositeTypes  => _compositeTypesMutable;
+        internal IReadOnlyList<PostgresDomainType>     DomainTypes     => _domainTypesMutable;
 
         /// <summary>
         /// Indexes backend types by their type OID.
@@ -215,6 +229,9 @@ namespace Npgsql.Internal
                     continue;
                 case PostgresRangeType rangeType:
                     _rangeTypesMutable.Add(rangeType);
+                    continue;
+                case PostgresMultirangeType multirangeType:
+                    _multirangeTypesMutable.Add(multirangeType);
                     continue;
                 case PostgresEnumType enumType:
                     _enumTypesMutable.Add(enumType);

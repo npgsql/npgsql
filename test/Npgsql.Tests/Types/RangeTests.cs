@@ -159,7 +159,7 @@ namespace Npgsql.Tests.Types
             var r3 = new NpgsqlRange<int>(0, false, true, 1, true, false);
             Assert.IsFalse(r1 == r3);
 
-            //value of lower bound shoulnd't matter since it is infinite
+            //value of lower bound shouldn't matter since it is infinite
             var r4 = new NpgsqlRange<int>(10, false, true, 1, false, false);
             Assert.IsTrue(r1 == r4);
 

@@ -8,20 +8,10 @@ namespace Npgsql.Tests.Types
     {
         readonly NpgsqlDbType? _npgsqlDbType;
         readonly string? _typeName;
-        readonly string? _minVersion;
 
-        protected TypeHandlerTestBase(MultiplexingMode multiplexingMode, NpgsqlDbType? npgsqlDbType, string? typeName, string? minVersion = null)
-            : base(multiplexingMode) => (_npgsqlDbType, _typeName, _minVersion) = (npgsqlDbType, typeName, minVersion);
-
-        [OneTimeSetUp]
-        public async Task MinimumPgVersion()
-        {
-            if (_minVersion is string minVersion)
-            {
-                using var conn = await OpenConnectionAsync();
-                TestUtil.MinimumPgVersion(conn, minVersion);
-            }
-        }
+        protected TypeHandlerTestBase(MultiplexingMode multiplexingMode, NpgsqlDbType? npgsqlDbType, string? typeName)
+            : base(multiplexingMode)
+            => (_npgsqlDbType, _typeName) = (npgsqlDbType, typeName);
 
         [Test]
         [TestCaseSource("TestCases")]

@@ -25,7 +25,7 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
         public Int2VectorHandler(PostgresType arrayPostgresType, PostgresType postgresShortType)
             : base(arrayPostgresType, new Int16Handler { PostgresType = postgresShortType }, ArrayNullabilityMode.Never, 0) { }
 
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
-            => new ArrayHandler<ArrayHandler<short>>(arrayBackendType, this, arrayNullabilityMode);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandler<ArrayHandler<short>>(pgArrayType, this, arrayNullabilityMode);
     }
 }

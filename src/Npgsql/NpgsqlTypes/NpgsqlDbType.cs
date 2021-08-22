@@ -403,33 +403,6 @@ namespace NpgsqlTypes
 
         #endregion
 
-        #region Arrays
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
-        /// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
-        /// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
-        /// </summary>
-        /// <remarks>See https://www.postgresql.org/docs/current/static/arrays.html</remarks>
-        Array = int.MinValue,
-
-        #endregion
-
-        #region Range Types
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "range" type, continuous range of values of specific type.
-        /// This value must be combined with another value from <see cref="NpgsqlDbType"/>
-        /// via a bit OR (e.g. NpgsqlDbType.Range | NpgsqlDbType.Integer)
-        /// </summary>
-        /// <remarks>
-        /// Supported since PostgreSQL 9.2.
-        /// See https://www.postgresql.org/docs/9.2/static/rangetypes.html
-        /// </remarks>
-        Range = 0x40000000,
-
-        #endregion
-
         #region Internal Types
 
         /// <summary>
@@ -553,6 +526,40 @@ namespace NpgsqlTypes
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
         LTxtQuery = 62, // Extension type
+
+        #endregion
+
+        #region Composables
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
+        /// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
+        /// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
+        /// </summary>
+        /// <remarks>See https://www.postgresql.org/docs/current/static/arrays.html</remarks>
+        Array = int.MinValue,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "range" type, continuous range of values of specific type.
+        /// This value must be combined with another value from <see cref="NpgsqlDbType"/>
+        /// via a bit OR (e.g. NpgsqlDbType.Range | NpgsqlDbType.Integer)
+        /// </summary>
+        /// <remarks>
+        /// Supported since PostgreSQL 9.2.
+        /// See https://www.postgresql.org/docs/current/static/rangetypes.html
+        /// </remarks>
+        Range = 0x40000000,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "multirange" type, continuous range of values of specific type.
+        /// This value must be combined with another value from <see cref="NpgsqlDbType"/>
+        /// via a bit OR (e.g. NpgsqlDbType.Multirange | NpgsqlDbType.Integer)
+        /// </summary>
+        /// <remarks>
+        /// Supported since PostgreSQL 14.
+        /// See https://www.postgresql.org/docs/current/static/rangetypes.html
+        /// </remarks>
+        Multirange = 0x20000000,
 
         #endregion
     }

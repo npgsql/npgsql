@@ -105,11 +105,6 @@ namespace Npgsql
         /// <summary>
         /// Generates a raw SQL query string to select type information.
         /// </summary>
-        /// <param name="withRange">True to load range types.</param>
-        /// <param name="loadTableComposites">True to load table composites.</param>
-        /// <returns>
-        /// A raw SQL query string that selects type information.
-        /// </returns>
         /// <remarks>
         /// Select all types (base, array which is also base, enum, range, composite).
         /// Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
@@ -117,7 +112,7 @@ namespace Npgsql
         /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         /// types).
         /// </remarks>
-        static string GenerateLoadTypesQuery(bool withRange, bool loadTableComposites)
+        static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites)
             => $@"
 SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid
 FROM (
@@ -134,6 +129,7 @@ FROM (
             CASE
                 WHEN proc.proname='array_recv' THEN typ.typelem
                 {(withRange ? "WHEN typ.typtype='r' THEN rngsubtype" : "")}
+                {(withMultirange ? "WHEN typ.typtype='m' THEN (SELECT rngtypid FROM pg_range WHERE rngmultitypid = typ.oid)" : "")}
                 WHEN typ.typtype='d' THEN typ.typbasetype
             END AS elemtypoid
         FROM pg_type AS typ
@@ -147,21 +143,22 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-    typtype IN ('b', 'r', 'e', 'd') OR -- Base, range, enum, domain
+    typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
     (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
-        elemtyptype IN ('b', 'r', 'e', 'd') OR -- Array of base, range, enum, domain
+        elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
         (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
         (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
     ))
 ORDER BY CASE
        WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
        WHEN typtype = 'r' THEN 1                        -- Ranges after
-       WHEN typtype = 'c' THEN 2                        -- Composites after
-       WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 3 -- Domains over non-arrays after
-       WHEN typtype = 'a' THEN 4                        -- Arrays before
-       WHEN typtype = 'd' AND elemtyptype = 'a' THEN 5  -- Domains over arrays last
+       WHEN typtype = 'm' THEN 2                        -- Multiranges after
+       WHEN typtype = 'c' THEN 3                        -- Composites after
+       WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 4 -- Domains over non-arrays after
+       WHEN typtype = 'a' THEN 5                        -- Arrays after
+       WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6  -- Domains over arrays last
 END;";
 
         static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
@@ -205,7 +202,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             var batchQuery = new StringBuilder()
                 .AppendLine("SELECT version();")
-                .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites))
+                .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
                 .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
 
             if (SupportsEnumTypes)
@@ -280,6 +277,25 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     byOID[rangeType.OID] = rangeType;
                     continue;
                 }
+
+                case 'm': // Multirange
+                    Debug.Assert(elemtypoid > 0);
+                    if (!byOID.TryGetValue(elemtypoid, out var type))
+                    {
+                        Log.Trace($"Multirange type '{typname}' refers to unknown range with OID {elemtypoid}, skipping", conn.Id);
+                        continue;
+                    }
+
+                    if (type is not PostgresRangeType rangePostgresType)
+                    {
+                        Log.Trace($"Multirange type '{typname}' refers to non-range type {type.Name}, skipping",
+                            conn.Id);
+                        continue;
+                    }
+
+                    var multirangeType = new PostgresMultirangeType(nspname, typname, oid, rangePostgresType);
+                    byOID[multirangeType.OID] = multirangeType;
+                    continue;
 
                 case 'e': // Enum
                     var enumType = new PostgresEnumType(nspname, typname, oid);
