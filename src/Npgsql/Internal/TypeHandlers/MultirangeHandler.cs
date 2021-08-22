@@ -94,7 +94,15 @@ namespace Npgsql.Internal.TypeHandlers
 
         public int ValidateAndGetLength(List<NpgsqlRange<TElement>> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            throw new NotImplementedException();
+            lengthCache ??= new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
+            var sum = 4 + 4 * value.Count;
+            for (var i = 0; i < value.Count; i++)
+                sum += _rangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
+
+            return lengthCache!.Set(sum);
         }
 
         public override async Task Write(
@@ -114,8 +122,21 @@ namespace Npgsql.Internal.TypeHandlers
                 await _rangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
         }
 
-        public Task Write(List<NpgsqlRange<TElement>> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
-            CancellationToken cancellationToken = default) =>
-            throw new NotImplementedException();
+        public async Task Write(
+            List<NpgsqlRange<TElement>> value,
+            NpgsqlWriteBuffer buf,
+            NpgsqlLengthCache? lengthCache,
+            NpgsqlParameter? parameter,
+            bool async,
+            CancellationToken cancellationToken = default)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+
+            buf.WriteInt32(value.Count);
+
+            for (var i = 0; i < value.Count; i++)
+                await _rangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
+        }
     }
 }

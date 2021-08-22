@@ -219,7 +219,7 @@ namespace Npgsql.TypeMapping
                 // Arrays over range types are multiranges, not regular arrays.
                 if (arrayElementType.IsGenericType && arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 {
-                    var subtypeType = type.GetGenericArguments()[0];
+                    var subtypeType = arrayElementType.GetGenericArguments()[0];
 
                     return MappingsByClrType.TryGetValue(subtypeType, out var subtypeMapping)
                         ? GetOrBindMultirangeHandler(subtypeMapping)
