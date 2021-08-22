@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -61,6 +60,8 @@ namespace Npgsql.Tests
                 .Write(PGUtil.UTF8Encoding.GetBytes(new string("bar")))
                 .WriteByte(0);
 
+            ReadBuffer.Ensure(1);
+
             Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("foo"));
             Assert.That(ReadBuffer.ReadNullTerminatedString(), Is.EqualTo("bar"));
         }
@@ -69,6 +70,7 @@ namespace Npgsql.Tests
         public async Task ReadNullTerminatedString_with_io()
         {
             Writer.Write(PGUtil.UTF8Encoding.GetBytes(new string("Chunked ")));
+            ReadBuffer.Ensure(1);
             var task = ReadBuffer.ReadNullTerminatedString(async: true);
             Assert.That(!task.IsCompleted);
 
