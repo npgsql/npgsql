@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -34,12 +35,15 @@ namespace Npgsql.Tests
         /// Assert.Fail(). We don't to miss any regressions just because something was misconfigured
         /// at the build server and caused a test to be inconclusive.
         /// </summary>
+        [DoesNotReturn]
         public static void IgnoreExceptOnBuildServer(string message)
         {
             if (IsOnBuildServer)
                 Assert.Fail(message);
             else
                 Assert.Ignore(message);
+
+            throw new Exception("Should not occur");
         }
 
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)
@@ -94,6 +98,10 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
 
             conn.ReloadTypes();
+
+            // Multiplexing doesn't really support reloading types, since each connector uses its own connector type mapper when reading,
+            // which is different from the pool-wise connector mapper (which is used when writing).
+            NpgsqlConnection.ClearPool(conn);
         }
 
         /// <summary>

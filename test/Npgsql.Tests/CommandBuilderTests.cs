@@ -564,16 +564,14 @@ $$ LANGUAGE SQL;
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
-            await conn.ExecuteNonQueryAsync("CREATE DOMAIN posint AS integer CHECK (VALUE > 0);" +
-                                            "CREATE DOMAIN int_array AS int[] CHECK(array_length(VALUE, 1) = 2);");
+            await using var _ = await GetTempTypeName(conn, out var domainType);
+            await using var __ = await GetTempTypeName(conn, out var domainArrayType);
+            await conn.ExecuteNonQueryAsync($@"
+CREATE DOMAIN {domainType} AS integer CHECK (VALUE > 0);
+CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
             conn.ReloadTypes();
-            await using var _ = DeferAsync(async () =>
-            {
-                await conn.ExecuteNonQueryAsync("DROP DOMAIN int_array; DROP DOMAIN posint");
-                conn.ReloadTypes();
-            });
 
-            var cmd = new NpgsqlCommand("SELECT :a::posint, :b::posint[], :c::int_array", conn);
+            var cmd = new NpgsqlCommand($"SELECT :a::{domainType}, :b::{domainType}[], :c::{domainArrayType}", conn);
             var val = 23;
             var arrayVal = new[] { 7, 42 };
 
@@ -581,13 +579,13 @@ $$ LANGUAGE SQL;
             Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
             Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("a"));
             Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
-            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("posint"));
+            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith(domainType));
             Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("b"));
             Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
-            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("posint[]"));
+            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith(domainType + "[]"));
             Assert.That(cmd.Parameters[2].ParameterName, Is.EqualTo("c"));
             Assert.That(cmd.Parameters[2].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
-            Assert.That(cmd.Parameters[2].DataTypeName, Does.EndWith("int_array"));
+            Assert.That(cmd.Parameters[2].DataTypeName, Does.EndWith(domainArrayType));
             cmd.Parameters[0].Value = val;
             cmd.Parameters[1].Value = arrayVal;
             cmd.Parameters[2].Value = arrayVal;
@@ -602,15 +600,11 @@ $$ LANGUAGE SQL;
         public async Task DeriveTextCommandParameters_UnmappedEnum()
         {
             using var conn = await OpenConnectionAsync();
-            await conn.ExecuteNonQueryAsync("CREATE TYPE fruit AS ENUM ('Apple', 'Cherry', 'Plum')");
+            await using var _ = await GetTempTypeName(conn, out var type);
+            await conn.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('Apple', 'Cherry', 'Plum')");
             conn.ReloadTypes();
-            await using var _ = DeferAsync(async () =>
-            {
-                await conn.ExecuteNonQueryAsync("DROP TYPE fruit");
-                conn.ReloadTypes();
-            });
 
-            var cmd = new NpgsqlCommand("SELECT :x::fruit", conn);
+            var cmd = new NpgsqlCommand($"SELECT :x::{type}", conn);
             const string val1 = "Apple";
             var val2 = new string[] { "Cherry", "Plum" };
 
@@ -619,8 +613,8 @@ $$ LANGUAGE SQL;
             Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
             Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
             Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresEnumType>());
-            Assert.That(cmd.Parameters[0].PostgresType!.Name, Is.EqualTo("fruit"));
-            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
+            Assert.That(cmd.Parameters[0].PostgresType!.Name, Is.EqualTo(type));
+            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith(type));
             cmd.Parameters[0].Value = val1;
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow);
             Assert.That(reader.Read(), Is.True);
@@ -633,16 +627,12 @@ $$ LANGUAGE SQL;
         public async Task DeriveTextCommandParameters_MappedEnum()
         {
             using var conn = await OpenConnectionAsync();
-            await conn.ExecuteNonQueryAsync("CREATE TYPE fruit AS ENUM ('apple', 'cherry', 'plum')");
+            await using var _ = await GetTempTypeName(conn, out var type);
+            await conn.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('apple', 'cherry', 'plum')");
             conn.ReloadTypes();
-            await using var _ = DeferAsync(async () =>
-            {
-                await conn.ExecuteNonQueryAsync("DROP TYPE fruit");
-                conn.ReloadTypes();
-            });
+            conn.TypeMapper.MapEnum<Fruit>(type);
 
-            conn.TypeMapper.MapEnum<Fruit>("fruit");
-            var cmd = new NpgsqlCommand("SELECT :x::fruit, :y::fruit[]", conn);
+            var cmd = new NpgsqlCommand($"SELECT :x::{type}, :y::{type}[]", conn);
             const Fruit val1 = Fruit.Apple;
             var val2 = new Fruit[] { Fruit.Cherry, Fruit.Plum };
 
@@ -651,11 +641,11 @@ $$ LANGUAGE SQL;
             Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
             Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
             Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresEnumType>());
-            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
+            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith(type));
             Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("y"));
             Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
             Assert.That(cmd.Parameters[1].PostgresType, Is.InstanceOf<PostgresArrayType>());
-            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("fruit[]"));
+            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith(type + "[]"));
             cmd.Parameters[0].Value = val1;
             cmd.Parameters[1].Value = val2;
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow);
@@ -676,16 +666,10 @@ $$ LANGUAGE SQL;
         public async Task DeriveTextCommandParameters_MappedComposite()
         {
             using var conn = await OpenConnectionAsync();
-            await conn.ExecuteNonQueryAsync(@"
-DROP TYPE IF EXISTS deriveparameterscomposite1;
-CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
+            await using var _ = await GetTempTypeName(conn, out var type);
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
             conn.ReloadTypes();
-            conn.TypeMapper.MapComposite<SomeComposite>("deriveparameterscomposite1");
-            await using var _ = DeferAsync(async () =>
-            {
-                await conn.ExecuteNonQueryAsync("DROP TYPE deriveparameterscomposite1");
-                conn.ReloadTypes();
-            });
+            conn.TypeMapper.MapComposite<SomeComposite>(type);
 
             var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
             var expected2 = new[] {
@@ -693,13 +677,13 @@ CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
                 new SomeComposite {X = 9, SomeText = "bar"}
             };
 
-            using var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite1, @p2::deriveparameterscomposite1[]", conn);
+            using var cmd = new NpgsqlCommand($"SELECT @p1::{type}, @p2::{type}[]", conn);
             NpgsqlCommandBuilder.DeriveParameters(cmd);
             Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
             Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
             Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
             Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
-            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite1"));
+            Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith(type));
             var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType!).Fields;
             Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
             Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
@@ -707,10 +691,10 @@ CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
             Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("p2"));
             Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
             Assert.That(cmd.Parameters[1].PostgresType, Is.InstanceOf<PostgresArrayType>());
-            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("deriveparameterscomposite1[]"));
+            Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith(type + "[]"));
             var p2Element = ((PostgresArrayType)cmd.Parameters[1].PostgresType!).Element;
             Assert.That(p2Element, Is.InstanceOf<PostgresCompositeType>());
-            Assert.That(p2Element.Name, Is.EqualTo("deriveparameterscomposite1"));
+            Assert.That(p2Element.Name, Is.EqualTo(type));
             var p2Fields = ((PostgresCompositeType)p2Element).Fields;
             Assert.That(p2Fields[0].Name, Is.EqualTo("x"));
             Assert.That(p2Fields[1].Name, Is.EqualTo("some_text"));
@@ -736,22 +720,21 @@ CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
             await conn.ExecuteNonQueryAsync($@"
-                    CREATE TABLE {table} (
-                        Cod varchar(5) NOT NULL,
-                        Descr varchar(40),
-                        Data date,
-                        DataOra timestamp,
-                        Intero smallInt NOT NULL,
-                        Decimale money,
-                        Singolo float,
-                        Booleano bit,
-                        Nota varchar(255),
-                        BigIntArr bigint[],
-                        VarCharArr character varying(20)[],
-                        PRIMARY KEY (Cod)
-                    );
-                    INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:02:00', 123, 123.4, 1234.5, B'1', 'note');
-                ");
+CREATE TABLE {table} (
+    Cod varchar(5) NOT NULL,
+    Descr varchar(40),
+    Data date,
+    DataOra timestamp,
+    Intero smallInt NOT NULL,
+    Decimale money,
+    Singolo float,
+    Booleano bit,
+    Nota varchar(255),
+    BigIntArr bigint[],
+    VarCharArr character varying(20)[],
+    PRIMARY KEY (Cod)
+);
+INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:02:00', 123, 123.4, 1234.5, B'1', 'note')");
 
             var daDataAdapter =
                 new NpgsqlDataAdapter(
@@ -808,20 +791,20 @@ CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2560")]
-        public void GetUpdateCommandWithColumnAliases()
+        public async Task GetUpdateCommandWithColumnAliases()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
+            await using var _ = await GetTempTableName(conn, out var table);
 
-            conn.ExecuteNonQuery(@"
-                CREATE TEMP TABLE data (
-                    Cod varchar(5) NOT NULL,
-                    Descr varchar(40),
-                    Data date,
-                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
-                );
-            ");
+            await conn.ExecuteNonQueryAsync($@"
+CREATE TEMP TABLE {table} (
+    Cod varchar(5) NOT NULL,
+    Descr varchar(40),
+    Data date,
+    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+)");
 
-            using var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM data", conn);
+            using var cmd = new NpgsqlCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM {table}", conn);
             using var daDataAdapter = new NpgsqlDataAdapter(cmd);
             using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
 
@@ -829,40 +812,31 @@ CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
             Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
         }
 
-
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2846")]
-        public void GetUpdateCommandWithArrayColumType()
+        public async Task GetUpdateCommandWithArrayColumnType()
         {
-            using var conn = OpenConnection();
-            try
-            {
-                conn.ExecuteNonQuery(@"
-DROP TABLE IF EXISTS Test;
-CREATE TABLE Test (
+            using var conn = await OpenConnectionAsync();
+            await using var _ = await GetTempTableName(conn, out var table);
+            await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (
 Cod varchar(5) NOT NULL,
 Vettore character varying(20)[],
 CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
-)
-");
-                using var daDataAdapter = new NpgsqlDataAdapter("SELECT cod, vettore FROM test ORDER By cod", conn);
-                using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
-                var dtTable = new DataTable();
+)");
+            using var daDataAdapter = new NpgsqlDataAdapter($"SELECT cod, vettore FROM {table} ORDER By cod", conn);
+            using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
+            var dtTable = new DataTable();
 
-                cbCommandBuilder.SetAllValues = true;
+            cbCommandBuilder.SetAllValues = true;
 
-                daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
+            daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
 
-                daDataAdapter.Fill(dtTable);
-                dtTable.Rows.Add();
-                dtTable.Rows[0]["cod"] = '0';
-                dtTable.Rows[0]["vettore"] = new string[] { "aaa", "bbb" };
+            daDataAdapter.Fill(dtTable);
+            dtTable.Rows.Add();
+            dtTable.Rows[0]["cod"] = '0';
+            dtTable.Rows[0]["vettore"] = new[] { "aaa", "bbb" };
 
-                daDataAdapter.Update(dtTable);
-            }
-            finally
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS Test");
-            }
+            daDataAdapter.Update(dtTable);
         }
     }
 }

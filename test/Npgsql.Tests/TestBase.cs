@@ -14,6 +14,8 @@ namespace Npgsql.Tests
         /// </summary>
         public virtual string ConnectionString => TestUtil.ConnectionString;
 
+        static SemaphoreSlim DatabaseCreationLock = new(1);
+
         #region Utilities for use by tests
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
@@ -47,27 +49,65 @@ namespace Npgsql.Tests
             return OpenConnection(builder.ConnectionString, async: true);
         }
 
-        async ValueTask<NpgsqlConnection> OpenConnection(string? connectionString, bool async)
+        ValueTask<NpgsqlConnection> OpenConnection(string? connectionString, bool async)
         {
-            var conn = CreateConnection(connectionString);
-            try
-            {
-                if (async)
-                    await conn.OpenAsync();
-                else
-                    conn.Open();
-            }
-            catch (PostgresException e)
-            {
-                if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == TestUtil.DefaultConnectionString)
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
-                else
-                    throw;
-            }
+            return OpenConnectionInternal(hasLock: false);
 
-            return conn;
+            async ValueTask<NpgsqlConnection> OpenConnectionInternal(bool hasLock)
+            {
+                var conn = CreateConnection(connectionString);
+                try
+                {
+                    if (async)
+                        await conn.OpenAsync();
+                    else
+                        conn.Open();
+                    return conn;
+                }
+                catch (PostgresException e)
+                {
+                    if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == TestUtil.DefaultConnectionString)
+                        throw new Exception("Please create a user npgsql_tests as follows: CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER");
+
+                    if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
+                    {
+                        if (!hasLock)
+                        {
+                            DatabaseCreationLock.Wait();
+                            try
+                            {
+                                return await OpenConnectionInternal(hasLock: true);
+                            }
+                            finally
+                            {
+                                DatabaseCreationLock.Release();
+                            }
+                        }
+
+                        // Database does not exist and we have the lock, proceed to creation
+                        var builder = new NpgsqlConnectionStringBuilder(connectionString ?? ConnectionString)
+                        {
+                            Pooling = false,
+                            Multiplexing = false,
+                            Database = "postgres"
+                        };
+
+                        using var adminConn = new NpgsqlConnection(builder.ConnectionString);
+                        adminConn.Open();
+                        adminConn.ExecuteNonQuery("CREATE DATABASE " + conn.Database);
+                        adminConn.Close();
+                        Thread.Sleep(1000);
+
+                        if (async)
+                            await conn.OpenAsync();
+                        else
+                            conn.Open();
+                        return conn;
+                    }
+
+                    throw;
+                }
+            }
         }
 
         protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
