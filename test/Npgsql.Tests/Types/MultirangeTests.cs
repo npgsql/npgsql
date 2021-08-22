@@ -58,7 +58,7 @@ namespace Npgsql.Tests.Types
         public async Task Setup()
         {
             await using var conn = await OpenConnectionAsync();
-            MinimumPgVersion(conn, "14.0", "The jsonpath type was introduced in PostgreSQL 12");
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
         }
     }
 }
