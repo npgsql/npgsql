@@ -593,10 +593,8 @@ namespace Npgsql.Internal
                 try
                 {
                     bool foundTerminator;
-                    var byteLen = 0;
-
+                    var byteLen = chunkSize;
                     Array.Copy(Buffer, ReadPosition, tempBuf, 0, chunkSize);
-                    byteLen += chunkSize;
                     ReadPosition += chunkSize;
 
                     do
@@ -606,7 +604,7 @@ namespace Npgsql.Internal
 
                         foundTerminator = false;
                         int i;
-                        for (i = ReadPosition; i < FilledBytes; i++)
+                        for (i = 0; i < FilledBytes; i++)
                         {
                             if (Buffer[i] == 0)
                             {
@@ -615,20 +613,19 @@ namespace Npgsql.Internal
                             }
                         }
 
-                        chunkSize = i - ReadPosition;
-                        if (byteLen + chunkSize > tempBuf.Length)
+                        if (byteLen + i > tempBuf.Length)
                         {
                             var newTempBuf = ArrayPool<byte>.Shared.Rent(
-                                foundTerminator ? byteLen + chunkSize : byteLen + chunkSize + 1024);
+                                foundTerminator ? byteLen + i : byteLen + i + 1024);
 
                             Array.Copy(tempBuf, 0, newTempBuf, 0, byteLen);
                             ArrayPool<byte>.Shared.Return(tempBuf);
                             tempBuf = newTempBuf;
                         }
 
-                        Array.Copy(Buffer, ReadPosition, tempBuf, byteLen, chunkSize);
-                        byteLen += chunkSize;
-                        ReadPosition += chunkSize;
+                        Array.Copy(Buffer, 0, tempBuf, byteLen, i);
+                        byteLen += i;
+                        ReadPosition = i;
                     } while (!foundTerminator);
 
                     ReadPosition++;
