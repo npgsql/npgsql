@@ -49,12 +49,12 @@ namespace Npgsql.Internal.TypeHandlers
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
-
             var numRanges = buf.ReadInt32();
             var multirange = new NpgsqlRange<TElement>[numRanges];
 
             for (var i = 0; i < numRanges; i++)
             {
+                await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
                 multirange[i] = await _rangeHandler.Read(buf, rangeLen, async, fieldDescription);
             }
@@ -66,12 +66,12 @@ namespace Npgsql.Internal.TypeHandlers
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(4, async);
-
             var numRanges = buf.ReadInt32();
             var multirange = new List<NpgsqlRange<TElement>>(numRanges);
 
             for (var i = 0; i < numRanges; i++)
             {
+                await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
                 multirange.Add(await _rangeHandler.Read(buf, rangeLen, async, fieldDescription));
             }
