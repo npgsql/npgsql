@@ -55,7 +55,7 @@ jobs:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Build
-        run: dotnet build
+        run: dotnet build -c ${{ matrix.config }}
         shell: bash
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
