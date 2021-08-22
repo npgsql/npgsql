@@ -209,7 +209,7 @@ namespace Npgsql.Tests
             await standbyPostmaster.WaitForServerConnection();
         }
 
-        [Test]
+        [Test, Platform(Exclude = "MacOsX", Reason = "#3786")]
         public void All_hosts_are_down()
         {
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
