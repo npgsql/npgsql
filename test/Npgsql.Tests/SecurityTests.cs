@@ -22,6 +22,9 @@ namespace Npgsql.Tests
         [Test, Description("Default user must run with md5 password encryption")]
         public void DefaultUserUsesMd5Password()
         {
+            if (!TestUtil.IsOnBuildServer)
+                Assert.Ignore("Only executed in CI");
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,

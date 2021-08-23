@@ -468,58 +468,6 @@ namespace Npgsql.Tests
         public ActionTargets Targets => ActionTargets.Test;
     }
 
-    /// <summary>
-    /// Causes the test to be ignored on Linux
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class LinuxIgnore : Attribute, ITestAction
-    {
-        readonly string? _ignoreText;
-
-        public LinuxIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
-
-        public void BeforeTest(ITest test)
-        {
-            var osEnvVar = Environment.GetEnvironmentVariable("OS");
-            if (osEnvVar == null || osEnvVar != "Windows_NT")
-            {
-                var msg = "Ignored on Linux";
-                if (_ignoreText != null)
-                    msg += ": " + _ignoreText;
-                Assert.Ignore(msg);
-            }
-        }
-
-        public void AfterTest(ITest test) { }
-        public ActionTargets Targets => ActionTargets.Test;
-    }
-
-    /// <summary>
-    /// Causes the test to be ignored on Windows
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class WindowsIgnore : Attribute, ITestAction
-    {
-        readonly string? _ignoreText;
-
-        public WindowsIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
-
-        public void BeforeTest(ITest test)
-        {
-            var osEnvVar = Environment.GetEnvironmentVariable("OS");
-            if (osEnvVar == "Windows_NT")
-            {
-                var msg = "Ignored on Windows";
-                if (_ignoreText != null)
-                    msg += ": " + _ignoreText;
-                Assert.Ignore(msg);
-            }
-        }
-
-        public void AfterTest(ITest test) { }
-        public ActionTargets Targets => ActionTargets.Test;
-    }
-
     public enum PrepareOrNot
     {
         Prepared,
