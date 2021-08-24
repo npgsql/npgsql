@@ -17,6 +17,9 @@ Different ports may be specified per host with the standard colon syntax: `Host=
 
 By default, Npgsql will try to connect to the servers in the order in which they were specified. In the above example, `server2` is only used if a connection could not be established to `server1` (or if the connection pool for `server1` has been exhausted). This allows a simple *failover* setup, where Npgsql always connects to a single, primary server, but can connect to a standby in case the primary is down; this improves the reliability of your application. In this configuration, we sometimes refer to the standby as "warm" - it is always up and in sync with the primary, but is only used when the primary is down.
 
+> [!NOTE]
+> Using failover as described above does not mean you don't have to worry about errors when your primary server is down. When opening a connection, you may get a broken connection from the pool: Npgsql has no way of knowing whether the connection is working without actually executing something on it, which would negate the perf advantages of pooling. Also, once you have an open connection, Npgsql will never implicitly retry a failed command on a failover server, since that command may be in a transaction (or otherwise depend on some state in the first connection). In other words, you must always be prepared to catch I/O-related exceptions when interacting with the database, and possibly implement a retrying strategy, opening a new connection and re-executing the series of commands.
+
 ## Specifying server types
 
 In the failover scenario above, if `server1` goes down, `server2` is typically promoted to being the new primary. However, `server1` may be brought back up and assume the role of standby - the servers will have switched roles - and Npgsql will continue to connect to `server1` whenever possible. To mitigate this, you can tell Npgsql which server type you wish to connect to:
