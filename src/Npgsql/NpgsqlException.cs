@@ -47,7 +47,7 @@ namespace Npgsql
 #else
         public virtual bool IsTransient
 #endif
-            => InnerException is IOException || InnerException is SocketException || InnerException is TimeoutException;
+            => InnerException is IOException or SocketException or TimeoutException or NpgsqlException { IsTransient: true };
 
 #if NET6_0_OR_GREATER
         /// <inheritdoc cref="DbException.BatchCommand"/>
