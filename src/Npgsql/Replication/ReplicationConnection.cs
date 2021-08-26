@@ -368,6 +368,7 @@ namespace Npgsql.Replication
 
             using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
 
+            Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
             await Connector.WriteQuery(command, true, cancellationToken);
             await Connector.Flush(true, cancellationToken);
 
@@ -469,6 +470,7 @@ namespace Npgsql.Replication
 
             try
             {
+                Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
                 await connector.WriteQuery(command, true, cancellationToken);
                 await connector.Flush(true, cancellationToken);
 
@@ -540,14 +542,26 @@ namespace Npgsql.Replication
                     case 'k': // Primary keepalive message
                     {
                         await buf.EnsureAsync(17);
-                        var endLsn = buf.ReadUInt64();
-                        var timestamp = buf.ReadInt64();
+                        var end = buf.ReadUInt64();
+
+                        if (Log.IsEnabled(NpgsqlLogLevel.Trace))
+                        {
+                            var endLsn = new NpgsqlLogSequenceNumber(end);
+                            var timestamp = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
+                            Log.Trace($"Received replication primary keepalive message from the server with current end of WAL of {endLsn} and timestamp of {timestamp}...", Connector.Id);
+                        }
+                        else
+                            buf.Skip(8);
+
                         var replyRequested = buf.ReadByte() == 1;
-                        if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
-                            Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
+                        if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < end)
+                            Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)end));
 
                         if (replyRequested)
+                        {
+                            Log.Trace($"Attempting to send a replication standby status update because it was requested from the server via primary keepalive message...", Connector.Id);
                             await SendFeedback(waitOnSemaphore: true, cancellationToken: CancellationToken.None);
+                        }
 
                         continue;
                     }
@@ -639,6 +653,7 @@ namespace Npgsql.Replication
                 if (Connector.State != ConnectorState.Replication)
                     throw new InvalidOperationException("Status update can only be sent during replication");
 
+                Log.Trace($"Attempting to send a replication standby status update because the it was requested via {nameof(ReplicationConnection)}.{nameof(SendStatusUpdate)}()...", Connector.Id);
                 await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
             }
         }
@@ -650,7 +665,10 @@ namespace Npgsql.Replication
                 : await _feedbackSemaphore.WaitAsync(TimeSpan.Zero, cancellationToken);
 
             if (!taken)
+            {
+                Log.Trace($"Aborting feedback due to expired {nameof(WalReceiverStatusInterval)} because of a concurrent feedback request.", Connector.Id);
                 return;
+            }
 
             try
             {
@@ -666,13 +684,25 @@ namespace Npgsql.Replication
                 buf.WriteInt32(len - 1);
                 buf.WriteByte((byte)'r');  // TODO: enum/const?
                 // We write the LSNs as Int64 here to save us the casting
-                buf.WriteInt64(Interlocked.Read(ref _lastReceivedLsn));
-                buf.WriteInt64(Interlocked.Read(ref _lastFlushedLsn));
-                buf.WriteInt64(Interlocked.Read(ref _lastAppliedLsn));
-                buf.WriteInt64(TimestampHandler.ToPostgresTimestamp(DateTime.Now));
+                var lastReceivedLsn = Interlocked.Read(ref _lastReceivedLsn);
+                var lastFlushedLsn = Interlocked.Read(ref _lastFlushedLsn);
+                var lastAppliedLsn = Interlocked.Read(ref _lastAppliedLsn);
+                var timestamp = DateTime.Now;
+                buf.WriteInt64(lastReceivedLsn);
+                buf.WriteInt64(lastFlushedLsn);
+                buf.WriteInt64(lastAppliedLsn);
+                buf.WriteInt64(TimestampHandler.ToPostgresTimestamp(timestamp));
                 buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
                 await connector.Flush(async: true, cancellationToken);
+                if (Log.IsEnabled(NpgsqlLogLevel.Trace))
+                {
+                    Log.Trace("Feedback message sent with " +
+                              $"{nameof(LastReceivedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastReceivedLsn))}, " +
+                              $"{nameof(LastFlushedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastFlushedLsn))}, " +
+                              $"{nameof(LastAppliedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastAppliedLsn))} " +
+                              $"at {timestamp}, .", Connector.Id);
+                }
             }
             finally
             {
@@ -690,6 +720,7 @@ namespace Npgsql.Replication
                 if (Connector.State != ConnectorState.Replication)
                     return;
 
+                Log.Trace($"Attempting to send a replication standby status update because half of the {nameof(WalReceiverTimeout)} of {WalReceiverTimeout} has expired...", Connector.Id);
                 await SendFeedback(waitOnSemaphore: true, requestReply: true);
             }
             catch (Exception e)
@@ -705,6 +736,7 @@ namespace Npgsql.Replication
                 if (Connector.State != ConnectorState.Replication)
                     return;
 
+                Log.Trace($"Attempting to send a replication standby status update because the {nameof(WalReceiverStatusInterval)} of {WalReceiverStatusInterval} has expired...", Connector.Id);
                 await SendFeedback();
             }
             catch (Exception e)
@@ -745,6 +777,7 @@ namespace Npgsql.Replication
                 if (wait)
                     command += " WAIT";
 
+                Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
                 await Connector.WriteQuery(command, true, CancellationToken.None);
                 await Connector.Flush(true, CancellationToken.None);
 
@@ -766,6 +799,7 @@ namespace Npgsql.Replication
 
             using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
 
+            Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
             await Connector.WriteQuery(command, true, cancellationToken);
             await Connector.Flush(true, cancellationToken);
 
