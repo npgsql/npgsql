@@ -1536,25 +1536,29 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         NpgsqlBatchCommand TruncateStatementsToOne()
         {
+            NpgsqlBatchCommand statement;
             switch (InternalBatchCommands.Count)
             {
             case 0:
-                var statement = new NpgsqlBatchCommand();
+                statement = new NpgsqlBatchCommand();
                 InternalBatchCommands.Add(statement);
-                return statement;
+                break;
 
             case 1:
                 statement = InternalBatchCommands[0];
                 statement.Reset();
-                return statement;
+                break;
 
             default:
                 statement = InternalBatchCommands[0];
                 statement.Reset();
                 InternalBatchCommands.Clear();
                 InternalBatchCommands.Add(statement);
-                return statement;
+                break;
             }
+
+            statement.CommandText = CommandText;
+            return statement;
         }
 
         /// <summary>

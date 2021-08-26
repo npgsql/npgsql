@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -462,6 +463,12 @@ namespace Npgsql
         SemiColon:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
             batchCommand.FinalCommandText = _rewrittenSql.ToString();
+
+            // Correctly assigning batchCommand.CommandText in presence of parameters would mean that we need a second StringBuilder to
+            // keep the split commands without rewritten parameters. Since the only current purpose is logging, this does not seem worthwhile.
+            if (parameters.Count == 0)
+                batchCommand.CommandText = batchCommand.FinalCommandText;
+
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs];
@@ -496,6 +503,12 @@ namespace Npgsql
         Finish:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
             batchCommand.FinalCommandText = _rewrittenSql.ToString();
+
+            // Correctly assigning batchCommand.CommandText in presence of parameters would mean that we need a second StringBuilder to
+            // keep the split commands without rewritten parameters. Since the only current purpose is logging, this does not seem worthwhile.
+            if (parameters.Count == 0)
+                batchCommand.CommandText = batchCommand.FinalCommandText;
+
             if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
                 batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
 
