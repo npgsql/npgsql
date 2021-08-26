@@ -1584,7 +1584,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             sb.AppendLine("Executing statement(s):");
             foreach (var s in InternalBatchCommands)
             {
-                sb.Append("\t").AppendLine(s.CommandText);
+                sb.Append("\t").AppendLine(s.FinalCommandText);
                 var p = s.Parameters.InternalList;
                 if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
