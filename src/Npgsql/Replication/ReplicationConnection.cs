@@ -516,7 +516,7 @@ namespace Npgsql.Replication
                         await buf.EnsureAsync(24);
                         var startLsn = buf.ReadUInt64();
                         var endLsn = buf.ReadUInt64();
-                        var sendTime = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
+                        var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified).ToLocalTime();
 
                         if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                             Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
@@ -547,7 +547,7 @@ namespace Npgsql.Replication
                         if (Log.IsEnabled(NpgsqlLogLevel.Trace))
                         {
                             var endLsn = new NpgsqlLogSequenceNumber(end);
-                            var timestamp = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
+                            var timestamp = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified).ToLocalTime();
                             Log.Trace($"Received replication primary keepalive message from the server with current end of WAL of {endLsn} and timestamp of {timestamp}...", Connector.Id);
                         }
                         else
@@ -691,7 +691,7 @@ namespace Npgsql.Replication
                 buf.WriteInt64(lastReceivedLsn);
                 buf.WriteInt64(lastFlushedLsn);
                 buf.WriteInt64(lastAppliedLsn);
-                buf.WriteInt64(TimestampHandler.ToPostgresTimestamp(timestamp));
+                buf.WriteInt64(DateTimeUtils.EncodeTimestamp(timestamp));
                 buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
                 await connector.Flush(async: true, cancellationToken);

@@ -1,22 +1,25 @@
 using System;
 using System.Data;
-using Npgsql.Internal;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandling
 {
-    public interface ITypeHandlerResolverFactory
+    public abstract class TypeHandlerResolverFactory
     {
-        ITypeHandlerResolver Create(NpgsqlConnector connector);
+        public abstract TypeHandlerResolver Create(NpgsqlConnector connector);
 
-        string? GetDataTypeNameByClrType(Type type);
-        TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName);
+        public abstract string? GetDataTypeNameByClrType(Type clrType);
+        public virtual string? GetDataTypeNameByValueDependentValue(object value) => null;
+        public abstract TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName);
     }
 
     static class TypeHandlerResolverFactoryExtensions
     {
-        internal static TypeMappingInfo? GetMappingByClrType(this ITypeHandlerResolverFactory factory, Type clrType)
+        internal static TypeMappingInfo? GetMappingByClrType(this TypeHandlerResolverFactory factory, Type clrType)
             => factory.GetDataTypeNameByClrType(clrType) is { } dataTypeName ? factory.GetMappingByDataTypeName(dataTypeName) : null;
+
+        internal static TypeMappingInfo? GetMappingByValueDependentValue(this TypeHandlerResolverFactory factory, object value)
+            => factory.GetDataTypeNameByValueDependentValue(value) is { } dataTypeName ? factory.GetMappingByDataTypeName(dataTypeName) : null;
     }
 }
 

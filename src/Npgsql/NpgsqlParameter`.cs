@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
@@ -68,16 +68,16 @@ namespace Npgsql
 
         internal override void ResolveHandler(ConnectorTypeMapper typeMapper)
         {
-            if (Handler != null)
+            if (Handler is not null)
                 return;
 
             // TODO: Better exceptions in case of cast failure etc.
             if (_npgsqlDbType.HasValue)
                 Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
-            else if (_dataTypeName != null)
+            else if (_dataTypeName is not null)
                 Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
             else
-                Handler = typeMapper.ResolveByClrType(typeof(T));
+                Handler = typeMapper.ResolveByValue(TypedValue);
         }
 
         internal override int ValidateAndGetLength()

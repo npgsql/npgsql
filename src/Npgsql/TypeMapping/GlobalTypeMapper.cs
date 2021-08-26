@@ -15,7 +15,7 @@ namespace Npgsql.TypeMapping
     {
         public static GlobalTypeMapper Instance { get; }
 
-        internal List<ITypeHandlerResolverFactory> ResolverFactories { get; } = new();
+        internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
         internal Dictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        public override void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory)
+        public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
         {
             Lock.EnterWriteLock();
             try
@@ -197,10 +197,23 @@ namespace Npgsql.TypeMapping
         #region NpgsqlDbType/DbType inference for NpgsqlParameter
 
         [RequiresUnreferencedCodeAttribute("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
-        internal bool TryResolveMappingByClrType(Type clrType, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
+        internal bool TryResolveMappingByValue(object value, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
         {
             Lock.EnterReadLock();
             try
+            {
+                foreach (var resolverFactory in ResolverFactories)
+                    if ((typeMapping = resolverFactory.GetMappingByValueDependentValue(value)) is not null)
+                        return true;
+
+                return TryResolveMappingByClrType(value.GetType(), out typeMapping);
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+
+            bool TryResolveMappingByClrType(Type clrType, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
             {
                 foreach (var resolverFactory in ResolverFactories)
                     if ((typeMapping = resolverFactory.GetMappingByClrType(clrType)) is not null)
@@ -256,10 +269,6 @@ namespace Npgsql.TypeMapping
                 }
 
                 throw new NotSupportedException("Can't infer NpgsqlDbType for type " + clrType);
-            }
-            finally
-            {
-                Lock.ExitReadLock();
             }
         }
 

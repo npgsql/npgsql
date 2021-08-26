@@ -10,7 +10,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Json.NET.Internal
 {
-    public class JsonNetTypeHandlerResolver : ITypeHandlerResolver
+    public class JsonNetTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
         readonly JsonbHandler _jsonbHandler;
@@ -38,7 +38,7 @@ namespace Npgsql.Json.NET.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "jsonb" => _jsonbHandler,
@@ -46,7 +46,7 @@ namespace Npgsql.Json.NET.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeName(type, _dataTypeNamesByClrType) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
@@ -54,7 +54,7 @@ namespace Npgsql.Json.NET.Internal
         internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string> clrTypes)
             => clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)

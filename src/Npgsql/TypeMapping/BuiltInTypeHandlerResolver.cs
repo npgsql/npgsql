@@ -21,10 +21,11 @@ using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping
 {
-    class BuiltInTypeHandlerResolver : ITypeHandlerResolver
+    class BuiltInTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlConnector _connector;
         readonly NpgsqlDatabaseInfo _databaseInfo;
@@ -58,11 +59,11 @@ namespace Npgsql.TypeMapping
             { "jsonpath",          new(NpgsqlDbType.JsonPath,  DbType.Object, "jsonpath") },
 
             // Date/time types
-            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime, "timestamp without time zone", typeof(NpgsqlDateTime), typeof(DateTime)) },
-            { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime, "timestamp without time zone", typeof(DateTimeOffset)) },
-            { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, DbType.DateTime, "timestamp with time zone",    typeof(DateTimeOffset)) },
-            { "timestamptz",                 new(NpgsqlDbType.TimestampTz, DbType.DateTime, "timestamp with time zone",    typeof(DateTimeOffset)) },
-            { "date",                        new(NpgsqlDbType.Date,        DbType.Date,     "date",                        typeof(NpgsqlDate)
+            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(NpgsqlDateTime), typeof(DateTime)) },
+            { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTimeOffset)) },
+            { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
+            { "timestamptz",                 new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
+            { "date",                        new(NpgsqlDbType.Date,        DbType.Date,           "date",                        typeof(NpgsqlDate)
 #if NET6_0_OR_GREATER
                 , typeof(DateOnly)
 #endif
@@ -80,6 +81,13 @@ namespace Npgsql.TypeMapping
             { "time with time zone",         new(NpgsqlDbType.TimeTz,      DbType.Object,   "time with time zone") },
             { "timetz",                      new(NpgsqlDbType.TimeTz,      DbType.Object,   "time with time zone") },
             { "interval",                    new(NpgsqlDbType.Interval,    DbType.Object,   "interval", typeof(TimeSpan), typeof(NpgsqlTimeSpan)) },
+
+            { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   DbType.Object, "timestamp without time zone[]") },
+            { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, DbType.Object, "timestamp with time zone[]") },
+            { "tsrange",                       new(NpgsqlDbType.Range | NpgsqlDbType.Timestamp,   DbType.Object, "tsrange") },
+            { "tstzrange",                     new(NpgsqlDbType.Range | NpgsqlDbType.TimestampTz, DbType.Object, "tstzrange") },
+            { "tsmultirange",                  new(NpgsqlDbType.Multirange | NpgsqlDbType.Timestamp,   DbType.Object, "tsmultirange") },
+            { "tstzmultirange",                new(NpgsqlDbType.Multirange | NpgsqlDbType.TimestampTz, DbType.Object, "tstzmultirange") },
 
             // Network types
             { "cidr",      new(NpgsqlDbType.Cidr,     DbType.Object, "cidr") },
@@ -230,6 +238,14 @@ namespace Npgsql.TypeMapping
         // Special types
         UnknownTypeHandler? _unknownHandler;
 
+        // Complex type handlers over timestamp/timestamptz (because DateTime is value-dependent)
+        NpgsqlTypeHandler? _timestampArrayHandler;
+        NpgsqlTypeHandler? _timestampTzArrayHandler;
+        NpgsqlTypeHandler? _timestampRangeHandler;
+        NpgsqlTypeHandler? _timestampTzRangeHandler;
+        NpgsqlTypeHandler? _timestampMultirangeHandler;
+        NpgsqlTypeHandler? _timestampTzMultirangeHandler;
+
         #endregion Cached handlers
 
         internal BuiltInTypeHandlerResolver(NpgsqlConnector connector)
@@ -252,7 +268,7 @@ namespace Npgsql.TypeMapping
             _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
         }
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 // Numeric types
@@ -338,90 +354,179 @@ namespace Npgsql.TypeMapping
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
-        static readonly Dictionary<Type, string> ClrTypeToDataTypeNameTable = new()
+        static readonly Dictionary<Type, string> ClrTypeToDataTypeNameTable;
+
+        static BuiltInTypeHandlerResolver()
         {
-            // Numeric types
-            { typeof(byte),       "smallint" },
-            { typeof(short),      "smallint" },
-            { typeof(int),        "integer" },
-            { typeof(long),       "bigint" },
-            { typeof(float),      "real" },
-            { typeof(double),     "double precision" },
-            { typeof(decimal),    "decimal" },
-            { typeof(BigInteger), "decimal" },
+            ClrTypeToDataTypeNameTable = new()
+            {
+                // Numeric types
+                { typeof(byte),       "smallint" },
+                { typeof(short),      "smallint" },
+                { typeof(int),        "integer" },
+                { typeof(long),       "bigint" },
+                { typeof(float),      "real" },
+                { typeof(double),     "double precision" },
+                { typeof(decimal),    "decimal" },
+                { typeof(BigInteger), "decimal" },
 
-            // Text types
-            { typeof(string),             "text" },
-            { typeof(char[]),             "text" },
-            { typeof(char),               "text" },
-            { typeof(ArraySegment<char>), "text" },
-            { typeof(JsonDocument),       "jsonb" },
+                // Text types
+                { typeof(string),             "text" },
+                { typeof(char[]),             "text" },
+                { typeof(char),               "text" },
+                { typeof(ArraySegment<char>), "text" },
+                { typeof(JsonDocument),       "jsonb" },
 
-            // Date/time types
-            { typeof(DateTime),       "timestamp without time zone" },
-            { typeof(NpgsqlDateTime), "timestamp without time zone" },
-            { typeof(DateTimeOffset), "timestamp with time zone" },
-            { typeof(NpgsqlDate),     "date" },
+                // Date/time types
+                // The DateTime entry is for LegacyTimestampBehavior mode only. In regular mode we resolve through
+                // ResolveValueDependentValue below
+                { typeof(DateTime),       "timestamp without time zone" },
+                { typeof(NpgsqlDateTime), "timestamp without time zone" },
+                { typeof(DateTimeOffset), "timestamp with time zone" },
+                { typeof(NpgsqlDate),     "date" },
 #if NET6_0_OR_GREATER
-            { typeof(DateOnly),       "date" },
-            { typeof(TimeOnly),       "time without time zone" },
+                { typeof(DateOnly),       "date" },
+                { typeof(TimeOnly),       "time without time zone" },
 #endif
-            { typeof(TimeSpan),       "interval" },
-            { typeof(NpgsqlTimeSpan), "interval" },
+                { typeof(TimeSpan),       "interval" },
+                { typeof(NpgsqlTimeSpan), "interval" },
 
-            // Network types
-            { typeof(IPAddress),                       "inet" },
-            { ReadonlyIpType,                         "inet" },
-            { typeof((IPAddress Address, int Subnet)), "inet" },
+                // Network types
+                { typeof(IPAddress),                       "inet" },
+                { ReadonlyIpType,                          "inet" },
+                { typeof((IPAddress Address, int Subnet)), "inet" },
 #pragma warning disable 618
-            { typeof(NpgsqlInet),                      "inet" },
+                { typeof(NpgsqlInet),                      "inet" },
 #pragma warning restore 618
-            { typeof(PhysicalAddress),                 "macaddr" },
+                { typeof(PhysicalAddress),                 "macaddr" },
 
-            // Full-text types
-            { typeof(NpgsqlTsQuery), "tsquery" },
-            { typeof(NpgsqlTsVector), "tsvector" },
+                // Full-text types
+                { typeof(NpgsqlTsQuery),  "tsquery" },
+                { typeof(NpgsqlTsVector), "tsvector" },
 
-            // Geometry types
-            { typeof(NpgsqlBox),     "box" },
-            { typeof(NpgsqlCircle),  "circle" },
-            { typeof(NpgsqlLine),    "line" },
-            { typeof(NpgsqlLSeg),    "lseg" },
-            { typeof(NpgsqlPath),    "path" },
-            { typeof(NpgsqlPoint),   "point" },
-            { typeof(NpgsqlPolygon), "polygon" },
+                // Geometry types
+                { typeof(NpgsqlBox),     "box" },
+                { typeof(NpgsqlCircle),  "circle" },
+                { typeof(NpgsqlLine),    "line" },
+                { typeof(NpgsqlLSeg),    "lseg" },
+                { typeof(NpgsqlPath),    "path" },
+                { typeof(NpgsqlPoint),   "point" },
+                { typeof(NpgsqlPolygon), "polygon" },
 
-            // Misc types
-            { typeof(bool), "boolean" },
-            { typeof(byte[]), "bytea" },
-            { typeof(ArraySegment<byte>), "bytea" },
+                // Misc types
+                { typeof(bool),                 "boolean" },
+                { typeof(byte[]),               "bytea" },
+                { typeof(ArraySegment<byte>),   "bytea" },
 #if !NETSTANDARD2_0
-            { typeof(ReadOnlyMemory<byte>), "bytea" },
-            { typeof(Memory<byte>), "bytea" },
+                { typeof(ReadOnlyMemory<byte>), "bytea" },
+                { typeof(Memory<byte>),         "bytea" },
 #endif
-            { typeof(Guid), "uuid" },
-            { typeof(BitArray), "bit varying" },
-            { typeof(BitVector32), "bit varying" },
-            { typeof(Dictionary<string, string>), "hstore" },
+                { typeof(Guid),                                "uuid" },
+                { typeof(BitArray),                            "bit varying" },
+                { typeof(BitVector32),                         "bit varying" },
+                { typeof(Dictionary<string, string>),          "hstore" },
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
-            { typeof(ImmutableDictionary<string, string>), "hstore" },
+                { typeof(ImmutableDictionary<string, string>), "hstore" },
 #endif
 
-            // Internal types
-            { typeof(NpgsqlLogSequenceNumber), "pg_lsn" },
-            { typeof(NpgsqlTid), "tid" },
-            { typeof(DBNull), "unknown" }
-        };
+                // Internal types
+                { typeof(NpgsqlLogSequenceNumber), "pg_lsn" },
+                { typeof(NpgsqlTid),               "tid" },
+                { typeof(DBNull),                  "unknown" }
+            };
+
+            if (LegacyTimestampBehavior)
+                ClrTypeToDataTypeNameTable[typeof(DateTime)] = "timestamp without time zone";
+        }
+
+        public override NpgsqlTypeHandler? ResolveValueDependentValue(object value)
+        {
+            // In LegacyTimestampBehavior, DateTime isn't value-dependent, and handled above in ClrTypeToDataTypeNameTable like other types
+            if (LegacyTimestampBehavior)
+                return null;
+
+            return value switch
+            {
+                DateTime dateTime => dateTime.Kind == DateTimeKind.Utc ? _timestampTzHandler : _timestampHandler,
+
+                // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
+                // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
+                IList<DateTime> array => ArrayHandler(array.Count == 0 ? DateTimeKind.Unspecified : array[0].Kind),
+
+                NpgsqlRange<DateTime> range => RangeHandler(!range.LowerBoundInfinite ? range.LowerBound.Kind :
+                    !range.UpperBoundInfinite ? range.UpperBound.Kind : DateTimeKind.Unspecified),
+
+                NpgsqlRange<DateTime>[] multirange => MultirangeHandler(GetMultirangeKind(multirange)),
+                _ => null
+            };
+
+            NpgsqlTypeHandler ArrayHandler(DateTimeKind kind)
+                => kind == DateTimeKind.Utc
+                    ? _timestampTzArrayHandler ??= _timestampTzHandler.CreateArrayHandler(
+                        (PostgresArrayType)PgType("timestamp with time zone[]"), _connector.Settings.ArrayNullabilityMode)
+                    : _timestampArrayHandler ??= _timestampHandler.CreateArrayHandler(
+                        (PostgresArrayType)PgType("timestamp without time zone[]"), _connector.Settings.ArrayNullabilityMode);
+
+            NpgsqlTypeHandler RangeHandler(DateTimeKind kind)
+                => kind == DateTimeKind.Utc
+                    ? _timestampTzRangeHandler ??= _timestampTzHandler.CreateRangeHandler((PostgresRangeType)PgType("tstzrange"))
+                    : _timestampRangeHandler ??= _timestampHandler.CreateRangeHandler((PostgresRangeType)PgType("tsrange"));
+
+            NpgsqlTypeHandler MultirangeHandler(DateTimeKind kind)
+                => kind == DateTimeKind.Utc
+                    ? _timestampTzMultirangeHandler ??= _timestampTzHandler.CreateMultirangeHandler((PostgresMultirangeType)PgType("tstzmultirange"))
+                    : _timestampMultirangeHandler ??= _timestampHandler.CreateMultirangeHandler((PostgresMultirangeType)PgType("tsmultirange"));
+        }
+
+        static DateTimeKind GetRangeKind(NpgsqlRange<DateTime> range)
+            => !range.LowerBoundInfinite
+                ? range.LowerBound.Kind
+                : !range.UpperBoundInfinite
+                    ? range.UpperBound.Kind
+                    : DateTimeKind.Unspecified;
+
+        static DateTimeKind GetMultirangeKind(NpgsqlRange<DateTime>[] multirange)
+        {
+            for (var i = 0; i < multirange.Length; i++)
+                if (!multirange[i].IsEmpty)
+                    return GetRangeKind(multirange[i]);
+
+            return DateTimeKind.Unspecified;
+        }
+
+        internal static string? ValueDependentValueToDataTypeName(object value)
+        {
+            // In LegacyTimestampBehavior, DateTime isn't value-dependent, and handled above in ClrTypeToDataTypeNameTable like other types
+            if (LegacyTimestampBehavior)
+                return null;
+
+            return value switch
+            {
+                DateTime dateTime => dateTime.Kind == DateTimeKind.Utc ? "timestamp with time zone" : "timestamp without time zone",
+
+                // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
+                // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
+                IList<DateTime> array => array.Count == 0
+                    ? "timestamp without time zone[]"
+                    : array[0].Kind == DateTimeKind.Utc ? "timestamp with time zone[]" : "timestamp without time zone[]",
+
+                NpgsqlRange<DateTime> range => GetRangeKind(range) == DateTimeKind.Utc ? "tstzrange" : "tsrange",
+
+                NpgsqlRange<DateTime>[] multirange => GetMultirangeKind(multirange) == DateTimeKind.Utc ? "tstzmultirange" : "tsmultirange",
+
+                _ => null
+            };
+        }
 
         internal static string? ClrTypeToDataTypeName(Type type)
             => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)

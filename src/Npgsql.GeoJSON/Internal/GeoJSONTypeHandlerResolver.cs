@@ -13,7 +13,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.GeoJSON.Internal
 {
-    public class GeoJSONTypeHandlerResolver : ITypeHandlerResolver
+    public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
         readonly GeoJsonHandler _geometryHandler, _geographyHandler;
@@ -51,7 +51,7 @@ namespace Npgsql.GeoJSON.Internal
             _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
         }
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "geometry" => _geometryHandler,
@@ -59,7 +59,7 @@ namespace Npgsql.GeoJSON.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
@@ -71,7 +71,7 @@ namespace Npgsql.GeoJSON.Internal
                     ? "geography"
                     : "geometry";
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)

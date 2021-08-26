@@ -7,7 +7,7 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.Json.NET.Internal
 {
-    public class JsonNetTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
         readonly Type[] _jsonbClrTypes;
         readonly Type[] _jsonClrTypes;
@@ -34,13 +34,13 @@ namespace Npgsql.Json.NET.Internal
                     _byType[type] = "json";
         }
 
-        public ITypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new JsonNetTypeHandlerResolver(connector, _byType, _settings);
 
-        public string? GetDataTypeNameByClrType(Type type)
+        public override string? GetDataTypeNameByClrType(Type type)
             => JsonNetTypeHandlerResolver.ClrTypeToDataTypeName(type, _byType);
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => JsonNetTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
 
     }

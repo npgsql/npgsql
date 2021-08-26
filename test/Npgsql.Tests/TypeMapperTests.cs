@@ -125,31 +125,31 @@ namespace Npgsql.Tests
 
         #region Support
 
-        class MyInt32TypeHandlerResolverFactory : ITypeHandlerResolverFactory
+        class MyInt32TypeHandlerResolverFactory : TypeHandlerResolverFactory
         {
             internal int Reads, Writes;
 
-            public ITypeHandlerResolver Create(NpgsqlConnector connector)
+            public override TypeHandlerResolver Create(NpgsqlConnector connector)
                 => new MyInt32TypeHandlerResolver(connector, this);
 
-            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
-            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
+            public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
+            public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
         }
 
-        class MyInt32TypeHandlerResolver : ITypeHandlerResolver
+        class MyInt32TypeHandlerResolver : TypeHandlerResolver
         {
             readonly NpgsqlTypeHandler _handler;
 
             public MyInt32TypeHandlerResolver(NpgsqlConnector connector, MyInt32TypeHandlerResolverFactory factory)
                 => _handler = new MyInt32Handler(connector.DatabaseInfo.GetPostgresTypeByName("integer"), factory);
 
-            public NpgsqlTypeHandler? ResolveByClrType(Type type)
+            public override NpgsqlTypeHandler? ResolveByClrType(Type type)
                 => type == typeof(int) ? _handler : null;
-            public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+            public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
                 => typeName == "integer" ? _handler : null;
 
-            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
 
         }
 
@@ -174,16 +174,16 @@ namespace Npgsql.Tests
             }
         }
 
-        class CitextToStringTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+        class CitextToStringTypeHandlerResolverFactory : TypeHandlerResolverFactory
         {
-            public ITypeHandlerResolver Create(NpgsqlConnector connector)
+            public override TypeHandlerResolver Create(NpgsqlConnector connector)
                 => new CitextToStringTypeHandlerResolver(connector);
 
-            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
-            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
+            public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
+            public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
 
-            class CitextToStringTypeHandlerResolver : ITypeHandlerResolver
+            class CitextToStringTypeHandlerResolver : TypeHandlerResolver
             {
                 readonly NpgsqlConnector _connector;
                 readonly PostgresType _pgCitextType;
@@ -194,11 +194,11 @@ namespace Npgsql.Tests
                     _pgCitextType = connector.DatabaseInfo.GetPostgresTypeByName("citext");
                 }
 
-                public NpgsqlTypeHandler? ResolveByClrType(Type type)
+                public override NpgsqlTypeHandler? ResolveByClrType(Type type)
                     => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
-                public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
+                public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
 
-                public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+                public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
             }
         }
 

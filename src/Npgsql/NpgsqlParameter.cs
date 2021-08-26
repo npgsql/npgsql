@@ -11,6 +11,7 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
@@ -313,7 +314,7 @@ namespace Npgsql
 
                 if (_value != null) // Infer from value but don't cache
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
                         ? mapping.DbType
                         : DbType.Object;
                 }
@@ -347,7 +348,7 @@ namespace Npgsql
 
                 if (_value != null) // Infer from value
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
                         ? mapping.NpgsqlDbType ?? NpgsqlDbType.Unknown
                         : throw new NotSupportedException("Can't infer NpgsqlDbType for type " + _value.GetType());
                 }
@@ -382,7 +383,7 @@ namespace Npgsql
 
                 if (_value != null) // Infer from value
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
                         ? mapping.DataTypeName
                         : null;
                 }
@@ -497,15 +498,15 @@ namespace Npgsql
 
         internal virtual void ResolveHandler(ConnectorTypeMapper typeMapper)
         {
-            if (Handler != null)
+            if (Handler is not null)
                 return;
 
             if (_npgsqlDbType.HasValue)
                 Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
-            else if (_dataTypeName != null)
+            else if (_dataTypeName is not null)
                 Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
-            else if (_value != null)
-                Handler = typeMapper.ResolveByClrType(_value.GetType());
+            else if (_value is not null)
+                Handler = typeMapper.ResolveByValue(_value);
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }

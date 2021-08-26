@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Data;
-using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
+using static Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateTimeUtils;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
@@ -36,148 +35,52 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         #region Read
 
-        private protected const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
-        private protected const string OutOfRangeExceptionMessage = "Out of the range of DateTime (year must be between 1 and 9999)";
-
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-
-            var postgresTimestamp = buf.ReadInt64();
-            if (postgresTimestamp == long.MaxValue)
-                return ConvertInfinityDateTime
-                    ? DateTime.MaxValue
-                    : throw new InvalidCastException(InfinityExceptionMessage);
-            if (postgresTimestamp == long.MinValue)
-                return ConvertInfinityDateTime
-                    ? DateTime.MinValue
-                    : throw new InvalidCastException(InfinityExceptionMessage);
-
-            try
-            {
-                return FromPostgresTimestamp(postgresTimestamp);
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
-            }
-        }
+            => ReadDateTime(buf, ConvertInfinityDateTime, DateTimeKind.Unspecified);
 
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadTimeStamp(buf, len, fieldDescription);
-
-        /// <summary>
-        /// Reads a timestamp from the buffer as an <see cref="NpgsqlDateTime"/>.
-        /// </summary>
-        protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var value = buf.ReadInt64();
-            if (value == long.MaxValue)
-                return NpgsqlDateTime.Infinity;
-            if (value == long.MinValue)
-                return NpgsqlDateTime.NegativeInfinity;
-            if (value >= 0)
-            {
-                var date = (int)(value / 86400000000L);
-                var time = value % 86400000000L;
-
-                date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= 10; // To 100ns
-
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
-            }
-            else
-            {
-                value = -value;
-                var date = (int)(value / 86400000000L);
-                var time = value % 86400000000L;
-                if (time != 0)
-                {
-                    ++date;
-                    time = 86400000000L - time;
-                }
-
-                date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= 10; // To 100ns
-
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
-            }
-        }
+            => ReadNpgsqlDateTime(buf, len, fieldDescription);
 
         #endregion Read
 
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 8;
-
-        /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter) => 8;
-
-        /// <inheritdoc />
-        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
         {
-            if (value.IsInfinity)
+            if (!LegacyTimestampBehavior && value.Kind == DateTimeKind.Utc)
             {
-                buf.WriteInt64(long.MaxValue);
-                return;
+                throw new InvalidCastException(
+                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', considering using 'timestamp with time zone'. " +
+                    "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
             }
 
-            if (value.IsNegativeInfinity)
+            return 8;
+        }
+
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
+        {
+            if (!LegacyTimestampBehavior && value.Kind == DateTimeKind.Utc)
             {
-                buf.WriteInt64(long.MinValue);
-                return;
+                throw new InvalidCastException(
+                    "Cannot write NpgsqlDateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', considering using 'timestamp with time zone'. " +
+                    "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
             }
 
-            var uSecsTime = value.Time.Ticks / 10;
-
-            if (value >= new NpgsqlDateTime(2000, 1, 1, 0, 0, 0))
-            {
-                var uSecsDate = (value.Date.DaysSinceEra - 730119) * 86400000000L;
-                buf.WriteInt64(uSecsDate + uSecsTime);
-            }
-            else
-            {
-                var uSecsDate = (730119 - value.Date.DaysSinceEra) * 86400000000L;
-                buf.WriteInt64(-(uSecsDate - uSecsTime));
-            }
+            return 8;
         }
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            if (ConvertInfinityDateTime)
-            {
-                if (value == DateTime.MaxValue)
-                {
-                    buf.WriteInt64(long.MaxValue);
-                    return;
-                }
+            => WriteTimestamp(value, buf, ConvertInfinityDateTime);
 
-                if (value == DateTime.MinValue)
-                {
-                    buf.WriteInt64(long.MinValue);
-                    return;
-                }
-            }
-
-            var postgresTimestamp = ToPostgresTimestamp(value);
-            buf.WriteInt64(postgresTimestamp);
-        }
+        /// <inheritdoc />
+        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => WriteTimestamp(value, buf, ConvertInfinityDateTime);
 
         #endregion Write
-
-        const long PostgresTimestampOffsetTicks = 630822816000000000L;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static long ToPostgresTimestamp(DateTime value)
-            // Rounding here would cause problems because we would round up DateTime.MaxValue
-            // which would make it impossible to retrieve it back from the database, so we just drop the additional precision
-            => (value.Ticks - PostgresTimestampOffsetTicks) / 10;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static DateTime FromPostgresTimestamp(long value)
-            => new(value * 10 + PostgresTimestampOffsetTicks);
     }
 }

@@ -8,8 +8,7 @@ using BclTimeTzHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimeTzHan
 
 namespace Npgsql.NodaTime.Internal
 {
-    sealed partial class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>,
-                                  INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+    sealed partial class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         readonly BclTimeTzHandler _bclHandler;
 
@@ -38,24 +37,6 @@ namespace Npgsql.NodaTime.Internal
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<DateTimeOffset>.Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => _bclHandler.Write(value, buf, parameter);
-
-        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => _bclHandler.Read<DateTime>(buf, len, fieldDescription);
-
-        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
-
-        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => _bclHandler.Write(value, buf, parameter);
-
-        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);
-
-        int INpgsqlSimpleTypeHandler<TimeSpan>.ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
-
-        void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
     }
 }

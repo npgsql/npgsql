@@ -2,8 +2,6 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
@@ -17,7 +15,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+    public partial class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
@@ -37,55 +35,18 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
         }
 
-        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => Read(buf, len, fieldDescription).LocalDateTime;
-
-        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
-
         #endregion Read
 
         #region Write
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 12;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)                => 12;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)                => 12;
 
         /// <inheritdoc />
         public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TimeOfDay.Ticks / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));
-        }
-
-        /// <inheritdoc />
-        public void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            buf.WriteInt64(value.TimeOfDay.Ticks / 10);
-
-            switch (value.Kind)
-            {
-            case DateTimeKind.Utc:
-                buf.WriteInt32(0);
-                break;
-            case DateTimeKind.Unspecified:
-            // Treat as local...
-            case DateTimeKind.Local:
-                buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-            }
-        }
-
-        /// <inheritdoc />
-        public void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            buf.WriteInt64(value.Ticks / 10);
-            buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
         }
 
         #endregion Write

@@ -6,6 +6,7 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
@@ -32,7 +33,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        volatile ITypeHandlerResolver[] _resolvers;
+        volatile TypeHandlerResolver[] _resolvers;
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
         readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -55,7 +56,7 @@ namespace Npgsql.TypeMapping
         {
             Connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-            _resolvers = Array.Empty<ITypeHandlerResolver>();
+            _resolvers = Array.Empty<TypeHandlerResolver>();
         }
 
         #endregion Constructors
@@ -219,6 +220,38 @@ namespace Npgsql.TypeMapping
             }
         }
 
+        internal NpgsqlTypeHandler ResolveByValue<T>(T value)
+        {
+            if (value is null)
+                return ResolveByClrType(typeof(T));
+
+            // TODO: do better
+            return ResolveByValue((object)value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal NpgsqlTypeHandler ResolveByValue(object value)
+        {
+            // We resolve as follows:
+            // 1. Cached by-type lookup (fast path). This will work for almost all types after the very first resolution.
+            // 2. Value-dependent type lookup (e.g. DateTime by Kind) via the resolvers. This includes complex types (e.g. array/range
+            //    over DateTime), and the results cannot be cached.
+            // 3. Uncached by-type lookup (for the very first resolution of a given type)
+
+            var type = value.GetType();
+            if (_handlersByClrType.TryGetValue(type, out var handler))
+                return handler;
+
+            foreach (var resolver in _resolvers)
+                if ((handler = resolver.ResolveValueDependentValue(value)) is not null)
+                    return handler;
+
+            // ResolveByClrType either throws, or resolves a handler and caches it in _handlersByClrType (where it would be found above the
+            // next time we resolve this type)
+            return ResolveByClrType(value.GetType());
+        }
+
+        // TODO: This is needed as a separate method only because of binary COPY, see #3957
         internal NpgsqlTypeHandler ResolveByClrType(Type type)
         {
             if (_handlersByClrType.TryGetValue(type, out var handler))
@@ -480,12 +513,12 @@ namespace Npgsql.TypeMapping
             _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, DbType.Object, pgType.Name, clrType);
         }
 
-        public override void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory)
+        public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
         {
             lock (this)
             {
                 var oldResolvers = _resolvers;
-                var newResolvers = new ITypeHandlerResolver[oldResolvers.Length + 1];
+                var newResolvers = new TypeHandlerResolver[oldResolvers.Length + 1];
                 Array.Copy(oldResolvers, 0, newResolvers, 1, oldResolvers.Length);
                 newResolvers[0] = resolverFactory.Create(Connector);
                 _resolvers = newResolvers;
@@ -513,9 +546,10 @@ namespace Npgsql.TypeMapping
                     _handlersByClrType.Clear();
                     _handlersByDataTypeName.Clear();
 
-                    _resolvers = new ITypeHandlerResolver[globalMapper.ResolverFactories.Count];
-                    for (var i = 0; i < _resolvers.Length; i++)
-                        _resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                    var newResolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
+                    for (var i = 0; i < newResolvers.Length; i++)
+                        newResolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                    _resolvers = newResolvers;
 
                     _userTypeMappings.Clear();
 

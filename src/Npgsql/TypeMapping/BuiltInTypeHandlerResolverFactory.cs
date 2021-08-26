@@ -4,15 +4,18 @@ using Npgsql.Internal.TypeHandling;
 
 namespace Npgsql.TypeMapping
 {
-    class BuiltInTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    class BuiltInTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
-        public ITypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new BuiltInTypeHandlerResolver(connector);
 
-        public string? GetDataTypeNameByClrType(Type type)
-            => BuiltInTypeHandlerResolver.ClrTypeToDataTypeName(type);
+        public override string? GetDataTypeNameByClrType(Type clrType)
+            => BuiltInTypeHandlerResolver.ClrTypeToDataTypeName(clrType);
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override string? GetDataTypeNameByValueDependentValue(object value)
+            => BuiltInTypeHandlerResolver.ValueDependentValueToDataTypeName(value);
+
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => BuiltInTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }
