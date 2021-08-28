@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -204,7 +205,7 @@ namespace Npgsql.Internal.TypeHandlers
         #region Write
 
         /// <inheritdoc />
-        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override unsafe int ValidateAndGetLength(string value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
@@ -276,7 +277,7 @@ namespace Npgsql.Internal.TypeHandlers
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache!.GetLast(), async, cancellationToken);
+            return buf.WriteString(str, charLen, lengthCache.GetLast(), async, cancellationToken);
         }
 
         /// <inheritdoc />

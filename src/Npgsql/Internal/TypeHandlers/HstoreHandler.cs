@@ -85,7 +85,7 @@ namespace Npgsql.Internal.TypeHandlers
                     totalLen += _textHandler.ValidateAndGetLength(kv.Value!, ref lengthCache, null);
             }
 
-            return lengthCache!.Lengths[pos] = totalLen;
+            return lengthCache.Lengths[pos] = totalLen;
         }
 
         /// <inheritdoc />

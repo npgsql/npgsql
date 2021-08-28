@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,6 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
 
         public abstract Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default);
 
-        public abstract int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache);
+        public abstract int ValidateAndGetLength(TComposite composite, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache);
     }
 }

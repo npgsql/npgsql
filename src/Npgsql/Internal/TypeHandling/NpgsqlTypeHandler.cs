@@ -133,7 +133,7 @@ namespace Npgsql.Internal.TypeHandling
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected internal int ValidateAndGetLength<TAny>(
-            [DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             Debug.Assert(value is not DBNull);
 
@@ -146,7 +146,7 @@ namespace Npgsql.Internal.TypeHandling
         }
 
         protected internal virtual int ValidateAndGetLengthCustom<TAny>(
-            [DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var parameterName = parameter is null
                 ? null
@@ -166,7 +166,7 @@ namespace Npgsql.Internal.TypeHandling
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public async Task WriteWithLength<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public async Task WriteWithLength<TAny>(TAny? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // TODO: Possibly do a sync path when we don't do I/O (e.g. simple type handler, no flush)
             if (buf.WriteSpaceLeft < 4)
