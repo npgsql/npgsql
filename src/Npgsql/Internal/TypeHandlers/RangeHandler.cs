@@ -96,7 +96,7 @@ namespace Npgsql.Internal.TypeHandlers
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlRange<TElement> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateAndGetLength(NpgsqlRange<TElement> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
         private protected int ValidateAndGetLength<TAny>(NpgsqlRange<TAny> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

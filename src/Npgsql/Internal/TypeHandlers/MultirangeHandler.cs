@@ -89,7 +89,7 @@ namespace Npgsql.Internal.TypeHandlers
             for (var i = 0; i < value.Length; i++)
                 sum += _rangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
 
-            return lengthCache!.Set(sum);
+            return lengthCache.Set(sum);
         }
 
         public int ValidateAndGetLength(List<NpgsqlRange<TElement>> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -102,7 +102,7 @@ namespace Npgsql.Internal.TypeHandlers
             for (var i = 0; i < value.Count; i++)
                 sum += _rangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
 
-            return lengthCache!.Set(sum);
+            return lengthCache.Set(sum);
         }
 
         public override async Task Write(
