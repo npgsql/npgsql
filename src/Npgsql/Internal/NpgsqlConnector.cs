@@ -1909,17 +1909,16 @@ namespace Npgsql.Internal
             {
                 if (State != ConnectorState.Broken)
                 {
-                    if (reason is NpgsqlException ex)
+                    if (reason is NpgsqlException { IsTransient: true })
                     {
                         // There was an IOException while reading/writing
-                        if (ex.InnerException is IOException)
+                        if (reason is not PostgresException && reason.InnerException is not PostgresException)
                         {
                             ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                                 Settings.HostRecheckSecondsTranslated);
                         }
 
-                        if (ex.IsTransient)
-                            _connectorSource.Clear();
+                        _connectorSource.Clear();
                     }
 
                     Log.Error("Breaking connector", reason, Id);
