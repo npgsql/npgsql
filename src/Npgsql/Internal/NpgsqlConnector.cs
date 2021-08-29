@@ -326,6 +326,7 @@ namespace Npgsql.Internal
 
         NpgsqlConnector(ConnectorSource connectorSource)
         {
+            Debug.Assert(connectorSource.OwnsConnectors);
             _connectorSource = connectorSource;
 
             State = ConnectorState.Closed;
@@ -1908,11 +1909,17 @@ namespace Npgsql.Internal
             {
                 if (State != ConnectorState.Broken)
                 {
-                    // There was an IOException while reading/writing
-                    if (reason is NpgsqlException && reason.InnerException is IOException)
+                    if (reason is NpgsqlException ex)
                     {
-                        ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                            Settings.HostRecheckSecondsTranslated);
+                        // There was an IOException while reading/writing
+                        if (ex.InnerException is IOException)
+                        {
+                            ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
+                                Settings.HostRecheckSecondsTranslated);
+                        }
+
+                        if (ex.IsTransient)
+                            _connectorSource.Clear();
                     }
 
                     Log.Error("Breaking connector", reason, Id);

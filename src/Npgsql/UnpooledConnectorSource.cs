@@ -18,6 +18,8 @@ namespace Npgsql
 
         internal override (int Total, int Idle, int Busy) Statistics => (_numConnectors, 0, _numConnectors);
 
+        internal sealed override bool OwnsConnectors => true;
+
         internal override async ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
