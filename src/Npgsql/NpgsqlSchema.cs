@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -537,10 +538,11 @@ FROM pg_constraint c
 
             // TODO: Support type name restriction
 
-            foreach (var baseType in connector.DatabaseInfo.BaseTypes)
+            foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
+                .Concat(connector.DatabaseInfo.EnumTypes)
+                .Concat(connector.DatabaseInfo.CompositeTypes))
             {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(baseType.Name, out var mapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(baseType.FullName, out mapping))
+                if (!connector.TypeMapper.TryGetMapping(baseType, out var mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -556,8 +558,7 @@ FROM pg_constraint c
 
             foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
             {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(arrayType.Element.FullName, out elementMapping))
+                if (!connector.TypeMapper.TryGetMapping(arrayType.Element, out var elementMapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -577,59 +578,48 @@ FROM pg_constraint c
 
             foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
             {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
+                if (!connector.TypeMapper.TryGetMapping(rangeType.Subtype, out var subtypeMapping))
                     continue;
 
                 var row = table.Rows.Add();
 
                 PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
-                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
                 PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
 
                 row["TypeName"] = rangeType.DisplayName;
                 row["OID"] = rangeType.OID;
                 row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
-                if (elementMapping.ClrTypes.Length > 0)
-                    row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(elementMapping.ClrTypes[0]).FullName;
-                if (elementMapping.NpgsqlDbType.HasValue)
-                    row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+                if (subtypeMapping.ClrTypes.Length > 0)
+                    row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
+                if (subtypeMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
             }
 
-            foreach (var enumType in connector.DatabaseInfo.EnumTypes)
+            foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
             {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(enumType.Name, out var mapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(enumType.FullName, out mapping))
+                var subtypeType = multirangeType.Subrange.Subtype;
+                if (!connector.TypeMapper.TryGetMapping(subtypeType, out var subtypeMapping))
                     continue;
 
                 var row = table.Rows.Add();
 
-                PopulateDefaultDataTypeInfo(row, enumType);
-                PopulateHardcodedDataTypeInfo(row, enumType);
+                PopulateDefaultDataTypeInfo(row, subtypeType);
+                // Populate hardcoded values based on the subtype type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, subtypeType);
 
-                if (mapping.ClrTypes.Length > 0)
-                    row["DataType"] = mapping.ClrTypes[0].FullName;
-            }
-
-            foreach (var compositeType in connector.DatabaseInfo.CompositeTypes)
-            {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(compositeType.Name, out var mapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(compositeType.FullName, out mapping))
-                    continue;
-
-                var row = table.Rows.Add();
-
-                PopulateDefaultDataTypeInfo(row, compositeType);
-                PopulateHardcodedDataTypeInfo(row, compositeType);
-
-                if (mapping.ClrTypes.Length > 0)
-                    row["DataType"] = mapping.ClrTypes[0].FullName;
+                row["TypeName"] = multirangeType.DisplayName;
+                row["OID"] = multirangeType.OID;
+                row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
+                if (subtypeMapping.ClrTypes.Length > 0)
+                    row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
+                if (subtypeMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
             }
 
             foreach (var domainType in connector.DatabaseInfo.DomainTypes)
             {
-                if (!connector.TypeMapper.MappingsByName.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
-                    !connector.TypeMapper.MappingsByName.TryGetValue(domainType.BaseType.FullName, out baseMapping))
+                if (!connector.TypeMapper.TryGetMapping(domainType, out var baseMapping))
                     continue;
 
                 var row = table.Rows.Add();

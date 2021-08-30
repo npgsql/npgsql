@@ -35,8 +35,8 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
+            : base(arrayPostgresType)
         {
-            PostgresType = arrayPostgresType;
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
             ArrayNullabilityMode = arrayNullabilityMode;
@@ -46,15 +46,15 @@ namespace Npgsql.Internal.TypeHandlers
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+        public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => throw new NotSupportedException();
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => throw new NotSupportedException();
 
         /// <inheritdoc />
-        public override IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
+        public override NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
             => throw new NotSupportedException();
 
         #region Read

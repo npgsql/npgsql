@@ -22,6 +22,8 @@ namespace Npgsql.Internal.TypeHandling
     /// </typeparam>
     public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTypeHandler<TDefault>
     {
+        protected NpgsqlTypeHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         /// <summary>
@@ -62,15 +64,15 @@ namespace Npgsql.Internal.TypeHandling
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+        public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => new ArrayHandler<TDefault>(pgArrayType, this, arrayNullabilityMode);
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => new RangeHandler<TDefault>(pgRangeType, this);
 
         /// <inheritdoc />
-        public override IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
+        public override NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
             => new MultirangeHandler<TDefault>(pgMultirangeType, (RangeHandler<TDefault>)CreateRangeHandler(pgMultirangeType.Subrange));
 
         #endregion Misc

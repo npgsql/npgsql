@@ -9,25 +9,6 @@ using NpgsqlTypes;
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
-    /// A factory for type handlers for the PostgreSQL timestamptz data type.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
-    {
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => conn.DatabaseInfo.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
-                ? new TimestampTzHandler(postgresType, conn.ConvertInfinityDateTime)
-                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-    }
-
-    /// <summary>
     /// A type handler for the PostgreSQL timestamptz data type.
     /// </summary>
     /// <remarks>
@@ -46,7 +27,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             : base(postgresType, convertInfinityDateTime) {}
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => new RangeHandler<DateTime, DateTimeOffset>(pgRangeType, this);
 
         #region Read

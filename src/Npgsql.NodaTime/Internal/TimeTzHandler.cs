@@ -8,25 +8,14 @@ using BclTimeTzHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimeTzHan
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<OffsetTime>
-    {
-        // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<OffsetTime> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => conn.DatabaseInfo.HasIntegerDateTimes
-                ? new TimeTzHandler(postgresType)
-                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-    }
-
     sealed partial class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>,
                                   INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
         readonly BclTimeTzHandler _bclHandler;
 
         internal TimeTzHandler(PostgresType postgresType)
-        {
-            PostgresType = postgresType;
-            _bclHandler = new BclTimeTzHandler(postgresType);
-        }
+            : base(postgresType)
+            => _bclHandler = new BclTimeTzHandler(postgresType);
 
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

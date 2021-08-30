@@ -2,6 +2,7 @@
 using System.Net.NetworkInformation;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
 {
@@ -17,6 +18,8 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
     /// </remarks>
     public partial class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
+        public MacaddrHandler(PostgresType pgType) : base(pgType) {}
+
         #region Read
 
         /// <inheritdoc />

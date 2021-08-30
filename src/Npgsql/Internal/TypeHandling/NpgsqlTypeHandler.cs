@@ -18,11 +18,13 @@ namespace Npgsql.Internal.TypeHandling
     /// </summary>
     public abstract class NpgsqlTypeHandler
     {
-        // TODO: Make this required in C# 10
+        protected NpgsqlTypeHandler(PostgresType postgresType)
+            => PostgresType = postgresType;
+
         /// <summary>
         /// The PostgreSQL type handled by this type handler.
         /// </summary>
-        public PostgresType PostgresType { get; set; } = null!;
+        public PostgresType PostgresType { get; }
 
         #region Read
 
@@ -259,17 +261,17 @@ namespace Npgsql.Internal.TypeHandling
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode);
+        public abstract NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        public abstract IRangeHandler CreateRangeHandler(PostgresType pgRangeType);
+        public abstract NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType);
 
         /// <summary>
         /// Creates a type handler for multiranges of this handler's type.
         /// </summary>
-        public abstract IMultirangeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType);
+        public abstract NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType);
 
         /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an

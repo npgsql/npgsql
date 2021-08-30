@@ -27,6 +27,8 @@ namespace Npgsql.Internal.TypeHandlers
     public partial class BitStringHandler : NpgsqlTypeHandler<BitArray>,
         INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
+        public BitStringHandler(PostgresType pgType) : base(pgType) {}
+
         internal override Type GetFieldType(FieldDescription? fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
@@ -35,7 +37,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+        public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => new BitStringArrayHandler(pgArrayType, this, arrayNullabilityMode);
 
         #region Read

@@ -1,5 +1,6 @@
 using System;
 using Npgsql;
+using Npgsql.TypeMapping;
 
 #pragma warning disable CA1720
 
@@ -472,7 +473,7 @@ namespace NpgsqlTypes
         /// See: https://www.postgresql.org/docs/current/datatype-pg-lsn.html and
         /// https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=7d03a83f4d0736ba869fa6f93973f7623a27038a
         /// </remarks>
-        [BuiltInPostgresType("pg_lsn", 3220)]
+        [BuiltInPostgresType("pg_lsn", PostgresTypeOIDs.PgLsn)]
         PgLsn = 59,
 
         #endregion

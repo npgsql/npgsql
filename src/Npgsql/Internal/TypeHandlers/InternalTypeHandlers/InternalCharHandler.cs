@@ -1,5 +1,6 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
 {
@@ -16,6 +17,8 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers
     public partial class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
+        public InternalCharHandler(PostgresType pgType) : base(pgType) {}
+
         #region Read
 
         /// <inheritdoc />

@@ -60,7 +60,7 @@ namespace Npgsql.Internal
         PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
         PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
-        internal Encoding TextEncoding { get; private set; } = default!;
+        public Encoding TextEncoding { get; private set; } = default!;
 
         /// <summary>
         /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
@@ -568,8 +568,8 @@ namespace Npgsql.Internal
                 }
             }
 
-            DatabaseInfo = TypeMapper.DatabaseInfo = database!;
-            TypeMapper.Reset();
+            DatabaseInfo = database;
+            TypeMapper.DatabaseInfo = database;
         }
 
         internal async ValueTask<ClusterState> QueryClusterState(

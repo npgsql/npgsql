@@ -15,8 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Npgsql/Npgsql.csproj" />
-    <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

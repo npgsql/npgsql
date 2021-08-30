@@ -9,20 +9,8 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
-    /// <summary>
-    /// An interface implementing by <see cref="MultirangeHandler{TElement}"/>, exposing the handler's supported range
-    /// CLR types.
-    /// </summary>
-    public interface IMultirangeHandler
-    {
-        /// <summary>
-        /// Exposes the multirange CLR types supported by this handler.
-        /// </summary>
-        Type[] SupportedMultirangeClrTypes { get; }
-    }
-
-    public partial class MultirangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>[]>, 
-        INpgsqlTypeHandler<List<NpgsqlRange<TElement>>>, IMultirangeHandler
+    public partial class MultirangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>[]>,
+        INpgsqlTypeHandler<List<NpgsqlRange<TElement>>>
     {
         /// <summary>
         /// The type handler for the range that this multirange type holds
@@ -39,8 +27,8 @@ namespace Npgsql.Internal.TypeHandlers
         /// <inheritdoc />
         protected MultirangeHandler(
             PostgresMultirangeType pgMultirangeType, RangeHandler<TElement> rangeHandler, Type[] supportedSubtypeClrTypes)
+            : base(pgMultirangeType)
         {
-            PostgresType = pgMultirangeType;
             _rangeHandler = rangeHandler;
             SupportedMultirangeClrTypes = supportedSubtypeClrTypes;
         }

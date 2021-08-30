@@ -52,8 +52,8 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
         public Type CompositeType => typeof(T);
 
         public CompositeHandler(PostgresCompositeType postgresType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
+            : base(postgresType)
         {
-            PostgresType = postgresType;
             _typeMapper = typeMapper;
             _nameTranslator = nameTranslator;
         }
@@ -198,7 +198,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
                 {
                     var pgField = pgFields[pgFieldIndex];
 
-                    if (!typeMapper.TryGetByOID(pgField.Type.OID, out var handler))
+                    if (!typeMapper.TryResolveOID(pgField.Type.OID, out var handler))
                         throw new NpgsqlException($"PostgreSQL composite type {pgType.DisplayName} has field {pgField.Type.DisplayName} with an unknown type (OID = {pgField.Type.OID}).");
 
                     var clrParameter = clrParametersMapped[pgFieldIndex];
@@ -263,7 +263,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
                     if (clrMemberHandlers[pgFieldIndex] != null)
                         throw new AmbiguousMatchException($"Multiple class members are mapped to the '{pgField.Name}' field.");
 
-                    if (!typeMapper.TryGetByOID(pgField.Type.OID, out var handler))
+                    if (!typeMapper.TryResolveOID(pgField.Type.OID, out var handler))
                         throw new NpgsqlException($"PostgreSQL composite type {pgType.DisplayName} has field {pgField.Type.DisplayName} with an unknown type (OID = {pgField.Type.OID}).");
 
                     clrMemberHandlerCount++;

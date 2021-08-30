@@ -632,6 +632,7 @@ CREATE TYPE address AS
                 {
                     conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema1 CASCADE");
                     conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema2 CASCADE");
+                    conn.ReloadTypes();
                 }
             }
         }

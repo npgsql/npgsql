@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 {
@@ -22,6 +23,8 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
         INpgsqlTypeHandler<byte>, INpgsqlTypeHandler<short>, INpgsqlTypeHandler<int>, INpgsqlTypeHandler<long>,
         INpgsqlTypeHandler<float>, INpgsqlTypeHandler<double>, INpgsqlTypeHandler<BigInteger>
     {
+        public NumericHandler(PostgresType pgType) : base(pgType) {}
+
         const int MaxDecimalScale = 28;
 
         const int SignPositive = 0x0000;

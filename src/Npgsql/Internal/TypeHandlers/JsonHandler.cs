@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,58 +13,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
-    /// <summary>
-    /// A factory for type handlers for the PostgreSQL jsonb data type.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/datatype-json.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        readonly JsonSerializerOptions? _serializerOptions;
-
-        /// <inheritdoc />
-        public JsonbHandlerFactory() => _serializerOptions = null;
-
-        /// <inheritdoc />
-        public JsonbHandlerFactory(JsonSerializerOptions serializerOptions)
-            => _serializerOptions = serializerOptions;
-
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new JsonHandler(postgresType, conn, isJsonb: true, _serializerOptions);
-    }
-
-    /// <summary>
-    /// A factory for type handlers for the PostgreSQL json data type.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/datatype-json.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        readonly JsonSerializerOptions? _serializerOptions;
-
-        /// <inheritdoc />
-        public JsonHandlerFactory() => _serializerOptions = null;
-
-        /// <inheritdoc />
-        public JsonHandlerFactory(JsonSerializerOptions serializerOptions)
-            => _serializerOptions = serializerOptions;
-
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new JsonHandler(postgresType, conn, isJsonb: false, _serializerOptions);
-    }
-
     /// <summary>
     /// A type handler for the PostgreSQL json and jsonb data type.
     /// </summary>
@@ -89,13 +38,13 @@ namespace Npgsql.Internal.TypeHandlers
         static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
         /// <inheritdoc />
-        protected internal JsonHandler(PostgresType postgresType, NpgsqlConnector connector, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
+        protected internal JsonHandler(PostgresType postgresType, Encoding encoding, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
+            : base(postgresType)
         {
-            PostgresType = postgresType;
             _serializerOptions = serializerOptions ?? DefaultSerializerOptions;
             _isJsonb = isJsonb;
             _headerLen = isJsonb ? 1 : 0;
-            _textHandler = new TextHandler(postgresType, connector);
+            _textHandler = new TextHandler(postgresType, encoding);
         }
 
         /// <inheritdoc />

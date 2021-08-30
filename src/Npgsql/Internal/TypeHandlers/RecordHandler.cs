@@ -8,12 +8,6 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.TypeHandlers
 {
-    class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
-    {
-        public override NpgsqlTypeHandler<object[]> Create(PostgresType pgType, NpgsqlConnector conn)
-            => new RecordHandler(pgType, conn.TypeMapper);
-    }
-
     /// <summary>
     /// Type handler for PostgreSQL record types.
     /// </summary>
@@ -31,10 +25,8 @@ namespace Npgsql.Internal.TypeHandlers
         readonly ConnectorTypeMapper _typeMapper;
 
         public RecordHandler(PostgresType postgresType, ConnectorTypeMapper typeMapper)
-        {
-            PostgresType = postgresType;
-            _typeMapper = typeMapper;
-        }
+            : base(postgresType)
+            => _typeMapper = typeMapper;
 
         #region Read
 
@@ -51,7 +43,7 @@ namespace Npgsql.Internal.TypeHandlers
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
+                result[i] = await _typeMapper.ResolveOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;

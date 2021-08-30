@@ -398,10 +398,10 @@ namespace Npgsql
                 var typeOid = Buffer.ReadUInt32();
                 var bufferPos = Buffer.ReadPosition;
                 if (i >= _columns.Count)
-                    _columns.Add(new ColumnInfo(typeOid, bufferPos, TypeMapper.GetByOID(typeOid)));
+                    _columns.Add(new ColumnInfo(typeOid, bufferPos, TypeMapper.ResolveOID(typeOid)));
                 else
                     _columns[i] = new ColumnInfo(typeOid, bufferPos,
-                        _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.GetByOID(typeOid));
+                        _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.ResolveOID(typeOid));
 
                 var columnLen = Buffer.ReadInt32();
                 if (columnLen >= 0)

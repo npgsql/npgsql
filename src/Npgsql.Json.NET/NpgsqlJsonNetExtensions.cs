@@ -23,25 +23,9 @@ namespace Npgsql
             this INpgsqlTypeMapper mapper,
             Type[]? jsonbClrTypes = null,
             Type[]? jsonClrTypes = null,
-            JsonSerializerSettings? settings = null
-        )
+            JsonSerializerSettings? settings = null)
         {
-            mapper.AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "jsonb",
-                NpgsqlDbType = NpgsqlDbType.Jsonb,
-                ClrTypes = jsonbClrTypes,
-                TypeHandlerFactory = new JsonbHandlerFactory(settings)
-            }.Build());
-
-            mapper.AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "json",
-                NpgsqlDbType = NpgsqlDbType.Json,
-                ClrTypes = jsonClrTypes,
-                TypeHandlerFactory = new JsonHandlerFactory(settings)
-            }.Build());
-
+            mapper.AddTypeResolverFactory(new JsonNetTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, settings));
             return mapper;
         }
     }

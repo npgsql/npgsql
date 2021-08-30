@@ -30,7 +30,6 @@ namespace Npgsql
         private protected string? _dataTypeName;
         // ReSharper restore InconsistentNaming
 
-        private protected  DbType? _cachedDbType;
         private protected  string _name = string.Empty;
         private protected  object? _value;
         private protected  string _sourceColumn;
@@ -309,28 +308,25 @@ namespace Npgsql
         {
             get
             {
-                if (_cachedDbType.HasValue)
-                    return _cachedDbType.Value;
                 if (_npgsqlDbType.HasValue)
-                    return _cachedDbType ??= GlobalTypeMapper.Instance.ToDbType(_npgsqlDbType.Value);
-                if (_value != null)   // Infer from value but don't cache
-                    return GlobalTypeMapper.Instance.ToDbType(_value.GetType());
+                    return GlobalTypeMapper.NpgsqlDbTypeToDbType(_npgsqlDbType.Value);
+
+                if (_value != null) // Infer from value but don't cache
+                {
+                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                        ? mapping.DbType
+                        : DbType.Object;
+                }
 
                 return DbType.Object;
             }
             set
             {
                 Handler = null;
-                if (value == DbType.Object)
-                {
-                    _cachedDbType = null;
-                    _npgsqlDbType = null;
-                }
-                else
-                {
-                    _cachedDbType = value;
-                    _npgsqlDbType = GlobalTypeMapper.Instance.ToNpgsqlDbType(value);
-                }
+                _npgsqlDbType = value == DbType.Object
+                    ? null
+                    : GlobalTypeMapper.DbTypeToNpgsqlDbType(value)
+                      ?? throw new NotSupportedException($"The parameter type DbType.{value} isn't supported by PostgreSQL or Npgsql");
             }
         }
 
@@ -348,8 +344,14 @@ namespace Npgsql
             {
                 if (_npgsqlDbType.HasValue)
                     return _npgsqlDbType.Value;
-                if (_value != null)   // Infer from value
-                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value.GetType());
+
+                if (_value != null) // Infer from value
+                {
+                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                        ? mapping.NpgsqlDbType ?? NpgsqlDbType.Unknown
+                        : throw new NotSupportedException("Can't infer NpgsqlDbType for type " + _value.GetType());
+                }
+
                 return NpgsqlDbType.Unknown;
             }
             set
@@ -361,7 +363,6 @@ namespace Npgsql
 
                 Handler = null;
                 _npgsqlDbType = value;
-                _cachedDbType = null;
             }
         }
 
@@ -374,11 +375,18 @@ namespace Npgsql
             {
                 if (_dataTypeName != null)
                     return _dataTypeName;
+
                 string? dataTypeName = null;
                 if (_npgsqlDbType.HasValue)
-                    dataTypeName = GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
-                if (_value != null)   // Infer from value
-                    dataTypeName ??= GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
+                    return GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(_npgsqlDbType.Value);
+
+                if (_value != null) // Infer from value
+                {
+                    return GlobalTypeMapper.Instance.TryResolveMappingByClrType(_value.GetType(), out var mapping)
+                        ? mapping.DataTypeName
+                        : null;
+                }
+
                 return dataTypeName;
             }
             set
@@ -493,11 +501,11 @@ namespace Npgsql
                 return;
 
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
+                Handler = typeMapper.ResolveNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
-                Handler = typeMapper.GetByDataTypeName(_dataTypeName);
+                Handler = typeMapper.ResolveDataTypeName(_dataTypeName);
             else if (_value != null)
-                Handler = typeMapper.GetByClrType(_value.GetType());
+                Handler = typeMapper.ResolveClrType(_value.GetType());
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }
@@ -527,7 +535,6 @@ namespace Npgsql
         /// <inheritdoc />
         public override void ResetDbType()
         {
-            _cachedDbType = null;
             _npgsqlDbType = null;
             _dataTypeName = null;
             Handler = null;
@@ -550,12 +557,11 @@ namespace Npgsql
         private protected virtual NpgsqlParameter CloneCore() =>
             // use fields instead of properties
             // to avoid auto-initializing something like type_info
-            new NpgsqlParameter
+            new()
             {
                 _precision = _precision,
                 _scale = _scale,
                 _size = _size,
-                _cachedDbType = _cachedDbType,
                 _npgsqlDbType = _npgsqlDbType,
                 _dataTypeName = _dataTypeName,
                 Direction = Direction,

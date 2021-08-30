@@ -253,7 +253,7 @@ ORDER BY attnum";
             var typeMapper = _connection.Connector!.TypeMapper;
 
             column.NpgsqlDbType = typeMapper.GetTypeInfoByOid(column.TypeOID).npgsqlDbType;
-            column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
+            column.DataType = typeMapper.TryResolveOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;
 

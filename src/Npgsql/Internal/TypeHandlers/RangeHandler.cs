@@ -10,18 +10,6 @@ using NpgsqlTypes;
 namespace Npgsql.Internal.TypeHandlers
 {
     /// <summary>
-    /// An interface implementing by <see cref="RangeHandler{TElement}"/>, exposing the handler's supported range
-    /// CLR types.
-    /// </summary>
-    public interface IRangeHandler
-    {
-        /// <summary>
-        /// Exposes the range CLR types supported by this handler.
-        /// </summary>
-        Type[] SupportedRangeClrTypes { get; }
-    }
-
-    /// <summary>
     /// A type handler for PostgreSQL range types.
     /// </summary>
     /// <remarks>
@@ -32,7 +20,7 @@ namespace Npgsql.Internal.TypeHandlers
     /// Use it at your own risk.
     /// </remarks>
     /// <typeparam name="TElement">The range subtype.</typeparam>
-    public partial class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>, IRangeHandler
+    public partial class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the subtype that this range type holds
@@ -40,29 +28,19 @@ namespace Npgsql.Internal.TypeHandlers
         readonly NpgsqlTypeHandler _subtypeHandler;
 
         /// <inheritdoc />
-        public Type[] SupportedRangeClrTypes { get; }
-
-        /// <inheritdoc />
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
-            : this(rangePostgresType, subtypeHandler, new[] { typeof(NpgsqlRange<TElement>)}) {}
+            : base(rangePostgresType)
+            => _subtypeHandler = subtypeHandler;
 
         /// <inheritdoc />
-        protected RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler, Type[] supportedSubtypeClrTypes)
-        {
-            PostgresType = rangePostgresType;
-            _subtypeHandler = subtypeHandler;
-            SupportedRangeClrTypes = supportedSubtypeClrTypes;
-        }
-
-        /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+        public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => new ArrayHandler<NpgsqlRange<TElement>>(pgArrayType, this, arrayNullabilityMode);
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType pgRangeType)
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => throw new NotSupportedException();
 
         #region Read
@@ -165,7 +143,7 @@ namespace Npgsql.Internal.TypeHandlers
     {
         /// <inheritdoc />
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
-            : base(rangePostgresType, subtypeHandler, new[] { typeof(NpgsqlRange<TElement1>), typeof(NpgsqlRange<TElement2>) }) {}
+            : base(rangePostgresType, subtypeHandler) {}
 
         ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => DoRead<TElement2>(buf, len, async, fieldDescription);

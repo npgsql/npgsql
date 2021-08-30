@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -22,11 +22,9 @@ namespace Npgsql.Internal.TypeHandlers
 
         Type? _resolvedType;
 
-        internal UnmappedEnumHandler(PostgresType pgType, INpgsqlNameTranslator nameTranslator, NpgsqlConnector connector)
-            : base(pgType, connector)
-        {
-            _nameTranslator = nameTranslator;
-        }
+        internal UnmappedEnumHandler(PostgresEnumType pgType, INpgsqlNameTranslator nameTranslator, Encoding encoding)
+            : base(pgType, encoding)
+            => _nameTranslator = nameTranslator;
 
         #region Read
 
@@ -139,18 +137,5 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         #endregion
-    }
-
-    class UnmappedEnumTypeHandlerFactory : NpgsqlTypeHandlerFactory<string>, IEnumTypeHandlerFactory
-    {
-        internal UnmappedEnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
-        {
-            NameTranslator = nameTranslator;
-        }
-
-        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnector conn)
-            => new UnmappedEnumHandler(pgType, NameTranslator, conn);
-
-        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

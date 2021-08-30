@@ -560,6 +560,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for domain parameters in parameterized queries (CommandType.Text)")]
+        [Ignore("Temporarily ignored as part of #3953")]
         public async Task DeriveTextCommandParameters_Domain()
         {
             using var conn = await OpenConnectionAsync();

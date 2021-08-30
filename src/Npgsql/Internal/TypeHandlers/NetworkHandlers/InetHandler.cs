@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 #pragma warning disable 618
@@ -27,6 +28,8 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
         // ReSharper restore InconsistentNaming
+
+        public InetHandler(PostgresType pgType) : base(pgType) {}
 
         #region Read
 

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
@@ -136,7 +138,7 @@ namespace Npgsql.Internal
         /// <summary>
         /// Indexes backend types by their type OID.
         /// </summary>
-        internal Dictionary<uint, PostgresType> ByOID { get; } = new();
+        public Dictionary<uint, PostgresType> ByOID { get; } = new();
 
         /// <summary>
         /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
@@ -180,31 +182,37 @@ namespace Npgsql.Internal
             Version = ParseServerVersion(serverVersion);
         }
 
-        internal PostgresType GetPostgresTypeByName(string pgName)
+        public PostgresType GetPostgresTypeByName(string pgName)
+            => TryGetPostgresTypeByName(pgName, out var pgType)
+                ? pgType
+                : throw new ArgumentException($"A PostgreSQL type with the name {pgName} was not found in the database");
+
+        internal bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
         {
             // Full type name with namespace
             if (pgName.IndexOf('.') > -1)
             {
-                if (ByFullName.TryGetValue(pgName, out var pgType))
-                    return pgType;
+                if (ByFullName.TryGetValue(pgName, out pgType))
+                    return true;
             }
             // No dot, partial type name
-            else if (ByName.TryGetValue(pgName, out var pgType))
+            else if (ByName.TryGetValue(pgName, out pgType))
             {
                 if (pgType is not null)
-                    return pgType;
+                    return true;
 
                 // If the name was found but the value is null, that means that there are
                 // two db types with the same name (different schemas).
                 // Try to fall back to pg_catalog, otherwise fail.
                 if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
-                    return pgType;
+                    return true;
 
+                var ambiguousTypes = ByFullName.Keys.Where(n => n.EndsWith($".{pgName}", StringComparison.Ordinal));
                 throw new ArgumentException($"More than one PostgreSQL type was found with the name {pgName}, " +
-                                            "please specify a full name including schema");
+                                            $"please specify a full name including schema: {string.Join(", ", ambiguousTypes)}");
             }
 
-            throw new ArgumentException($"A PostgreSQL type with the name {pgName} was not found in the database");
+            return false;
         }
 
         internal void ProcessTypes()

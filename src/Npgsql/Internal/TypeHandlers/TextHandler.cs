@@ -14,23 +14,6 @@ using NpgsqlTypes;
 namespace Npgsql.Internal.TypeHandlers
 {
     /// <summary>
-    /// A factory for type handlers for PostgreSQL character data types (text, char, varchar, xml...).
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/datatype-character.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnector conn)
-            => new TextHandler(pgType, conn);
-    }
-
-    /// <summary>
     /// A type handler for PostgreSQL character data types (text, char, varchar, xml...).
     /// </summary>
     /// <remarks>
@@ -56,15 +39,9 @@ namespace Npgsql.Internal.TypeHandlers
         #endregion
 
         /// <inheritdoc />
-        protected internal TextHandler(PostgresType postgresType, NpgsqlConnector connector)
-            : this(postgresType, connector.TextEncoding) { }
-
-        /// <inheritdoc />
         protected internal TextHandler(PostgresType postgresType, Encoding encoding)
-        {
-            PostgresType = postgresType;
-            _encoding = encoding;
-        }
+            : base(postgresType)
+            => _encoding = encoding;
 
         #region Read
 

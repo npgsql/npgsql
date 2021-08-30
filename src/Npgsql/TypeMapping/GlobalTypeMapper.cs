@@ -1,27 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Collections.Specialized;
 using System.Data;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Numerics;
 using System.Reflection;
-using System.Text.Json;
 using System.Threading;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
-using Npgsql.Internal.TypeHandlers.FullTextSearchHandlers;
-using Npgsql.Internal.TypeHandlers.GeometricHandlers;
-using Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
-using Npgsql.Internal.TypeHandlers.LTreeHandlers;
-using Npgsql.Internal.TypeHandlers.NetworkHandlers;
-using Npgsql.Internal.TypeHandlers.NumericHandlers;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -31,9 +14,9 @@ namespace Npgsql.TypeMapping
     {
         public static GlobalTypeMapper Instance { get; }
 
-        internal ImmutableDictionary<string, NpgsqlTypeMapping> MappingsByName { get; private set; }
-        internal ImmutableDictionary<NpgsqlDbType, NpgsqlTypeMapping> MappingsByNpgsqlDbType { get; private set; }
-        internal ImmutableDictionary<Type, NpgsqlTypeMapping> MappingsByClrType { get; private set; }
+        internal List<ITypeHandlerResolverFactory> ResolverFactories { get; } = new();
+        internal Dictionary<string, IUserCompositeTypeMapping> UserCompositeTypeMappings { get; } = new();
+        internal Dictionary<string, IUserEnumTypeMapping> UserEnumTypeMappings { get; } = new();
 
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
@@ -54,19 +37,86 @@ namespace Npgsql.TypeMapping
 
         #region Mapping management
 
-        public override INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping)
+        public override INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(typeof(TEnum), nameTranslator);
+
             Lock.EnterWriteLock();
             try
             {
-                MappingsByName = MappingsByName.SetItem(mapping.PgTypeName, mapping);
-                if (mapping.NpgsqlDbType is not null)
-                    MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.SetItem(mapping.NpgsqlDbType.Value, mapping);
-                MappingsByClrType =
-                    MappingsByClrType.SetItems(mapping.ClrTypes.Select(t => new KeyValuePair<Type, NpgsqlTypeMapping>(t, mapping)));
+                UserEnumTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
                 RecordChange();
+                return this;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+        }
 
-                UpdateNonMappingTables(mapping);
+        public override bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(typeof(TEnum), nameTranslator);
+
+            Lock.EnterWriteLock();
+            try
+            {
+                var removed = UserEnumTypeMappings.Remove(pgName);
+                RecordChange();
+                return removed;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+        }
+
+        public override INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(typeof(T), nameTranslator);
+
+            Lock.EnterWriteLock();
+            try
+            {
+                UserCompositeTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
+                RecordChange();
+                return this;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+        }
+
+        public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        {
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(clrType, nameTranslator);
+
+            Lock.EnterWriteLock();
+            try
+            {
+                UserCompositeTypeMappings[pgName] =
+                    (IUserCompositeTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
+                        new object[] { clrType, nameTranslator }, null)!;
+
+                RecordChange();
 
                 return this;
             }
@@ -76,58 +126,23 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        void UpdateNonMappingTables(NpgsqlTypeMapping mapping)
+        public override bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            => UnmapComposite(typeof(T), pgName, nameTranslator);
+
+        public override bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         {
-            if (mapping.NpgsqlDbType.HasValue)
-            {
-                _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
-                _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value | NpgsqlDbType.Array] = mapping.PgTypeName + "[]";
+            if (pgName != null && pgName.Trim() == "")
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
-                foreach (var dbType in mapping.DbTypes)
-                    _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(clrType, nameTranslator);
 
-                if (mapping.InferredDbType.HasValue)
-                    _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
-
-                foreach (var clrType in mapping.ClrTypes)
-                {
-                    _typeToNpgsqlDbType[clrType] = mapping.NpgsqlDbType.Value;
-                    _typeToPgTypeName[clrType] = mapping.PgTypeName;
-                }
-            }
-
-            if (mapping.InferredDbType.HasValue)
-                foreach (var clrType in mapping.ClrTypes)
-                    _typeToDbType[clrType] = mapping.InferredDbType.Value;
-        }
-
-        public override bool RemoveMapping(string pgTypeName)
-        {
             Lock.EnterWriteLock();
             try
             {
-                if (!MappingsByName.TryGetValue(pgTypeName, out var mapping))
-                    return false;
-
-                MappingsByName = MappingsByName.Remove(pgTypeName);
-                if (mapping.NpgsqlDbType is not null &&
-                    MappingsByNpgsqlDbType.TryGetValue(mapping.NpgsqlDbType.Value, out var mappingToBeRemoved) &&
-                    mappingToBeRemoved.PgTypeName == pgTypeName)
-                {
-                    MappingsByNpgsqlDbType = MappingsByNpgsqlDbType.Remove(mapping.NpgsqlDbType.Value);
-                }
-
-                foreach (var clrType in mapping.ClrTypes)
-                {
-                    if (MappingsByClrType.TryGetValue(clrType, out mappingToBeRemoved) &&
-                        mappingToBeRemoved.PgTypeName == pgTypeName)
-                    {
-                        MappingsByClrType = MappingsByClrType.Remove(clrType);
-                    }
-                }
-
+                var removed = UserCompositeTypeMappings.Remove(pgName);
                 RecordChange();
-                return true;
+                return removed;
             }
             finally
             {
@@ -135,30 +150,31 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        public override IEnumerable<NpgsqlTypeMapping> Mappings
+        public override void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory)
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return MappingsByName.Values.ToArray();
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                ResolverFactories.Insert(0, resolverFactory);
+                RecordChange();
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
         }
 
-
-        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
         public override void Reset()
         {
             Lock.EnterWriteLock();
             try
             {
-                SetupBuiltInHandlers();
+                ResolverFactories.Clear();
+                ResolverFactories.Add(new BuiltInTypeHandlerResolverFactory());
+
+                UserEnumTypeMappings.Clear();
+                UserCompositeTypeMappings.Clear();
+
                 RecordChange();
             }
             finally
@@ -173,635 +189,238 @@ namespace Npgsql.TypeMapping
 
         #region NpgsqlDbType/DbType inference for NpgsqlParameter
 
-        readonly Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType = new();
-        readonly Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType = new();
-        readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new();
-        readonly Dictionary<Type, DbType> _typeToDbType = new();
-        readonly Dictionary<NpgsqlDbType, string> _npgsqlDbTypeToPgTypeName = new();
-        readonly Dictionary<Type, string> _typeToPgTypeName = new();
-
-        internal DbType ToDbType(NpgsqlDbType npgsqlDbType)
-            => _npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out var dbType) ? dbType : DbType.Object;
-
-        internal NpgsqlDbType ToNpgsqlDbType(DbType dbType)
-        {
-            if (!_dbTypeToNpgsqlDbType.TryGetValue(dbType, out var npgsqlDbType))
-                throw new NotSupportedException($"The parameter type DbType.{dbType} isn't supported by PostgreSQL or Npgsql");
-            return npgsqlDbType;
-        }
-
-        internal DbType ToDbType(Type type)
-            => _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
-
-        internal string? ToPgTypeName(NpgsqlDbType npgsqlDbType)
-            => _npgsqlDbTypeToPgTypeName.TryGetValue(npgsqlDbType, out var pgTypeName) ? pgTypeName : null;
-
-        internal string? ToPgTypeName(Type type)
-            => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;
-
         [RequiresUnreferencedCodeAttribute("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
-        internal NpgsqlDbType ToNpgsqlDbType(Type type)
+        internal bool TryResolveMappingByClrType(Type clrType, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
         {
-            if (_typeToNpgsqlDbType.TryGetValue(type, out var npgsqlDbType))
-                return npgsqlDbType;
-
-            if (type.IsArray)
+            Lock.EnterReadLock();
+            try
             {
-                if (type == typeof(byte[]))
-                    return NpgsqlDbType.Bytea;
-                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType()!);
+                foreach (var resolverFactory in ResolverFactories)
+                    if ((typeMapping = resolverFactory.ClrTypeToMappingInfo(clrType)) is not null)
+                        return true;
+
+                if (clrType.IsArray)
+                {
+                    if (TryResolveMappingByClrType(clrType.GetElementType()!, out var elementMapping))
+                    {
+                        typeMapping = new(
+                            NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
+                            DbType.Object,
+                            elementMapping.DataTypeName + "[]");
+                        return true;
+                    }
+
+                    typeMapping = null;
+                    return false;
+                }
+
+                var typeInfo = clrType.GetTypeInfo();
+
+                var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x =>
+                    x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+                if (ilist != null)
+                {
+                    if (TryResolveMappingByClrType(ilist.GetGenericArguments()[0], out var elementMapping))
+                    {
+                        typeMapping = new(
+                            NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
+                            DbType.Object,
+                            elementMapping.DataTypeName + "[]");
+                        return true;
+                    }
+
+                    typeMapping = null;
+                    return false;
+                }
+
+                if (typeInfo.IsGenericType && clrType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                {
+                    if (TryResolveMappingByClrType(clrType.GetGenericArguments()[0], out var elementMapping))
+                    {
+                        typeMapping = new(
+                            NpgsqlDbType.Range | elementMapping.NpgsqlDbType,
+                            DbType.Object,
+                            dataTypeName: null);
+                        return true;
+                    }
+
+                    typeMapping = null;
+                    return false;
+                }
+
+                throw new NotSupportedException("Can't infer NpgsqlDbType for type " + clrType);
             }
-
-            var typeInfo = type.GetTypeInfo();
-
-            var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-            if (ilist != null)
-                return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
-
-            if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
-                return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
-
-            if (type == typeof(DBNull))
-                return NpgsqlDbType.Unknown;
-
-            throw new NotSupportedException("Can't infer NpgsqlDbType for type " + type);
+            finally
+            {
+                Lock.ExitReadLock();
+            }
         }
-
 
         #endregion NpgsqlDbType/DbType inference for NpgsqlParameter
 
-        #region Setup for built-in handlers
+        #region Static translation tables
 
-        [MemberNotNull(nameof(MappingsByName), nameof(MappingsByNpgsqlDbType), nameof(MappingsByClrType))]
-        void SetupBuiltInHandlers()
-        {
-            var mappingsByNameBuilder = ImmutableDictionary.CreateBuilder<string, NpgsqlTypeMapping>();
-            var mappingsByNpgsqlDbTypeBuilder = ImmutableDictionary.CreateBuilder<NpgsqlDbType, NpgsqlTypeMapping>();
-            var mappingsByClrTypeBuilder = ImmutableDictionary.CreateBuilder<Type, NpgsqlTypeMapping>();
-
-            SetupNumericHandlers();
-            SetupTextHandlers();
-            SetupDateTimeHandlers();
-            SetupNetworkHandlers();
-            SetupFullTextSearchHandlers();
-            SetupGeometryHandlers();
-            SetupLTreeHandlers();
-            SetupUIntHandlers();
-            SetupMiscHandlers();
-            SetupInternalHandlers();
-
-            MappingsByName = mappingsByNameBuilder.ToImmutable();
-            MappingsByNpgsqlDbType = mappingsByNpgsqlDbTypeBuilder.ToImmutable();
-            MappingsByClrType = mappingsByClrTypeBuilder.ToImmutable();
-
-            void AddMapping(NpgsqlTypeMapping mapping)
+        public static string? NpgsqlDbTypeToDataTypeName(NpgsqlDbType npgsqlDbType)
+            => npgsqlDbType switch
             {
-                mappingsByNameBuilder[mapping.PgTypeName] = mapping;
-                if (mapping.NpgsqlDbType is not null)
-                    mappingsByNpgsqlDbTypeBuilder[mapping.NpgsqlDbType.Value] = mapping;
-                foreach (var clrType in mapping.ClrTypes)
-                    mappingsByClrTypeBuilder![clrType] = mapping;
+                // Numeric types
+                NpgsqlDbType.Smallint => "smallint",
+                NpgsqlDbType.Integer  => "integer",
+                NpgsqlDbType.Bigint   => "bigint",
+                NpgsqlDbType.Real     => "real",
+                NpgsqlDbType.Double   => "double precision",
+                NpgsqlDbType.Numeric  => "numeric",
+                NpgsqlDbType.Money    => "money",
 
-                UpdateNonMappingTables(mapping);
-            }
+                // Text types
+                NpgsqlDbType.Text      => "text",
+                NpgsqlDbType.Xml       => "xml",
+                NpgsqlDbType.Varchar   => "character varying",
+                NpgsqlDbType.Char      => "character",
+                NpgsqlDbType.Name      => "name",
+                NpgsqlDbType.Refcursor => "refcursor",
+                NpgsqlDbType.Citext    => "citext",
+                NpgsqlDbType.Jsonb     => "jsonb",
+                NpgsqlDbType.Json      => "json",
+                NpgsqlDbType.JsonPath  => "jsonpath",
 
-            void SetupNumericHandlers()
+                // Date/time types
+                NpgsqlDbType.Timestamp   => "timestamp without time zone",
+                NpgsqlDbType.TimestampTz => "timestamp with time zone",
+                NpgsqlDbType.Date        => "date",
+                NpgsqlDbType.Time        => "time without time zone",
+                NpgsqlDbType.TimeTz      => "time with time zone",
+                NpgsqlDbType.Interval    => "interval",
+
+                // Network types
+                NpgsqlDbType.Cidr     => "cidr",
+                NpgsqlDbType.Inet     => "inet",
+                NpgsqlDbType.MacAddr  => "macaddr",
+                NpgsqlDbType.MacAddr8 => "macaddr8",
+
+                // Full-text search types
+                NpgsqlDbType.TsQuery   => "tsquery",
+                NpgsqlDbType.TsVector  => "tsvector",
+
+                // Geometry types
+                NpgsqlDbType.Box     => "box",
+                NpgsqlDbType.Circle  => "circle",
+                NpgsqlDbType.Line    => "line",
+                NpgsqlDbType.LSeg    => "lseg",
+                NpgsqlDbType.Path    => "path",
+                NpgsqlDbType.Point   => "point",
+                NpgsqlDbType.Polygon => "polygon",
+
+                // LTree types
+                NpgsqlDbType.LQuery    => "lquery",
+                NpgsqlDbType.LTree     => "ltree",
+                NpgsqlDbType.LTxtQuery => "ltxtquery",
+
+                // UInt types
+                NpgsqlDbType.Oid       => "oid",
+                NpgsqlDbType.Xid       => "xid",
+                NpgsqlDbType.Xid8      => "xid8",
+                NpgsqlDbType.Cid       => "cid",
+                NpgsqlDbType.Regtype   => "regtype",
+                NpgsqlDbType.Regconfig => "regconfig",
+
+                // Misc types
+                NpgsqlDbType.Boolean => "bool",
+                NpgsqlDbType.Bytea   => "bytea",
+                NpgsqlDbType.Uuid    => "uuid",
+                NpgsqlDbType.Varbit  => "bit varying",
+                NpgsqlDbType.Bit     => "bit",
+                NpgsqlDbType.Hstore  => "hstore",
+
+                // Internal types
+                NpgsqlDbType.Int2Vector   => "int2vector",
+                NpgsqlDbType.Oidvector    => "oidvector",
+                NpgsqlDbType.PgLsn        => "pg_lsn",
+                NpgsqlDbType.Tid          => "tid",
+                NpgsqlDbType.InternalChar => "char",
+
+                // Special types
+                NpgsqlDbType.Unknown => "unknown",
+
+                _ => npgsqlDbType.HasFlag(NpgsqlDbType.Array)
+                    ? NpgsqlDbTypeToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) + "[]"
+                    : null // e.g. ranges
+            };
+
+        internal static NpgsqlDbType? DbTypeToNpgsqlDbType(DbType dbType)
+            => dbType switch
             {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "smallint",
-                    NpgsqlDbType = NpgsqlDbType.Smallint,
-                    DbTypes = new[] { DbType.Int16, DbType.Byte, DbType.SByte },
-                    InferredDbType = DbType.Int16,
-                    ClrTypes = new[] { typeof(short), typeof(byte), typeof(sbyte) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int16Handler, short>()
-                }.Build());
+                DbType.AnsiString            => NpgsqlDbType.Text,
+                DbType.Binary                => NpgsqlDbType.Bytea,
+                DbType.Byte                  => NpgsqlDbType.Smallint,
+                DbType.Boolean               => NpgsqlDbType.Boolean,
+                DbType.Currency              => NpgsqlDbType.Money,
+                DbType.Date                  => NpgsqlDbType.Date,
+                DbType.DateTime              => NpgsqlDbType.Timestamp,
+                DbType.Decimal               => NpgsqlDbType.Numeric,
+                DbType.VarNumeric            => NpgsqlDbType.Numeric,
+                DbType.Double                => NpgsqlDbType.Double,
+                DbType.Guid                  => NpgsqlDbType.Uuid,
+                DbType.Int16                 => NpgsqlDbType.Smallint,
+                DbType.Int32                 => NpgsqlDbType.Integer,
+                DbType.Int64                 => NpgsqlDbType.Bigint,
+                DbType.Single                => NpgsqlDbType.Real,
+                DbType.String                => NpgsqlDbType.Text,
+                DbType.Time                  => NpgsqlDbType.Time,
+                DbType.AnsiStringFixedLength => NpgsqlDbType.Text,
+                DbType.StringFixedLength     => NpgsqlDbType.Text,
+                DbType.Xml                   => NpgsqlDbType.Xml,
+                DbType.DateTime2             => NpgsqlDbType.Timestamp,
+                DbType.DateTimeOffset        => NpgsqlDbType.TimestampTz,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "integer",
-                    NpgsqlDbType = NpgsqlDbType.Integer,
-                    DbTypes = new[] { DbType.Int32 },
-                    ClrTypes = new[] { typeof(int) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int32Handler, int>()
-                }.Build());
+                DbType.Object                => null,
+                DbType.SByte                 => null,
+                DbType.UInt16                => null,
+                DbType.UInt32                => null,
+                DbType.UInt64                => null,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "bigint",
-                    NpgsqlDbType = NpgsqlDbType.Bigint,
-                    DbTypes = new[] { DbType.Int64 },
-                    ClrTypes = new[] { typeof(long) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<Int64Handler, long>()
-                }.Build());
+                _ => throw new ArgumentOutOfRangeException(nameof(dbType), dbType, null)
+            };
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "real",
-                    NpgsqlDbType = NpgsqlDbType.Real,
-                    DbTypes = new[] { DbType.Single },
-                    ClrTypes = new[] { typeof(float) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<SingleHandler, float>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "double precision",
-                    NpgsqlDbType = NpgsqlDbType.Double,
-                    DbTypes = new[] { DbType.Double },
-                    ClrTypes = new[] { typeof(double) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<DoubleHandler, double>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "numeric",
-                    NpgsqlDbType = NpgsqlDbType.Numeric,
-                    DbTypes = new[] { DbType.Decimal, DbType.VarNumeric },
-                    InferredDbType = DbType.Decimal,
-                    ClrTypes = new[] { typeof(decimal), typeof(BigInteger) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<NumericHandler, decimal>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "money",
-                    NpgsqlDbType = NpgsqlDbType.Money,
-                    DbTypes = new[] { DbType.Currency },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MoneyHandler, decimal>()
-                }.Build());
-            }
-
-            void SetupTextHandlers()
+        internal static DbType NpgsqlDbTypeToDbType(NpgsqlDbType npgsqlDbType)
+            => npgsqlDbType switch
             {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "text",
-                    NpgsqlDbType = NpgsqlDbType.Text,
-                    DbTypes = new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-                    InferredDbType = DbType.String,
-                    ClrTypes = new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                // Numeric types
+                NpgsqlDbType.Smallint    => DbType.Int16,
+                NpgsqlDbType.Integer     => DbType.Int32,
+                NpgsqlDbType.Bigint      => DbType.Int64,
+                NpgsqlDbType.Real        => DbType.Single,
+                NpgsqlDbType.Double      => DbType.Double,
+                NpgsqlDbType.Numeric     => DbType.Decimal,
+                NpgsqlDbType.Money       => DbType.Currency,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "xml",
-                    NpgsqlDbType = NpgsqlDbType.Xml,
-                    DbTypes = new[] { DbType.Xml },
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                // Text types
+                NpgsqlDbType.Text        => DbType.String,
+                NpgsqlDbType.Xml         => DbType.Xml,
+                NpgsqlDbType.Varchar     => DbType.String,
+                NpgsqlDbType.Char        => DbType.String,
+                NpgsqlDbType.Name        => DbType.String,
+                NpgsqlDbType.Refcursor   => DbType.String,
+                NpgsqlDbType.Jsonb       => DbType.String,
+                NpgsqlDbType.Json        => DbType.String,
+                NpgsqlDbType.JsonPath    => DbType.String,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "character varying",
-                    NpgsqlDbType = NpgsqlDbType.Varchar,
-                    InferredDbType = DbType.String,
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                // Date/time types
+                NpgsqlDbType.Timestamp   => DbType.DateTime,
+                NpgsqlDbType.TimestampTz => DbType.DateTimeOffset,
+                NpgsqlDbType.Date        => DbType.Date,
+                NpgsqlDbType.Time        => DbType.Time,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "character",
-                    NpgsqlDbType = NpgsqlDbType.Char,
-                    InferredDbType = DbType.String,
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                // Misc data types
+                NpgsqlDbType.Bytea       => DbType.Binary,
+                NpgsqlDbType.Boolean     => DbType.Boolean,
+                NpgsqlDbType.Uuid        => DbType.Guid,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "name",
-                    NpgsqlDbType = NpgsqlDbType.Name,
-                    InferredDbType = DbType.String,
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                NpgsqlDbType.Unknown     => DbType.Object,
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "refcursor",
-                    NpgsqlDbType = NpgsqlDbType.Refcursor,
-                    InferredDbType = DbType.String,
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                _ => DbType.Object
+            };
 
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "citext",
-                    NpgsqlDbType = NpgsqlDbType.Citext,
-                    InferredDbType = DbType.String,
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "unknown",
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "jsonb",
-                    NpgsqlDbType = NpgsqlDbType.Jsonb,
-                    ClrTypes = new[] { typeof(JsonDocument) },
-                    TypeHandlerFactory = new JsonbHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "json",
-                    NpgsqlDbType = NpgsqlDbType.Json,
-                    TypeHandlerFactory = new JsonHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "jsonpath",
-                    NpgsqlDbType = NpgsqlDbType.JsonPath,
-                    TypeHandlerFactory = new JsonPathHandlerFactory()
-                }.Build());
-            }
-
-            void SetupDateTimeHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "timestamp without time zone",
-                    NpgsqlDbType = NpgsqlDbType.Timestamp,
-                    DbTypes = new[] { DbType.DateTime, DbType.DateTime2 },
-                    ClrTypes = new[] { typeof(NpgsqlDateTime), typeof(DateTime) },
-                    InferredDbType = DbType.DateTime,
-                    TypeHandlerFactory = new TimestampHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "timestamp with time zone",
-                    NpgsqlDbType = NpgsqlDbType.TimestampTz,
-                    DbTypes = new[] { DbType.DateTimeOffset },
-                    ClrTypes = new[] { typeof(DateTimeOffset) },
-                    TypeHandlerFactory = new TimestampTzHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "date",
-                    NpgsqlDbType = NpgsqlDbType.Date,
-                    DbTypes = new[] { DbType.Date },
-                    ClrTypes = new[]
-                    {
-                        typeof(NpgsqlDate),
-#if NET6_0_OR_GREATER
-                        typeof(DateOnly)
-#endif
-                    },
-                    TypeHandlerFactory = new DateHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "time without time zone",
-                    NpgsqlDbType = NpgsqlDbType.Time,
-                    DbTypes = new[] { DbType.Time },
-#if NET6_0_OR_GREATER
-                    ClrTypes = new[] { typeof(TimeOnly) },
-#endif
-                    TypeHandlerFactory = new TimeHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "time with time zone",
-                    NpgsqlDbType = NpgsqlDbType.TimeTz,
-                    TypeHandlerFactory = new TimeTzHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "interval",
-                    NpgsqlDbType = NpgsqlDbType.Interval,
-                    ClrTypes = new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) },
-                    TypeHandlerFactory = new IntervalHandlerFactory()
-                }.Build());
-            }
-
-            void SetupNetworkHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "cidr",
-                    NpgsqlDbType = NpgsqlDbType.Cidr,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<CidrHandler, (IPAddress Address, int Subnet)>()
-                }.Build());
-
-                var inetClrTypes = new List<Type>
-                {
-                    typeof(IPAddress), typeof((IPAddress Address, int Subnet)),
-#pragma warning disable 618
-                    typeof(NpgsqlInet)
-#pragma warning restore 618
-                };
-
-                // Support ReadOnlyIPAddress, which was added to .NET Core 3.0 as an internal subclass of IPAddress
-                var readOnlyIpType = IPAddress.Loopback.GetType();
-                if (readOnlyIpType != typeof(IPAddress))
-                    inetClrTypes.Add(readOnlyIpType);
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "inet",
-                    NpgsqlDbType = NpgsqlDbType.Inet,
-                    ClrTypes = inetClrTypes.ToArray(),
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<InetHandler, IPAddress>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "macaddr8",
-                    NpgsqlDbType = NpgsqlDbType.MacAddr8,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MacaddrHandler, PhysicalAddress>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "macaddr",
-                    NpgsqlDbType = NpgsqlDbType.MacAddr,
-                    ClrTypes = new[] { typeof(PhysicalAddress) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<MacaddrHandler, PhysicalAddress>()
-                }.Build());
-            }
-
-            void SetupFullTextSearchHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "tsquery",
-                    NpgsqlDbType = NpgsqlDbType.TsQuery,
-                    ClrTypes = new[]
-                    {
-                        typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
-                        typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp)
-                    },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TsQueryHandler, NpgsqlTsQuery>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "tsvector",
-                    NpgsqlDbType = NpgsqlDbType.TsVector,
-                    ClrTypes = new[] { typeof(NpgsqlTsVector) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TsVectorHandler, NpgsqlTsVector>()
-                }.Build());
-            }
-
-            void SetupGeometryHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "box",
-                    NpgsqlDbType = NpgsqlDbType.Box,
-                    ClrTypes = new[] { typeof(NpgsqlBox) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BoxHandler, NpgsqlBox>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "circle",
-                    NpgsqlDbType = NpgsqlDbType.Circle,
-                    ClrTypes = new[] { typeof(NpgsqlCircle) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<CircleHandler, NpgsqlCircle>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "line",
-                    NpgsqlDbType = NpgsqlDbType.Line,
-                    ClrTypes = new[] { typeof(NpgsqlLine) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<LineHandler, NpgsqlLine>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "lseg",
-                    NpgsqlDbType = NpgsqlDbType.LSeg,
-                    ClrTypes = new[] { typeof(NpgsqlLSeg) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<LineSegmentHandler, NpgsqlLSeg>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "path",
-                    NpgsqlDbType = NpgsqlDbType.Path,
-                    ClrTypes = new[] { typeof(NpgsqlPath) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PathHandler, NpgsqlPath>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "point",
-                    NpgsqlDbType = NpgsqlDbType.Point,
-                    ClrTypes = new[] { typeof(NpgsqlPoint) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PointHandler, NpgsqlPoint>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "polygon",
-                    NpgsqlDbType = NpgsqlDbType.Polygon,
-                    ClrTypes = new[] { typeof(NpgsqlPolygon) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PolygonHandler, NpgsqlPolygon>()
-                }.Build());
-            }
-
-            void SetupLTreeHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "lquery",
-                    NpgsqlDbType = NpgsqlDbType.LQuery,
-                    TypeHandlerFactory = new LQueryHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "ltree",
-                    NpgsqlDbType = NpgsqlDbType.LTree,
-                    TypeHandlerFactory = new LQueryHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "ltxtquery",
-                    NpgsqlDbType = NpgsqlDbType.LTxtQuery,
-                    TypeHandlerFactory = new LQueryHandlerFactory()
-                }.Build());
-            }
-
-            void SetupUIntHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "oid",
-                    NpgsqlDbType = NpgsqlDbType.Oid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "xid",
-                    NpgsqlDbType = NpgsqlDbType.Xid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "xid8",
-                    NpgsqlDbType = NpgsqlDbType.Xid8,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt64Handler, ulong>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "cid",
-                    NpgsqlDbType = NpgsqlDbType.Cid,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "regtype",
-                    NpgsqlDbType = NpgsqlDbType.Regtype,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "regconfig",
-                    NpgsqlDbType = NpgsqlDbType.Regconfig,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UInt32Handler, uint>()
-                }.Build());
-            }
-
-            void SetupMiscHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "boolean",
-                    NpgsqlDbType = NpgsqlDbType.Boolean,
-                    DbTypes = new[] { DbType.Boolean },
-                    ClrTypes = new[] { typeof(bool) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BoolHandler, bool>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "bytea",
-                    NpgsqlDbType = NpgsqlDbType.Bytea,
-                    DbTypes = new[] { DbType.Binary },
-                    ClrTypes = new[]
-                    {
-                        typeof(byte[]),
-                        typeof(ArraySegment<byte>),
-#if !NETSTANDARD2_0
-                        typeof(ReadOnlyMemory<byte>),
-                        typeof(Memory<byte>)
-#endif
-                    },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<ByteaHandler, byte[]>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "bit varying",
-                    NpgsqlDbType = NpgsqlDbType.Varbit,
-                    ClrTypes = new[] { typeof(BitArray), typeof(BitVector32) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BitStringHandler, BitArray>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "bit",
-                    NpgsqlDbType = NpgsqlDbType.Bit,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<BitStringHandler, BitArray>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "hstore",
-                    NpgsqlDbType = NpgsqlDbType.Hstore,
-                    ClrTypes = new[]
-                    {
-                        typeof(Dictionary<string, string?>),
-                        typeof(IDictionary<string, string?>),
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1
-                        typeof(System.Collections.Immutable.ImmutableDictionary<string, string?>)
-#endif
-                    },
-                    TypeHandlerFactory = new HstoreHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "uuid",
-                    NpgsqlDbType = NpgsqlDbType.Uuid,
-                    DbTypes = new[] { DbType.Guid },
-                    ClrTypes = new[] { typeof(Guid) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<UuidHandler, Guid>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "record",
-                    TypeHandlerFactory = new RecordHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "void",
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<VoidHandler, DBNull>()
-                }.Build());
-            }
-
-            void SetupInternalHandlers()
-            {
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "int2vector",
-                    NpgsqlDbType = NpgsqlDbType.Int2Vector,
-                    TypeHandlerFactory = new Int2VectorHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "oidvector",
-                    NpgsqlDbType = NpgsqlDbType.Oidvector,
-                    TypeHandlerFactory = new OIDVectorHandlerFactory()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "pg_lsn",
-                    NpgsqlDbType = NpgsqlDbType.PgLsn,
-                    ClrTypes = new[] { typeof(NpgsqlLogSequenceNumber) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<PgLsnHandler, NpgsqlLogSequenceNumber>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "tid",
-                    NpgsqlDbType = NpgsqlDbType.Tid,
-                    ClrTypes = new[] { typeof(NpgsqlTid) },
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<TidHandler, NpgsqlTid>()
-                }.Build());
-
-                AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "char",
-                    NpgsqlDbType = NpgsqlDbType.InternalChar,
-                    TypeHandlerFactory = new DefaultTypeHandlerFactory<InternalCharHandler, char>()
-                }.Build());
-            }
-        }
-
-        #endregion Setup for built-in handlers
+        #endregion Static translation tables
     }
 }

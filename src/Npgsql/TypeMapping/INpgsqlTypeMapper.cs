@@ -22,23 +22,6 @@ namespace Npgsql.TypeMapping
         INpgsqlNameTranslator DefaultNameTranslator { get; }
 
         /// <summary>
-        /// Enumerates all mappings currently set up on this type mapper.
-        /// </summary>
-        IEnumerable<NpgsqlTypeMapping> Mappings { get; }
-
-        /// <summary>
-        /// Adds a new type mapping to this mapper, overwriting any existing mapping in the process.
-        /// </summary>
-        INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping);
-
-        /// <summary>
-        /// Removes an existing mapping from this mapper. Attempts to read or write this type
-        /// after removal will result in an exception.
-        /// </summary>
-        /// <param name="pgTypeName">A PostgreSQL type name for the type in the database.</param>
-        bool RemoveMapping(string pgTypeName);
-
-        /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type.
         /// </summary>
         /// <remarks>
@@ -162,6 +145,13 @@ namespace Npgsql.TypeMapping
             Type clrType,
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
+
+        /// <summary>
+        /// Adds a type resolver factory, which produces resolvers that can add or modify support for PostgreSQL types.
+        /// Typically used by plugins.
+        /// </summary>
+        /// <param name="resolverFactory">The type resolver factory to be added.</param>
+        void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory);
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.
