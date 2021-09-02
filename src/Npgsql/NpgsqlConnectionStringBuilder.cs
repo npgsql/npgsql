@@ -1333,7 +1333,7 @@ namespace Npgsql
         /// </summary>
         [Category("Advanced")]
         [Description("Configure the way arrays of value types are returned when requested as object instances.")]
-        [DisplayName("ArrayNullabilityMode")]
+        [DisplayName("Array Nullability Mode")]
         [NpgsqlConnectionStringProperty]
         public ArrayNullabilityMode ArrayNullabilityMode
         {
