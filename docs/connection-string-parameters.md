@@ -30,6 +30,7 @@ Persist Security Info        | Gets or sets a Boolean value that indicates if se
 Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
 Include Realm                | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
 Include Error Detail         | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
+Log Parameters               | When enabled, parameter values are logged when commands are executed. | false
 
 ## Pooling
 
@@ -49,10 +50,10 @@ Parameter                | Description                                          
 Timeout                  | The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error. | 15
 Command Timeout          | The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity. | 30
 Internal Command Timeout | The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
-Cancellation Timeout     |  The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error. -1 skips the wait, 0 means infinite wait. Added in 5.0. | 2000
-Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | disabled
-Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | disabled
-Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | disabled
+Cancellation Timeout     | The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error. -1 skips the wait, 0 means infinite wait. Introduced in 5.0. | 2000
+Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | 0 (disabled)
+Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | false
+Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | 0 (disabled)
 Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. `Tcp KeepAlive Time` must be non-zero as well. Supported only on Windows. | value of `Tcp Keepalive Time`
 
 ## Performance
@@ -87,9 +88,12 @@ Application Name         | The optional application name parameter to be sent to
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
 Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING
+Encoding                 | Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.            | UTF8
 Timezone                 | Gets or sets the session timezone.                                                                   | PGTZ
 EF Template Database     | The database template to specify when creating a database in Entity Framework.                       | template1
+EF Admin Database        | The database admin to specify when creating and dropping a database in Entity Framework.             | template1
 Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.                   | false
+Array Nullability Mode   | Configure the way arrays of value types are returned when requested as object instances. Possible values are: Never (arrays of value types are always returned as non-nullable arrays), Always (arrays of value types are always returned as nullable arrays) and PerInstance (the type of array that gets returned is determined at runtime).             | Never
 
 ## Compatibility
 
