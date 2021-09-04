@@ -96,7 +96,7 @@ namespace Npgsql
         }
 
 #if !NETSTANDARD2_0
-        int GetIdleConnections()
+        double GetIdleConnections()
         {
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
@@ -111,7 +111,7 @@ namespace Npgsql
             }
         }
 
-        int GetBusyConnections()
+        double GetBusyConnections()
         {
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
             // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
@@ -126,12 +126,32 @@ namespace Npgsql
             }
         }
 
-        int GetPoolsCount()
+        double GetPoolsCount()
         {
             lock (_poolsLock)
             {
                 return _pools.Count;
             }
+        }
+
+        double GetMultiplexingAverageCommandsPerBatch()
+        {
+            var batchesSent = Interlocked.Read(ref _multiplexingBatchesSent);
+            if (batchesSent == 0)
+                return -1;
+
+            var commandsSent = (double)Interlocked.Read(ref _multiplexingCommandsSent);
+            return commandsSent / batchesSent;
+        }
+
+        double GetMultiplexingAverageWriteTimePerBatch()
+        {
+            var batchesSent = Interlocked.Read(ref _multiplexingBatchesSent);
+            if (batchesSent == 0)
+                return -1;
+
+            var ticksWritten = (double)Interlocked.Read(ref _multiplexingTicksWritten);
+            return ticksWritten / batchesSent / 1000;
         }
 
         protected override void OnEventCommand(EventCommandEventArgs command)
@@ -180,33 +200,33 @@ namespace Npgsql
                 _preparedCommandsRatioCounter = new PollingCounter(
                     "prepared-commands-ratio",
                     this,
-                    () => (double)Interlocked.Read(ref _totalPreparedCommands) / Interlocked.Read(ref _totalCommands))
+                    () => (double)Interlocked.Read(ref _totalPreparedCommands) / Interlocked.Read(ref _totalCommands) * 100)
                 {
                     DisplayName = "Prepared Commands Ratio",
                     DisplayUnits = "%"
                 };
 
-                _poolsCounter = new PollingCounter("connection-pools", this, () => GetPoolsCount())
+                _poolsCounter = new PollingCounter("connection-pools", this, GetPoolsCount)
                 {
                     DisplayName = "Connection Pools"
                 };
 
-                _idleConnectionsCounter = new PollingCounter("idle-connections", this, () => GetIdleConnections())
+                _idleConnectionsCounter = new PollingCounter("idle-connections", this, GetIdleConnections)
                 {
                     DisplayName = "Idle Connections"
                 };
 
-                _busyConnectionsCounter = new PollingCounter("busy-connections", this, () => GetBusyConnections())
+                _busyConnectionsCounter = new PollingCounter("busy-connections", this, GetBusyConnections)
                 {
                     DisplayName = "Busy Connections"
                 };
 
-                _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, () => (double)Interlocked.Read(ref _multiplexingCommandsSent) / Interlocked.Read(ref _multiplexingBatchesSent))
+                _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, GetMultiplexingAverageCommandsPerBatch)
                 {
                     DisplayName = "Average commands per multiplexing batch"
                 };
 
-                _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, () => (double)Interlocked.Read(ref _multiplexingTicksWritten) / Interlocked.Read(ref _multiplexingBatchesSent) / 1000)
+                _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, GetMultiplexingAverageWriteTimePerBatch)
                 {
                     DisplayName = "Average write time per multiplexing batch (us)",
                     DisplayUnits = "us"
