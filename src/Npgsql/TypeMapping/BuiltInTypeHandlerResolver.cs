@@ -239,8 +239,6 @@ namespace Npgsql.TypeMapping
         /// </summary>
         readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _cachedHandlersByOID = new();
 
-        readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _cachedHandlersByClrType = new();
-
         #endregion Cached handlers
 
         internal BuiltInTypeHandlerResolver(NpgsqlConnector connector)
@@ -439,11 +437,9 @@ namespace Npgsql.TypeMapping
                     : null;
 
         public NpgsqlTypeHandler? ResolveByClrType(Type type)
-            => _cachedHandlersByClrType.TryGetValue(type, out var handler)
+            => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
-                : ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && (handler = ResolveByDataTypeName(dataTypeName)) is not null
-                    ? _cachedHandlersByClrType[type] = handler
-                    : null;
+                : null;
 
         static readonly Dictionary<Type, string> ClrTypeToDataTypeNameTable = new()
         {
