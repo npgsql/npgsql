@@ -14,9 +14,12 @@ namespace Npgsql.TypeMapping
 
         string? GetDataTypeNameByClrType(Type type);
         TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName);
+    }
 
-        public TypeMappingInfo? GetMappingByClrType(Type clrType)
-            => GetDataTypeNameByClrType(clrType) is { } dataTypeName ? GetMappingByDataTypeName(dataTypeName) : null;
+    static class TypeHandlerResolverFactoryExtensions
+    {
+        internal static TypeMappingInfo? GetMappingByClrType(this ITypeHandlerResolverFactory factory, Type clrType)
+            => factory.GetDataTypeNameByClrType(clrType) is { } dataTypeName ? factory.GetMappingByDataTypeName(dataTypeName) : null;
     }
 }
 

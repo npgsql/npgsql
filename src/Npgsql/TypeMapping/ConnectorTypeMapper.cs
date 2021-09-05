@@ -433,9 +433,9 @@ namespace Npgsql.TypeMapping
             if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresEnumType pgEnumType)
                 throw new InvalidCastException($"Could not find {pgName}");
 
-            var found = _handlersByOID.Remove(pgEnumType.OID, out _);
-            found |= _handlersByClrType.Remove(userEnumMapping.ClrType, out _);
-            found |= _handlersByDataTypeName.Remove(userEnumMapping.PgTypeName, out _);
+            var found = _handlersByOID.TryRemove(pgEnumType.OID, out _);
+            found |= _handlersByClrType.TryRemove(userEnumMapping.ClrType, out _);
+            found |= _handlersByDataTypeName.TryRemove(userEnumMapping.PgTypeName, out _);
             return found;
         }
 
@@ -500,9 +500,9 @@ namespace Npgsql.TypeMapping
             if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresCompositeType pgCompositeType)
                 throw new InvalidCastException($"Could not find {pgName}");
 
-            var found = _handlersByOID.Remove(pgCompositeType.OID, out _);
-            found |= _handlersByClrType.Remove(clrType, out _);
-            found |= _handlersByDataTypeName.Remove(pgName, out _);
+            var found = _handlersByOID.TryRemove(pgCompositeType.OID, out _);
+            found |= _handlersByClrType.TryRemove(clrType, out _);
+            found |= _handlersByDataTypeName.TryRemove(pgName, out _);
             return found;
         }
 

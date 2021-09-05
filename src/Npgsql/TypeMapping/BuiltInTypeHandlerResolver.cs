@@ -124,19 +124,18 @@ namespace Npgsql.TypeMapping
             // Misc types
             { "boolean",     new(NpgsqlDbType.Boolean, DbType.Boolean, "boolean", typeof(bool)) },
             { "bool",        new(NpgsqlDbType.Boolean, DbType.Boolean, "boolean", typeof(bool)) },
-            { "bytea",       new(NpgsqlDbType.Bytea,   DbType.Binary,  "bytea", typeof(byte[]), typeof(ArraySegment<byte>),
+            { "bytea",       new(NpgsqlDbType.Bytea,   DbType.Binary,  "bytea", typeof(byte[]), typeof(ArraySegment<byte>)
 #if !NETSTANDARD2_0
-                typeof(ReadOnlyMemory<byte>),
-                typeof(Memory<byte>)
+                , typeof(ReadOnlyMemory<byte>), typeof(Memory<byte>)
 #endif
             ) },
             { "uuid",        new(NpgsqlDbType.Uuid,    DbType.Guid,    "uuid", typeof(Guid)) },
             { "bit varying", new(NpgsqlDbType.Varbit,  DbType.Object,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
             { "varbit",      new(NpgsqlDbType.Varbit,  DbType.Object,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
             { "bit",         new(NpgsqlDbType.Bit,     DbType.Object,  "bit") },
-            { "hstore",      new(NpgsqlDbType.Hstore,  DbType.Object,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>),
+            { "hstore",      new(NpgsqlDbType.Hstore,  DbType.Object,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>)
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
-                typeof(ImmutableDictionary<string, string?>)
+                , typeof(ImmutableDictionary<string, string?>)
 #endif
             ) },
 

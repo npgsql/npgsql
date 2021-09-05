@@ -28,20 +28,23 @@ namespace Npgsql.GeoJSON.Internal
             _geographyAsDefault = geographyAsDefault;
 
             var crsMap = (options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) == GeoJSONOptions.None
-                ? default
-                : CRSMaps.GetOrAdd(connector.Settings.ConnectionString, static (_, c) =>
-                {
-                    var builder = new CrsMapBuilder();
-                    using var cmd = c.CreateCommand(
-                        "SELECT min(srid), max(srid), auth_name " +
-                        "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                        "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;");
-                    using var reader = cmd.ExecuteReader();
-                    while (reader.Read())
-                        builder.Add(new CrsMapEntry(reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2)));
-
-                    return builder.Build();
-                }, connector);
+                ? default : CRSMaps.GetOrAdd(connector.Settings.ConnectionString, _ =>
+                 {
+                     var builder = new CrsMapBuilder();
+                     using (var cmd = connector.CreateCommand(
+                             "SELECT min(srid), max(srid), auth_name " +
+                             "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
+                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;"))
+                     using (var reader = cmd.ExecuteReader())
+                         while (reader.Read())
+                         {
+                             builder.Add(new CrsMapEntry(
+                                 reader.GetInt32(0),
+                                 reader.GetInt32(1),
+                                 reader.GetString(2)));
+                         }
+                     return builder.Build();
+                 });
 
             var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
             (_geometryOid, _geographyOid) = (pgGeometryType.OID, pgGeographyType.OID);
