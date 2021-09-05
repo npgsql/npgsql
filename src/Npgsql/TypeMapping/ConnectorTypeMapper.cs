@@ -511,6 +511,11 @@ namespace Npgsql.TypeMapping
 
                 if (Interlocked.CompareExchange(ref _resolvers, newResolvers, oldResolvers) == oldResolvers)
                 {
+                    _handlersByOID.Clear();
+                    _handlersByNpgsqlDbType.Clear();
+                    _handlersByClrType.Clear();
+                    _handlersByDataTypeName.Clear();
+
                     ChangeCounter = -1;
                     return;
                 }
