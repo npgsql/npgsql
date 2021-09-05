@@ -172,7 +172,7 @@ namespace Npgsql.PluginTests
             using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
             using var reader = cmd.ExecuteReader();
             Assert.That(reader.Read());
-            Assert.That((TestDelegate)(() => reader.GetValue(0)), Throws.InvalidOperationException);
+            Assert.That(() => reader.GetValue(0), Throws.InvalidOperationException);
         }
 
         [Test]

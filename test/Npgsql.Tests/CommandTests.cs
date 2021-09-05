@@ -441,7 +441,7 @@ namespace Npgsql.Tests
                 Thread.Sleep(300);
                 cmd2.Cancel();
             });
-            Assert.That((TestDelegate)(() => cmd1.ExecuteNonQueryAsync()), Throws.Nothing);
+            Assert.That(() => cmd1.ExecuteNonQueryAsync(), Throws.Nothing);
             cancelTask.Wait();
         }
 

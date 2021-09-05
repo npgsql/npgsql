@@ -36,12 +36,12 @@ namespace Npgsql.Tests
             Assert.That(reader.Read(), Is.True);
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
             if (IsSequential)
-                Assert.That((TestDelegate)(() => reader.GetInt32(0)), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
             else
                 Assert.That(reader.GetInt32(0), Is.EqualTo(1));
             Assert.That(reader.GetInt32(1), Is.EqualTo(2));
             if (IsSequential)
-                Assert.That((TestDelegate)(() => reader.GetInt32(0)), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
             else
                 Assert.That(reader.GetInt32(0), Is.EqualTo(1));
         }
@@ -614,7 +614,7 @@ LANGUAGE 'plpgsql';
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
             using var reader = await cmd.ExecuteReaderAsync(Behavior);
-            Assert.That((TestDelegate)(() => reader.NextResult()), Throws.Exception.TypeOf<PostgresException>());
+            Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<PostgresException>());
         }
 
         [Test]
@@ -715,7 +715,7 @@ LANGUAGE 'plpgsql'");
             using var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", conn);
             using var reader = await command.ExecuteReaderAsync(Behavior);
             Assert.That(reader.GetOrdinal("some_column"), Is.EqualTo(1));
-            Assert.That((TestDelegate)(() => reader.GetOrdinal("doesn't_exist")), Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            Assert.That(() => reader.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
         }
 
         [Test]
@@ -923,7 +923,7 @@ LANGUAGE plpgsql VOLATILE";
             await conn.ExecuteNonQueryAsync(initializeTablesSql);
             using var cmd = new NpgsqlCommand($"SELECT {function}(1)", conn);
             using var reader = await cmd.ExecuteReaderAsync(Behavior);
-            Assert.That((TestDelegate)(() => reader.NextResult()),
+            Assert.That(() => reader.NextResult(),
                 Throws.Exception.TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
         }
@@ -1379,7 +1379,7 @@ LANGUAGE plpgsql VOLATILE";
             var stream = await streamGetter(reader, 0);
             // ReSharper disable once UnusedVariable
             var v = reader.GetValue(1);
-            Assert.That((TestDelegate)(() => stream.ReadByte()), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
@@ -1395,7 +1395,7 @@ LANGUAGE plpgsql VOLATILE";
             reader.Read();
             var s1 = await streamGetter(reader, 0);
             reader.Read();
-            Assert.That((TestDelegate)(() => s1.ReadByte()), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
@@ -1524,7 +1524,7 @@ LANGUAGE plpgsql VOLATILE";
             var textReader = reader.GetTextReader(0);
             // ReSharper disable once UnusedVariable
             var v = reader.GetValue(1);
-            Assert.That((TestDelegate)(() => textReader.Peek()), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
@@ -1536,7 +1536,7 @@ LANGUAGE plpgsql VOLATILE";
             reader.Read();
             var tr1 = reader.GetTextReader(0);
             reader.Read();
-            Assert.That((TestDelegate)(() => tr1.Peek()), Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
@@ -1594,7 +1594,7 @@ LANGUAGE plpgsql VOLATILE";
             using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn);
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
             reader.Read();
-            Assert.That((TestDelegate)(() => reader.GetInt32(0)),
+            Assert.That(() => reader.GetInt32(0),
                 Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
             Assert.That(reader.GetString(1), Is.EqualTo("hello"));
         }
@@ -1612,8 +1612,7 @@ LANGUAGE plpgsql VOLATILE";
             using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn);
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
             reader.Read();
-            Assert.That((TestDelegate)(() => reader.GetInt32(0)),
-                Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
+            Assert.That(() => reader.GetInt32(0), Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         }

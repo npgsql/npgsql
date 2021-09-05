@@ -44,7 +44,7 @@ namespace Npgsql.PluginTests
             using var reader = cmd.ExecuteReader();
             reader.Read();
             // Attempt to deserialize JSON array into object
-            Assert.That((TestDelegate)(() => reader.GetFieldValue<Foo>(0)), Throws.TypeOf<JsonSerializationException>());
+            Assert.That(() => reader.GetFieldValue<Foo>(0), Throws.TypeOf<JsonSerializationException>());
             // State should still be OK to continue
             var actual = reader.GetFieldValue<JArray>(0);
             Assert.That((int)actual[0], Is.EqualTo(1));

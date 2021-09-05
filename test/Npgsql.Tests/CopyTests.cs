@@ -907,7 +907,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         public async Task UndefinedTable()
         {
             using var conn = await OpenConnectionAsync();
-            Assert.That((TestDelegate)(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY")),
+            Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
                 Throws.Exception.TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
             );
