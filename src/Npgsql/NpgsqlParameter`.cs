@@ -73,11 +73,11 @@ namespace Npgsql
 
             // TODO: Better exceptions in case of cast failure etc.
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper.ResolveNpgsqlDbType(_npgsqlDbType.Value);
+                Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
-                Handler = typeMapper.ResolveDataTypeName(_dataTypeName);
+                Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
             else
-                Handler = typeMapper.ResolveClrType(typeof(T));
+                Handler = typeMapper.ResolveByClrType(typeof(T));
         }
 
         internal override int ValidateAndGetLength()

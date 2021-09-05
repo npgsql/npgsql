@@ -279,7 +279,7 @@ namespace Npgsql.BackendMessages
         internal Type FieldType => Handler.GetFieldType(this);
 
         internal void ResolveHandler()
-            => Handler = IsBinaryFormat ? _typeMapper.ResolveOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
+            => Handler = IsBinaryFormat ? _typeMapper.ResolveByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
 
         ConnectorTypeMapper _typeMapper;
 

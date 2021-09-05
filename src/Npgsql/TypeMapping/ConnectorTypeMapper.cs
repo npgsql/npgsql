@@ -65,10 +65,10 @@ namespace Npgsql.TypeMapping
         /// </summary>
         /// <param name="oid">A PostgreSQL type OID</param>
         /// <returns>A type handler that can be used to encode and decode values.</returns>
-        internal NpgsqlTypeHandler ResolveOID(uint oid)
-            => TryResolveOID(oid, out var result) ? result : UnrecognizedTypeHandler;
+        internal NpgsqlTypeHandler ResolveByOID(uint oid)
+            => TryResolveByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
-        internal bool TryResolveOID(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
+        internal bool TryResolveByOID(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
         {
             if (_handlersByOID.TryGetValue(oid, out handler))
                 return true;
@@ -92,7 +92,7 @@ namespace Npgsql.TypeMapping
                 case PostgresArrayType pgArrayType:
                 {
                     // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                    var elementHandler = ResolveOID(pgArrayType.Element.OID);
+                    var elementHandler = ResolveByOID(pgArrayType.Element.OID);
                     handler = _handlersByOID[oid] =
                         elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
                     return true;
@@ -101,7 +101,7 @@ namespace Npgsql.TypeMapping
                 case PostgresRangeType pgRangeType:
                 {
                     // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                    var subtypeHandler = ResolveOID(pgRangeType.Subtype.OID);
+                    var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
                     handler = _handlersByOID[oid] = subtypeHandler.CreateRangeHandler(pgRangeType);
                     return true;
                 }
@@ -109,7 +109,7 @@ namespace Npgsql.TypeMapping
                 case PostgresMultirangeType pgMultirangeType:
                 {
                     // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                    var subtypeHandler = ResolveOID(pgMultirangeType.Subrange.Subtype.OID);
+                    var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
                     handler = _handlersByOID[oid] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
                     return true;
                 }
@@ -127,7 +127,7 @@ namespace Npgsql.TypeMapping
                     // circumstances we never need to resolve domains from a type OID.
                     // However, when a domain is part of a composite type, the domain's type OID is sent, so we support this here.
                     // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                    handler = _handlersByOID[oid] = ResolveOID(pgDomainType.BaseType.OID);
+                    handler = _handlersByOID[oid] = ResolveByOID(pgDomainType.BaseType.OID);
                     return true;
                 }
 
@@ -138,7 +138,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal NpgsqlTypeHandler ResolveNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+        internal NpgsqlTypeHandler ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
         {
             if (_handlersByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
                 return handler;
@@ -198,7 +198,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal NpgsqlTypeHandler ResolveDataTypeName(string typeName)
+        internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
         {
             if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
                 return handler;
@@ -216,20 +216,20 @@ namespace Npgsql.TypeMapping
                 {
                 case PostgresArrayType pgArrayType:
                 {
-                    var elementHandler = ResolveOID(pgArrayType.Element.OID);
+                    var elementHandler = ResolveByOID(pgArrayType.Element.OID);
                     return _handlersByDataTypeName[typeName] =
                         elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
                 }
 
                 case PostgresRangeType pgRangeType:
                 {
-                    var subtypeHandler = ResolveOID(pgRangeType.Subtype.OID);
+                    var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
                     return _handlersByDataTypeName[typeName] = subtypeHandler.CreateRangeHandler(pgRangeType);
                 }
 
                 case PostgresMultirangeType pgMultirangeType:
                 {
-                    var subtypeHandler = ResolveOID(pgMultirangeType.Subrange.Subtype.OID);
+                    var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
                     return _handlersByDataTypeName[typeName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
                 }
 
@@ -241,7 +241,7 @@ namespace Npgsql.TypeMapping
                 }
 
                 case PostgresDomainType pgDomainType:
-                    return _handlersByDataTypeName[typeName] = ResolveOID(pgDomainType.BaseType.OID);
+                    return _handlersByDataTypeName[typeName] = ResolveByOID(pgDomainType.BaseType.OID);
 
                 case PostgresBaseType pgBaseType:
                     throw new NotSupportedException($"PostgreSQL type '{pgBaseType}' isn't supported by Npgsql");
@@ -256,7 +256,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal NpgsqlTypeHandler ResolveClrType(Type type)
+        internal NpgsqlTypeHandler ResolveByClrType(Type type)
         {
             if (_handlersByClrType.TryGetValue(type, out var handler))
                 return handler;
@@ -276,12 +276,12 @@ namespace Npgsql.TypeMapping
                     {
                         var subtypeType = arrayElementType.GetGenericArguments()[0];
 
-                        return ResolveClrType(subtypeType) is { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } subtypeHandler
+                        return ResolveByClrType(subtypeType) is { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } subtypeHandler
                             ? _handlersByClrType[type] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType)
                             : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
                     }
 
-                    if (ResolveClrType(arrayElementType) is not { } elementHandler)
+                    if (ResolveByClrType(arrayElementType) is not { } elementHandler)
                         throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
 
                     if (elementHandler.PostgresType.Array is not { } pgArrayType)
@@ -291,7 +291,7 @@ namespace Npgsql.TypeMapping
                         elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
                 }
 
-                if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveClrType(underlyingType) is { } underlyingHandler)
+                if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
                     return _handlersByClrType[type] = underlyingHandler;
 
                 if (type.IsEnum)
@@ -309,7 +309,7 @@ namespace Npgsql.TypeMapping
                 {
                     var subtypeType = type.GetGenericArguments()[0];
 
-                    return ResolveClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
+                    return ResolveByClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
                         ? _handlersByClrType[type] = subtypeHandler.CreateRangeHandler(pgRangeType)
                         : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
                 }

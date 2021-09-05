@@ -31,23 +31,23 @@ namespace Npgsql.Benchmarks
 
         [Benchmark]
         public NpgsqlTypeHandler ResolveOID()
-            => _typeMapper.ResolveOID(23); // int4
+            => _typeMapper.ResolveByOID(23); // int4
 
         [Benchmark]
         public NpgsqlTypeHandler ResolveNpgsqlDbType()
-            => _typeMapper.ResolveNpgsqlDbType(NpgsqlDbType.Integer);
+            => _typeMapper.ResolveByNpgsqlDbType(NpgsqlDbType.Integer);
 
         [Benchmark]
         public NpgsqlTypeHandler ResolveDataTypeName()
-            => _typeMapper.ResolveDataTypeName("integer");
+            => _typeMapper.ResolveByDataTypeName("integer");
 
         [Benchmark]
         public NpgsqlTypeHandler ResolveClrTypeInt()
-            => _typeMapper.ResolveClrType(typeof(int));
+            => _typeMapper.ResolveByClrType(typeof(int));
 
         [Benchmark]
         public NpgsqlTypeHandler ResolveClrTypeTid()
-            => _typeMapper.ResolveClrType(typeof(NpgsqlTid));
+            => _typeMapper.ResolveByClrType(typeof(NpgsqlTid));
 
     }
 }
