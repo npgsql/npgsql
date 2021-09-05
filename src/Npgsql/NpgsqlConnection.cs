@@ -936,13 +936,21 @@ namespace Npgsql
 #if NETSTANDARD2_0
         public async ValueTask DisposeAsync()
 #else
-        public override async ValueTask DisposeAsync()
+        public override ValueTask DisposeAsync()
 #endif
         {
-            if (_disposed)
-                return;
-            await CloseAsync();
-            _disposed = true;
+            using (NoSynchronizationContextScope.Enter())
+                return DisposeAsyncCore();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            async ValueTask DisposeAsyncCore()
+            {
+                if (_disposed)
+                    return;
+
+                await CloseAsync();
+                _disposed = true;
+            }
         }
 
         #endregion
