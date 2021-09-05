@@ -36,10 +36,10 @@ namespace Npgsql.Json.NET.Internal
         public ITypeHandlerResolver Create(NpgsqlConnector connector)
             => new JsonNetTypeHandlerResolver(connector, _byType, _settings);
 
-        public string? ClrTypeToDataTypeName(Type type)
+        public string? GetDataTypeNameByClrType(Type type)
             => JsonNetTypeHandlerResolver.ClrTypeToDataTypeName(type, _byType);
 
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName)
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => JsonNetTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
 
     }

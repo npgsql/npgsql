@@ -196,7 +196,7 @@ namespace Npgsql.TypeMapping
             try
             {
                 foreach (var resolverFactory in ResolverFactories)
-                    if ((typeMapping = resolverFactory.ClrTypeToMappingInfo(clrType)) is not null)
+                    if ((typeMapping = resolverFactory.GetMappingByClrType(clrType)) is not null)
                         return true;
 
                 if (clrType.IsArray)

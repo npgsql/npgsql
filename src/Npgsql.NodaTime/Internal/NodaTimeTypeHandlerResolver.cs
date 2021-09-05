@@ -32,12 +32,12 @@ namespace Npgsql.NodaTime.Internal
             _intervalHandler = new IntervalHandler(PgType("interval"));
         }
 
-        public NpgsqlTypeHandler? ResolveOID(uint oid)
-            => OIDToDataTypeName(oid) is { } dataTypeName && ResolveDataTypeName(dataTypeName) is { } handler
+        public NpgsqlTypeHandler? ResolveByOID(uint oid)
+            => GetDataTypeNameByOID(oid) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
-        public NpgsqlTypeHandler? ResolveDataTypeName(string typeName)
+        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "timestamp" or "timestamp without time zone" => _timestampHandler,
@@ -50,8 +50,8 @@ namespace Npgsql.NodaTime.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveClrType(Type type)
-            => ClrTypeToDataTypeName(type) is { } dataTypeName && ResolveDataTypeName(dataTypeName) is { } handler
+        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+            => ClrTypeToDataTypeName(type) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
@@ -73,7 +73,7 @@ namespace Npgsql.NodaTime.Internal
             return null;
         }
 
-        public string? OIDToDataTypeName(uint oid)
+        public string? GetDataTypeNameByOID(uint oid)
             => oid switch
             {
                 PostgresTypeOIDs.Timestamp   => "timestamp without time zone",

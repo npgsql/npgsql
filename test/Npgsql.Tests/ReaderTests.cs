@@ -2100,9 +2100,9 @@ LANGUAGE plpgsql VOLATILE";
 
         public TypeMappingInfo? GetMappingByNpgsqlDbType(NpgsqlDbType npgsqlDbType) => throw new NotSupportedException();
         public TypeMappingInfo? GetMappingByDbType(DbType dbType) => throw new NotSupportedException();
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName) => throw new NotSupportedException();
-        public TypeMappingInfo? ClrTypeToMappingInfo(Type clrType) => throw new NotSupportedException();
-        public string? ClrTypeToDataTypeName(Type type) => throw new NotSupportedException();
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+        public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
+        public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
 
         class ExplodingTypeHandlerResolver : ITypeHandlerResolver
         {
@@ -2110,11 +2110,11 @@ LANGUAGE plpgsql VOLATILE";
 
             public ExplodingTypeHandlerResolver(bool safe) => _safe = safe;
 
-            public NpgsqlTypeHandler? ResolveOID(uint oid) => oid == PostgresTypeOIDs.Int4 ? new ExplodingTypeHandler(null!, _safe) : null;
-            public NpgsqlTypeHandler? ResolveClrType(Type type) => null;
-            public NpgsqlTypeHandler? ResolveDataTypeName(string typeName) => null;
+            public NpgsqlTypeHandler? ResolveByOID(uint oid) => oid == PostgresTypeOIDs.Int4 ? new ExplodingTypeHandler(null!, _safe) : null;
+            public NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
+            public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
 
-            public string? OIDToDataTypeName(uint oid) => throw new NotImplementedException();
+            public string? GetDataTypeNameByOID(uint oid) => throw new NotImplementedException();
             public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotImplementedException();
         }
     }

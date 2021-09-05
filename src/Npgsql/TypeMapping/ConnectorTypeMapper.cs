@@ -77,7 +77,7 @@ namespace Npgsql.TypeMapping
             {
                 foreach (var resolver in _resolvers)
                 {
-                    if ((handler = resolver.ResolveOID(oid)) is not null)
+                    if ((handler = resolver.ResolveByOID(oid)) is not null)
                     {
                         _handlersByOID[oid] = handler;
                         return true;
@@ -190,7 +190,7 @@ namespace Npgsql.TypeMapping
             {
                 if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
                     foreach (var resolver in _resolvers)
-                        if ((handler = resolver.ResolveDataTypeName(dataTypeName)) is not null)
+                        if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
                             return true;
 
                 handler = null;
@@ -206,7 +206,7 @@ namespace Npgsql.TypeMapping
             lock (_writeLock)
             {
                 foreach (var resolver in _resolvers)
-                    if ((handler = resolver.ResolveDataTypeName(typeName)) is not null)
+                    if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
                         return _handlersByDataTypeName[typeName] = handler;
 
                 if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
@@ -264,7 +264,7 @@ namespace Npgsql.TypeMapping
             lock (_writeLock)
             {
                 foreach (var resolver in _resolvers)
-                    if ((handler = resolver.ResolveClrType(type)) is not null)
+                    if ((handler = resolver.ResolveByClrType(type)) is not null)
                         return _handlersByClrType[type] = handler;
 
                 // Try to see if it is an array type
@@ -344,7 +344,7 @@ namespace Npgsql.TypeMapping
         internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
         {
             foreach (var resolver in _resolvers)
-                if (resolver.OIDToDataTypeName(pgType.OID) is { } dataTypeName && (mapping = resolver.GetMappingByDataTypeName(dataTypeName)) is not null)
+                if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName && (mapping = resolver.GetMappingByDataTypeName(dataTypeName)) is not null)
                     return true;
 
             switch (pgType)
@@ -604,7 +604,7 @@ namespace Npgsql.TypeMapping
             {
                 foreach (var resolver in _resolvers)
                 {
-                    if (resolver.OIDToDataTypeName(pgType.OID) is { } dataTypeName &&
+                    if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName &&
                         (mapping = resolver.GetMappingByDataTypeName(dataTypeName)) is not null)
                     {
                         return true;

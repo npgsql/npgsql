@@ -30,7 +30,7 @@ namespace Npgsql.Json.NET.Internal
             _dataTypeNamesByClrType = dataClrTypeNamesDataTypeNamesByClrClrType;
         }
 
-        public NpgsqlTypeHandler? ResolveOID(uint oid)
+        public NpgsqlTypeHandler? ResolveByOID(uint oid)
             => oid switch
             {
                 PostgresTypeOIDs.Jsonb => _jsonbHandler,
@@ -46,7 +46,7 @@ namespace Npgsql.Json.NET.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveDataTypeName(string typeName)
+        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "jsonb" => _jsonbHandler,
@@ -54,15 +54,15 @@ namespace Npgsql.Json.NET.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveClrType(Type type)
-            => ClrTypeToDataTypeName(type, _dataTypeNamesByClrType) is { } dataTypeName && ResolveDataTypeName(dataTypeName) is { } handler
+        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+            => ClrTypeToDataTypeName(type, _dataTypeNamesByClrType) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
         internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string> clrTypes)
             => clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-        public string? OIDToDataTypeName(uint oid)
+        public string? GetDataTypeNameByOID(uint oid)
             => oid switch
             {
                 PostgresTypeOIDs.Jsonb => "jsonb",

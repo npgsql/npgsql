@@ -11,10 +11,10 @@ namespace Npgsql.TypeMapping
         public ITypeHandlerResolver Create(NpgsqlConnector connector)
             => new BuiltInTypeHandlerResolver(connector);
 
-        public string? ClrTypeToDataTypeName(Type type)
+        public string? GetDataTypeNameByClrType(Type type)
             => BuiltInTypeHandlerResolver.ClrTypeToDataTypeName(type);
 
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName)
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => BuiltInTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

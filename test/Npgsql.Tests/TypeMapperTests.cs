@@ -132,9 +132,9 @@ namespace Npgsql.Tests
             public ITypeHandlerResolver Create(NpgsqlConnector connector)
                 => new MyInt32TypeHandlerResolver(connector, this);
 
-            public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName) => throw new NotSupportedException();
-            public TypeMappingInfo? ClrTypeToMappingInfo(Type clrType) => throw new NotSupportedException();
-            public string? ClrTypeToDataTypeName(Type type) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
+            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
         }
 
         class MyInt32TypeHandlerResolver : ITypeHandlerResolver
@@ -144,14 +144,14 @@ namespace Npgsql.Tests
             public MyInt32TypeHandlerResolver(NpgsqlConnector connector, MyInt32TypeHandlerResolverFactory factory)
                 => _handler = new MyInt32Handler(connector.DatabaseInfo.GetPostgresTypeByName("integer"), factory);
 
-            public NpgsqlTypeHandler? ResolveOID(uint oid)
+            public NpgsqlTypeHandler? ResolveByOID(uint oid)
                 => oid == _handler.PostgresType.OID ? _handler : null;
-            public NpgsqlTypeHandler? ResolveClrType(Type type)
+            public NpgsqlTypeHandler? ResolveByClrType(Type type)
                 => type == typeof(int) ? _handler : null;
-            public NpgsqlTypeHandler? ResolveDataTypeName(string typeName)
+            public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
                 => typeName == "integer" ? _handler : null;
 
-            public string? OIDToDataTypeName(uint oid) => throw new NotSupportedException();
+            public string? GetDataTypeNameByOID(uint oid) => throw new NotSupportedException();
             public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
 
         }
@@ -182,9 +182,9 @@ namespace Npgsql.Tests
             public ITypeHandlerResolver Create(NpgsqlConnector connector)
                 => new CitextToStringTypeHandlerResolver(connector);
 
-            public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName) => throw new NotSupportedException();
-            public TypeMappingInfo? ClrTypeToMappingInfo(Type clrType) => throw new NotSupportedException();
-            public string? ClrTypeToDataTypeName(Type type) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
+            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
 
             class CitextToStringTypeHandlerResolver : ITypeHandlerResolver
             {
@@ -197,12 +197,12 @@ namespace Npgsql.Tests
                     _pgCitextType = connector.DatabaseInfo.GetPostgresTypeByName("citext");
                 }
 
-                public NpgsqlTypeHandler? ResolveClrType(Type type)
+                public NpgsqlTypeHandler? ResolveByClrType(Type type)
                     => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
-                public NpgsqlTypeHandler? ResolveOID(uint oid) => null;
-                public NpgsqlTypeHandler? ResolveDataTypeName(string typeName) => null;
+                public NpgsqlTypeHandler? ResolveByOID(uint oid) => null;
+                public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
 
-                public string? OIDToDataTypeName(uint oid) => throw new NotSupportedException();
+                public string? GetDataTypeNameByOID(uint oid) => throw new NotSupportedException();
                 public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
             }
         }

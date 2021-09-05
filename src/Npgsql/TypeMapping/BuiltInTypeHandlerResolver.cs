@@ -263,7 +263,7 @@ namespace Npgsql.TypeMapping
             _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
         }
 
-        public NpgsqlTypeHandler? ResolveDataTypeName(string typeName)
+        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 // Numeric types
@@ -349,7 +349,7 @@ namespace Npgsql.TypeMapping
                 _ => null
             };
 
-        public string? OIDToDataTypeName(uint oid)
+        public string? GetDataTypeNameByOID(uint oid)
             => oid switch
             {
                 // Numeric types
@@ -431,17 +431,17 @@ namespace Npgsql.TypeMapping
                         : null
             };
 
-        public NpgsqlTypeHandler? ResolveOID(uint oid)
+        public NpgsqlTypeHandler? ResolveByOID(uint oid)
             => _cachedHandlersByOID.TryGetValue(oid, out var handler)
                 ? handler
-                : OIDToDataTypeName(oid) is { } dataTypeName && (handler = ResolveDataTypeName(dataTypeName)) is not null
+                : GetDataTypeNameByOID(oid) is { } dataTypeName && (handler = ResolveByDataTypeName(dataTypeName)) is not null
                     ? _cachedHandlersByOID[oid] = handler
                     : null;
 
-        public NpgsqlTypeHandler? ResolveClrType(Type type)
+        public NpgsqlTypeHandler? ResolveByClrType(Type type)
             => _cachedHandlersByClrType.TryGetValue(type, out var handler)
                 ? handler
-                : ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && (handler = ResolveDataTypeName(dataTypeName)) is not null
+                : ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && (handler = ResolveByDataTypeName(dataTypeName)) is not null
                     ? _cachedHandlersByClrType[type] = handler
                     : null;
 

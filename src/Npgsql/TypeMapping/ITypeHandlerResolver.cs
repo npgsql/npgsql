@@ -10,15 +10,15 @@ namespace Npgsql.TypeMapping
 {
     public interface ITypeHandlerResolver
     {
-        NpgsqlTypeHandler? ResolveOID(uint oid);
+        NpgsqlTypeHandler? ResolveByOID(uint oid);
 
-        NpgsqlTypeHandler? ResolveDataTypeName(string typeName);
+        NpgsqlTypeHandler? ResolveByDataTypeName(string typeName);
 
         // TODO: Add generic GetByClrType with a default implementation that delegates to the non-generic version.
         // This way the built-in resolver can specialize for some types.
-        NpgsqlTypeHandler? ResolveClrType(Type type);
+        NpgsqlTypeHandler? ResolveByClrType(Type type);
 
-        string? OIDToDataTypeName(uint oid);
+        string? GetDataTypeNameByOID(uint oid);
 
         TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName);
     }

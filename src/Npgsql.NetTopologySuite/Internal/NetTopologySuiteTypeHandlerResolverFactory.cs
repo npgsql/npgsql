@@ -30,10 +30,10 @@ namespace Npgsql.NetTopologySuite.Internal
             => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
                 _geographyAsDefault);
 
-        public string? ClrTypeToDataTypeName(Type type)
+        public string? GetDataTypeNameByClrType(Type type)
             => NetTopologySuiteTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
 
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName)
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => NetTopologySuiteTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

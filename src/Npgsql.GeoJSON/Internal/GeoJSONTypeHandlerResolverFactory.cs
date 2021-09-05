@@ -15,10 +15,10 @@ namespace Npgsql.GeoJSON.Internal
         public ITypeHandlerResolver Create(NpgsqlConnector connector)
             => new GeoJSONTypeHandlerResolver(connector, _options, _geographyAsDefault);
 
-        public string? ClrTypeToDataTypeName(Type type)
+        public string? GetDataTypeNameByClrType(Type type)
             => GeoJSONTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
 
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName)
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => GeoJSONTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

@@ -9,10 +9,10 @@ namespace Npgsql.NodaTime.Internal
         public ITypeHandlerResolver Create(NpgsqlConnector connector)
             => new NodaTimeTypeHandlerResolver(connector);
 
-        public string? ClrTypeToDataTypeName(Type type)
+        public string? GetDataTypeNameByClrType(Type type)
             => NodaTimeTypeHandlerResolver.ClrTypeToDataTypeName(type);
 
-        public TypeMappingInfo? DataTypeNameToMappingInfo(string dataTypeName)
+        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => NodaTimeTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

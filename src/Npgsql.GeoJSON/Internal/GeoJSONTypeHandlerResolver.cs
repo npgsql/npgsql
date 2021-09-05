@@ -50,12 +50,12 @@ namespace Npgsql.GeoJSON.Internal
             _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
         }
 
-        public NpgsqlTypeHandler? ResolveOID(uint oid)
-            => OIDToDataTypeName(oid) is { } dataTypeName && ResolveDataTypeName(dataTypeName) is { } handler
+        public NpgsqlTypeHandler? ResolveByOID(uint oid)
+            => GetDataTypeNameByOID(oid) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
-        public NpgsqlTypeHandler? ResolveDataTypeName(string typeName)
+        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "geometry" => _geometryHandler,
@@ -63,8 +63,8 @@ namespace Npgsql.GeoJSON.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveClrType(Type type)
-            => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveDataTypeName(dataTypeName) is { } handler
+        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+            => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
@@ -75,7 +75,7 @@ namespace Npgsql.GeoJSON.Internal
                     ? "geography"
                     : "geometry";
 
-        public string? OIDToDataTypeName(uint oid)
+        public string? GetDataTypeNameByOID(uint oid)
             => oid == _geometryOid
                 ? "geometry"
                 : oid == _geographyOid
