@@ -934,7 +934,7 @@ namespace Npgsql
         /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
         /// </summary>
 #if NETSTANDARD2_0
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
 #else
         public override ValueTask DisposeAsync()
 #endif
