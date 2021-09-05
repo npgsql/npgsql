@@ -17,7 +17,7 @@ namespace Npgsql.TypeMapping
 {
     sealed class ConnectorTypeMapper : TypeMapperBase
     {
-        readonly NpgsqlConnector _connector;
+        internal NpgsqlConnector Connector { get; }
 
         NpgsqlDatabaseInfo? _databaseInfo;
 
@@ -50,8 +50,8 @@ namespace Npgsql.TypeMapping
 
         internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
-            _connector = connector;
-            UnrecognizedTypeHandler = new UnknownTypeHandler(_connector);
+            Connector = connector;
+            UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
             _resolvers = Array.Empty<ITypeHandlerResolver>();
         }
 
@@ -91,7 +91,7 @@ namespace Npgsql.TypeMapping
                 // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
                 var elementHandler = ResolveByOID(pgArrayType.Element.OID);
                 handler = _handlersByOID[oid] =
-                    elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
+                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
                 return true;
             }
 
@@ -114,7 +114,7 @@ namespace Npgsql.TypeMapping
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByOID and returned above - this is unmapped.
-                handler = _handlersByOID[oid] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, _connector.TextEncoding);
+                handler = _handlersByOID[oid] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
                 return true;
             }
 
@@ -151,7 +151,7 @@ namespace Npgsql.TypeMapping
                     throw new ArgumentException($"No array type could be found in the database for element {elementHandler.PostgresType}");
 
                 return _handlersByNpgsqlDbType[npgsqlDbType] =
-                    elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
+                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
@@ -209,7 +209,7 @@ namespace Npgsql.TypeMapping
             {
                 var elementHandler = ResolveByOID(pgArrayType.Element.OID);
                 return _handlersByDataTypeName[typeName] =
-                    elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
+                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             case PostgresRangeType pgRangeType:
@@ -228,7 +228,7 @@ namespace Npgsql.TypeMapping
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
                 return _handlersByDataTypeName[typeName] =
-                    new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, _connector.TextEncoding);
+                    new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
             }
 
             case PostgresDomainType pgDomainType:
@@ -276,7 +276,7 @@ namespace Npgsql.TypeMapping
                     throw new ArgumentException($"No array type could be found in the database for element {elementHandler.PostgresType}");
 
                 return _handlersByClrType[type] =
-                    elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
+                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
@@ -285,7 +285,7 @@ namespace Npgsql.TypeMapping
             if (type.IsEnum)
             {
                 return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, DefaultNameTranslator)) is PostgresEnumType pgEnumType
-                    ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, _connector.TextEncoding)
+                    ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding)
                     : throw new NotSupportedException(
                         $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
                         "Consider mapping the enum before usage, refer to the documentation for more details.");
@@ -440,7 +440,7 @@ namespace Npgsql.TypeMapping
                     $"Cannot map composite type {typeof(T).Name} to PostgreSQL type {pgName} which isn't a composite");
             }
 
-            var handler = new UserCompositeTypeMapping<T>(pgName, nameTranslator).CreateHandler(pgCompositeType, _connector);
+            var handler = new UserCompositeTypeMapping<T>(pgName, nameTranslator).CreateHandler(pgCompositeType, Connector);
 
             ApplyUserMapping(pgCompositeType, typeof(T), handler);
 
@@ -466,7 +466,7 @@ namespace Npgsql.TypeMapping
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
                 new object[] { clrType, nameTranslator }, null)!;
 
-            var handler = userCompositeMapping.CreateHandler(pgCompositeType, _connector);
+            var handler = userCompositeMapping.CreateHandler(pgCompositeType, Connector);
 
             ApplyUserMapping(pgCompositeType, clrType, handler);
 
@@ -507,7 +507,7 @@ namespace Npgsql.TypeMapping
                 var oldResolvers = _resolvers;
                 var newResolvers = new ITypeHandlerResolver[_resolvers.Length + 1];
                 Array.Copy(oldResolvers, 0, newResolvers, 1, _resolvers.Length);
-                newResolvers[0] = resolverFactory.Create(_connector);
+                newResolvers[0] = resolverFactory.Create(Connector);
 
                 if (Interlocked.CompareExchange(ref _resolvers, newResolvers, oldResolvers) == oldResolvers)
                 {
@@ -533,7 +533,7 @@ namespace Npgsql.TypeMapping
 
                 _resolvers = new ITypeHandlerResolver[globalMapper.ResolverFactories.Count];
                 for (var i = 0; i < _resolvers.Length; i++)
-                    _resolvers[i] = globalMapper.ResolverFactories[i].Create(_connector);
+                    _resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
 
                 // TODO: Skip this entire method, we'll be called again later after injecting the DatabaseInfo
                 if (_databaseInfo is not null)
@@ -553,7 +553,7 @@ namespace Npgsql.TypeMapping
                             pgType is PostgresCompositeType postgresCompositeType)
                         {
                             ApplyUserMapping(postgresCompositeType, userCompositeMapping.ClrType,
-                                userCompositeMapping.CreateHandler(postgresCompositeType, _connector));
+                                userCompositeMapping.CreateHandler(postgresCompositeType, Connector));
                         }
                     }
                 }

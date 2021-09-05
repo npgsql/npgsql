@@ -105,7 +105,7 @@ namespace Npgsql.Internal
         /// <summary>
         /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
         /// </summary>
-        public NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = default!;
+        public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
 
         internal ConnectorTypeMapper TypeMapper { get; set; } = default!;
 
@@ -542,7 +542,9 @@ namespace Npgsql.Internal
         {
             // The type loading below will need to send queries to the database, and that depends on a type mapper
             // being set up (even if its empty)
-            TypeMapper = new ConnectorTypeMapper(this);
+            TypeMapper = Settings.Multiplexing && ((MultiplexingConnectorPool)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+                ? multiplexingTypeMapper
+                : new ConnectorTypeMapper(this);
 
             var key = new NpgsqlDatabaseInfoCacheKey(Settings);
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))

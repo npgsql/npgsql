@@ -359,7 +359,7 @@ namespace Npgsql
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     await ((MultiplexingConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
-                    Log.Debug("Connection opened (multipelxing)");
+                    Log.Debug("Connection opened (multiplexing)");
                     FullState = ConnectionState.Open;
                 }
                 catch
@@ -2031,7 +2031,8 @@ namespace Npgsql
 
             if (Settings.Multiplexing)
             {
-                ((MultiplexingConnectorPool)Pool).MultiplexingTypeMapper!.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
+                var multiplexingTypeMapper = ((MultiplexingConnectorPool)Pool).MultiplexingTypeMapper!;
+                multiplexingTypeMapper.DatabaseInfo = multiplexingTypeMapper.Connector.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
             }
         }
 
