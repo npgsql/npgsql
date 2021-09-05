@@ -856,15 +856,23 @@ namespace Npgsql
         /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
 #if NETSTANDARD2_0
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
 #else
-        public override async ValueTask DisposeAsync()
+        public override ValueTask DisposeAsync()
 #endif
         {
-            if (_disposed)
-                return;
-            await CloseAsync();
-            _disposed = true;
+            using (NoSynchronizationContextScope.Enter())
+                return DisposeAsyncCore();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            async ValueTask DisposeAsyncCore()
+            {
+                if (_disposed)
+                    return;
+
+                await CloseAsync();
+                _disposed = true;
+            }
         }
 
         #endregion
