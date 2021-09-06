@@ -6,15 +6,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeMapping
 {
-    interface IUserCompositeTypeMapping
-    {
-        public string PgTypeName { get; }
-        public Type ClrType { get; }
-
-        public NpgsqlTypeHandler CreateHandler(PostgresCompositeType pgType, NpgsqlConnector conn);
-    }
-
-    class UserCompositeTypeMapping<T> : IUserCompositeTypeMapping
+    class UserCompositeTypeMapping<T> : IUserTypeMapping
     {
         public string PgTypeName { get; }
         public Type ClrType => typeof(T);
@@ -23,7 +15,7 @@ namespace Npgsql.TypeMapping
         public UserCompositeTypeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
             => (PgTypeName, NameTranslator) = (pgTypeName, nameTranslator);
 
-        public NpgsqlTypeHandler CreateHandler(PostgresCompositeType pgType, NpgsqlConnector conn)
-            => new CompositeHandler<T>(pgType, conn.TypeMapper, NameTranslator);
+        public NpgsqlTypeHandler CreateHandler(PostgresType pgType, NpgsqlConnector connector)
+            => new CompositeHandler<T>((PostgresCompositeType)pgType, connector.TypeMapper, NameTranslator);
     }
 }

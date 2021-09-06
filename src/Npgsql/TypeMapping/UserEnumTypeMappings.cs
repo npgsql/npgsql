@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
@@ -9,15 +10,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
-    interface IUserEnumTypeMapping
-    {
-        public string PgTypeName { get; }
-        public Type ClrType { get; }
-
-        NpgsqlTypeHandler CreateHandler(PostgresEnumType postgresType);
-    }
-
-    class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
+    class UserEnumTypeMapping<TEnum> : IUserTypeMapping
         where TEnum : struct, Enum
     {
         public string PgTypeName { get; }
@@ -43,7 +36,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        public NpgsqlTypeHandler CreateHandler(PostgresEnumType postgresType)
-            => new EnumHandler<TEnum>(postgresType, _enumToLabel, _labelToEnum);
+        public NpgsqlTypeHandler CreateHandler(PostgresType postgresType, NpgsqlConnector connector)
+            => new EnumHandler<TEnum>((PostgresEnumType)postgresType, _enumToLabel, _labelToEnum);
     }
 }

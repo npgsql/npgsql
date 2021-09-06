@@ -15,8 +15,7 @@ namespace Npgsql.TypeMapping
         public static GlobalTypeMapper Instance { get; }
 
         internal List<ITypeHandlerResolverFactory> ResolverFactories { get; } = new();
-        internal Dictionary<string, IUserCompositeTypeMapping> UserCompositeTypeMappings { get; } = new();
-        internal Dictionary<string, IUserEnumTypeMapping> UserEnumTypeMappings { get; } = new();
+        internal Dictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
@@ -48,7 +47,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                UserEnumTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
+                UserTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
                 RecordChange();
                 return this;
             }
@@ -69,7 +68,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                var removed = UserEnumTypeMappings.Remove(pgName);
+                var removed = UserTypeMappings.Remove(pgName);
                 RecordChange();
                 return removed;
             }
@@ -90,7 +89,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                UserCompositeTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
+                UserTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
                 RecordChange();
                 return this;
             }
@@ -111,8 +110,8 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                UserCompositeTypeMappings[pgName] =
-                    (IUserCompositeTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
+                UserTypeMappings[pgName] =
+                    (IUserTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
                         BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
                         new object[] { clrType, nameTranslator }, null)!;
 
@@ -140,7 +139,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                var removed = UserCompositeTypeMappings.Remove(pgName);
+                var removed = UserTypeMappings.Remove(pgName);
                 RecordChange();
                 return removed;
             }
@@ -172,8 +171,7 @@ namespace Npgsql.TypeMapping
                 ResolverFactories.Clear();
                 ResolverFactories.Add(new BuiltInTypeHandlerResolverFactory());
 
-                UserEnumTypeMappings.Clear();
-                UserCompositeTypeMappings.Clear();
+                UserTypeMappings.Clear();
 
                 RecordChange();
             }

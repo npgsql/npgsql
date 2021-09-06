@@ -540,11 +540,15 @@ namespace Npgsql.Internal
         internal async ValueTask LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken = default)
         {
-            // The type loading below will need to send queries to the database, and that depends on a type mapper
-            // being set up (even if its empty)
-            TypeMapper = Settings.Multiplexing && ((MultiplexingConnectorPool)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
-                ? multiplexingTypeMapper
-                : new ConnectorTypeMapper(this);
+            // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
+            // empty). So we set up here, and then later inject the DatabaseInfo.
+            // For multiplexing connectors, the type mapper is the shared pool-wide one (since when validating/binding parameters on
+            // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
+            // a connector-specific mapper, which will later become shared pool-wide one.
+            TypeMapper =
+                Settings.Multiplexing && ((MultiplexingConnectorPool)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+                    ? multiplexingTypeMapper
+                    : new ConnectorTypeMapper(this);
 
             var key = new NpgsqlDatabaseInfoCacheKey(Settings);
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))

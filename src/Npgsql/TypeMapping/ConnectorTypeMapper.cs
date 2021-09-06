@@ -39,6 +39,8 @@ namespace Npgsql.TypeMapping
         readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
         readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByDataTypeName = new();
 
+        readonly Dictionary<uint, TypeMappingInfo> _userTypeMappings = new();
+
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
         /// mapper was created, to detect mapping changes. If changes are made to this connection's
@@ -377,8 +379,7 @@ namespace Npgsql.TypeMapping
                 break;
 
             case PostgresEnumType or PostgresCompositeType:
-                // TODO: Implement
-                break;
+                return _userTypeMappings.TryGetValue(pgType.OID, out mapping);
             }
 
             mapping = null;
@@ -400,7 +401,7 @@ namespace Npgsql.TypeMapping
             if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresEnumType pgEnumType)
                 throw new InvalidCastException($"Cannot map enum type {typeof(TEnum).Name} to PostgreSQL type {pgName} which isn't an enum");
 
-            var handler = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator).CreateHandler(pgEnumType);
+            var handler = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator).CreateHandler(pgEnumType, Connector);
 
             ApplyUserMapping(pgEnumType, typeof(TEnum), handler);
 
@@ -462,7 +463,7 @@ namespace Npgsql.TypeMapping
             }
 
             var userCompositeMapping =
-                (IUserCompositeTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
+                (IUserTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
                 new object[] { clrType, nameTranslator }, null)!;
 
@@ -494,10 +495,14 @@ namespace Npgsql.TypeMapping
         }
 
         void ApplyUserMapping(PostgresType pgType, Type clrType, NpgsqlTypeHandler handler)
-            => _handlersByOID[pgType.OID] =
+        {
+            _handlersByOID[pgType.OID] =
                 _handlersByDataTypeName[pgType.FullName] =
                     _handlersByDataTypeName[pgType.Name] =
                         _handlersByClrType[clrType] = handler;
+
+            _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, DbType.Object, pgType.Name, clrType);
+        }
 
         public override void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory)
         {
@@ -540,34 +545,22 @@ namespace Npgsql.TypeMapping
                 for (var i = 0; i < _resolvers.Length; i++)
                     _resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
 
-                // TODO: Skip this entire method, we'll be called again later after injecting the DatabaseInfo
-                if (_databaseInfo is not null)
-                {
-                    foreach (var userEnumMapping in globalMapper.UserEnumTypeMappings.Values)
-                    {
-                        if (DatabaseInfo.TryGetPostgresTypeByName(userEnumMapping.PgTypeName, out var pgType) &&
-                            pgType is PostgresEnumType pgEnumType)
-                        {
-                            ApplyUserMapping(pgEnumType, userEnumMapping.ClrType, userEnumMapping.CreateHandler(pgEnumType));
-                        }
-                    }
+                _userTypeMappings.Clear();
 
-                    foreach (var userCompositeMapping in globalMapper.UserCompositeTypeMappings.Values)
+                foreach (var userTypeMapping in globalMapper.UserTypeMappings.Values)
+                {
+                    if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType))
                     {
-                        if (DatabaseInfo.TryGetPostgresTypeByName(userCompositeMapping.PgTypeName, out var pgType) &&
-                            pgType is PostgresCompositeType postgresCompositeType)
-                        {
-                            ApplyUserMapping(postgresCompositeType, userCompositeMapping.ClrType,
-                                userCompositeMapping.CreateHandler(postgresCompositeType, Connector));
-                        }
+                        ApplyUserMapping(pgType, userTypeMapping.ClrType, userTypeMapping.CreateHandler(pgType, Connector));
                     }
                 }
+
+                ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
             }
             finally
             {
                 globalMapper.Lock.ExitReadLock();
             }
-            ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
         #endregion Mapping management

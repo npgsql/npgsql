@@ -178,14 +178,13 @@ namespace Npgsql.Tests
             Assert.That(intRangeRow["ProviderDbType"], Is.EqualTo((int)(NpgsqlDbType.Integer | NpgsqlDbType.Range)));
             Assert.That(intRangeRow["OID"], Is.EqualTo(3904));
 
-            // TODO: Implement again
-            // var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_enum"));
-            // Assert.That(enumRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestEnum"));
-            // Assert.That(enumRow["ProviderDbType"], Is.SameAs(DBNull.Value));
+            var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_enum"));
+            Assert.That(enumRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestEnum"));
+            Assert.That(enumRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
-            // var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_composite"));
-            // Assert.That(compositeRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestComposite"));
-            // Assert.That(compositeRow["ProviderDbType"], Is.SameAs(DBNull.Value));
+            var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_composite"));
+            Assert.That(compositeRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestComposite"));
+            Assert.That(compositeRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
             var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".us_postal_code"));
             Assert.That(domainRow["DataType"], Is.EqualTo("System.String"));
