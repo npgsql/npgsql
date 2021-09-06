@@ -567,38 +567,32 @@ namespace Npgsql.TypeMapping
 
         internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfoByOid(uint oid)
         {
-            if (!DatabaseInfo.ByOID.TryGetValue(oid, out var postgresType))
+            if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
                 throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
-            if (TryGetMapping(postgresType, out var mapping))
-                return (mapping.NpgsqlDbType, postgresType);
-
-            return postgresType switch
+            foreach (var resolver in _resolvers)
             {
-                PostgresArrayType pgArrayType when TryGetMapping(pgArrayType.Element, out var elementMapping)
-                    => new(elementMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType),
-
-                PostgresDomainType { BaseType: PostgresArrayType baseType }
-                    when TryGetMapping(baseType.Element, out var baseTypeElementNpgsqlTypeMapping)
-                    => (baseTypeElementNpgsqlTypeMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType),
-
-                _ => (null, postgresType)
-            };
-
-            bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
-            {
-                foreach (var resolver in _resolvers)
+                if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName &&
+                    resolver.GetMappingByDataTypeName(dataTypeName) is { } mapping)
                 {
-                    if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName &&
-                        (mapping = resolver.GetMappingByDataTypeName(dataTypeName)) is not null)
-                    {
-                        return true;
-                    }
+                    return (mapping.NpgsqlDbType, pgType);
                 }
-
-                mapping = null;
-                return false;
             }
+
+            switch (pgType)
+            {
+                case PostgresArrayType pgArrayType:
+                    var (elementNpgsqlDbType, _) = GetTypeInfoByOid(pgArrayType.Element.OID);
+                    if (elementNpgsqlDbType.HasValue)
+                        return new(elementNpgsqlDbType | NpgsqlDbType.Array, pgType);
+                    break;
+
+                case PostgresDomainType pgDomainType:
+                    var (baseNpgsqlDbType, _) = GetTypeInfoByOid(pgDomainType.BaseType.OID);
+                    return new(baseNpgsqlDbType, pgType);
+            }
+
+            return (null, pgType);
         }
     }
 }
