@@ -237,6 +237,8 @@ namespace Npgsql.Internal
         /// </summary>
         readonly ConnectorSource _connectorSource;
 
+        internal string UserFacingConnectionString => _connectorSource.UserFacingConnectionString;
+
         /// <summary>
         /// Contains the UTC timestamp when this connector was opened, used to implement
         /// <see cref="NpgsqlConnectionStringBuilder.ConnectionLifetime"/>.
@@ -262,6 +264,8 @@ namespace Npgsql.Internal
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         internal readonly Stopwatch QueryLogStopWatch = new();
+
+        IDisposable? _currentActivity;
 
         #endregion
 
@@ -1861,6 +1865,8 @@ namespace Npgsql.Internal
                     }
 
                     Log.Error("Breaking connector", reason, Id);
+                    NpgsqlActivitySource.SetException(_currentActivity, reason);
+                    _currentActivity = null;
 
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
                     // the original reason for the break before actually closing the socket etc.
@@ -2532,6 +2538,19 @@ namespace Npgsql.Internal
             }
 
             return null;
+        }
+
+        internal void CommandStart(string sql)
+        {
+            Debug.Assert(_currentActivity is null);
+            if (NpgsqlActivitySource.IsEnabled)
+                _currentActivity = NpgsqlActivitySource.CommandStart(this, sql);
+        }
+
+        internal void CommandStop()
+        {
+            _currentActivity?.Dispose();
+            _currentActivity = null;
         }
 
         #endregion Misc

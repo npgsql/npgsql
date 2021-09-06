@@ -1006,8 +1006,9 @@ namespace Npgsql
                 Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);
                 Connector.QueryLogStopWatch.Reset();
             }
-            Connector.EndUserAction();
+            Connector.CommandStop();
             NpgsqlEventSource.Log.CommandStop();
+            Connector.EndUserAction();
 
             // The reader shouldn't be unbound, if we're disposing - so the state is set prematurely
             if (isDisposing)

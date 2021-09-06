@@ -1352,6 +1352,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                             LogCommand(connector);
                         NpgsqlEventSource.Log.CommandStart(CommandText);
+                        connector.CommandStart(CommandText);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                         lock (connector.CancelLock)
