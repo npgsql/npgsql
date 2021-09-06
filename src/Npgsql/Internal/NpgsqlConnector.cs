@@ -1866,7 +1866,7 @@ namespace Npgsql.Internal
 
                     Log.Error("Breaking connector", reason, Id);
                     NpgsqlActivitySource.SetException(_currentActivity, reason);
-                    _currentActivity = null;
+                    StopCurrentActivity();
 
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
                     // the original reason for the break before actually closing the socket etc.
@@ -2547,7 +2547,7 @@ namespace Npgsql.Internal
                 _currentActivity = NpgsqlActivitySource.CommandStart(this, sql);
         }
 
-        internal void CommandStop()
+        internal void StopCurrentActivity()
         {
             _currentActivity?.Dispose();
             _currentActivity = null;

@@ -27,7 +27,7 @@ namespace Npgsql
             return activity;
         }
 
-        public static void SetException(IDisposable? currentActivity, Exception ex)
+        public static void SetException(IDisposable? currentActivity, Exception ex, bool escaped = true)
         {
             if (currentActivity is Activity activity)
             {
@@ -36,11 +36,10 @@ namespace Npgsql
                     { "exception.type", ex.GetType().FullName },
                     { "exception.message", ex.Message },
                     { "exception.stacktrace", ex.ToString() },
-                    { "exception.escaped", true }
+                    { "exception.escaped", escaped }
                 };
                 var activityEvent = new ActivityEvent("exception", tags: tags);
                 activity.AddEvent(activityEvent);
-                activity.Dispose();
             }
         }
 #else
