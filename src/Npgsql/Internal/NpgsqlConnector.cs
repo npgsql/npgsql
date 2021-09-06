@@ -2553,8 +2553,11 @@ namespace Npgsql.Internal
 
         internal void StopCurrentActivity()
         {
-            _currentActivity?.Dispose();
-            _currentActivity = null;
+            if (_currentActivity is not null)
+            {
+                _currentActivity.Dispose();
+                _currentActivity = null;
+            }
         }
 
         #endregion Misc
