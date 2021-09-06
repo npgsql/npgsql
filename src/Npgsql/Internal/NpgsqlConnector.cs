@@ -2256,6 +2256,8 @@ namespace Npgsql.Internal
                     if (IsReady || !IsConnected)
                         return;
 
+                    StopCurrentActivity();
+
                     var keepAlive = Settings.KeepAlive * 1000;
                     _keepAliveTimer!.Change(keepAlive, keepAlive);
 
@@ -2269,6 +2271,8 @@ namespace Npgsql.Internal
             {
                 if (IsReady || !IsConnected)
                     return;
+
+                StopCurrentActivity();
 
                 Log.Trace("End user action", Id);
                 _currentCommand = null;

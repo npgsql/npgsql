@@ -1006,7 +1006,6 @@ namespace Npgsql
                 Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);
                 Connector.QueryLogStopWatch.Reset();
             }
-            Connector.StopCurrentActivity();
             NpgsqlEventSource.Log.CommandStop();
             Connector.EndUserAction();
 
