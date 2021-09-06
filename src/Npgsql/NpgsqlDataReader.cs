@@ -870,6 +870,10 @@ namespace Npgsql
                 if (e is not PostgresException)
                     State = ReaderState.Disposed;
             }
+            finally
+            {
+                Command.TraceCommandStop();
+            }
         }
 
         /// <summary>
@@ -896,6 +900,10 @@ namespace Npgsql
                     Log.Error("Exception caught while disposing a reader", e, Connector.Id);
                     if (e is not PostgresException)
                         State = ReaderState.Disposed;
+                }
+                finally
+                {
+                    Command.TraceCommandStop();
                 }
             }
         }
@@ -1010,8 +1018,8 @@ namespace Npgsql
                 Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);
                 Connector.QueryLogStopWatch.Reset();
             }
-            Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
+            Connector.EndUserAction();
 
             // The reader shouldn't be unbound, if we're disposing - so the state is set prematurely
             if (isDisposing)

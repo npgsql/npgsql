@@ -54,6 +54,8 @@ namespace Npgsql
 
         internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
+        Activity? CurrentActivity;
+
         /// <summary>
         /// Returns details about each statement that this command has executed.
         /// Is only populated when an Execute* method is called.
@@ -1352,6 +1354,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                             LogCommand(connector);
                         NpgsqlEventSource.Log.CommandStart(CommandText);
+                        TraceCommandStart(connector);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                         lock (connector.CancelLock)
@@ -1389,6 +1392,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         await reader.NextResultAsync(cancellationToken);
                     else
                         reader.NextResult();
+
+                    TraceReceivedFirstResponse();
 
                     return reader;
                 }
@@ -1447,6 +1452,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var reader = connector?.CurrentReader;
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
+
+                TraceSetException(e);
 
                 State = CommandState.Idle;
 
@@ -1531,6 +1538,43 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         #endregion
+
+        #region Tracing
+
+        #endregion Tracing
+
+        internal void TraceCommandStart(NpgsqlConnector connector)
+        {
+            Debug.Assert(CurrentActivity is null);
+            if (NpgsqlActivitySource.IsEnabled)
+                CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+        }
+
+        internal void TraceReceivedFirstResponse()
+        {
+            if (CurrentActivity is not null)
+            {
+                NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity);
+            }
+        }
+
+        internal void TraceCommandStop()
+        {
+            if (CurrentActivity is not null)
+            {
+                NpgsqlActivitySource.CommandStop(CurrentActivity);
+                CurrentActivity = null;
+            }
+        }
+
+        internal void TraceSetException(Exception e)
+        {
+            if (CurrentActivity is not null)
+            {
+                NpgsqlActivitySource.SetException(CurrentActivity, e);
+                CurrentActivity = null;
+            }
+        }
 
         #region Misc
 
