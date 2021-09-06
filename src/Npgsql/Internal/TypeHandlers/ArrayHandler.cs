@@ -42,8 +42,8 @@ namespace Npgsql.Internal.TypeHandlers
             ArrayNullabilityMode = arrayNullabilityMode;
         }
 
-        internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
-        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
+        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
@@ -290,7 +290,7 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Read
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => await ReadArray<TElement>(buf, async, readAsObject: true);
 
         #endregion

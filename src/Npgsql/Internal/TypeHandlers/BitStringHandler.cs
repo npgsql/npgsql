@@ -29,10 +29,10 @@ namespace Npgsql.Internal.TypeHandlers
     {
         public BitStringHandler(PostgresType pgType) : base(pgType) {}
 
-        internal override Type GetFieldType(FieldDescription? fieldDescription = null)
+        public override Type GetFieldType(FieldDescription? fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
             => GetFieldType(fieldDescription);
 
         // BitString requires a special array handler which returns bool or BitArray
@@ -118,7 +118,7 @@ namespace Npgsql.Internal.TypeHandlers
         ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => throw new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading.");
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? await Read<bool>(buf, len, async, fieldDescription)
                 : await Read<BitArray>(buf, len, async, fieldDescription);
@@ -290,7 +290,7 @@ namespace Npgsql.Internal.TypeHandlers
             return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
         }
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? await ReadArray<bool>(buf, async)
                 : await ReadArray<BitArray>(buf, async);

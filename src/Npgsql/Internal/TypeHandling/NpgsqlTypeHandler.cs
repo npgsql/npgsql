@@ -78,7 +78,7 @@ namespace Npgsql.Internal.TypeHandling
         /// Reads a column as the type handler's default read type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal abstract ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
+        public abstract ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Version of <see cref="ReadAsObject(NpgsqlReadBuffer,int,bool,FieldDescription?)"/> that's called when we know the entire value
@@ -253,8 +253,8 @@ namespace Npgsql.Internal.TypeHandling
 
         #region Misc
 
-        internal abstract Type GetFieldType(FieldDescription? fieldDescription = null);
-        internal abstract Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null);
+        public abstract Type GetFieldType(FieldDescription? fieldDescription = null);
+        public abstract Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null);
 
         internal virtual bool PreferTextWrite => false;
 
