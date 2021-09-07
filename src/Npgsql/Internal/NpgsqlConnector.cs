@@ -1275,6 +1275,7 @@ namespace Npgsql.Internal
                             // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                             // and throw it as an exception when the ReadyForQuery is received (next).
                             error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetail);
+                            NpgsqlActivitySource.SetException(connector._currentActivity, error, true);
 
                             if (connector.State == ConnectorState.Connecting)
                             {
@@ -1865,7 +1866,9 @@ namespace Npgsql.Internal
                     }
 
                     Log.Error("Breaking connector", reason, Id);
-                    NpgsqlActivitySource.SetException(_currentActivity, reason);
+                    // PostgresException is already logged whenever it's loaded
+                    if (reason is not PostgresException)
+                        NpgsqlActivitySource.SetException(_currentActivity, reason);
                     StopCurrentActivity();
 
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
