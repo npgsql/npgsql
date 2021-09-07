@@ -30,14 +30,6 @@ namespace Npgsql.Json.NET.Internal
             _dataTypeNamesByClrType = dataClrTypeNamesDataTypeNamesByClrClrType;
         }
 
-        public NpgsqlTypeHandler? ResolveByOID(uint oid)
-            => oid switch
-            {
-                PostgresTypeOIDs.Jsonb => _jsonbHandler,
-                PostgresTypeOIDs.Json => _jsonHandler,
-                _ => null
-            };
-
         public NpgsqlTypeHandler? ResolveNpgsqlDbType(NpgsqlDbType npgsqlDbType)
             => npgsqlDbType switch
             {
@@ -62,15 +54,6 @@ namespace Npgsql.Json.NET.Internal
         internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string> clrTypes)
             => clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-        public string? GetDataTypeNameByOID(uint oid)
-            => oid switch
-            {
-                PostgresTypeOIDs.Jsonb => "jsonb",
-                PostgresTypeOIDs.Json  => "json",
-                _ => null
-            };
-
-        // TODO: Integrate CLR type info (for schema)
         public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 

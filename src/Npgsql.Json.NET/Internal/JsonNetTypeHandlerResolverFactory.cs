@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.Json.NET.Internal

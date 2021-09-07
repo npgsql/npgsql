@@ -74,66 +74,17 @@ namespace Npgsql.TypeMapping
             if (_handlersByOID.TryGetValue(oid, out handler))
                 return true;
 
-            foreach (var resolver in _resolvers)
-            {
-                if ((handler = resolver.ResolveByOID(oid)) is not null)
-                {
-                    _handlersByOID[oid] = handler;
-                    return true;
-                }
-            }
-
             if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
                 return false;
 
-            switch (pgType)
+            if ((handler = ResolveByDataTypeName(pgType.Name, throwOnError: false)) is not null)
             {
-            case PostgresArrayType pgArrayType:
-            {
-                // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                var elementHandler = ResolveByOID(pgArrayType.Element.OID);
-                handler = _handlersByOID[oid] =
-                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
+                _handlersByOID[oid] = handler;
                 return true;
             }
 
-            case PostgresRangeType pgRangeType:
-            {
-                // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
-                handler = _handlersByOID[oid] = subtypeHandler.CreateRangeHandler(pgRangeType);
-                return true;
-            }
-
-            case PostgresMultirangeType pgMultirangeType:
-            {
-                // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
-                handler = _handlersByOID[oid] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
-                return true;
-            }
-
-            case PostgresEnumType pgEnumType:
-            {
-                // A mapped enum would have been registered in _extraHandlersByOID and returned above - this is unmapped.
-                handler = _handlersByOID[oid] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
-                return true;
-            }
-
-            case PostgresDomainType pgDomainType:
-            {
-                // Note that when when sending back domain types, PG sends back the type OID of their base type - so in regular
-                // circumstances we never need to resolve domains from a type OID.
-                // However, when a domain is part of a composite type, the domain's type OID is sent, so we support this here.
-                // TODO: This will throw, but we're in TryResolve. Figure out the whole Try/non-Try strategy here.
-                handler = _handlersByOID[oid] = ResolveByOID(pgDomainType.BaseType.OID);
-                return true;
-            }
-
-            default:
-                handler = null;
-                return false;
-            }
+            handler = null;
+            return false;
         }
 
         internal NpgsqlTypeHandler ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
@@ -194,6 +145,9 @@ namespace Npgsql.TypeMapping
         }
 
         internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
+            => ResolveByDataTypeName(typeName, throwOnError: true)!;
+
+        NpgsqlTypeHandler? ResolveByDataTypeName(string typeName, bool throwOnError)
         {
             if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
                 return handler;
@@ -240,8 +194,12 @@ namespace Npgsql.TypeMapping
                 throw new NotSupportedException($"PostgreSQL type '{pgBaseType}' isn't supported by Npgsql");
 
             case PostgresCompositeType pgCompositeType:
-                throw new NotSupportedException(
-                    $"Composite type '{pgCompositeType}' must be mapped with Npgsql before being used, see the docs.");
+                // We don't support writing unmapped composite types, but we do support reading unmapped composite types.
+                // So when we're invoked from ResolveOID (which is the read path), we don't want to raise an exception.
+                return throwOnError
+                    ? throw new NotSupportedException(
+                        $"Composite type '{pgCompositeType}' must be mapped with Npgsql before being used, see the docs.")
+                    : null;
 
             default:
                 throw new ArgumentOutOfRangeException($"Unhandled PostgreSQL type type: {pgType.GetType()}");
@@ -333,7 +291,7 @@ namespace Npgsql.TypeMapping
         internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
         {
             foreach (var resolver in _resolvers)
-                if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName && (mapping = resolver.GetMappingByDataTypeName(dataTypeName)) is not null)
+                if ((mapping = resolver.GetMappingByDataTypeName(pgType.Name)) is not null)
                     return true;
 
             switch (pgType)
@@ -571,13 +529,8 @@ namespace Npgsql.TypeMapping
                 throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
             foreach (var resolver in _resolvers)
-            {
-                if (resolver.GetDataTypeNameByOID(pgType.OID) is { } dataTypeName &&
-                    resolver.GetMappingByDataTypeName(dataTypeName) is { } mapping)
-                {
+                if (resolver.GetMappingByDataTypeName(pgType.Name) is { } mapping)
                     return (mapping.NpgsqlDbType, pgType);
-                }
-            }
 
             switch (pgType)
             {

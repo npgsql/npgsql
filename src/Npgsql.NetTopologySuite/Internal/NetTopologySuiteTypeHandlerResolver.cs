@@ -16,7 +16,6 @@ namespace Npgsql.NetTopologySuite.Internal
         readonly bool _geographyAsDefault;
 
         readonly NetTopologySuiteHandler _geometryHandler, _geographyHandler;
-        readonly uint _geometryOid, _geographyOid;
 
         internal NetTopologySuiteTypeHandlerResolver(
             NpgsqlConnector connector,
@@ -29,7 +28,6 @@ namespace Npgsql.NetTopologySuite.Internal
             _geographyAsDefault = geographyAsDefault;
 
             var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
-            (_geometryOid, _geographyOid) = (pgGeometryType.OID, pgGeographyType.OID);
 
             // TODO: In multiplexing, these are used concurrently... not sure they're thread-safe :(
             var reader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
@@ -38,11 +36,6 @@ namespace Npgsql.NetTopologySuite.Internal
             _geometryHandler = new NetTopologySuiteHandler(pgGeometryType, reader, writer);
             _geographyHandler = new NetTopologySuiteHandler(pgGeographyType, reader, writer);
         }
-
-        public NpgsqlTypeHandler? ResolveByOID(uint oid)
-            => GetDataTypeNameByOID(oid) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
-                ? handler
-                : null;
 
         public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
@@ -64,14 +57,6 @@ namespace Npgsql.NetTopologySuite.Internal
                     ? "geography"
                     : "geometry";
 
-        public string? GetDataTypeNameByOID(uint oid)
-            => oid == _geometryOid
-                ? "geometry"
-                : oid == _geographyOid
-                    ? "geography"
-                    : null;
-
-        // TODO: Integrate CLR type info (for schema)
         public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 

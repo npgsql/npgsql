@@ -17,7 +17,6 @@ namespace Npgsql.GeoJSON.Internal
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
         readonly GeoJsonHandler _geometryHandler, _geographyHandler;
-        readonly uint _geometryOid, _geographyOid;
         readonly bool _geographyAsDefault;
 
         static readonly ConcurrentDictionary<string, CrsMap> CRSMaps = new();
@@ -47,16 +46,10 @@ namespace Npgsql.GeoJSON.Internal
                  });
 
             var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
-            (_geometryOid, _geographyOid) = (pgGeometryType.OID, pgGeographyType.OID);
 
             _geometryHandler = new GeoJsonHandler(pgGeometryType, options, crsMap);
             _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
         }
-
-        public NpgsqlTypeHandler? ResolveByOID(uint oid)
-            => GetDataTypeNameByOID(oid) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
-                ? handler
-                : null;
 
         public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
@@ -78,14 +71,6 @@ namespace Npgsql.GeoJSON.Internal
                     ? "geography"
                     : "geometry";
 
-        public string? GetDataTypeNameByOID(uint oid)
-            => oid == _geometryOid
-                ? "geometry"
-                : oid == _geographyOid
-                    ? "geography"
-                    : null;
-
-        // TODO: Integrate CLR type info (for schema)
         public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 

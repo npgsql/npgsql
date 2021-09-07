@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 

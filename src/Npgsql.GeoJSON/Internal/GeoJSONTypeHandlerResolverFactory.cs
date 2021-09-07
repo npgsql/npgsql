@@ -1,5 +1,6 @@
 using System;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.GeoJSON.Internal

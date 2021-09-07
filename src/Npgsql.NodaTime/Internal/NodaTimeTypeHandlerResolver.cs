@@ -32,11 +32,6 @@ namespace Npgsql.NodaTime.Internal
             _intervalHandler = new IntervalHandler(PgType("interval"));
         }
 
-        public NpgsqlTypeHandler? ResolveByOID(uint oid)
-            => GetDataTypeNameByOID(oid) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
-                ? handler
-                : null;
-
         public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
@@ -73,20 +68,6 @@ namespace Npgsql.NodaTime.Internal
             return null;
         }
 
-        public string? GetDataTypeNameByOID(uint oid)
-            => oid switch
-            {
-                PostgresTypeOIDs.Timestamp   => "timestamp without time zone",
-                PostgresTypeOIDs.TimestampTz => "timestamp with time zone",
-                PostgresTypeOIDs.Date        => "date",
-                PostgresTypeOIDs.Time        => "time without time zone",
-                PostgresTypeOIDs.TimeTz      => "time with time zone",
-                PostgresTypeOIDs.Interval    => "interval",
-
-                _ => null
-            };
-
-        // TODO: Integrate CLR type info (for schema)
         public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 

@@ -138,7 +138,7 @@ namespace Npgsql.Internal
         /// <summary>
         /// Indexes backend types by their type OID.
         /// </summary>
-        public Dictionary<uint, PostgresType> ByOID { get; } = new();
+        internal Dictionary<uint, PostgresType> ByOID { get; } = new();
 
         /// <summary>
         /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).

@@ -3,6 +3,7 @@ using System.Data;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.NetTopologySuite.Internal

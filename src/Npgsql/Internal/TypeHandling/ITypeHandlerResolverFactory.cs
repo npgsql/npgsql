@@ -3,10 +3,7 @@ using System.Data;
 using Npgsql.Internal;
 using NpgsqlTypes;
 
-#pragma warning disable 1591
-#pragma warning disable RS0016
-
-namespace Npgsql.TypeMapping
+namespace Npgsql.Internal.TypeHandling
 {
     public interface ITypeHandlerResolverFactory
     {

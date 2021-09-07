@@ -144,14 +144,11 @@ namespace Npgsql.Tests
             public MyInt32TypeHandlerResolver(NpgsqlConnector connector, MyInt32TypeHandlerResolverFactory factory)
                 => _handler = new MyInt32Handler(connector.DatabaseInfo.GetPostgresTypeByName("integer"), factory);
 
-            public NpgsqlTypeHandler? ResolveByOID(uint oid)
-                => oid == _handler.PostgresType.OID ? _handler : null;
             public NpgsqlTypeHandler? ResolveByClrType(Type type)
                 => type == typeof(int) ? _handler : null;
             public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
                 => typeName == "integer" ? _handler : null;
 
-            public string? GetDataTypeNameByOID(uint oid) => throw new NotSupportedException();
             public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
 
         }
@@ -199,10 +196,8 @@ namespace Npgsql.Tests
 
                 public NpgsqlTypeHandler? ResolveByClrType(Type type)
                     => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
-                public NpgsqlTypeHandler? ResolveByOID(uint oid) => null;
                 public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
 
-                public string? GetDataTypeNameByOID(uint oid) => throw new NotSupportedException();
                 public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
             }
         }

@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 

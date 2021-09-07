@@ -22,9 +22,6 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-#pragma warning disable 1591
-#pragma warning disable RS0016
-
 namespace Npgsql.TypeMapping
 {
     class BuiltInTypeHandlerResolver : ITypeHandlerResolver
@@ -233,11 +230,6 @@ namespace Npgsql.TypeMapping
         // Special types
         UnknownTypeHandler? _unknownHandler;
 
-        /// <summary>
-        /// A dictionary for type OIDs of PG types which aren't known in advance (i.e. extension types)
-        /// </summary>
-        readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _cachedHandlersByOID = new();
-
         #endregion Cached handlers
 
         internal BuiltInTypeHandlerResolver(NpgsqlConnector connector)
@@ -345,95 +337,6 @@ namespace Npgsql.TypeMapping
 
                 _ => null
             };
-
-        public string? GetDataTypeNameByOID(uint oid)
-            => oid switch
-            {
-                // Numeric types
-                PostgresTypeOIDs.Int2    => "smallint",
-                PostgresTypeOIDs.Int4    => "integer",
-                PostgresTypeOIDs.Int8    => "bigint",
-                PostgresTypeOIDs.Float4  => "real",
-                PostgresTypeOIDs.Float8  => "double precision",
-                PostgresTypeOIDs.Numeric => "decimal",
-                PostgresTypeOIDs.Money   => "money",
-
-                // Text types
-                PostgresTypeOIDs.Text      => "text",
-                PostgresTypeOIDs.Xml       => "xml",
-                PostgresTypeOIDs.Varchar   => "character varying",
-                PostgresTypeOIDs.BPChar    => "character",
-                PostgresTypeOIDs.Name      => "name",
-                PostgresTypeOIDs.Refcursor => "refcursor",
-                PostgresTypeOIDs.Jsonb     => "jsonb",
-                PostgresTypeOIDs.Json      => "json",
-                PostgresTypeOIDs.JsonPath  => "jsonpath",
-
-                // Date/time types
-                PostgresTypeOIDs.Timestamp   => "timestamp without time zone",
-                PostgresTypeOIDs.TimestampTz => "timestamp with time zone",
-                PostgresTypeOIDs.Date        => "date",
-                PostgresTypeOIDs.Time        => "time without time zone",
-                PostgresTypeOIDs.TimeTz      => "time with time zone",
-                PostgresTypeOIDs.Interval    => "interval",
-
-                // Network types
-                PostgresTypeOIDs.Cidr     => "cidr",
-                PostgresTypeOIDs.Inet     => "inet",
-                PostgresTypeOIDs.Macaddr  => "macaddr",
-                PostgresTypeOIDs.Macaddr8 => "macaddr8",
-
-                // Full-text search types
-                PostgresTypeOIDs.TsQuery  => "tsquery",
-                PostgresTypeOIDs.TsVector => "tsvector",
-
-                // Geometry types
-                PostgresTypeOIDs.Box     => "box",
-                PostgresTypeOIDs.Circle  => "circle",
-                PostgresTypeOIDs.Line    => "line",
-                PostgresTypeOIDs.LSeg    => "lseg",
-                PostgresTypeOIDs.Path    => "path",
-                PostgresTypeOIDs.Point   => "point",
-                PostgresTypeOIDs.Polygon => "polygon",
-
-                // UInt types
-                PostgresTypeOIDs.Oid       => "oid",
-                PostgresTypeOIDs.Xid       => "xid",
-                PostgresTypeOIDs.Xid8      => "xid8",
-                PostgresTypeOIDs.Cid       => "cid",
-                PostgresTypeOIDs.Regtype   => "regtype",
-                PostgresTypeOIDs.Regconfig => "regconfig",
-
-                // Misc types
-                PostgresTypeOIDs.Bool   => "boolean",
-                PostgresTypeOIDs.Bytea  => "bytea",
-                PostgresTypeOIDs.Uuid   => "uuid",
-                PostgresTypeOIDs.Varbit => "bit varying",
-                PostgresTypeOIDs.Bit    => "bit",
-                PostgresTypeOIDs.Record => "record",
-                PostgresTypeOIDs.Void   => "void",
-
-                // Internal types
-                PostgresTypeOIDs.Int2vector => "int2vector",
-                PostgresTypeOIDs.Oidvector  => "oidvector",
-                PostgresTypeOIDs.PgLsn      => "pg_lsn",
-                PostgresTypeOIDs.Tid        => "tid",
-                PostgresTypeOIDs.Char       => "char",
-
-                // This isn't a well-known type with a fixed type OID.
-                _ => _databaseInfo.ByOID.TryGetValue(oid, out var pgType)
-                     && pgType.Name != "pg_catalog"
-                     && DoGetMappingByDataTypeName(pgType.Name) is { } typeMapping
-                        ? typeMapping.DataTypeName
-                        : null
-            };
-
-        public NpgsqlTypeHandler? ResolveByOID(uint oid)
-            => _cachedHandlersByOID.TryGetValue(oid, out var handler)
-                ? handler
-                : GetDataTypeNameByOID(oid) is { } dataTypeName && (handler = ResolveByDataTypeName(dataTypeName)) is not null
-                    ? _cachedHandlersByOID[oid] = handler
-                    : null;
 
         public NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && ResolveByDataTypeName(dataTypeName) is { } handler
