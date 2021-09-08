@@ -31,7 +31,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        ITypeHandlerResolver[] _resolvers;
+        volatile ITypeHandlerResolver[] _resolvers;
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
         readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -468,8 +468,8 @@ namespace Npgsql.TypeMapping
             while (true)
             {
                 var oldResolvers = _resolvers;
-                var newResolvers = new ITypeHandlerResolver[_resolvers.Length + 1];
-                Array.Copy(oldResolvers, 0, newResolvers, 1, _resolvers.Length);
+                var newResolvers = new ITypeHandlerResolver[oldResolvers.Length + 1];
+                Array.Copy(oldResolvers, 0, newResolvers, 1, oldResolvers.Length);
                 newResolvers[0] = resolverFactory.Create(Connector);
 
                 if (Interlocked.CompareExchange(ref _resolvers, newResolvers, oldResolvers) == oldResolvers)
