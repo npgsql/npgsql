@@ -20,7 +20,8 @@ namespace Npgsql.Internal.TypeHandlers
         readonly NpgsqlConnector _connector;
 
         internal UnknownTypeHandler(NpgsqlConnector connector)
-            : base(UnknownBackendType.Instance, connector) => _connector = connector;
+            : base(UnknownBackendType.Instance, connector.TextEncoding)
+            => _connector = connector;
 
         #region Read
 

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.TypeHandlers;
 using NpgsqlTypes;
@@ -508,7 +507,7 @@ namespace Npgsql.Tests.Types
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
             cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
-            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("use .ToList()/.ToArray() instead"));
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("array or List"));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
@@ -25,6 +26,8 @@ namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
+
+        public TsVectorHandler(PostgresType pgType) : base(pgType) {}
 
         #region Read
 

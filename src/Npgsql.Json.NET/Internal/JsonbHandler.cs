@@ -5,28 +5,16 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Json.NET.Internal
 {
-    public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        readonly JsonSerializerSettings _settings;
-
-        public JsonbHandlerFactory(JsonSerializerSettings? settings = null)
-            => _settings = settings ?? new JsonSerializerSettings();
-
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new JsonbHandler(postgresType, conn, _settings);
-    }
-
     class JsonbHandler : Npgsql.Internal.TypeHandlers.JsonHandler
     {
         readonly JsonSerializerSettings _settings;
 
         public JsonbHandler(PostgresType postgresType, NpgsqlConnector connector, JsonSerializerSettings settings)
-            : base(postgresType, connector, isJsonb: true) => _settings = settings;
+            : base(postgresType, connector.TextEncoding, isJsonb: true) => _settings = settings;
 
         protected override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {

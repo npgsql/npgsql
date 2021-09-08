@@ -13,39 +13,6 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.GeoJSON.Internal
 {
-    public sealed class GeoJSONHandlerFactory : NpgsqlTypeHandlerFactory<GeoJSONObject>
-    {
-        readonly GeoJSONOptions _options;
-
-        public GeoJSONHandlerFactory(GeoJSONOptions options = GeoJSONOptions.None)
-            => _options = options;
-
-        static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new();
-
-        public override NpgsqlTypeHandler<GeoJSONObject> Create(PostgresType postgresType, NpgsqlConnector conn)
-        {
-            var crsMap = (_options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) == GeoJSONOptions.None
-                ? default : s_crsMaps.GetOrAdd(conn.Settings.ConnectionString, _ =>
-                 {
-                     var builder = new CrsMapBuilder();
-                     using (var cmd = conn.CreateCommand(
-                             "SELECT min(srid), max(srid), auth_name " +
-                             "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;"))
-                     using (var reader = cmd.ExecuteReader())
-                         while (reader.Read())
-                         {
-                             builder.Add(new CrsMapEntry(
-                                 reader.GetInt32(0),
-                                 reader.GetInt32(1),
-                                 reader.GetString(2)));
-                         }
-                     return builder.Build();
-                 });
-            return new GeoJsonHandler(postgresType, _options, crsMap);
-        }
-    }
-
     sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
         INpgsqlTypeHandler<Point>, INpgsqlTypeHandler<MultiPoint>,
         INpgsqlTypeHandler<Polygon>, INpgsqlTypeHandler<MultiPolygon>,
@@ -60,8 +27,8 @@ namespace Npgsql.GeoJSON.Internal
         int _lastSrid;
 
         internal GeoJsonHandler(PostgresType postgresType, GeoJSONOptions options, CrsMap crsMap)
+            : base(postgresType)
         {
-            PostgresType = postgresType;
             _options = options;
             _crsMap = crsMap;
         }

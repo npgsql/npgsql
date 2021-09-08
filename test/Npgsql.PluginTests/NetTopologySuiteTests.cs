@@ -193,7 +193,7 @@ namespace Npgsql.PluginTests
             using var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Coordinate(1d, 1d))));
-            Assert.That((TestDelegate)(() => reader.GetFieldValue<Polygon>(0)), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetFieldValue<Polygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
         [Test]

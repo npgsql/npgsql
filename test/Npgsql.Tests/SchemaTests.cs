@@ -531,7 +531,9 @@ CREATE TABLE types_table
 
                 var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
 
-                columns.ForEach(col => Assert.That(dataTypes.Rows.Cast<DataRow>().Any(row => row["TypeName"].Equals(col["data_type"])), Is.True));
+                var nonMatching = columns.FirstOrDefault(col => !dataTypes.Rows.Cast<DataRow>().Any(row => row["TypeName"].Equals(col["data_type"])));
+                if (nonMatching is not null)
+                    Assert.Fail($"Could not find matching data type for column {nonMatching["column_name"]} with type {nonMatching["data_type"]}");
             }
             finally
             {
@@ -541,13 +543,13 @@ CREATE TABLE types_table
 
         public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
-        private async Task<DataTable> GetSchema(NpgsqlConnection conn)
+        async Task<DataTable> GetSchema(NpgsqlConnection conn)
             => IsAsync ? await conn.GetSchemaAsync() : conn.GetSchema();
 
-        private async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName)
+        async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName)
             => IsAsync ? await conn.GetSchemaAsync(collectionName) : conn.GetSchema(collectionName);
 
-        private async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName, string?[] restrictions)
+        async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName, string?[] restrictions)
             => IsAsync ? await conn.GetSchemaAsync(collectionName, restrictions) : conn.GetSchema(collectionName, restrictions);
     }
 }

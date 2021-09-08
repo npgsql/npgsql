@@ -1,11 +1,6 @@
-﻿using System;
-using System.Data;
-using NetTopologySuite;
-using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
+﻿using NetTopologySuite.Geometries;
 using Npgsql.NetTopologySuite.Internal;
 using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql
@@ -15,18 +10,6 @@ namespace Npgsql
     /// </summary>
     public static class NpgsqlNetTopologySuiteExtensions
     {
-        static readonly Type[] ClrTypes =
-        {
-            typeof(Geometry),
-            typeof(Point),
-            typeof(LineString),
-            typeof(Polygon),
-            typeof(MultiPoint),
-            typeof(MultiLineString),
-            typeof(MultiPolygon),
-            typeof(GeometryCollection),
-        };
-
         /// <summary>
         /// Sets up NetTopologySuite mappings for the PostGIS types.
         /// </summary>
@@ -44,36 +27,9 @@ namespace Npgsql
             Ordinates handleOrdinates = Ordinates.None,
             bool geographyAsDefault = false)
         {
-            if (coordinateSequenceFactory == null)
-                coordinateSequenceFactory = NtsGeometryServices.Instance.DefaultCoordinateSequenceFactory;
-
-            if (precisionModel == null)
-                precisionModel = NtsGeometryServices.Instance.DefaultPrecisionModel;
-
-            if (handleOrdinates == Ordinates.None)
-                handleOrdinates = coordinateSequenceFactory.Ordinates;
-
-            var typeHandlerFactory = new NetTopologySuiteHandlerFactory(
-                new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
-                new PostGisWriter());
-
-            return mapper
-                .AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "geometry",
-                    NpgsqlDbType = NpgsqlDbType.Geometry,
-                    ClrTypes = geographyAsDefault ? Type.EmptyTypes : ClrTypes,
-                    InferredDbType = DbType.Object,
-                    TypeHandlerFactory = typeHandlerFactory
-                }.Build())
-                .AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "geography",
-                    NpgsqlDbType = NpgsqlDbType.Geography,
-                    ClrTypes = geographyAsDefault ? ClrTypes : Type.EmptyTypes,
-                    InferredDbType = DbType.Object,
-                    TypeHandlerFactory = typeHandlerFactory
-                }.Build());
+            mapper.AddTypeResolverFactory(new NetTopologySuiteTypeHandlerResolverFactory(coordinateSequenceFactory, precisionModel,
+                handleOrdinates, geographyAsDefault));
+            return mapper;
         }
     }
 }

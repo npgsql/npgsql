@@ -9,12 +9,6 @@ using BclDateHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateHandler
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
-    {
-        public override NpgsqlTypeHandler<LocalDate> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new DateHandler(postgresType, conn.Settings.ConvertInfinityDateTime);
-    }
-
     sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<DateOnly>
@@ -28,8 +22,8 @@ namespace Npgsql.NodaTime.Internal
         readonly BclDateHandler _bclHandler;
 
         internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
         {
-            PostgresType = postgresType;
             _convertInfinityDateTime = convertInfinityDateTime;
             _bclHandler = new BclDateHandler(postgresType, convertInfinityDateTime);
         }

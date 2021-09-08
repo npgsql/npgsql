@@ -9,16 +9,6 @@ using BclTimestampTzHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.Time
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<Instant>
-    {
-        // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => conn.DatabaseInfo.HasIntegerDateTimes
-                ? new TimestampTzHandler(postgresType, conn.Settings.ConvertInfinityDateTime)
-                : throw new NotSupportedException(
-                    $"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-    }
-
     sealed partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
                               INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>, 
                               INpgsqlSimpleTypeHandler<DateTime>
@@ -33,8 +23,8 @@ namespace Npgsql.NodaTime.Internal
         readonly bool _convertInfinityDateTime;
 
         public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
         {
-            PostgresType = postgresType;
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
             _convertInfinityDateTime = convertInfinityDateTime;
             _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);

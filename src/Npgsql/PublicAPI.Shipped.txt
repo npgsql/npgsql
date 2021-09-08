@@ -1667,7 +1667,6 @@ override Npgsql.Replication.TestDecoding.TestDecodingData.ToString() -> string!
 override Npgsql.Replication.TestDecoding.TestDecodingOptions.Equals(object? obj) -> bool
 override Npgsql.Replication.TestDecoding.TestDecodingOptions.GetHashCode() -> int
 override Npgsql.Schema.NpgsqlDbColumn.this[string! propertyName].get -> object?
-override Npgsql.TypeMapping.NpgsqlTypeMapping.ToString() -> string!
 override NpgsqlTypes.NpgsqlBox.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlBox.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlBox.ToString() -> string!

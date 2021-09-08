@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
   </ItemGroup>
 
 </Project>

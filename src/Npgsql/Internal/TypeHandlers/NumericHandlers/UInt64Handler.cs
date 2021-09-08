@@ -1,5 +1,6 @@
 ﻿using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.NumericHandlers
 {
@@ -13,6 +14,8 @@ namespace Npgsql.Internal.TypeHandlers.NumericHandlers
     /// </remarks>
     public partial class UInt64Handler : NpgsqlSimpleTypeHandler<ulong>
     {
+        public UInt64Handler(PostgresType pgType) : base(pgType) {}
+
         /// <inheritdoc />
         public override ulong Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => buf.ReadUInt64();

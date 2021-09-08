@@ -112,6 +112,32 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Messages.get -> bool?
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
+*REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddMapping(Npgsql.TypeMapping.NpgsqlTypeMapping! mapping) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.ITypeHandlerResolverFactory! resolverFactory) -> void
+*REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.Mappings.get -> System.Collections.Generic.IEnumerable<Npgsql.TypeMapping.NpgsqlTypeMapping!>!
+*REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.RemoveMapping(string! pgTypeName) -> bool
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.ClrTypes.get -> System.Type![]!
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.DbTypes.get -> System.Data.DbType[]!
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.InferredDbType.get -> System.Data.DbType?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.NpgsqlDbType.get -> NpgsqlTypes.NpgsqlDbType?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.PgTypeName.get -> string!
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping.TypeHandlerFactory.get -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandlerFactory!
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.Build() -> Npgsql.TypeMapping.NpgsqlTypeMapping!
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.ClrTypes.get -> System.Type![]?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.ClrTypes.set -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.DbTypes.get -> System.Data.DbType[]?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.DbTypes.set -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.InferredDbType.get -> System.Data.DbType?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.InferredDbType.set -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.NpgsqlDbType.get -> NpgsqlTypes.NpgsqlDbType?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.NpgsqlDbType.set -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.NpgsqlTypeMappingBuilder() -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.PgTypeName.get -> string?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.PgTypeName.set -> void
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.TypeHandlerFactory.get -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandlerFactory?
+*REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.TypeHandlerFactory.set -> void
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override Npgsql.NpgsqlBatch.Cancel() -> void
 override Npgsql.NpgsqlBatch.CreateDbBatchCommand() -> System.Data.Common.DbBatchCommand!

@@ -31,10 +31,10 @@ namespace Npgsql.Internal.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+        internal EnumHandler(PostgresEnumType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-            PostgresType = postgresType;
             _enumToLabel = enumToLabel;
             _labelToEnum = labelToEnum;
         }
@@ -83,34 +83,5 @@ namespace Npgsql.Internal.TypeHandlers
         /// The name translator used for this enum.
         /// </summary>
         INpgsqlNameTranslator NameTranslator { get; }
-    }
-
-    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory
-        where TEnum : struct, Enum
-    {
-        readonly Dictionary<TEnum, string> _enumToLabel = new();
-        readonly Dictionary<string, TEnum> _labelToEnum = new();
-
-        internal EnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
-        {
-            NameTranslator = nameTranslator;
-
-            foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
-            {
-                var attribute = (PgNameAttribute?)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute is null
-                    ? nameTranslator.TranslateMemberName(field.Name)
-                    : attribute.PgName;
-                var enumValue = (TEnum)field.GetValue(null)!;
-
-                _enumToLabel[enumValue] = enumName;
-                _labelToEnum[enumName] = enumValue;
-            }
-        }
-
-        public override NpgsqlTypeHandler<TEnum> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new EnumHandler<TEnum>(postgresType, _enumToLabel, _labelToEnum);
-
-        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

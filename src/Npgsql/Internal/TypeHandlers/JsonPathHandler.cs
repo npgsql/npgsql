@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -10,23 +11,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
-    /// <summary>
-    /// A factory for type handlers for the PostgreSQL jsonpath data type.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/datatype-json.html#DATATYPE-JSONPATH.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class JsonPathHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new JsonPathHandler(postgresType, conn);
-    }
-
     /// <summary>
     /// A type handler for the PostgreSQL jsonpath data type.
     /// </summary>
@@ -47,11 +31,9 @@ namespace Npgsql.Internal.TypeHandlers
         const byte JsonPathVersion = 1;
 
         /// <inheritdoc />
-        protected internal JsonPathHandler(PostgresType postgresType, NpgsqlConnector connector)
-        {
-            PostgresType = postgresType;
-            _textHandler = new TextHandler(postgresType, connector);
-        }
+        protected internal JsonPathHandler(PostgresType postgresType, Encoding encoding)
+            : base(postgresType)
+            => _textHandler = new TextHandler(postgresType, encoding);
 
         /// <inheritdoc />
         public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

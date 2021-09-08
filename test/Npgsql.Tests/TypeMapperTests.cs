@@ -20,7 +20,9 @@ namespace Npgsql.Tests
         [Test]
         public void GlobalMapping()
         {
-            var myFactory = MapMyIntGlobally();
+            var myFactory = new MyInt32TypeHandlerResolverFactory();
+            NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
+
             using var pool = CreateTempPool(ConnectionString, out var connectionString);
             using var conn = OpenConnection(connectionString);
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -49,120 +51,59 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        public void LocalMapping()
-        {
-            MyInt32HandlerFactory myFactory;
-            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+         [Test]
+         public void LocalMapping()
+         {
+             var myFactory = new MyInt32TypeHandlerResolverFactory();
+             using var _ = CreateTempPool(ConnectionString, out var connectionString);
 
-            using (var conn = OpenConnection(connectionString))
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                myFactory = MapMyIntLocally(conn);
-                cmd.Parameters.AddWithValue("p", 8);
-                cmd.ExecuteScalar();
-                Assert.That(myFactory.Reads, Is.EqualTo(1));
-                Assert.That(myFactory.Writes, Is.EqualTo(1));
-            }
+             using (var conn = OpenConnection(connectionString))
+             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+             {
+                 conn.TypeMapper.AddTypeResolverFactory(myFactory);
+                 cmd.Parameters.AddWithValue("p", 8);
+                 cmd.ExecuteScalar();
+                 Assert.That(myFactory.Reads, Is.EqualTo(1));
+                 Assert.That(myFactory.Writes, Is.EqualTo(1));
+             }
 
-            // Make sure reopening (same physical connection) reverts the mapping
-            using (var conn = OpenConnection(connectionString))
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", 8);
-                cmd.ExecuteScalar();
-                Assert.That(myFactory.Reads, Is.EqualTo(1));
-                Assert.That(myFactory.Writes, Is.EqualTo(1));
-            }
-        }
+             // Make sure reopening (same physical connection) reverts the mapping
+             using (var conn = OpenConnection(connectionString))
+             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+             {
+                 cmd.Parameters.AddWithValue("p", 8);
+                 cmd.ExecuteScalar();
+                 Assert.That(myFactory.Reads, Is.EqualTo(1));
+                 Assert.That(myFactory.Writes, Is.EqualTo(1));
+             }
+         }
 
-        [Test]
-        public void RemoveGlobalMapping()
-        {
-            Assert.That(NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer"), Is.True);
-            Assert.That(NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer"), Is.False);
+         [Test]
+         public void GlobalReset()
+         {
+             var myFactory = new MyInt32TypeHandlerResolverFactory();
+             NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
+             using var _ = CreateTempPool(ConnectionString, out var connectionString);
 
-            using var _ = CreateTempPool(ConnectionString, out var connectionString);
-            using var conn = OpenConnection(connectionString);
-            Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
-        }
+             using (OpenConnection(connectionString)) {}
+             // We now have a connector in the pool with our custom mapping
 
-        [Test]
-        public void RemoveLocalMapping()
-        {
-            using var _ = CreateTempPool(ConnectionString, out var connectionString);
-            using (var conn = OpenConnection(connectionString))
-            {
-                conn.TypeMapper.RemoveMapping("integer");
-                Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
-            }
-            // Make sure reopening (same physical connection) reverts the mapping
-            using (var conn = OpenConnection(connectionString))
-                Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
-        }
+             NpgsqlConnection.GlobalTypeMapper.Reset();
+             using (var conn = OpenConnection(connectionString))
+             {
+                 // Should be the pooled connector from before, but it should have picked up the reset
+                 conn.ExecuteScalar("SELECT 1");
+                 Assert.That(myFactory.Reads, Is.Zero);
 
-        [Test]
-        public void GlobalReset()
-        {
-            var myFactory = MapMyIntGlobally();
-            using var _ = CreateTempPool(ConnectionString, out var connectionString);
-
-            using (OpenConnection(connectionString)) {}
-            // We now have a connector in the pool with our custom mapping
-
-            NpgsqlConnection.GlobalTypeMapper.Reset();
-            using (var conn = OpenConnection(connectionString))
-            {
-                // Should be the pooled connector from before, but it should have picked up the reset
-                conn.ExecuteScalar("SELECT 1");
-                Assert.That(myFactory.Reads, Is.Zero);
-
-                // Now create a second *physical* connection to make sure it picks up the new mapping as well
-                using (var conn2 = OpenConnection(connectionString))
-                {
-                    conn2.ExecuteScalar("SELECT 1");
-                    Assert.That(myFactory.Reads, Is.Zero);
-                }
-                NpgsqlConnection.ClearPool(conn);
-            }
-        }
-
-        [Test]
-        public void DomainMappingNotSupported()
-        {
-            // PostgreSQL sends RowDescription with the OID of the base type, not the domain,
-            // it's not possible to map domains
-            using (CreateTempPool(ConnectionString, out var connectionString))
-            using (var conn = OpenConnection(connectionString))
-            {
-                conn.ExecuteNonQuery(@"CREATE DOMAIN pg_temp.us_postal_code AS TEXT
-CHECK
-(
-    VALUE ~ '^\d{5}$'
-    OR VALUE ~ '^\d{5}-\d{4}$'
-);
-");
-                conn.ReloadTypes();
-                Assert.That(() => conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "us_postal_code",
-                    TypeHandlerFactory = new DummyTypeHandlerFactory()
-                }.Build()), Throws.TypeOf<NotSupportedException>());
-            }
-        }
-
-        class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
-        {
-            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnector conn)
-                => throw new Exception();
-        }
-
-        [Test]
-        public void MandatoryMappingFields()
-        {
-            Assert.That(() => new NpgsqlTypeMappingBuilder().Build(), Throws.ArgumentException);
-            Assert.That(() => new NpgsqlTypeMappingBuilder{ PgTypeName = "foo" }.Build(), Throws.ArgumentException);
-        }
+                 // Now create a second *physical* connection to make sure it picks up the new mapping as well
+                 using (var conn2 = OpenConnection(connectionString))
+                 {
+                     conn2.ExecuteScalar("SELECT 1");
+                     Assert.That(myFactory.Reads, Is.Zero);
+                 }
+                 NpgsqlConnection.ClearPool(conn);
+             }
+         }
 
         [Test]
         public async Task StringToCitext()
@@ -172,15 +113,7 @@ CHECK
             {
                 await EnsureExtensionAsync(conn, "citext");
 
-                conn.TypeMapper.RemoveMapping("text");
-                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
-                {
-                    PgTypeName = "citext",
-                    NpgsqlDbType = NpgsqlDbType.Citext,
-                    DbTypes = new[] { DbType.String },
-                    ClrTypes = new[] { typeof(string) },
-                    TypeHandlerFactory = new TextHandlerFactory()
-                }.Build());
+                conn.TypeMapper.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
 
                 using (var cmd = new NpgsqlCommand("SELECT @p = 'hello'::citext", conn))
                 {
@@ -192,51 +125,41 @@ CHECK
 
         #region Support
 
-        MyInt32HandlerFactory MapMyIntGlobally()
-        {
-            var myFactory = new MyInt32HandlerFactory();
-            NpgsqlConnection.GlobalTypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "integer",
-                NpgsqlDbType = NpgsqlDbType.Integer,
-                DbTypes = new[] { DbType.Int32 },
-                ClrTypes = new[] { typeof(int) },
-                TypeHandlerFactory = myFactory
-            }.Build());
-            return myFactory;
-        }
-
-        MyInt32HandlerFactory MapMyIntLocally(NpgsqlConnection conn)
-        {
-            var myFactory = new MyInt32HandlerFactory();
-            conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "integer",
-                NpgsqlDbType = NpgsqlDbType.Integer,
-                DbTypes = new[] { DbType.Int32 },
-                ClrTypes = new[] { typeof(int) },
-                TypeHandlerFactory = myFactory
-            }.Build());
-            return myFactory;
-        }
-
-        class MyInt32HandlerFactory : NpgsqlTypeHandlerFactory<int>
+        class MyInt32TypeHandlerResolverFactory : ITypeHandlerResolverFactory
         {
             internal int Reads, Writes;
 
-            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnector conn)
-                => new MyInt32Handler(postgresType, this);
+            public ITypeHandlerResolver Create(NpgsqlConnector connector)
+                => new MyInt32TypeHandlerResolver(connector, this);
+
+            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
+            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
+        }
+
+        class MyInt32TypeHandlerResolver : ITypeHandlerResolver
+        {
+            readonly NpgsqlTypeHandler _handler;
+
+            public MyInt32TypeHandlerResolver(NpgsqlConnector connector, MyInt32TypeHandlerResolverFactory factory)
+                => _handler = new MyInt32Handler(connector.DatabaseInfo.GetPostgresTypeByName("integer"), factory);
+
+            public NpgsqlTypeHandler? ResolveByClrType(Type type)
+                => type == typeof(int) ? _handler : null;
+            public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+                => typeName == "integer" ? _handler : null;
+
+            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+
         }
 
         class MyInt32Handler : Int32Handler
         {
-            readonly MyInt32HandlerFactory _factory;
+            readonly MyInt32TypeHandlerResolverFactory _factory;
 
-            public MyInt32Handler(PostgresType postgresType, MyInt32HandlerFactory factory)
-            {
-                PostgresType = postgresType;
-                _factory = factory;
-            }
+            public MyInt32Handler(PostgresType postgresType, MyInt32TypeHandlerResolverFactory factory)
+                : base(postgresType)
+                => _factory = factory;
 
             public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             {
@@ -248,6 +171,34 @@ CHECK
             {
                 _factory.Writes++;
                 base.Write(value, buf, parameter);
+            }
+        }
+
+        class CitextToStringTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+        {
+            public ITypeHandlerResolver Create(NpgsqlConnector connector)
+                => new CitextToStringTypeHandlerResolver(connector);
+
+            public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public TypeMappingInfo? GetMappingByClrType(Type clrType) => throw new NotSupportedException();
+            public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
+
+            class CitextToStringTypeHandlerResolver : ITypeHandlerResolver
+            {
+                readonly NpgsqlConnector _connector;
+                readonly PostgresType _pgCitextType;
+
+                public CitextToStringTypeHandlerResolver(NpgsqlConnector connector)
+                {
+                    _connector = connector;
+                    _pgCitextType = connector.DatabaseInfo.GetPostgresTypeByName("citext");
+                }
+
+                public NpgsqlTypeHandler? ResolveByClrType(Type type)
+                    => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
+                public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
+
+                public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
             }
         }
 

@@ -7,23 +7,6 @@ using NpgsqlTypes;
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
-    /// A factory for type handlers for the PostgreSQL date data type.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
-    {
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new DateHandler(postgresType, conn.ConvertInfinityDateTime);
-    }
-
-    /// <summary>
     /// A type handler for the PostgreSQL date data type.
     /// </summary>
     /// <remarks>
@@ -48,10 +31,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// Constructs a <see cref="DateHandler"/>
         /// </summary>
         public DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
-        {
-            PostgresType = postgresType;
-            _convertInfinityDateTime = convertInfinityDateTime;
-        }
+            : base(postgresType)
+            => _convertInfinityDateTime = convertInfinityDateTime;
 
         #region Read
 

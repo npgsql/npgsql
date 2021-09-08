@@ -9,15 +9,6 @@ using BclIntervalHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.Interva
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<Period>
-    {
-        // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<Period> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => conn.DatabaseInfo.HasIntegerDateTimes
-                ? new IntervalHandler(postgresType)
-                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-    }
-
     sealed partial class IntervalHandler :
         NpgsqlSimpleTypeHandler<Period>,
         INpgsqlSimpleTypeHandler<Duration>,
@@ -27,10 +18,8 @@ namespace Npgsql.NodaTime.Internal
         readonly BclIntervalHandler _bclHandler;
 
         internal IntervalHandler(PostgresType postgresType)
-        {
-            PostgresType = postgresType;
-            _bclHandler = new BclIntervalHandler(postgresType);
-        }
+            : base(postgresType)
+            => _bclHandler = new BclIntervalHandler(postgresType);
 
         public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {

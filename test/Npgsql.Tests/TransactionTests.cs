@@ -211,7 +211,7 @@ namespace Npgsql.Tests
         public async Task IsolationLevelChaosUnsupported()
         {
             await using var conn = await OpenConnectionAsync();
-            Assert.That((TestDelegate)(() => conn.BeginTransaction(IsolationLevel.Chaos)), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Rollback of an already rolled back transaction")]
@@ -270,7 +270,7 @@ namespace Npgsql.Tests
         public void BeginTransactionBeforeOpen()
         {
             using var conn = new NpgsqlConnection();
-            Assert.That((TestDelegate)(() => conn.BeginTransaction()), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test]

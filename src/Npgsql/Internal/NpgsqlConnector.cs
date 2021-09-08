@@ -60,7 +60,7 @@ namespace Npgsql.Internal
         PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
         PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
-        internal Encoding TextEncoding { get; private set; } = default!;
+        public Encoding TextEncoding { get; private set; } = default!;
 
         /// <summary>
         /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
@@ -105,7 +105,7 @@ namespace Npgsql.Internal
         /// <summary>
         /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
         /// </summary>
-        public NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = default!;
+        public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
 
         internal ConnectorTypeMapper TypeMapper { get; set; } = default!;
 
@@ -540,9 +540,15 @@ namespace Npgsql.Internal
         internal async ValueTask LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken = default)
         {
-            // The type loading below will need to send queries to the database, and that depends on a type mapper
-            // being set up (even if its empty)
-            TypeMapper = new ConnectorTypeMapper(this);
+            // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
+            // empty). So we set up here, and then later inject the DatabaseInfo.
+            // For multiplexing connectors, the type mapper is the shared pool-wide one (since when validating/binding parameters on
+            // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
+            // a connector-specific mapper, which will later become shared pool-wide one.
+            TypeMapper =
+                Settings.Multiplexing && ((MultiplexingConnectorPool)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+                    ? multiplexingTypeMapper
+                    : new ConnectorTypeMapper(this);
 
             var key = new NpgsqlDatabaseInfoCacheKey(Settings);
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
@@ -568,8 +574,8 @@ namespace Npgsql.Internal
                 }
             }
 
-            DatabaseInfo = TypeMapper.DatabaseInfo = database!;
-            TypeMapper.Reset();
+            DatabaseInfo = database;
+            TypeMapper.DatabaseInfo = database;
         }
 
         internal async ValueTask<ClusterState> QueryClusterState(

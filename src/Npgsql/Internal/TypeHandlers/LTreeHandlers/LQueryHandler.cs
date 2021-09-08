@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -8,12 +9,6 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 {
-    class LQueryHandlerFactory : NpgsqlTypeHandlerFactory<string>
-    {
-        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new LQueryHandler(postgresType, conn);
-    }
-
     /// <summary>
     /// LQuery binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
@@ -26,8 +21,8 @@ namespace Npgsql.Internal.TypeHandlers.LTreeHandlers
 
         internal override bool PreferTextWrite => false;
 
-        protected internal LQueryHandler(PostgresType postgresType, NpgsqlConnector connector)
-            : base(postgresType, connector) {}
+        protected internal LQueryHandler(PostgresType postgresType, Encoding encoding)
+            : base(postgresType, encoding) {}
 
         #region Write
 

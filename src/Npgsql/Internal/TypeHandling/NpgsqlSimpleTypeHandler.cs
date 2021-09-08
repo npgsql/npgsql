@@ -19,6 +19,8 @@ namespace Npgsql.Internal.TypeHandling
     /// </typeparam>
     public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TDefault>
     {
+        protected NpgsqlSimpleTypeHandler(PostgresType postgresType) : base(postgresType) {}
+
         /// <summary>
         /// Reads a value of type <typeparamref name="TDefault"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be

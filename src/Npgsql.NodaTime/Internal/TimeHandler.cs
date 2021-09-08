@@ -10,15 +10,6 @@ using BclTimeHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimeHandler
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class TimeHandlerFactory : NpgsqlTypeHandlerFactory<LocalTime>
-    {
-        // Check for the legacy floating point timestamps feature
-        public override NpgsqlTypeHandler<LocalTime> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => conn.DatabaseInfo.HasIntegerDateTimes
-                ? new TimeHandler(postgresType)
-                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-    }
-
     sealed partial class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>, INpgsqlSimpleTypeHandler<TimeSpan>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<TimeOnly>
@@ -27,10 +18,8 @@ namespace Npgsql.NodaTime.Internal
         readonly BclTimeHandler _bclHandler;
 
         internal TimeHandler(PostgresType postgresType)
-        {
-            PostgresType = postgresType;
-            _bclHandler = new BclTimeHandler(postgresType);
-        }
+            : base(postgresType)
+            => _bclHandler = new BclTimeHandler(postgresType);
 
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
         public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

@@ -14,24 +14,6 @@ using System.Collections.Immutable;
 namespace Npgsql.Internal.TypeHandlers
 {
     /// <summary>
-    /// A factory for type handlers for the PostgreSQL hstore extension data type, which stores sets of key/value pairs
-    /// within a single PostgreSQL value.
-    /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/hstore.html.
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string?>>
-    {
-        /// <inheritdoc />
-        public override NpgsqlTypeHandler<Dictionary<string, string?>> Create(PostgresType postgresType, NpgsqlConnector conn)
-            => new HstoreHandler(postgresType, conn);
-    }
-
-    /// <summary>
     /// A type handler for the PostgreSQL hstore extension data type, which stores sets of key/value pairs within a
     /// single PostgreSQL value.
     /// </summary>
@@ -55,11 +37,9 @@ namespace Npgsql.Internal.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal HstoreHandler(PostgresType postgresType, NpgsqlConnector connector)
-        {
-            PostgresType = postgresType;
-            _textHandler = new TextHandler(postgresType, connector);
-        }
+        internal HstoreHandler(PostgresType postgresType, TextHandler textHandler)
+            : base(postgresType)
+            => _textHandler = textHandler;
 
         #region Write
 
