@@ -144,9 +144,13 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                var removed = UserTypeMappings.Remove(pgName);
-                RecordChange();
-                return removed;
+                if (UserTypeMappings.Remove(pgName))
+                {
+                    RecordChange();
+                    return true;
+                }
+
+                return false;
             }
             finally
             {
