@@ -1354,9 +1354,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                             LogCommand(connector);
                         NpgsqlEventSource.Log.CommandStart(CommandText);
-                        Debug.Assert(CurrentActivity is null);
-                        if (NpgsqlActivitySource.IsEnabled)
-                            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+                        CommandStart(connector);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                         lock (connector.CancelLock)
@@ -1453,6 +1451,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
 
+                CommandStop();
                 State = CommandState.Idle;
 
                 // Reader disposal contains logic for closing the connection if CommandBehavior.CloseConnection is
@@ -1538,6 +1537,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #endregion
 
         #region Misc
+
+        internal void CommandStart(NpgsqlConnector connector)
+        {
+            Debug.Assert(CurrentActivity is null);
+            if (NpgsqlActivitySource.IsEnabled)
+                CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+        }
+
+        internal void CommandStop()
+        {
+            if (CurrentActivity is not null)
+            {
+                CurrentActivity.Dispose();
+                CurrentActivity = null;
+            }
+        }
 
         NpgsqlBatchCommand TruncateStatementsToOne()
         {
