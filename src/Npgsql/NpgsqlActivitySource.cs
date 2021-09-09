@@ -45,7 +45,7 @@ namespace Npgsql
 #else
         public static bool IsEnabled => false;
         public static IDisposable? CommandStart(NpgsqlConnector connector, string sql) => null;
-        public static void SetException(IDisposable? activity, Exception ex) { }
+        public static void SetException(IDisposable? activity, Exception ex, bool escaped = true) { }
 #endif
     }
 }
