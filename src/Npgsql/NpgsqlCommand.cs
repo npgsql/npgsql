@@ -54,6 +54,8 @@ namespace Npgsql
 
         internal List<NpgsqlBatchCommand> InternalBatchCommands { get; }
 
+        internal IDisposable? CurrentActivity;
+
         /// <summary>
         /// Returns details about each statement that this command has executed.
         /// Is only populated when an Execute* method is called.
@@ -1352,7 +1354,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                             LogCommand(connector);
                         NpgsqlEventSource.Log.CommandStart(CommandText);
-                        connector.CommandStart(CommandText);
+                        Debug.Assert(CurrentActivity is null);
+                        if (NpgsqlActivitySource.IsEnabled)
+                            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                         lock (connector.CancelLock)
