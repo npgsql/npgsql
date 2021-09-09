@@ -267,6 +267,8 @@ namespace Npgsql.Internal
 
         IDisposable? _currentActivity;
 
+        internal EndPoint? ConnectedEndPoint { get; private set; }
+
         #endregion
 
         #region Constants
@@ -872,6 +874,7 @@ namespace Npgsql.Internal
                     socket.Blocking = true;
                     SetSocketOptions(socket);
                     _socket = socket;
+                    ConnectedEndPoint = endpoint;
                     return;
                 }
                 catch (Exception e)
@@ -922,6 +925,7 @@ namespace Npgsql.Internal
                     await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken);
                     SetSocketOptions(socket);
                     _socket = socket;
+                    ConnectedEndPoint = endpoint;
                     return;
                 }
                 catch (Exception e)
