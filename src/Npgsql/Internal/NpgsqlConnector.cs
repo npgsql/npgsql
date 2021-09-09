@@ -1277,7 +1277,7 @@ namespace Npgsql.Internal
                             // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                             // and throw it as an exception when the ReadyForQuery is received (next).
                             error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetail);
-                            NpgsqlActivitySource.SetException(connector.CurrentReader?.Command?.CurrentActivity, error, true);
+                            NpgsqlActivitySource.SetException(connector.CurrentReader?.Command?.CurrentActivity, error, escaped: true);
 
                             if (connector.State == ConnectorState.Connecting)
                             {
