@@ -98,6 +98,15 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
         {
+            if (LegacyTimestampBehavior)
+                throw new Exception("Legacy mode is on in NodaTime");
+
+            if (value.Kind != DateTimeKind.Utc)
+                throw new Exception("Kind is: " + value.Kind);
+
+            if (ConvertInfinityDateTime)
+                throw new Exception("ConvertInfinityDateTime is true");
+
             if (!LegacyTimestampBehavior && value.Kind != DateTimeKind.Utc &&
                 (!ConvertInfinityDateTime || value != DateTime.MinValue && value != DateTime.MaxValue))
             {
