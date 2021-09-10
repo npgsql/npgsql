@@ -115,7 +115,7 @@ namespace Npgsql.NodaTime.Internal
             => _bclHandler.Write(value, buf, parameter);
 
         int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
+            => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);

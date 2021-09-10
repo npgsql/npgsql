@@ -207,14 +207,20 @@ namespace Npgsql.NodaTime.Tests
 
         static readonly TestCaseData[] TimestamptzInvalidParameters =
         {
-            new TestCaseData(new LocalDateTime()).SetName("TimestamptzInvalidParameters_LocalDateTime"),
-            new TestCaseData(DateTime.Now).SetName("TimestamptzInvalidParameters_DateTime_Local"),
-            new TestCaseData(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified)).SetName("TimestamptzInvalidParameters_DateTime_Unspecified"),
-            new TestCaseData(new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), TimeSpan.FromHours(2))).SetName("TimestamptzInvalidParameters_DateTimeOffset_non_UTC"),
+            new TestCaseData(new LocalDateTime())
+                .SetName("TimestamptzInvalidParameters_LocalDateTime"),
+            new TestCaseData(new DateTime(2000, 1, 1, 12, 0, 0, DateTimeKind.Local))
+                .SetName("TimestamptzInvalidParameters_DateTime_Local"),
+            new TestCaseData(new DateTime(2000, 1, 1, 12, 0, 0, DateTimeKind.Unspecified))
+                .SetName("TimestamptzInvalidParameters_DateTime_Unspecified"),
+            new TestCaseData(new DateTimeOffset(new DateTime(2000, 1, 1, 12, 0, 0, DateTimeKind.Unspecified), TimeSpan.FromHours(2)))
+                .SetName("TimestamptzInvalidParameters_DateTimeOffset_non_UTC"),
 
             // We only support ZonedDateTime and OffsetDateTime in UTC
-            new TestCaseData(new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["America/New_York"])).SetName("TimestamptzInvalidParameters_ZonedDateTime_non_UTC"),
-            new TestCaseData(new LocalDateTime().WithOffset(Offset.FromHours(1))).SetName("TimestamptzInvalidParameters_OffsetDateTime_non_UTC")
+            new TestCaseData(new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["America/New_York"]))
+                .SetName("TimestamptzInvalidParameters_ZonedDateTime_non_UTC"),
+            new TestCaseData(new LocalDateTime().WithOffset(Offset.FromHours(1)))
+                .SetName("TimestamptzInvalidParameters_OffsetDateTime_non_UTC")
         };
 
         [Test, TestCaseSource(nameof(TimestamptzInvalidParameters))]
