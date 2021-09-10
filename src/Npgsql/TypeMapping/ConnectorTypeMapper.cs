@@ -261,7 +261,7 @@ namespace Npgsql.TypeMapping
 
             // ResolveByClrType either throws, or resolves a handler and caches it in _handlersByClrType (where it would be found above the
             // next time we resolve this type)
-            return ResolveByClrType(value.GetType());
+            return ResolveByClrType(type);
         }
 
         // TODO: This is needed as a separate method only because of binary COPY, see #3957

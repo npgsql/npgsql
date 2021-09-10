@@ -59,8 +59,8 @@ namespace Npgsql.TypeMapping
             { "jsonpath",          new(NpgsqlDbType.JsonPath,  DbType.Object, "jsonpath") },
 
             // Date/time types
-            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(NpgsqlDateTime), typeof(DateTime)) },
-            { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTimeOffset)) },
+            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
+            { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
             { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
             { "timestamptz",                 new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
             { "date",                        new(NpgsqlDbType.Date,        DbType.Date,           "date",                        typeof(NpgsqlDate)

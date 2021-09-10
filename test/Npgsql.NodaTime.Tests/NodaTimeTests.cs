@@ -205,26 +205,25 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader[1], Is.EqualTo("1998-04-12 15:26:38+02")); // We set TimeZone to Europe/Berlin below
         }
 
-        static NpgsqlParameter[] TimestamptzInvalidParameters
-            => new NpgsqlParameter[]
-            {
-                new() { Value = new LocalDateTime(), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = DateTime.Now, NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), TimeSpan.FromHours(2)), NpgsqlDbType = NpgsqlDbType.TimestampTz },
+        static readonly TestCaseData[] TimestamptzInvalidParameters =
+        {
+            new TestCaseData(new LocalDateTime()).SetName("TimestamptzInvalidParameters_LocalDateTime"),
+            new TestCaseData(DateTime.Now).SetName("TimestamptzInvalidParameters_DateTime_Local"),
+            new TestCaseData(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified)).SetName("TimestamptzInvalidParameters_DateTime_Unspecified"),
+            new TestCaseData(new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), TimeSpan.FromHours(2))).SetName("TimestamptzInvalidParameters_DateTimeOffset_non_UTC"),
 
-                // We only support ZonedDateTime and OffsetDateTime in UTC
-                new() { Value = new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["America/New_York"]), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = new LocalDateTime().WithOffset(Offset.FromHours(1)), NpgsqlDbType = NpgsqlDbType.TimestampTz }
-            };
+            // We only support ZonedDateTime and OffsetDateTime in UTC
+            new TestCaseData(new LocalDateTime().InUtc().ToInstant().InZone(DateTimeZoneProviders.Tzdb["America/New_York"])).SetName("TimestamptzInvalidParameters_ZonedDateTime_non_UTC"),
+            new TestCaseData(new LocalDateTime().WithOffset(Offset.FromHours(1))).SetName("TimestamptzInvalidParameters_OffsetDateTime_non_UTC")
+        };
 
         [Test, TestCaseSource(nameof(TimestamptzInvalidParameters))]
-        public async Task Timestamptz_resolution_failure(NpgsqlParameter parameter)
+        public async Task Timestamptz_resolution_failure(object value)
         {
             await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
             {
-                Parameters = { parameter }
+                Parameters = { new() { NpgsqlDbType = NpgsqlDbType.TimestampTz, Value = value } }
             };
 
             Assert.That(() => cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
