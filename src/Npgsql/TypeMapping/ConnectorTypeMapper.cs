@@ -225,7 +225,20 @@ namespace Npgsql.TypeMapping
             if (value is null)
                 return ResolveByClrType(typeof(T));
 
-            // TODO: do better
+            if (typeof(T).IsValueType)
+            {
+                // Attempt to resolve value types generically via the resolver. This is the efficient fast-path, where we don't even need to
+                // do a dictionary lookup (the JIT elides type checks in generic methods for value types)
+                NpgsqlTypeHandler? handler;
+                foreach (var resolver in _resolvers)
+                    if ((handler = resolver.ResolveValueTypeGenerically(value)) is not null)
+                        return handler;
+
+                // There may still be some value types not resolved by the above, e.g. NpgsqlRange
+            }
+
+            // Value types would have been resolved above, so this is a reference type - no JIT optimizations.
+            // We go through the regular logic (and there's no boxing).
             return ResolveByValue((object)value);
         }
 

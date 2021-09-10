@@ -55,6 +55,31 @@ namespace Npgsql.NodaTime.Internal
                 ? handler
                 : null;
 
+        public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
+        {
+            if (typeof(T) == typeof(Instant))
+                return LegacyTimestampBehavior ? _timestampHandler : _timestampTzHandler;
+
+            if (typeof(T) == typeof(LocalDateTime))
+                return _timestampHandler;
+            if (typeof(T) == typeof(ZonedDateTime))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(OffsetDateTime))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(LocalDate))
+                return _dateHandler;
+            if (typeof(T) == typeof(LocalTime))
+                return _timeHandler;
+            if (typeof(T) == typeof(OffsetTime))
+                return _timeTzHandler;
+            if (typeof(T) == typeof(Period))
+                return _intervalHandler;
+            if (typeof(T) == typeof(Duration))
+                return _intervalHandler;
+
+            return null;
+        }
+
         internal static string? ClrTypeToDataTypeName(Type type)
         {
             if (type == typeof(Instant))
