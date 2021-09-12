@@ -72,16 +72,4 @@ namespace Npgsql.Internal.TypeHandlers
 
         #endregion
     }
-
-    /// <summary>
-    /// Interface implemented by all enum handler factories.
-    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
-    /// </summary>
-    public interface IEnumTypeHandlerFactory
-    {
-        /// <summary>
-        /// The name translator used for this enum.
-        /// </summary>
-        INpgsqlNameTranslator NameTranslator { get; }
-    }
 }

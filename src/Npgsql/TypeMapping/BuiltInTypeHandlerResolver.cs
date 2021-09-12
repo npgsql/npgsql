@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
@@ -525,7 +524,8 @@ namespace Npgsql.TypeMapping
 
         public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
         {
-            // This method only ever gets called for value types.
+            // This method only ever gets called for value types, and relies on the JIT specializing the method for T by eliding all the
+            // type checks below.
 
             // Numeric types
             if (typeof(T) == typeof(byte))

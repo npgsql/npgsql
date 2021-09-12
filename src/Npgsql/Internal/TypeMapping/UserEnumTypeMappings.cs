@@ -2,26 +2,31 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeMapping
+namespace Npgsql.Internal.TypeMapping
 {
-    class UserEnumTypeMapping<TEnum> : IUserTypeMapping
+    public interface IUserEnumTypeMapping : IUserTypeMapping
+    {
+        INpgsqlNameTranslator NameTranslator { get; }
+    }
+
+    class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
         where TEnum : struct, Enum
     {
         public string PgTypeName { get; }
         public Type ClrType => typeof(TEnum);
+        public INpgsqlNameTranslator NameTranslator { get; }
 
         readonly Dictionary<TEnum, string> _enumToLabel = new();
         readonly Dictionary<string, TEnum> _labelToEnum = new();
 
         public UserEnumTypeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
         {
-            PgTypeName = pgTypeName;
+            (PgTypeName, NameTranslator) = (pgTypeName, nameTranslator);
 
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {

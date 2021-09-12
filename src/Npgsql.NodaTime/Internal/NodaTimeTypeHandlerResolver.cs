@@ -57,6 +57,9 @@ namespace Npgsql.NodaTime.Internal
 
         public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
         {
+            // This method only ever gets called for value types, and relies on the JIT specializing the method for T by eliding all the
+            // type checks below.
+
             if (typeof(T) == typeof(Instant))
                 return LegacyTimestampBehavior ? _timestampHandler : _timestampTzHandler;
 

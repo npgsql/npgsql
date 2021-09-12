@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -16,7 +17,7 @@ namespace Npgsql.TypeMapping
         public static GlobalTypeMapper Instance { get; }
 
         internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
-        internal Dictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
+        public Dictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
