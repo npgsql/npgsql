@@ -636,7 +636,9 @@ namespace Npgsql.TypeMapping
         NpgsqlTypeHandler CharHandler()      => _charHandler ??= new TextHandler(PgType("character"), _connector.TextEncoding);
         NpgsqlTypeHandler NameHandler()      => _nameHandler ??= new TextHandler(PgType("name"), _connector.TextEncoding);
         NpgsqlTypeHandler RefcursorHandler() => _refcursorHandler ??= new TextHandler(PgType("refcursor"), _connector.TextEncoding);
-        NpgsqlTypeHandler CitextHandler()    => _citextHandler ??= new TextHandler(PgType("citext"), _connector.TextEncoding);
+        NpgsqlTypeHandler? CitextHandler() => _citextHandler ??= _databaseInfo.TryGetPostgresTypeByName("citext", out var pgType)
+            ? new TextHandler(pgType, _connector.TextEncoding)
+            : null;
         NpgsqlTypeHandler JsonHandler()      => _jsonHandler ??= new JsonHandler(PgType("json"), _connector.TextEncoding, isJsonb: false);
         NpgsqlTypeHandler JsonPathHandler()  => _jsonPathHandler ??= new JsonPathHandler(PgType("jsonpath"), _connector.TextEncoding);
 
@@ -665,9 +667,15 @@ namespace Npgsql.TypeMapping
         NpgsqlTypeHandler PolygonHandler()     => _polygonHandler ??= new PolygonHandler(PgType("polygon"));
 
         // LTree types
-        NpgsqlTypeHandler LQueryHandler() => _lQueryHandler ??= new LQueryHandler(PgType("lquery"), _connector.TextEncoding);
-        NpgsqlTypeHandler LTreeHandler()  => _lTreeHandler ??= new LTreeHandler(PgType("ltree"), _connector.TextEncoding);
-        NpgsqlTypeHandler LTxtHandler()   => _lTxtQueryHandler ??= new LTxtQueryHandler(PgType("ltxtquery"), _connector.TextEncoding);
+        NpgsqlTypeHandler? LQueryHandler() => _lQueryHandler ??= _databaseInfo.TryGetPostgresTypeByName("lquery", out var pgType)
+            ? new LQueryHandler(pgType, _connector.TextEncoding)
+            : null;
+        NpgsqlTypeHandler? LTreeHandler()  => _lTreeHandler ??= _databaseInfo.TryGetPostgresTypeByName("ltree", out var pgType)
+            ? new LTreeHandler(pgType, _connector.TextEncoding)
+            : null;
+        NpgsqlTypeHandler? LTxtHandler()   => _lTxtQueryHandler ??= _databaseInfo.TryGetPostgresTypeByName("ltxtquery", out var pgType)
+            ? new LTxtQueryHandler(pgType, _connector.TextEncoding)
+            : null;
 
         // UInt types
         NpgsqlTypeHandler OidHandler()       => _oidHandler ??= new UInt32Handler(PgType("oid"));
@@ -681,7 +689,9 @@ namespace Npgsql.TypeMapping
         NpgsqlTypeHandler ByteaHandler()      => _byteaHandler ??= new ByteaHandler(PgType("bytea"));
         NpgsqlTypeHandler BitVaryingHandler() => _bitVaryingHandler ??= new BitStringHandler(PgType("bit varying"));
         NpgsqlTypeHandler BitHandler()        => _bitHandler ??= new BitStringHandler(PgType("bit"));
-        NpgsqlTypeHandler HstoreHandler()     => _hstoreHandler ??= new HstoreHandler(PgType("hstore"), _textHandler);
+        NpgsqlTypeHandler? HstoreHandler()    => _hstoreHandler ??= _databaseInfo.TryGetPostgresTypeByName("hstore", out var pgType)
+            ? new HstoreHandler(pgType, _textHandler)
+            : null;
 
         // Internal types
         NpgsqlTypeHandler Int2VectorHandler()   => _int2VectorHandler ??= new Int2VectorHandler(PgType("int2vector"), PgType("smallint"));

@@ -187,7 +187,7 @@ namespace Npgsql.Internal
                 ? pgType
                 : throw new ArgumentException($"A PostgreSQL type with the name {pgName} was not found in the database");
 
-        internal bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
+        public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
         {
             // Full type name with namespace
             if (pgName.IndexOf('.') > -1)

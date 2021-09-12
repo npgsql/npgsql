@@ -15,7 +15,7 @@ namespace Npgsql.NetTopologySuite.Internal
         readonly NpgsqlDatabaseInfo _databaseInfo;
         readonly bool _geographyAsDefault;
 
-        readonly NetTopologySuiteHandler _geometryHandler, _geographyHandler;
+        readonly NetTopologySuiteHandler? _geometryHandler, _geographyHandler;
 
         internal NetTopologySuiteTypeHandlerResolver(
             NpgsqlConnector connector,
@@ -33,8 +33,10 @@ namespace Npgsql.NetTopologySuite.Internal
             var reader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
             var writer = new PostGisWriter();
 
-            _geometryHandler = new NetTopologySuiteHandler(pgGeometryType, reader, writer);
-            _geographyHandler = new NetTopologySuiteHandler(pgGeographyType, reader, writer);
+            if (pgGeometryType is not null)
+                _geometryHandler = new NetTopologySuiteHandler(pgGeometryType, reader, writer);
+            if (pgGeographyType is not null)
+                _geographyHandler = new NetTopologySuiteHandler(pgGeographyType, reader, writer);
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -68,6 +70,6 @@ namespace Npgsql.NetTopologySuite.Internal
                 _ => null
             };
 
-        PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
+        PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
     }
 }

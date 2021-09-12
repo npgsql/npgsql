@@ -16,7 +16,7 @@ namespace Npgsql.GeoJSON.Internal
     public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
-        readonly GeoJsonHandler _geometryHandler, _geographyHandler;
+        readonly GeoJsonHandler? _geometryHandler, _geographyHandler;
         readonly bool _geographyAsDefault;
 
         static readonly ConcurrentDictionary<string, CrsMap> CRSMaps = new();
@@ -47,8 +47,10 @@ namespace Npgsql.GeoJSON.Internal
 
             var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
 
-            _geometryHandler = new GeoJsonHandler(pgGeometryType, options, crsMap);
-            _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
+            if (pgGeometryType is not null)
+                _geometryHandler = new GeoJsonHandler(pgGeometryType, options, crsMap);
+            if (pgGeographyType is not null)
+                _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -82,6 +84,6 @@ namespace Npgsql.GeoJSON.Internal
                 _ => null
             };
 
-        PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
+        PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
     }
 }

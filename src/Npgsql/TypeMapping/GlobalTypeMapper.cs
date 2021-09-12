@@ -269,7 +269,8 @@ namespace Npgsql.TypeMapping
                     return false;
                 }
 
-                throw new NotSupportedException("Can't infer NpgsqlDbType for type " + clrType);
+                typeMapping = null;
+                return false;
             }
         }
 
@@ -348,6 +349,9 @@ namespace Npgsql.TypeMapping
                 NpgsqlDbType.Varbit  => "bit varying",
                 NpgsqlDbType.Bit     => "bit",
                 NpgsqlDbType.Hstore  => "hstore",
+
+                NpgsqlDbType.Geometry  => "geometry",
+                NpgsqlDbType.Geography => "geography",
 
                 // Internal types
                 NpgsqlDbType.Int2Vector   => "int2vector",
