@@ -114,7 +114,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             else
             {
                 var uSecsDate = (730119 - value.Date.DaysSinceEra) * 86400000000L;
-                buf.WriteInt64(-(uSecsDate - uSecsTime));
+                buf.WriteInt64(uSecsTime - uSecsDate);
             }
         }
     }
