@@ -53,7 +53,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             if (!LegacyTimestampBehavior && value.Kind == DateTimeKind.Utc)
             {
                 throw new InvalidCastException(
-                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', considering using 'timestamp with time zone'. " +
+                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', consider using 'timestamp with time zone'. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
             }
