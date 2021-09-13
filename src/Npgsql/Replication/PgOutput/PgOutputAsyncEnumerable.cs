@@ -88,7 +88,7 @@ namespace Npgsql.Replication.PgOutput
                     await buf.EnsureAsync(20);
                     yield return _beginMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                         transactionFinalLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        transactionCommitTimestamp: TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()),
+                        transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
                         transactionXid: buf.ReadUInt32());
                     continue;
                 }
@@ -123,7 +123,7 @@ namespace Npgsql.Replication.PgOutput
                     yield return _commitMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, buf.ReadByte(),
                         commitLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                         transactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        transactionCommitTimestamp: TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()));
+                        transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified));
                     continue;
                 }
                 case BackendReplicationMessageCode.Origin:
@@ -342,7 +342,7 @@ namespace Npgsql.Replication.PgOutput
                     yield return _streamCommitMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                         transactionXid: buf.ReadUInt32(), flags: buf.ReadByte(), commitLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                         transactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        transactionCommitTimestamp: TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()));
+                        transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified));
                     continue;
                 }
                 case BackendReplicationMessageCode.StreamAbort:

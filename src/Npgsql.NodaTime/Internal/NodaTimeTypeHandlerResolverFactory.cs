@@ -1,19 +1,18 @@
 using System;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class NodaTimeTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    public class NodaTimeTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
-        public ITypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new NodaTimeTypeHandlerResolver(connector);
 
-        public string? GetDataTypeNameByClrType(Type type)
+        public override string? GetDataTypeNameByClrType(Type type)
             => NodaTimeTypeHandlerResolver.ClrTypeToDataTypeName(type);
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => NodaTimeTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

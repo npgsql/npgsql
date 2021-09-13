@@ -42,12 +42,12 @@ namespace Npgsql.Benchmarks
             => _typeMapper.ResolveByDataTypeName("integer");
 
         [Benchmark]
-        public NpgsqlTypeHandler ResolveClrTypeInt()
-            => _typeMapper.ResolveByClrType(typeof(int));
+        public NpgsqlTypeHandler ResolveClrTypeNonGeneric()
+            => _typeMapper.ResolveByValue((object)8);
 
         [Benchmark]
-        public NpgsqlTypeHandler ResolveClrTypeTid()
-            => _typeMapper.ResolveByClrType(typeof(NpgsqlTid));
+        public NpgsqlTypeHandler ResolveClrTypeGeneric()
+            => _typeMapper.ResolveByValue(8);
 
     }
 }

@@ -8,7 +8,7 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.NetTopologySuite.Internal
 {
-    public class NetTopologySuiteTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    public class NetTopologySuiteTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
         readonly CoordinateSequenceFactory _coordinateSequenceFactory;
         readonly PrecisionModel _precisionModel;
@@ -27,14 +27,14 @@ namespace Npgsql.NetTopologySuite.Internal
             _geographyAsDefault = geographyAsDefault;
         }
 
-        public ITypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
                 _geographyAsDefault);
 
-        public string? GetDataTypeNameByClrType(Type type)
+        public override string? GetDataTypeNameByClrType(Type type)
             => NetTopologySuiteTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => NetTopologySuiteTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

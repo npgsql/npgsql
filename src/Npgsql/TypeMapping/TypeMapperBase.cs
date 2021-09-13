@@ -43,7 +43,7 @@ namespace Npgsql.TypeMapping
         public abstract bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null);
 
         /// <inheritdoc />
-        public abstract void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory);
+        public abstract void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory);
 
         public abstract void Reset();
 

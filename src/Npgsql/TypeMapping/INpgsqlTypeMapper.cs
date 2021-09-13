@@ -151,7 +151,7 @@ namespace Npgsql.TypeMapping
         /// Typically used by plugins.
         /// </summary>
         /// <param name="resolverFactory">The type resolver factory to be added.</param>
-        void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory);
+        void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory);
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.

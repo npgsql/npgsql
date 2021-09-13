@@ -319,7 +319,7 @@ namespace Npgsql
                         connector = await _pool.Get(this, timeout, async, cancellationToken);
 
                     Debug.Assert(connector.Connection is null,
-                        $"Connection for opened connector {Connector} is bound to another connection");
+                        $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     connector.Connection = this;

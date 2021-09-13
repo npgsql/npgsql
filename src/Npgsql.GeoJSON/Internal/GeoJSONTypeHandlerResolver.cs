@@ -13,10 +13,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.GeoJSON.Internal
 {
-    public class GeoJSONTypeHandlerResolver : ITypeHandlerResolver
+    public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
-        readonly GeoJsonHandler _geometryHandler, _geographyHandler;
+        readonly GeoJsonHandler? _geometryHandler, _geographyHandler;
         readonly bool _geographyAsDefault;
 
         static readonly ConcurrentDictionary<string, CrsMap> CRSMaps = new();
@@ -47,11 +47,13 @@ namespace Npgsql.GeoJSON.Internal
 
             var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
 
-            _geometryHandler = new GeoJsonHandler(pgGeometryType, options, crsMap);
-            _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
+            if (pgGeometryType is not null)
+                _geometryHandler = new GeoJsonHandler(pgGeometryType, options, crsMap);
+            if (pgGeographyType is not null)
+                _geographyHandler = new GeoJsonHandler(pgGeographyType, options, crsMap);
         }
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "geometry" => _geometryHandler,
@@ -59,7 +61,7 @@ namespace Npgsql.GeoJSON.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
@@ -71,7 +73,7 @@ namespace Npgsql.GeoJSON.Internal
                     ? "geography"
                     : "geometry";
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
@@ -82,6 +84,6 @@ namespace Npgsql.GeoJSON.Internal
                 _ => null
             };
 
-        PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
+        PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
     }
 }

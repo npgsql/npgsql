@@ -11,6 +11,15 @@ namespace Npgsql.Util
 {
     static class Statics
     {
+#if DEBUG
+        internal static bool LegacyTimestampBehavior;
+#else
+        internal static readonly bool LegacyTimestampBehavior;
+#endif
+
+        static Statics()
+            => LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
         {

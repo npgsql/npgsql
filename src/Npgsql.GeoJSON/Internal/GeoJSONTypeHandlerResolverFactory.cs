@@ -5,7 +5,7 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.GeoJSON.Internal
 {
-    public class GeoJSONTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    public class GeoJSONTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
         readonly GeoJSONOptions _options;
         readonly bool _geographyAsDefault;
@@ -13,13 +13,13 @@ namespace Npgsql.GeoJSON.Internal
         public GeoJSONTypeHandlerResolverFactory(GeoJSONOptions options, bool geographyAsDefault)
             => (_options, _geographyAsDefault) = (options, geographyAsDefault);
 
-        public ITypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new GeoJSONTypeHandlerResolver(connector, _options, _geographyAsDefault);
 
-        public string? GetDataTypeNameByClrType(Type type)
+        public override string? GetDataTypeNameByClrType(Type type)
             => GeoJSONTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => GeoJSONTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
     }
 }

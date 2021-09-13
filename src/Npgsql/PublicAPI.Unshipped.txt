@@ -113,7 +113,7 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOption
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddMapping(Npgsql.TypeMapping.NpgsqlTypeMapping! mapping) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.ITypeHandlerResolverFactory! resolverFactory) -> void
+Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.Mappings.get -> System.Collections.Generic.IEnumerable<Npgsql.TypeMapping.NpgsqlTypeMapping!>!
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.RemoveMapping(string! pgTypeName) -> bool
 *REMOVED*Npgsql.TypeMapping.NpgsqlTypeMapping

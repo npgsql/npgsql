@@ -1,8 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="NodaTime" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NLog" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -10,9 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
-    <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
-    <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
-    <ProjectReference Include="../../src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
   </ItemGroup>
 </Project>

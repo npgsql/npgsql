@@ -326,60 +326,38 @@ namespace Npgsql.Tests
 
         internal static IDisposable SetEnvironmentVariable(string name, string? value)
         {
-            var resetter = new EnvironmentVariableResetter(name, Environment.GetEnvironmentVariable(name));
+            var oldValue = Environment.GetEnvironmentVariable(name);
             Environment.SetEnvironmentVariable(name, value);
-            return resetter;
+            return new DeferredExecutionDisposable(() => Environment.SetEnvironmentVariable(name, oldValue));
         }
 
         internal static IDisposable SetCurrentCulture(CultureInfo culture)
-            => new CultureSetter(culture);
+        {
+            var oldCulture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = culture;
+
+            return new DeferredExecutionDisposable(() => CultureInfo.CurrentCulture = oldCulture);
+        }
 
         internal static IDisposable DisableSqlRewriting()
         {
 #if DEBUG
             NpgsqlCommand.EnableSqlRewriting = false;
-            return new SqlRewritingEnabler();
+            return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
 #else
             Assert.Ignore("Cannot disable SQL rewriting in RELEASE builds");
             throw new NotSupportedException("Cannot disable SQL rewriting in RELEASE builds");
 #endif
         }
 
-        class EnvironmentVariableResetter : IDisposable
+        class DeferredExecutionDisposable : IDisposable
         {
-            readonly string _name;
-            readonly string? _value;
+            readonly Action _action;
 
-            internal EnvironmentVariableResetter(string name, string? value)
-            {
-                _name = name;
-                _value = value;
-            }
+            internal DeferredExecutionDisposable(Action action) => _action = action;
 
-            public void Dispose() => Environment.SetEnvironmentVariable(_name, _value);
-        }
-
-        class CultureSetter : IDisposable
-        {
-            readonly CultureInfo _oldCulture;
-
-            internal CultureSetter(CultureInfo newCulture)
-            {
-                _oldCulture = CultureInfo.CurrentCulture;
-                CultureInfo.CurrentCulture = newCulture;
-            }
-
-            public void Dispose() => CultureInfo.CurrentCulture = _oldCulture;
-        }
-
-        class SqlRewritingEnabler : IDisposable
-        {
             public void Dispose()
-            {
-#if DEBUG
-                NpgsqlCommand.EnableSqlRewriting = true;
-#endif
-            }
+                => _action();
         }
     }
 

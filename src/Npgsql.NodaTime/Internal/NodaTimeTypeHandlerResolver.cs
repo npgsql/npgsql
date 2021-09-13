@@ -6,15 +6,16 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal
 {
-    public class NodaTimeTypeHandlerResolver : ITypeHandlerResolver
+    public class NodaTimeTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
 
-        readonly TimestampHandler _timestampHandler;
-        readonly TimestampTzHandler _timestampTzHandler;
+        readonly NpgsqlTypeHandler _timestampHandler;
+        readonly NpgsqlTypeHandler _timestampTzHandler;
         readonly DateHandler _dateHandler;
         readonly TimeHandler _timeHandler;
         readonly TimeTzHandler _timeTzHandler;
@@ -24,15 +25,19 @@ namespace Npgsql.NodaTime.Internal
         {
             _databaseInfo = connector.DatabaseInfo;
 
-            _timestampHandler = new TimestampHandler(PgType("timestamp without time zone"), connector.Settings.ConvertInfinityDateTime);
-            _timestampTzHandler = new TimestampTzHandler(PgType("timestamp with time zone"), connector.Settings.ConvertInfinityDateTime);
+            _timestampHandler = LegacyTimestampBehavior
+                ? new LegacyTimestampHandler(PgType("timestamp without time zone"), connector.Settings.ConvertInfinityDateTime)
+                : new TimestampHandler(PgType("timestamp without time zone"), connector.Settings.ConvertInfinityDateTime);
+            _timestampTzHandler = LegacyTimestampBehavior
+                ? new LegacyTimestampTzHandler(PgType("timestamp with time zone"), connector.Settings.ConvertInfinityDateTime)
+                : new TimestampTzHandler(PgType("timestamp with time zone"), connector.Settings.ConvertInfinityDateTime);
             _dateHandler = new DateHandler(PgType("date"), connector.Settings.ConvertInfinityDateTime);
             _timeHandler = new TimeHandler(PgType("time without time zone"));
             _timeTzHandler = new TimeTzHandler(PgType("time with time zone"));
             _intervalHandler = new IntervalHandler(PgType("interval"));
         }
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "timestamp" or "timestamp without time zone" => _timestampHandler,
@@ -45,14 +50,45 @@ namespace Npgsql.NodaTime.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeName(type) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
 
+        public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
+        {
+            // This method only ever gets called for value types, and relies on the JIT specializing the method for T by eliding all the
+            // type checks below.
+
+            if (typeof(T) == typeof(Instant))
+                return LegacyTimestampBehavior ? _timestampHandler : _timestampTzHandler;
+
+            if (typeof(T) == typeof(LocalDateTime))
+                return _timestampHandler;
+            if (typeof(T) == typeof(ZonedDateTime))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(OffsetDateTime))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(LocalDate))
+                return _dateHandler;
+            if (typeof(T) == typeof(LocalTime))
+                return _timeHandler;
+            if (typeof(T) == typeof(OffsetTime))
+                return _timeTzHandler;
+            if (typeof(T) == typeof(Period))
+                return _intervalHandler;
+            if (typeof(T) == typeof(Duration))
+                return _intervalHandler;
+
+            return null;
+        }
+
         internal static string? ClrTypeToDataTypeName(Type type)
         {
-            if (type == typeof(Instant) || type == typeof(LocalDateTime))
+            if (type == typeof(Instant))
+                return LegacyTimestampBehavior ? "timestamp without time zone" : "timestamp with time zone";
+
+            if (type == typeof(LocalDateTime))
                 return "timestamp without time zone";
             if (type == typeof(ZonedDateTime) || type == typeof(OffsetDateTime))
                 return "timestamp with time zone";
@@ -68,7 +104,7 @@ namespace Npgsql.NodaTime.Internal
             return null;
         }
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)

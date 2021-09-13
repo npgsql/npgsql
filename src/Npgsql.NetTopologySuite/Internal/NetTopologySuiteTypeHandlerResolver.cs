@@ -10,12 +10,12 @@ using NpgsqlTypes;
 
 namespace Npgsql.NetTopologySuite.Internal
 {
-    public class NetTopologySuiteTypeHandlerResolver : ITypeHandlerResolver
+    public class NetTopologySuiteTypeHandlerResolver : TypeHandlerResolver
     {
         readonly NpgsqlDatabaseInfo _databaseInfo;
         readonly bool _geographyAsDefault;
 
-        readonly NetTopologySuiteHandler _geometryHandler, _geographyHandler;
+        readonly NetTopologySuiteHandler? _geometryHandler, _geographyHandler;
 
         internal NetTopologySuiteTypeHandlerResolver(
             NpgsqlConnector connector,
@@ -33,11 +33,13 @@ namespace Npgsql.NetTopologySuite.Internal
             var reader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
             var writer = new PostGisWriter();
 
-            _geometryHandler = new NetTopologySuiteHandler(pgGeometryType, reader, writer);
-            _geographyHandler = new NetTopologySuiteHandler(pgGeographyType, reader, writer);
+            if (pgGeometryType is not null)
+                _geometryHandler = new NetTopologySuiteHandler(pgGeometryType, reader, writer);
+            if (pgGeographyType is not null)
+                _geographyHandler = new NetTopologySuiteHandler(pgGeographyType, reader, writer);
         }
 
-        public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
+        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
             => typeName switch
             {
                 "geometry" => _geometryHandler,
@@ -45,7 +47,7 @@ namespace Npgsql.NetTopologySuite.Internal
                 _ => null
             };
 
-        public NpgsqlTypeHandler? ResolveByClrType(Type type)
+        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
             => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
                 ? handler
                 : null;
@@ -57,7 +59,7 @@ namespace Npgsql.NetTopologySuite.Internal
                     ? "geography"
                     : "geometry";
 
-        public TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
+        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
             => DoGetMappingByDataTypeName(dataTypeName);
 
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
@@ -68,6 +70,6 @@ namespace Npgsql.NetTopologySuite.Internal
                 _ => null
             };
 
-        PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
+        PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
     }
 }

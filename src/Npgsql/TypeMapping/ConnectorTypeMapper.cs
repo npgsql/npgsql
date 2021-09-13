@@ -6,10 +6,12 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
+using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -32,7 +34,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        volatile ITypeHandlerResolver[] _resolvers;
+        volatile TypeHandlerResolver[] _resolvers;
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
         readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -49,13 +51,15 @@ namespace Npgsql.TypeMapping
         /// </summary>
         internal int ChangeCounter { get; private set; }
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorTypeMapper));
+
         #region Construction
 
         internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
             Connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-            _resolvers = Array.Empty<ITypeHandlerResolver>();
+            _resolvers = Array.Empty<TypeHandlerResolver>();
         }
 
         #endregion Constructors
@@ -144,9 +148,20 @@ namespace Npgsql.TypeMapping
                 bool TryResolve(NpgsqlDbType npgsqlDbType, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
                 {
                     if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
+                    {
                         foreach (var resolver in _resolvers)
-                            if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
-                                return true;
+                        {
+                            try
+                            {
+                                if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
+                                    return true;
+                            }
+                            catch (Exception e)
+                            {
+                                Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}", e);
+                            }
+                        }
+                    }
 
                     handler = null;
                     return false;
@@ -165,8 +180,17 @@ namespace Npgsql.TypeMapping
             lock (_writeLock)
             {
                 foreach (var resolver in _resolvers)
-                    if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
-                        return _handlersByDataTypeName[typeName] = handler;
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
+                            return _handlersByDataTypeName[typeName] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}", e);
+                    }
+                }
 
                 if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
                     throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
@@ -219,6 +243,70 @@ namespace Npgsql.TypeMapping
             }
         }
 
+        internal NpgsqlTypeHandler ResolveByValue<T>(T value)
+        {
+            if (value is null)
+                return ResolveByClrType(typeof(T));
+
+            if (typeof(T).IsValueType)
+            {
+                // Attempt to resolve value types generically via the resolver. This is the efficient fast-path, where we don't even need to
+                // do a dictionary lookup (the JIT elides type checks in generic methods for value types)
+                NpgsqlTypeHandler? handler;
+
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveValueTypeGenerically(value)) is not null)
+                            return handler;
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {typeof(T)}", e);
+                    }
+                }
+
+                // There may still be some value types not resolved by the above, e.g. NpgsqlRange
+            }
+
+            // Value types would have been resolved above, so this is a reference type - no JIT optimizations.
+            // We go through the regular logic (and there's no boxing).
+            return ResolveByValue((object)value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal NpgsqlTypeHandler ResolveByValue(object value)
+        {
+            // We resolve as follows:
+            // 1. Cached by-type lookup (fast path). This will work for almost all types after the very first resolution.
+            // 2. Value-dependent type lookup (e.g. DateTime by Kind) via the resolvers. This includes complex types (e.g. array/range
+            //    over DateTime), and the results cannot be cached.
+            // 3. Uncached by-type lookup (for the very first resolution of a given type)
+
+            var type = value.GetType();
+            if (_handlersByClrType.TryGetValue(type, out var handler))
+                return handler;
+
+            foreach (var resolver in _resolvers)
+            {
+                try
+                {
+                    if ((handler = resolver.ResolveValueDependentValue(value)) is not null)
+                        return handler;
+                }
+                catch (Exception e)
+                {
+                    Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}", e);
+                }
+            }
+
+            // ResolveByClrType either throws, or resolves a handler and caches it in _handlersByClrType (where it would be found above the
+            // next time we resolve this type)
+            return ResolveByClrType(type);
+        }
+
+        // TODO: This is needed as a separate method only because of binary COPY, see #3957
         internal NpgsqlTypeHandler ResolveByClrType(Type type)
         {
             if (_handlersByClrType.TryGetValue(type, out var handler))
@@ -227,8 +315,17 @@ namespace Npgsql.TypeMapping
             lock (_writeLock)
             {
                 foreach (var resolver in _resolvers)
-                    if ((handler = resolver.ResolveByClrType(type)) is not null)
-                        return _handlersByClrType[type] = handler;
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveByClrType(type)) is not null)
+                            return _handlersByClrType[type] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}", e);
+                    }
+                }
 
                 // Try to see if it is an array type
                 var arrayElementType = GetArrayListElementType(type);
@@ -480,12 +577,12 @@ namespace Npgsql.TypeMapping
             _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, DbType.Object, pgType.Name, clrType);
         }
 
-        public override void AddTypeResolverFactory(ITypeHandlerResolverFactory resolverFactory)
+        public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
         {
             lock (this)
             {
                 var oldResolvers = _resolvers;
-                var newResolvers = new ITypeHandlerResolver[oldResolvers.Length + 1];
+                var newResolvers = new TypeHandlerResolver[oldResolvers.Length + 1];
                 Array.Copy(oldResolvers, 0, newResolvers, 1, oldResolvers.Length);
                 newResolvers[0] = resolverFactory.Create(Connector);
                 _resolvers = newResolvers;
@@ -513,9 +610,10 @@ namespace Npgsql.TypeMapping
                     _handlersByClrType.Clear();
                     _handlersByDataTypeName.Clear();
 
-                    _resolvers = new ITypeHandlerResolver[globalMapper.ResolverFactories.Count];
-                    for (var i = 0; i < _resolvers.Length; i++)
-                        _resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                    var newResolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
+                    for (var i = 0; i < newResolvers.Length; i++)
+                        newResolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                    _resolvers = newResolvers;
 
                     _userTypeMappings.Clear();
 

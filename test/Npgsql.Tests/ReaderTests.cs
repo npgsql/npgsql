@@ -2091,25 +2091,26 @@ LANGUAGE plpgsql VOLATILE";
 
     #region Mock Type Handlers
 
-    class ExplodingTypeHandlerResolverFactory : ITypeHandlerResolverFactory
+    class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
         readonly bool _safe;
         public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
-        public ITypeHandlerResolver Create(NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
+        public override TypeHandlerResolver Create(NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
 
-        public TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-        public string? GetDataTypeNameByClrType(Type type) => throw new NotSupportedException();
+        public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+        public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
+        public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
 
-        class ExplodingTypeHandlerResolver : ITypeHandlerResolver
+        class ExplodingTypeHandlerResolver : TypeHandlerResolver
         {
             readonly bool _safe;
 
             public ExplodingTypeHandlerResolver(bool safe) => _safe = safe;
 
-            public NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) =>
+            public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) =>
                 typeName == "integer" ? new ExplodingTypeHandler(null!, _safe) : null;
-            public NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
-            public TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotImplementedException();
+            public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
+            public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotImplementedException();
         }
     }
 
