@@ -78,15 +78,23 @@ namespace Npgsql
         NpgsqlBatchCommand IList<NpgsqlBatchCommand>.this[int index]
         {
             get => _list[index];
-            set => _list[index] = Cast(value);
+            set => _list[index] = value;
         }
 
         /// <inheritdoc/>
-        public override DbBatchCommand this[int index]
+        public new NpgsqlBatchCommand this[int index]
         {
             get => _list[index];
-            set => _list[index] = Cast(value);
+            set => _list[index] = value;
         }
+
+        /// <inheritdoc/>
+        protected override DbBatchCommand GetBatchCommand(int index)
+            => _list[index];
+
+        /// <inheritdoc/>
+        protected override void SetBatchCommand(int index, DbBatchCommand batchCommand)
+            => _list[index] = Cast(batchCommand);
 
         static NpgsqlBatchCommand Cast(DbBatchCommand? value)
             => value is NpgsqlBatchCommand c

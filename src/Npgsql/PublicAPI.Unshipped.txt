@@ -25,6 +25,8 @@ Npgsql.NpgsqlBatchCommandCollection.CopyTo(Npgsql.NpgsqlBatchCommand![]! array, 
 Npgsql.NpgsqlBatchCommandCollection.IndexOf(Npgsql.NpgsqlBatchCommand! item) -> int
 Npgsql.NpgsqlBatchCommandCollection.Insert(int index, Npgsql.NpgsqlBatchCommand! item) -> void
 Npgsql.NpgsqlBatchCommandCollection.Remove(Npgsql.NpgsqlBatchCommand! item) -> bool
+Npgsql.NpgsqlBatchCommandCollection.this[int index].get -> Npgsql.NpgsqlBatchCommand!
+Npgsql.NpgsqlBatchCommandCollection.this[int index].set -> void
 Npgsql.NpgsqlBinaryExporter.CancelAsync() -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlCommand.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
@@ -173,8 +175,6 @@ override Npgsql.NpgsqlBatchCommandCollection.Insert(int index, System.Data.Commo
 override Npgsql.NpgsqlBatchCommandCollection.IsReadOnly.get -> bool
 override Npgsql.NpgsqlBatchCommandCollection.Remove(System.Data.Common.DbBatchCommand! item) -> bool
 override Npgsql.NpgsqlBatchCommandCollection.RemoveAt(int index) -> void
-override Npgsql.NpgsqlBatchCommandCollection.this[int index].get -> System.Data.Common.DbBatchCommand!
-override Npgsql.NpgsqlBatchCommandCollection.this[int index].set -> void
 override Npgsql.NpgsqlConnection.CanCreateBatch.get -> bool
 override Npgsql.NpgsqlException.DbBatchCommand.get -> System.Data.Common.DbBatchCommand?
 override Npgsql.NpgsqlFactory.CanCreateBatch.get -> bool

@@ -112,24 +112,23 @@ namespace Npgsql.Tests
             // Consume SELECT result set to parse the CommandComplete
             await reader.CloseAsync();
 
-            // TODO: Not good, should not need to cast.
-            var command = (NpgsqlBatchCommand)batch.BatchCommands[0];
+            var command = batch.BatchCommands[0];
             Assert.That(command.RecordsAffected, Is.EqualTo(2));
             Assert.That(command.Rows, Is.EqualTo(2));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[1];
+            command = batch.BatchCommands[1];
             Assert.That(command.RecordsAffected, Is.EqualTo(1));
             Assert.That(command.Rows, Is.EqualTo(1));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[2];
+            command = batch.BatchCommands[2];
             Assert.That(command.RecordsAffected, Is.EqualTo(0));
             Assert.That(command.Rows, Is.EqualTo(0));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[3];
+            command = batch.BatchCommands[3];
             Assert.That(command.RecordsAffected, Is.EqualTo(-1));
             Assert.That(command.Rows, Is.EqualTo(2));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[4];
+            command = batch.BatchCommands[4];
             Assert.That(command.RecordsAffected, Is.EqualTo(2));
             Assert.That(command.Rows, Is.EqualTo(2));
         }
@@ -158,13 +157,13 @@ namespace Npgsql.Tests
             // Consume SELECT result set to parse the CommandComplete
             await reader.CloseAsync();
 
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[0]).StatementType, Is.EqualTo(StatementType.Insert));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[1]).StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[2]).StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[3]).StatementType, Is.EqualTo(StatementType.Other));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[4]).StatementType, Is.EqualTo(StatementType.Select));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[5]).StatementType, Is.EqualTo(StatementType.Delete));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[6]).StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Insert));
+            Assert.That(batch.BatchCommands[1].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(batch.BatchCommands[2].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(batch.BatchCommands[3].StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(batch.BatchCommands[4].StatementType, Is.EqualTo(StatementType.Select));
+            Assert.That(batch.BatchCommands[5].StatementType, Is.EqualTo(StatementType.Delete));
+            Assert.That(batch.BatchCommands[6].StatementType, Is.EqualTo(StatementType.Other));
         }
 
         [Test]
@@ -188,8 +187,8 @@ namespace Npgsql.Tests
 
             await batch.ExecuteNonQueryAsync();
 
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[0]).OID, Is.Not.EqualTo(0));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[1]).OID, Is.EqualTo(0));
+            Assert.That(batch.BatchCommands[0].OID, Is.Not.EqualTo(0));
+            Assert.That(batch.BatchCommands[1].OID, Is.EqualTo(0));
         }
 
         #endregion NpgsqlBatchCommand

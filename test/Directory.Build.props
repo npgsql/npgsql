@@ -1,8 +1,10 @@
 ﻿<Project>
   <Import Project="../Directory.Build.props" />
 
-  <!-- Build configuration -->
   <PropertyGroup>
+    <!-- Tests don't compile with C# 10, see https://github.com/dotnet/roslyn/issues/56167 -->
+    <LangVersion>9.0</LangVersion>
+
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
