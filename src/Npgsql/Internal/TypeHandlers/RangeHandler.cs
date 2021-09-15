@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.VisualBasic;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
@@ -36,8 +37,8 @@ namespace Npgsql.Internal.TypeHandlers
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => new ArrayHandler<NpgsqlRange<TElement>>(pgArrayType, this, arrayNullabilityMode);
 
-        internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
-        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
+        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)

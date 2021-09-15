@@ -594,6 +594,63 @@ namespace Npgsql.NodaTime.Tests
 
         #endregion Interval
 
+        #region DateInterval
+
+        [Test]
+        public async Task Daterange_read()
+        {
+            var dateInterval = new DateInterval(new(2020, 1, 1), new(2020, 1, 5));
+            var range = new NpgsqlRange<LocalDate>(new(2020, 1, 1), true, new(2020, 1, 6), false);
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand($"SELECT '[2020-01-01,2020-01-05]'::daterange", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("daterange"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateInterval)));
+            Assert.That(reader.GetValue(0), Is.EqualTo(dateInterval));
+            Assert.That(reader.GetFieldValue<DateInterval>(0), Is.EqualTo(dateInterval));
+            Assert.That(reader.GetFieldValue<NpgsqlRange<LocalDate>>(0), Is.EqualTo(range));
+        }
+
+        static NpgsqlParameter[] DaterangeParameters
+        {
+            get
+            {
+                var dateInterval = new DateInterval(new(2020, 1, 1), new(2020, 1, 5));
+                var range = new NpgsqlRange<LocalDate>(new(2020, 1, 1), new(2020, 1, 5));
+
+                return new NpgsqlParameter[]
+                {
+                    new() { Value = dateInterval },
+                    new() { Value = range },
+                    new() { Value = dateInterval, NpgsqlDbType = NpgsqlDbType.DateRange },
+                    new() { Value = range, NpgsqlDbType = NpgsqlDbType.DateRange }
+                };
+            }
+        }
+
+        [Test, TestCaseSource(nameof(DaterangeParameters))]
+        public async Task Daterange_resolution(NpgsqlParameter parameter)
+        {
+            await using var conn = await OpenConnectionAsync();
+            conn.TypeMapper.Reset();
+            conn.TypeMapper.UseNodaTime();
+
+            await using var cmd = new NpgsqlCommand("SELECT pg_typeof($1)::text, $1::text", conn)
+            {
+                Parameters = { parameter }
+            };
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            Assert.That(reader[0], Is.EqualTo("daterange"));
+            Assert.That(reader[1], Is.EqualTo("[2020-01-01,2020-01-06)"));
+        }
+
+        #endregion DateInterval
+
         #region Support
 
         protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)

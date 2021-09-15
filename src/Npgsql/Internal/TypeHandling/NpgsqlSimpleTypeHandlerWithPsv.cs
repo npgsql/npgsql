@@ -92,7 +92,7 @@ namespace Npgsql.Internal.TypeHandling
 
         #region Misc
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
             => typeof(TPsv);
 
         /// <inheeritdoc />

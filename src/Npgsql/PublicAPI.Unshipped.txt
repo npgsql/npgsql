@@ -269,8 +269,14 @@ static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.
 static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
-NpgsqlTypes.NpgsqlDbType.Xid8 = 64 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.BigIntRange = 1073741825 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.DateRange = 1073741831 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.IntegerRange = 1073741833 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Multirange = 536870912 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.NumericRange = 1073741837 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.TimestampRange = 1073741845 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.TimestampTzRange = 1073741850 -> NpgsqlTypes.NpgsqlDbType
+NpgsqlTypes.NpgsqlDbType.Xid8 = 64 -> NpgsqlTypes.NpgsqlDbType
 *REMOVED*Npgsql.NpgsqlCommand.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlStatement!>!
 *REMOVED*Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlStatement!>!
 *REMOVED*Npgsql.NpgsqlStatement

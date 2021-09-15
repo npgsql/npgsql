@@ -530,6 +530,46 @@ namespace NpgsqlTypes
 
         #endregion
 
+        #region Range types
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "int4range" type.
+        /// </summary>
+        [BuiltInPostgresType("int4range", PostgresTypeOIDs.Int4Range)]
+        IntegerRange = Range | Integer,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "numrange" type.
+        /// </summary>
+        [BuiltInPostgresType("numrange", PostgresTypeOIDs.NumRange)]
+        NumericRange = Range | Numeric,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tsrange" type.
+        /// </summary>
+        [BuiltInPostgresType("tsrange", PostgresTypeOIDs.TsRange)]
+        TimestampRange = Range | Timestamp,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tstzrange" type.
+        /// </summary>
+        [BuiltInPostgresType("tstzrange", PostgresTypeOIDs.TsTzRange)]
+        TimestampTzRange = Range | TimestampTz,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "daterange" type.
+        /// </summary>
+        [BuiltInPostgresType("daterange", PostgresTypeOIDs.DateRange)]
+        DateRange = Range | Date,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "int8range" type.
+        /// </summary>
+        [BuiltInPostgresType("int8range", PostgresTypeOIDs.Int8Range)]
+        BigIntRange = Range | Bigint,
+
+        #endregion Range types
+
         #region Composables
 
         /// <summary>

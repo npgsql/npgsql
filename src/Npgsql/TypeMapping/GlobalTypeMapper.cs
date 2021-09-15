@@ -353,6 +353,14 @@ namespace Npgsql.TypeMapping
                 NpgsqlDbType.Geometry  => "geometry",
                 NpgsqlDbType.Geography => "geography",
 
+                // Built-in range types
+                NpgsqlDbType.IntegerRange     => "int4range",
+                NpgsqlDbType.NumericRange     => "numrange",
+                NpgsqlDbType.TimestampRange   => "tsrange",
+                NpgsqlDbType.TimestampTzRange => "tstzrange",
+                NpgsqlDbType.DateRange        => "daterange",
+                NpgsqlDbType.BigIntRange      => "int8range",
+
                 // Internal types
                 NpgsqlDbType.Int2Vector   => "int2vector",
                 NpgsqlDbType.Oidvector    => "oidvector",

@@ -62,35 +62,42 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GivenNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        public void Infer_data_type_name_from_NpgsqlDbType()
         {
             var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
             Assert.That(p.DataTypeName, Is.EqualTo("character varying"));
         }
 
         [Test]
-        public void GivenDbTypeParameter_ShouldReturnDataTypeName()
+        public void Infer_data_type_name_from_DbType()
         {
             var p = new NpgsqlParameter("par_field1", DbType.String , 50);
             Assert.That(p.DataTypeName, Is.EqualTo("text"));
         }
 
         [Test]
-        public void GivenArrayNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        public void Infer_data_type_name_from_NpgsqlDbType_for_array()
         {
             var p = new NpgsqlParameter("int_array", NpgsqlDbType.Array | NpgsqlDbType.Integer);
             Assert.That(p.DataTypeName, Is.EqualTo("integer[]"));
         }
 
         [Test]
-        public void GivenRangeNpgsqlDbTypeParameter_ShouldReturnNullDataTypeName()
+        public void Infer_data_type_name_from_NpgsqlDbType_for_built_in_range()
         {
             var p = new NpgsqlParameter("numeric_range", NpgsqlDbType.Range | NpgsqlDbType.Numeric);
+            Assert.That(p.DataTypeName, Is.EqualTo("numrange"));
+        }
+
+        [Test]
+        public void Cannot_infer_data_type_name_from_NpgsqlDbType_for_unknown_range()
+        {
+            var p = new NpgsqlParameter("text_range", NpgsqlDbType.Range | NpgsqlDbType.Text);
             Assert.That(p.DataTypeName, Is.EqualTo(null));
         }
 
         [Test]
-        public void GivenClrTypeParameter_ShouldReturnExpectedDataTypeName()
+        public void Infer_data_type_name_from_ClrType()
         {
             var p = new NpgsqlParameter("p1", new Dictionary<string, string>());
             Assert.That(p.DataTypeName, Is.EqualTo("hstore"));

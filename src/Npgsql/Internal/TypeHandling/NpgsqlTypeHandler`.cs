@@ -39,7 +39,7 @@ namespace Npgsql.Internal.TypeHandling
 
         // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
         // we must use the bang operator here to tell the compiler that a null value will never returned.
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => (await Read<TDefault>(buf, len, async, fieldDescription))!;
 
         #endregion Read
@@ -60,8 +60,8 @@ namespace Npgsql.Internal.TypeHandling
 
         #region Misc
 
-        internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
-        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
+        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)

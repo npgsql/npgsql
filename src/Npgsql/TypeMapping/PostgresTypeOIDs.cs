@@ -93,5 +93,13 @@ namespace Npgsql.TypeMapping
         public const uint Record      = 2249;
         public const uint Void        = 2278;
         public const uint Unknown     = 705;
+
+        // Range types
+        public const uint Int4Range   = 3904;
+        public const uint NumRange    = 3906;
+        public const uint TsRange     = 3908;
+        public const uint TsTzRange   = 3910;
+        public const uint DateRange   = 3912;
+        public const uint Int8Range   = 3926;
     }
 }
