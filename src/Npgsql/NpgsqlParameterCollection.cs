@@ -171,7 +171,8 @@ namespace Npgsql
 
                 var oldValue = InternalList[index];
                 LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
-
+                oldValue.Command = null;
+                
                 InternalList[index] = value;
             }
         }
@@ -195,12 +196,16 @@ namespace Npgsql
 
                 if (oldValue == value)
                     return;
-
+                
                 LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
                 InternalList[index] = value;
                 value.Collection = this;
+                value.Command = _command;
+                
                 oldValue.Collection = null;
+                oldValue.Command = null;
+                
             }
         }
 
@@ -218,6 +223,7 @@ namespace Npgsql
 
             InternalList.Add(value);
             value.Collection = this;
+            value.Command = _command;
             if (!value.IsPositional)
                 LookupAdd(value.TrimmedName, InternalList.Count - 1);
             return value;
@@ -476,7 +482,10 @@ namespace Npgsql
         {
             // clean up parameters so they can be added to another command if required.
             foreach (var toRemove in InternalList)
+            {
                 toRemove.Collection = null;
+                toRemove.Command = null;
+            }
 
             InternalList.Clear();
             LookupClear();
@@ -531,6 +540,23 @@ namespace Npgsql
 
         #endregion
 
+        NpgsqlCommand? _command;
+
+        internal NpgsqlCommand? Command
+        {
+            get => _command;
+            set
+            {
+                _command = value;
+                foreach (var parameter in InternalList)
+                {
+                    parameter.Command = _command;
+                }
+                
+                _command?.ResetExplicitPreparation();
+            }
+        }
+
         /// <inheritdoc />
         public override void AddRange(Array values)
         {
@@ -579,6 +605,7 @@ namespace Npgsql
 
             InternalList.Insert(index, item);
             item.Collection = this;
+            item.Command = _command;
             if (!item.IsPositional)
                 LookupInsert(item.TrimmedName, index);
         }
@@ -611,6 +638,7 @@ namespace Npgsql
                 if (!item.IsPositional)
                     LookupRemove(item.TrimmedName, index);
                 item.Collection = null;
+                item.Command = null;
                 return true;
             }
 
@@ -638,6 +666,7 @@ namespace Npgsql
             {
                 var newParam = param.Clone();
                 newParam.Collection = this;
+                newParam.Command = _command;
                 other.InternalList.Add(newParam);
             }
             other._lookup = _lookup;

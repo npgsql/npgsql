@@ -48,6 +48,8 @@ namespace Npgsql
         internal NpgsqlTypeHandler? Handler { get; set; }
 
         internal FormatCode FormatCode { get; private set; }
+        
+        internal NpgsqlCommand? Command { get; set; }
 
         #endregion
 
@@ -257,6 +259,7 @@ namespace Npgsql
                     _name = TrimmedName = value;
 
                 Collection?.ChangeParameterName(this, oldName, oldTrimmedName);
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -277,6 +280,7 @@ namespace Npgsql
                     Handler = null;
                 _value = value;
                 ConvertedValue = null;
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -328,6 +332,7 @@ namespace Npgsql
                     ? null
                     : GlobalTypeMapper.DbTypeToNpgsqlDbType(value)
                       ?? throw new NotSupportedException($"The parameter type DbType.{value} isn't supported by PostgreSQL or Npgsql");
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -364,6 +369,7 @@ namespace Npgsql
 
                 Handler = null;
                 _npgsqlDbType = value;
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -394,6 +400,7 @@ namespace Npgsql
             {
                 _dataTypeName = value;
                 Handler = null;
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -425,6 +432,7 @@ namespace Npgsql
             {
                 _precision = value;
                 Handler = null;
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -441,6 +449,7 @@ namespace Npgsql
             {
                 _scale = value;
                 Handler = null;
+                Command?.ResetExplicitPreparation();
             }
         }
 #pragma warning restore CS0109
@@ -458,6 +467,7 @@ namespace Npgsql
 
                 _size = value;
                 Handler = null;
+                Command?.ResetExplicitPreparation();
             }
         }
 
@@ -467,7 +477,11 @@ namespace Npgsql
         public sealed override string SourceColumn
         {
             get => _sourceColumn;
-            set => _sourceColumn = value ?? string.Empty;
+            set
+            {
+                _sourceColumn = value ?? string.Empty;
+                Command?.ResetExplicitPreparation();
+            }
         }
 
         /// <inheritdoc />

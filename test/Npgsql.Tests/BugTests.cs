@@ -1379,7 +1379,39 @@ $$;");
                 cmd.CommandTimeout = 2;
                 cmd.CommandText = "SELECT 1";
                 Assert.DoesNotThrowAsync(cmd.ExecuteNonQueryAsync);
-            } 
+            }
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3850")]
+        public async Task PrepareAndSwitchAroundParameterNames()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+            var x = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+            var y = new NpgsqlParameter("p2", NpgsqlDbType.Integer);
+            cmd.Parameters.Add(x);
+            cmd.Parameters.Add(y);
+            await cmd.PrepareAsync();
+            x.Value = 8;
+            y.Value = 9;
+
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                await reader.ReadAsync();
+                Assert.That(reader[0], Is.EqualTo(8));
+                Assert.That(reader[1], Is.EqualTo(9));
+            }
+
+            x.ParameterName = "p2";
+            y.ParameterName = "p1";
+
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                await reader.ReadAsync();
+                Assert.That(reader[0], Is.EqualTo(9));
+                Assert.That(reader[1], Is.EqualTo(8));
+            }
         }
     }
 }

@@ -128,6 +128,7 @@ namespace Npgsql
             GC.SuppressFinalize(this);
             InternalBatchCommands = new List<NpgsqlBatchCommand>(1);
             _parameters = new NpgsqlParameterCollection();
+            _parameters.Command = this;
             _commandText = cmdText ?? string.Empty;
             _connection = connection;
             Transaction = transaction;
@@ -365,7 +366,7 @@ namespace Npgsql
             }
         }
 
-        void ResetExplicitPreparation() => _connectorPreparedOn = null;
+        internal void ResetExplicitPreparation() => _connectorPreparedOn = null;
 
         #endregion State management
 
