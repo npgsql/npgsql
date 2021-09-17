@@ -1451,7 +1451,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
 
-                CommandStop();
+                NpgsqlActivitySource.SetException(CurrentActivity, e);
+
                 State = CommandState.Idle;
 
                 // Reader disposal contains logic for closing the connection if CommandBehavior.CloseConnection is
@@ -1464,6 +1465,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                     
                 throw;
+            }
+            finally
+            {
+                CommandStop();
             }
         }
 
