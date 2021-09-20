@@ -430,8 +430,9 @@ namespace Npgsql.TypeMapping
                 NpgsqlDbType.Char        => DbType.String,
                 NpgsqlDbType.Name        => DbType.String,
                 NpgsqlDbType.Refcursor   => DbType.String,
-                NpgsqlDbType.Jsonb       => DbType.String,
-                NpgsqlDbType.Json        => DbType.String,
+                NpgsqlDbType.Citext      => DbType.String,
+                NpgsqlDbType.Jsonb       => DbType.Object,
+                NpgsqlDbType.Json        => DbType.Object,
                 NpgsqlDbType.JsonPath    => DbType.String,
 
                 // Date/time types
