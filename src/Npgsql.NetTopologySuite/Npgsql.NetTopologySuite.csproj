@@ -6,13 +6,22 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFramework>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
+
+    <!-- TEMPORARY HACK, SEE #3979
+     Since we can no longer generate sources with dotnet SDK 6.0.100-rc.1, we generate them with preview7 and
+     commit them... -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)\GeneratedFiles</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="NetTopologySuite.IO.PostGIS" />
   </ItemGroup>
+
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Npgsql/Npgsql.csproj" />
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
