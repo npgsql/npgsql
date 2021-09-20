@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
@@ -17,7 +18,7 @@ namespace Npgsql.TypeMapping
         public static GlobalTypeMapper Instance { get; }
 
         internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
-        public Dictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
+        public ConcurrentDictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
@@ -70,7 +71,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                if (UserTypeMappings.Remove(pgName))
+                if (UserTypeMappings.TryRemove(pgName, out _))
                 {
                     RecordChange();
                     return true;
@@ -145,7 +146,7 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                if (UserTypeMappings.Remove(pgName))
+                if (UserTypeMappings.TryRemove(pgName, out _))
                 {
                     RecordChange();
                     return true;
