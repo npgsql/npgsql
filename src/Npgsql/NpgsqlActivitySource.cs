@@ -16,8 +16,8 @@ namespace Npgsql
         {
             var settings = connector.Settings;
             var activity = Source.StartActivity(settings.Database!, ActivityKind.Client);
-            if (activity is null)
-                return null;
+            if (activity is not Activity { IsAllDataRequested: true })
+                return activity;
 
             activity.SetTag("db.system", "postgresql");
             activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
