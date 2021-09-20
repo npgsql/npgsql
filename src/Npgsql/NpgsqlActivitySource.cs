@@ -24,7 +24,7 @@ namespace Npgsql
             activity.SetTag("db.user", settings.Username);
             activity.SetTag("db.name", settings.Database);
             activity.SetTag("db.statement", sql);
-            activity.SetTag("db.connection.id", connector.Id);
+            activity.SetTag("db.connection_id", connector.Id);
 
             var endPoint = connector.ConnectedEndPoint;
             Debug.Assert(endPoint is not null);
