@@ -45,6 +45,15 @@ namespace Npgsql
             return activity;
         }
 
+        public static void CommandStop(IDisposable currentActivity)
+        {
+            if (currentActivity is not Activity activity)
+                return;
+
+            activity.SetTag("otel.status_code", "OK");
+            activity.Dispose();
+        }
+
         public static void SetException(IDisposable? currentActivity, Exception ex, bool escaped = true)
         {
             if (currentActivity is not Activity activity)
@@ -59,11 +68,14 @@ namespace Npgsql
             };
             var activityEvent = new ActivityEvent("exception", tags: tags);
             activity.AddEvent(activityEvent);
+            activity.SetTag("otel.status_code", "ERROR");
+            activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
         }
 #else
         public static bool IsEnabled => false;
         public static IDisposable? CommandStart(NpgsqlConnector connector, string sql) => null;
-        public static void SetException(IDisposable? activity, Exception ex, bool escaped = true) { }
+        public static void CommandStop(IDisposable currentActivity) { }
+        public static void SetException(IDisposable? currentActivity, Exception ex, bool escaped = true) { }
 #endif
     }
 }
