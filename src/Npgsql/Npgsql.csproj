@@ -21,9 +21,11 @@
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
   </ItemGroup>
 
+  <!-- TEMPORARY HACK, SEE #3979
   <ItemGroup>
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  -->
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />

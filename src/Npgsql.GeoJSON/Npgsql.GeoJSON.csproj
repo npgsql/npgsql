@@ -21,6 +21,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../Npgsql/Npgsql.csproj" />
+
+    <!-- TEMPORARY HACK, SEE #3979
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
+    -->
+</ItemGroup>
 </Project>
