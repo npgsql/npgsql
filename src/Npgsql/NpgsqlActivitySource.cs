@@ -2,13 +2,21 @@
 using System;
 using System.Diagnostics;
 using System.Net;
+using System.Reflection;
 
 namespace Npgsql
 {
     static class NpgsqlActivitySource
     {
 #if NET5_0_OR_GREATER
-        static readonly ActivitySource Source = new("Npgsql");
+        static readonly ActivitySource Source;
+
+        static NpgsqlActivitySource()
+        {
+            var assembly = typeof(NpgsqlActivitySource).Assembly;
+            var version = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()!.Version;
+            Source = new("Npgsql", version);
+        }
 
         public static bool IsEnabled => Source.HasListeners();
 
