@@ -62,7 +62,8 @@ name                        | string                     |                      
 geometry (PostGIS)          | PostgisGeometry            |                        |
 record                      | object[]                   |                        |
 composite types             | T                          |                        |
-range subtypes              | NpgsqlRange\<TElement>     |                        |
+range types                 | NpgsqlRange\<TElement>     |                        |
+multirange types (PG14)     | NpgsqlRange\<TElement>[]   |                        |
 enum types                  | TEnum                      |                        |
 array types                 | Array (of element type)    |                        |
 
