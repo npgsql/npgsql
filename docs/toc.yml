@@ -2,8 +2,6 @@
   href: index.md
 - name: Release notes
   items:
-  - name: "6.0"
-    href: release-notes/6.0.md
   - name: "5.0"
     href: release-notes/5.0.md
   - name: "4.1"
