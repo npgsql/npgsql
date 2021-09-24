@@ -715,10 +715,11 @@ namespace Npgsql.Tests
             var backendVersionString = (string)(await c.ExecuteScalarAsync("SHOW server_version"))!;
 
             Assert.That(backendVersionString, Is.EqualTo(c.ServerVersion));
-            if (backendVersionString.Contains("beta") || backendVersionString.Contains("devel"))
-                Assert.That(backendVersionString, Does.Contain(c.PostgreSqlVersion.Major.ToString()));
-            else
-                Assert.That(backendVersionString, Does.Contain(c.PostgreSqlVersion.ToString()));
+
+            Assert.That(backendVersionString, Does.Contain(
+                new[] { "rc", "beta", "devel" }.Any(x => backendVersionString.Contains(x))
+                    ? c.PostgreSqlVersion.Major.ToString()
+                    : c.PostgreSqlVersion.ToString()));
         }
 
         [TestCase("X13.0")]
