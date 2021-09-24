@@ -8,6 +8,7 @@ using NUnit.Framework;
 
 namespace Npgsql.NodaTime.Tests
 {
+    // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
     [NonParallelizable]
     public class LegacyNodaTimeTests : TestBase
     {

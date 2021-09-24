@@ -7,8 +7,9 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests.Types
 {
+    // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
     [NonParallelizable]
-    public class LegacyDateTimeTests : MultiplexingTestBase
+    public class LegacyDateTimeTests : TestBase
     {
         static readonly TestCaseData[] TimestampValues =
         {
@@ -88,9 +89,6 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource(nameof(TimestampParameters))]
         public async Task Timestamp_resolution(NpgsqlParameter parameter)
         {
-            if (IsMultiplexing)
-                return; // conn.TypeMapper.Reset
-
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
 
@@ -202,9 +200,6 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource(nameof(TimestamptzParameters))]
         public async Task Timestamptz_resolution(NpgsqlParameter parameter)
         {
-            if (IsMultiplexing)
-                return; // conn.TypeMapper.Reset
-
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
 
@@ -250,7 +245,5 @@ namespace Npgsql.Tests.Types
             LegacyTimestampBehavior = false;
 #endif
         }
-
-        public LegacyDateTimeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

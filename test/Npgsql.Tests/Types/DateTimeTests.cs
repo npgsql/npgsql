@@ -8,7 +8,8 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
 {
-    public class DateTimeTests : MultiplexingTestBase
+    // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
+    public class DateTimeTests : TestBase
     {
         #region Date
 
@@ -295,9 +296,6 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource(nameof(TimestampParameters))]
         public async Task Timestamp_resolution(NpgsqlParameter parameter)
         {
-            if (IsMultiplexing)
-                return; // conn.TypeMapper.Reset
-
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
 
@@ -532,9 +530,6 @@ namespace Npgsql.Tests.Types
         [Test, TestCaseSource(nameof(TimestamptzParameters))]
         public async Task Timestamptz_resolution(NpgsqlParameter parameter)
         {
-            if (IsMultiplexing)
-                return; // conn.TypeMapper.Reset
-
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
             await using var cmd = new NpgsqlCommand("SELECT pg_typeof($1)::text, $1::text", conn)
@@ -792,7 +787,5 @@ namespace Npgsql.Tests.Types
 
         protected override NpgsqlConnection OpenConnection(string? connectionString = null)
             => throw new NotSupportedException();
-
-        public DateTimeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
