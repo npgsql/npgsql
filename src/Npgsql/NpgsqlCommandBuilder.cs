@@ -303,10 +303,10 @@ namespace Npgsql
 
             var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
-            if (unquotedIdentifier.StartsWith(QuotePrefix))
+            if (unquotedIdentifier.StartsWith(QuotePrefix, StringComparison.Ordinal))
                 unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
 
-            if (unquotedIdentifier.EndsWith(QuoteSuffix))
+            if (unquotedIdentifier.EndsWith(QuoteSuffix, StringComparison.Ordinal))
                 unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
 
             return unquotedIdentifier;

@@ -168,7 +168,7 @@ namespace Npgsql.Internal
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
                 throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
             var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
-            if (!firstServerMsg.Nonce.StartsWith(clientNonce))
+            if (!firstServerMsg.Nonce.StartsWith(clientNonce, StringComparison.Ordinal))
                 throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
             var saltBytes = Convert.FromBase64String(firstServerMsg.Salt);
