@@ -218,7 +218,7 @@ ORDER BY attnum";
 
             column.IsAutoIncrement =
                 !oldQueryMode && reader.GetBoolean(reader.GetOrdinal("isidentity")) ||
-                column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(");
+                column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(", StringComparison.Ordinal);
 
             ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("typmod")));
 

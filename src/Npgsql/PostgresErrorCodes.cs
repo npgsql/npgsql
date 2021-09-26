@@ -1,5 +1,6 @@
 ﻿#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
+using System;
 using System.Linq;
 
 namespace Npgsql
@@ -476,6 +477,6 @@ namespace Npgsql
         };
 
         internal static bool IsCriticalFailure(PostgresException e)
-            => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x));
+            => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x, StringComparison.Ordinal));
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Npgsql.Internal;
 using Npgsql.Logging;
 using Npgsql.Util;
@@ -143,11 +144,11 @@ namespace Npgsql.BackendMessages
 
             foreach (var part in data.Split(','))
             {
-                if (part.StartsWith("r="))
+                if (part.StartsWith("r=", StringComparison.Ordinal))
                     nonce = part.Substring(2);
-                else if (part.StartsWith("s="))
+                else if (part.StartsWith("s=", StringComparison.Ordinal))
                     salt = part.Substring(2);
-                else if (part.StartsWith("i="))
+                else if (part.StartsWith("i=", StringComparison.Ordinal))
                     iteration = int.Parse(part.Substring(2));
                 else
                     Log.Debug("Unknown part in SCRAM server-first message:" + part);
@@ -196,7 +197,7 @@ namespace Npgsql.BackendMessages
 
             foreach (var part in data.Split(','))
             {
-                if (part.StartsWith("v="))
+                if (part.StartsWith("v=", StringComparison.Ordinal))
                     serverSignature = part.Substring(2);
                 else
                     Log.Debug("Unknown part in SCRAM server-first message:" + part);
