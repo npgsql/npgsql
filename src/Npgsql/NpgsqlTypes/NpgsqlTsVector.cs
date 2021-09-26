@@ -29,7 +29,7 @@ namespace NpgsqlTypes
 
             // Culture-specific comparisons doesn't really matter for the backend. It's sorting on its own if it detects an unsorted collection.
             // Only when a .NET user wants to print the sort order.
-            _lexemes.Sort((a, b) => a.Text.CompareTo(b.Text));
+            _lexemes.Sort((a, b) => string.Compare(a.Text, b.Text, StringComparison.CurrentCulture));
 
             var res = 0;
             var pos = 1;

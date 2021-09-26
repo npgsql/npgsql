@@ -1038,7 +1038,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             CheckReady();
@@ -1072,7 +1072,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             CheckReady();
@@ -1109,7 +1109,7 @@ namespace Npgsql
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
-            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
                 throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
             CheckReady();
@@ -1146,7 +1146,7 @@ namespace Npgsql
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
-            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
                 throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
             CheckReady();
@@ -1183,7 +1183,7 @@ namespace Npgsql
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
-            if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY"))
+            if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
                 throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
             CheckReady();
