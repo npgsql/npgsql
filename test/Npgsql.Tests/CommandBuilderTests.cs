@@ -518,6 +518,9 @@ $$ LANGUAGE SQL;
             const string query = "SELECT @p::integer";
             const int answer = 42;
             using var conn = await OpenConnectionAsync();
+
+            conn.Connector!.PreparedStatementManager.NumPrepared = 0;
+
             using var cmd = new NpgsqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
             cmd.Prepare();
