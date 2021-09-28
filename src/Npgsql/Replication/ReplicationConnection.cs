@@ -178,7 +178,7 @@ namespace Npgsql.Replication
 
         internal NpgsqlConnector Connector
             => _npgsqlConnection.Connector ??
-               throw new InvalidOperationException($"The {Connector} property can only be used when there is an active connection");
+               throw new InvalidOperationException($"The {nameof(Connector)} property can only be used when there is an active connection");
 
         /// <summary>
         /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
@@ -205,13 +205,13 @@ namespace Npgsql.Replication
         /// The client encoding for the connection
         /// This can only be called when there is an active connection.
         /// </summary>
-        public Encoding Encoding => _npgsqlConnection.Connector?.TextEncoding ?? throw new InvalidOperationException($"The {Encoding} property can only be used when there is an active connection");
+        public Encoding Encoding => _npgsqlConnection.Connector?.TextEncoding ?? throw new InvalidOperationException($"The {nameof(Encoding)} property can only be used when there is an active connection");
 
         /// <summary>
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>
-        public int ProcessID => _npgsqlConnection.Connector?.BackendProcessId ?? throw new InvalidOperationException($"The {ProcessID} property can only be used when there is an active connection");
+        public int ProcessID => _npgsqlConnection.Connector?.BackendProcessId ?? throw new InvalidOperationException($"The {nameof(ProcessID)} property can only be used when there is an active connection");
 
         #endregion Properties
 
