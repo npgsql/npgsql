@@ -19,7 +19,7 @@
 
     <!-- Plugins -->
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
-    <PackageVersion Include="NodaTime" Version="3.0.5" />
+    <PackageVersion Include="NodaTime" Version="3.0.6" />
     <PackageVersion Include="GeoJSON.Net" Version="1.2.19" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.1" />
 
