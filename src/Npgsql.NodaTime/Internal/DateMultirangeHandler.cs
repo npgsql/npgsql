@@ -34,7 +34,7 @@ namespace Npgsql.NodaTime.Internal
             var numRanges = buf.ReadInt32();
             var multirange = new DateInterval[numRanges];
 
-            for (var i = 0; i < numRanges; i++)
+            for (var i = 0; i < multirange.Length; i++)
             {
                 await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
