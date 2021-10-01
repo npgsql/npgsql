@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
@@ -604,7 +606,7 @@ namespace Npgsql.NodaTime.Tests
             var range = new NpgsqlRange<LocalDate>(new(2020, 1, 1), true, new(2020, 1, 6), false);
 
             await using var conn = await OpenConnectionAsync();
-            await using var cmd = new NpgsqlCommand($"SELECT '[2020-01-01,2020-01-05]'::daterange", conn);
+            await using var cmd = new NpgsqlCommand("SELECT '[2020-01-01,2020-01-05]'::daterange", conn);
             await using var reader = await cmd.ExecuteReaderAsync();
             await reader.ReadAsync();
 
@@ -648,6 +650,80 @@ namespace Npgsql.NodaTime.Tests
             await reader.ReadAsync();
             Assert.That(reader[0], Is.EqualTo("daterange"));
             Assert.That(reader[1], Is.EqualTo("[2020-01-01,2020-01-06)"));
+        }
+
+        [Test]
+        public async Task Datemultirange_read()
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+            var dateIntervalMultirange = new DateInterval[]
+            {
+                new(new(2020, 1, 1), new(2020, 1, 5)),
+                new(new(2020, 1, 7), new(2020, 1, 10))
+            };
+            var rangeMultirange = new NpgsqlRange<LocalDate>[]
+            {
+                new(new(2020, 1, 1), true, new(2020, 1, 6), false),
+                new(new(2020, 1, 7), true, new(2020, 1, 11), false)
+            };
+
+            await using var cmd = new NpgsqlCommand("SELECT '{[2020-01-01,2020-01-05], [2020-01-07,2020-01-10]}'::datemultirange", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("datemultirange"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateInterval[])));
+            Assert.That(reader.GetValue(0), Is.EqualTo(dateIntervalMultirange));
+            Assert.That(reader.GetFieldValue<DateInterval[]>(0), Is.EqualTo(dateIntervalMultirange));
+            Assert.That(reader.GetFieldValue<List<DateInterval>>(0), Is.EqualTo(dateIntervalMultirange));
+            Assert.That(reader.GetFieldValue<NpgsqlRange<LocalDate>[]>(0), Is.EqualTo(rangeMultirange));
+            Assert.That(reader.GetFieldValue<List<NpgsqlRange<LocalDate>>>(0), Is.EqualTo(rangeMultirange));
+        }
+
+        static NpgsqlParameter[] DatemultirangeParameters
+        {
+            get
+            {
+                var dateIntervalMultirange = new DateInterval[]
+                {
+                    new(new(2020, 1, 1), new(2020, 1, 5)),
+                    new(new(2020, 1, 7), new(2020, 1, 10))
+                };
+                var rangeMultirange = new NpgsqlRange<LocalDate>[]
+                {
+                    new(new(2020, 1, 1), true, new(2020, 1, 6), false),
+                    new(new(2020, 1, 7), true, new(2020, 1, 11), false)
+                };
+
+                return new NpgsqlParameter[]
+                {
+                    new() { Value = dateIntervalMultirange },
+                    new() { Value = rangeMultirange },
+                    new() { Value = dateIntervalMultirange, NpgsqlDbType = NpgsqlDbType.DateMultirange },
+                    new() { Value = rangeMultirange, NpgsqlDbType = NpgsqlDbType.DateMultirange }
+                };
+            }
+        }
+
+        [Test, TestCaseSource(nameof(DatemultirangeParameters))]
+        public async Task Datemultirange_resolution(NpgsqlParameter parameter)
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+            conn.TypeMapper.Reset();
+            conn.TypeMapper.UseNodaTime();
+
+            await using var cmd = new NpgsqlCommand("SELECT pg_typeof($1)::text, $1::text", conn)
+            {
+                Parameters = { parameter }
+            };
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            Assert.That(reader[0], Is.EqualTo("datemultirange"));
+            Assert.That(reader[1], Is.EqualTo("{[2020-01-01,2020-01-06),[2020-01-07,2020-01-11)}"));
         }
 
         #endregion DateInterval

@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
-using Npgsql.Internal.TypeHandling;
 
-namespace Npgsql
+namespace Npgsql.Internal.TypeHandling
 {
     /// <summary>
     /// An array of cached lengths for the parameters sending process.
@@ -13,13 +12,13 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlLengthCache
     {
-        internal bool IsPopulated;
-        internal int Position;
-        internal List<int> Lengths;
+        public bool IsPopulated;
+        public int Position;
+        public List<int> Lengths;
 
-        internal NpgsqlLengthCache() => Lengths = new List<int>();
+        public NpgsqlLengthCache() => Lengths = new List<int>();
 
-        internal NpgsqlLengthCache(int capacity) => Lengths = new List<int>(capacity);
+        public NpgsqlLengthCache(int capacity) => Lengths = new List<int>(capacity);
 
         /// <summary>
         /// Stores a length value in the cache, to be fetched later via <see cref="Get"/>.

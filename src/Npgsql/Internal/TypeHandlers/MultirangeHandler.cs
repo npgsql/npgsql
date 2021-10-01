@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,23 +14,12 @@ namespace Npgsql.Internal.TypeHandlers
         /// <summary>
         /// The type handler for the range that this multirange type holds
         /// </summary>
-        readonly RangeHandler<TElement> _rangeHandler;
-
-        /// <inheritdoc />
-        public Type[] SupportedMultirangeClrTypes { get; }
+        protected  RangeHandler<TElement> RangeHandler { get; }
 
         /// <inheritdoc />
         public MultirangeHandler(PostgresMultirangeType pgMultirangeType, RangeHandler<TElement> rangeHandler)
-            : this(pgMultirangeType, rangeHandler, new[] { typeof(NpgsqlRange<TElement>[]), typeof(List<NpgsqlRange<TElement>>) }) {}
-
-        /// <inheritdoc />
-        protected MultirangeHandler(
-            PostgresMultirangeType pgMultirangeType, RangeHandler<TElement> rangeHandler, Type[] supportedSubtypeClrTypes)
             : base(pgMultirangeType)
-        {
-            _rangeHandler = rangeHandler;
-            SupportedMultirangeClrTypes = supportedSubtypeClrTypes;
-        }
+            => RangeHandler = rangeHandler;
 
         public override async ValueTask<NpgsqlRange<TElement>[]> Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
@@ -44,7 +32,7 @@ namespace Npgsql.Internal.TypeHandlers
             {
                 await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
-                multirange[i] = await _rangeHandler.Read(buf, rangeLen, async, fieldDescription);
+                multirange[i] = await RangeHandler.Read(buf, rangeLen, async, fieldDescription);
             }
 
             return multirange;
@@ -61,26 +49,19 @@ namespace Npgsql.Internal.TypeHandlers
             {
                 await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
-                multirange.Add(await _rangeHandler.Read(buf, rangeLen, async, fieldDescription));
+                multirange.Add(await RangeHandler.Read(buf, rangeLen, async, fieldDescription));
             }
 
             return multirange;
         }
 
         public override int ValidateAndGetLength(NpgsqlRange<TElement>[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            lengthCache ??= new NpgsqlLengthCache(1);
-            if (lengthCache.IsPopulated)
-                return lengthCache.Get();
-
-            var sum = 4 + 4 * value.Length;
-            for (var i = 0; i < value.Length; i++)
-                sum += _rangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
-
-            return lengthCache.Set(sum);
-        }
+            => ValidateAndGetLengthCore(value, ref lengthCache);
 
         public int ValidateAndGetLength(List<NpgsqlRange<TElement>> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLengthCore(value, ref lengthCache);
+
+        int ValidateAndGetLengthCore(IList<NpgsqlRange<TElement>> value, ref NpgsqlLengthCache? lengthCache)
         {
             lengthCache ??= new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
@@ -88,7 +69,7 @@ namespace Npgsql.Internal.TypeHandlers
 
             var sum = 4 + 4 * value.Count;
             for (var i = 0; i < value.Count; i++)
-                sum += _rangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
+                sum += RangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
 
             return lengthCache.Set(sum);
         }
@@ -107,7 +88,7 @@ namespace Npgsql.Internal.TypeHandlers
             buf.WriteInt32(value.Length);
 
             for (var i = 0; i < value.Length; i++)
-                await _rangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
+                await RangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
         }
 
         public async Task Write(
@@ -124,7 +105,7 @@ namespace Npgsql.Internal.TypeHandlers
             buf.WriteInt32(value.Count);
 
             for (var i = 0; i < value.Count; i++)
-                await _rangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
+                await RangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
         }
     }
 }

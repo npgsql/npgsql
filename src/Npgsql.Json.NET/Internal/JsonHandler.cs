@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Json.NET.Internal
