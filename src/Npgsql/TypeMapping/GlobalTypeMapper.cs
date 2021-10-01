@@ -356,11 +356,19 @@ namespace Npgsql.TypeMapping
 
                 // Built-in range types
                 NpgsqlDbType.IntegerRange     => "int4range",
+                NpgsqlDbType.BigIntRange      => "int8range",
                 NpgsqlDbType.NumericRange     => "numrange",
                 NpgsqlDbType.TimestampRange   => "tsrange",
                 NpgsqlDbType.TimestampTzRange => "tstzrange",
                 NpgsqlDbType.DateRange        => "daterange",
-                NpgsqlDbType.BigIntRange      => "int8range",
+
+                // Built-in multirange types
+                NpgsqlDbType.IntegerMultirange     => "int4multirange",
+                NpgsqlDbType.BigIntMultirange      => "int8multirange",
+                NpgsqlDbType.NumericMultirange     => "nummultirange",
+                NpgsqlDbType.TimestampMultirange   => "tsmultirange",
+                NpgsqlDbType.TimestampTzMultirange => "tstzmultirange",
+                NpgsqlDbType.DateMultirange        => "datemultirange",
 
                 // Internal types
                 NpgsqlDbType.Int2Vector   => "int2vector",

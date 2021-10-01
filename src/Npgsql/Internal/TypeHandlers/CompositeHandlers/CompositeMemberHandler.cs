@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers.CompositeHandlers

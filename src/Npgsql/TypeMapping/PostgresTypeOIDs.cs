@@ -96,10 +96,18 @@ namespace Npgsql.TypeMapping
 
         // Range types
         public const uint Int4Range   = 3904;
+        public const uint Int8Range   = 3926;
         public const uint NumRange    = 3906;
         public const uint TsRange     = 3908;
         public const uint TsTzRange   = 3910;
         public const uint DateRange   = 3912;
-        public const uint Int8Range   = 3926;
+
+        // Multirange types
+        public const uint Int4Multirange   = 4451;
+        public const uint Int8Multirange   = 4536;
+        public const uint NumMultirange    = 4532;
+        public const uint TsMultirange     = 4533;
+        public const uint TsTzMultirange   = 4534;
+        public const uint DateMultirange   = 4535;
     }
 }

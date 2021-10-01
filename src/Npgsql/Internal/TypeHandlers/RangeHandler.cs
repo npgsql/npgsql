@@ -26,12 +26,12 @@ namespace Npgsql.Internal.TypeHandlers
         /// <summary>
         /// The type handler for the subtype that this range type holds
         /// </summary>
-        readonly NpgsqlTypeHandler _subtypeHandler;
+        protected NpgsqlTypeHandler SubtypeHandler { get; }
 
         /// <inheritdoc />
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
             : base(rangePostgresType)
-            => _subtypeHandler = subtypeHandler;
+            => SubtypeHandler = subtypeHandler;
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
@@ -62,10 +62,10 @@ namespace Npgsql.Internal.TypeHandlers
             var upperBound = default(TAny);
 
             if ((flags & RangeFlags.LowerBoundInfinite) == 0)
-                lowerBound = await _subtypeHandler.ReadWithLength<TAny>(buf, async);
+                lowerBound = await SubtypeHandler.ReadWithLength<TAny>(buf, async);
 
             if ((flags & RangeFlags.UpperBoundInfinite) == 0)
-                upperBound = await _subtypeHandler.ReadWithLength<TAny>(buf, async);
+                upperBound = await SubtypeHandler.ReadWithLength<TAny>(buf, async);
 
             return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
         }
@@ -88,14 +88,14 @@ namespace Npgsql.Internal.TypeHandlers
                 {
                     totalLen += 4;
                     if (value.LowerBound is not null)
-                        totalLen += _subtypeHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
+                        totalLen += SubtypeHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
                 }
 
                 if (!value.UpperBoundInfinite)
                 {
                     totalLen += 4;
                     if (value.UpperBound is not null)
-                        totalLen += _subtypeHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
+                        totalLen += SubtypeHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
                 }
             }
 
@@ -122,10 +122,10 @@ namespace Npgsql.Internal.TypeHandlers
                 return;
 
             if (!value.LowerBoundInfinite)
-                await _subtypeHandler.WriteWithLength(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
+                await SubtypeHandler.WriteWithLength(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
 
             if (!value.UpperBoundInfinite)
-                await _subtypeHandler.WriteWithLength(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
+                await SubtypeHandler.WriteWithLength(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using NodaTime;
 using Npgsql.Internal;
@@ -21,6 +22,7 @@ namespace Npgsql.NodaTime.Internal
         readonly TimeTzHandler _timeTzHandler;
         readonly IntervalHandler _intervalHandler;
         readonly DateRangeHandler _dateRangeHandler;
+        DateMultirangeHandler? _dateMultirangeHandler;
 
         internal NodaTimeTypeHandlerResolver(NpgsqlConnector connector)
         {
@@ -49,6 +51,8 @@ namespace Npgsql.NodaTime.Internal
                 "time with time zone" => _timeTzHandler,
                 "interval" => _intervalHandler,
                 "daterange" => _dateRangeHandler,
+                "datemultirange"
+                    => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), _dateHandler),
 
                 _ => null
             };
@@ -82,9 +86,10 @@ namespace Npgsql.NodaTime.Internal
                 return _intervalHandler;
             if (typeof(T) == typeof(Duration))
                 return _intervalHandler;
+
+            // Note that DateInterval is a reference type, so not included in this method
             if (typeof(T) == typeof(NpgsqlRange<LocalDate>))
                 return _dateRangeHandler;
-
 
             return null;
         }
@@ -108,6 +113,13 @@ namespace Npgsql.NodaTime.Internal
                 return "interval";
             if (type == typeof(DateInterval) || type == typeof(NpgsqlRange<LocalDate>))
                 return "daterange";
+            if (type == typeof(DateInterval[]) ||
+                type == typeof(List<DateInterval>) ||
+                type == typeof(NpgsqlRange<LocalDate>[]) ||
+                type == typeof(List<NpgsqlRange<LocalDate>>))
+            {
+                return "datemultirange";
+            }
 
             return null;
         }
@@ -118,16 +130,18 @@ namespace Npgsql.NodaTime.Internal
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
             => dataTypeName switch
             {
-                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,   DbType.DateTime, "timestamp without time zone"),
-                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz, DbType.DateTime, "timestamp with time zone"),
-                "date"                                       => new(NpgsqlDbType.Date,        DbType.Date,     "date"),
-                "time without time zone"                     => new(NpgsqlDbType.Time,        DbType.Time,     "time without time zone"),
-                "time with time zone"                        => new(NpgsqlDbType.TimeTz,      DbType.Object,   "time with time zone"),
-                "interval"                                   => new(NpgsqlDbType.Interval,    DbType.Object,   "interval"),
-                "daterange"                                  => new(NpgsqlDbType.DateRange,   DbType.Object,   "daterange"),
+                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,      DbType.DateTime, "timestamp without time zone"),
+                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz,    DbType.DateTime, "timestamp with time zone"),
+                "date"                                       => new(NpgsqlDbType.Date,           DbType.Date,     "date"),
+                "time without time zone"                     => new(NpgsqlDbType.Time,           DbType.Time,     "time without time zone"),
+                "time with time zone"                        => new(NpgsqlDbType.TimeTz,         DbType.Object,   "time with time zone"),
+                "interval"                                   => new(NpgsqlDbType.Interval,       DbType.Object,   "interval"),
+                "daterange"                                  => new(NpgsqlDbType.DateRange,      DbType.Object,   "daterange"),
+                "datemultirange"                             => new(NpgsqlDbType.DateMultirange, DbType.Object,   "datemultirange"),
 
                 _ => null
             };
+
 
         PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
     }
