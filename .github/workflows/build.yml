@@ -74,10 +74,9 @@ jobs:
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           # Starting with PG14 the default password encryption mode is scram.
           # Changing it to md5 for compatibility.
-          if [ ${{ matrix.pg_major }} -ge 14 ]; then
-            sudo sed -i 's/#password_encryption = scram-sha-256/password_encryption = md5/' $PGDATA/postgresql.conf
-          fi
-          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+
+          # Create npgsql_tests user with md5 password 'npgsql_tests'
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
           if [ -z "${{ matrix.pg_prerelease }}" ]; then
@@ -89,11 +88,7 @@ jobs:
           fi
 
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
-          if [ ${{ matrix.pg_major }} -ge 14 ]; then
-            sudo sed -i 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-          else
-            sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-          fi
+          sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
           sudo sed -i 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
           sudo sed -i 's/#logical_decoding_work_mem =/logical_decoding_work_mem = 64kB #/' $PGDATA/postgresql.conf
