@@ -636,7 +636,7 @@ namespace Npgsql.TypeMapping
         NpgsqlTypeHandler CharHandler()      => _charHandler ??= new TextHandler(PgType("character"), _connector.TextEncoding);
         NpgsqlTypeHandler NameHandler()      => _nameHandler ??= new TextHandler(PgType("name"), _connector.TextEncoding);
         NpgsqlTypeHandler RefcursorHandler() => _refcursorHandler ??= new TextHandler(PgType("refcursor"), _connector.TextEncoding);
-        NpgsqlTypeHandler? CitextHandler() => _citextHandler ??= _databaseInfo.TryGetPostgresTypeByName("citext", out var pgType)
+        NpgsqlTypeHandler? CitextHandler()   => _citextHandler ??= _databaseInfo.TryGetPostgresTypeByName("citext", out var pgType)
             ? new TextHandler(pgType, _connector.TextEncoding)
             : null;
         NpgsqlTypeHandler JsonHandler()      => _jsonHandler ??= new JsonHandler(PgType("json"), _connector.TextEncoding, isJsonb: false);

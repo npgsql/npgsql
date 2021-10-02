@@ -20,8 +20,8 @@ namespace Npgsql.Internal.TypeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    /// <typeparam name="TElement">The range subtype.</typeparam>
-    public partial class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
+    /// <typeparam name="TSubtype">The range subtype.</typeparam>
+    public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange<TSubtype>>
     {
         /// <summary>
         /// The type handler for the subtype that this range type holds
@@ -35,10 +35,10 @@ namespace Npgsql.Internal.TypeHandlers
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-            => new ArrayHandler<NpgsqlRange<TElement>>(pgArrayType, this, arrayNullabilityMode);
+            => new ArrayHandler<NpgsqlRange<TSubtype>>(pgArrayType, this, arrayNullabilityMode);
 
-        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
-        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
+        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
@@ -47,27 +47,27 @@ namespace Npgsql.Internal.TypeHandlers
         #region Read
 
         /// <inheritdoc />
-        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => DoRead<TElement>(buf, len, async, fieldDescription);
+        public override ValueTask<NpgsqlRange<TSubtype>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => ReadRange<TSubtype>(buf, len, async, fieldDescription);
 
-        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        protected async ValueTask<NpgsqlRange<TAnySubtype>> ReadRange<TAnySubtype>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(1, async);
 
             var flags = (RangeFlags)buf.ReadByte();
             if ((flags & RangeFlags.Empty) != 0)
-                return NpgsqlRange<TAny>.Empty;
+                return NpgsqlRange<TAnySubtype>.Empty;
 
-            var lowerBound = default(TAny);
-            var upperBound = default(TAny);
+            var lowerBound = default(TAnySubtype);
+            var upperBound = default(TAnySubtype);
 
             if ((flags & RangeFlags.LowerBoundInfinite) == 0)
-                lowerBound = await SubtypeHandler.ReadWithLength<TAny>(buf, async);
+                lowerBound = await SubtypeHandler.ReadWithLength<TAnySubtype>(buf, async);
 
             if ((flags & RangeFlags.UpperBoundInfinite) == 0)
-                upperBound = await SubtypeHandler.ReadWithLength<TAny>(buf, async);
+                upperBound = await SubtypeHandler.ReadWithLength<TAnySubtype>(buf, async);
 
-            return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
+            return new NpgsqlRange<TAnySubtype>(lowerBound, upperBound, flags);
         }
 
         #endregion
@@ -75,10 +75,10 @@ namespace Npgsql.Internal.TypeHandlers
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlRange<TElement> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength(value, ref lengthCache, parameter);
+        public override int ValidateAndGetLength(NpgsqlRange<TSubtype> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLengthRange(value, ref lengthCache, parameter);
 
-        private protected int ValidateAndGetLength<TAny>(NpgsqlRange<TAny> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected int ValidateAndGetLengthRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var totalLen = 1;
             var lengthCachePos = lengthCache?.Position ?? 0;
@@ -108,10 +108,10 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => Write(value, buf, lengthCache, parameter, async, cancellationToken);
+        public override Task Write(NpgsqlRange<TSubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => WriteRange(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        private protected async Task Write<TAny>(NpgsqlRange<TAny> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        protected async Task WriteRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
@@ -138,30 +138,30 @@ namespace Npgsql.Internal.TypeHandlers
     /// Introduced in PostgreSQL 9.2.
     /// https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
-    /// <typeparam name="TElement1">The main range subtype.</typeparam>
-    /// <typeparam name="TElement2">An alternative range subtype.</typeparam>
-    public class RangeHandler<TElement1, TElement2> : RangeHandler<TElement1>, INpgsqlTypeHandler<NpgsqlRange<TElement2>>
+    /// <typeparam name="TSubtype1">The main range subtype.</typeparam>
+    /// <typeparam name="TSubtype2">An alternative range subtype.</typeparam>
+    public class RangeHandler<TSubtype1, TSubtype2> : RangeHandler<TSubtype1>, INpgsqlTypeHandler<NpgsqlRange<TSubtype2>>
     {
         /// <inheritdoc />
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
             : base(rangePostgresType, subtypeHandler) {}
 
-        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-            => DoRead<TElement2>(buf, len, async, fieldDescription);
+        ValueTask<NpgsqlRange<TSubtype2>> INpgsqlTypeHandler<NpgsqlRange<TSubtype2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => ReadRange<TSubtype2>(buf, len, async, fieldDescription);
 
         /// <inheritdoc />
-        public int ValidateAndGetLength(NpgsqlRange<TElement2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength<TElement2>(value, ref lengthCache, parameter);
+        public int ValidateAndGetLength(NpgsqlRange<TSubtype2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLengthRange(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-            => Write<TElement2>(value, buf, lengthCache, parameter, async, cancellationToken);
+        public Task Write(NpgsqlRange<TSubtype2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => WriteRange(value, buf, lengthCache, parameter, async, cancellationToken);
 
         public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
-                NpgsqlRange<TElement1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement1>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-                NpgsqlRange<TElement2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TElement2>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlRange<TSubtype1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype1>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+                NpgsqlRange<TSubtype2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype2>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
 
                 DBNull => 0,
                 null => 0,
@@ -171,8 +171,8 @@ namespace Npgsql.Internal.TypeHandlers
         public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value switch
             {
-                NpgsqlRange<TElement1> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-                NpgsqlRange<TElement2> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlRange<TSubtype1> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlRange<TSubtype2> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
                 DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
                 null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),

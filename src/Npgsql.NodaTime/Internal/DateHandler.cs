@@ -60,7 +60,7 @@ namespace Npgsql.NodaTime.Internal
                 }
             }
 
-            var totalDaysSinceEra = Period.Between(default(LocalDate), value, PeriodUnits.Days).Days;
+            var totalDaysSinceEra = Period.Between(default, value, PeriodUnits.Days).Days;
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
 
@@ -92,5 +92,8 @@ namespace Npgsql.NodaTime.Internal
         public void Write(DateOnly value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
 #endif
+
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
+            => new DateRangeHandler(pgRangeType, this);
     }
 }

@@ -603,7 +603,6 @@ namespace Npgsql.NodaTime.Tests
         public async Task Daterange_read()
         {
             var dateInterval = new DateInterval(new(2020, 1, 1), new(2020, 1, 5));
-            var range = new NpgsqlRange<LocalDate>(new(2020, 1, 1), true, new(2020, 1, 6), false);
 
             await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT '[2020-01-01,2020-01-05]'::daterange", conn);
@@ -614,7 +613,12 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateInterval)));
             Assert.That(reader.GetValue(0), Is.EqualTo(dateInterval));
             Assert.That(reader.GetFieldValue<DateInterval>(0), Is.EqualTo(dateInterval));
-            Assert.That(reader.GetFieldValue<NpgsqlRange<LocalDate>>(0), Is.EqualTo(range));
+            Assert.That(reader.GetFieldValue<NpgsqlRange<LocalDate>>(0),
+                Is.EqualTo(new NpgsqlRange<LocalDate>(new(2020, 1, 1), true, new(2020, 1, 6), false)));
+#if NET6_0_OR_GREATER
+            Assert.That(reader.GetFieldValue<NpgsqlRange<DateOnly>>(0),
+                Is.EqualTo(new NpgsqlRange<DateOnly>(new(2020, 1, 1), true, new(2020, 1, 6), false)));
+#endif
         }
 
         static NpgsqlParameter[] DaterangeParameters
@@ -629,7 +633,11 @@ namespace Npgsql.NodaTime.Tests
                     new() { Value = dateInterval },
                     new() { Value = range },
                     new() { Value = dateInterval, NpgsqlDbType = NpgsqlDbType.DateRange },
-                    new() { Value = range, NpgsqlDbType = NpgsqlDbType.DateRange }
+                    new() { Value = range, NpgsqlDbType = NpgsqlDbType.DateRange },
+#if NET6_0_OR_GREATER
+                    new() { Value = new NpgsqlRange<DateOnly>(new(2020, 1, 1), new(2020, 1, 5)) },
+                    new() { Value = new NpgsqlRange<DateOnly>(new(2020, 1, 1), new(2020, 1, 5)), NpgsqlDbType = NpgsqlDbType.DateRange },
+#endif
                 };
             }
         }
