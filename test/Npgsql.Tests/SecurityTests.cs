@@ -242,6 +242,8 @@ namespace Npgsql.Tests
                 Password = "npgsql_tests_nossl",
                 Multiplexing = multiplexing,
                 KeepAlive = keepAlive ? 10 : 0,
+                // Not strictly required, but allows to catch the case whenever a user is not forbidden from accessing with ssl
+                TrustServerCertificate = true,
             };
 
             try
