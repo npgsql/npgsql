@@ -516,7 +516,7 @@ namespace Npgsql.Internal
             }
             catch (Exception e)
             {
-                if (canRetry)
+                if (e is PostgresException { SqlState: PostgresErrorCodes.InvalidAuthorizationSpecification } && canRetry)
                 {
                     Debug.Assert(SslMode == SslMode.Prefer);
                     canRetry = false;
@@ -707,6 +707,8 @@ namespace Npgsql.Internal
                 WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
                 timeout.CheckAndApply(this);
+
+                IsSecure = false;
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
