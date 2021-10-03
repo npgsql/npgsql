@@ -181,7 +181,7 @@ jobs:
           else
                 echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
           fi
-          echo "hostssl all npgsql_tests_ssl all md" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostssl all npgsql_tests_ssl all md5" >> pgsql/PGDATA/pg_hba.conf
           echo "hostnossl all npgsql_tests_ssl all reject" >> pgsql/PGDATA/pg_hba.conf
           echo "hostnossl all npgsql_tests_nossl all md5" >> pgsql/PGDATA/pg_hba.conf
           echo "hostssl all npgsql_tests_nossl all reject" >> pgsql/PGDATA/pg_hba.conf

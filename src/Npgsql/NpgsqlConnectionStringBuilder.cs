@@ -438,6 +438,7 @@ namespace Npgsql
         [Category("Security")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
         [DisplayName("SSL Mode")]
+        [DefaultValue(SslMode.Prefer)]
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
