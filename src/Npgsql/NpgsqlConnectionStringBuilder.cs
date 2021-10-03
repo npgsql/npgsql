@@ -449,7 +449,7 @@ namespace Npgsql
                 SetValue(nameof(SslMode), value);
             }
         }
-        SslMode _sslMode;
+        SslMode _sslMode = SslMode.Prefer;
 
         /// <summary>
         /// Whether to trust the server certificate without validating it.
