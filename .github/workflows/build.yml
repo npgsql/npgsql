@@ -73,6 +73,10 @@ jobs:
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           
+          sudo cp $GITHUB_WORKSPACE/.build/{server.crt,server.key} $PGDATA
+          sudo chmod 600 $PGDATA/{server.crt,server.key}
+          sudo chown postgres $PGDATA/{server.crt,server.key}
+          
           # Create npgsql_tests user with md5 password 'npgsql_tests'
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
           
@@ -89,6 +93,8 @@ jobs:
           fi
 
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
+          sudo sed -i "s|ssl_cert_file =|ssl_cert_file = '$PGDATA/server.crt' #|" $PGDATA/postgresql.conf
+          sudo sed -i "s|ssl_key_file =|ssl_key_file = '$PGDATA/server.key' #|" $PGDATA/postgresql.conf
           sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
           sudo sed -i 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
@@ -105,10 +111,15 @@ jobs:
           sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"
+          
           sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
 
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
+          
+      #- uses: actions/checkout@v2.3.4
+      #- name: Setup tmate session
+      #  uses: mxschmitt/action-tmate@v3
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
         if: startsWith(matrix.os, 'windows')

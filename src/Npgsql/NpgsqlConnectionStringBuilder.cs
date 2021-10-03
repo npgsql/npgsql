@@ -438,6 +438,7 @@ namespace Npgsql
         [Category("Security")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
         [DisplayName("SSL Mode")]
+        [DefaultValue(SslMode.Prefer)]
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
@@ -448,7 +449,7 @@ namespace Npgsql
                 SetValue(nameof(SslMode), value);
             }
         }
-        SslMode _sslMode;
+        SslMode _sslMode = SslMode.Prefer;
 
         /// <summary>
         /// Whether to trust the server certificate without validating it.
@@ -457,7 +458,7 @@ namespace Npgsql
         [Description("Whether to trust the server certificate without validating it.")]
         [DisplayName("Trust Server Certificate")]
         [NpgsqlConnectionStringProperty]
-        public bool TrustServerCertificate
+        public bool? TrustServerCertificate
         {
             get => _trustServerCertificate;
             set
@@ -466,7 +467,7 @@ namespace Npgsql
                 SetValue(nameof(TrustServerCertificate), value);
             }
         }
-        bool _trustServerCertificate;
+        bool? _trustServerCertificate;
 
         /// <summary>
         /// Location of a client certificate to be sent to the server.
@@ -1572,6 +1573,10 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (Multiplexing && !Pooling)
                 throw new ArgumentException("Pooling must be on to use multiplexing");
+            if (SslMode == SslMode.Require && !TrustServerCertificate.HasValue)
+            {
+                throw new NpgsqlException("SslMode.Require requires TrustServerCertificate to be explicitly set. Please see https://www.npgsql.org/doc/release-notes/6.0.html");
+            }
         }
 
         internal string ToStringWithoutPassword()
@@ -1781,6 +1786,10 @@ namespace Npgsql
         /// </summary>
         Disable,
         /// <summary>
+        /// Prefer non-SSL connections if the server allows them, but allow SSL connections.
+        /// </summary>
+        Allow,
+        /// <summary>
         /// Prefer SSL connections if the server allows them, but allow connections without SSL.
         /// </summary>
         Prefer,
@@ -1788,6 +1797,14 @@ namespace Npgsql
         /// Fail the connection if the server doesn't support SSL.
         /// </summary>
         Require,
+        /// <summary>
+        /// Fail the connection if the server doesn't support SSL. Also verifies server certificate.
+        /// </summary>
+        VerifyCA,
+        /// <summary>
+        /// Fail the connection if the server doesn't support SSL. Also verifies server certificate with host's name.
+        /// </summary>
+        VerifyFull
     }
 
     /// <summary>

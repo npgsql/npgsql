@@ -13,7 +13,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true
+                TrustServerCertificate = true,
             };
 
             using var conn = OpenConnection(csb);
@@ -29,7 +29,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true
+                TrustServerCertificate = true,
             };
 
             using var conn = OpenConnection(csb);
@@ -38,11 +38,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void RejectSelfSignedCertificate()
+        public void RejectSelfSignedCertificate([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Require
+                SslMode = sslMode
             }.ToString();
 
             using var conn = new NpgsqlConnection(connString);
@@ -60,7 +60,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true
+                TrustServerCertificate = true,
             };
 
             using var conn = OpenConnection(csb);
@@ -72,7 +72,11 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
         public void NonSecure()
         {
-            using var conn = OpenConnection();
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Disable,
+            };
+            using var conn = OpenConnection(csb);
             Assert.That(conn.IsSecure, Is.False);
         }
 
@@ -157,7 +161,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true
+                TrustServerCertificate = true,
             };
 
             using var conn = OpenConnection(csb);
@@ -176,9 +180,9 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
                 Username = "npgsql_tests_scram",
                 Password = "npgsql_tests_scram",
+                TrustServerCertificate = true,
             };
 
             try
@@ -207,12 +211,11 @@ namespace Npgsql.Tests
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Prefer,
+                SslMode = SslMode.Allow,
                 Username = "npgsql_tests_ssl",
                 Password = "npgsql_tests_ssl",
                 Multiplexing = multiplexing,
                 KeepAlive = keepAlive ? 10 : 0,
-                TrustServerCertificate = true,
             };
 
             try
@@ -225,6 +228,18 @@ namespace Npgsql.Tests
                 Console.WriteLine(e);
                 Assert.Ignore("Only ssl user doesn't seem to be set up");
             }
+        }
+
+        [Test]
+        public void SslModeRequireThrowsWithoutTSC()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require,
+            };
+
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
+            Assert.That(ex.Message, Is.EqualTo("SslMode.Require requires TrustServerCertificate to be explicitly set. Please see https://www.npgsql.org/doc/release-notes/6.0.html"));
         }
 
         [Test]
@@ -242,8 +257,6 @@ namespace Npgsql.Tests
                 Password = "npgsql_tests_nossl",
                 Multiplexing = multiplexing,
                 KeepAlive = keepAlive ? 10 : 0,
-                // Not strictly required, but allows to catch the case whenever a user is not forbidden from accessing with ssl
-                TrustServerCertificate = true,
             };
 
             try

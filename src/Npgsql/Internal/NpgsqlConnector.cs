@@ -523,7 +523,7 @@ namespace Npgsql.Internal
                 {
                     await conn.Authenticate(username, timeout, async, cancellationToken);
                 }
-                catch (PostgresException e) when (sslMode == SslMode.Prefer && conn.IsSecure &&
+                catch (PostgresException e) when ((sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure) &&
                     e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
                 {
                     cancellationRegistration.Dispose();
@@ -531,7 +531,7 @@ namespace Npgsql.Internal
 
                     conn.Cleanup();
 
-                    await OpenCore(conn, SslMode.Disable, timeout, async, cancellationToken);
+                    await OpenCore(conn, sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require, timeout, async, cancellationToken);
                     return;
                 }
 
@@ -731,7 +731,7 @@ namespace Npgsql.Internal
 
                 IsSecure = false;
 
-                if (sslMode == SslMode.Require || sslMode == SslMode.Prefer)
+                if (sslMode == SslMode.Prefer || sslMode == SslMode.Require || sslMode == SslMode.VerifyCA || sslMode == SslMode.VerifyFull)
                 {
                     WriteSslRequest();
                     await Flush(async, cancellationToken);
@@ -745,7 +745,7 @@ namespace Npgsql.Internal
                     default:
                         throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                     case 'N':
-                        if (sslMode == SslMode.Require)
+                        if (sslMode != SslMode.Prefer)
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         break;
                     case 'S':
@@ -782,13 +782,25 @@ namespace Npgsql.Internal
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        var certificateValidationCallback = Settings.TrustServerCertificate
-                            ? SslTrustServerValidation
-                            : (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath
-                                ? SslRootValidation(certRootPath)
-                                : UserCertificateValidationCallback is { } userValidation
-                                    ? userValidation
-                                    : SslDefaultValidation;
+                        RemoteCertificateValidationCallback? certificateValidationCallback;
+                        if (sslMode == SslMode.Prefer || sslMode == SslMode.Require && (Settings.TrustServerCertificate ?? true))
+                        {
+                            certificateValidationCallback = SslTrustServerValidation;
+                        }
+                        else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath)
+                        {
+                            certificateValidationCallback = SslRootValidation(certRootPath);
+                        }
+                        else if (UserCertificateValidationCallback is { } userValidation)
+                        {
+                            certificateValidationCallback = userValidation;
+                        }
+                        else
+                        {
+                            certificateValidationCallback = sslMode == SslMode.VerifyCA
+                                ? SslVerifyCAValidation
+                                : SslVerifyFullValidation;
+                        }
 
                         timeout.CheckAndApply(this);
 
@@ -1561,9 +1573,13 @@ namespace Npgsql.Internal
         /// </summary>
         internal bool IsScramPlus { get; private set; }
 
-        static readonly RemoteCertificateValidationCallback SslDefaultValidation =
+        static readonly RemoteCertificateValidationCallback SslVerifyFullValidation =
             (sender, certificate, chain, sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
+
+        static readonly RemoteCertificateValidationCallback SslVerifyCAValidation =
+            (sender, certificate, chain, sslPolicyErrors)
+            => sslPolicyErrors == SslPolicyErrors.None || sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch;
 
         static readonly RemoteCertificateValidationCallback SslTrustServerValidation =
             (sender, certificate, chain, sslPolicyErrors)
