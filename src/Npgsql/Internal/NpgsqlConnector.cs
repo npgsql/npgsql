@@ -220,7 +220,7 @@ namespace Npgsql.Internal
         internal object CancelLock { get; }
 
         readonly bool _isKeepAliveEnabled;
-        readonly Timer? _keepAliveTimer;
+        Timer? _keepAliveTimer;
 
         /// <summary>
         /// The command currently being executed by the connector, null otherwise.
@@ -327,39 +327,20 @@ namespace Npgsql.Internal
             State = ConnectorState.Closed;
             TransactionStatus = TransactionStatus.Idle;
             Settings = connectorSource.Settings;
+            SslMode = Settings.SslMode;
             PostgresParameters = new Dictionary<string, string>();
 
             CancelLock = new object();
 
             _isKeepAliveEnabled = Settings.KeepAlive > 0;
-            if (_isKeepAliveEnabled)
-            {
-                _userLock = new SemaphoreSlim(1, 1);
-                _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
-            }
+            SetupKeepAlive();
 
             DataReader = new NpgsqlDataReader(this);
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
 
-            if (Settings.Multiplexing)
-            {
-                // Note: It's OK for this channel to be unbounded: each command enqueued to it is accompanied by sending
-                // it to PostgreSQL. If we overload it, a TCP zero window will make us block on the networking side
-                // anyway.
-                // Note: the in-flight channel can probably be single-writer, but that doesn't actually do anything
-                // at this point. And we currently rely on being able to complete the channel at any point (from
-                // Break). We may want to revisit this if an optimized, SingleWriter implementation is introduced.
-                var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommand>(
-                    new UnboundedChannelOptions { SingleReader = true });
-                CommandsInFlightReader = commandsInFlightChannel.Reader;
-                CommandsInFlightWriter = commandsInFlightChannel.Writer;
-
-                // TODO: Properly implement this
-                if (_isKeepAliveEnabled)
-                    throw new NotImplementedException("Keepalive not yet implemented for multiplexing");
-            }
+            SetupMultiplexing();
         }
 
         #endregion
@@ -370,7 +351,7 @@ namespace Npgsql.Internal
         internal int Port => Settings.Port;
         internal string Database => Settings.Database!;
         string KerberosServiceName => Settings.KerberosServiceName;
-        SslMode SslMode => Settings.SslMode;
+        SslMode SslMode { get; set; }
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
@@ -451,6 +432,10 @@ namespace Npgsql.Internal
         {
             Debug.Assert(State == ConnectorState.Closed);
 
+            var canRetry = SslMode == SslMode.Prefer;
+
+        start:
+
             State = ConnectorState.Connecting;
 
             try
@@ -468,6 +453,7 @@ namespace Npgsql.Internal
                 using (StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
                 {
                     await Authenticate(username, timeout, async, cancellationToken);
+                    canRetry = false;
 
                     // We treat BackendKeyData as optional because some PostgreSQL-like database
                     // don't send it (CockroachDB, CrateDB)
@@ -530,6 +516,15 @@ namespace Npgsql.Internal
             }
             catch (Exception e)
             {
+                if (canRetry)
+                {
+                    Debug.Assert(SslMode == SslMode.Prefer);
+                    canRetry = false;
+                    SslMode = SslMode.Disable;
+                    Cleanup();
+                    goto start;
+                }
+
                 ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline,
                     DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 Break(e);
@@ -1040,8 +1035,8 @@ namespace Npgsql.Internal
 
         #region I/O
 
-        internal readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
-        internal readonly ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter;
+        ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
+        internal ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter { get; private set; }
 
         internal volatile int CommandsInFlightCount;
 
@@ -1986,6 +1981,7 @@ namespace Npgsql.Internal
                 _userLock = null;
                 _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
+                _keepAliveTimer = null;
             }
 
 #pragma warning restore CS8625
@@ -2538,6 +2534,37 @@ namespace Npgsql.Internal
             }
 
             return null;
+        }
+
+        void SetupKeepAlive()
+        {
+            if (_isKeepAliveEnabled)
+            {
+                _userLock = new SemaphoreSlim(1, 1);
+                _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+            }
+        }
+
+        void SetupMultiplexing()
+        {
+            if (Settings.Multiplexing)
+            {
+                // Note: It's OK for this channel to be unbounded: each command enqueued to it is accompanied by sending
+                // it to PostgreSQL. If we overload it, a TCP zero window will make us block on the networking side
+                // anyway.
+                // Note: the in-flight channel can probably be single-writer, but that doesn't actually do anything
+                // at this point. And we currently rely on being able to complete the channel at any point (from
+                // Break). We may want to revisit this if an optimized, SingleWriter implementation is introduced.
+                var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommand>(
+                    new UnboundedChannelOptions { SingleReader = true });
+                CommandsInFlightReader = commandsInFlightChannel.Reader;
+                CommandsInFlightWriter = commandsInFlightChannel.Writer;
+                MultiplexAsyncWritingLock = 0;
+
+                // TODO: Properly implement this
+                if (_isKeepAliveEnabled)
+                    throw new NotImplementedException("Keepalive not yet implemented for multiplexing");
+            }
         }
 
         #endregion Misc
