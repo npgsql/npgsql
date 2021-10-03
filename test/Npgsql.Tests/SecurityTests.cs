@@ -260,7 +260,7 @@ namespace Npgsql.Tests
 
         #region Setup / Teardown / Utils
 
-        [SetUp]
+        [OneTimeSetUp]
         public void CheckSslSupport()
         {
             using var conn = OpenConnection();
