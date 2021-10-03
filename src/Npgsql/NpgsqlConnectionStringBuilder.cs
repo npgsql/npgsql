@@ -438,7 +438,6 @@ namespace Npgsql
         [Category("Security")]
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
         [DisplayName("SSL Mode")]
-        [DefaultValue(SslMode.Prefer)]
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
@@ -449,7 +448,7 @@ namespace Npgsql
                 SetValue(nameof(SslMode), value);
             }
         }
-        SslMode _sslMode = SslMode.Prefer;
+        SslMode _sslMode;
 
         /// <summary>
         /// Whether to trust the server certificate without validating it.
