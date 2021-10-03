@@ -521,7 +521,7 @@ namespace Npgsql.Internal
                     Debug.Assert(SslMode == SslMode.Prefer);
                     canRetry = false;
                     SslMode = SslMode.Disable;
-                    Cleanup(noLock: true);
+                    Close();
                     SetupKeepAlive();
                     SetupMultiplexing();
                     goto start;
@@ -1902,9 +1902,9 @@ namespace Npgsql.Internal
         /// <remarks>
         /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
         /// </remarks>
-        void Cleanup(bool noLock = false)
+        void Cleanup()
         {
-            Debug.Assert(noLock || Monitor.IsEntered(this));
+            Debug.Assert(Monitor.IsEntered(this));
 
             if (Settings.Multiplexing)
             {
