@@ -522,6 +522,8 @@ namespace Npgsql.Internal
                     canRetry = false;
                     SslMode = SslMode.Disable;
                     Cleanup();
+                    SetupKeepAlive();
+                    SetupMultiplexing();
                     goto start;
                 }
 
