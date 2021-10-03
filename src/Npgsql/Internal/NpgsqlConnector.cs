@@ -488,48 +488,50 @@ namespace Npgsql.Internal
 
             async static Task OpenCore(NpgsqlConnector conn, SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
             {
+                await conn.RawOpen(sslMode, timeout, async, cancellationToken);
+
+                var username = conn.GetUsername();
+                if (conn.Settings.Database == null)
+                    conn.Settings.Database = username;
+
+                timeout.CheckAndApply(conn);
+                conn.WriteStartupMessage(username);
+                await conn.Flush(async, cancellationToken);
+
+                var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
                 try
                 {
-                    await conn.RawOpen(sslMode, timeout, async, cancellationToken);
-
-                    var username = conn.GetUsername();
-                    if (conn.Settings.Database == null)
-                        conn.Settings.Database = username;
-
-                    timeout.CheckAndApply(conn);
-                    conn.WriteStartupMessage(username);
-                    await conn.Flush(async, cancellationToken);
-
-                    using (conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
-                    {
-                        await conn.Authenticate(username, timeout, async, cancellationToken);
-
-                        // We treat BackendKeyData as optional because some PostgreSQL-like database
-                        // don't send it (CockroachDB, CrateDB)
-                        var msg = await conn.ReadMessage(async);
-                        if (msg.Code == BackendMessageCode.BackendKeyData)
-                        {
-                            var keyDataMsg = (BackendKeyDataMessage)msg;
-                            conn.BackendProcessId = keyDataMsg.BackendProcessId;
-                            conn._backendSecretKey = keyDataMsg.BackendSecretKey;
-                            msg = await conn.ReadMessage(async);
-                        }
-
-                        if (msg.Code != BackendMessageCode.ReadyForQuery)
-                            throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
-
-                        conn.State = ConnectorState.Ready;
-                    }
+                    await conn.Authenticate(username, timeout, async, cancellationToken);
                 }
                 catch (PostgresException e) when (sslMode == SslMode.Prefer && conn.IsSecure &&
                     e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
                 {
+                    cancellationRegistration.Dispose();
                     Debug.Assert(!conn.IsBroken);
                     conn.Close();
                     conn.SetupKeepAlive();
                     conn.SetupMultiplexing();
                     await OpenCore(conn, SslMode.Disable, timeout, async, cancellationToken);
+                    return;
                 }
+
+                using var _ = cancellationRegistration;
+
+                // We treat BackendKeyData as optional because some PostgreSQL-like database
+                // don't send it (CockroachDB, CrateDB)
+                var msg = await conn.ReadMessage(async);
+                if (msg.Code == BackendMessageCode.BackendKeyData)
+                {
+                    var keyDataMsg = (BackendKeyDataMessage)msg;
+                    conn.BackendProcessId = keyDataMsg.BackendProcessId;
+                    conn._backendSecretKey = keyDataMsg.BackendSecretKey;
+                    msg = await conn.ReadMessage(async);
+                }
+
+                if (msg.Code != BackendMessageCode.ReadyForQuery)
+                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
+                conn.State = ConnectorState.Ready;
             }
         }
 
