@@ -215,6 +215,9 @@ jobs:
                 sleep 5
             done
             psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" postgres
+            
+            psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
+            psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
 
             if [ ${{ matrix.pg_major }} -ge 14 ]; then
               sudo sed -i '' 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
