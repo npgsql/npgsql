@@ -181,6 +181,10 @@ jobs:
           else
                 echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
           fi
+          echo "hostssl all npgsql_tests_ssl all md" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostnossl all npgsql_tests_ssl all reject" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostnossl all npgsql_tests_nossl all md5" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostssl all npgsql_tests_nossl all reject" >> pgsql/PGDATA/pg_hba.conf
           echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
           echo "host replication all all md5" >> pgsql/PGDATA/pg_hba.conf
 
@@ -232,6 +236,10 @@ jobs:
             sudo sed -i '' "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
             # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
             sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostnossl all npgsql_tests_ssl all reject' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostnossl all npgsql_tests_nossl all md5' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"
