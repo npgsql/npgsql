@@ -72,11 +72,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
-          # Starting with PG14 the default password encryption mode is scram.
-          # Changing it to md5 for compatibility.
-
+          
           # Create npgsql_tests user with md5 password 'npgsql_tests'
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
+          
+          sudo -u postgres psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'"
+          sudo -u postgres psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'"
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
           if [ -z "${{ matrix.pg_prerelease }}" ]; then
@@ -98,6 +99,10 @@ jobs:
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
+          sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
+          sudo sh -c "echo 'hostnossl all npgsql_tests_ssl all reject' >> $PGDATA/pg_hba.conf"
+          sudo sh -c "echo 'hostnossl all npgsql_tests_nossl all md5' >> $PGDATA/pg_hba.conf"
+          sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"
           sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
@@ -151,14 +156,11 @@ jobs:
           sed -i "s|#synchronous_commit =|synchronous_commit = local #|" pgsql/PGDATA/postgresql.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
 
-          # Starting with PG14 the default password encryption mode is scram.
-          # Changing it to md5 for compatibility.
-          if [ ${{ matrix.pg_major }} -ge 14 ]; then
-            sed -i "s|#password_encryption = scram-sha-256|password_encryption = md5|" pgsql/PGDATA/postgresql.conf
-          fi
-
-          # Configure test account
-          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
+          # Create npgsql_tests user with md5 password 'npgsql_tests'
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'md5adf74603a5772843f53e812f03dacb02'"
+          
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_ssl SUPERUSER LOGIN PASSWORD 'npgsql_tests_ssl'"
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_nossl SUPERUSER LOGIN PASSWORD 'npgsql_tests_nossl'"
 
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           if [ ${{ matrix.pg_major }} -ge 14 ]; then
@@ -179,6 +181,10 @@ jobs:
           else
                 echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
           fi
+          echo "hostssl all npgsql_tests_ssl all md5" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostnossl all npgsql_tests_ssl all reject" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostnossl all npgsql_tests_nossl all md5" >> pgsql/PGDATA/pg_hba.conf
+          echo "hostssl all npgsql_tests_nossl all reject" >> pgsql/PGDATA/pg_hba.conf
           echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
           echo "host replication all all md5" >> pgsql/PGDATA/pg_hba.conf
 
@@ -213,6 +219,9 @@ jobs:
                 sleep 5
             done
             psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" postgres
+            
+            psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
+            psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
 
             if [ ${{ matrix.pg_major }} -ge 14 ]; then
               sudo sed -i '' 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
@@ -227,6 +236,10 @@ jobs:
             sudo sed -i '' "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
             # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
             sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostnossl all npgsql_tests_ssl all reject' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostnossl all npgsql_tests_nossl all md5' >> $PGDATA/pg_hba.conf"
+            sudo sh -c "echo 'hostssl all npgsql_tests_nossl all reject' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'host replication all all md5' >> $PGDATA/pg_hba.conf"

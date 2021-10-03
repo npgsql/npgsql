@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -196,9 +197,70 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public async Task ConnectWithOnlySslAllowedUser([Values] bool multiplexing, [Values] bool keepAlive)
+        {
+            if (multiplexing && keepAlive)
+            {
+                Assert.Ignore("Multiplexing doesn't support keepalive");
+            }
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Prefer,
+                Username = "npgsql_tests_ssl",
+                Password = "npgsql_tests_ssl",
+                Multiplexing = multiplexing,
+                KeepAlive = keepAlive ? 10 : 0,
+                TrustServerCertificate = true,
+            };
+
+            try
+            {
+                await using var conn = await OpenConnectionAsync(csb);
+                Assert.IsTrue(conn.IsSecure);
+            }
+            catch (Exception e) when (!TestUtil.IsOnBuildServer)
+            {
+                Console.WriteLine(e);
+                Assert.Ignore("Only ssl user doesn't seem to be set up");
+            }
+        }
+
+        [Test]
+        public async Task ConnectWithOnlyNonSslAllowedUser([Values] bool multiplexing, [Values] bool keepAlive)
+        {
+            if (multiplexing && keepAlive)
+            {
+                Assert.Ignore("Multiplexing doesn't support keepalive");
+            }
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Prefer,
+                Username = "npgsql_tests_nossl",
+                Password = "npgsql_tests_nossl",
+                Multiplexing = multiplexing,
+                KeepAlive = keepAlive ? 10 : 0,
+                // Not strictly required, but allows to catch the case whenever a user is not forbidden from accessing with ssl
+                TrustServerCertificate = true,
+            };
+
+            try
+            {
+                await using var conn = await OpenConnectionAsync(csb);
+                Assert.IsFalse(conn.IsSecure);
+            }
+            catch (Exception e) when (!TestUtil.IsOnBuildServer)
+            {
+                Console.WriteLine(e);
+                Assert.Ignore("Only nonssl user doesn't seem to be set up");
+            }
+        }
+
         #region Setup / Teardown / Utils
 
-        [SetUp]
+        [OneTimeSetUp]
         public void CheckSslSupport()
         {
             using var conn = OpenConnection();

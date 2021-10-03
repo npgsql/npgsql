@@ -370,7 +370,6 @@ namespace Npgsql.Internal
         internal int Port => Settings.Port;
         internal string Database => Settings.Database!;
         string KerberosServiceName => Settings.KerberosServiceName;
-        SslMode SslMode => Settings.SslMode;
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
@@ -455,36 +454,7 @@ namespace Npgsql.Internal
 
             try
             {
-                await RawOpen(timeout, async, cancellationToken);
-
-                var username = GetUsername();
-                if (Settings.Database == null)
-                    Settings.Database = username;
-
-                timeout.CheckAndApply(this);
-                WriteStartupMessage(username);
-                await Flush(async, cancellationToken);
-
-                using (StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
-                {
-                    await Authenticate(username, timeout, async, cancellationToken);
-
-                    // We treat BackendKeyData as optional because some PostgreSQL-like database
-                    // don't send it (CockroachDB, CrateDB)
-                    var msg = await ReadMessage(async);
-                    if (msg.Code == BackendMessageCode.BackendKeyData)
-                    {
-                        var keyDataMsg = (BackendKeyDataMessage)msg;
-                        BackendProcessId = keyDataMsg.BackendProcessId;
-                        _backendSecretKey = keyDataMsg.BackendSecretKey;
-                        msg = await ReadMessage(async);
-                    }
-
-                    if (msg.Code != BackendMessageCode.ReadyForQuery)
-                        throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
-
-                    State = ConnectorState.Ready;
-                }
+                await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken);
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
 
@@ -534,6 +504,54 @@ namespace Npgsql.Internal
                     DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 Break(e);
                 throw;
+            }
+
+            static async Task OpenCore(NpgsqlConnector conn, SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+            {
+                await conn.RawOpen(sslMode, timeout, async, cancellationToken);
+
+                var username = conn.GetUsername();
+                if (conn.Settings.Database == null)
+                    conn.Settings.Database = username;
+
+                timeout.CheckAndApply(conn);
+                conn.WriteStartupMessage(username);
+                await conn.Flush(async, cancellationToken);
+
+                var cancellationRegistration = conn.StartCancellableOperation(cancellationToken, attemptPgCancellation: false);
+                try
+                {
+                    await conn.Authenticate(username, timeout, async, cancellationToken);
+                }
+                catch (PostgresException e) when (sslMode == SslMode.Prefer && conn.IsSecure &&
+                    e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
+                {
+                    cancellationRegistration.Dispose();
+                    Debug.Assert(!conn.IsBroken);
+
+                    conn.Cleanup();
+
+                    await OpenCore(conn, SslMode.Disable, timeout, async, cancellationToken);
+                    return;
+                }
+
+                using var _ = cancellationRegistration;
+
+                // We treat BackendKeyData as optional because some PostgreSQL-like database
+                // don't send it (CockroachDB, CrateDB)
+                var msg = await conn.ReadMessage(async);
+                if (msg.Code == BackendMessageCode.BackendKeyData)
+                {
+                    var keyDataMsg = (BackendKeyDataMessage)msg;
+                    conn.BackendProcessId = keyDataMsg.BackendProcessId;
+                    conn._backendSecretKey = keyDataMsg.BackendSecretKey;
+                    msg = await conn.ReadMessage(async);
+                }
+
+                if (msg.Code != BackendMessageCode.ReadyForQuery)
+                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
+                conn.State = ConnectorState.Ready;
             }
         }
 
@@ -682,7 +700,7 @@ namespace Npgsql.Internal
             throw new NpgsqlException("No username could be found, please specify one explicitly");
         }
 
-        async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var cert = default(X509Certificate2?);
             try
@@ -711,7 +729,9 @@ namespace Npgsql.Internal
 
                 timeout.CheckAndApply(this);
 
-                if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
+                IsSecure = false;
+
+                if (sslMode == SslMode.Require || sslMode == SslMode.Prefer)
                 {
                     WriteSslRequest();
                     await Flush(async, cancellationToken);
@@ -725,7 +745,7 @@ namespace Npgsql.Internal
                     default:
                         throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                     case 'N':
-                        if (SslMode == SslMode.Require)
+                        if (sslMode == SslMode.Require)
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         break;
                     case 'S':
@@ -1040,7 +1060,7 @@ namespace Npgsql.Internal
 
         #region I/O
 
-        internal readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
+        readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
         internal readonly ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter;
 
         internal volatile int CommandsInFlightCount;
@@ -1673,7 +1693,7 @@ namespace Npgsql.Internal
 
             try
             {
-                RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
+                RawOpen(Settings.SslMode, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
                     .GetAwaiter().GetResult();
                 WriteCancelRequest(backendProcessId, backendSecretKey);
                 Flush();
@@ -1689,7 +1709,7 @@ namespace Npgsql.Internal
             finally
             {
                 lock (this)
-                    Cleanup();
+                    FullCleanup();
             }
         }
 
@@ -1825,7 +1845,7 @@ namespace Npgsql.Internal
                 }
 
                 State = ConnectorState.Closed;
-                Cleanup();
+                FullCleanup();
             }
         }
 
@@ -1875,7 +1895,7 @@ namespace Npgsql.Internal
 
                     var connection = Connection;
 
-                    Cleanup();
+                    FullCleanup();
 
                     if (connection is not null)
                     {
@@ -1898,14 +1918,8 @@ namespace Npgsql.Internal
                 return reason;
             }
         }
-
-        /// <summary>
-        /// Closes the socket and cleans up client-side resources associated with this connector.
-        /// </summary>
-        /// <remarks>
-        /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
-        /// </remarks>
-        void Cleanup()
+        
+        void FullCleanup()
         {
             Debug.Assert(Monitor.IsEntered(this));
 
@@ -1922,8 +1936,26 @@ namespace Npgsql.Internal
                 // (see Open)
             }
 
-
             Log.Trace("Cleaning up connector", Id);
+            Cleanup();
+
+            if (_isKeepAliveEnabled)
+            {
+                _userLock!.Dispose();
+                _userLock = null;
+                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
+                _keepAliveTimer.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Closes the socket and cleans up client-side resources associated with this connector.
+        /// </summary>
+        /// <remarks>
+        /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
+        /// </remarks>
+        void Cleanup()
+        {
             try
             {
                 _stream?.Dispose();
@@ -1966,29 +1998,17 @@ namespace Npgsql.Internal
 
             ClearTransaction(_breakReason);
 
-#pragma warning disable CS8625
-
-            _stream = null;
-            _baseStream = null;
+            _stream = null!;
+            _baseStream = null!;
             _origReadBuffer?.Dispose();
             _origReadBuffer = null;
             ReadBuffer?.Dispose();
-            ReadBuffer = null;
+            ReadBuffer = null!;
             WriteBuffer?.Dispose();
-            WriteBuffer = null;
+            WriteBuffer = null!;
             Connection = null;
             PostgresParameters.Clear();
             _currentCommand = null;
-
-            if (_isKeepAliveEnabled)
-            {
-                _userLock!.Dispose();
-                _userLock = null;
-                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
-                _keepAliveTimer.Dispose();
-            }
-
-#pragma warning restore CS8625
         }
 
         void GenerateResetMessage()
