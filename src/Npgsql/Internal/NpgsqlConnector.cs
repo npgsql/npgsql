@@ -529,20 +529,7 @@ namespace Npgsql.Internal
                     cancellationRegistration.Dispose();
                     Debug.Assert(!conn.IsBroken);
 
-                    try
-                    {
-                        conn._stream?.Dispose();
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-
-                    conn._stream = null!;
-                    conn.ReadBuffer?.Dispose();
-                    conn.ReadBuffer = null!;
-                    conn.WriteBuffer?.Dispose();
-                    conn.WriteBuffer = null!;
+                    conn.Cleanup();
 
                     await OpenCore(conn, SslMode.Disable, timeout, async, cancellationToken);
                     return;
@@ -1722,7 +1709,7 @@ namespace Npgsql.Internal
             finally
             {
                 lock (this)
-                    Cleanup();
+                    FullCleanup();
             }
         }
 
@@ -1858,7 +1845,7 @@ namespace Npgsql.Internal
                 }
 
                 State = ConnectorState.Closed;
-                Cleanup();
+                FullCleanup();
             }
         }
 
@@ -1908,7 +1895,7 @@ namespace Npgsql.Internal
 
                     var connection = Connection;
 
-                    Cleanup();
+                    FullCleanup();
 
                     if (connection is not null)
                     {
@@ -1931,14 +1918,8 @@ namespace Npgsql.Internal
                 return reason;
             }
         }
-
-        /// <summary>
-        /// Closes the socket and cleans up client-side resources associated with this connector.
-        /// </summary>
-        /// <remarks>
-        /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
-        /// </remarks>
-        void Cleanup()
+        
+        void FullCleanup()
         {
             Debug.Assert(Monitor.IsEntered(this));
 
@@ -1955,8 +1936,26 @@ namespace Npgsql.Internal
                 // (see Open)
             }
 
-
             Log.Trace("Cleaning up connector", Id);
+            Cleanup();
+
+            if (_isKeepAliveEnabled)
+            {
+                _userLock!.Dispose();
+                _userLock = null;
+                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
+                _keepAliveTimer.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Closes the socket and cleans up client-side resources associated with this connector.
+        /// </summary>
+        /// <remarks>
+        /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
+        /// </remarks>
+        void Cleanup()
+        {
             try
             {
                 _stream?.Dispose();
@@ -1999,29 +1998,17 @@ namespace Npgsql.Internal
 
             ClearTransaction(_breakReason);
 
-#pragma warning disable CS8625
-
-            _stream = null;
-            _baseStream = null;
+            _stream = null!;
+            _baseStream = null!;
             _origReadBuffer?.Dispose();
             _origReadBuffer = null;
             ReadBuffer?.Dispose();
-            ReadBuffer = null;
+            ReadBuffer = null!;
             WriteBuffer?.Dispose();
-            WriteBuffer = null;
+            WriteBuffer = null!;
             Connection = null;
             PostgresParameters.Clear();
             _currentCommand = null;
-
-            if (_isKeepAliveEnabled)
-            {
-                _userLock!.Dispose();
-                _userLock = null;
-                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
-                _keepAliveTimer.Dispose();
-            }
-
-#pragma warning restore CS8625
         }
 
         void GenerateResetMessage()
