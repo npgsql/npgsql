@@ -239,7 +239,9 @@ namespace Npgsql.Tests
             };
 
             var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
-            Assert.That(ex.Message, Is.EqualTo("SslMode.Require requires TrustServerCertificate to be explicitly set. Please see https://www.npgsql.org/doc/release-notes/6.0.html"));
+            Assert.That(ex.Message, Is.EqualTo("To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
+                    "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
+                    "See https://www.npgsql.org/doc/release-notes/6.0.html for more details."));
         }
 
         [Test]
