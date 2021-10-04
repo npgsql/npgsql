@@ -797,9 +797,9 @@ namespace Npgsql.Internal
                         {
                             certificateValidationCallback = SslRootValidation(certRootPath);
                         }
-                        else if (UserCertificateValidationCallback is { } userValidation)
+                        else if (UserCertificateValidationCallback is not null)
                         {
-                            certificateValidationCallback = userValidation;
+                            certificateValidationCallback = UserCertificateValidationCallback;
                         }
                         else if (sslMode == SslMode.VerifyCA)
                         {
