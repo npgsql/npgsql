@@ -785,12 +785,13 @@ namespace Npgsql.Internal
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        var checkCertificateRevocation = false;
+                        var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
                         RemoteCertificateValidationCallback? certificateValidationCallback;
                         if (sslMode == SslMode.Prefer || sslMode == SslMode.Require)
                         {
                             certificateValidationCallback = SslTrustServerValidation;
+                            checkCertificateRevocation = false;
                         }
                         else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath)
                         {
@@ -803,13 +804,11 @@ namespace Npgsql.Internal
                         else if (sslMode == SslMode.VerifyCA)
                         {
                             certificateValidationCallback = SslVerifyCAValidation;
-                            checkCertificateRevocation = Settings.CheckCertificateRevocation;
                         }
                         else
                         {
                             Debug.Assert(sslMode == SslMode.VerifyFull);
                             certificateValidationCallback = SslVerifyFullValidation;
-                            checkCertificateRevocation = Settings.CheckCertificateRevocation;
                         }
 
                         timeout.CheckAndApply(this);
