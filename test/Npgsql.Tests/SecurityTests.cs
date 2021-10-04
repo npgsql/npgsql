@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -50,8 +51,8 @@ namespace Npgsql.Tests
             // SSL test
             NpgsqlConnection.ClearPool(conn);
 
-            // TODO: Specific exception, align with SslStream
-            Assert.That(() => conn.Open(), Throws.Exception);
+            var ex = Assert.Throws<NpgsqlException>(conn.Open)!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
