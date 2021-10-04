@@ -39,7 +39,8 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void RejectSelfSignedCertificate([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode,
+        public void RejectSelfSignedCertificate(
+            [Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode,
             [Values] bool checkCertificateRevocation)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)

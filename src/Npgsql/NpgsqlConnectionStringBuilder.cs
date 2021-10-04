@@ -1579,6 +1579,8 @@ namespace Npgsql
                     "To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
                     "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
                     "See https://www.npgsql.org/doc/release-notes/6.0.html for more details.");
+            if (TrustServerCertificate && (SslMode == SslMode.Allow || SslMode == SslMode.VerifyCA || SslMode == SslMode.VerifyFull))
+                throw new NpgsqlException($"TrustServerCertificate=true is not supported with SslMode={SslMode}");
         }
 
         internal string ToStringWithoutPassword()
