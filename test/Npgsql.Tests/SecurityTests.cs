@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -38,11 +39,14 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void RejectSelfSignedCertificate()
+        public void RejectSelfSignedCertificate(
+            [Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode,
+            [Values] bool checkCertificateRevocation)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Require
+                SslMode = sslMode,
+                CheckCertificateRevocation = checkCertificateRevocation
             }.ToString();
 
             using var conn = new NpgsqlConnection(connString);
@@ -50,8 +54,8 @@ namespace Npgsql.Tests
             // SSL test
             NpgsqlConnection.ClearPool(conn);
 
-            // TODO: Specific exception, align with SslStream
-            Assert.That(() => conn.Open(), Throws.Exception);
+            var ex = Assert.Throws<NpgsqlException>(conn.Open)!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
         }
 
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
@@ -72,7 +76,11 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
         public void NonSecure()
         {
-            using var conn = OpenConnection();
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Disable
+            };
+            using var conn = OpenConnection(csb);
             Assert.That(conn.IsSecure, Is.False);
         }
 
@@ -176,9 +184,9 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
                 Username = "npgsql_tests_scram",
                 Password = "npgsql_tests_scram",
+                TrustServerCertificate = true
             };
 
             try
@@ -207,12 +215,11 @@ namespace Npgsql.Tests
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Prefer,
+                SslMode = SslMode.Allow,
                 Username = "npgsql_tests_ssl",
                 Password = "npgsql_tests_ssl",
                 Multiplexing = multiplexing,
-                KeepAlive = keepAlive ? 10 : 0,
-                TrustServerCertificate = true,
+                KeepAlive = keepAlive ? 10 : 0
             };
 
             try
@@ -225,6 +232,20 @@ namespace Npgsql.Tests
                 Console.WriteLine(e);
                 Assert.Ignore("Only ssl user doesn't seem to be set up");
             }
+        }
+
+        [Test]
+        public void SslModeRequireThrowsWithoutTSC()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require
+            };
+
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
+            Assert.That(ex.Message, Is.EqualTo("To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
+                    "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
+                    "See https://www.npgsql.org/doc/release-notes/6.0.html for more details."));
         }
 
         [Test]
@@ -241,9 +262,7 @@ namespace Npgsql.Tests
                 Username = "npgsql_tests_nossl",
                 Password = "npgsql_tests_nossl",
                 Multiplexing = multiplexing,
-                KeepAlive = keepAlive ? 10 : 0,
-                // Not strictly required, but allows to catch the case whenever a user is not forbidden from accessing with ssl
-                TrustServerCertificate = true,
+                KeepAlive = keepAlive ? 10 : 0
             };
 
             try

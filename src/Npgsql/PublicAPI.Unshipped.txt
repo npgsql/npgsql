@@ -118,6 +118,13 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOption
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion = 1, bool? binary = null, bool? streaming = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.AddMapping(Npgsql.TypeMapping.NpgsqlTypeMapping! mapping) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+*REMOVED*Npgsql.SslMode.Prefer = 1 -> Npgsql.SslMode
+*REMOVED*Npgsql.SslMode.Require = 2 -> Npgsql.SslMode
+Npgsql.SslMode.Allow = 1 -> Npgsql.SslMode
+Npgsql.SslMode.Prefer = 2 -> Npgsql.SslMode
+Npgsql.SslMode.Require = 3 -> Npgsql.SslMode
+Npgsql.SslMode.VerifyCA = 4 -> Npgsql.SslMode
+Npgsql.SslMode.VerifyFull = 5 -> Npgsql.SslMode
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.Mappings.get -> System.Collections.Generic.IEnumerable<Npgsql.TypeMapping.NpgsqlTypeMapping!>!
 *REMOVED*Npgsql.TypeMapping.INpgsqlTypeMapper.RemoveMapping(string! pgTypeName) -> bool

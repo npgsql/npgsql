@@ -16,6 +16,7 @@ namespace Npgsql.Tests.Support
         const int ReadBufferSize = 8192;
         const int WriteBufferSize = 8192;
         const int CancelRequestCode = 1234 << 16 | 5678;
+        const int SslRequest = 80877103;
 
         static readonly Encoding Encoding = PGUtil.UTF8Encoding;
         static readonly Encoding RelaxedEncoding = PGUtil.RelaxedUTF8Encoding;
@@ -125,7 +126,19 @@ namespace Npgsql.Tests.Support
             var len = readBuffer.ReadInt32();
             await readBuffer.EnsureAsync(len - 4);
 
-            if (readBuffer.ReadInt32() == CancelRequestCode)
+            var request = readBuffer.ReadInt32();
+            if (request == SslRequest)
+            {
+                writeBuffer.WriteByte((byte)'N');
+                await writeBuffer.Flush(async: true);
+
+                await readBuffer.EnsureAsync(4);
+                len = readBuffer.ReadInt32();
+                await readBuffer.EnsureAsync(len - 4);
+                request = readBuffer.ReadInt32();
+            }
+
+            if (request == CancelRequestCode)
             {
                 var cancellationRequest = new PgCancellationRequest(readBuffer, writeBuffer, stream, readBuffer.ReadInt32(), readBuffer.ReadInt32());
                 if (completeCancellationImmediately)

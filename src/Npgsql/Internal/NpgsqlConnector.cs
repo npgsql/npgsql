@@ -523,15 +523,18 @@ namespace Npgsql.Internal
                 {
                     await conn.Authenticate(username, timeout, async, cancellationToken);
                 }
-                catch (PostgresException e) when (sslMode == SslMode.Prefer && conn.IsSecure &&
-                    e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
+                catch (PostgresException e)
+                    when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
+                          (sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure))
                 {
                     cancellationRegistration.Dispose();
                     Debug.Assert(!conn.IsBroken);
 
                     conn.Cleanup();
 
-                    await OpenCore(conn, SslMode.Disable, timeout, async, cancellationToken);
+                    // If Prefer was specified and we failed (with SSL), retry without SSL.
+                    // If Allow was specified and we failed (without SSL), retry with SSL
+                    await OpenCore(conn, sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require, timeout, async, cancellationToken);
                     return;
                 }
 
@@ -731,7 +734,7 @@ namespace Npgsql.Internal
 
                 IsSecure = false;
 
-                if (sslMode == SslMode.Require || sslMode == SslMode.Prefer)
+                if (sslMode == SslMode.Prefer || sslMode == SslMode.Require || sslMode == SslMode.VerifyCA || sslMode == SslMode.VerifyFull)
                 {
                     WriteSslRequest();
                     await Flush(async, cancellationToken);
@@ -745,7 +748,7 @@ namespace Npgsql.Internal
                     default:
                         throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                     case 'N':
-                        if (sslMode == SslMode.Require)
+                        if (sslMode != SslMode.Prefer)
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         break;
                     case 'S':
@@ -782,13 +785,31 @@ namespace Npgsql.Internal
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        var certificateValidationCallback = Settings.TrustServerCertificate
-                            ? SslTrustServerValidation
-                            : (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath
-                                ? SslRootValidation(certRootPath)
-                                : UserCertificateValidationCallback is { } userValidation
-                                    ? userValidation
-                                    : SslDefaultValidation;
+                        var checkCertificateRevocation = Settings.CheckCertificateRevocation;
+
+                        RemoteCertificateValidationCallback? certificateValidationCallback;
+                        if (sslMode == SslMode.Prefer || sslMode == SslMode.Require)
+                        {
+                            certificateValidationCallback = SslTrustServerValidation;
+                            checkCertificateRevocation = false;
+                        }
+                        else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath)
+                        {
+                            certificateValidationCallback = SslRootValidation(certRootPath);
+                        }
+                        else if (UserCertificateValidationCallback is not null)
+                        {
+                            certificateValidationCallback = UserCertificateValidationCallback;
+                        }
+                        else if (sslMode == SslMode.VerifyCA)
+                        {
+                            certificateValidationCallback = SslVerifyCAValidation;
+                        }
+                        else
+                        {
+                            Debug.Assert(sslMode == SslMode.VerifyFull);
+                            certificateValidationCallback = SslVerifyFullValidation;
+                        }
 
                         timeout.CheckAndApply(this);
 
@@ -804,10 +825,10 @@ namespace Npgsql.Internal
 
                             if (async)
                                 await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    sslProtocols, checkCertificateRevocation);
                             else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    sslProtocols, checkCertificateRevocation);
 
                             _stream = sslStream;
                         }
@@ -1561,9 +1582,13 @@ namespace Npgsql.Internal
         /// </summary>
         internal bool IsScramPlus { get; private set; }
 
-        static readonly RemoteCertificateValidationCallback SslDefaultValidation =
+        static readonly RemoteCertificateValidationCallback SslVerifyFullValidation =
             (sender, certificate, chain, sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
+
+        static readonly RemoteCertificateValidationCallback SslVerifyCAValidation =
+            (sender, certificate, chain, sslPolicyErrors)
+            => sslPolicyErrors == SslPolicyErrors.None || sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch;
 
         static readonly RemoteCertificateValidationCallback SslTrustServerValidation =
             (sender, certificate, chain, sslPolicyErrors)
