@@ -449,7 +449,7 @@ namespace Npgsql
                 SetValue(nameof(SslMode), value);
             }
         }
-        SslMode _sslMode = SslMode.Prefer;
+        SslMode _sslMode;
 
         /// <summary>
         /// Whether to trust the server certificate without validating it.
@@ -458,7 +458,7 @@ namespace Npgsql
         [Description("Whether to trust the server certificate without validating it.")]
         [DisplayName("Trust Server Certificate")]
         [NpgsqlConnectionStringProperty]
-        public bool? TrustServerCertificate
+        public bool TrustServerCertificate
         {
             get => _trustServerCertificate;
             set
@@ -467,7 +467,7 @@ namespace Npgsql
                 SetValue(nameof(TrustServerCertificate), value);
             }
         }
-        bool? _trustServerCertificate;
+        bool _trustServerCertificate;
 
         /// <summary>
         /// Location of a client certificate to be sent to the server.
@@ -1573,10 +1573,11 @@ namespace Npgsql
                 throw new ArgumentException("Host can't be null");
             if (Multiplexing && !Pooling)
                 throw new ArgumentException("Pooling must be on to use multiplexing");
-            if (SslMode == SslMode.Require && !TrustServerCertificate.HasValue)
-            {
-                throw new NpgsqlException("SslMode.Require requires TrustServerCertificate to be explicitly set. Please see https://www.npgsql.org/doc/release-notes/6.0.html");
-            }
+            if (SslMode == SslMode.Require && !TrustServerCertificate)
+                throw new NpgsqlException(
+                    "To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
+                    "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
+                    "See https://www.npgsql.org/doc/release-notes/6.0.html for more details.");
         }
 
         internal string ToStringWithoutPassword()

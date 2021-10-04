@@ -117,6 +117,7 @@ jobs:
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
           
+      # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
       #- uses: actions/checkout@v2.3.4
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3

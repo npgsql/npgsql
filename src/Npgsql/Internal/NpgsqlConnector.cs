@@ -523,14 +523,17 @@ namespace Npgsql.Internal
                 {
                     await conn.Authenticate(username, timeout, async, cancellationToken);
                 }
-                catch (PostgresException e) when ((sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure) &&
-                    e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
+                catch (PostgresException e)
+                    when (e.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification &&
+                          (sslMode == SslMode.Prefer && conn.IsSecure || sslMode == SslMode.Allow && !conn.IsSecure))
                 {
                     cancellationRegistration.Dispose();
                     Debug.Assert(!conn.IsBroken);
 
                     conn.Cleanup();
 
+                    // If Prefer was specified and we failed (with SSL), retry without SSL.
+                    // If Allow was specified and we failed (without SSL), retry with SSL
                     await OpenCore(conn, sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require, timeout, async, cancellationToken);
                     return;
                 }
@@ -783,7 +786,7 @@ namespace Npgsql.Internal
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         RemoteCertificateValidationCallback? certificateValidationCallback;
-                        if (sslMode == SslMode.Prefer || sslMode == SslMode.Require && (Settings.TrustServerCertificate ?? true))
+                        if (sslMode == SslMode.Prefer || sslMode == SslMode.Require)
                         {
                             certificateValidationCallback = SslTrustServerValidation;
                         }
@@ -795,11 +798,14 @@ namespace Npgsql.Internal
                         {
                             certificateValidationCallback = userValidation;
                         }
+                        else if (sslMode == SslMode.VerifyCA)
+                        {
+                            certificateValidationCallback = SslVerifyCAValidation;
+                        }
                         else
                         {
-                            certificateValidationCallback = sslMode == SslMode.VerifyCA
-                                ? SslVerifyCAValidation
-                                : SslVerifyFullValidation;
+                            Debug.Assert(sslMode == SslMode.VerifyFull);
+                            certificateValidationCallback = SslVerifyFullValidation;
                         }
 
                         timeout.CheckAndApply(this);

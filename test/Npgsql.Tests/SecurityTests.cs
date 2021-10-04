@@ -13,7 +13,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
+                TrustServerCertificate = true
             };
 
             using var conn = OpenConnection(csb);
@@ -29,7 +29,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
+                TrustServerCertificate = true
             };
 
             using var conn = OpenConnection(csb);
@@ -60,7 +60,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
+                TrustServerCertificate = true
             };
 
             using var conn = OpenConnection(csb);
@@ -74,7 +74,7 @@ namespace Npgsql.Tests
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Disable,
+                SslMode = SslMode.Disable
             };
             using var conn = OpenConnection(csb);
             Assert.That(conn.IsSecure, Is.False);
@@ -161,7 +161,7 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
+                TrustServerCertificate = true
             };
 
             using var conn = OpenConnection(csb);
@@ -182,7 +182,7 @@ namespace Npgsql.Tests
                 SslMode = SslMode.Require,
                 Username = "npgsql_tests_scram",
                 Password = "npgsql_tests_scram",
-                TrustServerCertificate = true,
+                TrustServerCertificate = true
             };
 
             try
@@ -215,7 +215,7 @@ namespace Npgsql.Tests
                 Username = "npgsql_tests_ssl",
                 Password = "npgsql_tests_ssl",
                 Multiplexing = multiplexing,
-                KeepAlive = keepAlive ? 10 : 0,
+                KeepAlive = keepAlive ? 10 : 0
             };
 
             try
@@ -235,7 +235,7 @@ namespace Npgsql.Tests
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Require,
+                SslMode = SslMode.Require
             };
 
             var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
@@ -256,7 +256,7 @@ namespace Npgsql.Tests
                 Username = "npgsql_tests_nossl",
                 Password = "npgsql_tests_nossl",
                 Multiplexing = multiplexing,
-                KeepAlive = keepAlive ? 10 : 0,
+                KeepAlive = keepAlive ? 10 : 0
             };
 
             try

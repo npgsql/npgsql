@@ -1035,7 +1035,7 @@ namespace Npgsql
 
         /// <summary>
         /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
-        /// Ignored if <see cref="NpgsqlConnectionStringBuilder.SslMode"/> is set as <see cref="SslMode.Allow"/>,
+        /// Ignored if <see cref="NpgsqlConnectionStringBuilder.SslMode"/> is set to <see cref="SslMode.Allow"/>,
         /// <see cref="SslMode.Prefer"/> or <see cref="SslMode.Require"/>.
         /// </summary>
         /// <remarks>

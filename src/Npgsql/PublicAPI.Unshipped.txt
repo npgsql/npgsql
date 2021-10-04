@@ -64,8 +64,6 @@ Npgsql.NpgsqlConnectionStringBuilder.TargetSessionAttributes.set -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.NpgsqlDatabaseInfo(string! host, int port, string! databaseName, System.Version! version) -> void
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Port.get -> int
 *REMOVED*Npgsql.NpgsqlDatabaseInfo.Version.get -> System.Version!
-*REMOVED*Npgsql.NpgsqlConnectionStringBuilder.TrustServerCertificate.get -> bool
-Npgsql.NpgsqlConnectionStringBuilder.TrustServerCertificate.get -> bool?
 Npgsql.NpgsqlCopyTextReader.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Npgsql.NpgsqlDataReader.Rows.get -> ulong
 Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!

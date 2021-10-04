@@ -51,6 +51,8 @@ namespace Npgsql
             Multiplexing = false;
             
             WriteCoalescingBufferThresholdBytes = 1000;
+
+            SslMode = SslMode.Prefer;
             
 
             // Setting the strongly-typed properties here also set the string-based properties in the base class.
@@ -2271,7 +2273,7 @@ namespace Npgsql
                 var removed = base.ContainsKey("SSL Mode");
                 // Note that string property setters call SetValue, which itself calls base.Remove().
                 
-                SslMode = default;
+                SslMode = SslMode.Prefer;
                 
                 base.Remove("SSL Mode");
                 return removed;
