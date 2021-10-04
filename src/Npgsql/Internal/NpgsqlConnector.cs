@@ -785,6 +785,8 @@ namespace Npgsql.Internal
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
+                        var checkCertificateRevocation = false;
+
                         RemoteCertificateValidationCallback? certificateValidationCallback;
                         if (sslMode == SslMode.Prefer || sslMode == SslMode.Require)
                         {
@@ -801,11 +803,13 @@ namespace Npgsql.Internal
                         else if (sslMode == SslMode.VerifyCA)
                         {
                             certificateValidationCallback = SslVerifyCAValidation;
+                            checkCertificateRevocation = Settings.CheckCertificateRevocation;
                         }
                         else
                         {
                             Debug.Assert(sslMode == SslMode.VerifyFull);
                             certificateValidationCallback = SslVerifyFullValidation;
+                            checkCertificateRevocation = Settings.CheckCertificateRevocation;
                         }
 
                         timeout.CheckAndApply(this);
@@ -822,10 +826,10 @@ namespace Npgsql.Internal
 
                             if (async)
                                 await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    sslProtocols, checkCertificateRevocation);
                             else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                    sslProtocols, Settings.CheckCertificateRevocation);
+                                    sslProtocols, checkCertificateRevocation);
 
                             _stream = sslStream;
                         }

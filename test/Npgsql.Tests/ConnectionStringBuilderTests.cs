@@ -43,8 +43,8 @@ namespace Npgsql.Tests
         public void Remove()
         {
             var builder = new NpgsqlConnectionStringBuilder();
-            builder.SslMode = SslMode.Prefer;
-            Assert.That(builder["SSL Mode"], Is.EqualTo(SslMode.Prefer));
+            builder.SslMode = SslMode.Require;
+            Assert.That(builder["SSL Mode"], Is.EqualTo(SslMode.Require));
             builder.Remove("SSL Mode");
             Assert.That(builder.ConnectionString, Is.EqualTo(""));
             builder.CommandTimeout = 120;
@@ -87,8 +87,8 @@ namespace Npgsql.Tests
         public void Enum()
         {
             var builder = new NpgsqlConnectionStringBuilder();
-            builder.ConnectionString = "SslMode=Prefer";
-            Assert.That(builder.SslMode, Is.EqualTo(SslMode.Prefer));
+            builder.ConnectionString = "SslMode=Require";
+            Assert.That(builder.SslMode, Is.EqualTo(SslMode.Require));
             Assert.That(builder.Count, Is.EqualTo(1));
         }
 

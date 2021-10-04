@@ -53,6 +53,8 @@ namespace Npgsql
             WriteCoalescingBufferThresholdBytes = 1000;
 
             SslMode = SslMode.Prefer;
+
+            CheckCertificateRevocation = true;
             
 
             // Setting the strongly-typed properties here also set the string-based properties in the base class.
@@ -2261,7 +2263,7 @@ namespace Npgsql
                 var removed = base.ContainsKey("SSL Mode");
                 // Note that string property setters call SetValue, which itself calls base.Remove().
                 
-                SslMode = default;
+                SslMode = SslMode.Prefer;
                 
                 base.Remove("SSL Mode");
                 return removed;
@@ -2405,7 +2407,7 @@ namespace Npgsql
                 var removed = base.ContainsKey("Check Certificate Revocation");
                 // Note that string property setters call SetValue, which itself calls base.Remove().
                 
-                CheckCertificateRevocation = default;
+                CheckCertificateRevocation = true;
                 
                 base.Remove("Check Certificate Revocation");
                 return removed;
@@ -2417,7 +2419,7 @@ namespace Npgsql
                 var removed = base.ContainsKey("Check Certificate Revocation");
                 // Note that string property setters call SetValue, which itself calls base.Remove().
                 
-                CheckCertificateRevocation = default;
+                CheckCertificateRevocation = true;
                 
                 base.Remove("Check Certificate Revocation");
                 return removed;
