@@ -898,7 +898,7 @@ namespace Npgsql
 
         void SetSocketOptions(Socket socket)
         {
-            if (socket.AddressFamily == AddressFamily.InterNetwork)
+            if (socket.AddressFamily == AddressFamily.InterNetwork || socket.AddressFamily == AddressFamily.InterNetworkV6)
                 socket.NoDelay = true;
             if (Settings.SocketReceiveBufferSize > 0)
                 socket.ReceiveBufferSize = Settings.SocketReceiveBufferSize;
