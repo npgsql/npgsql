@@ -1,12 +1,12 @@
 # PostGIS/NetTopologySuite Type Plugin
 
-Before 4.0, Npgsql has supported reading and writing PostGIS types via some bundled .NET classes: `PostgisPoint`, `PostgisLineString`, etc. While this model provided some basic support, a proper representation of spatial types is a complicated task that's beyond Npgsql's scope, and should be handled by a specialized spatial library instead. The leading spatial library in the .NET world is currently [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite), and with the introduction of *type plugins* in Npgsql 4.0, it is now possible to map PostGIS types directly to NetTopologySuite types. This is now the recommended way to store and load PostGIS types.
+PostgreSQL supports spatial data and operations via [the PostGIS extension](https://postgis.net/), which is a mature and feature-rich database spatial implementation. .NET doesn't provide a standard spatial library, but [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) is a leading spatial library. Npgsql has a plugin which allows which allows you to map the NTS types PostGIS columns, and even translate many useful spatial operations to SQL. This is the recommended way to interact with spatial types in Npgsql.
 
-If you prefer to work with the pre-4.0 types, you can still do so by using the [Npgsql.LegacyPostgis plugin](legacy-postgis.md).
+PostgreSQL provides support for spatial types (geometry/geography) via the powerful [PostGIS](https://postgis.net/) extension; this allows you to store points and other spatial constructs in the database, and efficiently perform operations and searches on them. Npgsql supports the PostGIS types via [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite), which is the leading spatial library in the .NET world: the NTS types can be read and written directly to their corresponding PostGIS types. This is the recommended way to work with spatial types in Npgsql.
 
 ## Setup
 
-To use the NetTopologySuite plugin, simply add a dependency on [Npgsql.NetTopologySuite](https://www.nuget.org/packages/Npgsql.NetTopologySuite) and set it up:
+To avoid forcing a dependency on the NetTopologySuite library for users not using spatial, NTS support is delivered as a separate plugin. To use the plugin, simply add a dependency on [Npgsql.NetTopologySuite](https://www.nuget.org/packages/Npgsql.NetTopologySuite) and set it up:
 
 ```c#
 using Npgsql;

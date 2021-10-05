@@ -1,5 +1,8 @@
 # PostGIS Legacy Type Plugin
 
+> [!WARNING]
+> This plugin has been removed in Npgsql 6.0, use [NetTopologySuite](nts.md) instead.
+
 Since 4.0, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. The previous support for [PostGIS spatial types](https://postgis.net/) has been moved out of Npgsql and into the plugin Npgsql.LegacyPostgis. The recommended way to read and write spatial types is now [Npgsql.NetTopologySuite](nts.md), which maps PostGIS types to [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite), a more complete library dedicated to spatial. The NetTopologySuite plugin is now the recommended way to do spatial in Npgsql, but the Npgsql.LegacyPostgis still exists to provide support for the previous types.
 
 At this time, the legacy types only support geometry, not geography, and only XY (not XYZ, XYM or XYZM).
