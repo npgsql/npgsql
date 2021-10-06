@@ -27,6 +27,8 @@ namespace Npgsql.SourceGenerators
             if (simpleTypeHandlerInterfaceSymbol is null || typeHandlerInterfaceSymbol is null)
                 throw new Exception("Could not find INpgsqlSimpleTypeHandler or INpgsqlTypeHandler");
 
+            var template = Template.Parse(EmbeddedResource.GetContent("TypeHandler.snbtxt"), "TypeHandler.snbtxt");
+
             foreach (var cds in ((MySyntaxReceiver)context.SyntaxReceiver!).TypeHandlerCandidates)
             {
                 var semanticModel = compilation.GetSemanticModel(cds.SyntaxTree);
@@ -36,18 +38,22 @@ namespace Npgsql.SourceGenerators
                 if (typeSymbol.AllInterfaces.Any(i =>
                     i.OriginalDefinition.Equals(simpleTypeHandlerInterfaceSymbol, SymbolEqualityComparer.Default)))
                 {
-                    AugmentTypeHandler(typeSymbol, cds, isSimple: true);
+                    AugmentTypeHandler(template, typeSymbol, cds, isSimple: true);
                     continue;
                 }
 
                 if (typeSymbol.AllInterfaces.Any(i =>
                     i.OriginalDefinition.Equals(typeHandlerInterfaceSymbol, SymbolEqualityComparer.Default)))
                 {
-                    AugmentTypeHandler(typeSymbol, cds, isSimple: false);
+                    AugmentTypeHandler(template, typeSymbol, cds, isSimple: false);
                 }
             }
 
-            void AugmentTypeHandler(INamedTypeSymbol typeSymbol, ClassDeclarationSyntax classDeclarationSyntax, bool isSimple)
+            void AugmentTypeHandler(
+                Template template,
+                INamedTypeSymbol typeSymbol,
+                ClassDeclarationSyntax classDeclarationSyntax,
+                bool isSimple)
             {
                 var usings = new HashSet<string>(
                     new[]
@@ -65,7 +71,6 @@ namespace Npgsql.SourceGenerators
                                     SymbolEqualityComparer.Default) &&
                                 !i.TypeArguments[0].IsAbstract);
 
-                var template = Template.Parse(EmbeddedResource.GetContent("TypeHandler.snbtxt"), "TypeHandler.snbtxt");
                 var output = template.Render(new
                 {
                     Usings = usings,
@@ -93,6 +98,12 @@ namespace Npgsql.SourceGenerators
                             .Append('>')
                             .ToString()
                         : namedTypeSymbol.Name;
+                }
+
+                if (typeSymbol.TypeKind == TypeKind.Array)
+                {
+                    return $"{FormatTypeName(((IArrayTypeSymbol)typeSymbol).ElementType)}[]";
+                    // return "int";
                 }
 
                 return typeSymbol.ToString();
