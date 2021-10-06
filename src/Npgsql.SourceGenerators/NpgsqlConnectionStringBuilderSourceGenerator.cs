@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -67,6 +68,13 @@ namespace Npgsql.SourceGenerators
 
                 if (explicitDefaultValue is string s)
                     explicitDefaultValue = '"' + s.Replace("\"", "\"\"") + '"';
+
+                if (explicitDefaultValue is not null && property.Type.TypeKind == TypeKind.Enum)
+                {
+                    explicitDefaultValue = $"({property.Type.Name}){explicitDefaultValue}";
+                    // var foo = property.Type.Name;
+                    // explicitDefaultValue += $"/* {foo} */";
+                }
 
                 var propertyDetails = new PropertyDetails
                 {
