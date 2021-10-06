@@ -20,6 +20,8 @@ namespace Npgsql.TypeMapping
         internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
         public ConcurrentDictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
+        readonly ConcurrentDictionary<Type, TypeMappingInfo> _mappingsByClrType = new();
+
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
         /// Used to invalidate bound type mappers.
@@ -192,7 +194,11 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        internal void RecordChange() => Interlocked.Increment(ref _changeCounter);
+        internal void RecordChange()
+        {
+            _mappingsByClrType.Clear();
+            Interlocked.Increment(ref _changeCounter);
+        }
 
         #endregion Mapping management
 
@@ -204,6 +210,16 @@ namespace Npgsql.TypeMapping
             Lock.EnterReadLock();
             try
             {
+                // We resolve as follows:
+                // 1. Cached by-type lookup (fast path). This will work for almost all types after the very first resolution.
+                // 2. Value-dependent type lookup (e.g. DateTime by Kind) via the resolvers. This includes complex types (e.g. array/range
+                //    over DateTime), and the results cannot be cached.
+                // 3. Uncached by-type lookup (for the very first resolution of a given type)
+
+                var type = value.GetType();
+                if (_mappingsByClrType.TryGetValue(type, out typeMapping))
+                    return true;
+
                 foreach (var resolverFactory in ResolverFactories)
                     if ((typeMapping = resolverFactory.GetMappingByValueDependentValue(value)) is not null)
                         return true;
@@ -217,15 +233,23 @@ namespace Npgsql.TypeMapping
 
             bool TryResolveMappingByClrType(Type clrType, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
             {
+                if (_mappingsByClrType.TryGetValue(clrType, out typeMapping))
+                    return true;
+
                 foreach (var resolverFactory in ResolverFactories)
+                {
                     if ((typeMapping = resolverFactory.GetMappingByClrType(clrType)) is not null)
+                    {
+                        _mappingsByClrType[clrType] = typeMapping;
                         return true;
+                    }
+                }
 
                 if (clrType.IsArray)
                 {
                     if (TryResolveMappingByClrType(clrType.GetElementType()!, out var elementMapping))
                     {
-                        typeMapping = new(
+                        _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
                             DbType.Object,
                             elementMapping.DataTypeName + "[]");
@@ -244,7 +268,7 @@ namespace Npgsql.TypeMapping
                 {
                     if (TryResolveMappingByClrType(ilist.GetGenericArguments()[0], out var elementMapping))
                     {
-                        typeMapping = new(
+                        _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
                             DbType.Object,
                             elementMapping.DataTypeName + "[]");
@@ -259,7 +283,7 @@ namespace Npgsql.TypeMapping
                 {
                     if (TryResolveMappingByClrType(clrType.GetGenericArguments()[0], out var elementMapping))
                     {
-                        typeMapping = new(
+                        _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Range | elementMapping.NpgsqlDbType,
                             DbType.Object,
                             dataTypeName: null);
