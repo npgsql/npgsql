@@ -803,11 +803,13 @@ namespace Npgsql
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
         /// </summary>
-        public override bool HasRows => IsClosed
-            ? throw (State == ReaderState.Closed
-                ? new InvalidOperationException("Invalid attempt to call HasRows when reader is closed.")
-                : new ObjectDisposedException(nameof(NpgsqlDataReader)))
-            : _hasRows;
+        public override bool HasRows
+            => State switch
+            {
+                ReaderState.Closed => throw new InvalidOperationException("Invalid attempt to call HasRows when reader is closed."),
+                ReaderState.Disposed => throw new ObjectDisposedException(nameof(NpgsqlDataReader)),
+                _ => _hasRows
+            };
 
         /// <summary>
         /// Indicates whether the reader is currently positioned on a row, i.e. whether reading a
