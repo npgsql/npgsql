@@ -13,6 +13,9 @@ namespace NpgsqlTypes
     /// DateTime is capable of storing values from year 1 to 9999 at 100-nanosecond precision,
     /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
+    [Obsolete(
+        "For values outside the range of DateTime, consider using NodaTime (range -9998 to 9999), or read the value as a 'long'. " +
+        "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
     [Serializable]
     public readonly struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
         IComparer<NpgsqlDateTime>, IComparer

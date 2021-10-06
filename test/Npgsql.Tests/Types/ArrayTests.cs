@@ -399,6 +399,7 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(expected));
         }
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test, Description("Reads a one-dimensional array dates, both as DateTime and as the provider-specific NpgsqlDate")]
         public async Task ReadProviderSpecificType()
         {
@@ -413,6 +414,7 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedPsv));
             Assert.That(reader.GetFieldValue<NpgsqlDate[]>(0), Is.EqualTo(expectedPsv));
         }
+#pragma warning restore 618
 
         [Test, Description("Reads an one-dimensional array with lower bound != 0")]
         public async Task ReadNonZeroLowerBounded()

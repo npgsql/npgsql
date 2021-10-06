@@ -5,6 +5,8 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
 
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
+
 namespace Npgsql.Tests.Types
 {
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing

@@ -8,6 +8,9 @@ using System.Text;
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
+    [Obsolete(
+        "For values outside the range of DateTime/DateOnly, consider using NodaTime (range -9998 to 9999), or read the value as an 'int'. " +
+        "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
     [Serializable]
     public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable,
         IComparer<NpgsqlDate>, IComparer

@@ -31,6 +31,9 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
+    [Obsolete(
+        "For values outside the range of TimeSpan, consider using NodaTime (range -9998 to 9999), or read the value as an NpgsqlInterval. " +
+        "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
     [Serializable]
     public readonly struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
                                    IComparer<NpgsqlTimeSpan>

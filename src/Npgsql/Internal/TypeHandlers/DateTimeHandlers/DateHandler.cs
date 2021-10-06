@@ -4,6 +4,8 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
+
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -16,7 +18,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+    public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>,
+        INpgsqlSimpleTypeHandler<int>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
@@ -65,6 +68,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             };
         }
 
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => buf.ReadInt32();
+
         #endregion Read
 
         #region Write
@@ -74,6 +80,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter) => 4;
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => 4;
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -104,6 +113,10 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             else
                 buf.WriteInt32(value.DaysSinceEra - 730119);
         }
+
+        /// <inheritdoc />
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => buf.WriteInt32(value);
 
         #endregion Write
 

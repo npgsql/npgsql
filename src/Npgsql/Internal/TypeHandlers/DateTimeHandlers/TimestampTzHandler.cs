@@ -8,6 +8,8 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using static Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateTimeUtils;
 
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
+
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -20,7 +22,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimestampTzHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
+    public partial class TimestampTzHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>,
+        INpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<long>
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
@@ -91,6 +94,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             }
         }
 
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => buf.ReadInt64();
+
         #endregion Read
 
         #region Write
@@ -137,6 +143,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
             return 8;
         }
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter) => 8;
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -194,6 +203,10 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
             WriteTimestamp(value.DateTime, buf, ConvertInfinityDateTime);
         }
+
+        /// <inheritdoc />
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => buf.WriteInt64(value);
 
         #endregion Write
     }

@@ -1179,6 +1179,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+        [Obsolete(
+            "For values outside the range of DateTime/DateOnly, consider using NodaTime (range -9998 to 9999), or read the value as an 'int'. " +
+            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
         public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
 
         /// <summary>
@@ -1209,6 +1212,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+        [Obsolete(
+            "For values outside the range of TimeSpan, consider using NodaTime (range -9998 to 9999), or read the value as an NpgsqlInterval. " +
+            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
         public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
 
         /// <summary>
@@ -1226,6 +1232,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+        [Obsolete(
+            "For values outside the range of DateTime, consider using NodaTime (range -9998 to 9999), or read the value as a 'long'. " +
+            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
         public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
         /// <inheritdoc />
