@@ -24,19 +24,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, windows-2019 ]
-        pg_major: [ 13, 12, 11, 10 ]
+        pg_major: [ 14, 13, 12, 11, 10 ]
         config: [Release]
         include:
           - os: ubuntu-20.04
-            pg_major: 13
+            pg_major: 14
             config: Debug
           - os: macos-11
-            pg_major: 13
-            config: Release
-          - os: ubuntu-20.04
             pg_major: 14
             config: Release
-            pg_prerelease: 'PG Prerelease'
+#          - os: ubuntu-20.04
+#            pg_major: 14
+#            config: Release
+#            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
