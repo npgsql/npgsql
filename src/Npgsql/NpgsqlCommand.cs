@@ -73,7 +73,7 @@ namespace Npgsql
 #if DEBUG
         internal static bool EnableSqlRewriting;
 #else
-        static readonly bool EnableSqlRewriting;
+        internal static readonly bool EnableSqlRewriting;
 #endif
 
         static readonly List<NpgsqlParameter> EmptyParameters = new();
