@@ -12,6 +12,9 @@ using NpgsqlTypes;
 namespace Npgsql.NodaTime.Internal
 {
     public partial class DateRangeHandler : RangeHandler<LocalDate>, INpgsqlTypeHandler<DateInterval>
+#if NET6_0_OR_GREATER
+        , INpgsqlTypeHandler<NpgsqlRange<DateOnly>>
+#endif
     {
         public DateRangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
             : base(rangePostgresType, subtypeHandler)
@@ -32,11 +35,29 @@ namespace Npgsql.NodaTime.Internal
         }
 
         public int ValidateAndGetLength(DateInterval value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength(new NpgsqlRange<LocalDate>(value.Start, value.End), ref lengthCache, parameter);
+            => ValidateAndGetLengthRange(new NpgsqlRange<LocalDate>(value.Start, value.End), ref lengthCache, parameter);
 
         public Task Write(
             DateInterval value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
             CancellationToken cancellationToken = default)
-            => Write(new NpgsqlRange<LocalDate>(value.Start, value.End), buf, lengthCache, parameter, async, cancellationToken);
+            => WriteRange(new NpgsqlRange<LocalDate>(value.Start, value.End), buf, lengthCache, parameter, async, cancellationToken);
+
+#if NET6_0_OR_GREATER
+        ValueTask<NpgsqlRange<DateOnly>> INpgsqlTypeHandler<NpgsqlRange<DateOnly>>.Read(
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => ReadRange<DateOnly>(buf, len, async, fieldDescription);
+
+        public int ValidateAndGetLength(NpgsqlRange<DateOnly> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLengthRange(value, ref lengthCache, parameter);
+
+        public Task Write(
+            NpgsqlRange<DateOnly> value,
+            NpgsqlWriteBuffer buf,
+            NpgsqlLengthCache? lengthCache,
+            NpgsqlParameter? parameter,
+            bool async,
+            CancellationToken cancellationToken = default)
+            => WriteRange(value, buf, lengthCache, parameter, async, cancellationToken);
+#endif
     }
 }

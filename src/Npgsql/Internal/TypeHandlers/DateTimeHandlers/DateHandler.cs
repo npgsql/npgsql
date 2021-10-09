@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
@@ -140,6 +142,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
             Write(value2, buf, parameter);
         }
+
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
+            => new RangeHandler<DateTime, DateOnly>(pgRangeType, this);
 #endif
     }
 }
