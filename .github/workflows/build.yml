@@ -24,19 +24,19 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, windows-2019 ]
-        pg_major: [ 13, 12, 11, 10 ]
+        pg_major: [ 14, 13, 12, 11, 10 ]
         config: [Release]
         include:
           - os: ubuntu-20.04
-            pg_major: 13
+            pg_major: 14
             config: Debug
           - os: macos-11
-            pg_major: 13
-            config: Release
-          - os: ubuntu-20.04
             pg_major: 14
             config: Release
-            pg_prerelease: 'PG Prerelease'
+#          - os: ubuntu-20.04
+#            pg_major: 14
+#            config: Release
+#            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
@@ -211,12 +211,6 @@ jobs:
             cp $GITHUB_WORKSPACE/.build/{server.crt,server.key} $PGDATA
             chmod 600 $PGDATA/{server.crt,server.key}
 
-            # Starting with PG14 the default password encryption mode is scram.
-            # Changing it to md5 for compatibility.
-            if [ ${{ matrix.pg_major }} -ge 14 ]; then
-              sudo sed -i 's/#password_encryption = scram-sha-256/password_encryption = md5/' $PGDATA/postgresql.conf
-            fi
-
             brew services start postgresql
             echo "Check PostgreSQL service is running"
             i=5
@@ -232,16 +226,14 @@ jobs:
                 echo "PostgreSQL service not ready, wait 5 more sec, attempts left: $i"
                 sleep 5
             done
-            psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" postgres
+            
+            # Create npgsql_tests user with md5 password 'npgsql_tests'
+            psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'md5adf74603a5772843f53e812f03dacb02'" postgres
             
             psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
             psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
 
-            if [ ${{ matrix.pg_major }} -ge 14 ]; then
-              sudo sed -i '' 's/password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-            else
-              sudo sed -i '' 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
-            fi
+            sudo sed -i '' 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#logical_decoding_work_mem =/logical_decoding_work_mem = 64kB #/' $PGDATA/postgresql.conf
