@@ -22,7 +22,7 @@ namespace Npgsql
 #if DEBUG
         internal static bool CaseInsensitiveCompatMode;
 #else
-        static readonly bool CaseInsensitiveCompatMode;
+        internal static readonly bool CaseInsensitiveCompatMode;
 #endif
 
         static NpgsqlParameterCollection()

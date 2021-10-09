@@ -484,12 +484,8 @@ FROM pg_constraint c
             row["IdentifierPattern"] = @"(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\""[^\""\0]|\""\""+\""$)";
             row["IdentifierCase"] = IdentifierCase.Insensitive;
             row["OrderByColumnsInSelect"] = false;
-            row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
-            row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
-            row["ParameterNameMaxLength"] = 63; // For function out parameters
             row["QuotedIdentifierPattern"] = @"""(([^\""]|\""\"")*)""";
             row["QuotedIdentifierCase"] = IdentifierCase.Sensitive;
-            row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
             row["StatementSeparatorPattern"] = ";";
             row["StringLiteralPattern"] = @"'(([^']|'')*)'";
             row["SupportedJoinOperators"] =
@@ -497,6 +493,20 @@ FROM pg_constraint c
                 SupportedJoinOperators.Inner |
                 SupportedJoinOperators.LeftOuter |
                 SupportedJoinOperators.RightOuter;
+
+            row["ParameterNameMaxLength"] = 63; // For function out parameters
+            row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
+
+            if (NpgsqlCommand.EnableSqlRewriting)
+            {
+                row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+                row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+            }
+            else
+            {
+                row["ParameterMarkerPattern"] = @"$\d+";
+                row["ParameterNamePattern"] = @"\d+";
+            }
 
             return table;
         }
