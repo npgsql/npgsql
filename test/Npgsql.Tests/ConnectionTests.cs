@@ -655,10 +655,9 @@ namespace Npgsql.Tests
         [Test]
         public async Task UnixAbstractDomainSocket()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
-                (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
+                Assert.Ignore("Abstract unix-domain sockets are not supported on windows");
             }
 
             // We first need a classic IP connection to make sure we're running against the
