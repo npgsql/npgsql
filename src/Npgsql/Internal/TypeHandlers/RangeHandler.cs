@@ -2,7 +2,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualBasic;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
@@ -50,7 +49,7 @@ namespace Npgsql.Internal.TypeHandlers
         public override ValueTask<NpgsqlRange<TSubtype>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadRange<TSubtype>(buf, len, async, fieldDescription);
 
-        protected async ValueTask<NpgsqlRange<TAnySubtype>> ReadRange<TAnySubtype>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        protected internal async ValueTask<NpgsqlRange<TAnySubtype>> ReadRange<TAnySubtype>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(1, async);
 
@@ -78,7 +77,7 @@ namespace Npgsql.Internal.TypeHandlers
         public override int ValidateAndGetLength(NpgsqlRange<TSubtype> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLengthRange(value, ref lengthCache, parameter);
 
-        protected int ValidateAndGetLengthRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        protected internal int ValidateAndGetLengthRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var totalLen = 1;
             var lengthCachePos = lengthCache?.Position ?? 0;
@@ -111,7 +110,7 @@ namespace Npgsql.Internal.TypeHandlers
         public override Task Write(NpgsqlRange<TSubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => WriteRange(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        protected async Task WriteRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        protected internal async Task WriteRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async, cancellationToken);
