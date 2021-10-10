@@ -67,11 +67,16 @@ namespace Npgsql.Internal.TypeHandlers
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
+            // Leave empty slot for the entire array length, and go ahead an populate the element slots
+            var pos = lengthCache.Position;
+            lengthCache.Set(0);
+
             var sum = 4 + 4 * value.Count;
             for (var i = 0; i < value.Count; i++)
                 sum += RangeHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
 
-            return lengthCache.Set(sum);
+            lengthCache.Lengths[pos] = sum;
+            return sum;
         }
 
         public override async Task Write(

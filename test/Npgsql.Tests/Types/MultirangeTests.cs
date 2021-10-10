@@ -53,12 +53,45 @@ namespace Npgsql.Tests.Types
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
 
                 conn.ReloadTypes();
-                cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.Multirange | NpgsqlDbType.Integer };
+                cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.IntegerMultirange };
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
 
                 conn.ReloadTypes();
                 cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "int4multirange" };
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
+            }
+        }
+
+        [Test]
+        public async Task Write_nummultirange()
+        {
+            var multirangeArray = new NpgsqlRange<decimal>[]
+            {
+                new(3, true, false, 7, false, false),
+                new(8, false, false, 0, false, true)
+            };
+
+            var multirangeList = new List<NpgsqlRange<decimal>>(multirangeArray);
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+
+            await WriteInternal(multirangeArray);
+            await WriteInternal(multirangeList);
+
+            async Task WriteInternal(IList<NpgsqlRange<decimal>> multirange)
+            {
+                conn.ReloadTypes();
+                cmd.Parameters.Add(new() { Value = multirange });
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
+
+                conn.ReloadTypes();
+                cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.NumericMultirange };
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
+
+                conn.ReloadTypes();
+                cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "nummultirange" };
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),(8,)}"));
             }
         }
 
