@@ -6,6 +6,8 @@ using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+#pragma warning disable 618 // NpgsqlDateTime, NpgsqlDate, NpgsqlTimeSpan are obsolete, remove in 7.0
+
 namespace Npgsql.Tests
 {
     /// <summary>

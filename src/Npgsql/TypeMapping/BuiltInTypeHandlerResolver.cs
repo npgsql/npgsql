@@ -58,8 +58,10 @@ namespace Npgsql.TypeMapping
             { "jsonpath",          new(NpgsqlDbType.JsonPath,  DbType.Object, "jsonpath") },
 
             // Date/time types
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
             { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
             { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
+#pragma warning disable 618
             { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
             { "timestamptz",                 new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
             { "date",                        new(NpgsqlDbType.Date,        DbType.Date,           "date",                        typeof(NpgsqlDate)
@@ -385,15 +387,18 @@ namespace Npgsql.TypeMapping
                 // The DateTime entry is for LegacyTimestampBehavior mode only. In regular mode we resolve through
                 // ResolveValueDependentValue below
                 { typeof(DateTime),       "timestamp without time zone" },
-                { typeof(NpgsqlDateTime), "timestamp without time zone" },
                 { typeof(DateTimeOffset), "timestamp with time zone" },
-                { typeof(NpgsqlDate),     "date" },
 #if NET6_0_OR_GREATER
                 { typeof(DateOnly),       "date" },
                 { typeof(TimeOnly),       "time without time zone" },
 #endif
                 { typeof(TimeSpan),       "interval" },
+                { typeof(NpgsqlInterval), "interval" },
+#pragma warning disable 618 // NpgsqlDateTime and NpgsqlDate are obsolete, remove in 7.0
+                { typeof(NpgsqlDateTime), "timestamp without time zone" },
+                { typeof(NpgsqlDate),     "date" },
                 { typeof(NpgsqlTimeSpan), "interval" },
+#pragma warning restore 618
 
                 // Network types
                 { typeof(IPAddress),                       "inet" },
@@ -557,8 +562,6 @@ namespace Npgsql.TypeMapping
             // No resolution for DateTime, since that's value-dependent (Kind)
             if (typeof(T) == typeof(DateTimeOffset))
                 return _timestampTzHandler;
-            if (typeof(T) == typeof(NpgsqlDate))
-                return _dateHandler;
 #if NET6_0_OR_GREATER
             if (typeof(T) == typeof(DateOnly))
                 return _dateHandler;
@@ -567,8 +570,14 @@ namespace Npgsql.TypeMapping
 #endif
             if (typeof(T) == typeof(TimeSpan))
                 return _intervalHandler;
+            if (typeof(T) == typeof(NpgsqlInterval))
+                return _intervalHandler;
+#pragma warning disable 618 // NpgsqlDate and NpgsqlTimeSpan are obsolete, remove in 7.0
+            if (typeof(T) == typeof(NpgsqlDate))
+                return _dateHandler;
             if (typeof(T) == typeof(NpgsqlTimeSpan))
                 return _intervalHandler;
+#pragma warning restore 618
 
             // Network types
             if (typeof(T) == typeof(IPAddress))

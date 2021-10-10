@@ -7,9 +7,12 @@ using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using BclDateHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateHandler;
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
+
 namespace Npgsql.NodaTime.Internal
 {
-    sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
+    sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>,
+        INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>, INpgsqlSimpleTypeHandler<int>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
@@ -80,6 +83,15 @@ namespace Npgsql.NodaTime.Internal
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => _bclHandler.Write(value, buf, parameter);
+
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _bclHandler.Read<int>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<int>.ValidateAndGetLength(int value, NpgsqlParameter? parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<int>.Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
 
 #if NET6_0_OR_GREATER

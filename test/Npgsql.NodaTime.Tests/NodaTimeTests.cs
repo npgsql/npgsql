@@ -16,7 +16,7 @@ namespace Npgsql.NodaTime.Tests
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
     public class NodaTimeTests : TestBase
     {
-        #region Timestamp
+        #region Timestamp without time zone
 
         static readonly TestCaseData[] TimestampValues =
         {
@@ -46,7 +46,9 @@ namespace Npgsql.NodaTime.Tests
 
             Assert.That(() => reader.GetFieldValue<Instant>(0), Throws.TypeOf<InvalidCastException>());
             Assert.That(() => reader.GetFieldValue<ZonedDateTime>(0), Throws.TypeOf<InvalidCastException>());
-            Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+
+            // Internal PostgreSQL representation, for out-of-range values.
+            Assert.That(() => reader.GetInt64(0), Throws.Nothing);
         }
 
         [Test, TestCaseSource(nameof(TimestampValues))]
@@ -77,7 +79,8 @@ namespace Npgsql.NodaTime.Tests
                     new() { Value = localDateTime, DbType = DbType.DateTime },
                     new() { Value = localDateTime, DbType = DbType.DateTime2 },
                     new() { Value = localDateTime.ToDateTimeUnspecified() },
-                    new() { Value = DateTime.SpecifyKind(localDateTime.ToDateTimeUnspecified(), DateTimeKind.Local) }
+                    new() { Value = DateTime.SpecifyKind(localDateTime.ToDateTimeUnspecified(), DateTimeKind.Local) },
+                    new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.Timestamp }
                 };
             }
         }
@@ -120,7 +123,7 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(() => cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
-        #endregion Timestamp
+        #endregion Timestamp without time zone
 
         #region Timestamp with time zone
 
@@ -145,7 +148,12 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(expectedInstance.ToDateTimeOffset()));
 
             Assert.That(() => reader.GetFieldValue<LocalDateTime>(0), Throws.TypeOf<InvalidCastException>());
-            Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+#if NET6_0_OR_GREATER
+            Assert.That(() => reader.GetFieldValue<DateOnly>(0), Throws.TypeOf<InvalidCastException>());
+#endif
+
+            // Internal PostgreSQL representation, for out-of-range values.
+            Assert.That(() => reader.GetInt64(0), Throws.Nothing);
         }
 
         static readonly TestCaseData[] TimestampTzValues =
@@ -185,7 +193,8 @@ namespace Npgsql.NodaTime.Tests
                     new() { Value = instance.InUtc() },
                     new() { Value = instance.WithOffset(Offset.Zero) },
                     new() { Value = instance.InUtc().ToDateTimeUtc() },
-                    new() { Value = instance.ToDateTimeOffset() }
+                    new() { Value = instance.ToDateTimeOffset() },
+                    new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.TimestampTz }
                 };
             }
         }
@@ -282,6 +291,8 @@ namespace Npgsql.NodaTime.Tests
 
         #region Date
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
+
         [Test]
         public async Task Date()
         {
@@ -326,8 +337,13 @@ namespace Npgsql.NodaTime.Tests
                 Assert.That(reader.GetFieldValue<LocalDate>(2), Is.EqualTo(new LocalDate(-5, 3, 3)));
                 Assert.That(reader.GetFieldValue<DateTime>(3), Is.EqualTo(dateTime));
                 Assert.That(reader.GetDateTime(4), Is.EqualTo(dateTime));
+
+                // Internal PostgreSQL representation, for out-of-range values.
+                Assert.That(() => reader.GetInt32(0), Throws.Nothing);
             }
         }
+
+#pragma warning restore 618 // NpgsqlDate is obsolete, remove in 7.0
 
 #if NET6_0_OR_GREATER
         [Test]
@@ -593,6 +609,24 @@ namespace Npgsql.NodaTime.Tests
 
             Assert.That(() => reader.GetFieldValue<Duration>(0), Throws.Exception.TypeOf<NpgsqlException>().With.Message.EqualTo(
                 "Cannot read PostgreSQL interval with non-zero months to NodaTime Duration. Try reading as a NodaTime Period instead."));
+        }
+
+        [Test]
+        public async Task IntervalAsNpgsqlInterval()
+        {
+            var expected = new NpgsqlInterval(0, 1, 7384005000);
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
+            cmd.Parameters.AddWithValue("p2", expected);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.That(reader.GetFieldValue<NpgsqlInterval>(i), Is.EqualTo(expected));
+            }
         }
 
         #endregion Interval

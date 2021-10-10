@@ -150,6 +150,15 @@ Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.Type
 *REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.PgTypeName.set -> void
 *REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.TypeHandlerFactory.get -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandlerFactory?
 *REMOVED*Npgsql.TypeMapping.NpgsqlTypeMappingBuilder.TypeHandlerFactory.set -> void
+NpgsqlTypes.NpgsqlInterval
+NpgsqlTypes.NpgsqlInterval.NpgsqlInterval() -> void
+NpgsqlTypes.NpgsqlInterval.NpgsqlInterval(int months, int days, long time) -> void
+NpgsqlTypes.NpgsqlInterval.Months.get -> int
+NpgsqlTypes.NpgsqlInterval.Days.get -> int
+NpgsqlTypes.NpgsqlInterval.Time.get -> long
+NpgsqlTypes.NpgsqlInterval.Equals(NpgsqlTypes.NpgsqlInterval other) -> bool
+override NpgsqlTypes.NpgsqlInterval.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlInterval.GetHashCode() -> int
 NpgsqlTypes.NpgsqlTsQuery.Write(System.Text.StringBuilder! stringBuilder) -> void
 override Npgsql.NpgsqlBatch.Cancel() -> void
 override Npgsql.NpgsqlBatch.CreateDbBatchCommand() -> System.Data.Common.DbBatchCommand!

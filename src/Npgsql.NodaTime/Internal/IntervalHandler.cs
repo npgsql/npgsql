@@ -7,13 +7,16 @@ using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using BclIntervalHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.IntervalHandler;
 
+#pragma warning disable 618 // NpgsqlTimeSpan is obsolete, remove in 7.0
+
 namespace Npgsql.NodaTime.Internal
 {
     sealed partial class IntervalHandler :
         NpgsqlSimpleTypeHandler<Period>,
         INpgsqlSimpleTypeHandler<Duration>,
         INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>,
-        INpgsqlSimpleTypeHandler<TimeSpan>
+        INpgsqlSimpleTypeHandler<TimeSpan>,
+        INpgsqlSimpleTypeHandler<NpgsqlInterval>
     {
         readonly BclIntervalHandler _bclHandler;
 
@@ -103,5 +106,14 @@ namespace Npgsql.NodaTime.Internal
 
         void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => ((INpgsqlSimpleTypeHandler<TimeSpan>)_bclHandler).Write(value, buf, parameter);
+
+        NpgsqlInterval INpgsqlSimpleTypeHandler<NpgsqlInterval>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _bclHandler.Read<NpgsqlInterval>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<NpgsqlInterval>.ValidateAndGetLength(NpgsqlInterval value, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<NpgsqlInterval>)_bclHandler).ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<NpgsqlInterval>.Write(NpgsqlInterval value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<NpgsqlInterval>)_bclHandler).Write(value, buf, parameter);
     }
 }

@@ -11,7 +11,7 @@ namespace Npgsql.NodaTime.Internal
 {
     sealed partial class LegacyTimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
                               INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>, 
-                              INpgsqlSimpleTypeHandler<DateTime>
+                              INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<long>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
         readonly TimestampTzHandler _wrappedHandler;
@@ -59,6 +59,9 @@ namespace Npgsql.NodaTime.Internal
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _wrappedHandler.Read<DateTime>(buf, len, fieldDescription);
 
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _wrappedHandler.Read<long>(buf, len, fieldDescription);
+
         #endregion Read
 
         #region Write
@@ -92,6 +95,12 @@ namespace Npgsql.NodaTime.Internal
 
         void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => ((INpgsqlSimpleTypeHandler<DateTime>)_wrappedHandler).Write(value, buf, parameter);
+
+        int INpgsqlSimpleTypeHandler<long>.ValidateAndGetLength(long value, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<long>)_wrappedHandler).ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<long>.Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<long>)_wrappedHandler).Write(value, buf, parameter);
 
         #endregion Write
     }

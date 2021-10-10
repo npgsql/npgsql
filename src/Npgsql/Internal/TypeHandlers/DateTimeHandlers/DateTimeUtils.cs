@@ -37,6 +37,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             }
         }
 
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
         internal static NpgsqlDateTime ReadNpgsqlDateTime(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
@@ -71,6 +72,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
                 return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             }
         }
+#pragma warning restore 618
 
         internal static void WriteTimestamp(DateTime value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
         {
@@ -90,6 +92,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             buf.WriteInt64(postgresTimestamp);
         }
 
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
         internal static void WriteTimestamp(NpgsqlDateTime value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
         {
             if (value.IsInfinity)
@@ -117,5 +120,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
                 buf.WriteInt64(uSecsTime - uSecsDate);
             }
         }
+#pragma warning restore 618
     }
 }

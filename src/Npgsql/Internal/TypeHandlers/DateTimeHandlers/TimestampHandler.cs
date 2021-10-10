@@ -6,6 +6,8 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using static Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateTimeUtils;
 
+#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
+
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -18,7 +20,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    public partial class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>, INpgsqlSimpleTypeHandler<long>
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
@@ -42,6 +44,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadNpgsqlDateTime(buf, len, fieldDescription);
+
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => buf.ReadInt64();
 
         #endregion Read
 
@@ -76,12 +81,19 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         }
 
         /// <inheritdoc />
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter) => 8;
+
+        /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => WriteTimestamp(value, buf, ConvertInfinityDateTime);
 
         /// <inheritdoc />
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => WriteTimestamp(value, buf, ConvertInfinityDateTime);
+
+        /// <inheritdoc />
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => buf.WriteInt64(value);
 
         #endregion Write
     }

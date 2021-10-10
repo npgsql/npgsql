@@ -460,6 +460,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             }
         }
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test]
         public async Task GetProviderSpecificValues()
         {
@@ -480,6 +481,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
                 Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
             }
         }
+#pragma warning restore 618
 
         [Test]
         public async Task ExecuteReaderGettingEmptyResultSetWithOutputParameter()
@@ -928,6 +930,7 @@ LANGUAGE plpgsql VOLATILE";
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
         }
 
+#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test]
         public async Task InvalidCast()
         {
@@ -948,6 +951,7 @@ LANGUAGE plpgsql VOLATILE";
             }
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
+#pragma warning restore 618
 
         [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]
         public async Task ManyReads()

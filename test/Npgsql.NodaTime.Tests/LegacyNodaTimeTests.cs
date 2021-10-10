@@ -40,7 +40,12 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(localDateTime.ToDateTimeUnspecified()));
 
             Assert.That(() => reader.GetFieldValue<ZonedDateTime>(0), Throws.TypeOf<InvalidCastException>());
-            Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+#if NET6_0_OR_GREATER
+            Assert.That(() => reader.GetFieldValue<DateOnly>(0), Throws.TypeOf<InvalidCastException>());
+#endif
+
+            // Internal PostgreSQL representation, for out-of-range values.
+            Assert.That(() => reader.GetInt64(0), Throws.Nothing);
         }
 
         [Test, TestCaseSource(nameof(TimestampValues))]
@@ -72,6 +77,7 @@ namespace Npgsql.NodaTime.Tests
                     new() { Value = localDateTime, DbType = DbType.DateTime },
                     new() { Value = localDateTime, DbType = DbType.DateTime2 },
                     new() { Value = localDateTime.ToDateTimeUnspecified() },
+                    new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.Timestamp }
                 };
             }
         }
@@ -158,7 +164,11 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(expectedInstance.ToDateTimeOffset().ToLocalTime()));
 
             Assert.That(() => reader.GetFieldValue<LocalDateTime>(0), Throws.TypeOf<InvalidCastException>());
-            Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+#if NET6_0_OR_GREATER
+            Assert.That(() => reader.GetFieldValue<DateOnly>(0), Throws.TypeOf<InvalidCastException>());
+#endif
+            // Internal PostgreSQL representation, for out-of-range values.
+            Assert.That(() => reader.GetInt64(0), Throws.Nothing);
         }
 
         [Test, TestCaseSource(nameof(TimestampValues))]
@@ -188,6 +198,7 @@ namespace Npgsql.NodaTime.Tests
                     new() { Value = instance.InUtc() },
                     new() { Value = instance.WithOffset(Offset.Zero) },
                     new() { Value = instance.ToDateTimeOffset() },
+                    new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.TimestampTz },
 
                     // In legacy mode we support non-UTC ZonedDateTime and OffsetDateTime
                     new() { Value = instance.InZone(DateTimeZoneProviders.Tzdb["America/New_York"]), NpgsqlDbType = NpgsqlDbType.TimestampTz },
