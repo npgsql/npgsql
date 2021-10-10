@@ -52,41 +52,55 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        static readonly TestCaseData[] DateSpecialCases = {
-            new TestCaseData(NpgsqlDate.Infinity).SetName(nameof(DateSpecial) + "Infinity"),
-            new TestCaseData(NpgsqlDate.NegativeInfinity).SetName(nameof(DateSpecial) + "NegativeInfinity"),
-            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName(nameof(DateSpecial) +"BC"),
-        };
-
-        [Test, TestCaseSource(nameof(DateSpecialCases))]
-        public async Task DateSpecial(NpgsqlDate value)
+        [Test]
+        public async Task Date_DateTime_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p", conn);
-            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-            using (var reader = await cmd.ExecuteReaderAsync()) {
-                reader.Read();
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
-                Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
-            }
-            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = DateTime.MinValue, NpgsqlDbType = NpgsqlDbType.Date },
+                    new() { Value = DateTime.MaxValue, NpgsqlDbType = NpgsqlDbType.Date }
+                }
+            };
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader[0], Is.EqualTo(convertInfinityDateTime ? "-infinity" : "0001-01-01"));
+            Assert.That(reader[1], Is.EqualTo(convertInfinityDateTime ? "infinity" : "9999-12-31"));
         }
 
-        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public async Task DateConvertInfinity_DateTime()
+        [Test]
+        public async Task Date_DateTime_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
         {
-            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
-            conn.Open();
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateTime.MaxValue);
-            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateTime.MinValue);
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
-            Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
-            Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
-            Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+            await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader[0], Is.EqualTo(DateTime.MinValue));
+                Assert.That(reader[1], Is.EqualTo(DateTime.MaxValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
 #if NET6_0_OR_GREATER
@@ -113,21 +127,55 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetValue(0), Is.EqualTo(dateTime));
         }
 
-        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public async Task DateConvertInfinity_DateOnly()
+        [Test]
+        public async Task Date_DateOnly_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
         {
-            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
-            conn.Open();
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateOnly.MaxValue);
-            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateOnly.MinValue);
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
-            Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
-            Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(DateOnly.MaxValue));
-            Assert.That(reader.GetFieldValue<DateOnly>(1), Is.EqualTo(DateOnly.MinValue));
+            await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = DateOnly.MinValue, NpgsqlDbType = NpgsqlDbType.Date },
+                    new() { Value = DateOnly.MaxValue, NpgsqlDbType = NpgsqlDbType.Date }
+                }
+            };
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader[0], Is.EqualTo(convertInfinityDateTime ? "-infinity" : "0001-01-01"));
+            Assert.That(reader[1], Is.EqualTo(convertInfinityDateTime ? "infinity" : "9999-12-31"));
+        }
+
+        [Test]
+        public async Task Date_DateOnly_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(DateOnly.MinValue));
+                Assert.That(reader.GetFieldValue<DateOnly>(1), Is.EqualTo(DateOnly.MaxValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         [Test]
@@ -250,7 +298,7 @@ namespace Npgsql.Tests.Types
             new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Unspecified), "2015-01-27 08:45:12.345")
                 .SetName("TimestampPost2000"),
             new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Unspecified), "2013-07-25 00:00:00")
-                .SetName("TimestampDateOnly"),
+                .SetName("TimestampDateOnly")
         };
 
         [Test, TestCaseSource(nameof(TimestampValues))]
@@ -270,7 +318,7 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(dateTime));
 
             // Provider-specific type (NpgsqlTimeStamp)
-            var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
+            var npgsqlDateTime = new NpgsqlDateTime(dateTime);
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDateTime)));
             Assert.That(reader.GetTimeStamp(0), Is.EqualTo(npgsqlDateTime));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDateTime));
@@ -360,41 +408,58 @@ namespace Npgsql.Tests.Types
             Assert.That(() => cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
-        static readonly TestCaseData[] TimestampSpecialCases = {
-            new TestCaseData(NpgsqlDateTime.Infinity).SetName(nameof(TimeStampSpecial) + "Infinity"),
-            new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName(nameof(TimeStampSpecial) + "NegativeInfinity"),
-            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName(nameof(TimeStampSpecial) + "BC"),
-        };
-
-        [Test, TestCaseSource(nameof(TimestampSpecialCases))]
-        public async Task TimeStampSpecial(NpgsqlDateTime value)
+        [Test]
+        public async Task Timestamp_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p", conn);
-            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-            using (var reader = await cmd.ExecuteReaderAsync()) {
-                reader.Read();
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
-                Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = DateTime.MinValue, NpgsqlDbType = NpgsqlDbType.Timestamp },
+                    new() { Value = DateTime.MaxValue, NpgsqlDbType = NpgsqlDbType.Timestamp },
+                }
+            };
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                await reader.ReadAsync();
+
+                Assert.That(reader[0], Is.EqualTo(convertInfinityDateTime ? "-infinity" : "0001-01-01 00:00:00"));
+                Assert.That(reader[1], Is.EqualTo(convertInfinityDateTime ? "infinity" : "9999-12-31 23:59:59.999999"));
             }
-            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
-        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public async Task TimeStampConvertInfinity()
+        [Test]
+        public async Task Timestamp_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
         {
-            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
-            conn.Open();
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Timestamp, DateTime.MaxValue);
-            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Timestamp, DateTime.MinValue);
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
-            Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
-            Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+            await using var cmd = new NpgsqlCommand(
+                "SELECT '-infinity'::timestamp without time zone, 'infinity'::timestamp without time zone",
+                conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader[0], Is.EqualTo(DateTime.MinValue));
+                Assert.That(reader[1], Is.EqualTo(DateTime.MaxValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         [Test]
@@ -483,19 +548,19 @@ namespace Npgsql.Tests.Types
 
         static readonly TestCaseData[] TimestampTzReadValues =
         {
-            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "1998-04-12 13:26:38")
+            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "1998-04-12 13:26:38+00")
                 .SetName("TimestampPre2000"),
-            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc), "2015-01-27 08:45:12.345")
+            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc), "2015-01-27 08:45:12.345+00")
                 .SetName("TimestampPost2000"),
-            new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 00:00:00")
-                .SetName("TimestampDateOnly"),
+            new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 00:00:00+00")
+                .SetName("TimestampDateOnly")
         };
 
         [Test, TestCaseSource(nameof(TimestampTzReadValues))]
         public async Task Timestamptz_read(DateTime dateTime, string s)
         {
             await using var conn = await OpenConnectionAsync();
-            await using var cmd = new NpgsqlCommand($"SELECT '{s}+00'::timestamp with time zone", conn);
+            await using var cmd = new NpgsqlCommand($"SELECT '{s}'::timestamp with time zone", conn);
             await using var reader = await cmd.ExecuteReaderAsync();
             await reader.ReadAsync();
 
@@ -508,7 +573,7 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetDateTime(0).Kind, Is.EqualTo(DateTimeKind.Utc));
 
             // DateTimeOffset
-            Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(dateTime)));
+            Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(dateTime, TimeSpan.Zero)));
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0).Offset, Is.EqualTo(TimeSpan.Zero));
 
             // Provider-specific type (NpgsqlTimeStamp)
@@ -525,27 +590,34 @@ namespace Npgsql.Tests.Types
 
         static readonly TestCaseData[] TimestampTzWriteValues =
         {
-            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "1998-04-12 15:26:38+02")
+            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc), "1998-04-12 13:26:38")
                 .SetName("TimestampTzPre2000"),
-            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc), "2015-01-27 09:45:12.345+01")
+            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc), "2015-01-27 08:45:12.345")
                 .SetName("TimestampTzPost2000"),
-            new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 02:00:00+02")
+            new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 00:00:00")
                 .SetName("TimestampTzDateOnly"),
             new TestCaseData(NpgsqlDateTime.Infinity, "infinity")
-                .SetName("TimestampTzInfinity"),
+                .SetName("TimestampTzNpgsqlDateTimeInfinity"),
             new TestCaseData(NpgsqlDateTime.NegativeInfinity, "-infinity")
-                .SetName("TimestampTzNegativeInfinity"),
-            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0, DateTimeKind.Utc), "0005-03-03 01:53:28+00:53:28 BC")
+                .SetName("TimestampTzNpgsqlDateTimeNegativeInfinity"),
+            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0, DateTimeKind.Utc), "0005-03-03 01:00:00 BC")
                 .SetName("TimestampTzBC"),
+            new TestCaseData(DateTime.MinValue, "-infinity")
+                .SetName("TimestampNegativeInfinity"),
+            new TestCaseData(DateTime.MaxValue, "infinity")
+                .SetName("TimestampInfinity")
         };
 
         [Test, TestCaseSource(nameof(TimestampTzWriteValues))]
         public async Task Timestamptz_write_values(object dateTime, string expected)
         {
             await using var conn = await OpenConnectionAsync();
-            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+
+            // PG sends local timestamptz *text* representations (according to TimeZone). Convert to a timestamp without time zone at UTC
+            // for sensible assertions.
+            await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
             {
-                Parameters = { new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.TimestampTz} }
+                Parameters = { new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
             };
 
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected));
@@ -610,21 +682,59 @@ namespace Npgsql.Tests.Types
             Assert.That(() => cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
-        [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public async Task TimeStampTzConvertInfinity()
+        [Test]
+        public async Task TimestampTz_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
         {
-            using var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true");
-            conn.Open();
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimestampTz, DateTime.MaxValue);
-            cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTz, DateTime.MinValue);
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
-            Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
-            Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
+            await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = DateTime.MinValue, NpgsqlDbType = NpgsqlDbType.TimestampTz },
+                }
+            };
+
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(convertInfinityDateTime ? "-infinity" : "0001-01-01 00:00:00"));
+
+            cmd.Parameters[0].Value = DateTime.MaxValue;
+
+            if (convertInfinityDateTime)
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("infinity"));
+            else
+                Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidCastException>());
+        }
+
+        [Test]
+        public async Task TimestampTz_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand(
+                "SELECT '-infinity'::timestamp with time zone, 'infinity'::timestamp with time zone",
+                conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader[0], Is.EqualTo(DateTime.MinValue));
+                Assert.That(reader[1], Is.EqualTo(DateTime.MaxValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         [Test]

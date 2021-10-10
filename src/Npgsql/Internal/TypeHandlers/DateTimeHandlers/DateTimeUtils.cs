@@ -76,16 +76,19 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         internal static void WriteTimestamp(DateTime value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
         {
-            if (value == DateTime.MaxValue && convertInfinityDateTime)
+            if (convertInfinityDateTime)
             {
-                buf.WriteInt64(long.MaxValue);
-                return;
-            }
+                if (value == DateTime.MaxValue)
+                {
+                    buf.WriteInt64(long.MaxValue);
+                    return;
+                }
 
-            if (value == DateTime.MinValue && convertInfinityDateTime)
-            {
-                buf.WriteInt64(long.MinValue);
-                return;
+                if (value == DateTime.MinValue)
+                {
+                    buf.WriteInt64(long.MinValue);
+                    return;
+                }
             }
 
             var postgresTimestamp = EncodeTimestamp(value);

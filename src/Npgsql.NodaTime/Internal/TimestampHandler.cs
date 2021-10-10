@@ -27,6 +27,8 @@ namespace Npgsql.NodaTime.Internal
         {
             var value = buf.ReadInt64();
 
+            // No {Min,Max}Value for LocalDateTime: https://github.com/nodatime/nodatime/issues/58
+            // But infinity values can still be accessed as long.{Min,Max}Value
             if (value == long.MaxValue || value == long.MinValue)
                 throw new NotSupportedException($"Infinity values not supported when reading {nameof(LocalDateTime)}");
 

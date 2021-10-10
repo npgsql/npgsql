@@ -103,46 +103,37 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Kind != DateTimeKind.Utc &&
-                (!ConvertInfinityDateTime || value != DateTime.MinValue && value != DateTime.MaxValue))
-            {
-                throw new InvalidCastException(
+            => value.Kind == DateTimeKind.Utc ||
+               value == DateTime.MinValue || // Allowed since this is default(DateTime) - sent without any timezone conversion.
+               value == DateTime.MaxValue && ConvertInfinityDateTime ||
+               LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
                     $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Kind != DateTimeKind.Utc && value.IsFinite)
-            {
-                throw new InvalidCastException(
+            => value.Kind == DateTimeKind.Utc ||
+               value == NpgsqlDateTime.Infinity ||
+               value == NpgsqlDateTime.NegativeInfinity ||
+               LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
                     $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         /// <inheritdoc />
         public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Offset != TimeSpan.Zero)
-            {
-                throw new InvalidCastException(
-                    $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. " +
+            => value.Offset == TimeSpan.Zero || LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
+                    $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', " +
+                    "only offset 0 (UTC) is supported. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         /// <inheritdoc />
         public int ValidateAndGetLength(long value, NpgsqlParameter? parameter) => 8;
@@ -165,7 +156,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
                 }
             }
             else
-                Debug.Assert(value.Kind == DateTimeKind.Utc || (ConvertInfinityDateTime && (value == DateTime.MinValue || value == DateTime.MaxValue)));
+                Debug.Assert(value.Kind == DateTimeKind.Utc || value == DateTime.MinValue || value == DateTime.MaxValue);
 
             WriteTimestamp(value, buf, ConvertInfinityDateTime);
         }

@@ -25,7 +25,7 @@ namespace Npgsql.NodaTime.Tests
             new TestCaseData(new LocalDateTime(2015, 1, 27, 8, 45, 12, 345), "2015-01-27 08:45:12.345")
                 .SetName("TimestampPost2000"),
             new TestCaseData(new LocalDateTime(1999, 12, 31, 23, 59, 59, 999).PlusNanoseconds(456000), "1999-12-31 23:59:59.999456")
-                .SetName("TimestampMicroseconds"),
+                .SetName("TimestampMicroseconds")
         };
 
         [Test, TestCaseSource(nameof(TimestampValues))]
@@ -250,8 +250,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamptz_read_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd =
                 new NpgsqlCommand("SELECT 'infinity'::timestamp with time zone, '-infinity'::timestamp with time zone", conn);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -266,8 +265,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamptz_write_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text, $3::text, $4::text", conn)
             {
                 Parameters =
@@ -285,6 +283,65 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(reader[1], Is.EqualTo("infinity"));
             Assert.That(reader[2], Is.EqualTo("-infinity"));
             Assert.That(reader[3], Is.EqualTo("-infinity"));
+        }
+
+        [Test]
+        public async Task Timestamptz_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+            {
+                Parameters = { new() { Value = Instant.MinValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
+            };
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
+            }
+            else
+            {
+                // NodaTime Instant.MinValue is outside the PG timestamp range.
+                Assert.That(async () => await cmd.ExecuteScalarAsync(),
+                    Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+            }
+
+            await using var cmd2 = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+            {
+                Parameters = { new() { Value = Instant.MaxValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
+            };
+
+            Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(convertInfinityDateTime ? "infinity" : "9999-12-31 23:59:59.999999"));
+        }
+
+        [Test]
+        public async Task Timestamptz_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var cmd = new NpgsqlCommand(
+                "SELECT '-infinity'::timestamp with time zone, 'infinity'::timestamp with time zone", conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader[0], Is.EqualTo(Instant.MinValue));
+                Assert.That(reader[1], Is.EqualTo(Instant.MaxValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         #endregion Timestamp with time zone
@@ -344,6 +401,58 @@ namespace Npgsql.NodaTime.Tests
         }
 
 #pragma warning restore 618 // NpgsqlDate is obsolete, remove in 7.0
+
+        [Test]
+        public async Task Date_ConvertInfinityDateTime_write([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+            {
+                Parameters = { new() { Value = LocalDate.MinIsoValue, NpgsqlDbType = NpgsqlDbType.Date } }
+            };
+
+            // LocalDate.MinIsoValue is outside of the PostgreSQL date range
+            if (convertInfinityDateTime)
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
+            else
+                Assert.That(async () => await cmd.ExecuteScalarAsync(),
+                    Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+
+            cmd.Parameters[0].Value = LocalDate.MaxIsoValue;
+
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(convertInfinityDateTime ? "infinity" : "9999-12-31"));
+        }
+
+        [Test]
+        public async Task Date_ConvertInfinityDateTime_read([Values] bool convertInfinityDateTime)
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConvertInfinityDateTime = convertInfinityDateTime
+            }.ToString();
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (convertInfinityDateTime)
+            {
+                Assert.That(reader[0], Is.EqualTo(LocalDate.MinIsoValue));
+                Assert.That(reader[1], Is.EqualTo(LocalDate.MaxIsoValue));
+            }
+            else
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
+        }
 
 #if NET6_0_OR_GREATER
         [Test]

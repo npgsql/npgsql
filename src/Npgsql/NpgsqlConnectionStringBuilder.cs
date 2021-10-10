@@ -1420,6 +1420,7 @@ namespace Npgsql
         [Category("Compatibility")]
         [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
         [DisplayName("Convert Infinity DateTime")]
+        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
         public bool ConvertInfinityDateTime
         {
