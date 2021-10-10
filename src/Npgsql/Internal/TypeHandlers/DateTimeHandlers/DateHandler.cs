@@ -145,6 +145,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => new RangeHandler<DateTime, DateOnly>(pgRangeType, this);
+
+        public override NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgRangeType)
+            => new MultirangeHandler<DateTime, DateOnly>(pgRangeType, new RangeHandler<DateTime, DateOnly>(pgRangeType, this));
 #endif
     }
 }
