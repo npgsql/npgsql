@@ -1,75 +1,65 @@
 # Date and Time Handling
 
-> [!Note]
-> Since 4.0 the recommended way of working with date/time types is [the NodaTime plugin](nodatime.md).
+> [!WARNING]
+> Npgsql 6.0 introduced some important changes to how timestamps are mapped, [see the release notes for more information](../release-notes/6.0.html).
 
-Handling date and time values usually isn't hard, but you must pay careful attention to differences in how the .NET types and PostgreSQL represent dates.
-It's worth reading the [PostgreSQL date/time type documentation](http://www.postgresql.org/docs/current/static/datatype-datetime.html) to familiarize
-yourself with PostgreSQL's types.
+> [!NOTE]
+> The recommended way of working with date/time types is [the NodaTime plugin](nodatime.md): the NodaTime types are much better-designed, avoid the flaws in the built-in BCL types, and are fully supported by Npgsql.
+
+Handling date and time values usually isn't hard, but you must pay careful attention to differences in how the .NET types and PostgreSQL represent dates. It's worth reading the [PostgreSQL date/time type documentation](http://www.postgresql.org/docs/current/static/datatype-datetime.html) to familiarize yourself with PostgreSQL's types.
 
 ## .NET types and PostgreSQL types
 
-> [!Warning]
-> A common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the timestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx).
-
 The .NET and PostgreSQL types differ in the resolution and range they provide; the .NET type usually have a higher resolution but a lower range than the PostgreSQL types:
 
-PostgreSQL type             | Precision/Range                           | .NET Native Type             | Precision/Range                                | Npgsql .NET Provider-Specific Type
-----------------------------|-------------------------------------------|------------------------------|------------------------------------------------|-----------------------------------
-timestamp without time zone | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
-timestamp with time zone    | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
-date                        | 1 day, 4713BC-5874897AD                   | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDate
-time without time zone      | 1 microsecond, 0-24 hours                 | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | N/A
-time with time zone         | 1 microsecond, 0-24 hours                 | DateTimeOffset (ignore date) | 100 nanoseconds, 1AD-9999AD                    | N/A
-interval                    | 1 microsecond, -178000000-178000000 years | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | NpgsqlTimeSpan
+PostgreSQL type             | Precision/Range                           | .NET Native Type             | Precision/Range
+----------------------------|-------------------------------------------|------------------------------|----------------
+timestamp without time zone | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD
+timestamp with time zone    | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD
+date                        | 1 day, 4713BC-5874897AD                   | DateOnly (6.0+), DateTime    | 100 nanoseconds, 1AD-9999AD
+time without time zone      | 1 microsecond, 0-24 hours                 | TimeOnly (6.0+), TimeSpan    | 100 nanoseconds, -10,675,199 - 10,675,199 days
+time with time zone         | 1 microsecond, 0-24 hours                 | DateTimeOffset (ignore date) | 100 nanoseconds, 1AD-9999AD
+interval                    | 1 microsecond, -178000000-178000000 years | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days
 
-If your needs are met by the .NET native types, it is best that you use them directly with Npgsql.
-If, however, you require the extended range of a PostgreSQL type you can use Npgsql's provider-specific types, which represent PostgreSQL types in an exact way.
+For almost all applications, the range of the .NET native types (or the NodaTime types) are more than sufficient. In the rare cases where you need to access values outside these ranges, timestamps can be accessed as `long`, dates as `int`, and intervals as `NpgsqlInterval`. These are the raw PostgreSQL binary representations of these type, so you'll have to deal with encoding/decoding yourself.
 
-## Timezones
+## Timestamps and timezones
 
-It's critical to understand exactly how timezones and timezone conversions are handled between .NET types and PostgreSQL.
-In particular, .NET's DateTime has a [Kind](https://msdn.microsoft.com/en-us/library/system.datetime.kind(v=vs.110).aspx) property which impacts how
-Npgsql reads and writes the value.
+> [!Warning]
+> A common mistake is for users to think that the PostgreSQL `timestamp with time zone` type stores the timezone in the database. This is not the case: only a UTC timestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx). To store a timezone in the database, add a separate text column containing the timezone ID.
 
-By default, `DateTime` is sent to PostgreSQL as a `timestamp without time zone` - no timezone conversion of any kind will occur, and your `DateTime` instance will be transferred as-is to PostgreSQL. This is the recommended way to store timestamps in the database. Note that you may still send `DateTime` as `timestamp with time zone` by setting `NpgsqlDbType.TimestampTz` on your `NpgsqlParameter`; in this case, if the `Kind` is `Local`, Npgsql will convert the value to UTC before sending it to PostgreSQL. Otherwise, it will be sent as-is.
+In PostgreSQL, `timestamp with time zone` represents a UTC timestamp, while `timestamp without time zone` represents a local or unspecified time zone. Starting with 6.0, Npgsql maps UTC DateTime to `timestamp with time zone`, and Local/Unspecified DateTime to `timestamp without time zone`; trying to send a non-UTC DateTime as `timestamptz` will throw an exception, etc. Npgsql also supports reading and writing DateTimeOffset to `timestamp with time zone`, but only with Offset=0. Prior to 6.0, `timestamp with time zone` would be converted to a local timestamp when read - see below for more details. The precise improvements and breaking changes are detailed in the [6.0 breaking changes](../release-notes/6.0.html#timestamp-rationalization-and-improvements); to revert to the pre-6.0 behavior, add the following at the start of your application, before any Npgsql operations are invoked:
 
-You can also send `DateTimeOffset` values, which are written as `timestamptz` and are converted to UTC before sending.
+```c#
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+```
 
-PostgreSQL `time with time zone` is the only date/time type which actually stores a timezone in the database. You can use a `DateTimeOffset` to send one to PostgreSQL, in which case the date component is dropped and the time and timezone are preserved. You can also send a `DateTime`, in which case the `Kind` will determine the the timezone sent to the database.
-
-## Detailed Behavior: Sending values to the database
-
-.NET value                     | NpgsqlDbType                       | Action
--------------------------------|------------------------------------|--------------------------------------------------
-DateTime                       | NpgsqlDbType.Timestamp (default)   | Send as-is
-DateTime(Kind=UTC,Unspecified) | NpgsqlDbType.TimestampTz           | Send as-is
-DateTime(Kind=Local)           | NpgsqlDbType.TimestampTz           | Convert to UTC locally before sending
-                               |                                    |
-DateTimeOffset                 | NpgsqlDbType.TimestampTz (default) | Convert to UTC locally before sending
-                               |                                    |
-TimeSpan                       | NpgsqlDbType.Time (default)        | Send as-is
-                               |                                    |
-DateTimeOffset                 | NpgsqlDbType.TimeTz                | Send time and timezone
-DateTime(Kind=UTC)             | NpgsqlDbType.TimeTz                | Send time and UTC timezone
-DateTime(Kind=Local)           | NpgsqlDbType.TimeTz                | Send time and local system timezone
-DateTime(Kind=Unspecified)     | NpgsqlDbType.TimeTz                | Assume local, send time and local system timezone
+Use of the `time with time zone` type is discouraged, [see the PostgreSQL documentation](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-TIMEZONES). You can use a `DateTimeOffset` to read and write values - the date component will be ignored.
 
 ## Detailed Behavior: Reading values from the database
 
-PG type     | .NET value               | Action
-------------|--------------------------|--------------------------------------------------
-timestamp   | DateTime (default)       | Kind=Unspecified
-            |                          |
-timestamptz | DateTime (default)       | Kind=Local (according to system timezone)
-timestamptz | DateTimeOffset           | In local timezone offset
-            |                          |
-time        | TimeSpan (default)       | As-is
-            |                          |
-timetz      | DateTimeOffset (default) | Date component is empty
-timetz      | TimeSpan                 | Strip offset, read as-is
-timetz      | DateTime                 | Strip offset, date is empty
+PostgreSQL type             | Default .NET type          | Non-default .NET types
+--------------------------- | -------------------------- | ----------------------
+timestamp without time zone | DateTime (Unspecified)     |
+timestamp with time zone    | DateTime (Utc<sup>1</sup>) | DateTimeOffset (Offset=0)<sup>2</sup>
+date                        | DateTime                   | DateOnly (6.0+)
+time without time zone      | TimeSpan                   | TimeOnly (6.0+)
+time with time zone         | DateTimeOffset             |
+interval                    | TimeSpan                   |
 
-## Further Reading
+<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
 
-If you're really interested in some of the mapping decisions above, check out [this issue](https://github.com/npgsql/npgsql/issues/347).
+<sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
+
+## Detailed Behavior: Sending values to the database
+
+PostgreSQL type             | Default .NET types                         | Non-default .NET types                  | NpgsqlDbType          | DbType
+--------------------------- | ------------------------------------------ | --------------------------------------- | --------------------- | ------
+timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime, DateTime2
+timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTimeOffset
+date                        | DateOnly (6.0+)                            | DateTime                                | Date                  | Date
+time without time zone      | TimeOnly (6.0+)                            | TimeSpan                                | Time                  | Time
+time with time zone         |                                            | DateTimeOffset                          | TimeTz                |
+interval                    | TimeSpan                                   |                                         | Interval              |
+
+<sup>1</sup> UTC DateTime is written as `timestamp with time zone`, Local/Unspecified DateTimes are written as `timestamp without time zone`. In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), DateTime is always written as `timestamp without time zone`.
