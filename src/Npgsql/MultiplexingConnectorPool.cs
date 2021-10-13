@@ -226,6 +226,7 @@ namespace Npgsql
                 {
                     stats.Reset();
                     connector.FlagAsNotWritableForMultiplexing();
+                    command.TraceCommandStart(connector);
 
                     // Read queued commands and write them to the connector's buffer, for as long as we're
                     // under our write threshold and timer delay.

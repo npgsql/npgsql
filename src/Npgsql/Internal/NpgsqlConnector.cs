@@ -237,6 +237,8 @@ namespace Npgsql.Internal
         /// </summary>
         readonly ConnectorSource _connectorSource;
 
+        internal string UserFacingConnectionString => _connectorSource.UserFacingConnectionString;
+
         /// <summary>
         /// Contains the UTC timestamp when this connector was opened, used to implement
         /// <see cref="NpgsqlConnectionStringBuilder.ConnectionLifetime"/>.
@@ -262,6 +264,8 @@ namespace Npgsql.Internal
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         internal readonly Stopwatch QueryLogStopWatch = new();
+
+        internal EndPoint? ConnectedEndPoint { get; private set; }
 
         #endregion
 
@@ -915,6 +919,7 @@ namespace Npgsql.Internal
                     socket.Blocking = true;
                     SetSocketOptions(socket);
                     _socket = socket;
+                    ConnectedEndPoint = endpoint;
                     return;
                 }
                 catch (Exception e)
@@ -965,6 +970,7 @@ namespace Npgsql.Internal
                     await OpenSocketConnectionAsync(socket, endpoint, perIpTimeout, cancellationToken);
                     SetSocketOptions(socket);
                     _socket = socket;
+                    ConnectedEndPoint = endpoint;
                     return;
                 }
                 catch (Exception e)
@@ -1112,6 +1118,7 @@ namespace Npgsql.Internal
 
                         // We have a resultset for the command - hand back control to the command (which will
                         // return it to the user)
+                        command.TraceReceivedFirstResponse();
                         ReaderCompleted.Reset();
                         command.ExecutionCompletion.SetResult(this);
 
