@@ -16,6 +16,8 @@ namespace Npgsql.NodaTime.Internal
         readonly BclTimestampTzHandler _bclHandler;
         readonly bool _convertInfinityDateTime;
 
+        const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+
         public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType)
         {
@@ -31,8 +33,8 @@ namespace Npgsql.NodaTime.Internal
         internal static Instant ReadInstant(NpgsqlReadBuffer buf, bool convertInfinityDateTime)
             => buf.ReadInt64() switch
             {
-                long.MaxValue when convertInfinityDateTime => Instant.MaxValue,
-                long.MinValue when convertInfinityDateTime => Instant.MinValue,
+                long.MaxValue => convertInfinityDateTime ? Instant.MaxValue : throw new InvalidCastException(InfinityExceptionMessage),
+                long.MinValue => convertInfinityDateTime ? Instant.MinValue : throw new InvalidCastException(InfinityExceptionMessage),
                 var value => DecodeInstant(value)
             };
 
@@ -59,28 +61,20 @@ namespace Npgsql.NodaTime.Internal
             => 8;
 
         int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Zone != DateTimeZone.Utc)
-            {
-                throw new InvalidCastException(
-                    $"Cannot write ZonedDateTime with Zone={value.Zone} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
+            => value.Zone == DateTimeZone.Utc || LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
+                    $"Cannot write ZonedDateTime with Zone={value.Zone} to PostgreSQL type 'timestamp with time zone', " +
+                    "only UTC is supported. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Offset != Offset.Zero)
-            {
-                throw new InvalidCastException(
-                    $"Cannot write OffsetDateTime with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. " +
+            => value.Offset == Offset.Zero || LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
+                    $"Cannot write OffsetDateTime with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', " +
+                    "only offset 0 (UTC) is supported. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => WriteInstant(value, buf, _convertInfinityDateTime);

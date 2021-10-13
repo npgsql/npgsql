@@ -24,6 +24,8 @@ namespace Npgsql.NodaTime.Internal
         readonly bool _convertInfinityDateTime;
         readonly BclDateHandler _bclHandler;
 
+        const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+
         internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType)
         {
@@ -32,17 +34,12 @@ namespace Npgsql.NodaTime.Internal
         }
 
         public override LocalDate Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var value = buf.ReadInt32();
-            if (_convertInfinityDateTime)
+            => buf.ReadInt32() switch
             {
-                if (value == int.MaxValue)
-                    return LocalDate.MaxIsoValue;
-                if (value == int.MinValue)
-                    return LocalDate.MinIsoValue;
-            }
-            return new LocalDate().PlusDays(value + 730119);
-        }
+                int.MaxValue => _convertInfinityDateTime ? LocalDate.MaxIsoValue : throw new InvalidCastException(InfinityExceptionMessage),
+                int.MinValue => _convertInfinityDateTime ? LocalDate.MinIsoValue : throw new InvalidCastException(InfinityExceptionMessage),
+                var value => new LocalDate().PlusDays(value + 730119)
+            };
 
         public override int ValidateAndGetLength(LocalDate value, NpgsqlParameter? parameter)
             => 4;

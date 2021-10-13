@@ -54,31 +54,23 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Kind == DateTimeKind.Utc)
-            {
-                throw new InvalidCastException(
-                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', consider using 'timestamp with time zone'. " +
+            => value.Kind != DateTimeKind.Utc || LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
+                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
+                    "consider using 'timestamp with time zone'. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
-        {
-            if (!LegacyTimestampBehavior && value.Kind == DateTimeKind.Utc)
-            {
-                throw new InvalidCastException(
-                    "Cannot write NpgsqlDateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', consider using 'timestamp with time zone'. " +
+            => value.Kind != DateTimeKind.Utc || LegacyTimestampBehavior
+                ? 8
+                : throw new InvalidCastException(
+                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
+                    "consider using 'timestamp with time zone'. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-            }
-
-            return 8;
-        }
 
         /// <inheritdoc />
         public int ValidateAndGetLength(long value, NpgsqlParameter? parameter) => 8;
