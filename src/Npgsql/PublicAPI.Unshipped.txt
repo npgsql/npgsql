@@ -72,6 +72,8 @@ Npgsql.NpgsqlException.BatchCommand.set -> void
 *REMOVED*Npgsql.NpgsqlLengthCache
 *REMOVED*Npgsql.NpgsqlLengthCache.Get() -> int
 *REMOVED*Npgsql.NpgsqlLengthCache.Set(int len) -> int
+Npgsql.NpgsqlTracingOptions
+Npgsql.NpgsqlTracingOptions.NpgsqlTracingOptions() -> void
 Npgsql.PostgresTypes.PostgresMultirangeType
 Npgsql.PostgresTypes.PostgresMultirangeType.PostgresMultirangeType(string! ns, string! name, uint oid, Npgsql.PostgresTypes.PostgresRangeType! rangePostgresType) -> void
 Npgsql.PostgresTypes.PostgresMultirangeType.Subrange.get -> Npgsql.PostgresTypes.PostgresRangeType!
