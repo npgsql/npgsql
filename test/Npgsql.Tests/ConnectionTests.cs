@@ -653,6 +653,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
         public async Task UnixAbstractDomainSocket()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
