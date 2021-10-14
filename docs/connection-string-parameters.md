@@ -17,20 +17,20 @@ Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the p
 
 ## Security and encryption
 
-Parameter                    | Description                                                             | Default
----------------------------- | ----------------------------------------------------------------------- | -------
-SSL Mode                     | Controls whether SSL is used, depending on server support. Can be `Require`, `Disable`, or `Prefer`. [See docs for more info](security.md). | Disable
-Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md). | false
-Client Certificate           | Location of a client certificate to be sent to the server. [See docs](security.md) | PGSSLCERT
-Client Certificate Key       | Location of a client key for a client certificate to be sent to the server. | PGSSLKEY
-Root Certificate             | Location of a CA certificate used to validate the server certificate. | PGSSLROOTCERT
-Check Certificate Revocation | Whether to check the certificate revocation list during authentication. False by default. | false
-Integrated Security          | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false
+Parameter                    | Description                                                                                                                                 | Default
+---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------
+SSL Mode                     | Controls whether SSL is used, depending on server support. [See docs for possible values and more info](security.md).                       | Prefer in 6.0, Disable previously
+Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md).                                       | false
+Client Certificate           | Location of a client certificate to be sent to the server. [See docs](security.md)                                                          | PGSSLCERT
+Client Certificate Key       | Location of a client key for a client certificate to be sent to the server.                                                                 | PGSSLKEY
+Root Certificate             | Location of a CA certificate used to validate the server certificate.                                                                       | PGSSLROOTCERT
+Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | true in 6.0, false previously
+Integrated Security          | Whether to use integrated security to log in (GSS/SSPI). [See docs for more info](security.md).                                             | false
 Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
-Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
+Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md).                                             | postgres
 Include Realm                | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
 Include Error Detail         | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
-Log Parameters               | When enabled, parameter values are logged when commands are executed. | false
+Log Parameters               | When enabled, parameter values are logged when commands are executed.                                                                       | false
 
 ## Pooling
 
