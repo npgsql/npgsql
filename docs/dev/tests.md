@@ -7,7 +7,7 @@ title: Tests
 
 Npgsql has an extensive test suite to guard against regressions. The test suite is run on the official build server for the .NET Framework and .NET Core with all supported PostgreSQL backends.
 
-Continuous integration results are publicly available from [AppVeyor](https://ci.appveyor.com/project/roji/npgsql) and [Travis CI](https://travis-ci.org/npgsql).
+Continuous integration results are publicly available via [Github Actions](https://github.com/npgsql/npgsql/actions).
 
 ## Getting Started
 

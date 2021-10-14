@@ -1,5 +1,11 @@
 # Performance
 
+## Diagnostics
+
+To be able to improve performance, you first need to be able to see which queries are slow, and generally observe how your application is behaving. PostgreSQL provide some powerful features for knowing what's going on in the database; [the statistics collector](https://www.postgresql.org/docs/current/monitoring-stats.html) is a good place to start, and in particular the `pg_stat_activity` table, which shows which queries are being executed at any given point.
+
+Beyond PostgreSQL, Npgsql provides its own set of diagnostics features for tracing, logging and producing metrics. Tracing and metrics are particularly useful for performance analysis - consider collecting this data continuously on your production platform. These features are documented in the dedicated [diagnostics page](diagnostics.md).
+
 ## Prepared Statements
 
 One of the most important (and easy) ways to improve your application's performance is to prepare your commands. Even if you're not coding against ADO.NET directly (e.g. using Dapper or an O/RM), Npgsql has an automatic preparation feature which allows you to benefit from the performance gains associated with prepared statements. [See this blog post](http://www.roji.org/prepared-statements-in-npgsql-3-2) and/or [the documentation](prepare.md) for more details.
@@ -8,11 +14,14 @@ One of the most important (and easy) ways to improve your application's performa
 
 When you execute a command, Npgsql executes a roundtrip to the database. If you execute multiple commands (say, inserting 3 rows or performing multiple selects), you're executing multiple roundtrips; each command has to complete before the next command can start execution. Depending on your network latency, this can considerably degrade your application's performance.
 
-You can batch multiple SQL statements in a single command, executing them a single roundtrip:
+You can batch multiple SQL statements in a single roundtrip:
 
 ```c#
-using (var cmd = new NpgsqlCommand("SELECT ...; SELECT ..."))
-using (var reader = cmd.ExecuteReader())
+var batch = new NpgsqlBatch(connection)
+{
+    BatchCommands = { new("SELECT ..."), new("SELECT ...") }
+};
+using (var reader = batch.ExecuteReader())
 {
     while (reader.Read()) {
         // Read first resultset
@@ -23,16 +32,6 @@ using (var reader = cmd.ExecuteReader())
     }
 }
 ```
-
-## Performance Counters
-
-Npgsql 3.2 includes support for *performance counters*, which provide visibility into connections and the connection pool - this helps you understand what your application is doing in real-time, whether there's a connection leak, etc. Npgsql counter support is very similar to [that of other ADO.NET providers, such as SqlClient](https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx), it's recommended that your read that page first. The feature was removed in Npgsql 5.0.
-
-Using performance counters first involves setting them up on your Windows system. To do this you will need to install Npgsql's MSI, which is available on the [github releases page](https://github.com/npgsql/npgsql/releases). Note that GAC installation isn't necessary (or recommended). Once the counters are installed, fire up the Windows Performance Monitor and look for the category ".NET Data Provider for PostgreSQL (Npgsql)".
-
-In addition, you will need to pass `Use Perf Counters=true` on your connection string. Once you start your Npgsql application with this addition, you should start seeing real-time data in the Performance Monitor.
-
-Performance counters are currently only available on Windows with .NET Framework (.NET Core doesn't include performance counters yet).
 
 ## Disable enlisting to TransactionScope
 

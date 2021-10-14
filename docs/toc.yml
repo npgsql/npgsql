@@ -44,22 +44,24 @@
       href: types/geojson.md
     - name: Legacy PostGIS
       ref: types/legacy-postgis.md
+- name: Diagnostics
+  href: diagnostics.md
 - name: Performance
   href: performance.md
 - name: Prepared statements
   href: prepare.md
-- name: Waiting for notifications
-  href: wait.md
-- name: Keepalive
-  href: keepalive.md
-- name: Failover and load balancing
-  href: failover-and-load-balancing.md
-- name: Bulk copy
-  href: copy.md
-- name: Replication
-  href: replication.md
-- name: Logging
-  href: logging.md
+- name: Advanced topics
+  items:
+  - name: Failover and load balancing
+    href: failover-and-load-balancing.md
+  - name: Bulk copy
+    href: copy.md
+  - name: Waiting for notifications
+    href: wait.md
+  - name: Keepalive
+    href: keepalive.md
+  - name: Replication
+    href: replication.md
 - name: Compatibility notes
   href: compatibility.md
 - name: FAQ
