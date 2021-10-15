@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Net.NetworkInformation;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
@@ -26,17 +25,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         INpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<long>
     {
         /// <summary>
-        /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
-        /// a DateTime is requested
-        /// </summary>
-        protected readonly bool ConvertInfinityDateTime;
-
-        /// <summary>
         /// Constructs an <see cref="TimestampTzHandler"/>.
         /// </summary>
-        public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType)
-            => ConvertInfinityDateTime = convertInfinityDateTime;
+        public TimestampTzHandler(PostgresType postgresType) : base(postgresType) {}
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
@@ -50,8 +41,8 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            var dateTime = ReadDateTime(buf, ConvertInfinityDateTime, DateTimeKind.Utc);
-            return LegacyTimestampBehavior && (!ConvertInfinityDateTime || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue)
+            var dateTime = ReadDateTime(buf, DateTimeKind.Utc);
+            return LegacyTimestampBehavior && (DisableDateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue)
                 ? dateTime.ToLocalTime()
                 : dateTime;
         }
@@ -76,13 +67,13 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
                 switch (value)
                 {
                 case long.MaxValue:
-                    return ConvertInfinityDateTime
-                        ? DateTimeOffset.MaxValue
-                        : throw new InvalidCastException(InfinityExceptionMessage);
+                    return DisableDateTimeInfinityConversions
+                        ? throw new InvalidCastException(InfinityExceptionMessage)
+                        : DateTimeOffset.MaxValue;
                 case long.MinValue:
-                    return ConvertInfinityDateTime
-                        ? DateTimeOffset.MinValue
-                        : throw new InvalidCastException(InfinityExceptionMessage);
+                    return DisableDateTimeInfinityConversions
+                        ? throw new InvalidCastException(InfinityExceptionMessage)
+                        : DateTimeOffset.MinValue;
                 default:
                     var dateTime = DecodeTimestamp(value, DateTimeKind.Utc);
                     return LegacyTimestampBehavior ? dateTime.ToLocalTime() : dateTime;
@@ -105,7 +96,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => value.Kind == DateTimeKind.Utc ||
                value == DateTime.MinValue || // Allowed since this is default(DateTime) - sent without any timezone conversion.
-               value == DateTime.MaxValue && ConvertInfinityDateTime ||
+               value == DateTime.MaxValue && !DisableDateTimeInfinityConversions ||
                LegacyTimestampBehavior
                 ? 8
                 : throw new InvalidCastException(
@@ -158,7 +149,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             else
                 Debug.Assert(value.Kind == DateTimeKind.Utc || value == DateTime.MinValue || value == DateTime.MaxValue);
 
-            WriteTimestamp(value, buf, ConvertInfinityDateTime);
+            WriteTimestamp(value, buf);
         }
 
         /// <inheritdoc />
@@ -181,7 +172,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             else
                 Debug.Assert(value.Kind == DateTimeKind.Utc || !value.IsFinite);
 
-            WriteTimestamp(value, buf, ConvertInfinityDateTime);
+            WriteTimestamp(value, buf);
         }
 
         /// <inheritdoc />
@@ -192,7 +183,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
             Debug.Assert(value.Offset == TimeSpan.Zero);
 
-            WriteTimestamp(value.DateTime, buf, ConvertInfinityDateTime);
+            WriteTimestamp(value.DateTime, buf);
         }
 
         /// <inheritdoc />

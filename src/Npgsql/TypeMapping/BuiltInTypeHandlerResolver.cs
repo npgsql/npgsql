@@ -261,9 +261,9 @@ namespace Npgsql.TypeMapping
             _doubleHandler = new DoubleHandler(PgType("double precision"));
             _numericHandler = new NumericHandler(PgType("numeric"));
             _textHandler ??= new TextHandler(PgType("text"), _connector.TextEncoding);
-            _timestampHandler ??= new TimestampHandler(PgType("timestamp without time zone"), _connector.Settings.ConvertInfinityDateTime);
-            _timestampTzHandler ??= new TimestampTzHandler(PgType("timestamp with time zone"), _connector.Settings.ConvertInfinityDateTime);
-            _dateHandler ??= new DateHandler(PgType("date"), _connector.Settings.ConvertInfinityDateTime);
+            _timestampHandler ??= new TimestampHandler(PgType("timestamp without time zone"));
+            _timestampTzHandler ??= new TimestampTzHandler(PgType("timestamp with time zone"));
+            _dateHandler ??= new DateHandler(PgType("date"));
             _boolHandler ??= new BoolHandler(PgType("boolean"));
             _uuidHandler ??= new UuidHandler(PgType("uuid"));
             _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);

@@ -12,20 +12,16 @@ namespace Npgsql.NodaTime.Internal
     sealed partial class LegacyTimestampHandler : NpgsqlSimpleTypeHandler<Instant>,
         INpgsqlSimpleTypeHandler<LocalDateTime>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<long>
     {
-        readonly bool _convertInfinityDateTime;
         readonly BclTimestampHandler _bclHandler;
 
-        internal LegacyTimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        internal LegacyTimestampHandler(PostgresType postgresType)
             : base(postgresType)
-        {
-            _convertInfinityDateTime = convertInfinityDateTime;
-            _bclHandler = new BclTimestampHandler(postgresType, convertInfinityDateTime);
-        }
+            => _bclHandler = new BclTimestampHandler(postgresType);
 
         #region Read
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => TimestampTzHandler.ReadInstant(buf, _convertInfinityDateTime);
+            => TimestampTzHandler.ReadInstant(buf);
 
         LocalDateTime INpgsqlSimpleTypeHandler<LocalDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => TimestampHandler.ReadLocalDateTime(buf);
@@ -47,7 +43,7 @@ namespace Npgsql.NodaTime.Internal
             => 8;
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => TimestampTzHandler.WriteInstant(value, buf, _convertInfinityDateTime);
+            => TimestampTzHandler.WriteInstant(value, buf);
 
         void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => TimestampHandler.WriteLocalDateTime(value, buf);

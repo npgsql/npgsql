@@ -7,12 +7,17 @@ namespace Npgsql.NodaTime.Internal
     {
 #if DEBUG
         internal static bool LegacyTimestampBehavior;
+        internal static bool DisableDateTimeInfinityConversions;
 #else
         internal static readonly bool LegacyTimestampBehavior;
+        internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
         static NodaTimeUtils()
-            => LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+        {
+            LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+            DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
+        }
 
         static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);
         static readonly Duration Plus292Years = Duration.FromDays(292 * 365);

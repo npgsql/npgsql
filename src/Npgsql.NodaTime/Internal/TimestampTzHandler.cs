@@ -14,27 +14,23 @@ namespace Npgsql.NodaTime.Internal
         INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<long>
     {
         readonly BclTimestampTzHandler _bclHandler;
-        readonly bool _convertInfinityDateTime;
 
         const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
 
-        public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        public TimestampTzHandler(PostgresType postgresType)
             : base(postgresType)
-        {
-            _convertInfinityDateTime = convertInfinityDateTime;
-            _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);
-        }
+            => _bclHandler = new BclTimestampTzHandler(postgresType);
 
         #region Read
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadInstant(buf, _convertInfinityDateTime);
+            => ReadInstant(buf);
 
-        internal static Instant ReadInstant(NpgsqlReadBuffer buf, bool convertInfinityDateTime)
+        internal static Instant ReadInstant(NpgsqlReadBuffer buf)
             => buf.ReadInt64() switch
             {
-                long.MaxValue => convertInfinityDateTime ? Instant.MaxValue : throw new InvalidCastException(InfinityExceptionMessage),
-                long.MinValue => convertInfinityDateTime ? Instant.MinValue : throw new InvalidCastException(InfinityExceptionMessage),
+                long.MaxValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : Instant.MaxValue,
+                long.MinValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : Instant.MinValue,
                 var value => DecodeInstant(value)
             };
 
@@ -77,11 +73,11 @@ namespace Npgsql.NodaTime.Internal
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => WriteInstant(value, buf, _convertInfinityDateTime);
+            => WriteInstant(value, buf);
 
-        internal static void WriteInstant(Instant value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
+        internal static void WriteInstant(Instant value, NpgsqlWriteBuffer buf)
         {
-            if (convertInfinityDateTime)
+            if (!DisableDateTimeInfinityConversions)
             {
                 if (value == Instant.MaxValue)
                 {
