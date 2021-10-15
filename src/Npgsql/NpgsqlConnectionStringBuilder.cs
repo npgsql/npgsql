@@ -1414,28 +1414,23 @@ namespace Npgsql
         }
         ServerCompatibilityMode _serverCompatibilityMode;
 
+        #endregion
+
+        #region Properties - Obsolete
+
         /// <summary>
-        /// Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.
+        /// Obsolete, see https://www.npgsql.org/doc/release-notes/6.0.html
         /// </summary>
         [Category("Compatibility")]
         [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
         [DisplayName("Convert Infinity DateTime")]
-        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
+        [Obsolete("The ConvertInfinityDateTime parameter is no longer supported.")]
         public bool ConvertInfinityDateTime
         {
-            get => _convertInfinityDateTime;
-            set
-            {
-                _convertInfinityDateTime = value;
-                SetValue(nameof(ConvertInfinityDateTime), value);
-            }
+            get => false;
+            set => throw new NotSupportedException("The Convert Infinity DateTime parameter is no longer supported; Npgsql 6.0 and above convert min/max values to Infinity by default. See https://www.npgsql.org/doc/types/datetime.html for more details.");
         }
-        bool _convertInfinityDateTime;
-
-        #endregion
-
-        #region Properties - Obsolete
 
         /// <summary>
         /// Obsolete, see https://www.npgsql.org/doc/release-notes/3.1.html

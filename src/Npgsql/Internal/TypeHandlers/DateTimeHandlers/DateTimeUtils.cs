@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
@@ -20,14 +21,14 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             // which would make it impossible to retrieve it back from the database, so we just drop the additional precision
             => (value.Ticks - PostgresTimestampOffsetTicks) / 10;
 
-        internal static DateTime ReadDateTime(NpgsqlReadBuffer buf, bool convertInfinityDateTime, DateTimeKind kind)
+        internal static DateTime ReadDateTime(NpgsqlReadBuffer buf, DateTimeKind kind)
         {
             try
             {
                 return buf.ReadInt64() switch
                 {
-                    long.MaxValue => convertInfinityDateTime ? DateTime.MaxValue : throw new InvalidCastException(InfinityExceptionMessage),
-                    long.MinValue => convertInfinityDateTime ? DateTime.MinValue : throw new InvalidCastException(InfinityExceptionMessage),
+                    long.MaxValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : DateTime.MaxValue,
+                    long.MinValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : DateTime.MinValue,
                     var value => DecodeTimestamp(value, kind)
                 };
             }
@@ -74,9 +75,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         }
 #pragma warning restore 618
 
-        internal static void WriteTimestamp(DateTime value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
+        internal static void WriteTimestamp(DateTime value, NpgsqlWriteBuffer buf)
         {
-            if (convertInfinityDateTime)
+            if (!DisableDateTimeInfinityConversions)
             {
                 if (value == DateTime.MaxValue)
                 {
@@ -96,7 +97,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         }
 
 #pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
-        internal static void WriteTimestamp(NpgsqlDateTime value, NpgsqlWriteBuffer buf, bool convertInfinityDateTime)
+        internal static void WriteTimestamp(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {

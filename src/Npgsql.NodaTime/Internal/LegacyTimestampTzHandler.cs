@@ -16,11 +16,11 @@ namespace Npgsql.NodaTime.Internal
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
         readonly TimestampTzHandler _wrappedHandler;
 
-        public LegacyTimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        public LegacyTimestampTzHandler(PostgresType postgresType)
             : base(postgresType)
         {
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
-            _wrappedHandler = new TimestampTzHandler(postgresType, convertInfinityDateTime);
+            _wrappedHandler = new TimestampTzHandler(postgresType);
         }
 
         #region Read

@@ -5,6 +5,7 @@ using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 using BclDateHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateHandler;
 
 #pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
@@ -17,27 +18,19 @@ namespace Npgsql.NodaTime.Internal
         , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
     {
-        /// <summary>
-        /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
-        /// an Instant is requested
-        /// </summary>
-        readonly bool _convertInfinityDateTime;
         readonly BclDateHandler _bclHandler;
 
         const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
 
-        internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        internal DateHandler(PostgresType postgresType)
             : base(postgresType)
-        {
-            _convertInfinityDateTime = convertInfinityDateTime;
-            _bclHandler = new BclDateHandler(postgresType, convertInfinityDateTime);
-        }
+            => _bclHandler = new BclDateHandler(postgresType);
 
         public override LocalDate Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => buf.ReadInt32() switch
             {
-                int.MaxValue => _convertInfinityDateTime ? LocalDate.MaxIsoValue : throw new InvalidCastException(InfinityExceptionMessage),
-                int.MinValue => _convertInfinityDateTime ? LocalDate.MinIsoValue : throw new InvalidCastException(InfinityExceptionMessage),
+                int.MaxValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : LocalDate.MaxIsoValue,
+                int.MinValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : LocalDate.MinIsoValue,
                 var value => new LocalDate().PlusDays(value + 730119)
             };
 
@@ -46,7 +39,7 @@ namespace Npgsql.NodaTime.Internal
 
         public override void Write(LocalDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
-            if (_convertInfinityDateTime)
+            if (!DisableDateTimeInfinityConversions)
             {
                 if (value == LocalDate.MaxIsoValue)
                 {

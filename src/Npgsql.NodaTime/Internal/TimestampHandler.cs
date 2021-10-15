@@ -14,9 +14,9 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclTimestampHandler _bclHandler;
 
-        internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        internal TimestampHandler(PostgresType postgresType)
             : base(postgresType)
-            => _bclHandler = new BclTimestampHandler(postgresType, convertInfinityDateTime);
+            => _bclHandler = new BclTimestampHandler(postgresType);
 
         #region Read
 

@@ -23,23 +23,15 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     public partial class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>, INpgsqlSimpleTypeHandler<long>
     {
         /// <summary>
-        /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
-        /// a DateTime is requested
-        /// </summary>
-        protected readonly bool ConvertInfinityDateTime;
-
-        /// <summary>
         /// Constructs a <see cref="TimestampHandler"/>.
         /// </summary>
-        public TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType)
-            => ConvertInfinityDateTime = convertInfinityDateTime;
+        public TimestampHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadDateTime(buf, ConvertInfinityDateTime, DateTimeKind.Unspecified);
+            => ReadDateTime(buf, DateTimeKind.Unspecified);
 
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
@@ -77,11 +69,11 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => WriteTimestamp(value, buf, ConvertInfinityDateTime);
+            => WriteTimestamp(value, buf);
 
         /// <inheritdoc />
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => WriteTimestamp(value, buf, ConvertInfinityDateTime);
+            => WriteTimestamp(value, buf);
 
         /// <inheritdoc />
         public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)

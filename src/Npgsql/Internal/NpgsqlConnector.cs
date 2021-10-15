@@ -376,7 +376,6 @@ namespace Npgsql.Internal
         string KerberosServiceName => Settings.KerberosServiceName;
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
-        internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
         /// <summary>
         /// The actual command timeout value that gets set on internal commands.

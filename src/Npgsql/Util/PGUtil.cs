@@ -13,12 +13,17 @@ namespace Npgsql.Util
     {
 #if DEBUG
         internal static bool LegacyTimestampBehavior;
+        internal static bool DisableDateTimeInfinityConversions;
 #else
         internal static readonly bool LegacyTimestampBehavior;
+        internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
         static Statics()
-            => LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+        {
+            LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
+            DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)

@@ -29,12 +29,12 @@ namespace Npgsql.NodaTime.Internal
             _databaseInfo = connector.DatabaseInfo;
 
             _timestampHandler = LegacyTimestampBehavior
-                ? new LegacyTimestampHandler(PgType("timestamp without time zone"), connector.Settings.ConvertInfinityDateTime)
-                : new TimestampHandler(PgType("timestamp without time zone"), connector.Settings.ConvertInfinityDateTime);
+                ? new LegacyTimestampHandler(PgType("timestamp without time zone"))
+                : new TimestampHandler(PgType("timestamp without time zone"));
             _timestampTzHandler = LegacyTimestampBehavior
-                ? new LegacyTimestampTzHandler(PgType("timestamp with time zone"), connector.Settings.ConvertInfinityDateTime)
-                : new TimestampTzHandler(PgType("timestamp with time zone"), connector.Settings.ConvertInfinityDateTime);
-            _dateHandler = new DateHandler(PgType("date"), connector.Settings.ConvertInfinityDateTime);
+                ? new LegacyTimestampTzHandler(PgType("timestamp with time zone"))
+                : new TimestampTzHandler(PgType("timestamp with time zone"));
+            _dateHandler = new DateHandler(PgType("date"));
             _timeHandler = new TimeHandler(PgType("time without time zone"));
             _timeTzHandler = new TimeTzHandler(PgType("time with time zone"));
             _intervalHandler = new IntervalHandler(PgType("interval"));

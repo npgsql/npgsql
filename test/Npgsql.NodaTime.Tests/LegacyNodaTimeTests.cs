@@ -103,8 +103,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamp_read_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd =
                 new NpgsqlCommand("SELECT 'infinity'::timestamp without time zone, '-infinity'::timestamp without time zone", conn);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -119,8 +118,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamp_write_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text, $3::text, $4::text", conn)
             {
                 Parameters =
@@ -229,8 +227,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamptz_read_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd =
                 new NpgsqlCommand("SELECT 'infinity'::timestamp with time zone, '-infinity'::timestamp with time zone", conn);
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -245,8 +242,7 @@ namespace Npgsql.NodaTime.Tests
         [Test]
         public async Task Timestamptz_write_infinity()
         {
-            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { ConvertInfinityDateTime = true }.ConnectionString;
-            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text, $3::text, $4::text", conn)
             {
                 Parameters =
