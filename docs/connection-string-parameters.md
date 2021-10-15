@@ -100,7 +100,6 @@ Array Nullability Mode   | Configure the way arrays of value types are returned 
 Parameter                 | Description                                                                                       | Default
 ------------------------- | ------------------------------------------------------------------------------------------------- | -------
 Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types . | none
-Convert Infinity DateTime | Maps MaxValue and MinValue timestamps and dates to PostgreSQL infinity and negative infinity.     | true (6.0+)
 
 ## Environment variables
 

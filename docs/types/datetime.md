@@ -36,6 +36,16 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 Use of the `time with time zone` type is discouraged, [see the PostgreSQL documentation](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-TIMEZONES). You can use a `DateTimeOffset` to read and write values - the date component will be ignored.
 
+## Infinity values
+
+PostgreSQL supports the special values `-infinity` and `infinity` for the timestamp and date types ([see docs](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-DATETIME-SPECIAL-VALUES)); these can be useful to represent a value which is earlier or later than any other value. Starting with Npgsql 6.0, these special values are mapped to the `MinValue` and `MaxValue` value on the corresponding .NET types (`DateTime` and `DateOnly`, NodaTime `Instant` and `LocalDate`). To opt out of this behavior, set the following AppContext switch at the start of your application:
+
+```c#
+AppContext.SetSwitch("Npgsql.DisableDateTimeInfinityConversions", true);
+```
+
+Note: in versions prior to 6.0, the connection string parameter `Convert Infinity DateTime` could be used to opt into these infinity conversions. That connection string parameter has been removed.
+
 ## Detailed Behavior: Reading values from the database
 
 PostgreSQL type             | Default .NET type          | Non-default .NET types
