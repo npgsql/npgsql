@@ -1333,8 +1333,6 @@ namespace Npgsql.Internal
                             else if (PostgresErrorCodes.IsCriticalFailure(error))
                             {
                                 // Consider the database offline
-                                ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                                    connector.Settings.HostRecheckSecondsTranslated);
                                 throw connector.Break(error);
                             }
 
@@ -1901,15 +1899,10 @@ namespace Npgsql.Internal
             {
                 if (State != ConnectorState.Broken)
                 {
-                    if (reason is NpgsqlException { IsTransient: true })
+                    if (reason is NpgsqlException { IsTransient: true } || reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
                     {
-                        // There was an IOException while reading/writing
-                        if (reason is not PostgresException && reason.InnerException is not PostgresException)
-                        {
-                            ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
+                        ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                                 Settings.HostRecheckSecondsTranslated);
-                        }
-
                         _connectorSource.Clear();
                     }
 

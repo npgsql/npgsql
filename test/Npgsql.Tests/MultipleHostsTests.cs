@@ -516,7 +516,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterUnknownStateOnConnectionFailure()
+        public async Task ClusterOfflineStateOnConnectionFailure()
         {
             await using var server = PgPostmasterMock.Start(ConnectionString, startupErrorCode: PostgresErrorCodes.ConnectionFailure);
             var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
@@ -524,6 +524,20 @@ namespace Npgsql.Tests
 
             var ex = Assert.ThrowsAsync<PostgresException>(conn.OpenAsync)!;
             Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.ConnectionFailure));
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Offline));
+        }
+
+        [Test]
+        public async Task ClusterUnknownStateOnConnectionAuthenticationFailure()
+        {
+            await using var server = PgPostmasterMock.Start(ConnectionString, startupErrorCode: PostgresErrorCodes.InvalidAuthorizationSpecification);
+            var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
+            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+
+            var ex = Assert.ThrowsAsync<PostgresException>(conn.OpenAsync)!;
+            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidAuthorizationSpecification));
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
