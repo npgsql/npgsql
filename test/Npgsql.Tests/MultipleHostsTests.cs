@@ -3,6 +3,7 @@ using Npgsql.Tests.Support;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -516,7 +517,7 @@ namespace Npgsql.Tests
         [Test]
         public async Task ClusterUnknownStateOnConnectionFailure()
         {
-            await using var server = PgPostmasterMock.Start(ConnectionString, state: Primary, startupErrorCode: PostgresErrorCodes.ConnectionFailure);
+            await using var server = PgPostmasterMock.Start(ConnectionString, startupErrorCode: PostgresErrorCodes.ConnectionFailure);
             var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
             await using var conn = new NpgsqlConnection(csb.ConnectionString);
 
@@ -525,6 +526,31 @@ namespace Npgsql.Tests
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+        }
+
+        [Test]
+        public async Task ClusterOfflineStateOnQueryExecutionFailure()
+        {
+            await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
+            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+
+            await conn.OpenAsync();
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+
+            var server = await postmaster.WaitForServerConnection();
+            await server.WriteErrorResponse(PostgresErrorCodes.CrashShutdown).FlushAsync();
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.CrashShutdown));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+
+            state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Offline));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
         }
 
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
