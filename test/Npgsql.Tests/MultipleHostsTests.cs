@@ -4,6 +4,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -529,7 +530,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterOfflineStateOnQueryExecutionFailure()
+        public async Task ClusterOfflineStateOnQueryExecutionPgCriticalFailure()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
@@ -546,6 +547,31 @@ namespace Npgsql.Tests
 
             var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
             Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.CrashShutdown));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+
+            state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Offline));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task ClusterOfflineStateOnQueryExecutionIOFailure()
+        {
+            await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
+            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+
+            await conn.OpenAsync();
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+
+            var server = await postmaster.WaitForServerConnection();
+            server.Close();
+
+            var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+            Assert.That(ex.InnerException, Is.TypeOf<IOException>());
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
             state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
