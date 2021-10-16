@@ -579,6 +579,32 @@ namespace Npgsql.Tests
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
         }
 
+        [Test]
+        public async Task ClusterOfflineStateOnQueryExecutionTimeoutFailure()
+        {
+            await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString)
+            {
+                CommandTimeout = 1,
+                CancellationTimeout = -1,
+            };
+            await using var conn = new NpgsqlConnection(csb.ConnectionString);
+
+            await conn.OpenAsync();
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+
+            var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
+            Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+
+            state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Offline));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        }
+
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
         public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)

@@ -1383,14 +1383,6 @@ namespace Npgsql.Internal
 
                     throw;
                 }
-                catch (Exception e) when (!readingNotifications && (e is OperationCanceledException ||
-                    e is NpgsqlException && e.InnerException is TimeoutException))
-                {
-                    // We've timed out even though we've send the cancellation request
-                    ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                            connector.Settings.HostRecheckSecondsTranslated);
-                    throw;
-                }
                 catch (NpgsqlException)
                 {
                     // An ErrorResponse isn't followed by ReadyForQuery
