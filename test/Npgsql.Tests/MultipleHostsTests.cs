@@ -571,7 +571,7 @@ namespace Npgsql.Tests
             server.Close();
 
             var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
-            Assert.That(ex.InnerException, Is.TypeOf<IOException>());
+            Assert.That(ex.InnerException, Is.InstanceOf<IOException>());
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
             state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
