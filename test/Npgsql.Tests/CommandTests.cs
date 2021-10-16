@@ -1220,6 +1220,34 @@ LANGUAGE 'plpgsql' VOLATILE;";
                 .With.InnerException.TypeOf<PostgresException>());
         }
 
+        [Test]
+        public async Task ExtraPoolCapacity()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ExtraPoolCapacity = 1,
+                MaxPoolSize = 1,
+            };
+
+            if (IsMultiplexing)
+            {
+                var ex = Assert.ThrowsAsync<ArgumentException>(async () => await OpenConnectionAsync(csb))!;
+                Assert.That(ex.Message, Is.EqualTo("ExtraPoolCapacity is not supported with multiplexing"));
+                return;
+            }
+
+            await using var defaultConn = await OpenConnectionAsync(csb);
+            await using var extraConn = await OpenConnectionAsync(csb);
+
+            Assert.That(defaultConn.Pool.Statistics.Total, Is.EqualTo(2));
+
+            await defaultConn.ExecuteNonQueryAsync("SELECT 1");
+            await extraConn.ExecuteNonQueryAsync("SELECT 1");
+            await extraConn.CloseAsync();
+
+            Assert.That(defaultConn.Pool.Statistics.Total, Is.EqualTo(1));
+        }
+
         public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
