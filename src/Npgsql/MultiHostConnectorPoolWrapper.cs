@@ -9,7 +9,7 @@ namespace Npgsql
 {
     sealed class MultiHostConnectorPoolWrapper : ConnectorSource
     {
-        internal sealed override bool OwnsConnectors => false;
+        internal override bool OwnsConnectors => false;
 
         readonly MultiHostConnectorPool _wrappedSource;
 
