@@ -83,6 +83,14 @@ namespace Npgsql.Tests.Support
             }
         }
 
+        internal async Task FailedStartup(string errorCode)
+        {
+            // Read and skip the startup message
+            await SkipMessage();
+            WriteErrorResponse(errorCode);
+            await FlushAsync();
+        }
+
         internal Task SendMockState(MockState state)
         {
             var isStandby = state == MockState.Standby;

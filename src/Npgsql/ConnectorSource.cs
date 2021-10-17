@@ -41,6 +41,8 @@ namespace Npgsql
 
         internal abstract void Clear();
 
+        internal abstract bool OwnsConnectors { get; }
+
         #region Pending Enlisted Connections
 
         internal virtual void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)

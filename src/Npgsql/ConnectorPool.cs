@@ -76,6 +76,8 @@ namespace Npgsql
             }
         }
 
+        internal sealed override bool OwnsConnectors => true;
+
         internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
             : base(settings, connString)
         {

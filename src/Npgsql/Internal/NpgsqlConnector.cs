@@ -326,6 +326,7 @@ namespace Npgsql.Internal
 
         NpgsqlConnector(ConnectorSource connectorSource)
         {
+            Debug.Assert(connectorSource.OwnsConnectors);
             _connectorSource = connectorSource;
 
             State = ConnectorState.Closed;
@@ -503,8 +504,6 @@ namespace Npgsql.Internal
             }
             catch (Exception e)
             {
-                ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, ClusterState.Offline,
-                    DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 Break(e);
                 throw;
             }
@@ -1334,8 +1333,6 @@ namespace Npgsql.Internal
                             else if (PostgresErrorCodes.IsCriticalFailure(error))
                             {
                                 // Consider the database offline
-                                ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                                    connector.Settings.HostRecheckSecondsTranslated);
                                 throw connector.Break(error);
                             }
 
@@ -1382,14 +1379,6 @@ namespace Npgsql.Internal
                                 new TimeoutException("Timeout during reading attempt"));
                     }
 
-                    throw;
-                }
-                catch (Exception e) when (!readingNotifications && (e is OperationCanceledException ||
-                    e is NpgsqlException && e.InnerException is TimeoutException))
-                {
-                    // We've timed out even though we've send the cancellation request
-                    ClusterStateCache.UpdateClusterState(connector.Host, connector.Port, ClusterState.Offline, DateTime.UtcNow,
-                            connector.Settings.HostRecheckSecondsTranslated);
                     throw;
                 }
                 catch (NpgsqlException)
@@ -1910,11 +1899,16 @@ namespace Npgsql.Internal
             {
                 if (State != ConnectorState.Broken)
                 {
-                    // There was an IOException while reading/writing
-                    if (reason is NpgsqlException && reason.InnerException is IOException)
+                    // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
+                    // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
+                    // but does not include e.g. authentication failure or timeouts with disabled cancellation.
+                    if (reason is NpgsqlException { IsTransient: true } ne &&
+                            (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
+                        reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
                     {
                         ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                            Settings.HostRecheckSecondsTranslated);
+                                Settings.HostRecheckSecondsTranslated);
+                        _connectorSource.Clear();
                     }
 
                     Log.Error("Breaking connector", reason, Id);

@@ -12,6 +12,8 @@ namespace Npgsql
 {
     sealed class MultiHostConnectorPool : ConnectorSource
     {
+        internal override bool OwnsConnectors => false;
+
         readonly ConnectorPool[] _pools;
 
         volatile int _roundRobinIndex = -1;
