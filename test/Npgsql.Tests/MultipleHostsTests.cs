@@ -573,14 +573,17 @@ namespace Npgsql.Tests
         {
             PoolManager.Reset();
             // We reset the cluster's state
-            // Because other tests might have marked the hosts as disabled
+            // Because other tests might have marked the host as disabled
             ClusterStateCache.Clear();
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             await using var conn = await OpenConnectionAsync(csb);
 
+            // Starting with PG14 we get the cluster's state from PG automatically
+            var expectedState = conn.PostgreSqlVersion.Major > 13 ? ClusterState.PrimaryReadWrite : ClusterState.Unknown;
+
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
-            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(state, Is.EqualTo(expectedState));
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
 
             var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc"))!;
@@ -588,7 +591,7 @@ namespace Npgsql.Tests
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
             state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
-            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(state, Is.EqualTo(expectedState));
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
         }
 
