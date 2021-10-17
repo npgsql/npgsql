@@ -569,6 +569,11 @@ namespace Npgsql.Tests
         [Test, NonParallelizable]
         public async Task Cluster_offline_state_on_query_execution_pg_non_critical_failure()
         {
+            PoolManager.Reset();
+            // We reset the cluster's state
+            // Because other tests might have marked the hosts as disabled
+            ClusterStateCache.Clear();
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             await using var conn = await OpenConnectionAsync(csb);
 
