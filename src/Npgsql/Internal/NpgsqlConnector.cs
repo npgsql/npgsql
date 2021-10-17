@@ -1900,8 +1900,8 @@ namespace Npgsql.Internal
                 if (State != ConnectorState.Broken)
                 {
                     // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
-                    // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue, but does
-                    // not include e.g. authentication failure.
+                    // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
+                    // but does not include e.g. authentication failure or timeouts with disabled cancellation.
                     if (reason is NpgsqlException { IsTransient: true } ne &&
                             (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
                         reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
