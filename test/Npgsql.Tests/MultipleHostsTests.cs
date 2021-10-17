@@ -548,9 +548,7 @@ namespace Npgsql.Tests
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
-            await using var conn = new NpgsqlConnection(csb.ConnectionString);
-
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync(csb);
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
@@ -568,14 +566,31 @@ namespace Npgsql.Tests
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
         }
 
+        [Test, NonParallelizable]
+        public async Task Cluster_offline_state_on_query_execution_pg_non_critical_failure()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            await using var conn = await OpenConnectionAsync(csb);
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc"))!;
+            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.UndefinedColumn));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+
+            state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        }
+
         [Test]
         public async Task Cluster_offline_state_on_query_execution_IOException()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
-            await using var conn = new NpgsqlConnection(csb.ConnectionString);
-
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync(csb);
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
@@ -602,9 +617,7 @@ namespace Npgsql.Tests
                 CommandTimeout = 1,
                 CancellationTimeout = -1,
             };
-            await using var conn = new NpgsqlConnection(csb.ConnectionString);
-
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync(csb);
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
@@ -628,9 +641,7 @@ namespace Npgsql.Tests
                 CommandTimeout = 1,
                 CancellationTimeout = 0,
             };
-            await using var conn = new NpgsqlConnection(csb.ConnectionString);
-
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync(csb);
 
             var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
