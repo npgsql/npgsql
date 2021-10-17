@@ -2,9 +2,12 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
-    static class ClusterStateCache
+    /// <summary>
+    /// Cache for cluster's state
+    /// </summary>
+    public static class ClusterStateCache
     {
         static readonly ConcurrentDictionary<ClusterIdentifier, ClusterInfo> Clusters = new();
 
@@ -28,10 +31,18 @@ namespace Npgsql
                 new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #endif
 
-        internal static void RemoveClusterState(string host, int port)
+        /// <summary>
+        /// Removes the specified cluster's state from cache
+        /// </summary>
+        /// <param name="host">Host address</param>
+        /// <param name="port">Host port</param>
+        public static void RemoveClusterState(string host, int port)
             => Clusters.TryRemove(new ClusterIdentifier(host, port), out _);
 
-        internal static void Clear()  => Clusters.Clear();
+        /// <summary>
+        /// Removes every cluster's state from cache
+        /// </summary>
+        public static void Clear()  => Clusters.Clear();
 
         readonly struct ClusterIdentifier : IEquatable<ClusterIdentifier>
         {
