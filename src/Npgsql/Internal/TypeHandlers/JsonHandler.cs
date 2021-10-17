@@ -38,7 +38,7 @@ namespace Npgsql.Internal.TypeHandlers
         static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
         /// <inheritdoc />
-        protected internal JsonHandler(PostgresType postgresType, Encoding encoding, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
+        public JsonHandler(PostgresType postgresType, Encoding encoding, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
             : base(postgresType)
         {
             _serializerOptions = serializerOptions ?? DefaultSerializerOptions;
