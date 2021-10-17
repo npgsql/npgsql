@@ -1,7 +1,6 @@
 ﻿#nullable enable
 *REMOVED*abstract Npgsql.NpgsqlDatabaseInfo.GetTypes() -> System.Collections.Generic.IEnumerable<Npgsql.PostgresTypes.PostgresType!>!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
-Npgsql.ClusterStateCache
 Npgsql.NpgsqlBatch
 Npgsql.NpgsqlBatch.BatchCommands.get -> Npgsql.NpgsqlBatchCommandCollection!
 Npgsql.NpgsqlBatch.Connection.get -> Npgsql.NpgsqlConnection?
@@ -212,8 +211,6 @@ override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
 *REMOVED*static Npgsql.NpgsqlDatabaseInfo.ParseServerVersion(string! value) -> System.Version!
 *REMOVED*static Npgsql.NpgsqlDatabaseInfo.RegisterFactory(Npgsql.INpgsqlDatabaseInfoFactory! factory) -> void
-static Npgsql.ClusterStateCache.Clear() -> void
-static Npgsql.ClusterStateCache.RemoveClusterState(string! host, int port) -> void
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 override NpgsqlTypes.NpgsqlTsQueryEmpty.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool

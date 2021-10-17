@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 
-namespace Npgsql
+namespace Npgsql.Internal
 {
     /// <summary>
     /// Cache for cluster's state
