@@ -673,6 +673,36 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public async Task Cluster_unknown_state_on_query_execution_cancellation_with_disabled_cancellation_timeout()
+        {
+            await using var postmaster = PgPostmasterMock.Start(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString)
+            {
+                CommandTimeout = 30,
+                CancellationTimeout = -1,
+            };
+            await using var conn = await OpenConnectionAsync(csb);
+            await using var anotherConn = await OpenConnectionAsync(csb);
+            await anotherConn.CloseAsync();
+
+            var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+
+            using var cts = new CancellationTokenSource();
+
+            var query = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
+            cts.Cancel();
+            var ex = Assert.ThrowsAsync<OperationCanceledException>(async () => await query)!;
+            Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+
+            state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
+            Assert.That(state, Is.EqualTo(ClusterState.Unknown));
+            Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        }
+
+        [Test]
         public async Task Cluster_unknown_state_on_query_execution_TimeoutException_with_cancellation_failure()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
