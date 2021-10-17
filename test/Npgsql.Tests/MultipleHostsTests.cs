@@ -516,7 +516,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterOfflineStateOnConnectionFailure()
+        public async Task Cluster_offline_state_on_connection_failure()
         {
             await using var server = PgPostmasterMock.Start(ConnectionString, startupErrorCode: PostgresErrorCodes.ConnectionFailure);
             var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
@@ -530,7 +530,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterUnknownStateOnConnectionAuthenticationFailure()
+        public async Task Cluster_unknown_state_on_connection_authentication_failure()
         {
             await using var server = PgPostmasterMock.Start(ConnectionString, startupErrorCode: PostgresErrorCodes.InvalidAuthorizationSpecification);
             var csb = new NpgsqlConnectionStringBuilder(server.ConnectionString);
@@ -544,7 +544,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterOfflineStateOnQueryExecutionPgCriticalFailure()
+        public async Task Cluster_offline_state_on_query_execution_pg_critical_failure()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
@@ -569,7 +569,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterOfflineStateOnQueryExecutionIOFailure()
+        public async Task Cluster_offline_state_on_query_execution_IOException()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString);
@@ -594,7 +594,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterOfflineStateOnQueryExecutionTimeoutFailure()
+        public async Task Cluster_offline_state_on_query_execution_TimeoutException()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString)
@@ -620,7 +620,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ClusterUnknownStateOnQueryExecutionTimeoutWithCancellationFailure()
+        public async Task Cluster_unknown_state_on_query_execution_TimeoutException_with_cancellation_failure()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
             var csb = new NpgsqlConnectionStringBuilder(postmaster.ConnectionString)

@@ -1899,7 +1899,8 @@ namespace Npgsql.Internal
             {
                 if (State != ConnectorState.Broken)
                 {
-                    if (reason is NpgsqlException { IsTransient: true } || reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
+                    if (reason is NpgsqlException { IsTransient: true } || 
+                        reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
                     {
                         ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                                 Settings.HostRecheckSecondsTranslated);
