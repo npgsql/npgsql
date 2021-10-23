@@ -63,7 +63,7 @@ namespace Npgsql.SourceGenerators
                         "System.Threading.Tasks",
                         "Npgsql.Internal"
                     }.Concat(classDeclarationSyntax.SyntaxTree.GetCompilationUnitRoot().Usings
-                        .Where(u => u.Alias is null && u.StaticKeyword.Kind() == SyntaxKind.None)
+                        .Where(u => u.Alias is null && u.StaticKeyword.IsKind(SyntaxKind.None))
                         .Select(u => u.Name.ToString())));
 
                 var interfaces = typeSymbol.AllInterfaces
