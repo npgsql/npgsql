@@ -2,7 +2,7 @@
   <ItemGroup>
     <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.2" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.3" />
 
     <PackageVersion Include="System.Text.Json" Version="5.0.2" />
     <PackageVersion Include="System.Threading.Channels" Version="5.0.0" />
