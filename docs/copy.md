@@ -8,7 +8,8 @@ Npgsql supports three COPY operation modes: binary, text and raw binary.
 
 This mode uses the efficient PostgreSQL binary format to transfer data in and out of the database. The user uses an API to read and write rows and fields, which Npgsql decodes and encodes. When you've finished, you must call `Complete()` to save the data; not doing so will cause the COPY operation to be rolled back when the writer is disposed (this behavior is important in case an exception is thrown).
 
-*IMPORTANT*: Note that it is the your responsibility to read and write the correct type! If you use COPY to write an int32 into a string field you may get an exception, or worse, silent data corruption. It is also highly recommended to use the overload of `Write()` which accepts an `NpgsqlDbType`, allowing you to unambiguously specify exactly what type you want to write. Test your code throroughly.
+> [!WARNING]
+> It is the your responsibility to read and write the correct type! If you use COPY to write an int32 into a string field you may get an exception, or worse, silent data corruption. It is also highly recommended to use the overload of `Write()` which accepts an `NpgsqlDbType`, allowing you to unambiguously specify exactly what type you want to write. Test your code thoroughly.
 
 ```c#
 // Import two columns to table data
