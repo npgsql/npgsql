@@ -15,7 +15,7 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclTimestampTzHandler _bclHandler;
 
-        const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+        const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
 
         public TimestampTzHandler(PostgresType postgresType)
             : base(postgresType)

@@ -112,6 +112,62 @@ namespace Npgsql.NodaTime.Tests
         }
 
         [Test]
+        public async Task Timestamp_write()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
+
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+            {
+                Parameters = { new() { Value = LocalDate.MinIsoValue + LocalTime.MinValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
+            };
+
+            if (DisableDateTimeInfinityConversions)
+            {
+                // NodaTime LocalDateTime.MinValue is outside the PG timestamp range.
+                Assert.That(async () => await cmd.ExecuteScalarAsync(),
+                    Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+            }
+            else
+            {
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
+            }
+
+            await using var cmd2 = new NpgsqlCommand("SELECT $1::text", conn)
+            {
+                Parameters = { new() { Value = LocalDate.MaxIsoValue + LocalTime.MaxValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
+            };
+
+            Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions
+                ? "9999-12-31 23:59:59.999999"
+                : "infinity"));
+        }
+
+        [Test]
+        public async Task Timestamp_read()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand(
+                "SELECT '-infinity'::timestamp without time zone, 'infinity'::timestamp without time zone", conn);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            if (DisableDateTimeInfinityConversions)
+            {
+                Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader[1], Throws.Exception.TypeOf<InvalidCastException>());
+            }
+            else
+            {
+                // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
+                Assert.That(reader[0], Is.EqualTo(LocalDate.MinIsoValue + LocalTime.MinValue));
+                Assert.That(reader[1], Is.EqualTo(LocalDate.MaxIsoValue + LocalTime.MaxValue));
+            }
+        }
+
+        [Test]
         public async Task Date_write()
         {
             await using var conn = await OpenConnectionAsync();
