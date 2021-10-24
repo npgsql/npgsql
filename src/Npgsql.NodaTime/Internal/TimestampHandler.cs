@@ -14,6 +14,8 @@ namespace Npgsql.NodaTime.Internal
     {
         readonly BclTimestampHandler _bclHandler;
 
+        const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
+
         internal TimestampHandler(PostgresType postgresType)
             : base(postgresType)
             => _bclHandler = new BclTimestampHandler(postgresType);
@@ -23,17 +25,18 @@ namespace Npgsql.NodaTime.Internal
         public override LocalDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => ReadLocalDateTime(buf);
 
+        // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
         internal static LocalDateTime ReadLocalDateTime(NpgsqlReadBuffer buf)
-        {
-            var value = buf.ReadInt64();
-
-            // No {Min,Max}Value for LocalDateTime: https://github.com/nodatime/nodatime/issues/58
-            // But infinity values can still be accessed as long.{Min,Max}Value
-            if (value == long.MaxValue || value == long.MinValue)
-                throw new NotSupportedException($"Infinity values not supported when reading {nameof(LocalDateTime)}");
-
-            return DecodeInstant(value).InUtc().LocalDateTime;
-        }
+            => buf.ReadInt64() switch
+            {
+                long.MaxValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : LocalDate.MaxIsoValue + LocalTime.MaxValue,
+                long.MinValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : LocalDate.MinIsoValue + LocalTime.MinValue,
+                var value => DecodeInstant(value).InUtc().LocalDateTime
+            };
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read(buf, len, fieldDescription);
@@ -52,7 +55,25 @@ namespace Npgsql.NodaTime.Internal
             => WriteLocalDateTime(value, buf);
 
         internal static void WriteLocalDateTime(LocalDateTime value, NpgsqlWriteBuffer buf)
-            => buf.WriteInt64(EncodeInstant(value.InUtc().ToInstant()));
+        {
+            // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
+            if (!DisableDateTimeInfinityConversions)
+            {
+                if (value == LocalDate.MaxIsoValue + LocalTime.MaxValue)
+                {
+                    buf.WriteInt64(long.MaxValue);
+                    return;
+                }
+
+                if (value == LocalDate.MinIsoValue + LocalTime.MinValue)
+                {
+                    buf.WriteInt64(long.MinValue);
+                    return;
+                }
+            }
+
+            buf.WriteInt64(EncodeInstant(value.InUtc().ToInstant()));
+        }
 
         public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).ValidateAndGetLength(value, parameter);

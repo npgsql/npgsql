@@ -35,8 +35,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         #region Read
 
-        private protected const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
-        private protected const string OutOfRangeExceptionMessage = "Out of the range of DateTime (year must be between 1 and 9999)";
+        const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

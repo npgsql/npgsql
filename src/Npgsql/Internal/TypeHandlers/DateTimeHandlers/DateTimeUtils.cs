@@ -9,7 +9,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     static class DateTimeUtils
     {
         const long PostgresTimestampOffsetTicks = 630822816000000000L;
-        const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+        const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static DateTime DecodeTimestamp(long value, DateTimeKind kind)
