@@ -15,10 +15,11 @@ namespace Npgsql.NodaTime.Internal
     public partial class DateMultirangeHandler : MultirangeHandler<LocalDate>,
         INpgsqlTypeHandler<DateInterval[]>, INpgsqlTypeHandler<List<DateInterval>>
     {
-        public DateMultirangeHandler(PostgresMultirangeType multirangePostgresType, NpgsqlTypeHandler subtypeHandler)
-            : base(multirangePostgresType, new DateRangeHandler(multirangePostgresType.Subrange, subtypeHandler))
-        {
-        }
+        readonly INpgsqlTypeHandler<DateInterval> _dateIntervalHandler;
+
+        public DateMultirangeHandler(PostgresMultirangeType multirangePostgresType, DateRangeHandler rangeHandler)
+            : base(multirangePostgresType, rangeHandler)
+            => _dateIntervalHandler = rangeHandler;
 
         public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(DateInterval[]);
         public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(DateInterval[]);
@@ -38,8 +39,7 @@ namespace Npgsql.NodaTime.Internal
             {
                 await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
-                var range = await RangeHandler.Read(buf, rangeLen, async, fieldDescription);
-                multirange[i] = new(range.LowerBound, range.UpperBound - Period.FromDays(1));
+                multirange[i] = await _dateIntervalHandler.Read(buf, rangeLen, async, fieldDescription);
             }
 
             return multirange;
@@ -56,8 +56,7 @@ namespace Npgsql.NodaTime.Internal
             {
                 await buf.Ensure(4, async);
                 var rangeLen = buf.ReadInt32();
-                var range = await RangeHandler.Read(buf, rangeLen, async, fieldDescription);
-                multirange.Add(new(range.LowerBound, range.UpperBound - Period.FromDays(1)));
+                multirange.Add(await _dateIntervalHandler.Read(buf, rangeLen, async, fieldDescription));
             }
 
             return multirange;
@@ -77,15 +76,9 @@ namespace Npgsql.NodaTime.Internal
 
             var sum = 4 + 4 * value.Count;
             for (var i = 0; i < value.Count; i++)
-            {
-                var interval = value[i];
-                sum += RangeHandler.ValidateAndGetLength(
-                    new NpgsqlRange<LocalDate>(interval.Start, interval.End),
-                    ref lengthCache,
-                    parameter: null);
-            }
+                sum += _dateIntervalHandler.ValidateAndGetLength(value[i], ref lengthCache, parameter: null);
 
-            return lengthCache.Set(sum);
+            return lengthCache!.Set(sum);
         }
 
         public async Task Write(
@@ -102,11 +95,7 @@ namespace Npgsql.NodaTime.Internal
             buf.WriteInt32(value.Length);
 
             for (var i = 0; i < value.Length; i++)
-            {
-                var interval = value[i];
-                await RangeHandler.WriteWithLength(
-                    new NpgsqlRange<LocalDate>(interval.Start, interval.End), buf, lengthCache, parameter: null, async, cancellationToken);
-            }
+                await RangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
         }
 
         public async Task Write(

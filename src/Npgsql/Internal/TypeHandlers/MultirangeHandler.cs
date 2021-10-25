@@ -15,7 +15,7 @@ namespace Npgsql.Internal.TypeHandlers
         /// <summary>
         /// The type handler for the range that this multirange type holds
         /// </summary>
-        protected  RangeHandler<TSubtype> RangeHandler { get; }
+        protected RangeHandler<TSubtype> RangeHandler { get; }
 
         /// <inheritdoc />
         public MultirangeHandler(PostgresMultirangeType pgMultirangeType, RangeHandler<TSubtype> rangeHandler)
