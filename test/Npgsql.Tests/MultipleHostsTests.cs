@@ -17,6 +17,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
+    [Timeout(60000)]
     public class MultipleHostsTests : TestBase
     {
         static readonly object[] MyCases =
