@@ -31,8 +31,8 @@ namespace Npgsql.Tests.Support
         readonly MockState _state;
         readonly string? _startupErrorCode;
 
-        ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
-        internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
+        ChannelWriter<Task<ServerOrCancellationRequest>> _pendingRequestsWriter { get; }
+        ChannelReader<Task<ServerOrCancellationRequest>> _pendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
         internal string Host { get; }
@@ -55,8 +55,8 @@ namespace Npgsql.Tests.Support
             MockState state = MockState.MultipleHostsDisabled,
             string? startupErrorCode = null)
         {
-            var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
-            PendingRequestsReader = pendingRequestsChannel.Reader;
+            var pendingRequestsChannel = Channel.CreateUnbounded<Task<ServerOrCancellationRequest>>();
+            _pendingRequestsReader = pendingRequestsChannel.Reader;
             _pendingRequestsWriter = pendingRequestsChannel.Writer;
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
@@ -98,13 +98,19 @@ namespace Npgsql.Tests.Support
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
                         if (string.IsNullOrEmpty(_startupErrorCode))
-                            _ = server.Startup(_state).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        {
+                            await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
+                            {
+                                await server.Startup(_state);
+                                return serverOrCancellationRequest;
+                            }));
+                        }
                         else
                             _ = server.FailedStartup(_startupErrorCode);
                     }
                     else
                     {
-                        await _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest);
+                        await _pendingRequestsWriter.WriteAsync(Task.FromResult(serverOrCancellationRequest));
                     }
                 }
 
@@ -177,7 +183,7 @@ namespace Npgsql.Tests.Support
 
         internal async ValueTask<PgServerMock> WaitForServerConnection()
         {
-            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            var serverOrCancellationRequest = await await _pendingRequestsReader.ReadAsync();
             if (serverOrCancellationRequest.Server is null)
                 throw new InvalidOperationException("Expected a server connection but got a cancellation request instead");
             return serverOrCancellationRequest.Server;
@@ -185,7 +191,7 @@ namespace Npgsql.Tests.Support
 
         internal async ValueTask<PgCancellationRequest> WaitForCancellationRequest()
         {
-            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            var serverOrCancellationRequest = await await _pendingRequestsReader.ReadAsync();
             if (serverOrCancellationRequest.CancellationRequest is null)
                 throw new InvalidOperationException("Expected cancellation request but got a server connection instead");
             return serverOrCancellationRequest.CancellationRequest;
@@ -193,15 +199,12 @@ namespace Npgsql.Tests.Support
 
         public async ValueTask DisposeAsync()
         {
-            if (_state != MockState.MultipleHostsDisabled)
-            {
-                var endpoint = _socket.LocalEndPoint as IPEndPoint;
-                Debug.Assert(endpoint is not null);
-                var host = endpoint.Address.ToString();
-                var port = endpoint.Port;
-                ClusterStateCache.RemoveClusterState(host, port);
-            }
-            
+            var endpoint = _socket.LocalEndPoint as IPEndPoint;
+            Debug.Assert(endpoint is not null);
+            var host = endpoint.Address.ToString();
+            var port = endpoint.Port;
+            ClusterStateCache.RemoveClusterState(host, port);
+
             // Stop accepting new connections
             _socket.Dispose();
             try
