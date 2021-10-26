@@ -175,7 +175,7 @@ namespace Npgsql.TypeMapping
         TextHandler? _nameHandler;
         TextHandler? _refcursorHandler;
         TextHandler? _citextHandler;
-        readonly JsonHandler _jsonbHandler;
+        JsonHandler? _jsonbHandler; // Note that old version of PG (and Redshift) don't have jsonb
         JsonHandler? _jsonHandler;
         JsonPathHandler? _jsonPathHandler;
 
@@ -266,7 +266,6 @@ namespace Npgsql.TypeMapping
             _dateHandler ??= new DateHandler(PgType("date"));
             _boolHandler ??= new BoolHandler(PgType("boolean"));
             _uuidHandler ??= new UuidHandler(PgType("uuid"));
-            _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -289,7 +288,7 @@ namespace Npgsql.TypeMapping
                 "name"                           => NameHandler(),
                 "refcursor"                      => RefcursorHandler(),
                 "citext"                         => CitextHandler(),
-                "jsonb"                          => _jsonbHandler,
+                "jsonb"                          => JsonbHandler(),
                 "json"                           => JsonHandler(),
                 "jsonpath"                       => JsonPathHandler(),
 
@@ -556,7 +555,7 @@ namespace Npgsql.TypeMapping
             if (typeof(T) == typeof(ArraySegment<char>))
                 return _textHandler;
             if (typeof(T) == typeof(JsonDocument))
-                return _jsonbHandler;
+                return JsonbHandler();
 
             // Date/time types
             // No resolution for DateTime, since that's value-dependent (Kind)
@@ -648,6 +647,7 @@ namespace Npgsql.TypeMapping
         NpgsqlTypeHandler? CitextHandler()   => _citextHandler ??= _databaseInfo.TryGetPostgresTypeByName("citext", out var pgType)
             ? new TextHandler(pgType, _connector.TextEncoding)
             : null;
+        NpgsqlTypeHandler JsonbHandler()     => _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
         NpgsqlTypeHandler JsonHandler()      => _jsonHandler ??= new JsonHandler(PgType("json"), _connector.TextEncoding, isJsonb: false);
         NpgsqlTypeHandler JsonPathHandler()  => _jsonPathHandler ??= new JsonPathHandler(PgType("jsonpath"), _connector.TextEncoding);
 
