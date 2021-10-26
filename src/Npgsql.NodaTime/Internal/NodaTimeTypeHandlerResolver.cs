@@ -5,7 +5,6 @@ using NodaTime;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
@@ -21,8 +20,11 @@ namespace Npgsql.NodaTime.Internal
         readonly TimeHandler _timeHandler;
         readonly TimeTzHandler _timeTzHandler;
         readonly IntervalHandler _intervalHandler;
+
+        readonly TimestampTzRangeHandler _timestampTzRangeHandler;
         readonly DateRangeHandler _dateRangeHandler;
         DateMultirangeHandler? _dateMultirangeHandler;
+        TimestampTzMultirangeHandler? _timestampTzMultirangeHandler;
 
         internal NodaTimeTypeHandlerResolver(NpgsqlConnector connector)
         {
@@ -38,6 +40,8 @@ namespace Npgsql.NodaTime.Internal
             _timeHandler = new TimeHandler(PgType("time without time zone"));
             _timeTzHandler = new TimeTzHandler(PgType("time with time zone"));
             _intervalHandler = new IntervalHandler(PgType("interval"));
+
+            _timestampTzRangeHandler = new TimestampTzRangeHandler(PgType("tstzrange"), _timestampTzHandler);
             _dateRangeHandler = new DateRangeHandler(PgType("daterange"), _dateHandler);
         }
 
@@ -50,9 +54,14 @@ namespace Npgsql.NodaTime.Internal
                 "time without time zone" => _timeHandler,
                 "time with time zone" => _timeTzHandler,
                 "interval" => _intervalHandler,
+
+                "tstzrange" => _timestampTzRangeHandler,
                 "daterange" => _dateRangeHandler,
+
+                "tstzmultirange"
+                    => _timestampTzMultirangeHandler ??= new TimestampTzMultirangeHandler((PostgresMultirangeType)PgType("tstzmultirange"), _timestampTzRangeHandler),
                 "datemultirange"
-                    => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), _dateHandler),
+                    => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), _dateRangeHandler),
 
                 _ => null
             };
@@ -87,6 +96,15 @@ namespace Npgsql.NodaTime.Internal
             if (typeof(T) == typeof(Duration))
                 return _intervalHandler;
 
+            if (typeof(T) == typeof(Interval))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(NpgsqlRange<Instant>))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(NpgsqlRange<ZonedDateTime>))
+                return _timestampTzHandler;
+            if (typeof(T) == typeof(NpgsqlRange<OffsetDateTime>))
+                return _timestampTzHandler;
+
             // Note that DateInterval is a reference type, so not included in this method
             if (typeof(T) == typeof(NpgsqlRange<LocalDate>))
                 return _dateRangeHandler;
@@ -111,8 +129,26 @@ namespace Npgsql.NodaTime.Internal
                 return "time with time zone";
             if (type == typeof(Period) || type == typeof(Duration))
                 return "interval";
+
+            if (type == typeof(Interval) ||
+                type == typeof(NpgsqlRange<Instant>) ||
+                type == typeof(NpgsqlRange<ZonedDateTime>) ||
+                type == typeof(NpgsqlRange<OffsetDateTime>))
+                return "tstzrange";
             if (type == typeof(DateInterval) || type == typeof(NpgsqlRange<LocalDate>))
                 return "daterange";
+
+            if (type == typeof(Interval[]) ||
+                type == typeof(List<Interval>) ||
+                type == typeof(NpgsqlRange<Instant>[]) ||
+                type == typeof(List<NpgsqlRange<Instant>>) ||
+                type == typeof(NpgsqlRange<ZonedDateTime>[]) ||
+                type == typeof(List<NpgsqlRange<ZonedDateTime>>) ||
+                type == typeof(NpgsqlRange<OffsetDateTime>[]) ||
+                type == typeof(List<NpgsqlRange<OffsetDateTime>>))
+            {
+                return "tstzmultirange";
+            }
             if (type == typeof(DateInterval[]) ||
                 type == typeof(List<DateInterval>) ||
                 type == typeof(NpgsqlRange<LocalDate>[]) ||
@@ -130,14 +166,18 @@ namespace Npgsql.NodaTime.Internal
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
             => dataTypeName switch
             {
-                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,      DbType.DateTime, "timestamp without time zone"),
-                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz,    DbType.DateTime, "timestamp with time zone"),
-                "date"                                       => new(NpgsqlDbType.Date,           DbType.Date,     "date"),
-                "time without time zone"                     => new(NpgsqlDbType.Time,           DbType.Time,     "time without time zone"),
-                "time with time zone"                        => new(NpgsqlDbType.TimeTz,         DbType.Object,   "time with time zone"),
-                "interval"                                   => new(NpgsqlDbType.Interval,       DbType.Object,   "interval"),
-                "daterange"                                  => new(NpgsqlDbType.DateRange,      DbType.Object,   "daterange"),
-                "datemultirange"                             => new(NpgsqlDbType.DateMultirange, DbType.Object,   "datemultirange"),
+                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,             DbType.DateTime, "timestamp without time zone"),
+                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz,           DbType.DateTime, "timestamp with time zone"),
+                "date"                                       => new(NpgsqlDbType.Date,                  DbType.Date,     "date"),
+                "time without time zone"                     => new(NpgsqlDbType.Time,                  DbType.Time,     "time without time zone"),
+                "time with time zone"                        => new(NpgsqlDbType.TimeTz,                DbType.Object,   "time with time zone"),
+                "interval"                                   => new(NpgsqlDbType.Interval,              DbType.Object,   "interval"),
+
+                "tstzrange"                                  => new(NpgsqlDbType.TimestampTzRange,      DbType.Object,   "tstzrange"),
+                "daterange"                                  => new(NpgsqlDbType.DateRange,             DbType.Object,   "daterange"),
+
+                "datemultirange"                             => new(NpgsqlDbType.DateMultirange,        DbType.Object,   "datemultirange"),
+                "tstzmultirange"                             => new(NpgsqlDbType.TimestampTzMultirange, DbType.Object,   "tstzmultirange"),
 
                 _ => null
             };
