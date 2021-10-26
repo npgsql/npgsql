@@ -222,7 +222,7 @@ namespace Npgsql.TypeMapping
         // Misc types
         readonly BoolHandler _boolHandler;
         ByteaHandler? _byteaHandler;
-        readonly UuidHandler _uuidHandler;
+        UuidHandler? _uuidHandler;
         BitStringHandler? _bitVaryingHandler;
         BitStringHandler? _bitHandler;
         RecordHandler? _recordHandler;
@@ -265,7 +265,6 @@ namespace Npgsql.TypeMapping
             _timestampTzHandler ??= new TimestampTzHandler(PgType("timestamp with time zone"));
             _dateHandler ??= new DateHandler(PgType("date"));
             _boolHandler ??= new BoolHandler(PgType("boolean"));
-            _uuidHandler ??= new UuidHandler(PgType("uuid"));
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -335,7 +334,7 @@ namespace Npgsql.TypeMapping
                 // Misc types
                 "bool" or "boolean"       => _boolHandler,
                 "bytea"                   => ByteaHandler(),
-                "uuid"                    => _uuidHandler,
+                "uuid"                    => UuidHandler(),
                 "bit varying" or "varbit" => BitVaryingHandler(),
                 "bit"                     => BitHandler(),
                 "hstore"                  => HstoreHandler(),
@@ -606,7 +605,7 @@ namespace Npgsql.TypeMapping
             if (typeof(T) == typeof(bool))
                 return _boolHandler;
             if (typeof(T) == typeof(Guid))
-                return _uuidHandler;
+                return UuidHandler();
             if (typeof(T) == typeof(BitVector32))
                 return BitVaryingHandler();
 
@@ -696,6 +695,7 @@ namespace Npgsql.TypeMapping
 
         // Misc types
         NpgsqlTypeHandler ByteaHandler()      => _byteaHandler ??= new ByteaHandler(PgType("bytea"));
+        NpgsqlTypeHandler UuidHandler()       => _uuidHandler ??= new UuidHandler(PgType("uuid"));
         NpgsqlTypeHandler BitVaryingHandler() => _bitVaryingHandler ??= new BitStringHandler(PgType("bit varying"));
         NpgsqlTypeHandler BitHandler()        => _bitHandler ??= new BitStringHandler(PgType("bit"));
         NpgsqlTypeHandler? HstoreHandler()    => _hstoreHandler ??= _databaseInfo.TryGetPostgresTypeByName("hstore", out var pgType)
