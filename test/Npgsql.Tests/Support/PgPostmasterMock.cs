@@ -99,6 +99,9 @@ namespace Npgsql.Tests.Support
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
                         if (string.IsNullOrEmpty(_startupErrorCode))
                         {
+                            // We may be accepting (and starting up) multiple connections in parallel, but some tests assume we return
+                            // server connections in FIFO. As a result, we enqueue immediately into the _pendingRequestsWriter channel,
+                            // but we enqueue a Task which represents the Startup completing.
                             await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
                             {
                                 await server.Startup(_state);
