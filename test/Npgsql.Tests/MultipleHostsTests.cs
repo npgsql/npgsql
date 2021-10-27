@@ -544,7 +544,7 @@ namespace Npgsql.Tests
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
         }
 
-        [Test, Ignore("Flaky")]
+        [Test]
         public async Task Cluster_offline_state_on_query_execution_pg_critical_failure()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
@@ -557,12 +557,10 @@ namespace Npgsql.Tests
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
 
-            var queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
-
             var server = await postmaster.WaitForServerConnection();
             await server.WriteErrorResponse(PostgresErrorCodes.CrashShutdown).FlushAsync();
 
-            var ex = Assert.ThrowsAsync<PostgresException>(async () => await queryTask)!;
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
             Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.CrashShutdown));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
@@ -598,7 +596,7 @@ namespace Npgsql.Tests
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
         }
 
-        [Test, Ignore("Flaky")]
+        [Test]
         public async Task Cluster_offline_state_on_query_execution_IOException()
         {
             await using var postmaster = PgPostmasterMock.Start(ConnectionString);
@@ -611,12 +609,10 @@ namespace Npgsql.Tests
             Assert.That(state, Is.EqualTo(ClusterState.Unknown));
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
 
-            var queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
-
             var server = await postmaster.WaitForServerConnection();
             server.Close();
 
-            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask)!;
+            var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
             Assert.That(ex.InnerException, Is.InstanceOf<IOException>());
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
 
