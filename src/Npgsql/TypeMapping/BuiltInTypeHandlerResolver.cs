@@ -29,7 +29,7 @@ namespace Npgsql.TypeMapping
         readonly NpgsqlConnector _connector;
         readonly NpgsqlDatabaseInfo _databaseInfo;
 
-        static readonly Type ReadonlyIpType = IPAddress.Loopback.GetType();
+        static readonly Type ReadOnlyIPAddressType = IPAddress.Loopback.GetType();
 
         static readonly Dictionary<string, TypeMappingInfo> Mappings = new()
         {
@@ -93,7 +93,7 @@ namespace Npgsql.TypeMapping
             // Network types
             { "cidr",      new(NpgsqlDbType.Cidr,     DbType.Object, "cidr") },
 #pragma warning disable 618
-            { "inet",      new(NpgsqlDbType.Inet,     DbType.Object, "inet", typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet), ReadonlyIpType) },
+            { "inet",      new(NpgsqlDbType.Inet,     DbType.Object, "inet", typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet), ReadOnlyIPAddressType) },
 #pragma warning restore 618
             { "macaddr",   new(NpgsqlDbType.MacAddr,  DbType.Object, "macaddr", typeof(PhysicalAddress)) },
             { "macaddr8",  new(NpgsqlDbType.MacAddr8, DbType.Object, "macaddr8") },
@@ -400,7 +400,7 @@ namespace Npgsql.TypeMapping
 
                 // Network types
                 { typeof(IPAddress),                       "inet" },
-                { ReadonlyIpType,                          "inet" },
+                // See ReadOnlyIPAddress below
                 { typeof((IPAddress Address, int Subnet)), "inet" },
 #pragma warning disable 618
                 { typeof(NpgsqlInet),                      "inet" },
@@ -441,6 +441,11 @@ namespace Npgsql.TypeMapping
                 { typeof(NpgsqlTid),               "tid" },
                 { typeof(DBNull),                  "unknown" }
             };
+
+            // Recent versions of .NET Core have an internal ReadOnlyIPAddress type (returned e.g. for IPAddress.Loopback)
+            // But older versions don't have it
+            if (ReadOnlyIPAddressType != typeof(IPAddress))
+                ClrTypeToDataTypeNameTable[ReadOnlyIPAddressType] = "inet";
 
             if (LegacyTimestampBehavior)
                 ClrTypeToDataTypeNameTable[typeof(DateTime)] = "timestamp without time zone";
