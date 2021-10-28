@@ -734,6 +734,44 @@ namespace Npgsql.Tests
             Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
         }
 
+        [Test]
+        public async Task Clear_pool_one_host_only_on_admin_shutdown()
+        {
+            await using var primaryPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+            await using var standbyPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+            var csb = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+                TargetSessionAttributes = "prefer-primary",
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                MaxPoolSize = 2,
+            };
+            await using var primaryConn = await OpenConnectionAsync(csb);
+            await using var anotherPrimaryConn = await OpenConnectionAsync(csb);
+            await using var standbyConn = await OpenConnectionAsync(csb);
+            await anotherPrimaryConn.CloseAsync();
+            await standbyConn.CloseAsync();
+
+            Assert.That(ClusterStateCache.GetClusterState(primaryPostmaster.Host, primaryPostmaster.Port, ignoreExpiration: false),
+                Is.EqualTo(ClusterState.PrimaryReadWrite));
+            Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
+                Is.EqualTo(ClusterState.Standby));
+            Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(3));
+
+            var server = await primaryPostmaster.WaitForServerConnection();
+            await server.WriteErrorResponse(PostgresErrorCodes.AdminShutdown).FlushAsync();
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => primaryConn.ExecuteNonQueryAsync("SELECT 1"))!;
+            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
+            Assert.That(primaryConn.State, Is.EqualTo(ConnectionState.Closed));
+
+            Assert.That(ClusterStateCache.GetClusterState(primaryPostmaster.Host, primaryPostmaster.Port, ignoreExpiration: false),
+                Is.EqualTo(ClusterState.Offline));
+            Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
+                Is.EqualTo(ClusterState.Standby));
+            Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(1));
+        }
+
         // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
         [Test, Timeout(10000), NonParallelizable]
         public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)

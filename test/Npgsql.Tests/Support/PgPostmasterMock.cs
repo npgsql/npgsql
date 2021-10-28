@@ -90,6 +90,8 @@ namespace Npgsql.Tests.Support
 
             async Task DoAcceptClients()
             {
+                var expectClusterStateQuery = _state != MockState.MultipleHostsDisabled;
+
                 while (true)
                 {
                     var serverOrCancellationRequest = await Accept(_completeCancellationImmediately);
@@ -102,11 +104,13 @@ namespace Npgsql.Tests.Support
                             // We may be accepting (and starting up) multiple connections in parallel, but some tests assume we return
                             // server connections in FIFO. As a result, we enqueue immediately into the _pendingRequestsWriter channel,
                             // but we enqueue a Task which represents the Startup completing.
+                            var closureExpectClusterStateQuery = expectClusterStateQuery;
                             await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
                             {
-                                await server.Startup(_state);
+                                await server.Startup(closureExpectClusterStateQuery, _state);
                                 return serverOrCancellationRequest;
                             }));
+                            expectClusterStateQuery = false;
                         }
                         else
                             _ = server.FailedStartup(_startupErrorCode);

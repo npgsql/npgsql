@@ -469,6 +469,7 @@ namespace Npgsql
         {
             "08", // Connection error
             "53", // Insufficient resources
+            AdminShutdown, // Self explanatory
             CrashShutdown, // Self explanatory
             CannotConnectNow, // Database is starting up
             "58", // System errors, external to PG (server is dying)
