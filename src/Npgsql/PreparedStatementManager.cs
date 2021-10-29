@@ -200,8 +200,14 @@ namespace Npgsql
 
                     case PreparedState.Unprepared:
                         // Found an unprepared statement slot; this can occur if a previous preparation failed because of an error.
-                        // Use that immediately, no need to continue looking for an LRU. 
+                        // Use that immediately, no need to continue looking for an LRU.
                         pStatement.Name = slot.Name;
+
+                        // We do not need to close the unprepared statement as it was never successfully prepared and submitted
+                        // to PG. However, we may need to perform the cleanup which it failed to perform itself, so here, we transitively
+                        // replace whatever statement it was replacing.
+                        pStatement.StatementBeingReplaced = slot.StatementBeingReplaced;
+
                         _autoPrepared[i] = pStatement;
                         foundUnpreparedSlot = true;
                         break;
