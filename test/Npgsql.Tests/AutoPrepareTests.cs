@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
@@ -500,6 +499,53 @@ SELECT COUNT(*) FROM pg_prepared_statements
             conn.Open();
 
             Assert.That(conn.ExecuteScalar("SELECT 2"), Is.EqualTo(2));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4082")]
+        public void PreparedStatementAlreadyExistsFailure()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 2,
+                AutoPrepareMinUsages = 1
+            };
+
+            using (CreateTempPool(csb, out var connectionString))
+            using (var conn = OpenConnection(connectionString))
+            {
+                // Create a function we can use to raise an error with a single statement
+                conn.ExecuteNonQuery(@"
+                    CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
+                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
+                    LANGUAGE 'plpgsql';
+                ");
+
+                conn.UnprepareAll();
+
+                // Occupy _auto1 and _auto2
+                conn.ExecuteNonQuery("SELECT 1");
+                conn.ExecuteNonQuery("SELECT 2");
+
+                // Execute two new SELECTs which will replace the above two. _auto1 will now contain SELECT pg_temp.emit_exception()
+                // and _auto2 will contain SELECT 4. Note that they must be in this order because only the statements following
+                // the error-triggering statement will be unprepared.
+                //
+                // We expect error 12345. Prior to the error being raised, the SELECT pg_temp.emit_exception will be successfully prepared
+                // and the previous _auto1 (SELECT 1) will be successfully closed. However, the subsequent SELECT 4 will not be prepared,
+                // and the previous _auto2 (SELECT 2) will not be properly closed. SELECT 4 will then be unprepared.
+                Assert.That(() => conn.ExecuteNonQuery("SELECT pg_temp.emit_exception(); SELECT 4"), Throws.Exception
+                    .TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("12345")
+                );
+
+                // The PreparedStatementManager prioritises replacement of unprepared statements, so we know this will replace SELECT 4 in
+                // _auto2. The code previously assumed that cleanup was never required when replacing an unprepared statement (since it
+                // was never prepared in PG) and this is true in most cases. However, in this case, SELECT 3 needs to logically replace
+                // SELECT 2.
+                //
+                // Due to the bug, _auto2 never gets cleaned up and this throws a 42P05 (prepared statement "_auto2" already exists)
+                // when we try to use that slot
+                Assert.That(conn.ExecuteScalar("SELECT 3"), Is.EqualTo(3));
+            }
         }
 
         void DumpPreparedStatements(NpgsqlConnection conn)
