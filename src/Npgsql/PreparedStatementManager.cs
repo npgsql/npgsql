@@ -178,7 +178,9 @@ namespace Npgsql
                 var foundUnpreparedSlot = false;
                 var oldestTimestamp = DateTime.MaxValue;
                 var oldestIndex = -1;
-                for (var i = 0; i < _autoPrepared.Length; i++)
+
+                // Search _autoPrepared for an unprepared slot or the LRU prepared slot (if any)
+                for (var i = 0; i < _autoPrepared.Length && !foundUnpreparedSlot; i++)
                 {
                     var slot = _autoPrepared[i];
 
@@ -198,7 +200,7 @@ namespace Npgsql
 
                     case PreparedState.Unprepared:
                         // Found an unprepared statement slot; this can occur if a previous preparation failed because of an error.
-                        // Use that immediately, no need to continue looking for an LRU.
+                        // Use that immediately, no need to continue looking for an LRU. 
                         pStatement.Name = slot.Name;
                         _autoPrepared[i] = pStatement;
                         foundUnpreparedSlot = true;
