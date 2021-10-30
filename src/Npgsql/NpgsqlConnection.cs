@@ -346,8 +346,13 @@ namespace Npgsql
                     FullState = ConnectionState.Closed;
                     ConnectorBindingScope = ConnectorBindingScope.None;
                     Connector = null;
+                    EnlistedTransaction = null;
 
-                    connector?.Return();
+                    if (connector is not null)
+                    {
+                        connector.Connection = null;
+                        connector.Return();
+                    }
 
                     throw;
                 }
@@ -751,7 +756,18 @@ namespace Npgsql
             // Note that even when #1378 is implemented in some way, we should check for mono and go volatile in any case -
             // distributed transactions aren't supported.
 
-            transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
+            try
+            {
+                var volatileResourceManager = new VolatileResourceManager(this, transaction);
+                transaction.EnlistVolatile(volatileResourceManager, EnlistmentOptions.None);
+                volatileResourceManager.Init();
+            }
+            catch
+            {
+                EnlistedTransaction = null;
+                throw;
+            }
+
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
 
