@@ -334,6 +334,33 @@ namespace Npgsql.Tests
             Assert.That(ex.InnerException!.InnerException!.Message, Is.EqualTo(nameof(BreakConnectorWhileInTransactionScopeWithCommit)));
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4085")]
+        public void Open_connection_with_enlist_and_aborted_TransactionScope()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true
+            };
+
+            for (var i = 0; i < 2; i++)
+            {
+                using var outerScope = new TransactionScope();
+
+                try
+                {
+                    using var innerScope = new TransactionScope();
+                    throw new Exception("Random exception to abort the transaction scope");
+                }
+                catch (Exception)
+                {
+                }
+
+                var ex = Assert.Throws<TransactionException>(() => OpenConnection(csb))!;
+                Assert.That(ex.Message, Is.EqualTo("The operation is not valid for the state of the transaction."));
+            }
+        }
+
         #region Utilities
 
         void AssertNoPreparedTransactions()
