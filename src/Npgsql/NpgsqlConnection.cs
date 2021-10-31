@@ -748,7 +748,10 @@ namespace Npgsql
 
             EnlistedTransaction = transaction;
             if (transaction == null)
+            {
+                EnlistedTransaction = null;
                 return;
+            }
 
             // Until #1378 is implemented, we have no recovery, and so no need to enlist as a durable resource manager
             // (or as promotable single phase).
@@ -756,17 +759,10 @@ namespace Npgsql
             // Note that even when #1378 is implemented in some way, we should check for mono and go volatile in any case -
             // distributed transactions aren't supported.
 
-            try
-            {
-                var volatileResourceManager = new VolatileResourceManager(this, transaction);
-                transaction.EnlistVolatile(volatileResourceManager, EnlistmentOptions.None);
-                volatileResourceManager.Init();
-            }
-            catch
-            {
-                EnlistedTransaction = null;
-                throw;
-            }
+            var volatileResourceManager = new VolatileResourceManager(this, transaction);
+            transaction.EnlistVolatile(volatileResourceManager, EnlistmentOptions.None);
+            volatileResourceManager.Init();
+            EnlistedTransaction = transaction;
 
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
