@@ -336,7 +336,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/4085")]
-        public void OpenConnectionWithEnlistAndAbortedTransactionScope()
+        public void Open_connection_with_enlist_and_aborted_TransactionScope()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -350,11 +350,10 @@ namespace Npgsql.Tests
                 try
                 {
                     using var innerScope = new TransactionScope();
-                    throw new Exception("Random exception to abort the transacton scope");
+                    throw new Exception("Random exception to abort the transaction scope");
                 }
                 catch (Exception)
                 {
-
                 }
 
                 var ex = Assert.Throws<TransactionException>(() => OpenConnection(csb))!;
