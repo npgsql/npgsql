@@ -18,7 +18,7 @@ namespace Npgsql
         NpgsqlConnector _connector;
         Transaction _transaction;
         readonly string _txId;
-        NpgsqlTransaction _localTx;
+        NpgsqlTransaction _localTx = null!;
         string? _preparedTxName;
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
@@ -33,8 +33,10 @@ namespace Npgsql
             _transaction = transaction;
             // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
             _txId = transaction.TransactionInformation.LocalIdentifier;
-            _localTx = connection.BeginTransaction(ConvertIsolationLevel(_transaction.IsolationLevel));
         }
+
+        internal void Init()
+            => _localTx = _connector.Connection!.BeginTransaction(ConvertIsolationLevel(_transaction.IsolationLevel));
 
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
