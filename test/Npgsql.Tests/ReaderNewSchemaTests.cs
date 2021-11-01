@@ -18,7 +18,7 @@ namespace Npgsql.Tests
     {
         // ReSharper disable once InconsistentNaming
         [Test]
-        public async Task AllowDBNull()
+        public async Task Allow_DBNull()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "nullable INTEGER, non_nullable INTEGER NOT NULL", out var table);
@@ -63,7 +63,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task BaseColumnNameWithColumnAliases()
+        public async Task BaseColumnName_with_column_aliases()
         {
             using var conn = OpenConnection();
 
@@ -234,7 +234,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task IsAutoIncrementIdentity()
+        public async Task IsAutoIncrement_identity()
         {
             using var conn = await OpenConnectionAsync();
             if (conn.PostgreSqlVersion < new Version(10, 0))
@@ -277,7 +277,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task IsKeyComposite()
+        public async Task IsKey_composite()
         {
             if (IsRedshift)
                 Assert.Ignore("Key not supported in reader schema on Redshift");
@@ -308,7 +308,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task IsReadOnlyOnView()
+        public async Task IsReadOnly_on_view()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempViewName(conn, out var view);
@@ -326,7 +326,7 @@ CREATE TABLE {table} (bar INTEGER)");
         }
 
         [Test]
-        public async Task IsReadOnlyOnNonColumn()
+        public async Task IsReadOnly_on_non_column()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 8", conn);
@@ -406,7 +406,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1305")]
-        public async Task DataTypeUnknownType()
+        public async Task DataType_unknown_type()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
@@ -419,7 +419,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         }
 
         [Test, NonParallelizable]
-        public async Task DataTypeWithComposite()
+        public async Task DataType_with_composite()
         {
             if (IsRedshift)
                 Assert.Ignore("Composite types not support on Redshift");
@@ -428,7 +428,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(DataTypeWithComposite),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(DataType_with_composite),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -477,7 +477,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         }
 
         [Test]
-        public async Task ColumnSchemaWithoutWithNoKeyInfo()
+        public async Task ColumnSchema_with_and_without_KeyInfo()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
@@ -628,7 +628,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         }
 
         [Test]
-        public async Task SameColumnName()
+        public async Task Same_column_name()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table1);
@@ -649,7 +649,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
-        public async Task DomainTypes()
+        public async Task Domain_type()
         {
             if (IsRedshift)
                 Assert.Ignore("Domain types not support on Redshift");
@@ -683,7 +683,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         }
 
         [Test]
-        public async Task NpgsqlDbTypeExtension()
+        public async Task NpgsqlDbType_extension()
         {
             using var conn = await OpenConnectionAsync();
             await EnsureExtensionAsync(conn, "hstore", "9.1");
@@ -696,7 +696,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1950")]
-        public async Task NoResultset()
+        public async Task No_resultset()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("COMMIT", conn);
@@ -764,7 +764,7 @@ CREATE TABLE {table2} (foo INTEGER)");
 
         public ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
-        private async Task<ReadOnlyCollection<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
+        async Task<ReadOnlyCollection<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
             => IsAsync ? await reader.GetColumnSchemaAsync() : reader.GetColumnSchema();
     }
 }

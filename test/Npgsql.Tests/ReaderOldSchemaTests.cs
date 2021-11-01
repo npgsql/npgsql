@@ -14,7 +14,7 @@ namespace Npgsql.Tests
     public class ReaderOldSchemaTests : SyncOrAsyncTestBase
     {
         [Test]
-        public async Task PrimaryKeyFieldsMetadataSupport()
+        public async Task Primary_key_composite()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -41,7 +41,7 @@ CREATE TABLE {table} (
         }
 
         [Test]
-        public async Task PrimaryKeyFieldMetadataSupport()
+        public async Task Primary_key()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, serial SERIAL", out var table);
@@ -57,7 +57,7 @@ CREATE TABLE {table} (
         }
 
         [Test]
-        public async Task IsAutoIncrementMetadataSupport()
+        public async Task IsAutoIncrement()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id SERIAL PRIMARY KEY", out var table);
@@ -74,7 +74,7 @@ CREATE TABLE {table} (
         }
 
         [Test]
-        public async Task IsReadOnlyMetadataSupport()
+        public async Task IsReadOnly()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -138,7 +138,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
-        public async Task WithoutResult()
+        public async Task Without_result()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -150,7 +150,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
         }
 
         [Test]
-        public async Task PrecisionAndScale()
+        public async Task Precision_and_scale()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1::NUMERIC AS result", conn);
@@ -227,6 +227,6 @@ SELECT 1 AS some_other_column, 2";
 
         public ReaderOldSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
-        private async Task<DataTable?> GetSchemaTable(NpgsqlDataReader dr) => IsAsync ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+        async Task<DataTable?> GetSchemaTable(NpgsqlDataReader dr) => IsAsync ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
     }
 }

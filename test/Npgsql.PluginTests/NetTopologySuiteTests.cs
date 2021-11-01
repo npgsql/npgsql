@@ -146,7 +146,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestRead(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
+        public void Read(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
@@ -155,7 +155,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestWrite(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
+        public void Write(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using var conn = OpenConnection(handleOrdinates: ordinates);
             using var cmd = conn.CreateCommand();
@@ -165,7 +165,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void TestArrayRead()
+        public void Read_array()
         {
             using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
             using var cmd = conn.CreateCommand();
@@ -176,7 +176,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void TestArrayWrite()
+        public void Write_array()
         {
             using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
             using var cmd = conn.CreateCommand();
@@ -186,7 +186,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ReadAsConcreteType()
+        public void Read_as_concrete_type()
         {
             using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
             using var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn);
@@ -197,7 +197,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripGeometryGeography()
+        public void Roundtrip_geometry_geography()
         {
             var point = new Point(new Coordinate(1d, 1d));
             using var conn = OpenConnection(handleOrdinates: Ordinates.XY);

@@ -9,7 +9,7 @@ namespace Npgsql.Tests
     class SqlQueryParserTests
     {
         [Test]
-        public void ParamSimple()
+        public void Parameter_simple()
         {
             var parameters = new NpgsqlParameter[] { new(":p1", "foo"), new(":p2", "foo") };
             var result = ParseCommand("SELECT :p1, :p2", parameters).Single();
@@ -18,7 +18,7 @@ namespace Npgsql.Tests
         }
 
          [Test]
-         public void ParamNameWithDot()
+         public void Parameter_name_with_dot()
          {
              var p = new NpgsqlParameter(":a.parameter", "foo");
              var results = ParseCommand("INSERT INTO data (field_char5) VALUES (:a.parameter)", p);
@@ -48,7 +48,7 @@ namespace Npgsql.Tests
          [TestCase(@"SELECT 1>:param", TestName = "GreaterThan")]
          [TestCase(@"SELECT 1<>:param", TestName = "NotEqual")]
          [TestCase("SELECT--comment\r:param", TestName="LineComment")]
-         public void ParamGetsBound(string sql)
+         public void Parameter_gets_bound(string sql)
          {
              var p = new NpgsqlParameter(":param", "foo");
              var results = ParseCommand(sql, p);
@@ -56,7 +56,7 @@ namespace Npgsql.Tests
          }
 
          [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1177")]
-         public void ParamGetsBoundNonAscii()
+         public void Parameter_gets_bound_non_ascii()
          {
              var p = new NpgsqlParameter("漢字", "foo");
              var results = ParseCommand("SELECT @漢字", p);
@@ -69,7 +69,7 @@ namespace Npgsql.Tests
         [TestCase(@"SELECT 1,
 -- Comment, @param and also :param
 2", TestName = "LineComment")]
-        public void ParamDoesntGetBound(string sql)
+        public void Parameter_does_not_get_bound(string sql)
         {
             var p = new NpgsqlParameter(":param", "foo");
             var results = ParseCommand(sql, p);
@@ -77,7 +77,7 @@ namespace Npgsql.Tests
         }
 
          [Test]
-         public void NonConformingStrings()
+         public void Non_conforming_string()
          {
              var result = ParseCommand(@"SELECT 'abc\':str''a:str'").Single();
              Assert.That(result.FinalCommandText, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
@@ -85,7 +85,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void MultiqueryWithParams()
+         public void Multiquery_with_parameters()
          {
              var parameters = new NpgsqlParameter[]
              {
@@ -106,14 +106,14 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void NoOutputParameters()
+         public void No_output_parameters()
          {
              var p = new NpgsqlParameter("p", DbType.String) { Direction = ParameterDirection.Output };
              Assert.That(() => ParseCommand("SELECT @p", p), Throws.Exception);
          }
 
          [Test]
-         public void MissingParamIsIgnored()
+         public void Missing_parameter_is_ignored()
          {
              var results = ParseCommand("SELECT @p; SELECT 1");
              Assert.That(results[0].FinalCommandText, Is.EqualTo("SELECT @p"));
@@ -123,7 +123,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void ConsecutiveSemicolons()
+         public void Consecutive_semicolons()
          {
              var results = ParseCommand(";;SELECT 1");
              Assert.That(results, Has.Count.EqualTo(3));
@@ -133,7 +133,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void TrailingSemicolon()
+         public void Trailing_semicolon()
          {
              var results = ParseCommand("SELECT 1;");
              Assert.That(results, Has.Count.EqualTo(1));
@@ -149,7 +149,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void SemicolonInParentheses()
+         public void Semicolon_in_parentheses()
          {
              var results = ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1; SELECT 1)");
              Assert.That(results, Has.Count.EqualTo(1));
@@ -157,7 +157,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void SemicolonAfterParentheses()
+         public void Semicolon_after_parentheses()
          {
              var results = ParseCommand("CREATE OR REPLACE RULE test AS ON UPDATE TO test DO (SELECT 1); SELECT 1");
              Assert.That(results, Has.Count.EqualTo(2));
@@ -166,7 +166,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void ReduceNumberOfStatements()
+         public void Reduce_number_of_statements()
          {
              var parser = new SqlQueryParser();
 
@@ -181,7 +181,7 @@ namespace Npgsql.Tests
 
 #if TODO
         [Test]
-        public void TrimWhitespace()
+        public void Trim_whitespace()
         {
             _parser.ParseRawQuery("   SELECT 1\t", _params, _queries, standardConformingStrings: true);
             Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));

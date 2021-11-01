@@ -21,7 +21,7 @@ namespace Npgsql.Tests
 
         //[Test, Description("Generates a notification that arrives after reader data that is already being read")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/252")]
-        public void NotificationAfterData()
+        public void Notification_after_data()
         {
             var receivedNotification = false;
             using var conn = OpenConnection();
@@ -73,7 +73,7 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
         //[Timeout(10000)]
-        public void WaitWithTimeout()
+        public void Wait_with_timeout()
         {
             using var conn = OpenConnection();
             Assert.That(conn.Wait(100), Is.EqualTo(false));
@@ -81,7 +81,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WaitWithPrependedMessage()
+        public void Wait_with_prepended_message()
         {
             using (OpenConnection()) {}  // A DISCARD ALL is now prepended in the connection's write buffer
             using (var conn = OpenConnection())
@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WaitAsyncWithTimeout()
+        public void WaitAsync_with_timeout()
         {
             using var conn = OpenConnection();
             Assert.That(async () => await conn.WaitAsync(100), Is.EqualTo(false));
@@ -112,7 +112,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task WaitWithKeepalive()
+        public async Task Wait_with_keepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -131,7 +131,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task WaitAsyncWithKeepalive()
+        public async Task WaitAsync_with_keepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -150,7 +150,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WaitAsyncCancellation()
+        public void WaitAsync_cancellation()
         {
             using (var conn = OpenConnection())
             {
@@ -170,7 +170,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WaitBreaksConnection()
+        public void Wait_breaks_connection()
         {
             using var conn = OpenConnection();
             Task.Delay(1000).ContinueWith(t =>
@@ -184,7 +184,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WaitAsyncBreaksConnection()
+        public void WaitAsync_breaks_connection()
         {
             using var conn = OpenConnection();
             Task.Delay(1000).ContinueWith(t =>

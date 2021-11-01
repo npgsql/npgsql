@@ -43,7 +43,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task RoundtripLarge()
+        public async Task Roundtrip_large()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p::BYTEA", conn);
@@ -91,7 +91,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task EmptyRoundtrip()
+        public async Task Empty_roundtrip()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT :val::BYTEA", conn);
@@ -129,7 +129,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task ByteaOverArrayOfBytes()
+        public async Task Bytea_over_array_of_bytes()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -140,7 +140,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task ArrayOfBytea()
+        public async Task Array_of_bytea()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT :p1", conn);
@@ -227,7 +227,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Writes a bytea that doesn't fit in a partially-full buffer, but does fit in an empty buffer")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/654")]
-        public async Task WriteDoesntFitInitiallyButFitsLater()
+        public async Task Write_does_not_fit_initially_but_fits_later()
         {
             using var conn = await OpenConnectionAsync();
             await using (await CreateTempTable(conn, "field BYTEA", out var table))

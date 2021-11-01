@@ -53,7 +53,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(WriteWithLargeScaleCases))]
-        public async Task WriteWithLargeScale(string query, decimal parameter, decimal expected)
+        public async Task Write_with_large_scale(string query, decimal parameter, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);

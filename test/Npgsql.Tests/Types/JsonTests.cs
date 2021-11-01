@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
     public class JsonTests : MultiplexingTestBase
     {
         [Test]
-        public async Task RoundtripString()
+        public async Task Roundtrip_string()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -34,7 +34,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task RoundtripLongString()
+        public async Task Roundtrip_string_long()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -58,7 +58,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
-        public async Task RoundtripStringTypes()
+        public async Task Roundtrip_string_types()
         {
             var expected = "{\"p\":1}";
             // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
@@ -80,7 +80,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Ignore("INpgsqlTypeHandler<ArraySegment<char>>.Read currently not yet implemented in TextHandler")]
-        public async Task RoundtripArraySegment()
+        public async Task Roundtrip_ArraySegment()
         {
             var expected = "{\"p\":1}";
             // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
@@ -99,7 +99,7 @@ namespace Npgsql.Tests.Types
 
 
         [Test]
-        public async Task ReadJsonDocument()
+        public async Task Read_JsonDocument()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -115,7 +115,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task WriteJsonDocument()
+        public async Task Write_JsonDocument()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -140,7 +140,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task WriteObject()
+        public async Task Write_object()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -164,7 +164,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task ReadObject()
+        public async Task Read_object()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -190,7 +190,7 @@ namespace Npgsql.Tests.Types
         [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
         [IssueLink("https://github.com/npgsql/efcore.pg/issues/1177")]
         [IssueLink("https://github.com/npgsql/efcore.pg/issues/1082")]
-        public async Task CanReadTwoJsonDocuments()
+        public async Task Can_read_two_json_documents()
         {
             using var conn = await OpenConnectionAsync();
 

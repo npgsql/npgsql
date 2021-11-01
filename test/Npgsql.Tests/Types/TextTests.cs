@@ -120,7 +120,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/488")]
-        public async Task NullCharacter()
+        public async Task Null_character()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -134,7 +134,7 @@ namespace Npgsql.Tests.Types
         [Test, Description("Tests some types which are aliased to strings")]
         [TestCase("Varchar")]
         [TestCase("Name")]
-        public async Task AliasedPgTypes(string typename)
+        public async Task Aliased_postgres_types(string typename)
         {
             const string expected = "some_text";
             using var conn = await OpenConnectionAsync();
@@ -149,7 +149,7 @@ namespace Npgsql.Tests.Types
         [Test]
         [TestCase(DbType.AnsiString)]
         [TestCase(DbType.AnsiStringFixedLength)]
-        public async Task AliasedDbTypes(DbType dbType)
+        public async Task Aliased_DbTypes(DbType dbType)
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT @p", conn);
@@ -158,7 +158,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests the PostgreSQL internal \"char\" type")]
-        public async Task InternalChar()
+        public async Task Internal_char()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = conn.CreateCommand();

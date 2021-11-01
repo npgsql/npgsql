@@ -29,7 +29,7 @@ namespace Npgsql.Tests
         /// Test which validates that Clear() indeed cleans up the parameters in a command so they can be added to other commands safely.
         /// </summary>
         [Test]
-        public void NpgsqlParameterCollectionClearTest()
+        public void Clear()
         {
             var p = new NpgsqlParameter();
             var c1 = new NpgsqlCommand();
@@ -45,7 +45,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ParameterCollectionHashLookupParameterRenameBug()
+        public void Hash_lookup_parameter_rename_bug()
         {
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
@@ -74,7 +74,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void RemovedDuplicateParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        public void Remove_duplicate_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             if (_compatMode == CompatMode.CaseSensitive)
                 return;
@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void RemovedParameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        public void Remove_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             using var command = new NpgsqlCommand();
             // Put plenty of parameters in the collection to turn on hash lookup functionality.
@@ -126,7 +126,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CorrectIndexReturnedForDuplicateParameterName([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        public void Correct_index_returned_for_duplicate_ParameterName([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             if (_compatMode == CompatMode.CaseSensitive)
                 return;
@@ -159,7 +159,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CaseSensitiveFailsInsensitiveLookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        public void Case_sensitive_fails_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             if (_compatMode == CompatMode.CaseInsensitive)
                 return;
@@ -173,7 +173,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PositionalParameterLookupReturnsFirstMatch([Values(LookupThreshold, LookupThreshold - 2)] int count)
+        public void Positional_parameter_lookup_returns_first_match([Values(LookupThreshold, LookupThreshold - 2)] int count)
         {
             using var command = new NpgsqlCommand();
             var parameters = command.Parameters;
@@ -222,7 +222,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IndexOfMatchesAllParameterSyntaxes()
+        public void IndexOf_matches_all_parameter_syntaxes()
         {
             using var command = new NpgsqlCommand();
             var parameters = command.Parameters;
@@ -240,7 +240,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CleanName()
+        public void Clean_name()
         {
             var param = new NpgsqlParameter();
             var command = new NpgsqlCommand();

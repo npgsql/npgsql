@@ -49,7 +49,7 @@ namespace Npgsql.Tests
         #endregion
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1210")]
-        public void ManyParametersWithMixedFormatCode()
+        public void Many_parameters_with_mixed_FormatCode()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand();
@@ -72,7 +72,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]
-        public void RecordWithNonIntField()
+        public void Record_with_non_int_field()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn);
@@ -435,7 +435,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2660")]
-        public void StandardConformingStrings()
+        public void Standard_conforming_strings()
         {
             using var conn = OpenConnection();
 
@@ -1114,7 +1114,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         #endregion Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-        public async Task ChunkedStringWriteBufferEncodingSpace()
+        public async Task Chunked_string_write_buffer_encoding_space()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
             // write buffer size must be 8192 for this test to work
@@ -1149,7 +1149,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-        public async Task ChunkedCharArrayWriteBufferEncodingSpace()
+        public async Task Chunked_char_array_write_buffer_encoding_space()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
             // write buffer size must be 8192 for this test to work
@@ -1184,7 +1184,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2371")]
-        public void NullReferenceExceptionInBeginTextExport()
+        public void NRE_in_BeginTextExport()
         {
             using var conn = OpenConnection();
             try
@@ -1325,9 +1325,9 @@ $$;");
 
         [Test, Timeout(5000)]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3839")]
-        public async Task SingleThreadedSynchronizationContextDeadlock()
+        public async Task SingleThreadedSynchronizationContext_deadlock()
         {
-            var syncContext = new SingleThreadSynchronizationContext(nameof(SingleThreadedSynchronizationContextDeadlock));
+            var syncContext = new SingleThreadSynchronizationContext(nameof(SingleThreadedSynchronizationContext_deadlock));
             using (var _ = syncContext.Enter())
             {
                 // We have to Yield, so the current thread is changed to the one used by SingleThreadSynchronizationContext
@@ -1379,7 +1379,7 @@ $$;");
                 cmd.CommandTimeout = 2;
                 cmd.CommandText = "SELECT 1";
                 Assert.DoesNotThrowAsync(cmd.ExecuteNonQueryAsync);
-            } 
+            }
         }
     }
 }

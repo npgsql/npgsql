@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a simple, one-dimensional array of int? values")]
-        public async Task NullableInts()
+        public async Task Nullable_ints()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
@@ -147,7 +147,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types.")]
-        public async Task NullableIntsCannotBeReadAsNonNullable()
+        public async Task Nullable_ints_cannot_be_read_as_non_nullable()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT '{1, NULL, 2}'::integer[]", conn);
@@ -163,7 +163,7 @@ namespace Npgsql.Tests.Types
         [TestCase(ArrayNullabilityMode.Always)]
         [TestCase(ArrayNullabilityMode.Never)]
         [TestCase(ArrayNullabilityMode.PerInstance)]
-        public async Task ValueTypeArrayNullabilities(ArrayNullabilityMode mode)
+        public async Task Value_type_array_nullabilities(ArrayNullabilityMode mode)
         {
             using var pool = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString){ ArrayNullabilityMode = mode}, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
@@ -236,7 +236,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task EmptyArray()
+        public async Task Empty_array()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -250,7 +250,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips an empty multi-dimensional array.")]
-        public async Task EmptyMultidimensionalArray()
+        public async Task Empty_multidimensional_array()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -265,7 +265,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Verifies that an InvalidOperationException is thrown when the returned array has a different number of dimensions from what was requested.")]
-        public async Task WrongArrayDimensions()
+        public async Task Wrong_array_dimensions_throws()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT ARRAY[[1], [2]]", conn);
@@ -278,7 +278,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
-        public async Task ReadNullAsNonNullableArrayFails()
+        public async Task Read_null_as_non_nullable_array_throws()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -297,7 +297,7 @@ namespace Npgsql.Tests.Types
 
 
         [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as List of a non-nullable type fails.")]
-        public async Task ReadNullAsNonNullableListFails()
+        public async Task Read_null_as_non_nullable_list_throws()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -315,7 +315,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
-        public async Task LongOneDimensional()
+        public async Task Long_one_dimensional()
         {
             using var conn = await OpenConnectionAsync();
 
@@ -333,7 +333,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a large, two-dimensional array of ints that will be chunked")]
-        public async Task LongTwoDimensional()
+        public async Task Long_two_dimensional()
         {
             using var conn = await OpenConnectionAsync();
             var len = conn.Settings.WriteBufferSize/2 + 100;
@@ -351,7 +351,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a long, one-dimensional array of strings, including a null")]
-        public async Task StringsWithNull()
+        public async Task Strings_with_null()
         {
             using var conn = await OpenConnectionAsync();
             var largeString = new StringBuilder();
@@ -366,7 +366,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a zero-dimensional array of ints, should return empty one-dimensional")]
-        public async Task ZeroDimensional()
+        public async Task Zero_dimensional()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -382,7 +382,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a two-dimensional array of ints")]
-        public async Task TwoDimensionalInts()
+        public async Task Two_dimensional_ints()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -401,7 +401,7 @@ namespace Npgsql.Tests.Types
 
 #pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test, Description("Reads a one-dimensional array dates, both as DateTime and as the provider-specific NpgsqlDate")]
-        public async Task ReadProviderSpecificType()
+        public async Task Read_provider_specific_type()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", conn);
@@ -417,7 +417,7 @@ namespace Npgsql.Tests.Types
 #pragma warning restore 618
 
         [Test, Description("Reads an one-dimensional array with lower bound != 0")]
-        public async Task ReadNonZeroLowerBounded()
+        public async Task Read_non_zero_lower_bounded()
         {
             using var conn = await OpenConnectionAsync();
             using (var cmd = new NpgsqlCommand("SELECT '[2:3]={ 8, 9 }'::INT[]", conn))
@@ -436,7 +436,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a one-dimensional array of bytea values")]
-        public async Task Byteas()
+        public async Task Array_of_byte_arrays()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -457,7 +457,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
-        public async Task IListNonGeneric()
+        public async Task IList_non_generic()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -469,7 +469,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Roundtrips a generic List as an array")]
         // ReSharper disable once InconsistentNaming
-        public async Task IListGeneric()
+        public async Task IList_generic()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -486,7 +486,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Tests for failure when reading a generic IList from a multidimensional array")]
         // ReSharper disable once InconsistentNaming
-        public async Task IListGenericFailsForMultidimensionalArray()
+        public async Task IList_generic_fails_for_multidimensional_array()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -504,7 +504,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/844")]
-        public async Task IEnumerableThrowsFriendlyException()
+        public async Task IEnumerable_throws_friendly_exception()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -513,7 +513,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
-        public async Task MixedElementTypes()
+        public async Task Mixed_element_types()
         {
             var mixedList = new ArrayList { 1, "yo" };
             using var conn = await OpenConnectionAsync();
@@ -525,7 +525,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
-        public async Task JaggedArraysNotSupported()
+        public async Task Jagged_arrays_not_supported()
         {
             var jagged = new int[2][];
             jagged[0] = new[] { 8 };
@@ -539,7 +539,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
-        public async Task ListTypeResolution()
+        public async Task List_type_resolution()
         {
             using var conn = await OpenConnectionAsync(ConnectionString);
             await AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
@@ -548,7 +548,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
-        public void GenericListGetNpgsqlDbType()
+        public void Generic_List_get_NpgsqlDbType()
         {
             var p = new NpgsqlParameter
             {
@@ -559,7 +559,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips one-dimensional and two-dimensional arrays of a PostgreSQL domain.")]
-        public async Task ArrayOfDomain()
+        public async Task Array_of_domain()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
@@ -591,7 +591,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a PostgreSQL domain over a one-dimensional and a two-dimensional array.")]
-        public async Task DomainOfArray()
+        public async Task Domain_of_array()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
@@ -623,7 +623,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3417")]
-        public async Task ReadTwoEmptyArrays()
+        public async Task Read_two_empty_arrays()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);

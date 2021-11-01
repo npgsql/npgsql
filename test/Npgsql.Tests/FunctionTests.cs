@@ -12,7 +12,7 @@ namespace Npgsql.Tests
     public class FunctionTests : TestBase
     {
         [Test, Description("Simple function with no parameters, results accessed as a resultset")]
-        public void ResultSet()
+        public void Resultset()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE FUNCTION pg_temp.func() RETURNS integer AS 'SELECT 8;' LANGUAGE 'sql'");
@@ -21,7 +21,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic function call with an in parameter")]
-        public void InParam()
+        public void Param_Input()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE FUNCTION pg_temp.echo(IN param text) RETURNS text AS 'BEGIN RETURN param; END;' LANGUAGE 'plpgsql'");
@@ -32,7 +32,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic function call with an out parameter")]
-        public void OutParam()
+        public void Param_Output()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE FUNCTION pg_temp.echo (IN param_in text, OUT param_out text) AS 'BEGIN param_out=param_in; END;' LANGUAGE 'plpgsql'");
@@ -46,7 +46,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic function call with an in/out parameter")]
-        public void InOutParam()
+        public void Param_InputOutput()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE FUNCTION pg_temp.inc (INOUT param integer) AS 'BEGIN param=param+1; END;' LANGUAGE 'plpgsql'");
@@ -74,7 +74,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NamedParameters()
+        public void Named_parameters()
         {
             using var conn = OpenConnection();
             TestUtil.MinimumPgVersion(conn, "9.4.0", "make_timestamp was introduced in 9.4");
@@ -97,7 +97,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TooManyOutputParams()
+        public void Too_many_output_params()
         {
             using var conn = OpenConnection();
             var command = new NpgsqlCommand("VALUES (4,5), (6,7)", conn);

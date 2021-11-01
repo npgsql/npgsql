@@ -8,7 +8,7 @@ namespace Npgsql.Tests
     public class PgPassFileTests
     {
         [Test]
-        public void ShouldParseAllEntries()
+        public void Should_parse_all_entries()
         {
             var file = new PgPassFile(_pgpassFile);
             var entries = file.Entries.ToList();
@@ -16,7 +16,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ShouldFindFirstEntryWhenMultipleMatch()
+        public void Should_find_first_entry_when_multiple_match()
         {
             var file = new PgPassFile(_pgpassFile);
             var entry = file.GetFirstMatchingEntry("testhost")!;
@@ -24,7 +24,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ShouldFindDefaultForNoMatches()
+        public void Should_find_default_for_no_matches()
         {
             var file = new PgPassFile(_pgpassFile);
             var entry = file.GetFirstMatchingEntry("notarealhost")!;

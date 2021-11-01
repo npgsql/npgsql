@@ -10,7 +10,7 @@ namespace Npgsql.Tests
     public class DataAdapterTests : TestBase
     {
         [Test]
-        public async Task UseDataAdapter()
+        public async Task DataAdapter_SelectCommand()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT 1", conn);
@@ -22,7 +22,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task UseDataAdapterNpgsqlConnectionConstructor()
+        public async Task DataAdapter_NpgsqlCommand_in_constructor()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT 1", conn);
@@ -34,7 +34,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task UseDataAdapterStringNpgsqlConnectionConstructor()
+        public async Task DataAdapter_string_command_in_constructor()
         {
             using var conn = await OpenConnectionAsync();
             var da = new NpgsqlDataAdapter("SELECT 1", conn);
@@ -44,7 +44,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UseDataAdapterStringStringConstructor()
+        public void DataAdapter_connection_string_in_constructor()
         {
             var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
             var ds = new DataSet();
@@ -53,17 +53,8 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UseDataAdapterStringStringConstructor2()
-        {
-            var da = new NpgsqlDataAdapter("SELECT 1", ConnectionString);
-            var ds = new DataSet();
-            da.Fill(ds);
-            //ds.WriteXml("TestUseDataAdapterStringStringConstructor2.xml");
-        }
-
-        [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
-        public async Task InsertWithDataSet()
+        public async Task Insert_with_DataSet()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -108,7 +99,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task DataAdapterUpdateReturnValue()
+        public async Task DataAdapter_update_return_value()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -152,7 +143,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public async Task DataAdapterUpdateReturnValue2()
+        public async Task DataAdapter_update_return_value2()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -180,7 +171,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task FillWithEmptyResultset()
+        public async Task Fill_with_empty_resultset()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -200,7 +191,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public async Task FillAddWithKey()
+        public async Task Fill_add_with_key()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -246,7 +237,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task FillAddColumns()
+        public async Task Fill_add_columns()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -281,7 +272,7 @@ namespace Npgsql.Tests
 
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
-        public async Task UpdateLettingNullFieldValue()
+        public async Task Update_letting_null_field_falue()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -329,7 +320,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task FillWithDuplicateColumnName()
+        public async Task Fill_with_duplicate_column_name()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -341,7 +332,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public Task UpdateWithDataSet() => DoUpdateWithDataSet();
+        public Task Update_with_DataSet() => DoUpdateWithDataSet();
 
         public async Task DoUpdateWithDataSet()
         {
@@ -377,10 +368,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public Task InsertWithCommandBuilderCaseSensitive()
-            => DoInsertWithCommandBuilderCaseSensitive();
-
-        public async Task DoInsertWithCommandBuilderCaseSensitive()
+        public async Task Insert_with_CommandBuilder_case_sensitive()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -408,7 +396,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task IntervalAsTimeSpan()
+        public async Task Interval_as_TimeSpan()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -431,7 +419,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         }
 
         [Test]
-        public async Task IntervalAsTimeSpan2()
+        public async Task Interval_as_TimeSpan2()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -456,7 +444,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         }
 
         [Test]
-        public async Task DbDataAdapterCommandAccess()
+        public async Task DataAdapter_command_access()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT CAST('1 hour' AS interval) AS dauer", conn);
@@ -469,7 +457,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/179")]
         [Ignore("Somehow related to us using a temporary table???")]
-        public async Task AutoPopulateAdapterCommands()
+        public async Task Auto_populate_adapter_commands()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -497,7 +485,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         }
 
         [Test]
-        public void CommandBuilderQuoting()
+        public void Command_builder_quoting()
         {
             var cb = new NpgsqlCommandBuilder();
             const string orig = "some\"column";
@@ -509,7 +497,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         [Test, Description("Makes sure a correct SQL string is built with GetUpdateCommand(true) using correct parameter names and placeholders")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/397")]
         [Ignore("Somehow related to us using a temporary table???")]
-        public async Task GetUpdateCommand()
+        public async Task Get_UpdateCommand()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await SetupTempTable(conn, out var table);
@@ -536,7 +524,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         }
 
         [Test]
-        public async Task LoadDataTable()
+        public async Task Load_DataTable()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "char5 CHAR(5), varchar5 VARCHAR(5)", out var table);

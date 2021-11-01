@@ -19,11 +19,11 @@ namespace Npgsql.Tests.Types
         enum MoodUnmapped { Sad, Ok, Happy };
 
         [Test]
-        public async Task UnmappedEnum()
+        public async Task Unmapped_enum()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(UnmappedEnum),
+                ApplicationName = nameof(Unmapped_enum),
                 Pooling = false
             };
             using var conn = await OpenConnectionAsync(csb);
@@ -186,7 +186,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task LateMapping()
+        public async Task Late_mapping()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -216,7 +216,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task DualEnums()
+        public async Task Dual_enums()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type1);
@@ -241,7 +241,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         }
 
         [Test]
-        public async Task GlobalMapping()
+        public async Task Global_mapping()
         {
             using var adminConn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(adminConn, out var type);
@@ -278,7 +278,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         }
 
         [Test]
-        public async Task GlobalMappingWhenTypeNotFound()
+        public async Task Global_mapping_when_type_not_found()
         {
             using var conn = await OpenConnectionAsync();
             NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>("unknown_enum");
@@ -323,7 +323,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         }
 
         [Test]
-        public async Task ReadUnmappedEnumsAsString()
+        public async Task Read_unmapped_enum_as_string()
         {
             using var conn = new NpgsqlConnection(ConnectionString);
             conn.Open();
@@ -340,7 +340,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         }
 
         [Test, Description("Test that a c# string can be written to a backend enum when DbType is unknown")]
-        public async Task WriteStringToBackendEnum()
+        public async Task Write_string_to_backend_enum()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -358,7 +358,7 @@ CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
         }
 
         [Test]
-        public async Task WriteUnmappedEnum()
+        public async Task Write_unmapped_denum()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS explicitly_named_mood"));
@@ -378,7 +378,7 @@ CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
         }
 
         [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
-        public async Task WriteEnumAsDbUnknwown()
+        public async Task Write_enum_as_NpgsqlDbType_Unknown()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -394,7 +394,7 @@ CREATE TABLE {table} (value1 {type})");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-        public async Task NameTranslationDefaultSnakeCase()
+        public async Task Name_translation_default_snake_case()
         {
             // Per-connection mapping
             using (var conn = await OpenConnectionAsync())
@@ -444,7 +444,7 @@ CREATE TABLE {table} (value1 {type})");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-        public async Task NameTranslationNull()
+        public async Task Name_translation_null()
         {
             // Per-connection mapping
             using var conn = await OpenConnectionAsync();
@@ -536,7 +536,7 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         enum Enum2 { Alpha }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1017")]
-        public async Task GlobalMappingsAndPooling()
+        public async Task Global_mappings_and_pooling()
         {
             using var adminConn = await OpenConnectionAsync();
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
@@ -566,7 +566,7 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
-        public async Task EnumPostgresType()
+        public async Task GetPostgresType()
         {
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             using var conn = await OpenConnectionAsync(connectionString);

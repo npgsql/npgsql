@@ -11,7 +11,7 @@ namespace Npgsql.Tests
     public class SystemTransactionTests : TestBase
     {
         [Test, Description("Single connection enlisting explicitly, committing")]
-        public void ExplicitEnlist()
+        public void Explicit_enlist()
         {
             using var conn = new NpgsqlConnection(ConnectionStringEnlistOff);
             conn.Open();
@@ -33,7 +33,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Single connection enlisting implicitly, committing")]
-        public void ImplicitEnlist()
+        public void Implicit_enlist()
         {
             var conn = new NpgsqlConnection(ConnectionStringEnlistOn);
             using (var scope = new TransactionScope())
@@ -52,7 +52,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void EnlistOff()
+        public void Enlist_Off()
         {
             using (new TransactionScope())
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
@@ -71,7 +71,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Single connection enlisting explicitly, rollback")]
-        public void RollbackExplicitEnlist()
+        public void Rollback_explicit_enlist()
         {
             using var conn = OpenConnection();
             using (new TransactionScope())
@@ -91,7 +91,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Single connection enlisting implicitly, rollback")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2408")]
-        public void RollbackImplicitEnlist([Values(true, false)] bool pooling)
+        public void Rollback_implicit_enlist([Values(true, false)] bool pooling)
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
             {
@@ -111,7 +111,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TwoConsecutiveConnections()
+        public void Two_consecutive_connections()
         {
             using (var scope = new TransactionScope())
             {
@@ -135,11 +135,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CloseConnection()
+        public void Close_connection()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
             {
-                ApplicationName = nameof(CloseConnection),
+                ApplicationName = nameof(Close_connection),
             }.ToString();
             using (var scope = new TransactionScope())
             using (var conn = OpenConnection(connString))
@@ -159,7 +159,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void EnlistToTwoTransactions()
+        public void Enlist_to_two_transactions()
         {
             using var conn = OpenConnection(ConnectionStringEnlistOff);
             var ctx = new CommittableTransaction();
@@ -173,7 +173,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void EnlistTwiceToSameTransaction()
+        public void Enlist_twice_to_same_transaction()
         {
             using var conn = OpenConnection(ConnectionStringEnlistOff);
             var ctx = new CommittableTransaction();
@@ -187,7 +187,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ScopeAfterScope()
+        public void Scope_after_scope()
         {
             using var conn = OpenConnection(ConnectionStringEnlistOff);
             using (new TransactionScope())
@@ -203,7 +203,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ReuseConnection()
+        public void Reuse_connection()
         {
             using (var scope = new TransactionScope())
             using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
@@ -224,7 +224,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ReuseConnectionRollback()
+        public void Reuse_connection_rollback()
         {
             using (new TransactionScope())
             using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
@@ -245,7 +245,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Ignore("Timeout doesn't seem to fire on .NET Core / Linux")]
-        public void TimeoutTriggersRollbackWhileBusy()
+        public void Timeout_triggers_rollback_while_busy()
         {
             using (var conn = OpenConnection(ConnectionStringEnlistOff))
             {
@@ -263,7 +263,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1579")]
-        public void SchemaConnectionShouldntEnlist()
+        public void Schema_connection_should_not_enlist()
         {
             using var tran = new TransactionScope();
             using var conn = OpenConnection(ConnectionStringEnlistOn);
@@ -296,7 +296,7 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
-        public void BreakConnectorWhileInTransactionScopeWithRollback([Values] bool pooling)
+        public void Break_connector_while_in_transaction_scope_with_rollback([Values] bool pooling)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
             {
@@ -307,12 +307,12 @@ namespace Npgsql.Tests
             var conn = OpenConnection(csb);
 
             conn.ExecuteNonQuery("SELECT 1");
-            conn.Connector!.Break(new Exception(nameof(BreakConnectorWhileInTransactionScopeWithRollback)));
+            conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_rollback)));
         }
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
-        public void BreakConnectorWhileInTransactionScopeWithCommit([Values] bool pooling)
+        public void Break_connector_while_in_transaction_scope_with_commit([Values] bool pooling)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
             {
@@ -325,13 +325,13 @@ namespace Npgsql.Tests
                 var conn = OpenConnection(csb);
 
                 conn.ExecuteNonQuery("SELECT 1");
-                conn.Connector!.Break(new Exception(nameof(BreakConnectorWhileInTransactionScopeWithCommit)));
+                conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_commit)));
 
                 scope.Complete();
             })!;
             Assert.That(ex.InnerException, Is.TypeOf<ObjectDisposedException>());
             Assert.That(ex.InnerException!.InnerException, Is.TypeOf<Exception>());
-            Assert.That(ex.InnerException!.InnerException!.Message, Is.EqualTo(nameof(BreakConnectorWhileInTransactionScopeWithCommit)));
+            Assert.That(ex.InnerException!.InnerException!.Message, Is.EqualTo(nameof(Break_connector_while_in_transaction_scope_with_commit)));
         }
 
         [Test]

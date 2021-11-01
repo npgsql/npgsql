@@ -153,7 +153,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1207")]
-        public void DoublePrepareSameSql()
+        public void Double_prepare_same_sql()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -165,7 +165,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DoublePrepareDifferentSql()
+        public void Double_prepare_different_sql()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand();
@@ -184,11 +184,11 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
-        public void AcrossCloseOpenSameConnector()
+        public void Across_close_open_same_connector()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PrepareTests) + '.' + nameof(AcrossCloseOpenSameConnector)
+                ApplicationName = nameof(PrepareTests) + '.' + nameof(Across_close_open_same_connector)
             };
             using var conn = OpenConnectionAndUnprepare(csb);
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -206,11 +206,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void AcrossCloseOpenDifferentConnector()
+        public void Across_close_open_different_connector()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PrepareTests) + '.' + nameof(AcrossCloseOpenDifferentConnector)
+                ApplicationName = nameof(PrepareTests) + '.' + nameof(Across_close_open_different_connector)
             }.ToString();
             using var conn1 = new NpgsqlConnection(connString);
             using var conn2 = new NpgsqlConnection(connString);
@@ -231,11 +231,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ReusePreparedStatement()
+        public void Reuse_prepared_statement()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PrepareTests) + '.' + nameof(ReusePreparedStatement)
+                ApplicationName = nameof(PrepareTests) + '.' + nameof(Reuse_prepared_statement)
             }.ToString();
             using var conn1 = OpenConnection(connString);
             var preparedStatement = "";
@@ -345,7 +345,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void OneCommandSameSqlTwice()
+        public void One_command_same_sql_twice()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand("SELECT 1; SELECT 1", conn);
@@ -356,7 +356,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void OneCommandSameSqlAutoPrepare()
+        public void One_command_same_sql_auto_prepare()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -373,7 +373,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void OneCommandSameSqlTwiceWithParams()
+        public void One_command_same_sql_twice_with_params()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn);
@@ -398,7 +398,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UnprepareViaDifferentCommand()
+        public void Unprepare_via_different_command()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd1 = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
@@ -420,7 +420,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Prepares the same SQL with different parameters (overloading)")]
-        public void OverloadedSql()
+        public void Overloaded_sql()
         {
             using var conn = OpenConnectionAndUnprepare();
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -445,7 +445,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ManyStatementsOnUnprepare()
+        public void Many_statements_on_unprepare()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand();
@@ -459,7 +459,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsPreparedIsFalseAfterChangingCommandText()
+        public void IsPrepared_is_false_after_changing_CommandText()
         {
             using var conn = OpenConnectionAndUnprepare();
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -474,7 +474,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after command dispose.")]
-        public void PersistentAcrossCommands()
+        public void Persistent_across_commands()
         {
             using var conn = OpenConnectionAndUnprepare();
             AssertNumPreparedStatements(conn, 0);
@@ -503,11 +503,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after connection close.")]
-        public void PersistentAcrossConnections()
+        public void Persistent_across_connections()
         {
             var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PersistentAcrossConnections)
+                ApplicationName = nameof(Persistent_across_connections)
             };
 
             using var conn = OpenConnectionAndUnprepare(connSettings);
@@ -539,7 +539,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that calling Prepare() twice on a command does not deallocate or make a new one after the first prepared statement when command does not change")]
-        public void PersistentDoublePrepareCommandUnchanged()
+        public void Persistent_double_prepare_command_unchanged()
         {
             using var conn = OpenConnectionAndUnprepare();
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -557,7 +557,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PersistentDoublePrepareCommandChanged()
+        public void Persistent_double_prepare_command_changed()
         {
             using var conn = OpenConnectionAndUnprepare();
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -575,7 +575,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
-        public void PreparedCommandFailure()
+        public void Prepared_command_failure()
         {
             using var conn = OpenConnection();
 
@@ -637,7 +637,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SameSqlDifferentParams()
+        public void Same_sql_different_params()
         {
             using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -669,7 +669,7 @@ namespace Npgsql.Tests
         */
 
         [Test]
-        public void InvalidStatement()
+        public void Invalid_statement()
         {
             using var conn = OpenConnection();
             var cmd = new NpgsqlCommand("sele", conn);
@@ -677,7 +677,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PrepareMultipleCommandsWithParameters()
+        public void Prepare_multiple_commands_with_parameters()
         {
             using var conn = OpenConnection();
             using var cmd1 = new NpgsqlCommand("SELECT @p1;", conn);
@@ -709,7 +709,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultiplexingNotSupported()
+        public void Multiplexing_not_supported()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Multiplexing = true };
             using var conn = OpenConnection(builder);

@@ -157,7 +157,7 @@ namespace Npgsql.PluginTests
         };
 
         [Test, TestCaseSource(nameof(NotAllZSpecifiedTests))]
-        public void NotAllZSpecified(TestData data)
+        public void Not_all_Z_specified(TestData data)
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -166,7 +166,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ReadUnknownCRS()
+        public void Read_unknown_CRS()
         {
             using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
             using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
@@ -176,7 +176,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ReadUnspecifiedCRS()
+        public void Read_unspecified_CRS()
         {
             using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
             using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
@@ -186,7 +186,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ReadShortCRS()
+        public void Read_short_CRS()
         {
             using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
             using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
@@ -198,7 +198,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ReadLongCRS()
+        public void Read_long_CRS()
         {
             using var conn = OpenConnection(option: GeoJSONOptions.LongCRS);
             using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
@@ -210,7 +210,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteIllFormedCRS()
+        public void Write_ill_formed_CRS()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -219,7 +219,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteLinkedCRS()
+        public void Write_linked_CRS()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -228,7 +228,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteUnspecifiedCRS()
+        public void Write_unspecified_CRS()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -237,7 +237,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteShortCRS()
+        public void Write_short_CRS()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -246,7 +246,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteLongCRS()
+        public void Write_long_CRS()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -255,7 +255,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void WriteCRS84()
+        public void Write_CRS84()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
@@ -264,7 +264,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripGeometryGeography()
+        public void Roundtrip_geometry_geography()
         {
             var point = new Point(new Position(0d, 0d));
             using var conn = OpenConnection();

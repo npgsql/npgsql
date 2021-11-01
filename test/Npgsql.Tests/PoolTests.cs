@@ -13,11 +13,11 @@ namespace Npgsql.Tests
     class PoolTests : TestBase
     {
         [Test]
-        public void MinPoolSizeEqualsMaxPoolSize()
+        public void MinPoolSize_equals_MaxPoolSize()
         {
             using var conn = CreateConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(MinPoolSizeEqualsMaxPoolSize),
+                ApplicationName = nameof(MinPoolSize_equals_MaxPoolSize),
                 MinPoolSize = 30,
                 MaxPoolSize = 30
             }.ToString());
@@ -25,11 +25,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MinPoolSizeLargerThanMaxPoolSize()
+        public void MinPoolSize_bigger_than_MaxPoolSize_throws()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(MinPoolSizeLargerThanMaxPoolSize),
+                ApplicationName = nameof(MinPoolSize_bigger_than_MaxPoolSize_throws),
                 MinPoolSize = 2,
                 MaxPoolSize = 1
             }.ToString();
@@ -38,11 +38,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ReuseConnectorBeforeCreatingNew()
+        public void Reuse_connector_before_creating_new()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ReuseConnectorBeforeCreatingNew),
+                ApplicationName = nameof(Reuse_connector_before_creating_new),
             }.ToString();
 
             using var conn = CreateConnection(connString);
@@ -54,11 +54,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Timeout(10000)]
-        public void GetConnectorFromExhaustedPool()
+        public void Get_connector_from_exhausted_pool()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(GetConnectorFromExhaustedPool),
+                ApplicationName = nameof(Get_connector_from_exhausted_pool),
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -73,11 +73,11 @@ namespace Npgsql.Tests
         }
 
         //[Test, Explicit, Timeout(10000)]
-        public async Task GetConnectorFromExhaustedPoolAsync()
+        public async Task Get_connector_from_exhausted_pool_async()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(GetConnectorFromExhaustedPoolAsync),
+                ApplicationName = nameof(Get_connector_from_exhausted_pool_async),
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -92,7 +92,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TimeoutGettingConnectorFromExhaustedPool([Values(true, false)] bool async)
+        public async Task Timeout_getting_connector_from_exhausted_pool([Values(true, false)] bool async)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -120,11 +120,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TimeoutGettingConnectorFromExhaustedPoolAsync()
+        public async Task Timeout_getting_connector_from_exhausted_pool_async()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPoolAsync),
+                ApplicationName = nameof(Timeout_getting_connector_from_exhausted_pool_async),
                 MaxPoolSize = 1,
                 Timeout = 2
             }.ToString();
@@ -144,11 +144,11 @@ namespace Npgsql.Tests
 
         [Test, Timeout(10000)]
         [Explicit("Timing-based")]
-        public async Task CancelOpenAsync()
+        public async Task OpenAsync_cancel()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(CancelOpenAsync),
+                ApplicationName = nameof(OpenAsync_cancel),
                 MaxPoolSize = 1,
             }.ToString();
 
@@ -198,11 +198,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ArgumentExceptionOnZeroPruningInterval()
+        public void ConnectionPruningInterval_zero_throws()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ArgumentExceptionOnZeroPruningInterval),
+                ApplicationName = nameof(ConnectionPruningInterval_zero_throws),
                 ConnectionPruningInterval = 0
             }.ToString();
 
@@ -210,11 +210,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ArgumentExceptionOnPruningIntervalLargerThanIdleLifetime()
+        public void ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ArgumentExceptionOnPruningIntervalLargerThanIdleLifetime),
+                ApplicationName = nameof(ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws),
                 ConnectionIdleLifetime = 1,
                 ConnectionPruningInterval = 2
             }.ToString();
@@ -229,11 +229,11 @@ namespace Npgsql.Tests
         [TestCase(2, 3, 2, 2)] // test rounding up, should sample twice.
         [TestCase(2, 1, 1, 1)] // test sample once.
         [TestCase(2, 20, 3, 7)] // test high samples.
-        public void PruneIdleConnectors(int minPoolSize, int connectionIdleLifeTime, int connectionPruningInterval, int samples)
+        public void Prune_idle_connectors(int minPoolSize, int connectionIdleLifeTime, int connectionPruningInterval, int samples)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PruneIdleConnectors),
+                ApplicationName = nameof(Prune_idle_connectors),
                 MinPoolSize = minPoolSize,
                 ConnectionIdleLifetime = connectionIdleLifeTime,
                 ConnectionPruningInterval = connectionPruningInterval
@@ -271,11 +271,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that when a waiting async open is is given a connection, the continuation is executed in the TP rather than on the closing thread")]
-        public void CloseReleasesWaiterOnAnotherThread()
+        public void Close_releases_waiter_on_another_thread()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(CloseReleasesWaiterOnAnotherThread),
+                ApplicationName = nameof(Close_releases_waiter_on_another_thread),
                 MaxPoolSize = 1
             }.ToString();
             var conn1 = CreateConnection(connString);
@@ -313,11 +313,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ReleaseWaiterOnConnectionFailure()
+        public void Release_waiter_on_connection_failure()
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ReleaseWaiterOnConnectionFailure),
+                ApplicationName = nameof(Release_waiter_on_connection_failure),
                 Port = 9999,
                 MaxPoolSize = 1
             }.ToString();
@@ -372,11 +372,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ClearWithBusy()
+        public void ClearPool_with_busy()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ClearWithBusy)
+                ApplicationName = nameof(ClearPool_with_busy)
             }.ToString();
 
             ConnectorSource? pool;
@@ -392,22 +392,22 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ClearWithNoPool()
+        public void ClearPool_with_no_pool()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ClearWithNoPool)
+                ApplicationName = nameof(ClearPool_with_no_pool)
             }.ToString();
             using var conn = CreateConnection(connString);
             NpgsqlConnection.ClearPool(conn);
         }
 
         [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
-        public void PhysicalOpenFailure()
+        public void Open_physical_failure()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(PhysicalOpenFailure),
+                ApplicationName = nameof(Open_physical_failure),
                 Port = 44444,
                 MaxPoolSize = 1
             }.ToString();
@@ -425,11 +425,11 @@ namespace Npgsql.Tests
         //[TestCase(10, 10, 30, false)]
         //[TestCase(10, 20, 30, true)]
         //[TestCase(10, 20, 30, false)]
-        public void ExercisePool(int maxPoolSize, int numTasks, int seconds, bool async)
+        public void Exercise_pool(int maxPoolSize, int numTasks, int seconds, bool async)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(ExercisePool),
+                ApplicationName = nameof(Exercise_pool),
                 MaxPoolSize = maxPoolSize
             }.ToString();
 

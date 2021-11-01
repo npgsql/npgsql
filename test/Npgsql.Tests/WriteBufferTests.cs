@@ -8,7 +8,7 @@ namespace Npgsql.Tests
     class WriteBufferTests
     {
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]
-        public void WriteZeroChars()
+        public void Write_zero_characters()
         {
             // Fill up the buffer entirely
             WriteBuffer.WriteBytes(new byte[WriteBuffer.Size], 0, WriteBuffer.Size);
@@ -25,7 +25,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-        public void ChunkedStringEncodingFits()
+        public void Chunked_string_encoding_fits()
         {
             WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
             Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
@@ -39,7 +39,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-        public void ChunkedByteArrayEncodingFits()
+        public void Chunked_byte_array_encoding_fits()
         {
             WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
             Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
@@ -53,7 +53,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3733")]
-        public void ChunkedStringEncodingFitsWithSurrogates()
+        public void Chunked_string_encoding_fits_with_surrogates()
         {
             WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1]);
             Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
@@ -68,7 +68,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3733")]
-        public void ChunkedCharArrayEncodingFitsWithSurrogates()
+        public void Chunked_char_array_encoding_fits_with_surrogates()
         {
             WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1]);
             Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));

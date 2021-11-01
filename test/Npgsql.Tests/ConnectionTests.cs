@@ -23,7 +23,7 @@ namespace Npgsql.Tests
     {
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
         //[Timeout(5000)]
-        public async Task BasicLifecycle()
+        public async Task Basic_lifecycle()
         {
             using var conn = new NpgsqlConnection(ConnectionString);
 
@@ -70,7 +70,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-        public async Task BrokenLifecycle([Values] bool openFromClose)
+        public async Task Broken_lifecycle([Values] bool openFromClose)
         {
             if (IsMultiplexing)
                 return;
@@ -131,7 +131,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task BreakWhileOpen()
+        public async Task Break_while_open()
         {
             if (IsMultiplexing)
                 return;
@@ -159,7 +159,7 @@ namespace Npgsql.Tests
         [Test]
         [TestCase(true)]
         [TestCase(false)]
-        public async Task ConnectionRefused(bool pooled)
+        public async Task Connection_refused(bool pooled)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
             using (var conn = new NpgsqlConnection(csb)) {
@@ -176,7 +176,7 @@ namespace Npgsql.Tests
         [Test]
         [TestCase(true)]
         [TestCase(false)]
-        public async Task ConnectionRefusedAsync(bool pooled)
+        public async Task Connection_refused_async(bool pooled)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
             using (var conn = new NpgsqlConnection(csb))
@@ -192,7 +192,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("Fails in a non-determinstic manner and only on the build server... investigate...")]
-        public void InvalidUserId()
+        public void Invalid_Username()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -207,7 +207,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
-        public void AuthenticationFailure()
+        public void Authentication_failure()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -227,7 +227,7 @@ namespace Npgsql.Tests
         #region ProvidePasswordCallback Tests
 
         [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
-        public async Task ProvidePasswordCallbackDelegateIsUsed()
+        public async Task ProvidePasswordCallback_is_used()
         {
             using var _ = CreateTempPool(ConnectionString, out var connString);
             var builder = new NpgsqlConnectionStringBuilder(connString);
@@ -260,7 +260,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("ProvidePasswordCallback is not used when password is supplied in connection string")]
-        public void ProvidePasswordCallbackDelegateIsNotUsed()
+        public void ProvidePasswordCallback_is_not_used()
         {
             using var _ = CreateTempPool(ConnectionString, out var connString);
 
@@ -282,7 +282,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Exceptions thrown from client application are wrapped when using ProvidePasswordCallback Delegate")]
-        public void ProvidePasswordCallbackDelegateExceptionsAreWrapped()
+        public void ProvidePasswordCallback_exceptions_are_wrapped()
         {
             using var _ = CreateTempPool(ConnectionString, out var connString);
             var builder = new NpgsqlConnectionStringBuilder(connString)
@@ -305,7 +305,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Parameters passed to ProvidePasswordCallback delegate are correct")]
-        public void ProvidePasswordCallbackDelegateGetsCorrectArguments()
+        public void ProvidePasswordCallback_gets_correct_arguments()
         {
             using var _ = CreateTempPool(ConnectionString, out var connString);
             var builder = new NpgsqlConnectionStringBuilder(connString);
@@ -341,7 +341,7 @@ namespace Npgsql.Tests
         #endregion
 
         [Test]
-        public void BadDatabase()
+        public void Bad_database()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -356,18 +356,18 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
-        public void MandatoryConnectionStringParams()
+        public void Mandatory_connection_string_params()
         {
             Assert.That(() => new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
-        public async Task FailConnectThenSucceed()
+        public async Task Fail_connect_then_succeed()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
 
-            var dbName = GetUniqueIdentifier(nameof(FailConnectThenSucceed));
+            var dbName = GetUniqueIdentifier(nameof(Fail_connect_then_succeed));
             using var conn1 = await OpenConnectionAsync();
             conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
             try
@@ -398,7 +398,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(10000)]
-        public void OpenTimeoutUnknownIp([Values(true, false)] bool async)
+        public void Open_timeout_unknown_ip([Values(true, false)] bool async)
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp is null)
@@ -436,7 +436,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(10000)]
-        public void ConnectTimeoutCancel()
+        public void Connect_timeout_cancel()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp is null)
@@ -462,7 +462,7 @@ namespace Npgsql.Tests
         #region Client Encoding
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
-        public async Task ClientEncodingIsUTF8ByDefault()
+        public async Task Client_encoding_is_UTF8_by_default()
         {
             using var conn = await OpenConnectionAsync();
             Assert.That(await conn.ExecuteScalarAsync("SHOW client_encoding"), Is.EqualTo("UTF8"));
@@ -470,7 +470,7 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
         [NonParallelizable]
-        public async Task ClientEncodingEnvVar()
+        public async Task Client_encoding_env_var()
         {
             using (var testConn = await OpenConnectionAsync())
                 Assert.That(await testConn.ExecuteScalarAsync("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
@@ -486,7 +486,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
-        public async Task ClientEncodingConnectionParam()
+        public async Task Client_encoding_connection_param()
         {
             using (var conn = await OpenConnectionAsync())
                 Assert.That(await conn.ExecuteScalarAsync("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
@@ -501,7 +501,7 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
         [NonParallelizable]
-        public async Task TimezoneEnvVar()
+        public async Task Timezone_env_var()
         {
             string newTimezone;
             using (var conn1 = await OpenConnectionAsync())
@@ -520,7 +520,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
-        public async Task TimezoneConnectionParam()
+        public async Task Timezone_connection_param()
         {
             string newTimezone;
             using (var conn = await OpenConnectionAsync())
@@ -612,7 +612,7 @@ namespace Npgsql.Tests
         #endregion ConnectionString - Host
 
         [Test]
-        public async Task UnixDomainSocket()
+        public async Task Unix_domain_socket()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -654,7 +654,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
-        public async Task UnixAbstractDomainSocket()
+        public async Task Unix_abstract_domain_socket()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -728,7 +728,7 @@ namespace Npgsql.Tests
         [TestCase("13.1.1.")]
         [TestCase("13.1.1.1.")]
         [TestCase("13.1.1.1.1")]
-        public void ParseVersionFails(string versionString)
+        public void ParseVersion_fails(string versionString)
             => Assert.That(() => TestDbInfo.ParseServerVersion(versionString), Throws.Exception);
 
         [TestCase("13.3", ExpectedResult = "13.3")]
@@ -765,7 +765,7 @@ namespace Npgsql.Tests
         [TestCase("99999.99999.99999beta99999", ExpectedResult = "99999.99999.99999")]
         [TestCase("99999.99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999.99999")]
         [TestCase("99999.99999.99999rc99999", ExpectedResult = "99999.99999.99999")]
-        public string ParseVersionSucceeds(string versionString)
+        public string ParseVersion_succeeds(string versionString)
             => TestDbInfo.ParseServerVersion(versionString).ToString();
 
         class TestDbInfo : NpgsqlDatabaseInfo
@@ -783,7 +783,7 @@ namespace Npgsql.Tests
         #endregion Server version
 
         [Test]
-        public void SetConnectionString()
+        public void Set_connection_string()
         {
             using var conn = new NpgsqlConnection();
             conn.ConnectionString = ConnectionString;
@@ -792,7 +792,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void EmptyCtor()
+        public void Empty_constructor()
         {
             var conn = new NpgsqlConnection();
             Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
@@ -801,7 +801,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
-        public async Task NoDatabaseDefaultsToUsername()
+        public async Task No_database_defaults_to_username()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = null };
             using var conn = new NpgsqlConnection(csb.ToString());
@@ -815,7 +815,7 @@ namespace Npgsql.Tests
         [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
         [TestCase(false, TestName = "BreakConnectorInPoolWithoutKeepAlive")]
         [TestCase(true, TestName = "BreakConnectorInPoolWithKeepAlive")]
-        public async Task BreakConnectorInPool(bool keepAlive)
+        public async Task Break_connector_in_pool(bool keepAlive)
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, hanging");
@@ -862,7 +862,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ChangeDatabaseDoesNotAffectOtherConnections()
+        public async Task ChangeDatabase_does_not_affect_other_connections()
         {
             using var conn1 = new NpgsqlConnection(ConnectionString);
             using var conn2 = new NpgsqlConnection(ConnectionString);
@@ -877,7 +877,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1331")]
-        public void ChangeDatabaseConnectionNotOpen()
+        public void ChangeDatabase_connection_on_closed_connection_throws()
         {
             using var conn = new NpgsqlConnection(ConnectionString);
             Assert.That(() => conn.ChangeDatabase("template1"), Throws.Exception
@@ -889,7 +889,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Tests closing a connector while a reader is open")]
         [Timeout(10000)]
-        public async Task CloseDuringRead([Values(PooledOrNot.Pooled, PooledOrNot.Unpooled)] PooledOrNot pooled)
+        public async Task Close_during_read([Values(PooledOrNot.Pooled, PooledOrNot.Unpooled)] PooledOrNot pooled)
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             if (pooled == PooledOrNot.Unpooled)
@@ -915,14 +915,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SearchPath()
+        public async Task Search_path()
         {
             using var conn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString) { SearchPath = "foo" });
             Assert.That(await conn.ExecuteScalarAsync("SHOW search_path"), Contains.Substring("foo"));
         }
 
         [Test]
-        public async Task SetOptions()
+        public async Task Set_options()
         {
             using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -937,7 +937,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ConnectorNotInitializedException1000581()
+        public async Task Connector_not_initialized_exception()
         {
             var command = new NpgsqlCommand();
             command.CommandText = @"SELECT 123";
@@ -954,41 +954,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Ignore("")]
-        public void NpgsqlErrorRepro1()
-        {
-            throw new NotImplementedException();
-#if WHAT_TO_DO_WITH_THIS
-            using (var connection = new NpgsqlConnection(ConnectionString))
-            {
-                connection.Open();
-                using (var transaction = connection.BeginTransaction())
-                {
-                    var largeObjectMgr = new LargeObjectManager(connection);
-                    try
-                    {
-                        var largeObject = largeObjectMgr.Open(-1, LargeObjectManager.READWRITE);
-                        transaction.Commit();
-                    }
-                    catch
-                    {
-                        // ignore the LO failure
-                    }
-                } // *1* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
-
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM pg_database";
-                    using (var reader = command.ExecuteReader())
-                    {
-                        Assert.IsTrue(reader.Read()); // *2* this fails if the initial connection is used
-                    }
-                }
-            } // *3* sometimes it throws "System.NotSupportedException: This stream does not support seek operations"
-#endif
-        }
-
-        [Test]
         public void Bug1011001()
         {
             //[#1011001] Bug in NpgsqlConnectionStringBuilder affects on cache and connection pool
@@ -1000,59 +965,8 @@ namespace Npgsql.Tests
             Assert.IsTrue(cs1 == cs2);
         }
 
-        [Test]
-        public void NpgsqlErrorRepro2()
-        {
-#if WHAT_TO_DO_WITH_THIS
-            var connection = new NpgsqlConnection(ConnectionString);
-            connection.Open();
-            var transaction = connection.BeginTransaction();
-            var largeObjectMgr = new LargeObjectManager(connection);
-            try
-            {
-                var largeObject = largeObjectMgr.Open(-1, LargeObjectManager.READWRITE);
-                transaction.Commit();
-            }
-            catch
-            {
-                // ignore the LO failure
-                try
-                {
-                    transaction.Dispose();
-                }
-                catch
-                {
-                    // ignore dispose failure
-                }
-                try
-                {
-                    connection.Dispose();
-                }
-                catch
-                {
-                    // ignore dispose failure
-                }
-            }
-
-            using (connection = new NpgsqlConnection(ConnectionString))
-            {
-                connection.Open();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT * FROM pg_database";
-                    using (var reader = command.ExecuteReader())
-                    {
-                        Assert.IsTrue(reader.Read());
-                        // *1* this fails if the connection for the pool happens to be the bad one from above
-                        Assert.IsTrue(!String.IsNullOrEmpty((string)reader["datname"]));
-                    }
-                }
-            }
-#endif
-        }
-
         [Test, IssueLink("https://github.com/npgsql/npgsql/pull/164")]
-        public void voidConnectionStateWhenDisposed()
+        public void Connection_State_is_Closed_when_disposed()
         {
             var c = new NpgsqlConnection();
             c.Dispose();
@@ -1060,7 +974,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ChangeApplicationNameWithConnectionStringBuilder()
+        public void Change_ApplicationName_with_connection_string_builder()
         {
             // Test for issue #165 on github.
             var builder = new NpgsqlConnectionStringBuilder();
@@ -1107,7 +1021,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, Description("Makes sure that concurrent use of the connection throws an exception")]
-        public async Task ConcurrentUse()
+        public async Task Concurrent_use_throws()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -1129,7 +1043,7 @@ LANGUAGE 'plpgsql'");
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
-        public void PersistSecurityInfoIsOn([Values(true, false)] bool pooling)
+        public void PersistSecurityInfo_is_true([Values(true, false)] bool pooling)
         {
             if (IsMultiplexing && !pooling)
                 return;
@@ -1148,7 +1062,7 @@ LANGUAGE 'plpgsql'");
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
-        public void NoPasswordWithoutPersistSecurityInfo([Values(true, false)] bool pooling)
+        public void No_password_without_PersistSecurityInfo([Values(true, false)] bool pooling)
         {
             if (IsMultiplexing && !pooling)
                 return;
@@ -1166,7 +1080,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2725")]
-        public void CloneWithAndPersistSecurityInfo()
+        public void Clone_with_PersistSecurityInfo()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -1246,7 +1160,7 @@ LANGUAGE 'plpgsql'");
         enum ReloadTypesEnum { First, Second };
 
         [Test]
-        public async Task DatabaseInfoIsShared()
+        public async Task DatabaseInfo_is_shared()
         {
             if (IsMultiplexing)
                 return;
@@ -1276,7 +1190,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/736")]
-        public async Task ManyOpenCloseWithTransaction()
+        public async Task Many_open_close_with_transaction()
         {
             // The connector's _sentRfqPrependedMessages is a byte, too many open/closes made it overflow
             for (var i = 0; i < 255; i++)
@@ -1292,7 +1206,7 @@ LANGUAGE 'plpgsql'");
         [IssueLink("https://github.com/npgsql/npgsql/issues/927")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/736")]
         [Ignore("Fails when running the entire test suite but not on its own...")]
-        public async Task RollbackOnClose()
+        public async Task Rollback_on_close()
         {
             // Npgsql 3.0.0 to 3.0.4 prepended a rollback for the next time the connector is used, as an optimization.
             // This caused some issues (#927) and was removed.
@@ -1319,7 +1233,7 @@ LANGUAGE 'plpgsql'");
         [Test, Description("Tests an exception happening when sending the Terminate message while closing a ready connector")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
         [Ignore("Flaky")]
-        public async Task ExceptionDuringClose()
+        public async Task Exception_during_close()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
             using var conn = await OpenConnectionAsync(csb);
@@ -1332,7 +1246,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1180")]
-        public void PoolByPassword()
+        public void Pool_by_password()
         {
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             using (var goodConn = new NpgsqlConnection(connectionString))
@@ -1367,7 +1281,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
-        public async Task TableNamedRecord()
+        public async Task Table_named_record()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
@@ -1389,7 +1303,7 @@ CREATE TABLE record ()");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-        public async Task NonUTF8Encoding()
+        public async Task Non_UTF8_Encoding()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             await using var adminConn = await OpenConnectionAsync();
@@ -1437,7 +1351,7 @@ CREATE TABLE record ()");
         }
 
         [Test]
-        public async Task OversizeBuffer()
+        public async Task Oversize_buffer()
         {
             if (IsMultiplexing)
                 return;
@@ -1524,7 +1438,7 @@ CREATE TABLE record ()");
         }
 
         [Test]
-        public async Task ChangeParameter()
+        public async Task Change_parameter()
         {
             if (IsMultiplexing)
                 return;
@@ -1691,7 +1605,7 @@ CREATE TABLE record ()");
 
         [Test]
         [NonParallelizable]
-        public void PasswordSourcePrecedence()
+        public void Password_source_precedence()
         {
             using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1731,7 +1645,7 @@ CREATE TABLE record ()");
                 builder.Password = password;
                 builder.Passfile = passFile;
                 builder.IntegratedSecurity = false;
-                builder.ApplicationName = $"{nameof(PasswordSourcePrecedence)}:{Guid.NewGuid()}";
+                builder.ApplicationName = $"{nameof(Password_source_precedence)}:{Guid.NewGuid()}";
 
                 using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
                 using var connection = await OpenConnectionAsync(connectionString);
@@ -1741,7 +1655,7 @@ CREATE TABLE record ()");
         [Test, Description("Simulates a timeout during the authentication phase")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3227")]
         [Timeout(10000)]
-        public async Task TimeoutDuringAuthentication()
+        public async Task Timeout_during_authentication()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
             await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);

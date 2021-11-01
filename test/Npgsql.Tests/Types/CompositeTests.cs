@@ -36,7 +36,7 @@ namespace Npgsql.Tests.Types
         #endregion
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
-        public void CompositePostgresType()
+        public void Composite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -68,11 +68,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
-        public void CompositeTypeResolutionWithGlobalMapping()
+        public void Composite_type_resolution_with_global_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(CompositeTypeResolutionWithGlobalMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Composite_type_resolution_with_global_mapping),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -129,11 +129,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Resolves a composite type handler via the different pathways, with late mapping")]
-        public void CompositeTypeResolutionWithLateMapping()
+        public void Composite_type_resolution_with_late_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(CompositeTypeResolutionWithLateMapping),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(Composite_type_resolution_with_late_mapping),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -184,11 +184,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Parallelizable(ParallelScope.None)]
-        public void LateMapping()
+        public void Late_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(LateMapping),
+                ApplicationName = nameof(Late_mapping),
                 Pooling = false
             };
             using var conn = OpenConnection(csb);
@@ -216,11 +216,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void GlobalMapping()
+        public void Global_mapping()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(LateMapping),
+                ApplicationName = nameof(Late_mapping),
                 Pooling = false
             };
             try
@@ -354,11 +354,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-        public void NameTranslation()
+        public void Name_translation()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(LateMapping),
+                ApplicationName = nameof(Late_mapping),
                 Pooling = false
             };
             var expected = new NameTranslationComposite { Simple = 2, TwoWords = 3, SomeClrName = 4 };
@@ -434,7 +434,7 @@ CREATE TYPE address AS
         #region Table as Composite
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
-        public void TableAsCompositeNotSupportedByDefault()
+        public void Table_as_composite_not_supported_by_default()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite (foo int); INSERT INTO table_as_composite (foo) VALUES (8)");
@@ -443,12 +443,12 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
-        public void TableAsComposite()
+        public void Table_as_composite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(TableAsComposite),
+                ApplicationName = nameof(Table_as_composite),
                 LoadTableComposites = true
             };
             using var conn = OpenConnection(csb);
@@ -462,12 +462,12 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1267")]
-        public void TableAsCompositeWithDeleteColumns()
+        public void Table_as_composite_with_delete_columns()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(TableAsCompositeWithDeleteColumns),
+                ApplicationName = nameof(Table_as_composite_with_delete_columns),
                 LoadTableComposites = true
             };
 
@@ -483,12 +483,12 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2668")]
-        public void TableCompositesNotLoadedIfNotRequested()
+        public void Table_composites_not_loaded_if_not_requested()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(TableCompositesNotLoadedIfNotRequested)
+                ApplicationName = nameof(Table_composites_not_loaded_if_not_requested)
             };
 
             using var conn = OpenConnection(csb);
@@ -503,12 +503,12 @@ CREATE TYPE address AS
         #endregion Table as Composite
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-        public void NullablePropertyInClassComposite()
+        public void Nullable_property_in_class_composite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(NullablePropertyInClassComposite)
+                ApplicationName = nameof(Nullable_property_in_class_composite)
             };
             using var conn = OpenConnection(csb);
             conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
@@ -528,12 +528,12 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-        public void NullablePropertyInStructComposite()
+        public void Nullable_property_in_struct_composite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(NullablePropertyInStructComposite)
+                ApplicationName = nameof(Nullable_property_in_struct_composite)
             };
             using var conn = OpenConnection(csb);
             conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
@@ -563,11 +563,11 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
-        public void WithSchema()
+        public void With_schema()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(WithSchema),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(With_schema),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -593,11 +593,11 @@ CREATE TYPE address AS
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
-        public void InDifferentSchemas()
+        public void In_different_schemas()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(InDifferentSchemas),  // Prevent backend type caching in TypeHandlerRegistry
+                ApplicationName = nameof(In_different_schemas),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
@@ -642,12 +642,12 @@ CREATE TYPE address AS
         class Composite3 { public int Bar { get; set; } }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1612")]
-        public void LocalMappingDontLeak()
+        public void Local_mapping_do_not_leak()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(LocalMappingDontLeak)
+                ApplicationName = nameof(Local_mapping_do_not_leak)
             };
             NpgsqlConnection.GlobalTypeMapper.MapComposite<Composite2>("composite");
             try

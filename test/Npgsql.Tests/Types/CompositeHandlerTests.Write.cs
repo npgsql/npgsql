@@ -29,23 +29,23 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Write_ClassWithProperty_Succeeds() =>
+        public void Write_class_with_property() =>
             Write<ClassWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().GetString(0)));
 
         [Test]
-        public void Write_ClassWithField_Succeeds() =>
+        public void Write_class_with_field() =>
             Write<ClassWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().GetString(0)));
 
         [Test]
-        public void Write_StructWithProperty_Succeeds() =>
+        public void Write_struct_with_property() =>
             Write<StructWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().GetString(0)));
 
         [Test]
-        public void Write_StructWithField_Succeeds() =>
+        public void Write_struct_with_field() =>
             Write<StructWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().GetString(0)));
 
         [Test]
-        public void Write_TypeWithTwoProperties_Succeeds() =>
+        public void Write_type_with_two_properties() =>
             Write<TypeWithTwoProperties>((execute, expected) =>
             {
                 var actual = execute();
@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Write_TypeWithTwoPropertiesInverted_Succeeds() =>
+        public void Write_type_with_two_properties_inverted() =>
             Write<TypeWithTwoPropertiesReversed>((execute, expected) =>
             {
                 var actual = execute();
@@ -63,47 +63,47 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Write_TypeWithPrivateProperty_ThrowsInvalidOperationException() =>
+        public void Write_type_with_private_property_throws() =>
             Write(new TypeWithPrivateProperty(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Write_TypeWithPrivateGetter_ThrowsInvalidOperationException() =>
+        public void Write_type_with_private_getter_throws() =>
             Write(new TypeWithPrivateGetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Write_TypeWithPrivateSetter_Succeeds() =>
+        public void Write_type_with_private_setter() =>
             Write(new TypeWithPrivateSetter(), (execute, expected) => execute());
 
         [Test]
-        public void Write_TypeWithoutGetter_ThrowsInvalidOperationException() =>
+        public void Write_type_without_getter_throws() =>
             Write(new TypeWithoutGetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Write_TypeWithoutSetter_Succeeds() =>
+        public void Write_type_without_setter() =>
             Write(new TypeWithoutSetter(), (execute, expected) => execute());
 
         [Test]
-        public void Write_TypeWithExplicitPropertyName_Succeeds() =>
+        public void Write_type_with_explicit_property_name() =>
             Write(new TypeWithExplicitPropertyName { MyValue = HelloSlonik }, (execute, expected) => Assert.That(execute().GetString(0), Is.EqualTo(expected.MyValue)));
 
         [Test]
-        public void Write_TypeWithExplicitParameterName_Succeeds() =>
+        public void Write_type_with_explicit_parameter_name() =>
             Write(new TypeWithExplicitParameterName(HelloSlonik), (execute, expected) => Assert.That(execute().GetString(0), Is.EqualTo(expected.Value)));
 
         [Test]
-        public void Write_TypeWithMorePropertiesThanAttributes_Succeeds() =>
+        public void Write_type_with_more_properties_than_attributes() =>
             Write(new TypeWithMorePropertiesThanAttributes(), (execute, expected) => execute());
 
         [Test]
-        public void Write_TypeWithLessPropertiesThanAttributes_ThrowsInvalidOperationException() =>
+        public void Write_type_with_less_properties_than_attributes_throws() =>
             Write(new TypeWithLessPropertiesThanAttributes(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Write_TypeWithLessParametersThanAttributes_ThrowsInvalidOperationException() =>
+        public void Write_type_with_less_parameters_than_attributes_throws() =>
             Write(new TypeWithLessParametersThanAttributes(TheAnswer), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Write_TypeWithMoreParametersThanAttributes_ThrowsInvalidOperationException() =>
+        public void Write_type_with_more_parameters_than_attributes_throws() =>
             Write(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
     }
 }

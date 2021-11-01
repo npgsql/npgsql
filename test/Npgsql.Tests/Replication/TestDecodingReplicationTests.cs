@@ -16,7 +16,7 @@ namespace Npgsql.Tests.Replication
     public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
     {
         [Test]
-        public Task CreateReplicationSlot()
+        public Task CreateTestDecodingReplicationSlot()
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -73,7 +73,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using the default replica identity")]
-        public Task UpdateForDefaultReplicaIdentity()
+        public Task Update_for_default_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -106,7 +106,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
-        public Task UpdateForIndexReplicaIdentity()
+        public Task Update_for_index_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -144,7 +144,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using full replica identity")]
-        public Task UpdateForFullReplicaIdentity()
+        public Task Update_for_full_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -180,7 +180,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using the default replica identity")]
-        public Task DeleteForDefaultReplicaIdentity()
+        public Task Delete_for_default_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -215,7 +215,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
-        public Task DeleteForIndexReplicaIdentity()
+        public Task Delete_for_index_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -253,7 +253,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using full replica identity")]
-        public Task DeleteForFullReplicaIdentity()
+        public Task Delete_for_full_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {

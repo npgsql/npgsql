@@ -161,7 +161,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PromoteAutoToExplicit()
+        public void Promote_auto_to_explicit()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -190,7 +190,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CandidateEject()
+        public void Candidate_eject()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -235,7 +235,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void OneCommandSameSqlTwice()
+        public void One_command_same_sql_twice()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -253,11 +253,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void AcrossCloseOpenDifferentConnector()
+        public void Across_close_open_different_connector()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(AutoPrepareTests) + '.' + nameof(AcrossCloseOpenDifferentConnector),
+                ApplicationName = nameof(AutoPrepareTests) + '.' + nameof(Across_close_open_different_connector),
                 MaxAutoPrepare = 10,
                 AutoPrepareMinUsages = 2
             }.ToString();
@@ -280,7 +280,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UnprepareAll()
+        public void Unprepare_all()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -298,7 +298,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Prepares the same SQL with different parameters (overloading)")]
-        public void OverloadedSql()
+        public void Overloaded_sql()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -329,7 +329,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already auto-prepared.")]
-        public void DeriveParametersForAutoPreparedStatement()
+        public void Derive_parameters_for_auto_prepared_statement()
         {
             const string query = "SELECT @p::integer";
             const int answer = 42;
@@ -363,7 +363,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2644")]
-        public void RowDescriptionProperlyCloned()
+        public void Row_description_properly_cloned()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -384,7 +384,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
-        public async Task DontAutoPrepareMoreThanMaxStatementsInBatch()
+        public async Task Dont_auto_prepare_more_than_max_statements_in_batch()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -403,7 +403,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
-        public async Task DontAutoPrepareMoreThanMaxStatementsInBatchRandom()
+        public async Task Dont_auto_prepare_more_than_max_statements_in_batch_random()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -422,7 +422,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ReplaceAndExecuteWithinSameBatch()
+        public async Task Replace_and_execute_within_same_batch()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -448,7 +448,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
     AND statement NOT LIKE '%pg_type%'";
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
-        public void AutoPreparedCommandFailure()
+        public void Auto_prepared_command_failure()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -478,7 +478,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3002")]
-        public void ReplaceWithBadSql()
+        public void Replace_with_bad_sql()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {

@@ -26,7 +26,7 @@ namespace Npgsql.Tests
         [TestCase(new[] { false, false }, TestName = "TwoNonQueries")]
         [TestCase(new[] { false, true }, TestName = "NonQueryQuery")]
         [TestCase(new[] { true, false }, TestName = "QueryNonQuery")]
-        public async Task MultipleStatements(bool[] queries)
+        public async Task Multiple_statements(bool[] queries)
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -51,7 +51,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task MultipleStatementsWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task Multiple_statements_with_parameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -94,7 +94,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Makes sure a later command can depend on an earlier one")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
-        public async Task MultipleStatementsWithDependencies()
+        public async Task Multiple_statements_with_dependencies()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "a INT", out var table);
@@ -105,7 +105,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Forces async write mode when the first statement in a multi-statement command is big")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
-        public async Task MultipleStatementsLargeFirstCommand()
+        public async Task Multiple_statements_large_first_command()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand($"SELECT repeat('X', {conn.Settings.WriteBufferSize}); SELECT @p", conn);
@@ -157,7 +157,7 @@ namespace Npgsql.Tests
         [Test, Description("Times out an async operation, testing that cancellation occurs successfully")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
         [Timeout(10000)]
-        public async Task TimeoutAsyncSoft()
+        public async Task Timeout_async_soft()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, Timeout
@@ -174,7 +174,7 @@ namespace Npgsql.Tests
         [Test, Description("Times out an async operation, with unsuccessful cancellation (socket break)")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
         [Timeout(10000)]
-        public async Task TimeoutAsyncHard()
+        public async Task Timeout_async_hard()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, Timeout
@@ -198,7 +198,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TimeoutFromConnectionString()
+        public async Task Timeout_from_connection_string()
         {
             Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
             var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
@@ -216,7 +216,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
-        public async Task TimeoutSwitchConnection()
+        public async Task Timeout_switch_connection()
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
@@ -246,7 +246,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(10000)]
-        public async Task PrepareTimeoutHard([Values] SyncOrAsync async)
+        public async Task Prepare_timeout_hard([Values] SyncOrAsync async)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, Timeout
@@ -302,7 +302,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task CancelAsyncImmediately()
+        public async Task Cancel_async_immediately()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -324,7 +324,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
-        public async Task CancelAsyncSoft()
+        public async Task Cancel_async_soft()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -345,7 +345,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
-        public async Task CancelAsyncHard()
+        public async Task Cancel_async_hard()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -431,7 +431,7 @@ namespace Npgsql.Tests
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
         [Explicit("Timing-sensitive")]
         [Timeout(3000)]
-        public async Task CancelCrossCommand()
+        public async Task Cancel_cross_command()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd1 = CreateSleepCommand(conn, 2);
@@ -450,7 +450,7 @@ namespace Npgsql.Tests
         #region Cursors
 
         [Test]
-        public async Task CursorStatement()
+        public async Task Cursor_statement()
         {
             using var conn = await OpenConnectionAsync();
             using var t = conn.BeginTransaction();
@@ -483,7 +483,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task CursorMoveRecordsAffected()
+        public async Task Cursor_move_RecordsAffected()
         {
             using var connection = await OpenConnectionAsync();
             using var transaction = connection.BeginTransaction();
@@ -509,7 +509,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1194")]
-        public async Task CloseConnectionWithOpenReaderWithCloseConnection()
+        public async Task CloseConnection_with_open_reader_with_CloseConnection()
         {
             using var conn = await OpenConnectionAsync();
             var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -521,7 +521,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task CloseConnectionWithException()
+        public async Task CloseConnection_with_exception()
         {
             using var conn = await OpenConnectionAsync();
             using (var cmd = new NpgsqlCommand("SE", conn))
@@ -639,7 +639,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ParametersGetName()
+        public void Parameters_get_name()
         {
             var command = new NpgsqlCommand();
 
@@ -667,7 +667,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SameParamMultipleTimes()
+        public async Task Same_param_multiple_times()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p1", conn);
@@ -679,7 +679,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task GenericParameter()
+        public async Task Generic_parameter()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
@@ -698,7 +698,7 @@ namespace Npgsql.Tests
         #endregion Parameters
 
         [Test]
-        public async Task CommandTextNotSet()
+        public async Task CommandText_not_set()
         {
             using var conn = await OpenConnectionAsync();
             using (var cmd = new NpgsqlCommand())
@@ -761,7 +761,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Disposing a command with an open reader does not close the reader. This is the SqlClient behavior.")]
-        public async Task DisposeCommandDoesNotCloseReader()
+        public async Task Command_Dispose_does_not_close_reader()
         {
             using var conn = await OpenConnectionAsync();
             var cmd = new NpgsqlCommand("SELECT 1, 2", conn);
@@ -772,7 +772,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task NonStandardsConformingStrings()
+        public async Task Non_standards_conforming_strings()
         {
             using var conn = await OpenConnectionAsync();
 
@@ -790,7 +790,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ParameterAndOperatorUnclear()
+        public async Task Parameter_and_operator_unclear()
         {
             using var conn = await OpenConnectionAsync();
             //Without parenthesis the meaning of [, . and potentially other characters is
@@ -805,7 +805,7 @@ namespace Npgsql.Tests
         [Test]
         [TestCase(CommandBehavior.Default)]
         [TestCase(CommandBehavior.SequentialAccess)]
-        public async Task StatementMappedOutputParameters(CommandBehavior behavior)
+        public async Task Statement_mapped_output_parameters(CommandBehavior behavior)
         {
             using var conn = await OpenConnectionAsync();
             var command = new NpgsqlCommand("select 3, 4 as param1, 5 as param2, 6;", conn);
@@ -839,7 +839,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task TestBug1006158OutputParameters()
+        public async Task Bug1006158_output_parameters()
         {
             using var conn = await OpenConnectionAsync();
             await using (GetTempFunctionName(conn, out var function))
@@ -872,7 +872,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test]
-        public async Task Bug1010788UpdateRowSource()
+        public async Task Bug1010788_UpdateRowSource()
         {
             if (IsMultiplexing)
                 return;
@@ -909,7 +909,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         [Test]
         [TestCase(CommandBehavior.Default)]
         [TestCase(CommandBehavior.SequentialAccess)]
-        public async Task InputAndOutputParameters(CommandBehavior behavior)
+        public async Task Input_and_output_parameters(CommandBehavior behavior)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @c-1 AS c, @a+2 AS b", conn);
@@ -926,7 +926,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test]
-        public async Task SendUnknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task Send_NpgsqlDbType_Unknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -943,7 +943,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/503")]
-        public async Task InvalidUTF8()
+        public async Task Invalid_UTF8()
         {
             const string badString = "SELECT 'abc\uD801\uD802d'";
             using var conn = await OpenConnectionAsync();
@@ -951,7 +951,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
-        public async Task UseAcrossConnectionChange([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public async Task Use_across_connection_change([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -970,7 +970,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
 
         [Test, Description("CreateCommand before connection open")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/565")]
-        public async Task CreateCommandBeforeConnectionOpen()
+        public async Task Create_command_before_connection_open()
         {
             using var conn = new NpgsqlConnection(ConnectionString);
             var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -979,14 +979,14 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test]
-        public void ConnectionNotSet()
+        public void Connection_not_set_throws()
         {
             var cmd = new NpgsqlCommand("SELECT 1");
             Assert.That(() => cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test]
-        public void ConnectionNotOpen()
+        public void Connection_not_open_throws()
         {
             using var conn = CreateConnection();
             var cmd = new NpgsqlCommand("SELECT 1", conn);
@@ -1031,7 +1031,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
         [Timeout(10000)]
-        public async Task ManyParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task Many_parameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -1061,7 +1061,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2703")]
-        public async Task TooManyParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task Too_many_parameters_throws([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -1096,7 +1096,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
 
         [Test, Description("An individual statement cannot have more than 65535 parameters, but a command can (across multiple statements).")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
-        public async Task ManyParametersAcrossStatements()
+        public async Task Many_parameters_across_statements()
         {
             // Create a command with 1000 statements which have 70 params each
             using var conn = await OpenConnectionAsync();
@@ -1163,7 +1163,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]
-        public async Task SameCommandDifferentParamValues()
+        public async Task Same_command_different_param_values()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -1175,7 +1175,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]
-        public async Task SameCommandDifferentParamInstances()
+        public async Task Same_command_different_param_instances()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
