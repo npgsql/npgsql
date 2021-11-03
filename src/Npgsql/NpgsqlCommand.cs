@@ -717,8 +717,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 throw connector.UnexpectedMessageReceived(msg.Code);
                             }
 
+                            pStatement.State = PreparedState.Prepared;
+                            connector.PreparedStatementManager.NumPrepared++;
                             batchCommand.IsPreparing = false;
-                            pStatement.CompletePrepare();
                             isFirst = false;
                         }
 
@@ -738,7 +739,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (batchCommand.IsPreparing)
                         {
                             batchCommand.IsPreparing = false;
-                            batchCommand.PreparedStatement!.CompleteUnprepare();
+                            batchCommand.PreparedStatement!.AbortPrepare();
                         }
                     }
 
@@ -781,19 +782,31 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var connector = connection.Connector!;
 
             Log.Debug("Closing command's prepared statements", connector.Id);
+
             using (connector.StartUserAction(cancellationToken))
             {
                 var sendTask = SendClose(connector, async, cancellationToken);
                 if (sendTask.IsFaulted)
                     sendTask.GetAwaiter().GetResult();
+
                 foreach (var batchCommand in InternalBatchCommands)
+                {
                     if (batchCommand.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
                         Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
-                        batchCommand.PreparedStatement.CompleteUnprepare();
+
+                        var pStatement = batchCommand.PreparedStatement;
+                        pStatement.CompleteUnprepare();
+
+                        if (!pStatement.IsExplicit)
+                            connector.PreparedStatementManager.AutoPrepared[pStatement.AutoPreparedSlotIndex] = null;
+
                         batchCommand.PreparedStatement = null;
                     }
+                }
+
                 Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+
                 if (async)
                     await sendTask;
                 else

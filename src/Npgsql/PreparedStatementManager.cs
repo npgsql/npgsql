@@ -12,8 +12,7 @@ namespace Npgsql
         internal int UsagesBeforePrepare { get; }
 
         internal Dictionary<string, PreparedStatement> BySql { get; } = new();
-        readonly PreparedStatement[] _autoPrepared;
-        int _numAutoPrepared;
+        internal PreparedStatement?[] AutoPrepared { get; }
 
         readonly PreparedStatement?[] _candidates;
 
@@ -40,12 +39,12 @@ namespace Npgsql
             {
                 if (MaxAutoPrepared > 256)
                     Log.Warn($"{nameof(MaxAutoPrepared)} is over 256, performance degradation may occur. Please report via an issue.", connector.Id);
-                _autoPrepared = new PreparedStatement[MaxAutoPrepared];
+                AutoPrepared = new PreparedStatement[MaxAutoPrepared];
                 _candidates = new PreparedStatement[CandidateCount];
             }
             else
             {
-                _autoPrepared = null!;
+                AutoPrepared = null!;
                 _candidates = null!;
             }
         }
@@ -166,71 +165,62 @@ namespace Npgsql
             // Bingo, we've just passed the usage threshold, statement should get prepared
             Log.Trace($"Automatically preparing statement: {sql}", _connector.Id);
 
-            if (_numAutoPrepared < MaxAutoPrepared)
+            // Look for either an empty autoprepare slot, or the least recently used prepared statement which we'll replace it.
+            var oldestTimestamp = DateTime.MaxValue;
+            var selectedIndex = -1;
+            for (var i = 0; i < AutoPrepared.Length; i++)
             {
-                // We still have free slots
-                _autoPrepared[_numAutoPrepared++] = pStatement;
-                pStatement.Name = "_auto" + _numAutoPrepared;
+                var slot = AutoPrepared[i];
+
+                if (slot is null)
+                {
+                    // We found a free slot, exit the loop immediately
+                    selectedIndex = i;
+                    break;
+                }
+
+                switch (slot.State)
+                {
+                case PreparedState.Prepared:
+                    if (slot.LastUsed < oldestTimestamp)
+                    {
+                        selectedIndex = i;
+                        oldestTimestamp = slot.LastUsed;
+                    }
+                    break;
+
+                case PreparedState.BeingPrepared:
+                    // Slot has already been selected for preparation by an earlier statement in this batch. Skip it.
+                    continue;
+
+                default:
+                    throw new Exception(
+                        $"Invalid {nameof(PreparedState)} state {slot.State} encountered when scanning prepared statement slots");
+                }
+            }
+
+            if (selectedIndex == -1)
+            {
+                // We're here if we couldn't find a free slot or a prepared statement to replace - this means all slots are taken by
+                // statements being prepared in this batch.
+                return null;
+            }
+
+            var oldPreparedStatement = AutoPrepared[selectedIndex];
+
+            if (oldPreparedStatement is null)
+            {
+                pStatement.Name = "_auto" + selectedIndex;
             }
             else
             {
-                // We already have the maximum number of prepared statements.
-                // Find the least recently used prepared statement and replace it.
-                var foundUnpreparedSlot = false;
-                var oldestTimestamp = DateTime.MaxValue;
-                var oldestIndex = -1;
-                for (var i = 0; i < _autoPrepared.Length; i++)
-                {
-                    var slot = _autoPrepared[i];
-
-                    switch (slot.State)
-                    {
-                    case PreparedState.Prepared:
-                        if (slot.LastUsed < oldestTimestamp)
-                        {
-                            oldestIndex = i;
-                            oldestTimestamp = slot.LastUsed;
-                        }
-                        break;
-
-                    case PreparedState.BeingPrepared:
-                        // Slot has already been selected for preparation by an earlier statement in this batch. Skip it.
-                        continue;
-
-                    case PreparedState.Unprepared:
-                        // Found an unprepared statement slot; this can occur if a previous preparation failed because of an error.
-                        // Use that immediately, no need to continue looking for an LRU.
-                        pStatement.Name = slot.Name;
-                        _autoPrepared[i] = pStatement;
-                        foundUnpreparedSlot = true;
-                        break;
-
-                    case PreparedState.BeingUnprepared:
-                    case PreparedState.NotPrepared:
-                        throw new Exception(
-                            $"Invalid {nameof(PreparedState)} state {slot.State} encountered when scanning prepared statement slots");
-
-                    default:
-                        throw new ArgumentOutOfRangeException($"Unknown {nameof(PreparedState)}: {slot.State}");
-                    }
-                }
-
-                if (!foundUnpreparedSlot)
-                {
-                    if (oldestIndex == -1)
-                    {
-                        // We're here if we couldn't find a prepared statement to replace, because all of them are already
-                        // being prepared in this batch.
-                        return null;
-                    }
-
-                    var selectedSlot = _autoPrepared[oldestIndex];
-                    pStatement.Name = selectedSlot.Name;
-                    pStatement.StatementBeingReplaced = selectedSlot;
-                    selectedSlot.State = PreparedState.BeingUnprepared;
-                    _autoPrepared[oldestIndex] = pStatement;
-                }
+                pStatement.Name = oldPreparedStatement.Name;
+                pStatement.StatementBeingReplaced = oldPreparedStatement;
+                oldPreparedStatement.State = PreparedState.BeingUnprepared;
             }
+
+            pStatement.AutoPreparedSlotIndex = selectedIndex;
+            AutoPrepared[selectedIndex] = pStatement;
 
             RemoveCandidate(pStatement);
 
@@ -264,7 +254,9 @@ namespace Npgsql
             BySql.Clear();
             NumPrepared = 0;
             _preparedStatementIndex = 0;
-            _numAutoPrepared = 0;
+            if (AutoPrepared is not null)
+                for (var i = 0; i < AutoPrepared.Length; i++)
+                    AutoPrepared[i] = null;
             if (_candidates != null)
                 for (var i = 0; i < _candidates.Length; i++)
                     _candidates[i] = null;
