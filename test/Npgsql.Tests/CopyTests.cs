@@ -15,7 +15,7 @@ namespace Npgsql.Tests
 {
     public class CopyTests : MultiplexingTestBase
     {
-        #region issue 2257
+        #region Issue 2257
 
         [Test, Description("Reproduce #2257")]
         public async Task Issue2257()
@@ -55,7 +55,7 @@ namespace Npgsql.Tests
         #region Raw
 
         [Test, Description("Exports data in binary format (raw mode) and then loads it back in")]
-        public async Task RawBinaryRoundtrip([Values(false, true)] bool async)
+        public async Task Raw_binary_roundtrip([Values(false, true)] bool async)
         {
             using var conn = await OpenConnectionAsync();
             //var iterations = Conn.BufferSize / 10 + 100;
@@ -117,7 +117,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Disposes a raw binary stream in the middle of an export")]
-        public async Task DisposeInMiddleOfRawBinaryExport()
+        public async Task Dispose_in_middle_of_raw_binary_export()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -136,7 +136,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, Description("Disposes a raw binary stream in the middle of an import")]
-        public async Task DisposeInMiddleOfRawBinaryImport()
+        public async Task Dispose_in_middle_of_raw_binary_import()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -152,7 +152,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, Description("Cancels a binary write")]
-        public async Task CancelRawBinaryImport()
+        public async Task Cancel_raw_binary_import()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -169,7 +169,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test]
-        public async Task ImportLargeValueRaw()
+        public async Task Import_large_value_raw()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
@@ -208,7 +208,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongTableDefinitionRawBinaryCopy()
+        public async Task Wrong_table_definition_raw_binary_copy()
         {
             using var conn = await OpenConnectionAsync();
             Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
@@ -221,7 +221,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongFormatRawBinaryCopy()
+        public async Task Wrong_format_raw_binary_copy()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -245,7 +245,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         #region Binary
 
         [Test, Description("Roundtrips some data")]
-        public async Task BinaryRoundtrip([Values(false, true)] bool async)
+        public async Task Binary_roundtrip([Values(false, true)] bool async)
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT", out var table);
@@ -301,7 +301,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test]
-        public async Task CancelBinaryImport()
+        public async Task Cancel_binary_import()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
@@ -317,7 +317,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
-        public async Task ImportBytea()
+        public async Task Import_bytea()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field BYTEA", out var table);
@@ -336,7 +336,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test]
-        public async Task ImportStringArray()
+        public async Task Import_string_array()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field TEXT[]", out var table);
@@ -354,7 +354,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/816")]
-        public async Task ImportStringWithBufferLength()
+        public async Task Import_string_with_buffer_length()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field TEXT", out var table);
@@ -371,7 +371,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/662")]
-        public async Task ImportDirectBuffer()
+        public async Task Import_direct_buffer()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
@@ -387,7 +387,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongTableDefinitionBinaryImport()
+        public async Task Wrong_table_definition_binary_import()
         {
             using var conn = await OpenConnectionAsync();
             // Connection should be kept alive after PostgresException was triggered
@@ -397,7 +397,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongFormatBinaryImport()
+        public async Task Wrong_format_binary_import()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -408,7 +408,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongTableDefinitionBinaryExport()
+        public async Task Wrong_table_definition_binary_export()
         {
             using var conn = await OpenConnectionAsync();
             // Connection should be kept alive after PostgresException was triggered
@@ -418,7 +418,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongFormatBinaryExport()
+        public async Task Wrong_format_binary_export()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -430,7 +430,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
         [Ignore("Unreliable")]
-        public async Task UnexpectedExceptionBinaryImport()
+        public async Task Unexpected_exception_binary_import()
         {
             if (IsMultiplexing)
                 return;
@@ -457,7 +457,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
         [Explicit]
-        public async Task ImportByteaMassive()
+        public async Task Import_bytea_massive()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field BYTEA", out var table);
@@ -480,7 +480,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test]
-        public async Task ExportLongString()
+        public async Task Export_long_string()
         {
             const int iterations = 100;
             using var conn = await OpenConnectionAsync();
@@ -505,7 +505,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
-        public async Task ReadBitString()
+        public async Task Read_bit_string()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -580,7 +580,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         enum Mood { Sad, Ok, Happy };
 
         [Test]
-        public async Task Read_NullAsNullable_Succeeds()
+        public async Task Read_null_as_nullable()
         {
             using var connection = await OpenConnectionAsync();
             using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
@@ -591,7 +591,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task Read_NullAsValue_ThrowsInvalidCastException()
+        public async Task Read_null_as_non_nullable_throws()
         {
             using var connection = await OpenConnectionAsync();
             using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
@@ -602,7 +602,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
-        public async Task ErrorDuringImport()
+        public async Task Error_during_import()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT, CONSTRAINT uq UNIQUE(foo)", out var table);
@@ -619,7 +619,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task ImportCannotWriteAfterCommit()
+        public async Task Import_cannot_write_after_commit()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT", out var table);
@@ -640,7 +640,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task ImportCommitInMiddleOfRow()
+        public async Task Import_commit_in_middle_of_row()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT, bar TEXT", out var table);
@@ -663,7 +663,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task ImportExceptionDoesNotCommit()
+        public async Task Import_exception_does_not_commit()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT", out var table);
@@ -682,7 +682,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2347")]
-        public async Task Write_ColumnOutOfBounds_ThrowsInvalidOperationException()
+        public async Task Write_column_out_of_bounds_throws()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 INTEGER", out var table);
@@ -711,7 +711,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task CancelRawBinaryExportWhenNotConsumedAndThenDispose()
+        public async Task Cancel_raw_binary_export_when_not_consumed_and_then_Dispose()
         {
             await using var conn = await OpenConnectionAsync();
             // This must be large enough to cause Postgres to queue up CopyData messages.
@@ -724,7 +724,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task CancelBinaryExportWhenNotConsumedAndThenDispose()
+        public async Task Cancel_binary_export_when_not_consumed_and_then_Dispose()
         {
             await using var conn = await OpenConnectionAsync();
             // This must be large enough to cause Postgres to queue up CopyData messages.
@@ -741,7 +741,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         #region Text
 
         [Test]
-        public async Task TextImport([Values(false, true)] bool async)
+        public async Task Text_import([Values(false, true)] bool async)
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
@@ -770,7 +770,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task CancelTextImport()
+        public async Task Cancel_text_import()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
@@ -782,7 +782,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task TextImportEmpty()
+        public async Task Text_import_empty()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
@@ -794,7 +794,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         }
 
         [Test]
-        public async Task TextExport([Values(false, true)] bool async)
+        public async Task Text_export([Values(false, true)] bool async)
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -820,7 +820,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test]
-        public async Task DisposeInMiddleOfTextExport()
+        public async Task Dispose_in_middle_of_text_export()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -835,7 +835,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongTableDefinitionTextImport()
+        public async Task Wrong_table_definition_text_import()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -846,7 +846,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongFormatTextImport()
+        public async Task Wrong_format_text_import()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -857,7 +857,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongTableDefinitionTextExport()
+        public async Task Wrong_table_definition_text_export()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -868,7 +868,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
-        public async Task WrongFormatTextExport()
+        public async Task Wrong_format_text_export()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
@@ -879,7 +879,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test]
-        public async Task CancelTextExportWhenNotConsumedAndThenDispose()
+        public async Task Cancel_text_export_when_not_consumed_and_then_Dispose()
         {
             await using var conn = await OpenConnectionAsync();
             // This must be large enough to cause Postgres to queue up CopyData messages.
@@ -896,15 +896,15 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         #region Other
 
         [Test, Description("Starts a transaction before a COPY, testing that prepended messages are handled well")]
-        public async Task PrependedMessages()
+        public async Task Prepended_messages()
         {
             using var conn = await OpenConnectionAsync();
             conn.BeginTransaction();
-            await TextImport(async: false);
+            await Text_import(async: false);
         }
 
         [Test]
-        public async Task UndefinedTable()
+        public async Task Undefined_table_throws()
         {
             using var conn = await OpenConnectionAsync();
             Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
@@ -914,7 +914,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/621")]
-        public async Task CloseDuringCopy()
+        public async Task Close_during_copy_throws()
         {
             // TODO: Check no broken connections were returned to the pool
             using (var conn = await OpenConnectionAsync()) {
@@ -949,7 +949,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/994")]
-        public async Task NonAsciiColumnName()
+        public async Task Non_ascii_column_name()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "non_ascii_éè TEXT", out var table);
@@ -957,7 +957,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, IssueLink("https://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
-        public async Task WriteNullValues()
+        public async Task Write_null_values()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo1 INT, foo2 UUID, foo3 INT, foo4 UUID", out var table);
@@ -982,7 +982,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test]
-        public async Task WriteDifferentTypes()
+        public async Task Write_different_types()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT, bar INT[]", out var table);
@@ -1002,7 +1002,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         }
 
         [Test, Description("Tests nested binding scopes in multiplexing")]
-        public async Task WithinTransaction()
+        public async Task Within_transaction()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "foo INT", out var table);

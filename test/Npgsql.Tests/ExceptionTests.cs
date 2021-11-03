@@ -59,7 +59,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Ensures Detail is redacted by default in PostgresException and PostgresNotice")]
-        public async Task ErrorDetailsAreRedacted()
+        public async Task Error_details_are_redacted()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var raiseExceptionFunc);
@@ -91,7 +91,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public async Task IncludeErrorDetails()
+        public async Task IncludeErrorDetail()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IncludeErrorDetail = true };
             using var _ = CreateTempPool(builder, out var connectionStringWithDetails);
@@ -125,7 +125,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public async Task ErrorPosition()
+        public async Task Error_position()
         {
             await using var conn = await OpenConnectionAsync();
 
@@ -134,7 +134,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public void ExceptionFieldsArePopulated()
+        public void Exception_fields_are_populated()
         {
             using var conn = OpenConnection();
             TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
@@ -155,7 +155,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public void ColumnNameExceptionFieldIsPopulated()
+        public void Column_name_exception_field_is_populated()
         {
             using var conn = OpenConnection();
             TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
@@ -174,7 +174,7 @@ $$ LANGUAGE 'plpgsql';");
 
         [Test]
         [NonParallelizable]
-        public void DataTypeNameExceptionFieldIsPopulated()
+        public void DataTypeName_is_populated()
         {
             // On reading the source code for PostgreSQL9.3beta1, the only time that the
             // datatypename field is populated is when using domain types. So here we'll
@@ -207,7 +207,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public void NpgsqlExceptionInAsync()
+        public void NpgsqlException_with_async()
         {
             using var conn = OpenConnection();
             Assert.That(async () => await conn.ExecuteNonQueryAsync("MALFORMED"),
@@ -217,7 +217,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public void NpgsqlExceptionTransience()
+        public void NpgsqlException_IsTransient()
         {
             Assert.True(new NpgsqlException("", new IOException()).IsTransient);
             Assert.True(new NpgsqlException("", new SocketException()).IsTransient);
@@ -227,7 +227,7 @@ $$ LANGUAGE 'plpgsql';");
         }
 
         [Test]
-        public void PostgresExceptionTransience()
+        public void PostgresException_IsTransient()
         {
             Assert.True(CreateWithSqlState("53300").IsTransient);
             Assert.False(CreateWithSqlState("0").IsTransient);
@@ -302,7 +302,7 @@ $$ LANGUAGE 'plpgsql';");
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3204")]
-        public void BaseExceptionPropertySerialization()
+        public void Base_exception_property_serialization()
         {
             var ex = new PostgresException("the message", "low", "low2", "XX123");
 

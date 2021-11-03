@@ -20,7 +20,7 @@ namespace Npgsql.PluginTests
     public class JsonNetTests : TestBase
     {
         [Test]
-        public void RoundtripObject()
+        public void Roundtrip_object()
         {
             var expected = new Foo { Bar = 8 };
             using var conn = OpenConnection();
@@ -37,7 +37,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void DeserializeFailure()
+        public void Deserialize_failure()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand($@"SELECT '[1, 2, 3]'::{_pgTypeName}", conn);
@@ -51,7 +51,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
-        public void RoundtripStringTypes()
+        public void Roundtrip_string_types()
         {
             var expected = "{\"p\":1}";
             // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
@@ -73,7 +73,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, Ignore("INpgsqlTypeHandler<ArraySegment<char>>.Read currently not yet implemented in TextHandler")]
-        public void RoundtripArraySegment()
+        public void Roundtrip_ArraySegment()
         {
             var expected = "{\"p\":1}";
             // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
@@ -103,7 +103,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripJObject()
+        public void Roundtrip_JObject()
         {
             var expected = new JObject { ["Bar"] = 8 };
 
@@ -117,7 +117,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripJArray()
+        public void Roundtrip_JArray()
         {
             var expected = new JArray(new[] { 1, 2, 3 });
 
@@ -131,7 +131,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void ClrTypeMapping()
+        public void Clr_type_mapping()
         {
             var expected = new Foo { Bar = 8 };
             using var conn = OpenConnection();
@@ -146,7 +146,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, Ignore("https://github.com/npgsql/npgsql/issues/2568")]
-        public void ClrTypeMappingTwoTypes()
+        public void Clr_type_mapping_two_types()
         {
             var value1 = new Foo { Bar = 8 };
             var value2 = new Bar { A = 8 };
@@ -165,7 +165,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripClrArray()
+        public void Roundtrip_clr_array()
         {
             var expected = new[] { 1, 2, 3 };
 
@@ -221,10 +221,10 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        public void RoundtripJsonbCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : true);
+        public void Roundtrip_jsonb_custom_serializer_settings() => RoundtripCustomSerializerSettings(asJsonb : true);
 
         [Test]
-        public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
+        public void Roundtrip_json_custom_serializer_settings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
         [Test]
         public void Bug3464()

@@ -6,7 +6,7 @@ namespace Npgsql.Tests
     class PoolManagerTests : TestBase
     {
         [Test]
-        public void WithCanonicalConnString()
+        public void With_canonical_connection_string()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString).ToString();
             using (var conn = new NpgsqlConnection(connString))
@@ -21,7 +21,7 @@ namespace Npgsql.Tests
 
 #if DEBUG
         [Test]
-        public void ManyPools()
+        public void Many_pools()
         {
             PoolManager.Reset();
             for (var i = 0; i < PoolManager.InitialPoolsSize + 1; i++)
@@ -38,7 +38,7 @@ namespace Npgsql.Tests
 #endif
 
         [Test]
-        public void ClearAll()
+        public void ClearAllPools()
         {
             using (OpenConnection()) {}
             // Now have one connection in the pool
@@ -51,7 +51,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ClearAllWithBusy()
+        public void ClearAllPools_with_busy()
         {
             ConnectorSource? pool;
             using (OpenConnection())

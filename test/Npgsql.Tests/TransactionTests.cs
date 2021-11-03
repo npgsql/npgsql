@@ -119,7 +119,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Dispose a transaction in progress, should roll back")]
-        public async Task RollbackOnDispose()
+        public async Task Rollback_on_Dispose()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -132,7 +132,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task RollbackOnClose()
+        public async Task Rollback_on_Close()
         {
             await using var conn1 = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn1, "name TEXT", out var table);
@@ -147,7 +147,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
-        public async Task RollbackFailed()
+        public async Task Rollback_failed()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -161,21 +161,21 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Commits an empty transaction")]
-        public async Task EmptyCommit()
+        public async Task Empty_commit()
         {
             await using var conn = await OpenConnectionAsync();
             await conn.BeginTransaction().CommitAsync();
         }
 
         [Test, Description("Rolls back an empty transaction")]
-        public async Task EmptyRollback()
+        public async Task Empty_rollback()
         {
             await using var conn = await OpenConnectionAsync();
             await conn.BeginTransaction().RollbackAsync();
         }
 
         [Test, Description("Disposes an empty transaction")]
-        public async Task EmptyDisposeTransaction()
+        public async Task Empty_Dispose()
         {
             using var _ = CreateTempPool(ConnectionString, out var connString);
 
@@ -199,7 +199,7 @@ namespace Npgsql.Tests
         [TestCase(IsolationLevel.Serializable,    "serializable")]
         [TestCase(IsolationLevel.Snapshot,        "repeatable read")]
         [TestCase(IsolationLevel.Unspecified,     "read committed")]
-        public async Task IsolationLevels(IsolationLevel level, string expectedName)
+        public async Task Isolation_levels(IsolationLevel level, string expectedName)
         {
             await using var conn = await OpenConnectionAsync();
             var tx = conn.BeginTransaction(level);
@@ -208,14 +208,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task IsolationLevelChaosUnsupported()
+        public async Task IsolationLevel_Chaos_is_unsupported()
         {
             await using var conn = await OpenConnectionAsync();
             Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Rollback of an already rolled back transaction")]
-        public async Task RollbackTwice()
+        public async Task Rollback_twice()
         {
             await using var conn = await OpenConnectionAsync();
             var transaction = conn.BeginTransaction();
@@ -225,7 +225,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Makes sure the creating a transaction via DbConnection sets the proper isolation level")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/559")]
-        public async Task DbConnectionDefaultIsolation()
+        public async Task Default_IsolationLevel()
         {
             await using var conn = await OpenConnectionAsync();
             var tx = conn.BeginTransaction();
@@ -238,7 +238,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that transactions started in SQL work, except in multiplexing")]
-        public async Task ViaSql()
+        public async Task Via_sql()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: not implemented");
@@ -267,14 +267,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void BeginTransactionBeforeOpen()
+        public void Begin_transaction_on_closed_connection_throws()
         {
             using var conn = new NpgsqlConnection();
             Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test]
-        public async Task RollbackFailedTransactionWithTimeout()
+        public async Task Rollback_failed_transaction_with_timeout()
         {
             await using var conn = await OpenConnectionAsync();
 
@@ -298,7 +298,7 @@ namespace Npgsql.Tests
         [Test, Description("If a custom command timeout is set, a failed transaction could not be rollbacked to a previous savepoint")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/363")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/184")]
-        public async Task FailedTransactionCantRollbackToSavepointWithCustomTimeout()
+        public async Task Failed_transaction_cannot_rollback_to_savepoint_with_custom_timeout()
         {
             await using var conn = await OpenConnectionAsync();
 
@@ -320,7 +320,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Closes a (pooled) connection with a failed transaction and a custom timeout")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
-        public async Task FailedTransactionOnCloseWithCustomTimeout()
+        public async Task Failed_transaction_on_close_with_custom_timeout()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -345,13 +345,13 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/555")]
-        public async Task TransactionOnRecycledConnection()
+        public async Task Transaction_on_recycled_connection()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
 
             // Use application name to make sure we have our very own private connection pool
-            await using var conn = new NpgsqlConnection(ConnectionString + $";Application Name={GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}");
+            await using var conn = new NpgsqlConnection(ConnectionString + $";Application Name={GetUniqueIdentifier(nameof(Transaction_on_recycled_connection))}");
             conn.Open();
             var prevConnectorId = conn.Connector!.Id;
             conn.Close();
@@ -388,7 +388,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SavepointAsync()
+        public async Task Savepoint_async()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -412,7 +412,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SavepointQuoted()
+        public async Task Savepoint_quoted()
         {
             await using var conn = await OpenConnectionAsync();
             await using var tx = conn.BeginTransaction();
@@ -421,7 +421,7 @@ namespace Npgsql.Tests
         }
 
         [Test(Description = "Makes sure that creating a savepoint doesn't perform an additional roundtrip, but prepends to the next command")]
-        public async Task SavepointPrepends()
+        public async Task Savepoint_prepends()
         {
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -450,7 +450,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public async Task IsCompletedCommit()
+        public async Task IsCompleted_commit()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -464,7 +464,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Check IsCompleted before, during, and after a successful but rolled back transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public async Task IsCompletedRollback()
+        public async Task IsCompleted_rollback()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -478,7 +478,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Check IsCompleted before, during, and after a failed then rolled back transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public async Task IsCompletedRollbackFailed()
+        public async Task IsCompleted_rollback_failed()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -495,14 +495,14 @@ namespace Npgsql.Tests
 
         [Test, Description("Tests that a if a DatabaseInfoFactory is registered for a database that doesn't support transactions, no transactions are created")]
         [Parallelizable(ParallelScope.None)]
-        public async Task TransactionNotSupported()
+        public async Task Transaction_not_supported()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Need to rethink/redo dummy transaction mode");
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(TransactionNotSupported) + IsMultiplexing
+                ApplicationName = nameof(Transaction_not_supported) + IsMultiplexing
             }.ToString();
 
             NpgsqlDatabaseInfo.RegisterFactory(new NoTransactionDatabaseInfoFactory());
@@ -543,7 +543,7 @@ namespace Npgsql.Tests
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
         // More at #3254
-        public async Task Bug3248DisposeTransactionRollback()
+        public async Task Bug3248_Dispose_transaction_Rollback()
         {
             if (!IsMultiplexing)
                 return;
@@ -563,7 +563,7 @@ namespace Npgsql.Tests
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
         // More at #3254
-        public async Task Bug3248DisposeConnectionRollback()
+        public async Task Bug3248_Dispose_connection_Rollback()
         {
             if (!IsMultiplexing)
                 return;
@@ -604,7 +604,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/efcore.pg/issues/1593")]
-        public async Task AccessConnectionOnCompletedTransaction()
+        public async Task Access_connection_on_completed_transaction()
         {
             using var conn = await OpenConnectionAsync();
             using var tx = await conn.BeginTransactionAsync();
@@ -613,7 +613,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task UnboundTransactionReuse()
+        public async Task Unbound_transaction_reuse()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -721,7 +721,7 @@ namespace Npgsql.Tests
         // Older tests
 
         [Test]
-        public void Bug184RollbackFailsOnAbortedTransaction()
+        public void Bug184_Rollback_fails_on_aborted_transaction()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 100000;

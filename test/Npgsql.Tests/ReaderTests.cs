@@ -28,7 +28,7 @@ namespace Npgsql.Tests
     public class ReaderTests : MultiplexingTestBase
     {
         [Test]
-        public async Task SeekColumns()
+        public async Task Seek_columns()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1,2,3", conn);
@@ -47,7 +47,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task NoResultSet()
+        public async Task No_resultset()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id INT", out var table);
@@ -75,7 +75,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task EmptyResultSet()
+        public async Task Empty_resultset()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1 AS foo WHERE FALSE", conn);
@@ -191,7 +191,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
 #pragma warning restore CS0618
 
         [Test]
-        public async Task GetStringWithParameter()
+        public async Task Get_string_with_parameter()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -216,7 +216,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
         }
 
         [Test]
-        public async Task GetStringWithQuoteWithParameter()
+        public async Task Get_string_with_quote_with_parameter()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -242,7 +242,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task GetValueByName()
+        public async Task Get_value_by_name()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand(@"SELECT 'Random text' AS real_column", conn);
@@ -275,7 +275,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1096")]
-        public async Task GetFieldTypeSchemaOnly()
+        public async Task GetFieldType_SchemaOnly()
         {
             await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn);
@@ -354,7 +354,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task GetDataTypeNameEnum()
+        public async Task GetDataTypeName_enum()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: ReloadTypes");
@@ -369,7 +369,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task GetDataTypeNameDomain()
+        public async Task GetDataTypeName_domain()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: ReloadTypes");
@@ -385,7 +385,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/794")]
-        public async Task GetDataTypeNameTypesUnknown()
+        public async Task GetDataTypeNameTypes_unknown()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn);
@@ -430,7 +430,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task GetFieldValueAsObject()
+        public async Task GetFieldValue_as_object()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 'foo'::TEXT", conn);
@@ -484,7 +484,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
 #pragma warning restore 618
 
         [Test]
-        public async Task ExecuteReaderGettingEmptyResultSetWithOutputParameter()
+        public async Task ExecuteReader_getting_empty_resultset_with_output_parameter()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -497,7 +497,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task GetValueFromEmptyResultset()
+        public async Task Get_value_from_empty_resultset()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -520,7 +520,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task ReadPastDataReaderEnd()
+        public async Task Read_past_reader_end()
         {
             using var conn = await OpenConnectionAsync();
             var command = new NpgsqlCommand("SELECT 1", conn);
@@ -530,7 +530,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        public async Task ReaderDisposeStateNotLeaking()
+        public async Task Reader_dispose_state_does_not_leak()
         {
             if (IsMultiplexing || Behavior != CommandBehavior.Default)
                 return;
@@ -577,7 +577,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/400")]
-        public async Task ExceptionThrownFromExecuteQuery([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public async Task Exception_thrown_from_ExecuteReaderAsync([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -598,7 +598,7 @@ LANGUAGE 'plpgsql';
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1032")]
-        public async Task ExceptionThrownFromNextResult([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public async Task Exception_thrown_from_NextResult([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -680,7 +680,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task SchemaOnlyCommandBehaviorSupportFunctioncall()
+        public async Task SchemaOnly_support_function_call()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -695,7 +695,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2827")]
-        public async Task SchemaOnlyNextResultBeyondEnd()
+        public async Task SchemaOnly_next_result_beyond_end()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id INT", out var table);
@@ -721,7 +721,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task GetOrdinalInsensitivity()
+        public async Task GetOrdinal_case_insensitive()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("select 123 as FIELD1", conn);
@@ -731,7 +731,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task GetOrdinalKanaInsensitive()
+        public async Task GetOrdinal_kana_insensitive()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ", conn);
@@ -743,7 +743,7 @@ LANGUAGE 'plpgsql'");
         #endregion GetOrdinal
 
         [Test]
-        public async Task FieldIndexDoesntExist()
+        public async Task Field_index_does_not_exist()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT 1", conn);
@@ -753,7 +753,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test, Description("Performs some operations while a reader is still open and checks for exceptions")]
-        public async Task ReaderIsStillOpen()
+        public async Task Reader_is_still_open()
         {
             await using var conn = await OpenConnectionAsync();
             // We might get the connection, on which the second command was already prepared, so prepare wouldn't start the UserAction
@@ -771,7 +771,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task CleansupOkWithDisposeCalls([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public async Task Cleans_up_ok_with_dispose_calls([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
             if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
                 return;
@@ -871,7 +871,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task HasRowsWithoutResultset()
+        public async Task HasRows_without_resultset()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
@@ -881,7 +881,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task IntervalAsTimeSpan()
+        public async Task Interval_as_TimeSpan()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("SELECT CAST('1 hour' AS interval) AS dauer", conn);
@@ -893,7 +893,7 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        public async Task CloseConnectionInMiddleOfRow()
+        public async Task Close_connection_in_middle_of_row()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1, 2", conn);
@@ -903,7 +903,7 @@ LANGUAGE 'plpgsql'");
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/pull/1266")]
         [Description("NextResult was throwing an ArgumentOutOfRangeException when trying to determine the statement to associate with the PostgresException")]
-        public async Task ReaderNextResultExceptionHandling()
+        public async Task Reader_next_result_exception_handling()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table1);
@@ -932,7 +932,7 @@ LANGUAGE plpgsql VOLATILE";
 
 #pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test]
-        public async Task InvalidCast()
+        public async Task Invalid_cast()
         {
             using var conn = await OpenConnectionAsync();
             // Chunking type handler
@@ -954,7 +954,7 @@ LANGUAGE plpgsql VOLATILE";
 #pragma warning restore 618
 
         [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]
-        public async Task ManyReads()
+        public async Task Many_reads()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand($"SELECT generate_series(1, {conn.Settings.ReadBufferSize})", conn);
@@ -968,7 +968,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task NullableScalar()
+        public async Task Nullable_scalar()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -1001,7 +1001,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2913")]
-        public async Task ReaderReadingPreviousQueryMessagesBug()
+        public async Task Bug2913_reading_previous_query_messages()
         {
             // No point in testing for multiplexing, as every query may use another connection
             if (IsMultiplexing)
@@ -1057,7 +1057,7 @@ LANGUAGE plpgsql VOLATILE";
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2913")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3289")]
-        public async Task ReaderCloseAndDisposeBug()
+        public async Task Reader_close_and_dispose()
         {
             await using var conn = await OpenConnectionAsync();
             using var cmd1 = conn.CreateCommand();
@@ -1079,7 +1079,7 @@ LANGUAGE plpgsql VOLATILE";
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2964")]
-        public async Task ConnectionCloseAndReaderDisposeBug()
+        public async Task Bug2964_connection_close_and_reader_dispose()
         {
             await using var conn = await OpenConnectionAsync();
             using var cmd1 = conn.CreateCommand();
@@ -1099,7 +1099,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task ReaderReuseOnDispose()
+        public async Task Reader_reuse_on_dispose()
         {
             await using var conn = await OpenConnectionAsync();
             await using var tx = await conn.BeginTransactionAsync();
@@ -1116,7 +1116,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task UnboundReaderReuse()
+        public async Task Unbound_reader_reuse()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -1218,7 +1218,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)
+        public async Task Dispose_swallows_exceptions([Values(true, false)] bool async)
         {
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -1301,7 +1301,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task GetStreamSecondTimeThrows([Values(true, false)] bool isAsync)
+        public async Task GetStream_second_time_throws([Values(true, false)] bool isAsync)
         {
             var expected = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
             var streamGetter = BuildStreamGetter(isAsync);
@@ -1370,7 +1370,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task OpenStreamWhenChangingColumns([Values(true, false)] bool isAsync)
+        public async Task Open_stream_when_changing_columns([Values(true, false)] bool isAsync)
         {
             var streamGetter = BuildStreamGetter(isAsync);
 
@@ -1387,7 +1387,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task OpenStreamWhenChangingRows([Values(true, false)] bool isAsync)
+        public async Task Open_stream_when_changing_rows([Values(true, false)] bool isAsync)
         {
             var streamGetter = BuildStreamGetter(isAsync);
 
@@ -1403,7 +1403,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task GetBytesWithNull([Values(true, false)] bool isAsync)
+        public async Task GetBytes_with_null([Values(true, false)] bool isAsync)
         {
             var streamGetter = BuildStreamGetter(isAsync);
 
@@ -1519,7 +1519,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task OpenTextReaderWhenChangingColumns()
+        public async Task Open_TextReader_when_changing_columns()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn);
@@ -1532,7 +1532,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task OpenReaderWhenChangingRows()
+        public async Task Open_TextReader_when_changing_rows()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn);
@@ -1544,7 +1544,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task GetCharsWhenNull()
+        public async Task GetChars_when_null()
         {
             var buf = new char[8];
             using var conn = await OpenConnectionAsync();
@@ -1558,7 +1558,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task ReaderIsReused()
+        public async Task Reader_is_reused()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: Fails");
@@ -1605,7 +1605,7 @@ LANGUAGE plpgsql VOLATILE";
 
         [Test, Description("Tests that when a type handler generates an exception that isn't a NpgsqlSafeReadException, the connection is properly broken")]
         [Timeout(5000)]
-        public async Task NonSafeReadException()
+        public async Task Non_SafeReadException()
         {
             if (IsMultiplexing)
                 return;

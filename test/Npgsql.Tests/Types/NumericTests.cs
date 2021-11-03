@@ -85,7 +85,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task ReadDecimal(string query, decimal expected)
+        public async Task Read_decimal(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT " + query, conn);
@@ -96,7 +96,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task WriteDecimal(string query, decimal expected)
+        public async Task Write_decimal(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
@@ -137,7 +137,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]
         [Timeout(5000)]
-        public async Task ReadOverflowIsSafe()
+        public async Task Read_overflow_is_safe()
         {
             using var conn = await OpenConnectionAsync();
             //This 29-digit number causes OverflowException. Here it is important to have unread column after failing one to leave it ReaderState.InResult
@@ -162,7 +162,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task ReadBigInteger(string query, decimal expected)
+        public async Task Read_BigInteger(string query, decimal expected)
         {
             if (decimal.Floor(expected) == expected)
             {
@@ -177,7 +177,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task WriteBigInteger(string query, decimal expected)
+        public async Task Write_BigInteger(string query, decimal expected)
         {
             if (decimal.Floor(expected) == expected)
             {
@@ -193,7 +193,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task BigIntegerLarge()
+        public async Task BigInteger_large()
         {
             var num = BigInteger.Parse(string.Join("", Enumerable.Range(0, 17000).Select(i => ((i + 1) % 10).ToString())));
             using var conn = await OpenConnectionAsync();

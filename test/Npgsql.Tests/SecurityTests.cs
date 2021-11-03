@@ -9,7 +9,7 @@ namespace Npgsql.Tests
     public class SecurityTests : TestBase
     {
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-        public void BasicSsl()
+        public void Basic_ssl()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -22,7 +22,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Default user must run with md5 password encryption")]
-        public void DefaultUserUsesMd5Password()
+        public void Default_user_uses_md5_password()
         {
             if (!TestUtil.IsOnBuildServer)
                 Assert.Ignore("Only executed in CI");
@@ -39,7 +39,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void RejectSelfSignedCertificate(
+        public void Reject_self_signed_certificate(
             [Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode,
             [Values] bool checkCertificateRevocation)
         {
@@ -59,7 +59,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
-        public void NoSslRenegotiation()
+        public void No_ssl_renegotiation()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -74,7 +74,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
-        public void NonSecure()
+        public void IsSecure_without_ssl()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -85,7 +85,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
-        public void IntegratedSecurityWithUsername()
+        public void IntegratedSecurity_with_Username()
         {
             var username = Environment.UserName;
             if (username == null)
@@ -111,7 +111,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
-        public void IntegratedSecurityWithoutUsername()
+        public void IntegratedSecurity_without_Username()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -134,7 +134,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
-        public void ConnectionDatabasePopulatedOnConnect()
+        public void Connection_database_is_populated_on_Open()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -179,7 +179,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(2000)]
-        public void ConnectToDatabaseUsingScramPlus()
+        public void ScramPlus()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -206,7 +206,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ConnectWithOnlySslAllowedUser([Values] bool multiplexing, [Values] bool keepAlive)
+        public async Task Connect_with_only_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
         {
             if (multiplexing && keepAlive)
             {
@@ -235,7 +235,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SslModeRequireThrowsWithoutTSC()
+        public void SslMode_Require_throws_without_TSC()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -249,7 +249,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ConnectWithOnlyNonSslAllowedUser([Values] bool multiplexing, [Values] bool keepAlive)
+        public async Task Connect_with_only_non_ssl_allowed_user([Values] bool multiplexing, [Values] bool keepAlive)
         {
             if (multiplexing && keepAlive)
             {

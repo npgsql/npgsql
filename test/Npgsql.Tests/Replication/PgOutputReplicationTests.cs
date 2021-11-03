@@ -49,7 +49,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public Task CreateReplicationSlot()
+        public Task CreatePgOutputReplicationSlot()
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -132,7 +132,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
-        public Task UpdateForDefaultReplicaIdentity()
+        public Task Update_for_default_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -185,7 +185,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
-        public  Task UpdateForIndexReplicaIdentity()
+        public  Task Update_for_index_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -244,7 +244,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
-        public  Task UpdateForFullReplicaIdentity()
+        public  Task Update_for_full_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -304,7 +304,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
-        public  Task DeleteForDefaultReplicaIdentity()
+        public  Task Delete_for_default_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -357,7 +357,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
-        public Task DeleteForIndexReplicaIdentity()
+        public Task Delete_for_index_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -413,7 +413,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
-        public Task DeleteForFullReplicaIdentity()
+        public Task Delete_for_full_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -531,7 +531,7 @@ namespace Npgsql.Tests.Replication
                 }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
 
         [Test(Description = "Tests whether disposing while replicating will get us stuck forever.")]
-        public Task DisposeWhileReplicating()
+        public Task Dispose_while_replicating()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
@@ -551,7 +551,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await NextMessage<BeginMessage>(messages);
 
                     await rc.DisposeAsync();
-                }, nameof(DisposeWhileReplicating));
+                }, nameof(Dispose_while_replicating));
 
         [TestCase(true)]
         [TestCase(false)]

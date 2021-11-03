@@ -97,7 +97,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task RangeWithLongSubtype()
+        public async Task Range_with_long_subtype()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RangeEquality_FiniteRange()
+        public void Equality_finite()
         {
             var r1 = new NpgsqlRange<int>(0, true, false, 1, false, false);
 
@@ -147,7 +147,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RangeEquality_InfiniteRange()
+        public void Equality_infinite()
         {
             var r1 = new NpgsqlRange<int>(0, false, true, 1, false, false);
 
@@ -170,7 +170,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RangeHashCode_ValueTypes()
+        public void GetHashCode_value_types()
         {
             NpgsqlRange<int> a = default;
             NpgsqlRange<int> b = NpgsqlRange<int>.Empty;
@@ -185,7 +185,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RangeHashCode_ReferenceTypes()
+        public void GetHashCode_reference_types()
         {
             NpgsqlRange<string> a= default;
             NpgsqlRange<string> b = NpgsqlRange<string>.Empty;
@@ -200,7 +200,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task TimestampTzRangeWithDateTimeOffset()
+        public async Task TimestampTz_range_with_DateTimeOffset()
         {
             // The default CLR mapping for timestamptz is DateTime, but it also supports DateTimeOffset.
             // The range should also support both, defaulting to the first.
@@ -229,15 +229,10 @@ namespace Npgsql.Tests.Types
 
         [Theory]
         [TestCaseSource(nameof(DateTimeRangeTheoryData))]
-        public void GivenDateRangeLiteral_WhenConverted_ThenReturnsDateRange(NpgsqlRange<DateTime> input)
+        public void Roundtrip_DateTime_ranges_through_ToString_and_Parse(NpgsqlRange<DateTime> input)
         {
-            // Arrange
             var wellKnownText = input.ToString();
-
-            // Act
             var result = NpgsqlRange<DateTime>.Parse(wellKnownText);
-
-            // Assert
             Assert.AreEqual(input, result);
         }
 
@@ -245,12 +240,9 @@ namespace Npgsql.Tests.Types
         [TestCase("empty")]
         [TestCase("EMPTY")]
         [TestCase("  EmPtY  ")]
-        public void GivenEmptyIntRangeLiteral_WhenParsed_ThenReturnsEmptyIntRange(string value)
+        public void Parse_empty(string value)
         {
-            // Act
             var result = NpgsqlRange<int>.Parse(value);
-
-            // Assert
             Assert.AreEqual(NpgsqlRange<int>.Empty, result);
         }
 
@@ -260,12 +252,9 @@ namespace Npgsql.Tests.Types
         [TestCase("[0,1)")]
         [TestCase("[0,1]")]
         [TestCase(" [ 0 , 1 ] ")]
-        public void GivenIntRangeLiteral_WhenParsed_ThenReturnsIntRange(string input)
+        public void Roundtrip_int_ranges_through_ToString_and_Parse(string input)
         {
-            // Act
             var result = NpgsqlRange<int>.Parse(input);
-
-            // Assert
             Assert.AreEqual(input.Replace(" ", null), result.ToString());
         }
 
@@ -283,12 +272,9 @@ namespace Npgsql.Tests.Types
         [TestCase("[null,null]", "(,)")]
         [TestCase("[null,infinity]", "(,)")]
         [TestCase("[-infinity,null]", "(,)")]
-        public void GivenPoorlyFormedIntRangeLiteral_WhenParsed_ThenReturnsIntRange(string input, string normalized)
+        public void Int_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
         {
-            // Act
             var result = NpgsqlRange<int>.Parse(input);
-
-            // Assert
             Assert.AreEqual(normalized, result.ToString());
         }
 
@@ -306,12 +292,9 @@ namespace Npgsql.Tests.Types
         [TestCase("[null,null]", "(,)")]
         [TestCase("[null,infinity]", "(,)")]
         [TestCase("[-infinity,null]", "(,)")]
-        public void GivenPoorlyFormedNullableIntRangeLiteral_WhenParsed_ThenReturnsNullableIntRange(string input, string normalized)
+        public void Nullable_int_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
         {
-            // Act
             var result = NpgsqlRange<int?>.Parse(input);
-
-            // Assert
             Assert.AreEqual(normalized, result.ToString());
         }
 
@@ -320,23 +303,17 @@ namespace Npgsql.Tests.Types
         [TestCase("[a,a)", "empty")]
         [TestCase("[a,a]", "[a,a]")]
         [TestCase("(a,b)", "(a,b)")]
-        public void GivenStringRangeLiteral_WhenParsed_ThenReturnsStringRange(string input, string normalized)
+        public void String_range_Parse_ToString_returns_normalized_representations(string input, string normalized)
         {
-            // Act
             var result = NpgsqlRange<string>.Parse(input);
-
-            // Assert
             Assert.AreEqual(normalized, result.ToString());
         }
 
         [Theory]
         [TestCase("(one,two)")]
-        public void GivenSimpleTypeRangeLiteral_WhenParsed_ThenReturnsSimpleTypeRange(string input)
+        public void Roundtrip_string_ranges_through_ToString_and_Parse2(string input)
         {
-            // Act
             var result = NpgsqlRange<SimpleType>.Parse(input);
-
-            // Assert
             Assert.AreEqual(input, result.ToString());
         }
 
@@ -345,13 +322,11 @@ namespace Npgsql.Tests.Types
         [TestCase("(0 1)")]
         [TestCase("(0, 1")]
         [TestCase(" 0, 1 ")]
-        public void GivenMalformedRangeLiteral_WhenParsed_ThenThrowsFormatException(string input)
-        {
-            Assert.Throws<FormatException>(() => NpgsqlRange<int>.Parse(input));
-        }
+        public void Parse_malformed_range_throws(string input)
+            => Assert.Throws<FormatException>(() => NpgsqlRange<int>.Parse(input));
 
         [Test, Ignore("Fails only on build server, can't reproduce locally.")]
-        public void CanGetTypeConverter()
+        public void TypeConverter()
         {
             // Arrange
             NpgsqlRange<int>.RangeTypeConverter.Register();

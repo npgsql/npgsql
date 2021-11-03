@@ -9,7 +9,7 @@ namespace Npgsql.Tests
     public class NpgsqlEventSourceTests : TestBase
     {
         [Test]
-        public void CommandStartStop()
+        public void Command_start_stop()
         {
             using (var conn = OpenConnection())
             {

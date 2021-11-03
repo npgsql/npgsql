@@ -10,7 +10,7 @@ namespace Npgsql.Tests
     public class NpgsqlParameterTest : TestBase
     {
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
-        public void ImplicitSettingOfDbTypes()
+        public void Implicit_setting_of_DbType()
         {
             var p = new NpgsqlParameter("p", DbType.Int32);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
@@ -38,7 +38,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TypeName()
+        public void DataTypeName()
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SettingDbTypeSetsNpgsqlDbType()
+        public void Setting_DbType_sets_NpgsqlDbType()
         {
             var p = new NpgsqlParameter();
             p.DbType = DbType.Binary;
@@ -112,7 +112,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SettingNpgsqlDbTypeSetsDbType()
+        public void Setting_NpgsqlDbType_sets_DbType()
         {
             var p = new NpgsqlParameter();
             p.NpgsqlDbType = NpgsqlDbType.Bytea;
@@ -120,7 +120,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SettingValueDoesNotChangeDbType()
+        public void Setting_value_does_not_change_DbType()
         {
             var p = new NpgsqlParameter { DbType = DbType.String, NpgsqlDbType = NpgsqlDbType.Bytea };
             p.Value = 8;
@@ -186,7 +186,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Constructor2_Value_Null()
+        public void Constructor2_Value_null()
         {
             var p = new NpgsqlParameter("address", null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
@@ -271,7 +271,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CloneGeneric()
+        public void Clone_generic()
         {
             var expected = new NpgsqlParameter<int>
             {
@@ -317,7 +317,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public void InferType_Invalid()
+        public void InferType_invalid_throws()
         {
             var notsupported = new object[]
                                         {
@@ -354,7 +354,7 @@ namespace Npgsql.Tests
         }
 
         [Test] // bug #320196
-        public void ParameterNullTest()
+        public void Parameter_null()
         {
             var param = new NpgsqlParameter("param", NpgsqlDbType.Numeric);
             Assert.AreEqual(0, param.Scale, "#A1");
@@ -369,7 +369,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public void ParameterType()
+        public void Parameter_type()
         {
             NpgsqlParameter p;
 
@@ -516,7 +516,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ParameterNameRetainsPrefix()
+        public void ParameterName_retains_prefix()
             => Assert.That(new NpgsqlParameter("@p", DbType.String).ParameterName, Is.EqualTo("@p"));
 
         [Test]
@@ -546,7 +546,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Bug1011100NpgsqlDbTypeTest()
+        public void Bug1011100_NpgsqlDbType()
         {
             var p = new NpgsqlParameter();
             p.Value = DBNull.Value;
@@ -570,7 +570,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NpgsqlParameterCloneTest()
+        public void NpgsqlParameter_Clone()
         {
             var param = new NpgsqlParameter();
 
@@ -605,7 +605,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PrecisionViaInterface()
+        public void Precision_via_interface()
         {
             var parameter = new NpgsqlParameter();
             var paramIface = (IDbDataParameter)parameter;
@@ -616,7 +616,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PrecisionViaBaseClass()
+        public void Precision_via_base_class()
         {
             var parameter = new NpgsqlParameter();
             var paramBase = (DbParameter)parameter;
@@ -627,7 +627,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ScaleViaInterface()
+        public void Scale_via_interface()
         {
             var parameter = new NpgsqlParameter();
             var paramIface = (IDbDataParameter)parameter;
@@ -638,7 +638,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ScaleViaBaseClass()
+        public void Scale_via_base_class()
         {
             var parameter = new NpgsqlParameter();
             var paramBase = (DbParameter)parameter;
@@ -649,7 +649,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ResolveHandler_NullValue_ThrowsInvalidOperationException()
+        public void Null_value_throws()
         {
             using var connection = OpenConnection();
             using var command = new NpgsqlCommand("SELECT @p", connection)
@@ -661,7 +661,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ResolveHandler_NullableValue_Succeeds()
+        public void Null_value_with_nullable_type()
         {
             using var connection = OpenConnection();
             using var command = new NpgsqlCommand("SELECT @p", connection)

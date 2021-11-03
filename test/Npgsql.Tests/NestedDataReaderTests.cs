@@ -7,7 +7,7 @@ namespace Npgsql.Tests
     public class NestedDataReaderTests : TestBase
     {
         [Test]
-        public async Task BasicFunctionality()
+        public async Task Basic()
         {
             await using var conn = await OpenConnectionAsync();
             await using var command = new NpgsqlCommand(@"SELECT ARRAY[ROW(1, 2, 3), ROW(4, 5, 6)]
@@ -43,7 +43,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task DifferentFieldCount()
+        public async Task Different_field_count()
         {
             await using var conn = await OpenConnectionAsync();
             await using var command = new NpgsqlCommand(@"SELECT ARRAY[ROW(1), ROW(), ROW('2'::TEXT, 3), ROW(4)]", conn);
@@ -120,7 +120,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SingleRow()
+        public async Task Single_row()
         {
             await using var conn = await OpenConnectionAsync();
             await using var command = new NpgsqlCommand("SELECT ROW(1, ARRAY[ROW(2), ROW(3)])", conn);
@@ -141,7 +141,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task EmptyArray()
+        public async Task Empty_array()
         {
             await using var conn = await OpenConnectionAsync();
             await using var command = new NpgsqlCommand("SELECT ARRAY[]::RECORD[]", conn);
@@ -209,7 +209,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ThrowAfterNextRow()
+        public async Task Throw_after_next_row()
         {
             await using var conn = await OpenConnectionAsync();
             await using var command = new NpgsqlCommand(@"SELECT ROW(1) UNION ALL SELECT ROW(2) UNION ALL SELECT ROW(3)", conn);

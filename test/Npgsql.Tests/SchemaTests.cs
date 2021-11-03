@@ -14,7 +14,7 @@ namespace Npgsql.Tests
     public class SchemaTests : SyncOrAsyncTestBase
     {
         [Test]
-        public async Task MetaDataCollectionNames()
+        public async Task MetaDataCollections()
         {
             using var conn = OpenConnection();
             var metaDataCollections = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
@@ -27,7 +27,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Calling GetSchema() without a parameter should be the same as passing MetaDataCollections")]
-        public async Task NoParameter()
+        public async Task No_parameter()
         {
             using var conn = OpenConnection();
             var dataTable1 = await GetSchema(conn);
@@ -44,7 +44,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Calling GetSchema(collectionName [, restrictions]) case insensive collectionName can be used")]
-        public async Task CaseInsensitiveCollectionName()
+        public async Task Case_insensitive_collection_name()
         {
             using var conn = OpenConnection();
             var dataTable1 = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
@@ -221,7 +221,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task ParameterMarkerFormats()
+        public async Task ParameterMarkerFormat()
         {
             using var conn = OpenConnection();
             var dt = await GetSchema(conn, "DataSourceInformation");
@@ -240,7 +240,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task PrecisionAndScale()
+        public async Task Precision_and_scale()
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE TEMP TABLE data (explicit_both NUMERIC(10,2), explicit_precision NUMERIC(10), implicit_both NUMERIC, integer INTEGER, text TEXT)");
@@ -270,7 +270,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1831")]
-        public async Task NoSystemTables()
+        public async Task No_system_tables()
         {
             using (var conn = OpenConnection())
             {
@@ -296,7 +296,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task GetSchemaWithRestrictions()
+        public async Task GetSchema_with_restrictions()
         {
             // We can't use temporary tables because GetSchema filters out that in WHERE clause.
             using (var conn = OpenConnection())
@@ -341,7 +341,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task PrimaryKey()
+        public async Task Primary_key()
         {
             using var conn = OpenConnection();
             try
@@ -366,7 +366,7 @@ ALTER TABLE data ADD PRIMARY KEY (id);");
         }
 
         [Test]
-        public async Task PrimaryKeyComposite()
+        public async Task Primary_key_composite()
         {
             using var conn = OpenConnection();
             try
@@ -394,7 +394,7 @@ ALTER TABLE data ADD PRIMARY KEY (id1, id2);");
         }
 
         [Test]
-        public async Task UniqueConstraint()
+        public async Task Unique_constraint()
         {
             using var conn = OpenConnection();
             try
@@ -414,7 +414,7 @@ ALTER TABLE data ADD UNIQUE (f1, f2);");
         }
 
         [Test]
-        public async Task UniqueIndexComposite()
+        public async Task Unique_index_composite()
         {
             using var conn = OpenConnection();
             try
@@ -463,7 +463,7 @@ CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1886")]
-        public async Task ColumnSchemaDataTypes()
+        public async Task Column_schema_data_types()
         {
             using var conn = OpenConnection();
             try

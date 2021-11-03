@@ -25,23 +25,23 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Read_ClassWithProperty_Succeeds() =>
+        public void Read_class_with_property() =>
             Read<ClassWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
         [Test]
-        public void Read_ClassWithField_Succeeds() =>
+        public void Read_class_with_field() =>
             Read<ClassWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
         [Test]
-        public void Read_StructWithProperty_Succeeds() =>
+        public void Read_struct_with_property() =>
             Read<StructWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
         [Test]
-        public void Read_StructWithField_Succeeds() =>
+        public void Read_struct_with_field() =>
             Read<StructWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
         [Test]
-        public void Read_TypeWithTwoProperties_Succeeds() =>
+        public void Read_type_with_two_properties() =>
             Read<TypeWithTwoProperties>((execute, expected) =>
             {
                 var actual = execute();
@@ -50,7 +50,7 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Read_TypeWithTwoPropertiesInverted_Succeeds() =>
+        public void Read_type_with_two_properties_inverted() =>
             Read<TypeWithTwoPropertiesReversed>((execute, expected) =>
             {
                 var actual = execute();
@@ -59,35 +59,35 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Read_TypeWithPrivateProperty_ThrowsInvalidOperationException() =>
+        public void Read_type_with_private_property_throws() =>
             Read(new TypeWithPrivateProperty(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithPrivateGetter_Succeeds() =>
+        public void Read_type_with_private_getter() =>
             Read(new TypeWithPrivateGetter(), (execute, expected) => execute());
 
         [Test]
-        public void Read_TypeWithPrivateSetter_ThrowsInvalidOperationException() =>
+        public void Read_type_with_private_setter_throws() =>
             Read(new TypeWithPrivateSetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithoutGetter_Succeeds() =>
+        public void Read_type_without_getter() =>
             Read(new TypeWithoutGetter(), (execute, expected) => execute());
 
         [Test]
-        public void Read_TypeWithoutSetter_ThrowsInvalidOperationException() =>
+        public void Read_type_without_setter_throws() =>
             Read(new TypeWithoutSetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithExplicitPropertyName_Succeeds() =>
+        public void Read_type_with_explicit_property_name() =>
             Read(new TypeWithExplicitPropertyName { MyValue = HelloSlonik }, (execute, expected) => Assert.That(execute().MyValue, Is.EqualTo(expected.MyValue)));
 
         [Test]
-        public void Read_TypeWithExplicitParameterName_Succeeds() =>
+        public void Read_type_with_explicit_parameter_name() =>
             Read(new TypeWithExplicitParameterName(HelloSlonik), (execute, expected) => Assert.That(execute().Value, Is.EqualTo(expected.Value)));
 
         [Test]
-        public void Read_TypeWithMorePropertiesThanAttributes_Succeeds() =>
+        public void Read_type_with_more_properties_than_attributes() =>
              Read(new TypeWithMorePropertiesThanAttributes(), (execute, expected) =>
              {
                  var actual = execute();
@@ -96,23 +96,23 @@ namespace Npgsql.Tests.Types
              });
 
         [Test]
-        public void Read_TypeWithLessPropertiesThanAttributes_ThrowsInvalidOperationException() =>
+        public void Read_type_with_less_properties_than_attributes_throws() =>
             Read(new TypeWithLessPropertiesThanAttributes(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithLessParametersThanAttributes_ThrowsInvalidOperationException() =>
+        public void Read_type_with_less_parameters_than_attributes_throws() =>
             Read(new TypeWithLessParametersThanAttributes(TheAnswer), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithMoreParametersThanAttributes_ThrowsInvalidOperationException() =>
+        public void Read_type_with_more_parameters_than_attributes_throws() =>
             Read(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
         [Test]
-        public void Read_TypeWithOneParameter_Succeeds() =>
+        public void Read_type_with_one_parameter() =>
             Read(new TypeWithOneParameter(1), (execute, expected) => Assert.That(execute().Value1, Is.EqualTo(expected.Value1)));
 
         [Test]
-        public void Read_TypeWithTwoParameters_Succeeds() =>
+        public void Read_type_with_two_parameters() =>
             Read(new TypeWithTwoParameters(TheAnswer, HelloSlonik), (execute, expected) =>
             {
                 var actual = execute();
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Read_TypeWithTwoParametersReversed_Succeeds() =>
+        public void Read_type_with_two_parameters_reversed() =>
             Read(new TypeWithTwoParametersReversed(HelloSlonik, TheAnswer), (execute, expected) =>
             {
                 var actual = execute();
@@ -130,7 +130,7 @@ namespace Npgsql.Tests.Types
             });
 
         [Test]
-        public void Read_TypeWithNineParameters_Succeeds() =>
+        public void Read_type_with_nine_parameters() =>
             Read(new TypeWithNineParameters(1, 2, 3, 4, 5, 6, 7, 8, 9), (execute, expected) =>
             {
                 var actual = execute();

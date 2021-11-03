@@ -646,7 +646,7 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         #region Interval
 
         [Test]
-        public async Task IntervalAsPeriod()
+        public async Task Interval_as_Period()
         {
             // PG has microsecond precision, so sub-microsecond values are stripped
             var expectedPeriod = new PeriodBuilder
@@ -678,7 +678,7 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         }
 
         [Test]
-        public async Task IntervalAsDuration()
+        public async Task Interval_as_Duration()
         {
             await using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -717,7 +717,7 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         }
 
         [Test]
-        public async Task IntervalAsTimeSpan()
+        public async Task Interval_as_TimeSpan()
         {
             var expected = new TimeSpan(1, 2, 3, 4, 5);
             await using var conn = await OpenConnectionAsync();
@@ -736,7 +736,7 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         }
 
         [Test]
-        public async Task IntervalAsDurationWithMonthsFails()
+        public async Task Interval_as_Duration_with_months_fails()
         {
             await using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT make_interval(months => 2)", conn);
@@ -748,7 +748,7 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
         }
 
         [Test]
-        public async Task IntervalAsNpgsqlInterval()
+        public async Task Interval_as_NpgsqlInterval()
         {
             var expected = new NpgsqlInterval(0, 1, 7384005000);
             await using var conn = await OpenConnectionAsync();

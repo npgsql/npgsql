@@ -27,7 +27,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public void OpenCancelled()
+        public void Open_with_cancelled_token()
             => Assert.That(async () =>
             {
                 using var cts = GetCancelledCancellationTokenSource();
@@ -35,7 +35,7 @@ namespace Npgsql.Tests.Replication
             }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
         [Test]
-        public void OpenDisposed()
+        public void Open_on_disposed_connection()
             => Assert.That(async () =>
             {
                 var rc = await OpenReplicationConnectionAsync();
@@ -58,7 +58,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public void IdentifySystemCancelled()
+        public void IdentifySystem_with_cancelled_token()
             => Assert.That(async () =>
             {
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -67,7 +67,7 @@ namespace Npgsql.Tests.Replication
             }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
         [Test]
-        public void IdentifySystemDisposed()
+        public void IdentifySystem_on_disposed_connection()
             => Assert.That(async () =>
             {
                 var rc = await OpenReplicationConnectionAsync();
@@ -92,7 +92,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public async Task ShowNullArgument()
+        public async Task Show_with_null_argument_throws()
         {
             await using var c = await OpenConnectionAsync();
             TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command was added to the Streaming Replication Protocol in PostgreSQL 10");
@@ -107,7 +107,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public async Task ShowCancelled()
+        public async Task Show_with_cancelled_token()
         {
             await using var c = await OpenConnectionAsync();
             TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command was added to the Streaming Replication Protocol in PostgreSQL 10");
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public async Task ShowDisposed()
+        public async Task Show_on_disposed_connection()
         {
             await using var c = await OpenConnectionAsync();
             TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command was added to the Streaming Replication Protocol in PostgreSQL 10");
@@ -152,7 +152,7 @@ namespace Npgsql.Tests.Replication
         }
 
         [Test]
-        public void TimelineHistoryCancelled()
+        public void TimelineHistory_with_cancelled_token()
             => Assert.That(async () =>
             {
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -162,7 +162,7 @@ namespace Npgsql.Tests.Replication
             }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
         [Test]
-        public void TimelineHistoryNonExisting()
+        public void TimelineHistory_with_non_existing_timeline()
             => Assert.That(async () =>
             {
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -175,7 +175,7 @@ namespace Npgsql.Tests.Replication
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.CharacterNotInRepertoire));
 
         [Test]
-        public void TimelineHistoryDisposed()
+        public void TimelineHistory_on_disposed_connection()
             => Assert.That(async () =>
             {
                 var rc = await OpenReplicationConnectionAsync();
@@ -191,7 +191,7 @@ namespace Npgsql.Tests.Replication
         #region DropReplicationSlot
 
         [Test]
-        public void DropReplicationSlotNullSlot()
+        public void DropReplicationSlot_with_null_slot_throws()
             => Assert.That(async () =>
             {
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -201,7 +201,7 @@ namespace Npgsql.Tests.Replication
                 .EqualTo("slotName"));
 
         [Test]
-        public Task DropReplicationSlotCancelled()
+        public Task DropReplicationSlot_with_cancelled_token()
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -212,7 +212,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test]
-        public Task DropReplicationSlotDisposed()
+        public Task DropReplicationSlot_on_disposed_connection()
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -227,7 +227,7 @@ namespace Npgsql.Tests.Replication
         #endregion
 
         [Test(Description = "Tests whether our automated feedback thread prevents the backend from disconnecting due to wal_sender_timeout")]
-        public Task ReplicationSurvivesPausesLongerThanWalSenderTimeout()
+        public Task Replication_survives_pauses_longer_than_wal_sender_timeout()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -271,7 +271,7 @@ namespace Npgsql.Tests.Replication
 
         [Test(Description = "Tests whether synchronous replication works the way it should.")]
         [Explicit("Test is flaky (on Windows)")]
-        public Task SynchronousReplication()
+        public Task Synchronous_replication()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {

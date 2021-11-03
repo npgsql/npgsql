@@ -30,7 +30,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test]
-        public Task WithSlot()
+        public Task Replication_with_slot()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
@@ -70,7 +70,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test]
-        public async Task WithoutSlot()
+        public async Task Replication_without_slot()
         {
             var rc = await OpenReplicationConnectionAsync();
             var info = await rc.IdentifySystem();

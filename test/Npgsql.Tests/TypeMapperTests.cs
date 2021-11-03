@@ -18,7 +18,7 @@ namespace Npgsql.Tests
     public class TypeMapperTests : TestBase
     {
         [Test]
-        public void GlobalMapping()
+        public void Global_mapping()
         {
             var myFactory = new MyInt32TypeHandlerResolverFactory();
             NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
@@ -52,7 +52,7 @@ namespace Npgsql.Tests
         }
 
          [Test]
-         public void LocalMapping()
+         public void Local_mapping()
          {
              var myFactory = new MyInt32TypeHandlerResolverFactory();
              using var _ = CreateTempPool(ConnectionString, out var connectionString);
@@ -79,7 +79,7 @@ namespace Npgsql.Tests
          }
 
          [Test]
-         public void GlobalReset()
+         public void Global_reset()
          {
              var myFactory = new MyInt32TypeHandlerResolverFactory();
              NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
@@ -106,7 +106,7 @@ namespace Npgsql.Tests
          }
 
         [Test]
-        public async Task StringToCitext()
+        public async Task String_to_citext()
         {
             using (CreateTempPool(ConnectionString, out var connectionString))
             using (var conn = OpenConnection(connectionString))

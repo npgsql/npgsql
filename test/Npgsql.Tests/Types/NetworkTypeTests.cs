@@ -18,7 +18,7 @@ namespace Npgsql.Tests.Types
     class NetworkTypeTests : MultiplexingTestBase
     {
         [Test]
-        public async Task InetV4()
+        public async Task Inet_v4()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn);
@@ -69,7 +69,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task InetV6()
+        public async Task Inet_v6()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn);
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests support for ReadOnlyIPAddress, see https://github.com/dotnet/corefx/issues/33373")]
-        public async Task IPAddressAny()
+        public async Task IPAddress_Any()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
@@ -199,7 +199,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
-        public async Task MacaddrMultiple()
+        public async Task Macaddr_multiple()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT unnest(ARRAY['08-00-2B-01-02-03'::MACADDR, '08-00-2B-01-02-04'::MACADDR])", conn);
@@ -213,7 +213,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task MacaddrValidation()
+        public async Task Macaddr_validation()
         {
             using var conn = await OpenConnectionAsync();
             if (conn.PostgreSqlVersion < new Version(10, 0))
@@ -226,24 +226,6 @@ namespace Npgsql.Tests.Types
 
             var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync())!;
             Assert.That(exception.Message, Does.StartWith("22P03:").And.Contain("1"));
-        }
-
-        // Older tests from here
-
-        [Test]
-        public async Task TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
-        {
-            // Please, check https://pgfoundry.org/forum/message.php?msg_id=1005483
-            // for a discussion where an NpgsqlInet type isn't shown in a datagrid
-            // This test tries to check if the type returned is an IPAddress when using
-            // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
-
-            using var conn = await OpenConnectionAsync();
-            using var command = new NpgsqlCommand("select '192.168.10.10'::inet;", conn);
-            using var dr = await command.ExecuteReaderAsync();
-            dr.Read();
-            var result = dr.GetValue(0);
-            Assert.AreEqual(typeof(IPAddress), result.GetType());
         }
 
         public NetworkTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

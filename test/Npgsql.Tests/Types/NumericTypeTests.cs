@@ -179,7 +179,7 @@ namespace Npgsql.Tests.Types
         [TestCase(double.NaN)]
         [TestCase(double.PositiveInfinity)]
         [TestCase(double.NegativeInfinity)]
-        public async Task DoubleSpecial(double value)
+        public async Task Double_special_values(double value)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -215,7 +215,7 @@ namespace Npgsql.Tests.Types
         [TestCase(double.NaN)]
         [TestCase(double.PositiveInfinity)]
         [TestCase(double.NegativeInfinity)]
-        public async Task DoubleFloat(double value)
+        public async Task Double_as_float(double value)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -235,7 +235,7 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Bigint, 1F + long.MaxValue)]
         [TestCase(NpgsqlDbType.Bigint, 1D + long.MaxValue)]
         [TestCase(NpgsqlDbType.InternalChar, 1 + byte.MaxValue)]
-        public async Task WriteOverflow(NpgsqlDbType type, object value)
+        public async Task Write_overflow(NpgsqlDbType type, object value)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
@@ -264,7 +264,7 @@ namespace Npgsql.Tests.Types
         [TestCase((byte)0, NpgsqlDbType.Bigint, 1D + byte.MaxValue)]
         [TestCase((short)0, NpgsqlDbType.Bigint, 1D + short.MaxValue)]
         [TestCase(0, NpgsqlDbType.Bigint, 1D + int.MaxValue)]
-        public async Task ReadOverflow<T>(T readingType, NpgsqlDbType type, double value)
+        public async Task Read_overflow<T>(T readingType, NpgsqlDbType type, double value)
         {
             var typeString = GetTypeAsString(type);
             using (var conn = await OpenConnectionAsync())
@@ -291,7 +291,7 @@ namespace Npgsql.Tests.Types
         // Older tests
 
         [Test]
-        public async Task DoubleWithoutPrepared()
+        public async Task Double_without_prepared()
         {
             using var conn = await OpenConnectionAsync();
             using var command = new NpgsqlCommand("select :field_float8", conn);
@@ -300,20 +300,6 @@ namespace Npgsql.Tests.Types
             command.Parameters[0].Value = x;
             var valueReturned = await command.ExecuteScalarAsync();
             Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);
-        }
-
-        [Test]
-        public async Task NumberConversionWithCulture()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("select :p1", conn);
-            using (TestUtil.SetCurrentCulture(new CultureInfo("es-ES")))
-            {
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double) { Value = 5.5 };
-                cmd.Parameters.Add(parameter);
-                var result = await cmd.ExecuteScalarAsync();
-                Assert.AreEqual(5.5, result);
-            }
         }
 
         [Test]

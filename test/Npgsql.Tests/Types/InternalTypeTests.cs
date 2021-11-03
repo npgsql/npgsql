@@ -7,7 +7,7 @@ namespace Npgsql.Tests.Types
     public class InternalTypeTests : MultiplexingTestBase
     {
         [Test]
-        public async Task ReadInternalChar()
+        public async Task Read_internal_char()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT typdelim FROM pg_type WHERE typname='int4'", conn);
@@ -23,7 +23,7 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Oid)]
         [TestCase(NpgsqlDbType.Regtype)]
         [TestCase(NpgsqlDbType.Regconfig)]
-        public async Task InternalUintTypes(NpgsqlDbType npgsqlDbType)
+        public async Task Internal_uint_types(NpgsqlDbType npgsqlDbType)
         {
             var postgresType = npgsqlDbType.ToString().ToLowerInvariant();
             using var conn = await OpenConnectionAsync();
@@ -69,15 +69,15 @@ namespace Npgsql.Tests.Types
         };
 
         [Test, TestCaseSource(nameof(EqualsObjectCases))]
-        public bool NpgsqlLogSequenceNumberEquals(NpgsqlLogSequenceNumber lsn, object? obj)
+        public bool NpgsqlLogSequenceNumber_equals(NpgsqlLogSequenceNumber lsn, object? obj)
             => lsn.Equals(obj);
 
 
         [Test]
-        public async Task PgLsn()
+        public async Task NpgsqlLogSequenceNumber()
         {
             var expected1 = new NpgsqlLogSequenceNumber(42949672971ul);
-            Assert.AreEqual(expected1, NpgsqlLogSequenceNumber.Parse("A/B"));
+            Assert.AreEqual(expected1, NpgsqlTypes.NpgsqlLogSequenceNumber.Parse("A/B"));
             await using var conn = await OpenConnectionAsync();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 'A/B'::pg_lsn, @p::pg_lsn";

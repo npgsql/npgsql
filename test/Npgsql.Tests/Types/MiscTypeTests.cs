@@ -150,7 +150,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Makes sure that the PostgreSQL 'unknown' type (OID 705) is read properly")]
-        public async Task ReadUnknown()
+        public async Task Read_unknown()
         {
             const string expected = "some_text";
             using var conn = await OpenConnectionAsync();
@@ -213,7 +213,7 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
-        public async Task DbTypeCausesInference()
+        public async Task DbType_causes_inference()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -252,7 +252,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/711")]
-        public async Task KnownTypeAsUnknown()
+        public async Task Known_type_as_unknown()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 8", conn);
@@ -261,7 +261,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Sends a null value parameter with no NpgsqlDbType or DbType, but with context for the backend to handle it")]
-        public async Task UnrecognizedNull()
+        public async Task Unrecognized_null()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn);
@@ -274,7 +274,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Sends a value parameter with an explicit NpgsqlDbType.Unknown, but with context for the backend to handle it")]
-        public async Task SendUnknown()
+        public async Task Send_unknown()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p::INT4", conn);
@@ -310,7 +310,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1364")]
-        public async Task UnsupportedDbType()
+        public async Task Unsupported_DbType()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -343,7 +343,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task TestUUIDDataType()
+        public async Task UUIDDataType()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);

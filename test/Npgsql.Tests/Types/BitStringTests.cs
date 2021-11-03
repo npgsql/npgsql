@@ -17,7 +17,7 @@ namespace Npgsql.Tests.Types
     public class BitStringTests : MultiplexingTestBase
     {
         [Test]
-        public async Task RoundtripBitArray(
+        public async Task Roundtrip_BitArray(
             [Values(
                 "1011011000101111010110101101011011",  // 34 bits
                 "10110110",
@@ -60,11 +60,11 @@ namespace Npgsql.Tests.Types
             var chars = new char[bitLen];
             for (var i = 0; i < bitLen; i++)
                 chars[i] = i % 2 == 0 ? '0' : '1';
-            await RoundtripBitArray(new string(chars));
+            await Roundtrip_BitArray(new string(chars));
         }
 
         [Test]
-        public async Task RoundtripBitVector32([Values(15, 0)] int bits)
+        public async Task Roundtrip_BitVector32([Values(15, 0)] int bits)
         {
             var expected = new BitVector32(bits);
 
@@ -77,7 +77,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task BitVector32TooLong()
+        public async Task BitVector32_too_long()
         {
             using var conn = await OpenConnectionAsync();
             using (var cmd = new NpgsqlCommand($"SELECT B'{new string('0', 34)}'", conn))
@@ -90,7 +90,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Roundtrips a single bit")]
-        public async Task SingleBit()
+        public async Task Single_bit()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p::BIT(1), B'01'::BIT(2)", conn);
@@ -109,7 +109,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("BIT(N) shouldn't be accessible as bool")]
-        public async Task BitstringAsSingleBit()
+        public async Task Bitstring_with_multiple_bits_as_bool_throws()
         {
             using var conn = await OpenConnectionAsync();
             using (var cmd = new NpgsqlCommand("SELECT B'01'::BIT(2)", conn))
@@ -141,7 +141,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task SingleBitArray()
+        public async Task Array_of_single_bits()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", conn);
@@ -173,7 +173,7 @@ namespace Npgsql.Tests.Types
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2766")]
         [Timeout(3000)]
-        public async Task SequentialReadOfOversizedBitArray()
+        public async Task Sequential_read_of_oversized_bit_array()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1::bit(100000)", conn);
@@ -190,7 +190,7 @@ namespace Npgsql.Tests.Types
         // TODO: Bring this test back
 #if FIX
         [Test]
-        public async Task BitString([Values(true, false)] bool prepareCommand)
+        public async Task Bitstring([Values(true, false)] bool prepareCommand)
         {
             using (var cmd = Conn.CreateCommand())
             {

@@ -15,7 +15,7 @@ namespace Npgsql.Tests
         bool IsMultiplexing = false;
 
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
-        public async Task DeriveFunctionParameters_Various()
+        public async Task DeriveParameters_function_various()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -58,7 +58,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation with IN-only parameters")]
-        public async Task DeriveFunctionParameters_InOnly()
+        public async Task DeriveParameters_function_in_only()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -84,7 +84,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation with no parameters")]
-        public async Task DeriveFunctionParameters_NoParams()
+        public async Task DeriveParameters_function_no_params()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -105,7 +105,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task DeriveFunctionParameters_CaseSensitiveName()
+        public async Task DeriveParameters_function_with_case_sensitive_name()
         {
             using var conn = await OpenConnectionAsync();
             await conn.ExecuteNonQueryAsync(
@@ -125,7 +125,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task DeriveFunctionParameters_ParameterNameFromFunction()
+        public async Task DeriveParameters_function_parameter_name_from_function()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -138,7 +138,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task DeriveFunctionParameters_NonExistingFunction()
+        public async Task DeriveParameters_non_existing_function()
         {
             using var conn = await OpenConnectionAsync();
             var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
@@ -148,7 +148,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
-        public async Task DeriveFunctionParameters_TableParameters()
+        public async Task DeriveParameters_function_with_table_parameters()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "9.2.0");
@@ -173,7 +173,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with double quotes in the name works")]
-        public async Task DeriveFunctionParameters_QuoteCharactersInFunctionName()
+        public async Task DeriveParameters_quote_characters_in_function_name()
         {
             using var conn = await OpenConnectionAsync();
             var function = @"""""""FunctionQuote""""CharactersInName""""""";
@@ -194,7 +194,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with dots in the name works")]
-        public async Task DeriveFunctionParameters_DotCharacterInFunctionName()
+        public async Task DeriveParameters_dot_character_in_function_name()
         {
             using var conn = await OpenConnectionAsync();
             await conn.ExecuteNonQueryAsync(
@@ -214,7 +214,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests if the right function according to search_path is used in function parameter derivation")]
-        public async Task DeriveFunctionParameters_CorrectSchemaResolution()
+        public async Task DeriveParameters_function_correct_schema_resolution()
         {
             if (IsMultiplexing)
                 return;  // Uses search_path
@@ -254,7 +254,7 @@ SET search_path TO {schema2};
         }
 
         [Test, Description("Tests if function parameter derivation throws an exception if the specified function is not in the search_path")]
-        public async Task DeriveFunctionParameters_ThrowsForExistingFunctionThatIsNotInSearchPath()
+        public async Task DeriveParameters_throws_for_existing_function_that_is_not_in_search_path()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempSchema(conn, out var schema);
@@ -277,7 +277,7 @@ RESET search_path;
         }
 
         [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
-        public async Task DeriveFunctionParameters_ThrowsForMultipleFunctionNameHitsInSearchPath()
+        public async Task DeriveParameters_throws_for_multiple_function_name_hits_in_search_path()
         {
             if (IsMultiplexing)
                 return;  // Uses search_path
@@ -315,7 +315,7 @@ SET search_path TO {schema1}, {schema2};
         #region Set returning functions
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF sometype")]
-        public async Task DeriveFunctionParameters_FunctionReturningSetofType()
+        public async Task DeriveParameters_function_returning_setof_type()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "9.2.0");
@@ -350,7 +350,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns TABLE")]
-        public async Task DeriveFunctionParameters_FunctionReturningTable()
+        public async Task DeriveParameters_function_returning_table()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "9.2.0");
@@ -385,7 +385,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF record")]
-        public async Task DeriveFunctionParameters_FunctionReturningSetofRecord()
+        public async Task DeriveParameters_function_returning_setof_record()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "9.2.0");
@@ -420,7 +420,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2022")]
-        public async Task DeriveFunctionParameters_FunctionReturningSetofTypeWithDroppedColumn()
+        public async Task DeriveParameters_function_returning_setof_type_with_dropped_column()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "9.2.0");
@@ -450,7 +450,7 @@ $$ LANGUAGE SQL;
         #region CommandType.Text
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
-        public async Task DeriveTextCommandParameters_OneParameterWithSameType()
+        public async Task DeriveParameters_text_one_parameter_with_same_type()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
@@ -471,7 +471,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) where different types would be inferred for placeholders with the same name.")]
-        public async Task DeriveTextCommandParameters_OneParameterWithDifferentTypes()
+        public async Task DeriveParameters_text_one_parameter_with_different_types()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
@@ -486,7 +486,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) with multiple parameters")]
-        public async Task DeriveTextCommandParameters_MultipleParameters()
+        public async Task DeriveParameters_multiple_parameters()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
@@ -513,7 +513,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already prepared.")]
-        public async Task DeriveTextCommandParameters_PreparedStatement()
+        public async Task DeriveParameters_text_prepared_statement()
         {
             const string query = "SELECT @p::integer";
             const int answer = 42;
@@ -543,7 +543,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for array parameters in parameterized queries (CommandType.Text)")]
-        public async Task DeriveTextCommandParameters_Array()
+        public async Task DeriveParameters_text_array()
         {
             using var conn = await OpenConnectionAsync();
             var cmd = new NpgsqlCommand("SELECT :a::integer[]", conn);
@@ -560,7 +560,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for domain parameters in parameterized queries (CommandType.Text)")]
-        public async Task DeriveTextCommandParameters_Domain()
+        public async Task DeriveParameters_text_domain()
         {
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
@@ -597,7 +597,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         }
 
         [Test, Description("Tests parameter derivation for unmapped enum parameters in parameterized queries (CommandType.Text)")]
-        public async Task DeriveTextCommandParameters_UnmappedEnum()
+        public async Task DeriveParameters_text_unmapped_enum()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -624,7 +624,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         enum Fruit { Apple, Cherry, Plum }
 
         [Test, Description("Tests parameter derivation for mapped enum parameters in parameterized queries (CommandType.Text)")]
-        public async Task DeriveTextCommandParameters_MappedEnum()
+        public async Task DeriveParameters_text_mapped_enum()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -663,7 +663,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         }
 
         [Test]
-        public async Task DeriveTextCommandParameters_MappedComposite()
+        public async Task DeriveParameters_text_mapped_composite()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTypeName(conn, out var type);
@@ -715,7 +715,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         #endregion
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1591")]
-        public async Task GetUpdateCommandInfersParametersWithNpgsqDbType()
+        public async Task Get_update_command_infers_parameters_with_NpgsqDbType()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -791,7 +791,7 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2560")]
-        public async Task GetUpdateCommandWithColumnAliases()
+        public async Task Get_update_command_with_column_aliases()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);
@@ -813,7 +813,7 @@ CREATE TEMP TABLE {table} (
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2846")]
-        public async Task GetUpdateCommandWithArrayColumnType()
+        public async Task Get_update_command_with_array_column_type()
         {
             using var conn = await OpenConnectionAsync();
             await using var _ = await GetTempTableName(conn, out var table);

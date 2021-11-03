@@ -21,7 +21,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FromString()
+        public void From_string()
         {
             var builder = new NpgsqlConnectionStringBuilder();
             builder.ConnectionString = "Host=myhost;EF Template Database=foo";
@@ -104,7 +104,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ConversionError()
+        public void Conversion_error_throws()
         {
             var builder = new NpgsqlConnectionStringBuilder();
             Assert.That(() => builder["Port"] = "hello",
@@ -112,7 +112,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void InvalidConnectionString()
+        public void Invalid_connection_string_throws()
         {
             var builder = new NpgsqlConnectionStringBuilder();
             Assert.That(() => builder.ConnectionString = "Server=127.0.0.1;User Id=npgsql_tests;Pooling:false",

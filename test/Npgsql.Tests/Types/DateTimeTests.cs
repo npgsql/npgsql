@@ -176,7 +176,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public async Task TimeWithTimeZoneBeforeUtcZero()
+        public async Task TimeTz_before_utc_zero()
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT TIME WITH TIME ZONE '01:00:00+02'", conn);
