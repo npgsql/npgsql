@@ -547,7 +547,6 @@ namespace Npgsql
         [Category("Security")]
         [Description("Whether to check the certificate revocation list during authentication.")]
         [DisplayName("Check Certificate Revocation")]
-        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
         public bool CheckCertificateRevocation
         {

@@ -39,20 +39,16 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        public void Reject_self_signed_certificate(
-            [Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode,
-            [Values] bool checkCertificateRevocation)
+        public void Reject_self_signed_certificate([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = sslMode,
-                CheckCertificateRevocation = checkCertificateRevocation
+                CheckCertificateRevocation = false,
+                Pooling = false
             }.ToString();
 
             using var conn = new NpgsqlConnection(connString);
-            // The following is necessary since a pooled connector may exist from a previous
-            // SSL test
-            NpgsqlConnection.ClearPool(conn);
 
             var ex = Assert.Throws<NpgsqlException>(conn.Open)!;
             Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
