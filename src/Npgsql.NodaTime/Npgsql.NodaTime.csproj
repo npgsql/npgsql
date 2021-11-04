@@ -2,7 +2,8 @@
   <PropertyGroup>
     <Authors>Shay Rojansky</Authors>
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
-    <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
+    <PackageTags>npgsql;postgresql;postgres;nodatime;date;time;ado;ado;net;database;sql</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFrameworks>
   </PropertyGroup>
@@ -18,5 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>

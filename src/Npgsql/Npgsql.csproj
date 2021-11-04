@@ -1,9 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Shay Rojansky;Yoh Deadfall;Brar Piening;Nikita Kazmin;Austin Drenski;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
+    <Authors>Shay Rojansky;Nikita Kazmin;Brar Piening;Yoh Deadfall;;Austin Drenski;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
-    <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
+    <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- At this point we target netcoreapp3.1 to avoid taking a dependency on System.Text.Json, which is
          necessary for older TFMs. -->
     <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net5.0;net6.0</TargetFrameworks>
@@ -39,6 +40,10 @@
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' ">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
 </Project>

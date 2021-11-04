@@ -1,16 +1,4 @@
-# Npgsql - the .NET data provider for PostgreSQL
-
-[![stable](https://img.shields.io/nuget/v/Npgsql.svg?label=stable)](https://www.nuget.org/packages/Npgsql/)
-[![next patch](https://img.shields.io/myget/npgsql/v/npgsql.svg?label=next%20patch)](https://www.myget.org/feed/npgsql/package/nuget/Npgsql)
-[![daily builds (vnext)](https://img.shields.io/myget/npgsql-unstable/v/npgsql.svg?label=unstable)](https://www.myget.org/feed/npgsql-unstable/package/nuget/Npgsql)
-[![build](https://img.shields.io/github/workflow/status/npgsql/npgsql/Build)](https://github.com/npgsql/npgsql/actions)
-[![gitter](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg)](https://gitter.im/npgsql/npgsql)
-
-## What is Npgsql?
-
 Npgsql is the open source .NET data provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
-
-For the full documentation, please visit [the Npgsql website](https://www.npgsql.org). For the Entity Framework Core provider that works with this provider, see [Npgsql.EntityFrameworkCore.PostgreSQL](https://github.com/npgsql/efcore.pg).
 
 ## Quickstart
 
@@ -44,6 +32,13 @@ while (await reader.ReadAsync())
 * Full support of most PostgreSQL types, including advanced ones such as arrays, enums, ranges, multiranges, composites, JSON, PostGIS and others.
 * Highly-efficient bulk import/export API.
 * Failover, load balancing and general multi-host support.
-* Great integration with Entity Framework Core via [Npgsql.EntityFrameworkCore.PostgreSQL](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL).
+* Great integration with Entity Framework Core via [Npgsql.EntityFrameworkCore.PostgreSQL](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL). 
 
-For the full documentation, please visit the Npgsql website at [https://www.npgsql.org](https://www.npgsql.org).
+For the full documentation, please visit [the Npgsql website](https://www.npgsql.org).
+
+## Related packages
+
+* The Entity Framework Core provider that works with this provider is [Npgsql.EntityFrameworkCore.PostgreSQL](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL).
+* Spatial plugin to work with PostgreSQL PostGIS: [Npgsql.NetTopologySuite](https://www.nuget.org/packages/Npgsql.NetTopologySuite)
+* NodaTime plugin to use better date/time types with PostgreSQL: [Npgsql.NodaTime](https://www.nuget.org/packages/Npgsql.NodaTime)
+* OpenTelemetry support can be set up with [Npgsql.OpenTelemetry](https://www.nuget.org/packages/Npgsql.OpenTelemetry)
