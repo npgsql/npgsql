@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Authors>Yoh Deadfall, Shay Rojansky</Authors>
+    <Authors>Shay Rojansky;Yoh Deadfall</Authors>
     <Description>NetTopologySuite plugin for Npgsql, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
-    <PackageTags>npgsql postgresql postgres postgis nts ado ado.net database sql</PackageTags>
+    <PackageTags>npgsql;postgresql;postgres;postgis;spatial;nettopologysuite;nts;ado;ado.net;database;sql</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFramework>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
@@ -19,5 +20,9 @@
   <ItemGroup>
     <ProjectReference Include="../Npgsql/Npgsql.csproj" />
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>
