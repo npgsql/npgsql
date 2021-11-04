@@ -49,7 +49,7 @@ To disable certificate validation when using `Require`, set `Trust Server Certif
 
 If the root CA of the server certificate isn't installed in your machine's CA store, validation will fail. Either install the certificate in your machine's CA store, or point to it via the `Root Certificate` connection string parameter or via the `PGSSLROOTCERT` environment variable.
 
-When using `VerifyFull` or `VerifyCA`, Npgsql will perform certificate revocation validation (`Require` did not do this by default in previous versions). If you need to turn this off for some reason, specify `Check Certificate Revocation=false`.
+Note that Npgsql does not perform certificate revocation validation by default, since this is an optional extension not implemented by all providers and CAs. To turn on certificate revocation validation, specify `Check Certificate Revocation=true` on the connection string.
 
 Finally, if the above options aren't sufficient for your scenario, you can set `UserCertificateValidationCallback` on `NpgsqlConnection` and define your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
