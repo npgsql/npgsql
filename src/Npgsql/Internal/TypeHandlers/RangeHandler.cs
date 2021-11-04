@@ -20,7 +20,8 @@ namespace Npgsql.Internal.TypeHandlers
     /// Use it at your own risk.
     /// </remarks>
     /// <typeparam name="TSubtype">The range subtype.</typeparam>
-    public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange<TSubtype>>
+    // NOTE: This cannot inherit from NpgsqlTypeHandler<NpgsqlRange<TSubtype>>, since that triggers infinite generic recursion in Native AOT
+    public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler, INpgsqlTypeHandler<NpgsqlRange<TSubtype>>
     {
         /// <summary>
         /// The type handler for the subtype that this range type holds
@@ -32,21 +33,25 @@ namespace Npgsql.Internal.TypeHandlers
             : base(rangePostgresType)
             => SubtypeHandler = subtypeHandler;
 
+        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
+        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
+
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
             => new ArrayHandler<NpgsqlRange<TSubtype>>(pgArrayType, this, arrayNullabilityMode);
-
-        public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
-        public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
 
         /// <inheritdoc />
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
             => throw new NotSupportedException();
 
+        /// <inheritdoc />
+        public override NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
+            => throw new NotSupportedException();
+
         #region Read
 
         /// <inheritdoc />
-        public override ValueTask<NpgsqlRange<TSubtype>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public ValueTask<NpgsqlRange<TSubtype>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadRange<TSubtype>(buf, len, async, fieldDescription);
 
         protected internal async ValueTask<NpgsqlRange<TAnySubtype>> ReadRange<TAnySubtype>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
@@ -69,12 +74,15 @@ namespace Npgsql.Internal.TypeHandlers
             return new NpgsqlRange<TAnySubtype>(lowerBound, upperBound, flags);
         }
 
+        public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => await Read(buf, len, async, fieldDescription);
+
         #endregion
 
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlRange<TSubtype> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public int ValidateAndGetLength(NpgsqlRange<TSubtype> value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLengthRange(value, ref lengthCache, parameter);
 
         protected internal int ValidateAndGetLengthRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -107,7 +115,7 @@ namespace Npgsql.Internal.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override Task Write(NpgsqlRange<TSubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        public Task Write(NpgsqlRange<TSubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => WriteRange(value, buf, lengthCache, parameter, async, cancellationToken);
 
         protected internal async Task WriteRange<TAnySubtype>(NpgsqlRange<TAnySubtype> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
