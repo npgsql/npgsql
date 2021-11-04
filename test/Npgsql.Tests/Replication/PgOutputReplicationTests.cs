@@ -24,6 +24,7 @@ namespace Npgsql.Tests.Replication
     // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
     // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
     // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+    [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
     public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
     {
         readonly ulong _protocolVersion;
@@ -304,7 +305,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
-        public  Task Delete_for_default_replica_identity()
+        public Task Delete_for_default_replica_identity()
             => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
