@@ -38,6 +38,8 @@ namespace Npgsql
         /// </summary>
         internal PreparedStatement? StatementBeingReplaced;
 
+        internal int AutoPreparedSlotIndex { get; set; }
+
         internal DateTime LastUsed { get; set; }
 
         /// <summary>
@@ -101,19 +103,30 @@ namespace Npgsql
             return true;
         }
 
-        internal void CompletePrepare()
+        internal void AbortPrepare()
         {
-            Debug.Assert(HandlerParamTypes != null);
-            _manager.BySql[Sql] = this;
-            _manager.NumPrepared++;
-            State = PreparedState.Prepared;
+            Debug.Assert(State == PreparedState.BeingPrepared);
+
+            // We were planned for preparation, but a failure occurred and we did not carry that out.
+            // Remove it from the BySql dictionary, and place back the statement we were planned to replace (possibly null), setting
+            // its state back to prepared.
+            _manager.BySql.Remove(Sql);
+
+            if (!IsExplicit)
+            {
+                _manager.AutoPrepared[AutoPreparedSlotIndex] = StatementBeingReplaced;
+                if (StatementBeingReplaced is not null)
+                    StatementBeingReplaced.State = PreparedState.Prepared;
+            }
+
+            State = PreparedState.Unprepared;
         }
 
         internal void CompleteUnprepare()
         {
             _manager.BySql.Remove(Sql);
-            if (IsPrepared || State == PreparedState.BeingUnprepared)
-                _manager.NumPrepared--;
+            _manager.NumPrepared--;
+
             State = PreparedState.Unprepared;
         }
 

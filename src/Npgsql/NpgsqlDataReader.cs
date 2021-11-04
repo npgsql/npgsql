@@ -423,6 +423,14 @@ namespace Npgsql
                         }
 
                         Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+
+                        if (statement.IsPreparing)
+                        {
+                            pStatement!.State = PreparedState.Prepared;
+                            Connector.PreparedStatementManager.NumPrepared++;
+                            statement.IsPreparing = false;
+                        }
+
                         Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                         msg = await Connector.ReadMessage(async);
 
@@ -438,12 +446,6 @@ namespace Npgsql
 
                             _ => throw Connector.UnexpectedMessageReceived(msg.Code)
                         };
-
-                        if (statement.IsPreparing)
-                        {
-                            statement.IsPreparing = false;
-                            pStatement!.CompletePrepare();
-                        }
                     }
 
                     if (RowDescription == null)
@@ -519,7 +521,7 @@ namespace Npgsql
                     if (statement.IsPreparing)
                     {
                         statement.IsPreparing = false;
-                        statement.PreparedStatement!.CompleteUnprepare();
+                        statement.PreparedStatement!.AbortPrepare();
                     }
                 }
 
