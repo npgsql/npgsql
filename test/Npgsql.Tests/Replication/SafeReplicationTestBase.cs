@@ -116,7 +116,15 @@ namespace Npgsql.Tests.Replication
                     for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 30; i++)
                         await Task.Delay(TimeSpan.FromSeconds(1));
 
-                    await DropSlot();
+                    try
+                    {
+                        await DropSlot();
+                    }
+                    catch (PostgresException e2) when (e2.SqlState == PostgresErrorCodes.ObjectInUse && e2.Message.Contains(slotName))
+                    {
+                        // We failed to drop the slot, even after 30 seconds. Swallow the exception to avoid failing the test, we'll
+                        // likely drop it the next time the test is executed (Cleanup is executed before starting the test as well).
+                    }
                 }
 
                 if (c.PostgreSqlVersion >= Pg10Version)
