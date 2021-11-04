@@ -797,7 +797,7 @@ namespace Npgsql.Internal
                         }
                         else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath)
                         {
-                            certificateValidationCallback = SslRootValidation(certRootPath);
+                            certificateValidationCallback = SslRootValidation(certRootPath, sslMode == SslMode.VerifyFull);
                         }
                         else if (UserCertificateValidationCallback is not null)
                         {
@@ -1589,10 +1589,22 @@ namespace Npgsql.Internal
             (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-        static RemoteCertificateValidationCallback SslRootValidation(string certRootPath) =>
+        static RemoteCertificateValidationCallback SslRootValidation(string certRootPath, bool verifyFull) =>
             (sender, certificate, chain, sslPolicyErrors) =>
             {
                 if (certificate is null || chain is null)
+                    return false;
+
+                // No errors here - no reason to check further
+                if (sslPolicyErrors == SslPolicyErrors.None)
+                    return true;
+
+                // That's VerifyCA check and the only error is name mismatch - no reason to check further
+                if (!verifyFull && sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch)
+                    return true;
+
+                // That's VerifyFull check and we have name mismatch - no reason to check further
+                if (verifyFull && sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
                     return false;
 
                 var certs = new X509Certificate2Collection();
