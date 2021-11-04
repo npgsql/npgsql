@@ -3,6 +3,7 @@ using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -41,13 +42,13 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
         public void Reject_self_signed_certificate([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = sslMode,
                 CheckCertificateRevocation = false,
-                Pooling = false
-            }.ToString();
+            };
 
+            using var _ = CreateTempPool(csb, out var connString);
             using var conn = new NpgsqlConnection(connString);
 
             var ex = Assert.Throws<NpgsqlException>(conn.Open)!;
