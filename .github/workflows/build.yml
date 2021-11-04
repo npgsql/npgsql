@@ -294,8 +294,36 @@ jobs:
               fi
           fi
 
+  extra-checks:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -qq libkrb5-dev
+
+      - name: Start PostgreSQL
+        run: |
+          sudo service postgresql start
+          pg_isready -q
+          sudo -u postgres psql --command="CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER"
+          sudo -u postgres psql --command="CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+      - name: Checkout
+        uses: actions/checkout@v2.4.0
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1.8.2
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
+
+      - name: Publish Native AOT
+        run: dotnet publish -r linux-x64 --self-contained -c Debug test/Npgsql.AOTTest
+
+      - name: Run Native AOT
+        run: test/Npgsql.AOTTest/bin/Debug/net6.0/linux-x64/publish/Npgsql.AOTTest
+
   publish-ci:
-    needs: build
+    needs: [build, extra-checks]
     runs-on: ubuntu-20.04
     if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
     environment: myget
@@ -337,7 +365,7 @@ jobs:
         working-directory: nupkgs
 
   release:
-    needs: build
+    needs: [build, extra-checks]
     runs-on: ubuntu-20.04
     if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
     environment: nuget.org
