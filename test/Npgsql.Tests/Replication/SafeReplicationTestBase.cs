@@ -124,6 +124,8 @@ namespace Npgsql.Tests.Replication
                     {
                         // We failed to drop the slot, even after 30 seconds. Swallow the exception to avoid failing the test, we'll
                         // likely drop it the next time the test is executed (Cleanup is executed before starting the test as well).
+
+                        return;
                     }
                 }
 
