@@ -1425,8 +1425,8 @@ $$;");
                 .WriteReadyForQuery()
                 .FlushAsync();
 
-            CollectionAssert.AreEqual(data, (byte[])(await firstQuery)!);
-            CollectionAssert.AreEqual(otherData, (byte[])(await secondQuery)!);
+            Assert.That(data, Is.EquivalentTo((byte[])(await firstQuery)!));
+            Assert.That(otherData, Is.EquivalentTo((byte[])(await secondQuery)!));
         }
     }
 }
