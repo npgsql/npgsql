@@ -9,6 +9,8 @@ using System.Transactions;
 using Npgsql.Tests.Support;
 
 using static Npgsql.Tests.TestUtil;
+using Npgsql.BackendMessages;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Tests
 {
@@ -1438,6 +1440,51 @@ $$;");
                 cmd.CommandText = "SELECT 1";
                 Assert.DoesNotThrowAsync(cmd.ExecuteNonQueryAsync);
             } 
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4099")]
+        public async Task Bug4099()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Multiplexing = true,
+                MaxPoolSize = 1
+            };
+            await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
+            await using var firstConn = await OpenConnectionAsync(postmaster.ConnectionString);
+            await using var secondConn = await OpenConnectionAsync(postmaster.ConnectionString);
+
+            var byteArrayLength = csb.WriteBufferSize + 100;
+            var firstQuery = firstConn.ExecuteScalarAsync("SELECT data");
+
+            var server = await postmaster.WaitForServerConnection();
+            await server.ExpectExtendedQuery();
+
+            var secondQuery = secondConn.ExecuteScalarAsync("SELECT other_data");
+            await server.ExpectExtendedQuery();
+
+            var data = new byte[10000];
+            await server
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+                .WriteDataRowWithFlush(data);
+
+            var otherData = new byte[10];
+            await server
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+                .WriteDataRow(otherData)
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            Assert.That(data, Is.EquivalentTo((byte[])(await firstQuery)!));
+            Assert.That(otherData, Is.EquivalentTo((byte[])(await secondQuery)!));
         }
     }
 }

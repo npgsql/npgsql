@@ -1006,6 +1006,7 @@ namespace Npgsql
                         // the connector's write lock has been released (long waiting will never occur here).
                         SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
+                        ResetReadBuffer();
                         _pool!.Return(this);
                     }
                 }
@@ -1964,7 +1965,7 @@ namespace Npgsql
         /// This switches us back to the original one and returns the buffer to <see cref="ArrayPool{T}" />.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void ResetReadBuffer()
+        void ResetReadBuffer()
         {
             if (_origReadBuffer != null)
             {
