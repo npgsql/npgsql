@@ -419,8 +419,7 @@ namespace Npgsql.TypeMapping
                 DbType.Boolean               => NpgsqlDbType.Boolean,
                 DbType.Currency              => NpgsqlDbType.Money,
                 DbType.Date                  => NpgsqlDbType.Date,
-                DbType.DateTime when LegacyTimestampBehavior => NpgsqlDbType.Timestamp,
-                DbType.DateTime              => NpgsqlDbType.TimestampTz,
+                DbType.DateTime              => LegacyTimestampBehavior ? NpgsqlDbType.Timestamp : NpgsqlDbType.TimestampTz,
                 DbType.Decimal               => NpgsqlDbType.Numeric,
                 DbType.VarNumeric            => NpgsqlDbType.Numeric,
                 DbType.Double                => NpgsqlDbType.Double,
@@ -472,8 +471,7 @@ namespace Npgsql.TypeMapping
 
                 // Date/time types
                 NpgsqlDbType.Timestamp   => DbType.DateTime,
-                NpgsqlDbType.TimestampTz when LegacyTimestampBehavior => DbType.DateTimeOffset,
-                NpgsqlDbType.TimestampTz => DbType.DateTime,
+                NpgsqlDbType.TimestampTz => LegacyTimestampBehavior ? DbType.DateTimeOffset : DbType.DateTime,
                 NpgsqlDbType.Date        => DbType.Date,
                 NpgsqlDbType.Time        => DbType.Time,
 
