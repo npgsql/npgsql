@@ -19,6 +19,8 @@ namespace Npgsql.Replication.PgOutput.Messages
         /// </summary>
         public DateTime TransactionCommitTimestamp { get; private set; }
 
+        internal BeginMessage() {}
+
         internal BeginMessage Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
             NpgsqlLogSequenceNumber transactionFinalLsn, DateTime transactionCommitTimestamp, uint transactionXid)
         {
@@ -26,18 +28,6 @@ namespace Npgsql.Replication.PgOutput.Messages
             TransactionFinalLsn = transactionFinalLsn;
             TransactionCommitTimestamp = transactionCommitTimestamp;
             return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override BeginMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new BeginMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionFinalLsn, TransactionCommitTimestamp, TransactionXid);
-            return clone;
         }
     }
 }

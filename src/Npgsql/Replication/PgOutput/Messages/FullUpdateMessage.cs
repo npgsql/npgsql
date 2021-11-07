@@ -1,37 +1,49 @@
-﻿using NpgsqlTypes;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
+using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
     /// <summary>
-    /// Logical Replication Protocol update message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
+    /// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to FULL.
     /// </summary>
     public sealed class FullUpdateMessage : UpdateMessage
     {
-        /// <summary>
-        /// Columns representing the old values.
-        /// </summary>
-        public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
+        readonly ReplicationTuple _oldRow;
+        readonly SecondRowTupleEnumerable _newRow;
 
-        internal FullUpdateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
-            ReadOnlyMemory<TupleData> newRow, ReadOnlyMemory<TupleData> oldRow)
+        /// <summary>
+        /// Columns representing the old row.
+        /// </summary>
+        public ReplicationTuple OldRow => _oldRow;
+
+        /// <summary>
+        /// Columns representing the new row.
+        /// </summary>
+        public override ReplicationTuple NewRow => _newRow;
+
+        internal FullUpdateMessage(NpgsqlConnector connector)
         {
-            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId, newRow);
-            OldRow = oldRow;
+            _oldRow = new(connector);
+            _newRow = new(connector, _oldRow);
+        }
+
+        internal UpdateMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+            RelationMessage relation, ushort numColumns)
+        {
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
+
+            _oldRow.Reset(numColumns, relation.RowDescription);
+            _newRow.Reset(numColumns, relation.RowDescription);
+
             return this;
         }
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override FullUpdateMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new FullUpdateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray(), OldRow.ToArray());
-            return clone;
-        }
+        internal Task Consume(CancellationToken cancellationToken)
+            => _newRow.Consume(cancellationToken);
     }
 }

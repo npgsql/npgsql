@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -9,11 +10,13 @@ using NUnit.Framework;
 using Npgsql.Replication;
 using Npgsql.Replication.PgOutput;
 using Npgsql.Replication.PgOutput.Messages;
+using TruncateOptions = Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions;
+using ReplicaIdentitySetting = Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting;
 
 namespace Npgsql.Tests.Replication
 {
     [TestFixture(ProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
-    //[TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+    [TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
     [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
     // We currently don't execute all possible combinations of settings for efficiency reasons because they don't
     // interact in the current implementation.
@@ -79,13 +82,13 @@ namespace Npgsql.Tests.Replication
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
+                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                     var rc = await OpenReplicationConnectionAsync();
                     var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                     await using var tran = await c.BeginTransactionAsync();
-                    await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} VALUES (1, 'val1'), (2, 'val2');
+                    await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} VALUES (1, 'val1'), (2, NULL);
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(3, 15000) s(i);");
                     await tran.CommitAsync();
 
@@ -97,32 +100,50 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.Default));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Insert first value
                     var insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(insertMsg.NewRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(insertMsg.NewRow.Span[1].Value, Is.EqualTo("val1"));
+                    Assert.That(insertMsg.Relation, Is.SameAs(relationMsg));
+                    var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                    Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Insert second value
                     insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(insertMsg.NewRow.Span[0].Value, Is.EqualTo("2"));
-                    Assert.That(insertMsg.NewRow.Span[1].Value, Is.EqualTo("val2"));
+                    Assert.That(insertMsg.Relation, Is.SameAs(relationMsg));
+                    columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(2));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("2"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.True);
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining inserts
                     for (var insertCount = 0; insertCount < 14998; insertCount++)
+                    {
                         await NextMessage<InsertMessage>(messages);
+                    }
 
                     // Commit Transaction
                     await AssertTransactionCommit(messages);
@@ -157,25 +178,33 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.Default));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
-                    var updateMsg = await NextMessage<UpdateMessage>(messages);
+                    var updateMsg = await NextMessage<DefaultUpdateMessage>(messages);
                     Assert.That(updateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(updateMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(updateMsg.NewRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(updateMsg.NewRow.Span[1].Value, Is.EqualTo("val1_updated"));
+                    Assert.That(updateMsg.Relation, Is.SameAs(relationMsg));
+                    var columnEnumerator = updateMsg.NewRow.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                    Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("val1_updated"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining updates
                     for (var updateCount = 0; updateCount < 14999; updateCount++)
-                        await NextMessage<UpdateMessage>(messages);
+                        await NextMessage<DefaultUpdateMessage>(messages);
 
                     // Commit Transaction
                     await AssertTransactionCommit(messages);
@@ -213,24 +242,36 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.IndexWithIndIsReplIdent));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
                     var updateMsg = await NextMessage<IndexUpdateMessage>(messages);
                     Assert.That(updateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(updateMsg.KeyRow!.Length, Is.EqualTo(2));
-                    Assert.That(updateMsg.KeyRow!.Span[0].Value, Is.Null);
-                    Assert.That(updateMsg.KeyRow!.Span[1].Value, Is.EqualTo("val1"));
-                    Assert.That(updateMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(updateMsg.NewRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(updateMsg.NewRow.Span[1].Value, Is.EqualTo("val1_updated"));
+                    Assert.That(updateMsg.Relation, Is.SameAs(relationMsg));
+
+                    var oldRowColumnEnumerator = updateMsg.Key.GetAsyncEnumerator();
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(oldRowColumnEnumerator.Current.IsDBNull, Is.True);
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await oldRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.False);
+
+                    var newRowColumnEnumerator = updateMsg.NewRow.GetAsyncEnumerator();
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await newRowColumnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await newRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await newRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("val1_updated"));
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining updates
                     for (var updateCount = 0; updateCount < 14999; updateCount++)
@@ -270,24 +311,35 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.AllColumns));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
                     var updateMsg = await NextMessage<FullUpdateMessage>(messages);
                     Assert.That(updateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(updateMsg.OldRow!.Length, Is.EqualTo(2));
-                    Assert.That(updateMsg.OldRow!.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(updateMsg.OldRow!.Span[1].Value, Is.EqualTo("val1"));
-                    Assert.That(updateMsg.NewRow.Length, Is.EqualTo(2));
-                    Assert.That(updateMsg.NewRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(updateMsg.NewRow.Span[1].Value, Is.EqualTo("val1_updated"));
+                    Assert.That(updateMsg.Relation, Is.SameAs(relationMsg));
+
+                    var oldRowColumnEnumerator = updateMsg.OldRow.GetAsyncEnumerator();
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await oldRowColumnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await oldRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await oldRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
+                    Assert.That(await oldRowColumnEnumerator.MoveNextAsync(), Is.False);
+
+                    var newRowColumnEnumerator = updateMsg.NewRow.GetAsyncEnumerator();
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await newRowColumnEnumerator.Current.Get<string>(), Is.EqualTo("val1_updated"));
+                    Assert.That(await newRowColumnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining updates
                     for (var updateCount = 0; updateCount < 14999; updateCount++)
@@ -329,21 +381,28 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.Default));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
                     var deleteMsg = await NextMessage<KeyDeleteMessage>(messages);
                     Assert.That(deleteMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(deleteMsg.KeyRow!.Length, Is.EqualTo(2));
-                    Assert.That(deleteMsg.KeyRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(deleteMsg.KeyRow.Span[1].Value, Is.Null);
+                    Assert.That(deleteMsg.Relation, Is.SameAs(relationMsg));
+                    var columnEnumerator = deleteMsg.Key.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.True);
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining deletes
                     for (var deleteCount = 0; deleteCount < 14999; deleteCount++)
@@ -385,21 +444,25 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.IndexWithIndIsReplIdent));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
                     var deleteMsg = await NextMessage<KeyDeleteMessage>(messages);
                     Assert.That(deleteMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(deleteMsg.KeyRow!.Length, Is.EqualTo(2));
-                    Assert.That(deleteMsg.KeyRow.Span[0].Value, Is.Null);
-                    Assert.That(deleteMsg.KeyRow.Span[1].Value, Is.EqualTo("val1"));
+                    Assert.That(deleteMsg.Relation, Is.SameAs(relationMsg));
+                    var columnEnumerator = deleteMsg.Key.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.True);
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining deletes
                     for (var deleteCount = 0; deleteCount < 14999; deleteCount++)
@@ -439,21 +502,29 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMsg = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMsg.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.AllColumns));
+                    Assert.That(relationMsg.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMsg.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMsg.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
                     var deleteMsg = await NextMessage<FullDeleteMessage>(messages);
                     Assert.That(deleteMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(deleteMsg.OldRow!.Length, Is.EqualTo(2));
-                    Assert.That(deleteMsg.OldRow.Span[0].Value, Is.EqualTo("1"));
-                    Assert.That(deleteMsg.OldRow.Span[1].Value, Is.EqualTo("val1"));
+                    Assert.That(deleteMsg.Relation, Is.SameAs(relationMsg));
+                    var columnEnumerator = deleteMsg.OldRow.GetAsyncEnumerator();
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.True);
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                    Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("val1"));
+                    Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
                     // Remaining deletes
                     for (var deleteCount = 0; deleteCount < 14999; deleteCount++)
@@ -502,20 +573,20 @@ namespace Npgsql.Tests.Replication
                     var transactionXid = await AssertTransactionStart(messages);
 
                     // Relation
-                    var relMsg = await NextMessage<RelationMessage>(messages);
-                    Assert.That(relMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
-                    Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
-                    Assert.That(relMsg.Namespace, Is.EqualTo("public"));
-                    Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
-                    Assert.That(relMsg.Columns.Count, Is.EqualTo(2));
-                    Assert.That(relMsg.Columns[0].ColumnName, Is.EqualTo("id"));
-                    Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
+                    var relationMessage = await NextMessage<RelationMessage>(messages);
+                    Assert.That(relationMessage.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                    Assert.That(relationMessage.ReplicaIdentity, Is.EqualTo(ReplicaIdentitySetting.Default));
+                    Assert.That(relationMessage.Namespace, Is.EqualTo("public"));
+                    Assert.That(relationMessage.RelationName, Is.EqualTo(tableName));
+                    Assert.That(relationMessage.Columns.Count, Is.EqualTo(2));
+                    Assert.That(relationMessage.Columns[0].ColumnName, Is.EqualTo("id"));
+                    Assert.That(relationMessage.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Truncate
                     var truncateMsg = await NextMessage<TruncateMessage>(messages);
                     Assert.That(truncateMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
                     Assert.That(truncateMsg.Options, Is.EqualTo(truncateOptionFlags));
-                    Assert.That(truncateMsg.RelationIds.Count, Is.EqualTo(1));
+                    Assert.That(truncateMsg.Relations.Single(), Is.SameAs(relationMessage));
 
                     // Remaining inserts
                     // Since the inserts run in the same transaction as the truncate, we'll
@@ -696,31 +767,213 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }, $"{GetObjectName(nameof(LogicalDecodingMessage))}_m_{BoolToChar(writeMessages)}");
 
+        [Test]
+        public Task Stream()
+        {
+            if (!IsBinary)
+                return Task.CompletedTask;
+
+            return SafePgOutputReplicationTest(
+                async (slotName, tableName, publicationName) =>
+                {
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (bytes bytea);
+                                                    CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                    var rc = await OpenReplicationConnectionAsync();
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                    var bytes = new byte[16384];
+                    for (var i = 0; i < 10; i++)
+                        bytes[i] = (byte)i;
+
+                    using (var command = new NpgsqlCommand($"INSERT INTO {tableName} VALUES ($1)", c))
+                    {
+                        command.Parameters.Add(new() { Value = bytes });
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await AssertTransactionStart(messages);
+                    await NextMessage<RelationMessage>(messages);
+                    var insertMsg = await NextMessage<InsertMessage>(messages);
+                    var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+
+                    var stream = columnEnumerator.Current.GetStream();
+                    Assert.That(() => columnEnumerator.Current.GetStream(), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(() => columnEnumerator.Current.Get(), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(() => columnEnumerator.Current.Get<byte[]>(), Throws.Exception.TypeOf<InvalidOperationException>());
+
+                    var someBytes = new byte[10];
+                    Assert.That(await stream.ReadAsync(someBytes, 0, 10), Is.EqualTo(10));
+                    Assert.That(someBytes, Is.EquivalentTo(bytes[..10]));
+
+                    await AssertTransactionCommit(messages);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                });
+        }
+
+        [Test]
+        public Task TextReader()
+            => SafePgOutputReplicationTest(
+                async (slotName, tableName, publicationName) =>
+                {
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
+                                                    CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                    var rc = await OpenReplicationConnectionAsync();
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1')");
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await AssertTransactionStart(messages);
+                    await NextMessage<RelationMessage>(messages);
+                    var insertMsg = await NextMessage<InsertMessage>(messages);
+                    var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+
+                    Assert.That(columnEnumerator.Current.GetFieldType(), Is.SameAs(IsBinary ? typeof(int) : typeof(string)));
+                    Assert.That(columnEnumerator.Current.GetPostgresType().Name, Is.EqualTo("integer"));
+                    Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("integer"));
+                    Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+
+                    await AssertTransactionCommit(messages);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                });
+
+        [Test]
+        public Task ValueMetadata()
+            => SafePgOutputReplicationTest(
+                async (slotName, tableName, publicationName) =>
+                {
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
+                                                    CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                    var rc = await OpenReplicationConnectionAsync();
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1')");
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await AssertTransactionStart(messages);
+                    await NextMessage<RelationMessage>(messages);
+                    var insertMsg = await NextMessage<InsertMessage>(messages);
+                    var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+
+                    Assert.That(columnEnumerator.Current.GetFieldType(), Is.SameAs(IsBinary ? typeof(int) : typeof(string)));
+                    Assert.That(columnEnumerator.Current.GetPostgresType().Name, Is.EqualTo("integer"));
+                    Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("integer"));
+                    Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+
+                    await AssertTransactionCommit(messages);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                });
+
+        [Test]
+        public Task Null()
+            => SafePgOutputReplicationTest(
+                async (slotName, tableName, publicationName) =>
+                {
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (int1 INT, int2 INT);
+                                                    CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                    var rc = await OpenReplicationConnectionAsync();
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 1), (NULL, NULL)");
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await AssertTransactionStart(messages);
+                    await NextMessage<RelationMessage>(messages);
+
+                    // non-null
+                    var columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                    Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                    if (IsBinary)
+                        Assert.That(await columnEnumerator.Current.Get<int>(), Is.EqualTo(1));
+                    else
+                        Assert.That(await columnEnumerator.Current.Get<string>(), Is.EqualTo("1"));
+                    await columnEnumerator.MoveNextAsync();
+                    Assert.That(await columnEnumerator.Current.Get(), Is.EqualTo(IsBinary ? 1 : "1"));
+
+                    // null
+                    columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.True);
+                    Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                    if (IsBinary)
+                        Assert.That(() => columnEnumerator.Current.Get<int>(), Throws.Exception.TypeOf<InvalidCastException>());
+                    else
+                        Assert.That(() => columnEnumerator.Current.Get<string>(), Throws.Exception.TypeOf<InvalidCastException>());
+                    await columnEnumerator.MoveNextAsync();
+                    Assert.That(await columnEnumerator.Current.Get(), Is.SameAs(DBNull.Value));
+
+                    await AssertTransactionCommit(messages);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                });
+
         async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
         {
             Assert.True(await messages.MoveNextAsync());
-            if (IsStreaming)
+
+            switch (messages.Current)
             {
-                Assert.That(messages.Current, Is.TypeOf<StreamStartMessage>());
-                var streamStartMessage = (messages.Current as StreamStartMessage)!;
+            case StreamStartMessage streamStartMessage:
+                Assert.That(IsStreaming);
                 return streamStartMessage.TransactionXid;
+            case BeginMessage beginMessage:
+                return beginMessage.TransactionXid;
+            default:
+                Assert.Fail("Expected transaction start message but got: " + messages.Current);
+                throw new Exception();
             }
-            Assert.That(messages.Current, Is.TypeOf<BeginMessage>());
-            var beginMessage = (messages.Current as BeginMessage)!;
-            return beginMessage.TransactionXid;
         }
 
         async Task AssertTransactionCommit(IAsyncEnumerator<PgOutputReplicationMessage> messages)
         {
             Assert.True(await messages.MoveNextAsync());
-            if (IsStreaming)
+
+            switch (messages.Current)
             {
-                Assert.That(messages.Current, Is.TypeOf<StreamStopMessage>());
+            case StreamStopMessage:
+                Assert.That(IsStreaming);
                 Assert.True(await messages.MoveNextAsync());
                 Assert.That(messages.Current, Is.TypeOf<StreamCommitMessage>());
+                return;
+            case CommitMessage:
+                return;
+            default:
+                Assert.Fail("Expected transaction end message but got: " + messages.Current);
+                throw new Exception();
             }
-            else
-                Assert.That(messages.Current, Is.TypeOf<CommitMessage>());
         }
 
         async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator, bool expectRelationMessage = false)
@@ -754,7 +1007,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             {
                 if (enumerator.Current is BeginMessage)
                 {
-                    var current = enumerator.Current.Clone();
+                    var current = enumerator.Current;
                     if (!await enumerator.MoveNextAsync())
                     {
                         yield return current;

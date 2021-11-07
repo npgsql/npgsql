@@ -7,6 +7,7 @@ using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Replication.PgOutput.Messages;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 
@@ -24,9 +25,9 @@ namespace Npgsql.BackendMessages
         readonly Dictionary<string, int> _nameIndex;
         Dictionary<string, int>? _insensitiveIndex;
 
-        internal RowDescriptionMessage()
+        internal RowDescriptionMessage(int numFields = 10)
         {
-            _fields = new FieldDescription[10];
+            _fields = new FieldDescription[numFields];
             _nameIndex = new Dictionary<string, int>();
         }
 
@@ -60,13 +61,13 @@ namespace Npgsql.BackendMessages
 
                 field.Populate(
                     typeMapper,
-                    buf.ReadNullTerminatedString(), // Name
-                    buf.ReadUInt32(), // TableOID
-                    buf.ReadInt16(), // ColumnAttributeNumber
-                    buf.ReadUInt32(), // TypeOID
-                    buf.ReadInt16(), // TypeSize
-                    buf.ReadInt32(), // TypeModifier
-                    (FormatCode)buf.ReadInt16() // FormatCode
+                    name:                  buf.ReadNullTerminatedString(),
+                    tableOID:              buf.ReadUInt32(),
+                    columnAttributeNumber: buf.ReadInt16(),
+                    oid:                   buf.ReadUInt32(),
+                    typeSize:              buf.ReadInt16(),
+                    typeModifier:          buf.ReadInt32(),
+                    formatCode:            (FormatCode)buf.ReadInt16()
                 );
 
                 if (!_nameIndex.ContainsKey(field.Name))
@@ -74,6 +75,35 @@ namespace Npgsql.BackendMessages
             }
 
             return this;
+        }
+
+        internal static RowDescriptionMessage CreateForReplication(
+            ConnectorTypeMapper typeMapper, uint tableOID, FormatCode formatCode, IReadOnlyList<RelationMessage.Column> columns)
+        {
+            var msg = new RowDescriptionMessage(columns.Count);
+            var numFields = msg.Count = columns.Count;
+
+            for (var i = 0; i < numFields; ++i)
+            {
+                var field = msg._fields[i] = new();
+                var column = columns[i];
+
+                field.Populate(
+                    typeMapper,
+                    name:                  column.ColumnName,
+                    tableOID:              tableOID,
+                    columnAttributeNumber: checked((short)i),
+                    oid:                   column.DataTypeId,
+                    typeSize:              0, // TODO: Confirm we don't have this in replication
+                    typeModifier:          column.TypeModifier,
+                    formatCode:            formatCode
+                );
+
+                if (!msg._nameIndex.ContainsKey(field.Name))
+                    msg._nameIndex.Add(field.Name, i);
+            }
+
+            return msg;
         }
 
         public FieldDescription this[int index]

@@ -1,5 +1,9 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -8,30 +12,28 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class KeyDeleteMessage : DeleteMessage
     {
+        readonly ReplicationTuple _tupleEnumerable;
+
         /// <summary>
-        /// Columns representing the primary key.
+        /// Columns representing the key.
         /// </summary>
-        public ReadOnlyMemory<TupleData> KeyRow { get; private set; } = default!;
+        public ReplicationTuple Key => _tupleEnumerable;
+
+        internal KeyDeleteMessage(NpgsqlConnector connector)
+            => _tupleEnumerable = new(connector);
 
         internal KeyDeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
-            ReadOnlyMemory<TupleData> keyRow)
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+            RelationMessage relation, ushort numColumns)
         {
-            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId);
-            KeyRow = keyRow;
+            base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
+
+            _tupleEnumerable.Reset(numColumns, relation.RowDescription);
+
             return this;
         }
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override KeyDeleteMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new KeyDeleteMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, KeyRow.ToArray());
-            return clone;
-        }
+        internal Task Consume(CancellationToken cancellationToken)
+            => _tupleEnumerable.Consume(cancellationToken);
     }
 }

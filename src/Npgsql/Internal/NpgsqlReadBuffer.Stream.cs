@@ -22,6 +22,7 @@ namespace Npgsql.Internal
                 _connector = connector;
                 _buf = connector.ReadBuffer;
                 _startCancellableOperations = startCancellableOperations;
+                IsDisposed = true;
             }
 
             internal void Init(int len, bool canSeek)
@@ -188,10 +189,15 @@ namespace Npgsql.Internal
             protected override void Dispose(bool disposing)
                 => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
 
-#if !NETSTANDARD2_0
+#if NETSTANDARD2_0
+            public ValueTask DisposeAsync()
+#else
             public override ValueTask DisposeAsync()
-                => DisposeAsync(disposing: true, async: true);
 #endif
+            {
+                using (NoSynchronizationContextScope.Enter())
+                    return DisposeAsync(disposing: true, async: true);
+            }
 
             async ValueTask DisposeAsync(bool disposing, bool async)
             {

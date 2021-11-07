@@ -15,30 +15,42 @@ namespace Npgsql.Replication.PgOutput.Messages
         public TruncateOptions Options { get; private set; }
 
         /// <summary>
-        /// IDs of the relations corresponding to the ID in the relation message.
+        /// The relations being truncated.
         /// </summary>
-        public IReadOnlyList<uint> RelationIds { get; private set; } = ReadOnlyArrayBuffer<uint>.Empty;
+        public IReadOnlyList<RelationMessage> Relations { get; private set; } = ReadOnlyArrayBuffer<RelationMessage>.Empty;
+
+        internal TruncateMessage() {}
 
         internal TruncateMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, TruncateOptions options,
-            ReadOnlyArrayBuffer<uint> relationIds)
+            ReadOnlyArrayBuffer<RelationMessage> relations)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid);
             Options = options;
-            RelationIds = relationIds;
+            Relations = relations;
             return this;
         }
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override TruncateMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
+        /// <summary>
+        /// Enum representing the additional options for the TRUNCATE command as flags
+        /// </summary>
+        [Flags]
+        public enum TruncateOptions : byte
         {
-            var clone = new TruncateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Options, ((ReadOnlyArrayBuffer<uint>)RelationIds).Clone());
-            return clone;
+            /// <summary>
+            /// No additional option was specified
+            /// </summary>
+            None = 0,
+
+            /// <summary>
+            /// CASCADE was specified
+            /// </summary>
+            Cascade = 1,
+
+            /// <summary>
+            /// RESTART IDENTITY was specified
+            /// </summary>
+            RestartIdentity = 2
         }
     }
 }

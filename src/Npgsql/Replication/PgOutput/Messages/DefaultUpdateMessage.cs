@@ -1,39 +1,39 @@
-﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
+using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
     /// <summary>
-    /// Logical Replication Protocol delete message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
+    /// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to DEFAULT.
     /// </summary>
-    public sealed class FullDeleteMessage : DeleteMessage
+    public class DefaultUpdateMessage : UpdateMessage
     {
-        readonly ReplicationTuple _tupleEnumerable;
+        readonly ReplicationTuple _newRow;
 
         /// <summary>
-        /// Columns representing the deleted row.
+        /// Columns representing the new row.
         /// </summary>
-        public ReplicationTuple OldRow => _tupleEnumerable;
+        public override ReplicationTuple NewRow => _newRow;
 
-        internal FullDeleteMessage(NpgsqlConnector connector)
-            => _tupleEnumerable = new(connector);
+        internal DefaultUpdateMessage(NpgsqlConnector connector)
+            => _newRow = new(connector);
 
-        internal FullDeleteMessage Populate(
+        internal UpdateMessage Populate(
             NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
             RelationMessage relation, ushort numColumns)
         {
             base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
 
-            _tupleEnumerable.Reset(numColumns, relation.RowDescription);
+            _newRow.Reset(numColumns, relation.RowDescription);
 
             return this;
         }
 
         internal Task Consume(CancellationToken cancellationToken)
-            => _tupleEnumerable.Consume(cancellationToken);
+            => _newRow.Consume(cancellationToken);
     }
 }
