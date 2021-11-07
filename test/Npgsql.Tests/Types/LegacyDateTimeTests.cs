@@ -67,30 +67,31 @@ namespace Npgsql.Tests.Types
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected));
         }
 
-        static NpgsqlParameter[] TimestampParameters
+        static Func<NpgsqlParameter>[] TimestampParameters
         {
             get
             {
                 var dateTime = new DateTime(1998, 4, 12, 13, 26, 38);
 
-                return new NpgsqlParameter[]
+                return new Func<NpgsqlParameter>[]
                 {
-                    new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified) },
-                    new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local) },
-                    new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc) },
-                    new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
-                    new() { Value = dateTime, DbType = DbType.DateTime },
-                    new() { Value = dateTime, DbType = DbType.DateTime2 },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified) },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Local) },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc) },
+                    () => new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified) },
+                    () => new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local) },
+                    () => new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc) },
+                    () => new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
+                    () => new() { Value = dateTime, DbType = DbType.DateTime },
+                    () => new() { Value = dateTime, DbType = DbType.DateTime2 },
+                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified) },
+                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Local) },
+                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc) },
                 };
             }
         }
 
         [Test, TestCaseSource(nameof(TimestampParameters))]
-        public async Task Timestamp_resolution(NpgsqlParameter parameter)
+        public async Task Timestamp_resolution(Func<NpgsqlParameter> parameterFunc)
         {
+            var parameter = parameterFunc();
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
 

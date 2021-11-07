@@ -64,7 +64,7 @@ namespace Npgsql.Tests
             da.InsertCommand = new NpgsqlCommand($"INSERT INTO {table} (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
 
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
-            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime2));
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
 
             da.InsertCommand.Parameters[0].Direction = ParameterDirection.Input;
@@ -109,7 +109,7 @@ namespace Npgsql.Tests
             da.InsertCommand = new NpgsqlCommand($@"INSERT INTO {table} (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
 
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
-            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
+            da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime2));
             da.InsertCommand.Parameters.Add(new NpgsqlParameter("c", DbType.Decimal));
 
             da.InsertCommand.Parameters[0].Direction = ParameterDirection.Input;

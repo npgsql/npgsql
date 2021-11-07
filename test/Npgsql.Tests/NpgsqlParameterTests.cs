@@ -466,7 +466,7 @@ namespace Npgsql.Tests
 
             p.DbType = DbType.DateTime; //assigning a DbType
             Assert.AreEqual(DbType.DateTime, p.DbType, "#B:DbType1");
-            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#B:SqlDbType1");
+            Assert.AreEqual(NpgsqlDbType.TimestampTz, p.NpgsqlDbType, "#B:SqlDbType1");
             p.ResetDbType();
             Assert.AreEqual(DbType.Int32, p.DbType, "#B:DbType2");
             Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#B:SqlDbtype2");
@@ -477,9 +477,9 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "#C:DbType");
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#C:NpgsqlDbType");
 
-            p.DbType = DbType.DateTime; //assigning a NpgsqlDbType
+            p.NpgsqlDbType = NpgsqlDbType.TimestampTz; //assigning a NpgsqlDbType
             Assert.AreEqual(DbType.DateTime, p.DbType, "#D:DbType1");
-            Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#D:SqlDbType1");
+            Assert.AreEqual(NpgsqlDbType.TimestampTz, p.NpgsqlDbType, "#D:SqlDbType1");
             p.ResetDbType();
             Assert.AreEqual(DbType.Object, p.DbType, "#D:DbType2");
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "#D:SqlDbType2");

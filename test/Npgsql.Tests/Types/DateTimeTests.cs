@@ -257,7 +257,6 @@ namespace Npgsql.Tests.Types
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified) },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local) },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local), NpgsqlDbType = NpgsqlDbType.Timestamp },
-                    new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local), DbType = DbType.DateTime },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local), DbType = DbType.DateTime2 },
                     new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified) },
                     new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Local) },
@@ -496,7 +495,7 @@ namespace Npgsql.Tests.Types
 
             Assert.That(parameter.DataTypeName, Is.EqualTo("timestamp with time zone"));
             Assert.That(parameter.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
-            Assert.That(parameter.DbType, Is.EqualTo(DbType.DateTimeOffset));
+            Assert.That(parameter.DbType, Is.EqualTo(DbType.DateTime).Or.EqualTo(DbType.DateTimeOffset));
 
             await using var reader = await cmd.ExecuteReaderAsync();
             await reader.ReadAsync();
