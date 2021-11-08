@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
@@ -235,6 +236,7 @@ namespace Npgsql.Tests.Types
         {
 #if DEBUG
             LegacyTimestampBehavior = true;
+            BuiltInTypeHandlerResolver.ResetMappings();
 #else
             Assert.Ignore(
                 "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
@@ -246,6 +248,7 @@ namespace Npgsql.Tests.Types
         {
 #if DEBUG
             LegacyTimestampBehavior = false;
+            BuiltInTypeHandlerResolver.ResetMappings();
 #endif
         }
     }

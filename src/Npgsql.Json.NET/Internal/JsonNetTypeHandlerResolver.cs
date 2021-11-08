@@ -60,8 +60,8 @@ namespace Npgsql.Json.NET.Internal
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
             => dataTypeName switch
             {
-                "jsonb" => new(NpgsqlDbType.Jsonb,   DbType.Object, "jsonb"),
-                "json"  => new(NpgsqlDbType.Json,   DbType.Object, "json"),
+                "jsonb" => new(NpgsqlDbType.Jsonb,   "jsonb"),
+                "json"  => new(NpgsqlDbType.Json,    "json"),
                 _ => null
             };
 

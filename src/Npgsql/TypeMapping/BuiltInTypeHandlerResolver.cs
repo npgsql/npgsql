@@ -34,127 +34,133 @@ namespace Npgsql.TypeMapping
         static readonly Dictionary<string, TypeMappingInfo> Mappings = new()
         {
             // Numeric types
-            { "smallint",         new(NpgsqlDbType.Smallint, DbType.Int16,   "smallint",         typeof(short), typeof(byte), typeof(sbyte)) },
-            { "integer",          new(NpgsqlDbType.Integer,  DbType.Int32,   "integer",          typeof(int)) },
-            { "int",              new(NpgsqlDbType.Integer,  DbType.Int32,   "integer",          typeof(int)) },
-            { "bigint",           new(NpgsqlDbType.Bigint,   DbType.Int64,   "bigint",           typeof(long)) },
-            { "real",             new(NpgsqlDbType.Real,     DbType.Single,  "real",             typeof(float)) },
-            { "double precision", new(NpgsqlDbType.Double,   DbType.Double,  "double precision", typeof(double)) },
-            { "numeric",          new(NpgsqlDbType.Numeric,  DbType.Decimal, "decimal",          typeof(decimal), typeof(BigInteger)) },
-            { "decimal",          new(NpgsqlDbType.Numeric,  DbType.Decimal, "decimal",          typeof(decimal), typeof(BigInteger)) },
-            { "money",            new(NpgsqlDbType.Money,    DbType.Int16,   "money") },
+            { "smallint",         new(NpgsqlDbType.Smallint, "smallint",         typeof(short), typeof(byte), typeof(sbyte)) },
+            { "integer",          new(NpgsqlDbType.Integer,  "integer",          typeof(int)) },
+            { "int",              new(NpgsqlDbType.Integer,  "integer",          typeof(int)) },
+            { "bigint",           new(NpgsqlDbType.Bigint,   "bigint",           typeof(long)) },
+            { "real",             new(NpgsqlDbType.Real,     "real",             typeof(float)) },
+            { "double precision", new(NpgsqlDbType.Double,   "double precision", typeof(double)) },
+            { "numeric",          new(NpgsqlDbType.Numeric,  "decimal",          typeof(decimal), typeof(BigInteger)) },
+            { "decimal",          new(NpgsqlDbType.Numeric,  "decimal",          typeof(decimal), typeof(BigInteger)) },
+            { "money",            new(NpgsqlDbType.Money,    "money") },
 
             // Text types
-            { "text",              new(NpgsqlDbType.Text,      DbType.String, "text", typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>)) },
-            { "xml",               new(NpgsqlDbType.Xml,       DbType.Xml,    "xml") },
-            { "character varying", new(NpgsqlDbType.Varchar,   DbType.String, "character varying") },
-            { "varchar",           new(NpgsqlDbType.Varchar,   DbType.String, "character varying") },
-            { "character",         new(NpgsqlDbType.Char,      DbType.String, "character") },
-            { "name",              new(NpgsqlDbType.Name,      DbType.String, "name") },
-            { "refcursor",         new(NpgsqlDbType.Refcursor, DbType.String, "refcursor") },
-            { "citext",            new(NpgsqlDbType.Citext,    DbType.String, "citext") },
-            { "jsonb",             new(NpgsqlDbType.Jsonb,     DbType.Object, "jsonb", typeof(JsonDocument)) },
-            { "json",              new(NpgsqlDbType.Json,      DbType.Object, "json") },
-            { "jsonpath",          new(NpgsqlDbType.JsonPath,  DbType.Object, "jsonpath") },
+            { "text",              new(NpgsqlDbType.Text,      "text", typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>)) },
+            { "xml",               new(NpgsqlDbType.Xml,       "xml") },
+            { "character varying", new(NpgsqlDbType.Varchar,   "character varying") },
+            { "varchar",           new(NpgsqlDbType.Varchar,   "character varying") },
+            { "character",         new(NpgsqlDbType.Char,      "character") },
+            { "name",              new(NpgsqlDbType.Name,      "name") },
+            { "refcursor",         new(NpgsqlDbType.Refcursor, "refcursor") },
+            { "citext",            new(NpgsqlDbType.Citext,    "citext") },
+            { "jsonb",             new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)) },
+            { "json",              new(NpgsqlDbType.Json,      "json") },
+            { "jsonpath",          new(NpgsqlDbType.JsonPath,  "jsonpath") },
 
             // Date/time types
 #pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
-            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
-            { "timestamp",                   new(NpgsqlDbType.Timestamp,   DbType.DateTime,       "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
+            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
+            { "timestamp",                   new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
 #pragma warning disable 618
-            { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
-            { "timestamptz",                 new(NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, "timestamp with time zone",    typeof(DateTimeOffset)) },
-            { "date",                        new(NpgsqlDbType.Date,        DbType.Date,           "date",                        typeof(NpgsqlDate)
+            { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, "timestamp with time zone",    typeof(DateTimeOffset)) },
+            { "timestamptz",                 new(NpgsqlDbType.TimestampTz, "timestamp with time zone",    typeof(DateTimeOffset)) },
+            { "date",                        new(NpgsqlDbType.Date,        "date",                        typeof(NpgsqlDate)
 #if NET6_0_OR_GREATER
                 , typeof(DateOnly)
 #endif
             ) },
-            { "time without time zone",      new(NpgsqlDbType.Time,        DbType.Time,     "timeout time zone"
+            { "time without time zone",      new(NpgsqlDbType.Time,        "timeout time zone"
 #if NET6_0_OR_GREATER
                 , typeof(TimeOnly)
 #endif
             ) },
-            { "time",                        new(NpgsqlDbType.Time,        DbType.Time,     "timeout time zone"
+            { "time",                        new(NpgsqlDbType.Time,        "timeout time zone"
 #if NET6_0_OR_GREATER
                 , typeof(TimeOnly)
 #endif
             ) },
-            { "time with time zone",         new(NpgsqlDbType.TimeTz,      DbType.Object,   "time with time zone") },
-            { "timetz",                      new(NpgsqlDbType.TimeTz,      DbType.Object,   "time with time zone") },
-            { "interval",                    new(NpgsqlDbType.Interval,    DbType.Object,   "interval", typeof(TimeSpan), typeof(NpgsqlTimeSpan)) },
+            { "time with time zone",         new(NpgsqlDbType.TimeTz,      "time with time zone") },
+            { "timetz",                      new(NpgsqlDbType.TimeTz,      "time with time zone") },
+            { "interval",                    new(NpgsqlDbType.Interval,    "interval", typeof(TimeSpan), typeof(NpgsqlTimeSpan)) },
 
-            { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   DbType.Object, "timestamp without time zone[]") },
-            { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, DbType.Object, "timestamp with time zone[]") },
-            { "tsrange",                       new(NpgsqlDbType.Range | NpgsqlDbType.Timestamp,   DbType.Object, "tsrange") },
-            { "tstzrange",                     new(NpgsqlDbType.Range | NpgsqlDbType.TimestampTz, DbType.Object, "tstzrange") },
-            { "tsmultirange",                  new(NpgsqlDbType.Multirange | NpgsqlDbType.Timestamp,   DbType.Object, "tsmultirange") },
-            { "tstzmultirange",                new(NpgsqlDbType.Multirange | NpgsqlDbType.TimestampTz, DbType.Object, "tstzmultirange") },
+            { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   "timestamp without time zone[]") },
+            { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, "timestamp with time zone[]") },
+            { "tsrange",                       new(NpgsqlDbType.Range | NpgsqlDbType.Timestamp,   "tsrange") },
+            { "tstzrange",                     new(NpgsqlDbType.Range | NpgsqlDbType.TimestampTz, "tstzrange") },
+            { "tsmultirange",                  new(NpgsqlDbType.Multirange | NpgsqlDbType.Timestamp,   "tsmultirange") },
+            { "tstzmultirange",                new(NpgsqlDbType.Multirange | NpgsqlDbType.TimestampTz, "tstzmultirange") },
 
             // Network types
-            { "cidr",      new(NpgsqlDbType.Cidr,     DbType.Object, "cidr") },
+            { "cidr",      new(NpgsqlDbType.Cidr,     "cidr") },
 #pragma warning disable 618
-            { "inet",      new(NpgsqlDbType.Inet,     DbType.Object, "inet", typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet), ReadOnlyIPAddressType) },
+            { "inet",      new(NpgsqlDbType.Inet,     "inet", typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet), ReadOnlyIPAddressType) },
 #pragma warning restore 618
-            { "macaddr",   new(NpgsqlDbType.MacAddr,  DbType.Object, "macaddr", typeof(PhysicalAddress)) },
-            { "macaddr8",  new(NpgsqlDbType.MacAddr8, DbType.Object, "macaddr8") },
+            { "macaddr",   new(NpgsqlDbType.MacAddr,  "macaddr", typeof(PhysicalAddress)) },
+            { "macaddr8",  new(NpgsqlDbType.MacAddr8, "macaddr8") },
 
             // Full-text search types
-            { "tsquery",   new(NpgsqlDbType.TsQuery,  DbType.Object, "tsquery",
+            { "tsquery",   new(NpgsqlDbType.TsQuery,  "tsquery",
                 typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
                 typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp)
                 ) },
-            { "tsvector",  new(NpgsqlDbType.TsVector, DbType.Object, "tsvector", typeof(NpgsqlTsVector)) },
+            { "tsvector",  new(NpgsqlDbType.TsVector, "tsvector", typeof(NpgsqlTsVector)) },
 
             // Geometry types
-            { "box",      new(NpgsqlDbType.Box,     DbType.Object, "box",     typeof(NpgsqlBox)) },
-            { "circle",   new(NpgsqlDbType.Circle,  DbType.Object, "circle",  typeof(NpgsqlCircle)) },
-            { "line",     new(NpgsqlDbType.Line,    DbType.Object, "line",    typeof(NpgsqlLine)) },
-            { "lseg",     new(NpgsqlDbType.LSeg,    DbType.Object, "lseg",    typeof(NpgsqlLSeg)) },
-            { "path",     new(NpgsqlDbType.Path,    DbType.Object, "path",    typeof(NpgsqlPath)) },
-            { "point",    new(NpgsqlDbType.Point,   DbType.Object, "point",   typeof(NpgsqlPoint)) },
-            { "polygon",  new(NpgsqlDbType.Polygon, DbType.Object, "polygon", typeof(NpgsqlPolygon)) },
+            { "box",      new(NpgsqlDbType.Box,     "box",     typeof(NpgsqlBox)) },
+            { "circle",   new(NpgsqlDbType.Circle,  "circle",  typeof(NpgsqlCircle)) },
+            { "line",     new(NpgsqlDbType.Line,    "line",    typeof(NpgsqlLine)) },
+            { "lseg",     new(NpgsqlDbType.LSeg,    "lseg",    typeof(NpgsqlLSeg)) },
+            { "path",     new(NpgsqlDbType.Path,    "path",    typeof(NpgsqlPath)) },
+            { "point",    new(NpgsqlDbType.Point,   "point",   typeof(NpgsqlPoint)) },
+            { "polygon",  new(NpgsqlDbType.Polygon, "polygon", typeof(NpgsqlPolygon)) },
 
             // LTree types
-            { "lquery",     new(NpgsqlDbType.LQuery,    DbType.Object, "lquery") },
-            { "ltree",      new(NpgsqlDbType.LTree,     DbType.Object, "ltree") },
-            { "ltxtquery",  new(NpgsqlDbType.LTxtQuery, DbType.Object, "ltxtquery") },
+            { "lquery",     new(NpgsqlDbType.LQuery,    "lquery") },
+            { "ltree",      new(NpgsqlDbType.LTree,     "ltree") },
+            { "ltxtquery",  new(NpgsqlDbType.LTxtQuery, "ltxtquery") },
 
             // UInt types
-            { "oid",        new(NpgsqlDbType.Oid,       DbType.Object, "oid") },
-            { "xid",        new(NpgsqlDbType.Xid,       DbType.Object, "xid") },
-            { "xid8",       new(NpgsqlDbType.Xid8,      DbType.Object, "xid8") },
-            { "cid",        new(NpgsqlDbType.Cid,       DbType.Object, "cid") },
-            { "regtype",    new(NpgsqlDbType.Regtype,   DbType.Object, "regtype") },
-            { "regconfig",  new(NpgsqlDbType.Regconfig, DbType.Object, "regconfig") },
+            { "oid",        new(NpgsqlDbType.Oid,       "oid") },
+            { "xid",        new(NpgsqlDbType.Xid,       "xid") },
+            { "xid8",       new(NpgsqlDbType.Xid8,      "xid8") },
+            { "cid",        new(NpgsqlDbType.Cid,       "cid") },
+            { "regtype",    new(NpgsqlDbType.Regtype,   "regtype") },
+            { "regconfig",  new(NpgsqlDbType.Regconfig, "regconfig") },
 
             // Misc types
-            { "boolean",     new(NpgsqlDbType.Boolean, DbType.Boolean, "boolean", typeof(bool)) },
-            { "bool",        new(NpgsqlDbType.Boolean, DbType.Boolean, "boolean", typeof(bool)) },
-            { "bytea",       new(NpgsqlDbType.Bytea,   DbType.Binary,  "bytea", typeof(byte[]), typeof(ArraySegment<byte>)
+            { "boolean",     new(NpgsqlDbType.Boolean, "boolean", typeof(bool)) },
+            { "bool",        new(NpgsqlDbType.Boolean, "boolean", typeof(bool)) },
+            { "bytea",       new(NpgsqlDbType.Bytea,   "bytea", typeof(byte[]), typeof(ArraySegment<byte>)
 #if !NETSTANDARD2_0
                 , typeof(ReadOnlyMemory<byte>), typeof(Memory<byte>)
 #endif
             ) },
-            { "uuid",        new(NpgsqlDbType.Uuid,    DbType.Guid,    "uuid", typeof(Guid)) },
-            { "bit varying", new(NpgsqlDbType.Varbit,  DbType.Object,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
-            { "varbit",      new(NpgsqlDbType.Varbit,  DbType.Object,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
-            { "bit",         new(NpgsqlDbType.Bit,     DbType.Object,  "bit") },
-            { "hstore",      new(NpgsqlDbType.Hstore,  DbType.Object,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>)
+            { "uuid",        new(NpgsqlDbType.Uuid,    "uuid", typeof(Guid)) },
+            { "bit varying", new(NpgsqlDbType.Varbit,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
+            { "varbit",      new(NpgsqlDbType.Varbit,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
+            { "bit",         new(NpgsqlDbType.Bit,     "bit") },
+            { "hstore",      new(NpgsqlDbType.Hstore,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>)
 #if !NETSTANDARD2_0 && !NETSTANDARD2_1
                 , typeof(ImmutableDictionary<string, string?>)
 #endif
             ) },
 
             // Internal types
-            { "int2vector",  new(NpgsqlDbType.Int2Vector,   DbType.Object, "int2vector") },
-            { "oidvector",   new(NpgsqlDbType.Oidvector,    DbType.Object, "oidvector") },
-            { "pg_lsn",      new(NpgsqlDbType.PgLsn,        DbType.Object, "pg_lsn", typeof(NpgsqlLogSequenceNumber)) },
-            { "tid",         new(NpgsqlDbType.Tid,          DbType.Object, "tid", typeof(NpgsqlTid)) },
-            { "char",        new(NpgsqlDbType.InternalChar, DbType.Object, "char") },
+            { "int2vector",  new(NpgsqlDbType.Int2Vector,   "int2vector") },
+            { "oidvector",   new(NpgsqlDbType.Oidvector,    "oidvector") },
+            { "pg_lsn",      new(NpgsqlDbType.PgLsn,        "pg_lsn", typeof(NpgsqlLogSequenceNumber)) },
+            { "tid",         new(NpgsqlDbType.Tid,          "tid", typeof(NpgsqlTid)) },
+            { "char",        new(NpgsqlDbType.InternalChar, "char") },
 
             // Special types
-            { "unknown",  new(NpgsqlDbType.Unknown, DbType.Object, "unknown") },
+            { "unknown",  new(NpgsqlDbType.Unknown, "unknown") },
         };
+
+        internal static void ResetMappings()
+        {
+            foreach (var mapping in Mappings)
+                mapping.Value.Reset();
+        }
 
         #region Cached handlers
 

@@ -252,7 +252,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             elementMapping.DataTypeName + "[]");
                         return true;
                     }
@@ -271,7 +270,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             elementMapping.DataTypeName + "[]");
                         return true;
                     }
@@ -286,7 +284,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Range | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             dataTypeName: null);
                         return true;
                     }

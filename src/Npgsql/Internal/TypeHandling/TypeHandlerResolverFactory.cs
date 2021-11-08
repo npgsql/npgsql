@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandling
@@ -25,14 +26,18 @@ namespace Npgsql.Internal.TypeHandling
 
 public class TypeMappingInfo
 {
-    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, DbType dbType, string? dataTypeName, Type clrType)
-        => (NpgsqlDbType, DbType, DataTypeName, ClrTypes) = (npgsqlDbType, dbType, dataTypeName, new[] { clrType });
+    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, string? dataTypeName, Type clrType)
+        => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, new[] { clrType });
 
-    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, DbType dbType, string? dataTypeName, params Type[] clrTypes)
-        => (NpgsqlDbType, DbType, DataTypeName, ClrTypes) = (npgsqlDbType, dbType, dataTypeName, clrTypes);
+    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, string? dataTypeName, params Type[] clrTypes)
+        => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, clrTypes);
 
     public NpgsqlDbType? NpgsqlDbType { get; }
-    public DbType DbType { get; }
+    DbType? dbType;
+    public DbType DbType
+        => dbType ??= NpgsqlDbType is null ? DbType.Object : GlobalTypeMapper.NpgsqlDbTypeToDbType(NpgsqlDbType.Value);
     public string? DataTypeName { get; }
     public Type[] ClrTypes { get; }
+
+    internal void Reset() => dbType = null;
 }

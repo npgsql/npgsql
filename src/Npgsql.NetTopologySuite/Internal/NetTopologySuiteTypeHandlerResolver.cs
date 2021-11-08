@@ -65,8 +65,8 @@ namespace Npgsql.NetTopologySuite.Internal
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
             => dataTypeName switch
             {
-                "geometry"  => new(NpgsqlDbType.Geometry,  DbType.Object, "geometry"),
-                "geography" => new(NpgsqlDbType.Geography, DbType.Object, "geography"),
+                "geometry"  => new(NpgsqlDbType.Geometry,  "geometry"),
+                "geography" => new(NpgsqlDbType.Geography, "geography"),
                 _ => null
             };
 
