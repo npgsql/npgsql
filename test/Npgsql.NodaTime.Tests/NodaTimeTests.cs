@@ -76,7 +76,6 @@ namespace Npgsql.NodaTime.Tests
                 {
                     new() { Value = localDateTime },
                     new() { Value = localDateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
-                    new() { Value = localDateTime, DbType = DbType.DateTime },
                     new() { Value = localDateTime, DbType = DbType.DateTime2 },
                     new() { Value = localDateTime.ToDateTimeUnspecified() },
                     new() { Value = DateTime.SpecifyKind(localDateTime.ToDateTimeUnspecified(), DateTimeKind.Local) },

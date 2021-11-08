@@ -63,28 +63,29 @@ namespace Npgsql.NodaTime.Tests
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected));
         }
 
-        static NpgsqlParameter[] TimestampParameters
+        static Func<NpgsqlParameter>[] TimestampParameters
         {
             get
             {
                 var localDateTime = new LocalDateTime(1998, 4, 12, 13, 26, 38);
 
-                return new NpgsqlParameter[]
+                return new Func<NpgsqlParameter>[]
                 {
-                    new() { Value = localDateTime },
-                    new() { Value = localDateTime.InUtc().ToInstant() },
-                    new() { Value = localDateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
-                    new() { Value = localDateTime, DbType = DbType.DateTime },
-                    new() { Value = localDateTime, DbType = DbType.DateTime2 },
-                    new() { Value = localDateTime.ToDateTimeUnspecified() },
-                    new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.Timestamp }
+                    () => new() { Value = localDateTime },
+                    () => new() { Value = localDateTime.InUtc().ToInstant() },
+                    () => new() { Value = localDateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
+                    () => new() { Value = localDateTime, DbType = DbType.DateTime },
+                    () => new() { Value = localDateTime, DbType = DbType.DateTime2 },
+                    () => new() { Value = localDateTime.ToDateTimeUnspecified() },
+                    () => new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.Timestamp }
                 };
             }
         }
 
         [Test, TestCaseSource(nameof(TimestampParameters))]
-        public async Task Timestamp_resolution(NpgsqlParameter parameter)
+        public async Task Timestamp_resolution(Func<NpgsqlParameter> parameterFunc)
         {
+            var parameter = parameterFunc();
             await using var conn = await OpenConnectionAsync();
             conn.TypeMapper.Reset();
             conn.TypeMapper.UseNodaTime();

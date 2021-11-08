@@ -10,6 +10,7 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping
 {
@@ -251,7 +252,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             elementMapping.DataTypeName + "[]");
                         return true;
                     }
@@ -270,7 +270,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             elementMapping.DataTypeName + "[]");
                         return true;
                     }
@@ -285,7 +284,6 @@ namespace Npgsql.TypeMapping
                     {
                         _mappingsByClrType[clrType] = typeMapping = new(
                             NpgsqlDbType.Range | elementMapping.NpgsqlDbType,
-                            DbType.Object,
                             dataTypeName: null);
                         return true;
                     }
@@ -418,7 +416,7 @@ namespace Npgsql.TypeMapping
                 DbType.Boolean               => NpgsqlDbType.Boolean,
                 DbType.Currency              => NpgsqlDbType.Money,
                 DbType.Date                  => NpgsqlDbType.Date,
-                DbType.DateTime              => NpgsqlDbType.Timestamp,
+                DbType.DateTime              => LegacyTimestampBehavior ? NpgsqlDbType.Timestamp : NpgsqlDbType.TimestampTz,
                 DbType.Decimal               => NpgsqlDbType.Numeric,
                 DbType.VarNumeric            => NpgsqlDbType.Numeric,
                 DbType.Double                => NpgsqlDbType.Double,
@@ -470,7 +468,7 @@ namespace Npgsql.TypeMapping
 
                 // Date/time types
                 NpgsqlDbType.Timestamp   => DbType.DateTime,
-                NpgsqlDbType.TimestampTz => DbType.DateTimeOffset,
+                NpgsqlDbType.TimestampTz => LegacyTimestampBehavior ? DbType.DateTimeOffset : DbType.DateTime,
                 NpgsqlDbType.Date        => DbType.Date,
                 NpgsqlDbType.Time        => DbType.Time,
 

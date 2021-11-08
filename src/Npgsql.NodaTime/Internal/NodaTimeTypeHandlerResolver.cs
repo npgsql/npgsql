@@ -166,18 +166,18 @@ namespace Npgsql.NodaTime.Internal
         internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
             => dataTypeName switch
             {
-                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,             DbType.DateTime, "timestamp without time zone"),
-                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz,           DbType.DateTime, "timestamp with time zone"),
-                "date"                                       => new(NpgsqlDbType.Date,                  DbType.Date,     "date"),
-                "time without time zone"                     => new(NpgsqlDbType.Time,                  DbType.Time,     "time without time zone"),
-                "time with time zone"                        => new(NpgsqlDbType.TimeTz,                DbType.Object,   "time with time zone"),
-                "interval"                                   => new(NpgsqlDbType.Interval,              DbType.Object,   "interval"),
+                "timestamp" or "timestamp without time zone" => new(NpgsqlDbType.Timestamp,             "timestamp without time zone"),
+                "timestamptz" or "timestamp with time zone"  => new(NpgsqlDbType.TimestampTz,           "timestamp with time zone"),
+                "date"                                       => new(NpgsqlDbType.Date,                  "date"),
+                "time without time zone"                     => new(NpgsqlDbType.Time,                  "time without time zone"),
+                "time with time zone"                        => new(NpgsqlDbType.TimeTz,                "time with time zone"),
+                "interval"                                   => new(NpgsqlDbType.Interval,              "interval"),
 
-                "tstzrange"                                  => new(NpgsqlDbType.TimestampTzRange,      DbType.Object,   "tstzrange"),
-                "daterange"                                  => new(NpgsqlDbType.DateRange,             DbType.Object,   "daterange"),
+                "tstzrange"                                  => new(NpgsqlDbType.TimestampTzRange,      "tstzrange"),
+                "daterange"                                  => new(NpgsqlDbType.DateRange,             "daterange"),
 
-                "datemultirange"                             => new(NpgsqlDbType.DateMultirange,        DbType.Object,   "datemultirange"),
-                "tstzmultirange"                             => new(NpgsqlDbType.TimestampTzMultirange, DbType.Object,   "tstzmultirange"),
+                "datemultirange"                             => new(NpgsqlDbType.DateMultirange,        "datemultirange"),
+                "tstzmultirange"                             => new(NpgsqlDbType.TimestampTzMultirange, "tstzmultirange"),
 
                 _ => null
             };

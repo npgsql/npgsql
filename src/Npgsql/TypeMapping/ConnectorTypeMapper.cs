@@ -414,7 +414,7 @@ namespace Npgsql.TypeMapping
             case PostgresArrayType pgArrayType:
                 if (TryGetMapping(pgArrayType.Element, out var elementMapping))
                 {
-                    mapping = new(elementMapping.NpgsqlDbType | NpgsqlDbType.Array, DbType.Object, pgType.DisplayName);
+                    mapping = new(elementMapping.NpgsqlDbType | NpgsqlDbType.Array, pgType.DisplayName);
                     return true;
                 }
 
@@ -424,7 +424,7 @@ namespace Npgsql.TypeMapping
             {
                 if (TryGetMapping(pgRangeType.Subtype, out var subtypeMapping))
                 {
-                    mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range, DbType.Object, pgType.DisplayName);
+                    mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range, pgType.DisplayName);
                     return true;
                 }
 
@@ -435,7 +435,7 @@ namespace Npgsql.TypeMapping
             {
                 if (TryGetMapping(pgMultirangeType.Subrange.Subtype, out var subtypeMapping))
                 {
-                    mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Multirange, DbType.Object, pgType.DisplayName);
+                    mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Multirange, pgType.DisplayName);
                     return true;
                 }
 
@@ -445,7 +445,7 @@ namespace Npgsql.TypeMapping
             case PostgresDomainType pgDomainType:
                 if (TryGetMapping(pgDomainType.BaseType, out var baseMapping))
                 {
-                    mapping = new(baseMapping.NpgsqlDbType, baseMapping.DbType, pgType.DisplayName, baseMapping.ClrTypes);
+                    mapping = new(baseMapping.NpgsqlDbType, pgType.DisplayName, baseMapping.ClrTypes);
                     return true;
                 }
 
@@ -574,7 +574,7 @@ namespace Npgsql.TypeMapping
                     _handlersByDataTypeName[pgType.Name] =
                         _handlersByClrType[clrType] = handler;
 
-            _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, DbType.Object, pgType.Name, clrType);
+            _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, pgType.Name, clrType);
         }
 
         public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
