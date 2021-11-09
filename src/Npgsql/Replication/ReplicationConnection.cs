@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -687,7 +686,7 @@ namespace Npgsql.Replication
                 var lastReceivedLsn = Interlocked.Read(ref _lastReceivedLsn);
                 var lastFlushedLsn = Interlocked.Read(ref _lastFlushedLsn);
                 var lastAppliedLsn = Interlocked.Read(ref _lastAppliedLsn);
-                var timestamp = DateTime.Now;
+                var timestamp = DateTime.UtcNow;
                 buf.WriteInt64(lastReceivedLsn);
                 buf.WriteInt64(lastFlushedLsn);
                 buf.WriteInt64(lastAppliedLsn);
