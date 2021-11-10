@@ -706,6 +706,16 @@ LANGUAGE 'plpgsql'");
             Assert.False(reader.NextResult());
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4124")]
+        public async Task SchemaOnly_GetDataTypeName_with_unsupported_type()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand(@"select aggfnoid from pg_aggregate", conn);
+            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("regproc"));
+        }
+
         #endregion SchemaOnly
 
         #region GetOrdinal
