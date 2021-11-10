@@ -1428,5 +1428,20 @@ $$;");
             Assert.That(data, Is.EquivalentTo((byte[])(await firstQuery)!));
             Assert.That(otherData, Is.EquivalentTo((byte[])(await secondQuery)!));
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4123")]
+        public async Task Bug4123()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            using var rdr = await cmd.ExecuteReaderAsync();
+
+            await rdr.ReadAsync();
+            using var stream = await rdr.GetStreamAsync(0);
+
+            Assert.DoesNotThrowAsync(stream.FlushAsync);
+            Assert.DoesNotThrow(stream.Flush);
+        }
     }
 }
