@@ -15,7 +15,7 @@
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="6.0.0" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.1.0" />
 
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="3.11.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.0.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.3" />
     <PackageVersion Include="Scriban.Signed" Version="5.0.0 " />
 
