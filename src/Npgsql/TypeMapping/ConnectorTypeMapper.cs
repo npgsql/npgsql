@@ -227,7 +227,9 @@ namespace Npgsql.TypeMapping
                     return _handlersByDataTypeName[typeName] = ResolveByOID(pgDomainType.BaseType.OID);
 
                 case PostgresBaseType pgBaseType:
-                    throw new NotSupportedException($"PostgreSQL type '{pgBaseType}' isn't supported by Npgsql");
+                    return throwOnError
+                        ? throw new NotSupportedException($"PostgreSQL type '{pgBaseType}' isn't supported by Npgsql")
+                        : null;
 
                 case PostgresCompositeType pgCompositeType:
                     // We don't support writing unmapped composite types, but we do support reading unmapped composite types.
