@@ -617,7 +617,8 @@ namespace Npgsql
                         break;
                     }
 
-                    ReadBuffer.Clear();  // Reset to empty after reading single SSL char
+                    if (ReadBuffer.ReadBytesLeft > 0)
+                        throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
                 }
 
                 Log.Trace($"Socket connected to {Host}:{Port}");
@@ -1272,7 +1273,7 @@ namespace Npgsql
                     .GetAwaiter().GetResult();
                 SendMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
-                Debug.Assert(ReadBuffer.ReadPosition == 0);
+                Debug.Assert(ReadBuffer.ReadBytesLeft == 0);
 
                 // Now wait for the server to close the connection, better chance of the cancellation
                 // actually being delivered before we continue with the user's logic.
