@@ -8,12 +8,10 @@ using NpgsqlTypes;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 using BclDateHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateHandler;
 
-#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
-
 namespace Npgsql.NodaTime.Internal
 {
     sealed partial class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>,
-        INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>, INpgsqlSimpleTypeHandler<int>
+        INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<int>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
@@ -56,15 +54,6 @@ namespace Npgsql.NodaTime.Internal
             var totalDaysSinceEra = Period.Between(default, value, PeriodUnits.Days).Days;
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
-
-        NpgsqlDate INpgsqlSimpleTypeHandler<NpgsqlDate>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => _bclHandler.Read<NpgsqlDate>(buf, len, fieldDescription);
-
-        int INpgsqlSimpleTypeHandler<NpgsqlDate>.ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
-
-        void INpgsqlSimpleTypeHandler<NpgsqlDate>.Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => _bclHandler.Write(value, buf, parameter);
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<DateTime>(buf, len, fieldDescription);

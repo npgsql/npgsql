@@ -6,8 +6,6 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
 
-#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
-
 namespace Npgsql.Tests.Types
 {
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
@@ -39,13 +37,6 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetDateTime(0), Is.EqualTo(dateTime));
             Assert.That(reader.GetDateTime(0).Kind, Is.EqualTo(DateTimeKind.Unspecified));
             Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(dateTime));
-
-            // Provider-specific type (NpgsqlTimeStamp)
-            var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDateTime)));
-            Assert.That(reader.GetTimeStamp(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(npgsqlDateTime));
 
             // DateTimeOffset
             Assert.That(() => reader.GetFieldValue<DateTimeOffset>(0), Throws.Exception.TypeOf<InvalidCastException>());
@@ -81,10 +72,7 @@ namespace Npgsql.Tests.Types
                     () => new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc) },
                     () => new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.Timestamp },
                     () => new() { Value = dateTime, DbType = DbType.DateTime },
-                    () => new() { Value = dateTime, DbType = DbType.DateTime2 },
-                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified) },
-                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Local) },
-                    () => new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc) },
+                    () => new() { Value = dateTime, DbType = DbType.DateTime2 }
                 };
             }
         }
@@ -148,14 +136,6 @@ namespace Npgsql.Tests.Types
 
             // DateTimeOffset
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(dateTime.ToLocalTime())));
-
-            // Provider-specific type (NpgsqlTimeStamp)
-            var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDateTime)));
-            Assert.That(reader.GetTimeStamp(0), Is.EqualTo(npgsqlDateTime.ToLocalTime()));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDateTime.ToLocalTime()));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(npgsqlDateTime.ToLocalTime()));
-            Assert.That(reader.GetTimeStamp(0).Kind, Is.EqualTo(DateTimeKind.Local));
         }
 
         static readonly TestCaseData[] TimestampTzValues =
@@ -193,9 +173,6 @@ namespace Npgsql.Tests.Types
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Unspecified), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                     new() { Value = dateTime.ToLocalTime(), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc).ToLocalTime(), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                     new() { Value = new DateTimeOffset(dateTime.ToLocalTime()) }
                 };
             }

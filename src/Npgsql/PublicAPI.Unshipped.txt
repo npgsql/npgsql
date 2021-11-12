@@ -1,1 +1,215 @@
 ﻿#nullable enable
+*REMOVED*const NpgsqlTypes.NpgsqlDate.MaxYear = 5874897 -> int
+*REMOVED*const NpgsqlTypes.NpgsqlDate.MinYear = -4714 -> int
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.DaysPerMonth = 30 -> int
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.HoursPerDay = 24 -> int
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.MonthsPerYear = 12 -> int
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerDay = 864000000000 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerHour = 36000000000 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMicrosecond = 10 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMillsecond = 10000 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
+*REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
+*REMOVED*Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.AddMonths(int months) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.AddYears(int years) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.Compare(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.Compare(object? x, object? y) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.CompareTo(NpgsqlTypes.NpgsqlDate other) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.CompareTo(object? o) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.Day.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.DayOfWeek.get -> System.DayOfWeek
+*REMOVED*NpgsqlTypes.NpgsqlDate.DayOfYear.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.Equals(NpgsqlTypes.NpgsqlDate other) -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDate.IsFinite.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDate.IsInfinity.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDate.IsLeapYear.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDate.IsNegativeInfinity.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDate.Month.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDate.NpgsqlDate() -> void
+*REMOVED*NpgsqlTypes.NpgsqlDate.NpgsqlDate(int year, int month, int day) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDate.NpgsqlDate(NpgsqlTypes.NpgsqlDate copyFrom) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateOnly date) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateTime dateTime) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDate.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDate.Year.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Add(in NpgsqlTypes.NpgsqlTimeSpan value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Add(System.TimeSpan value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddDays(double value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddHours(double value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddMilliseconds(double value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddMinutes(double value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddMonths(int value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddSeconds(double value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddTicks(long value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.AddYears(int value) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Compare(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Compare(object? x, object? y) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.CompareTo(NpgsqlTypes.NpgsqlDateTime other) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.CompareTo(object? o) -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Date.get -> NpgsqlTypes.NpgsqlDate
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Day.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.DayOfWeek.get -> System.DayOfWeek
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.DayOfYear.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Equals(NpgsqlTypes.NpgsqlDateTime other) -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Hour.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.IsFinite.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.IsInfinity.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.IsLeapYear.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.IsNegativeInfinity.get -> bool
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Kind.get -> System.DateTimeKind
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Millisecond.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Minute.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Month.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Normalize() -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime() -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(int year, int month, int day, int hours, int minutes, int seconds, int milliseconds, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(int year, int month, int day, int hours, int minutes, int seconds, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(long ticks) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(long ticks, System.DateTimeKind kind) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(NpgsqlTypes.NpgsqlDate date) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(NpgsqlTypes.NpgsqlDate date, System.TimeSpan time, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(System.DateTime dateTime) -> void
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Second.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Subtract(NpgsqlTypes.NpgsqlDateTime timestamp) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Ticks.get -> long
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Time.get -> System.TimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.ToDateTime() -> System.DateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.ToLocalTime() -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.ToUniversalTime() -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*NpgsqlTypes.NpgsqlDateTime.Year.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Canonicalize() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.CompareTo(NpgsqlTypes.NpgsqlTimeSpan other) -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.CompareTo(object? other) -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Days.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Duration() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Equals(NpgsqlTypes.NpgsqlTimeSpan other) -> bool
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Hours.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.JustifyDays() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.JustifyInterval() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.JustifyMonths() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Microseconds.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Milliseconds.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Minutes.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Months.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Negate() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan() -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int days, int hours, int minutes, int seconds) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int days, int hours, int minutes, int seconds, int milliseconds) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int months, int days, int hours, int minutes, int seconds, int milliseconds) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int months, int days, long ticks) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(long ticks) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(System.TimeSpan timespan) -> void
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Seconds.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Ticks.get -> long
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.Time.get -> System.TimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalDays.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalHours.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalMicroseconds.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalMilliseconds.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalMinutes.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalMonths.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalSeconds.get -> double
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.TotalTicks.get -> long
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.UnjustifyDays() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.UnjustifyInterval() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*NpgsqlTypes.NpgsqlTimeSpan.UnjustifyMonths() -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*override NpgsqlTypes.NpgsqlDate.Equals(object? obj) -> bool
+*REMOVED*override NpgsqlTypes.NpgsqlDate.GetHashCode() -> int
+*REMOVED*override NpgsqlTypes.NpgsqlDate.ToString() -> string!
+*REMOVED*override NpgsqlTypes.NpgsqlDateTime.Equals(object? obj) -> bool
+*REMOVED*override NpgsqlTypes.NpgsqlDateTime.GetHashCode() -> int
+*REMOVED*override NpgsqlTypes.NpgsqlDateTime.ToString() -> string!
+*REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.Equals(object? obj) -> bool
+*REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.GetHashCode() -> int
+*REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.ToString() -> string!
+*REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
+*REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator System.DateTime(NpgsqlTypes.NpgsqlDate date) -> System.DateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDate.Now.get -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator !=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator +(NpgsqlTypes.NpgsqlDate date, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator +(NpgsqlTypes.NpgsqlTimeSpan interval, NpgsqlTypes.NpgsqlDate date) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator -(NpgsqlTypes.NpgsqlDate date, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator -(NpgsqlTypes.NpgsqlDate dateX, NpgsqlTypes.NpgsqlDate dateY) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator <(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator <=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator ==(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator >(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.operator >=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.Parse(string! str) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
+*REMOVED*static NpgsqlTypes.NpgsqlDate.ToDateTime(NpgsqlTypes.NpgsqlDate date) -> System.DateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDate.Today.get -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.Tomorrow.get -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDate.TryParse(string! str, out NpgsqlTypes.NpgsqlDate date) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDate.Yesterday.get -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.explicit operator System.DateTime(NpgsqlTypes.NpgsqlDateTime npgsqlDateTime) -> System.DateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.implicit operator NpgsqlTypes.NpgsqlDateTime(System.DateTime dateTime) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.Now.get -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator !=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator +(NpgsqlTypes.NpgsqlDateTime timestamp, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator +(NpgsqlTypes.NpgsqlTimeSpan interval, NpgsqlTypes.NpgsqlDateTime timestamp) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator -(NpgsqlTypes.NpgsqlDateTime timestamp, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator -(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator <(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator <=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator ==(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator >(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.operator >=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.Parse(string! str) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlDateTime.ToNpgsqlDateTime(System.DateTime dateTime) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.Compare(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> int
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.explicit operator System.TimeSpan(NpgsqlTypes.NpgsqlTimeSpan interval) -> System.TimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromDays(double days) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromHours(double hours) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromMicroseconds(double micro) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromMilliseconds(double milli) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromMinutes(double minutes) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromMonths(double months) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromSeconds(double seconds) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.FromTicks(long ticks) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.implicit operator NpgsqlTypes.NpgsqlTimeSpan(System.TimeSpan timespan) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator !=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator +(NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator +(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator -(NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator -(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator <(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator <=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator ==(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator >(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.operator >=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.Parse(string! str) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.Plus(in NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.ToNpgsqlTimeSpan(System.TimeSpan timespan) -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.ToTimeSpan(in NpgsqlTypes.NpgsqlTimeSpan interval) -> System.TimeSpan
+*REMOVED*static NpgsqlTypes.NpgsqlTimeSpan.TryParse(string! str, out NpgsqlTypes.NpgsqlTimeSpan result) -> bool
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.Epoch -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.Era -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.Infinity -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.MaxCalculableValue -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.MinCalculableValue -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDate.NegativeInfinity -> NpgsqlTypes.NpgsqlDate
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDateTime.Epoch -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDateTime.Era -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDateTime.Infinity -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static readonly NpgsqlTypes.NpgsqlDateTime.NegativeInfinity -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.MaxValue -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.MinValue -> NpgsqlTypes.NpgsqlTimeSpan
+*REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.Zero -> NpgsqlTypes.NpgsqlTimeSpan

@@ -5,8 +5,6 @@ using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
-#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
-
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -19,12 +17,15 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>,
-        INpgsqlSimpleTypeHandler<int>
+    public partial class DateHandler : NpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<int>
 #if NET6_0_OR_GREATER
         , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
     {
+        const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
+
+        static readonly DateTime BaseValueDateTime = new(2000, 1, 1, 0, 0, 0);
+
         /// <summary>
         /// Constructs a <see cref="DateHandler"/>
         /// </summary>
@@ -34,32 +35,16 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
-
-            if (npgsqlDate.IsFinite)
-                return (DateTime)npgsqlDate;
-            if (DisableDateTimeInfinityConversions)
-                throw new InvalidCastException("Can't convert infinite date values to DateTime");
-            if (npgsqlDate.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
-        }
-
-        /// <remarks>
-        /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
-        /// </remarks>
-        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var binDate = buf.ReadInt32();
-
-            return binDate switch
+            => buf.ReadInt32() switch
             {
-                int.MaxValue => NpgsqlDate.Infinity,
-                int.MinValue => NpgsqlDate.NegativeInfinity,
-                _            => new NpgsqlDate(binDate + 730119)
+                int.MaxValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : DateTime.MaxValue,
+                int.MinValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : DateTime.MinValue,
+                var value => BaseValueDateTime + TimeSpan.FromDays(value)
             };
-        }
 
         int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => buf.ReadInt32();
@@ -72,9 +57,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 4;
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter) => 4;
-
-        /// <inheritdoc />
         public int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => 4;
 
         /// <inheritdoc />
@@ -84,29 +66,18 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             {
                 if (value == DateTime.MaxValue)
                 {
-                    Write(NpgsqlDate.Infinity, buf, parameter);
+                    buf.WriteInt32(int.MaxValue);
                     return;
                 }
 
                 if (value == DateTime.MinValue)
                 {
-                    Write(NpgsqlDate.NegativeInfinity, buf, parameter);
+                    buf.WriteInt32(int.MinValue);
                     return;
                 }
             }
 
-            Write(new NpgsqlDate(value), buf, parameter);
-        }
-
-        /// <inheritdoc />
-        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            if (value == NpgsqlDate.NegativeInfinity)
-                buf.WriteInt32(int.MinValue);
-            else if (value == NpgsqlDate.Infinity)
-                buf.WriteInt32(int.MaxValue);
-            else
-                buf.WriteInt32(value.DaysSinceEra - 730119);
+            buf.WriteInt32((value - BaseValueDateTime).Days);
         }
 
         /// <inheritdoc />
@@ -116,18 +87,19 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         #endregion Write
 
 #if NET6_0_OR_GREATER
-        DateOnly INpgsqlSimpleTypeHandler<DateOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-        {
-            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
+        static readonly DateOnly BaseValueDateOnly = new(2000, 1, 1);
 
-            if (npgsqlDate.IsFinite)
-                return (DateOnly)npgsqlDate;
-            if (DisableDateTimeInfinityConversions)
-                throw new InvalidCastException("Can't convert infinite date values to DateOnly");
-            if (npgsqlDate.IsInfinity)
-                return DateOnly.MaxValue;
-            return DateOnly.MinValue;
-        }
+        DateOnly INpgsqlSimpleTypeHandler<DateOnly>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => buf.ReadInt32() switch
+            {
+                int.MaxValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : DateOnly.MaxValue,
+                int.MinValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    : DateOnly.MinValue,
+                var value => BaseValueDateOnly.AddDays(value)
+            };
 
         public int ValidateAndGetLength(DateOnly value, NpgsqlParameter? parameter) => 4;
 
@@ -137,18 +109,18 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             {
                 if (value == DateOnly.MaxValue)
                 {
-                    Write(NpgsqlDate.Infinity, buf, parameter);
+                    buf.WriteInt32(int.MaxValue);
                     return;
                 }
 
                 if (value == DateOnly.MinValue)
                 {
-                    Write(NpgsqlDate.NegativeInfinity, buf, parameter);
+                    buf.WriteInt32(int.MinValue);
                     return;
                 }
             }
 
-            Write(new NpgsqlDate(value), buf, parameter);
+            buf.WriteInt32(value.DayNumber - BaseValueDateOnly.DayNumber);
         }
 
         public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)

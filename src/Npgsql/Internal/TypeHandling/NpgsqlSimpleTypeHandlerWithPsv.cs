@@ -10,10 +10,9 @@ namespace Npgsql.Internal.TypeHandling
 {
     /// <summary>
     /// A simple type handler that supports a provider-specific value in addition to its default value.
-    /// This is necessary mainly in cases where the CLR type cannot represent the full range of the
-    /// PostgreSQL type, and a custom CLR type is needed (e.g. <see cref="DateTime"/> and
-    /// <see cref="NpgsqlDateTime"/>). The provider-specific type <typeparamref name="TPsv"/> will be returned
-    /// from calls to <see cref="DbDataReader.GetProviderSpecificValue"/>.
+    /// This is necessary mainly in cases where the CLR type cannot represent the full range of the PostgreSQL type, and a custom CLR type
+    /// is needed. The provider-specific type <typeparamref name="TPsv"/> will be returned from calls to
+    /// <see cref="DbDataReader.GetProviderSpecificValue"/>.
     /// </summary>
     /// <typeparam name="TDefault">
     /// The default CLR type that this handler will read and write. For example, calling <see cref="DbDataReader.GetValue"/>

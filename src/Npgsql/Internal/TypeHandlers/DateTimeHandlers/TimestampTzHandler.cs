@@ -7,8 +7,6 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using static Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateTimeUtils;
 
-#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
-
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -21,7 +19,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimestampTzHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>,
+    public partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<DateTime>,
         INpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<long>
     {
         /// <summary>
@@ -44,18 +42,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             return LegacyTimestampBehavior && (DisableDateTimeInfinityConversions || dateTime != DateTime.MaxValue && dateTime != DateTime.MinValue)
                 ? dateTime.ToLocalTime()
                 : dateTime;
-        }
-
-        /// <inheritdoc />
-        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var ts = ReadNpgsqlDateTime(buf, len, fieldDescription);
-
-            if (!ts.IsFinite)
-                return ts;
-
-            var npgsqlDateTime = new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc);
-            return LegacyTimestampBehavior ? npgsqlDateTime.ToLocalTime() : npgsqlDateTime;
         }
 
         DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
@@ -104,18 +90,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
                     "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
-            => value.Kind == DateTimeKind.Utc ||
-               value == NpgsqlDateTime.Infinity ||
-               value == NpgsqlDateTime.NegativeInfinity ||
-               LegacyTimestampBehavior
-                ? 8
-                : throw new InvalidCastException(
-                    $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
-                    "Note that it's not possible to mix DateTimes with different Kinds in an array/range. " +
-                    "See the Npgsql.EnableLegacyTimestampBehavior AppContext switch to enable legacy behavior.");
-
-        /// <inheritdoc />
         public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
             => value.Offset == TimeSpan.Zero || LegacyTimestampBehavior
                 ? 8
@@ -147,29 +121,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
             }
             else
                 Debug.Assert(value.Kind == DateTimeKind.Utc || value == DateTime.MinValue || value == DateTime.MaxValue);
-
-            WriteTimestamp(value, buf);
-        }
-
-        /// <inheritdoc />
-        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            if (LegacyTimestampBehavior)
-            {
-                switch (value.Kind)
-                {
-                case DateTimeKind.Unspecified:
-                case DateTimeKind.Utc:
-                    break;
-                case DateTimeKind.Local:
-                    value = value.ToUniversalTime();
-                    break;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-                }
-            }
-            else
-                Debug.Assert(value.Kind == DateTimeKind.Utc || !value.IsFinite);
 
             WriteTimestamp(value, buf);
         }
