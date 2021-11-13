@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Interfaces;
 using static Npgsql.Tests.TestUtil;
 
 #pragma warning disable 618 // NpgsqlDateTime, NpgsqlDate and NpgsqlTimespan are obsolete, remove in 7.0
@@ -724,6 +725,17 @@ namespace Npgsql.Tests.Types
                 // Internal PostgreSQL representation, for out-of-range values.
                 Assert.That(() => reader.GetFieldValue<NpgsqlInterval>(i), Is.EqualTo(expectedNpgsqlInterval));
             }
+        }
+
+        [Test]
+        public async Task Interval_with_months_cannot_read_as_TimeSpan()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '1 month 2 days'::interval", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(() => reader.GetTimeSpan(0), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
         #endregion
