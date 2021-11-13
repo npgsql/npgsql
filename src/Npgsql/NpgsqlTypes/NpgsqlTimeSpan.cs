@@ -570,7 +570,9 @@ namespace NpgsqlTypes
         /// Casts an <see cref="NpgsqlTimeSpan"/> to a <see cref="TimeSpan"/>.
         /// </summary>
         public static TimeSpan ToTimeSpan(in NpgsqlTimeSpan interval)
-            => new(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
+            => interval.Months > 0
+                ? throw new InvalidCastException("Cannot convert interval value with non-zero months to TimeSpan")
+                : new(interval.Ticks + interval.Days * TicksPerDay);
 
         #endregion
 
