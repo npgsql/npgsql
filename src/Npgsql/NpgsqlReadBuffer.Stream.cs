@@ -111,10 +111,14 @@ namespace Npgsql
             }
 
             public override void Flush()
-                => throw new NotSupportedException();
+                => CheckDisposed();
 
             public override Task FlushAsync(CancellationToken cancellationToken)
-                => throw new NotSupportedException();
+            {
+                CheckDisposed();
+                return cancellationToken.IsCancellationRequested
+                    ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
+            }
 
             public override int Read(byte[] buffer, int offset, int count)
             {
