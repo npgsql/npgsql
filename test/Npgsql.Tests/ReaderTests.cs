@@ -460,29 +460,6 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             }
         }
 
-#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
-        [Test]
-        public async Task GetProviderSpecificValues()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", conn);
-            using (var dr = await command.ExecuteReaderAsync(Behavior))
-            {
-                dr.Read();
-                var values = new object[4];
-                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
-                Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
-            }
-            using (var dr = await command.ExecuteReaderAsync(Behavior))
-            {
-                dr.Read();
-                var values = new object[2];
-                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
-                Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
-            }
-        }
-#pragma warning restore 618
-
         [Test]
         public async Task ExecuteReader_getting_empty_resultset_with_output_parameter()
         {
@@ -940,7 +917,6 @@ LANGUAGE plpgsql VOLATILE";
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
         }
 
-#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
         [Test]
         public async Task Invalid_cast()
         {
@@ -957,11 +933,10 @@ LANGUAGE plpgsql VOLATILE";
             using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
-                Assert.That(() => reader.GetDate(0), Throws.Exception.TypeOf<InvalidCastException>());
+                Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
-#pragma warning restore 618
 
         [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]
         public async Task Many_reads()

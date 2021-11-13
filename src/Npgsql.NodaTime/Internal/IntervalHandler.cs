@@ -7,14 +7,11 @@ using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using BclIntervalHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.IntervalHandler;
 
-#pragma warning disable 618 // NpgsqlTimeSpan is obsolete, remove in 7.0
-
 namespace Npgsql.NodaTime.Internal
 {
     sealed partial class IntervalHandler :
         NpgsqlSimpleTypeHandler<Period>,
         INpgsqlSimpleTypeHandler<Duration>,
-        INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>,
         INpgsqlSimpleTypeHandler<TimeSpan>,
         INpgsqlSimpleTypeHandler<NpgsqlInterval>
     {
@@ -88,15 +85,6 @@ namespace Npgsql.NodaTime.Internal
             buf.WriteInt32(value.Days); // days
             buf.WriteInt32(0); // months
         }
-
-        NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => _bclHandler.Read<NpgsqlTimeSpan>(buf, len, fieldDescription);
-
-        int INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
-
-        void INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => _bclHandler.Write(value, buf, parameter);
 
         TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);

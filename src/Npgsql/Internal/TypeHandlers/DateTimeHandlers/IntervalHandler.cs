@@ -4,8 +4,6 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-#pragma warning disable 618 // NpgsqlTimeSpan is obsolete, remove in 7.0
-
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 {
     /// <summary>
@@ -18,8 +16,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>,
-        INpgsqlSimpleTypeHandler<NpgsqlInterval>
+    public partial class IntervalHandler : NpgsqlSimpleTypeHandler<TimeSpan>, INpgsqlSimpleTypeHandler<NpgsqlInterval>
     {
         /// <summary>
         /// Constructs an <see cref="IntervalHandler"/>
@@ -28,15 +25,15 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
-
-        /// <inheritdoc />
-        protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            var ticks = buf.ReadInt64();
-            var day = buf.ReadInt32();
-            var month = buf.ReadInt32();
-            return new NpgsqlTimeSpan(month, day, ticks * 10);
+            var microseconds = buf.ReadInt64();
+            var days = buf.ReadInt32();
+            var months = buf.ReadInt32();
+
+            if (months > 0)
+                throw new InvalidCastException("Cannot convert interval value with non-zero months to TimeSpan");
+
+            return new(microseconds * 10 + days * TimeSpan.TicksPerDay);
         }
 
         NpgsqlInterval INpgsqlSimpleTypeHandler<NpgsqlInterval>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
@@ -51,23 +48,17 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 16;
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter) => 16;
-
-        /// <inheritdoc />
         public int ValidateAndGetLength(NpgsqlInterval value, NpgsqlParameter? parameter) => 16;
 
         /// <inheritdoc />
-        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            buf.WriteInt64(value.Ticks / 10); // TODO: round?
-            buf.WriteInt32(value.Days);
-            buf.WriteInt32(value.Months);
-        }
-
-        // TODO: Can write directly from TimeSpan
-        /// <inheritdoc />
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => Write(value, buf, parameter);
+        {
+            var ticksInDay = value.Ticks - TimeSpan.TicksPerDay * value.Days;
+
+            buf.WriteInt64(ticksInDay / 10);
+            buf.WriteInt32(value.Days);
+            buf.WriteInt32(0);
+        }
 
         public void Write(NpgsqlInterval value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {

@@ -58,13 +58,11 @@ namespace Npgsql.TypeMapping
             { "jsonpath",          new(NpgsqlDbType.JsonPath,  "jsonpath") },
 
             // Date/time types
-#pragma warning disable 618 // NpgsqlDateTime is obsolete, remove in 7.0
-            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
-            { "timestamp",                   new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime), typeof(NpgsqlDateTime)) },
-#pragma warning disable 618
+            { "timestamp without time zone", new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime)) },
+            { "timestamp",                   new(NpgsqlDbType.Timestamp,   "timestamp without time zone", typeof(DateTime)) },
             { "timestamp with time zone",    new(NpgsqlDbType.TimestampTz, "timestamp with time zone",    typeof(DateTimeOffset)) },
             { "timestamptz",                 new(NpgsqlDbType.TimestampTz, "timestamp with time zone",    typeof(DateTimeOffset)) },
-            { "date",                        new(NpgsqlDbType.Date,        "date",                        typeof(NpgsqlDate)
+            { "date",                        new(NpgsqlDbType.Date,        "date"
 #if NET6_0_OR_GREATER
                 , typeof(DateOnly)
 #endif
@@ -81,7 +79,7 @@ namespace Npgsql.TypeMapping
             ) },
             { "time with time zone",         new(NpgsqlDbType.TimeTz,      "time with time zone") },
             { "timetz",                      new(NpgsqlDbType.TimeTz,      "time with time zone") },
-            { "interval",                    new(NpgsqlDbType.Interval,    "interval", typeof(TimeSpan), typeof(NpgsqlTimeSpan)) },
+            { "interval",                    new(NpgsqlDbType.Interval,    "interval", typeof(TimeSpan)) },
 
             { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   "timestamp without time zone[]") },
             { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, "timestamp with time zone[]") },
@@ -398,11 +396,6 @@ namespace Npgsql.TypeMapping
 #endif
                 { typeof(TimeSpan),       "interval" },
                 { typeof(NpgsqlInterval), "interval" },
-#pragma warning disable 618 // NpgsqlDateTime and NpgsqlDate are obsolete, remove in 7.0
-                { typeof(NpgsqlDateTime), "timestamp without time zone" },
-                { typeof(NpgsqlDate),     "date" },
-                { typeof(NpgsqlTimeSpan), "interval" },
-#pragma warning restore 618
 
                 // Network types
                 { typeof(IPAddress),                       "inet" },
@@ -581,12 +574,6 @@ namespace Npgsql.TypeMapping
                 return _intervalHandler;
             if (typeof(T) == typeof(NpgsqlInterval))
                 return _intervalHandler;
-#pragma warning disable 618 // NpgsqlDate and NpgsqlTimeSpan are obsolete, remove in 7.0
-            if (typeof(T) == typeof(NpgsqlDate))
-                return _dateHandler;
-            if (typeof(T) == typeof(NpgsqlTimeSpan))
-                return _intervalHandler;
-#pragma warning restore 618
 
             // Network types
             if (typeof(T) == typeof(IPAddress))

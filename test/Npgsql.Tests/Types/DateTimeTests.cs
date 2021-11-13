@@ -7,8 +7,6 @@ using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 using static Npgsql.Tests.TestUtil;
 
-#pragma warning disable 618 // NpgsqlDateTime, NpgsqlDate and NpgsqlTimespan are obsolete, remove in 7.0
-
 namespace Npgsql.Tests.Types
 {
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
@@ -17,43 +15,63 @@ namespace Npgsql.Tests.Types
         #region Date
 
         [Test]
-        public async Task Date()
+        public async Task Date_read()
         {
             using var conn = await OpenConnectionAsync();
-            var dateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
-            var npgsqlDate = new NpgsqlDate(dateTime);
+            using var cmd = new NpgsqlCommand("SELECT '2020-10-01'::date", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) {Value = npgsqlDate};
-            var p2 = new NpgsqlParameter {ParameterName = "p2", Value = npgsqlDate};
-            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
-            Assert.That(p2.DbType, Is.EqualTo(DbType.Date));
-            cmd.Parameters.Add(p1);
-            cmd.Parameters.Add(p2);
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("date"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(DateTime)));
 
-            for (var i = 0; i < cmd.Parameters.Count; i++)
+            var expected = new DateTime(2020, 10, 1);
+            Assert.That(reader[0], Is.EqualTo(expected));
+            Assert.That(reader.GetDateTime(0), Is.EqualTo(expected));
+            Assert.That(reader.GetDateTime(0).Kind, Is.EqualTo(DateTimeKind.Unspecified));
+            Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(expected));
+
+            // Internal PostgreSQL representation, for out-of-range values.
+            Assert.That(() => reader.GetInt32(0), Throws.Nothing);
+        }
+
+        [Test]
+        public async Task Date_write_values()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
             {
-                // Regular type (DateTime)
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTime)));
-                Assert.That(reader.GetDateTime(i), Is.EqualTo(dateTime));
-                Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(dateTime));
-                Assert.That(reader[i], Is.EqualTo(dateTime));
-                Assert.That(reader.GetValue(i), Is.EqualTo(dateTime));
+                Parameters = { new() { Value = new DateTime(2020, 10, 1), NpgsqlDbType = NpgsqlDbType.Date } }
+            };
 
-                // Provider-specific type (NpgsqlDate)
-                Assert.That(reader.GetDate(i), Is.EqualTo(npgsqlDate));
-                Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDate)));
-                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDate));
-                Assert.That(reader.GetFieldValue<NpgsqlDate>(i), Is.EqualTo(npgsqlDate));
-
-                // Internal PostgreSQL representation, for out-of-range values.
-                Assert.That(() => reader.GetInt32(0), Throws.Nothing);
-            }
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("2020-10-01"));
         }
 
 #if NET6_0_OR_GREATER
+        [Test]
+        public async Task Date_DateOnly_read()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '2020-10-01'::date", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("date"));
+            Assert.That(reader.GetFieldValue<DateOnly>(0), Is.EqualTo(new DateOnly(2020, 10, 1)));
+        }
+
+        [Test]
+        public async Task Date_DateOnly_write_values()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+            {
+                Parameters = { new() { Value = new DateOnly(2020, 10, 1), NpgsqlDbType = NpgsqlDbType.Date } }
+            };
+
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("2020-10-01"));
+        }
+
         [Test]
         public async Task Date_DateOnly()
         {
@@ -216,13 +234,6 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetDateTime(0).Kind, Is.EqualTo(DateTimeKind.Unspecified));
             Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(dateTime));
 
-            // Provider-specific type (NpgsqlTimeStamp)
-            var npgsqlDateTime = new NpgsqlDateTime(dateTime);
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDateTime)));
-            Assert.That(reader.GetTimeStamp(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(npgsqlDateTime));
-
             // DateTimeOffset
             Assert.That(() => reader.GetFieldValue<DateTimeOffset>(0), Throws.Exception.TypeOf<InvalidCastException>());
 
@@ -259,8 +270,6 @@ namespace Npgsql.Tests.Types
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local) },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local), NpgsqlDbType = NpgsqlDbType.Timestamp },
                     new() { Value = DateTime.SpecifyKind(dateTime, DateTimeKind.Local), DbType = DbType.DateTime2 },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Unspecified) },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Local) },
                     new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.Timestamp }
                 };
             }
@@ -290,7 +299,6 @@ namespace Npgsql.Tests.Types
             => new NpgsqlParameter[]
             {
                 new() { Value = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc), NpgsqlDbType = NpgsqlDbType.Timestamp },
-                new() { Value = new NpgsqlDateTime(0, DateTimeKind.Utc), NpgsqlDbType = NpgsqlDbType.Timestamp },
                 new() { Value = new DateTimeOffset(DateTime.UtcNow, TimeSpan.Zero), NpgsqlDbType = NpgsqlDbType.Timestamp }
             };
 
@@ -420,14 +428,6 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(dateTime, TimeSpan.Zero)));
             Assert.That(reader.GetFieldValue<DateTimeOffset>(0).Offset, Is.EqualTo(TimeSpan.Zero));
 
-            // Provider-specific type (NpgsqlTimeStamp)
-            var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc);
-            Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDateTime)));
-            Assert.That(reader.GetTimeStamp(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(npgsqlDateTime));
-            Assert.That(reader.GetTimeStamp(0).Kind, Is.EqualTo(DateTimeKind.Utc));
-
             // Internal PostgreSQL representation, for out-of-range values.
             Assert.That(() => reader.GetInt64(0), Throws.Nothing);
         }
@@ -440,12 +440,6 @@ namespace Npgsql.Tests.Types
                 .SetName("TimestampTzPost2000"),
             new TestCaseData(new DateTime(2013, 7, 25, 0, 0, 0, DateTimeKind.Utc), "2013-07-25 00:00:00")
                 .SetName("TimestampTzDateOnly"),
-            new TestCaseData(NpgsqlDateTime.Infinity, "infinity")
-                .SetName("TimestampTzNpgsqlDateTimeInfinity"),
-            new TestCaseData(NpgsqlDateTime.NegativeInfinity, "-infinity")
-                .SetName("TimestampTzNpgsqlDateTimeNegativeInfinity"),
-            new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0, DateTimeKind.Utc), "0005-03-03 01:00:00 BC")
-                .SetName("TimestampTzBC"),
             new TestCaseData(DateTime.MinValue, "-infinity")
                 .SetName("TimestampNegativeInfinity"),
             new TestCaseData(DateTime.MaxValue, "infinity")
@@ -477,7 +471,6 @@ namespace Npgsql.Tests.Types
                 {
                     new() { Value = dateTime },
                     new() { Value = dateTime, NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                    new() { Value = new NpgsqlDateTime(dateTime.Ticks, DateTimeKind.Utc), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                     new() { Value = new DateTimeOffset(dateTime) },
                     new() { Value = -54297202000000L, NpgsqlDbType = NpgsqlDbType.TimestampTz }
                 };
@@ -509,8 +502,6 @@ namespace Npgsql.Tests.Types
             {
                 new() { Value = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                 new() { Value = DateTime.Now, NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = new NpgsqlDateTime(0, DateTimeKind.Unspecified), NpgsqlDbType = NpgsqlDbType.TimestampTz },
-                new() { Value = new NpgsqlDateTime(0, DateTimeKind.Local), NpgsqlDbType = NpgsqlDbType.TimestampTz },
                 new() { Value = new DateTimeOffset(DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Unspecified), TimeSpan.FromHours(2)) }
             };
 
@@ -679,30 +670,87 @@ namespace Npgsql.Tests.Types
 
         #region Interval
 
+        static readonly TestCaseData[] IntervalReadValues =
+        {
+            new TestCaseData(new TimeSpan(0, 2, 3, 4, 5), "02:03:04.005")
+                .SetName("TimeOnly"),
+            new TestCaseData(new TimeSpan(1, 2, 3, 4, 5), "1 day 02:03:04.005")
+                .SetName("WithDay"),
+            new TestCaseData(new TimeSpan(61, 2, 3, 4, 5), "61 days 02:03:04.005")
+                .SetName("WithManyDays"),
+            new TestCaseData(new TimeSpan(new TimeSpan(2, 3, 4).Ticks + 10), "02:03:04.000001")
+                .SetName("WithMicrosecond")
+        };
+
+        [Test, TestCaseSource(nameof(IntervalReadValues))]
+        public async Task Interval_read(TimeSpan timeSpan, string s)
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand($"SELECT '{s}'::interval", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("interval"));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(TimeSpan)));
+
+            Assert.That(reader[0], Is.EqualTo(timeSpan));
+            Assert.That(reader.GetTimeSpan(0), Is.EqualTo(timeSpan));
+            Assert.That(reader.GetFieldValue<TimeSpan>(0), Is.EqualTo(timeSpan));
+
+            // Internal PostgreSQL representation, for out-of-range values.
+            var expectedNpgsqlInterval = new NpgsqlInterval(
+                0,
+                timeSpan.Days,
+                (timeSpan.Ticks / 10) - timeSpan.Days * (TimeSpan.TicksPerDay / 10));
+
+            Assert.That(() => reader.GetFieldValue<NpgsqlInterval>(0), Is.EqualTo(expectedNpgsqlInterval));
+        }
+
+        static readonly TestCaseData[] IntervalWriteValues =
+        {
+            new TestCaseData(new TimeSpan(0, 2, 3, 4, 5), "02:03:04.005")
+                .SetName("TimeOnly"),
+            new TestCaseData(new TimeSpan(1, 2, 3, 4, 5), "1 day 02:03:04.005")
+                .SetName("WithDay"),
+            new TestCaseData(new TimeSpan(61, 2, 3, 4, 5), "61 days 02:03:04.005")
+                .SetName("WithManyDays"),
+            new TestCaseData(new TimeSpan(new TimeSpan(2, 3, 4).Ticks + 10), "02:03:04.000001")
+                .SetName("WithMicrosecond"),
+            new TestCaseData(new TimeSpan(new TimeSpan(2, 3, 4).Ticks + 1), "02:03:04")  // Truncate
+                .SetName("WithTick")
+        };
+
+        [Test, TestCaseSource(nameof(IntervalWriteValues))]
+        public async Task Interval_write_values(TimeSpan timeSpan, string expected)
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+            {
+                Parameters = { new() { Value = timeSpan, NpgsqlDbType = NpgsqlDbType.Interval } }
+            };
+
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected));
+        }
+
         [Test]
         public async Task Interval()
         {
             using var conn = await OpenConnectionAsync();
-            var expectedNpgsqlTimeSpan = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
             var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
             var expectedNpgsqlInterval = new NpgsqlInterval(0, 1, 7384005000);
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
             var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Interval);
             var p2 = new NpgsqlParameter("p2", expectedTimeSpan);
-            var p3 = new NpgsqlParameter("p3", expectedNpgsqlTimeSpan);
-            var p4 = new NpgsqlParameter("p4", expectedNpgsqlInterval);
+            var p3 = new NpgsqlParameter("p3", expectedNpgsqlInterval);
             Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
             Assert.That(p2.DbType, Is.EqualTo(DbType.Object));
             Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
             Assert.That(p3.DbType, Is.EqualTo(DbType.Object));
-            Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Interval));
-            Assert.That(p4.DbType, Is.EqualTo(DbType.Object));
             cmd.Parameters.Add(p1);
             cmd.Parameters.Add(p2);
             cmd.Parameters.Add(p3);
-            cmd.Parameters.Add(p4);
-            p1.Value = expectedNpgsqlTimeSpan;
+            p1.Value = expectedTimeSpan;
 
             using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
@@ -715,12 +763,6 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(expectedTimeSpan));
                 Assert.That(reader[i], Is.EqualTo(expectedTimeSpan));
                 Assert.That(reader.GetValue(i), Is.EqualTo(expectedTimeSpan));
-
-                // Provider-specific type (NpgsqlInterval)
-                Assert.That(reader.GetInterval(i), Is.EqualTo(expectedNpgsqlTimeSpan));
-                Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlTimeSpan)));
-                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedNpgsqlTimeSpan));
-                Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(i), Is.EqualTo(expectedNpgsqlTimeSpan));
 
                 // Internal PostgreSQL representation, for out-of-range values.
                 Assert.That(() => reader.GetFieldValue<NpgsqlInterval>(i), Is.EqualTo(expectedNpgsqlInterval));

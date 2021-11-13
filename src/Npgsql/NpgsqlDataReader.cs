@@ -1175,24 +1175,6 @@ namespace Npgsql
         #region Provider-specific simple type getters
 
         /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlDate"/>,
-        /// Npgsql's provider-specific type for dates.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's date type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
-        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
-        /// the disadvantage of boxing the value.
-        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        [Obsolete(
-            "For values outside the range of DateTime/DateOnly, consider using NodaTime (range -9998 to 9999), or read the value as an 'int'. " +
-            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
-        public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
-
-        /// <summary>
         /// Gets the value of the specified column as a TimeSpan,
         /// </summary>
         /// <remarks>
@@ -1204,46 +1186,6 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
         public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
-        /// Npgsql's provider-specific type for time spans.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
-        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
-        /// and ranges from roughly -29247 to 29247 years. If you require values from outside TimeSpan's
-        /// range use this accessor.
-        /// The standard ADO.NET <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this
-        /// type, but has the disadvantage of boxing the value.
-        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        [Obsolete(
-            "For values outside the range of TimeSpan, consider using NodaTime (range -9998 to 9999), or read the value as an NpgsqlInterval. " +
-            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
-        public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
-        /// Npgsql's provider-specific type for date/time timestamps. Note that this type covers
-        /// both PostgreSQL's "timestamp with time zone" and "timestamp without time zone" types,
-        /// which differ only in how they are converted upon input/output.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's timestamp type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
-        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
-        /// the disadvantage of boxing the value.
-        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        [Obsolete(
-            "For values outside the range of DateTime, consider using NodaTime (range -9998 to 9999), or read the value as a 'long'. " +
-            "See https://www.npgsql.org/doc/types/datetime.html for more information.")]
-        public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
         /// <inheritdoc />
         protected override DbDataReader GetDbDataReader(int ordinal) => GetData(ordinal);

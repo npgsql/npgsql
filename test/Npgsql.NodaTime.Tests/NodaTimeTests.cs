@@ -463,8 +463,6 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
 
         #region Date
 
-#pragma warning disable 618 // NpgsqlDate is obsolete, remove in 7.0
-
         [Test]
         public async Task Date()
         {
@@ -505,7 +503,6 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
                 Assert.That(reader.GetFieldValue<LocalDate>(0), Is.EqualTo(localDate));
                 Assert.That(reader.GetValue(0), Is.EqualTo(localDate));
                 Assert.That(() => reader.GetDateTime(0), Is.EqualTo(dateTime));
-                Assert.That(() => reader.GetDate(0), Is.EqualTo(new NpgsqlDate(localDate.Year, localDate.Month, localDate.Day)));
                 Assert.That(reader.GetFieldValue<LocalDate>(2), Is.EqualTo(new LocalDate(-5, 3, 3)));
                 Assert.That(reader.GetFieldValue<DateTime>(3), Is.EqualTo(dateTime));
                 Assert.That(reader.GetDateTime(4), Is.EqualTo(dateTime));
@@ -514,8 +511,6 @@ SELECT '{[""2020-01-01 12:00:00Z"",""2020-01-05 12:00:00Z""), (""2020-01-07 12:0
                 Assert.That(() => reader.GetInt32(0), Throws.Nothing);
             }
         }
-
-#pragma warning restore 618 // NpgsqlDate is obsolete, remove in 7.0
 
 #if NET6_0_OR_GREATER
         [Test]
