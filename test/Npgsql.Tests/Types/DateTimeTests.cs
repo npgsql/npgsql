@@ -675,6 +675,39 @@ namespace Npgsql.Tests.Types
             Assert.That(() => cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
+        [Test]
+        public void NpgsqlParameterDbType_is_value_dependent_datetime_or_datetime2()
+        {
+            var localtimestamp = new NpgsqlParameter { Value = DateTime.Now };
+            var unspecifiedtimestamp = new NpgsqlParameter { Value = new DateTime() };
+            Assert.AreEqual(DbType.DateTime2, localtimestamp.DbType);
+            Assert.AreEqual(DbType.DateTime2, unspecifiedtimestamp.DbType);
+
+            // We don't support any DateTimeOffset other than offset 0 which maps to timestamptz,
+            // we might add an exception for offset == DateTimeOffset.Now.Offset (local offset) mapping to timestamp at some point.
+            // var dtotimestamp = new NpgsqlParameter { Value = DateTimeOffset.Now };
+            // Assert.AreEqual(DbType.DateTime2, dtotimestamp.DbType);
+
+            var timestamptz = new NpgsqlParameter { Value = DateTime.UtcNow };
+            var dtotimestamptz = new NpgsqlParameter { Value = DateTimeOffset.UtcNow };
+            Assert.AreEqual(DbType.DateTime, timestamptz.DbType);
+            Assert.AreEqual(DbType.DateTime, dtotimestamptz.DbType);
+        }
+
+        [Test]
+        public void NpgsqlParameterNpgsqlDbType_is_value_dependent_timestamp_or_timestamptz()
+        {
+            var localtimestamp = new NpgsqlParameter { Value = DateTime.Now };
+            var unspecifiedtimestamp = new NpgsqlParameter { Value = new DateTime() };
+            Assert.AreEqual(NpgsqlDbType.Timestamp, localtimestamp.NpgsqlDbType);
+            Assert.AreEqual(NpgsqlDbType.Timestamp, unspecifiedtimestamp.NpgsqlDbType);
+
+            var timestamptz = new NpgsqlParameter { Value = DateTime.UtcNow };
+            var dtotimestamptz = new NpgsqlParameter { Value = DateTimeOffset.UtcNow };
+            Assert.AreEqual(NpgsqlDbType.TimestampTz, timestamptz.NpgsqlDbType);
+            Assert.AreEqual(NpgsqlDbType.TimestampTz, dtotimestamptz.NpgsqlDbType);
+        }
+
         #endregion
 
         #region Interval
