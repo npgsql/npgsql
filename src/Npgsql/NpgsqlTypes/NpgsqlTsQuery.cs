@@ -525,13 +525,13 @@ namespace NpgsqlTypes
         /// <summary>
         /// Child node
         /// </summary>
-        public NpgsqlTsQuery? Child { get; set; }
+        public NpgsqlTsQuery Child { get; set; }
 
         /// <summary>
         /// Creates a not operator, with a given child node.
         /// </summary>
         /// <param name="child"></param>
-        public NpgsqlTsQueryNot(NpgsqlTsQuery? child)
+        public NpgsqlTsQueryNot(NpgsqlTsQuery child)
             : base(NodeKind.Not)
         {
             Child = child;

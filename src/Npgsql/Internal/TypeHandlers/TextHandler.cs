@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers
 {
