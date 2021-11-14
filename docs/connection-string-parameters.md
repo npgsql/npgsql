@@ -21,10 +21,11 @@ Parameter                    | Description                                      
 ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------
 SSL Mode                     | Controls whether SSL is used, depending on server support. [See docs for possible values and more info](security.md).                       | Prefer in 6.0, Disable previously
 Trust Server Certificate     | Whether to trust the server certificate without validating it. [See docs for more info](security.md).                                       | false
-Client Certificate           | Location of a client certificate to be sent to the server. [See docs](security.md)                                                          | PGSSLCERT
-Client Certificate Key       | Location of a client key for a client certificate to be sent to the server.                                                                 | PGSSLKEY
+SSL Certificate              | Location of a client certificate to be sent to the server. Introduced in 6.0. [See docs](security.md)                                       | PGSSLCERT
+SSL Key                      | Location of a client key for a client certificate to be sent to the server. Introduced in 6.0.                                              | PGSSLKEY
+SSL Password                 | Password for a key for a client certificate. Introduced in 6.0.                                                                             |
 Root Certificate             | Location of a CA certificate used to validate the server certificate.                                                                       | PGSSLROOTCERT
-Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | true in 6.0, false previously
+Check Certificate Revocation | Whether to check the certificate revocation list during authentication.                                                                     | false
 Integrated Security          | Whether to use integrated security to log in (GSS/SSPI). [See docs for more info](security.md).                                             | false
 Persist Security Info        | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
 Kerberos Service Name        | The Kerberos service name to be used for authentication. [See docs for more info](security.md).                                             | postgres
@@ -99,7 +100,14 @@ Array Nullability Mode   | Configure the way arrays of value types are returned 
 
 Parameter                 | Description                                                                                       | Default
 ------------------------- | ------------------------------------------------------------------------------------------------- | -------
-Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types . | none
+Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types. | none
+
+## Obsolete
+
+Parameter                 | Description                                                                                       | Default
+------------------------- | ------------------------------------------------------------------------------------------------- | -------
+Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                     | PGSSLCERT
+Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.    | PGSSLKEY
 
 ## Environment variables
 

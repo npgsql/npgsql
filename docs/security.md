@@ -41,7 +41,7 @@ Disable     | No                       | No                           | I don't 
 Prefer      | Maybe                    | Maybe                        | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
 Require     | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-The default mode prior was 6.0 is `Disable`.
+The default mode prior 6.0 is `Disable`.
 
 To disable certificate validation when using `Require`, set `Trust Server Certificate` to true; this allows connecting to servers with e.g. self-signed certificates, while still requiring encryption.
 
@@ -57,11 +57,16 @@ Finally, if the above options aren't sufficient for your scenario, you can set `
 
 PostgreSQL may be configured to require valid certificates from connecting clients for authentication. Npgsql automatically sends client certificates specified in the following places:
 
-* The `Client Certificate` connection string parameter.
+* The `SSL Certificate` connection string parameter.
 * The `PGSSLCERT` environment variable.
 * The default locations of `~/.postgresql/postgresql.crt` (on Unix) or `%APPDATA%\postgresql\postgresql.crt` (on Windows)
 
+To provide a password for a client certificate, set either the `SSL Password` (6.0 and higher) or `Client Certificate Key` (5.0 and lower) connection string parameter.
+
 Finally, you can set `ProvideClientCertificatesCallback` on `NpgsqlConnection` to further customize how client certificates are provided (this works like on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
+
+> [!NOTE]
+> Npgsql supports .PFX and PEM certificates starting with 6.0. Previously, only .PFX certificates were supported.
 
 ## Integrated Security (GSS/SSPI/Kerberos)
 
