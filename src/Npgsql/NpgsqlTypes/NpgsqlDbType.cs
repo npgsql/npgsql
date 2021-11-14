@@ -575,37 +575,37 @@ namespace NpgsqlTypes
         /// <summary>
         /// Corresponds to the PostgreSQL "int4multirange" type.
         /// </summary>
-        [BuiltInPostgresType("int4range", PostgresTypeOIDs.Int4Range)]
+        [BuiltInPostgresType("int4multirange", PostgresTypeOIDs.Int4Multirange)]
         IntegerMultirange = Multirange | Integer,
 
         /// <summary>
         /// Corresponds to the PostgreSQL "int8multirange" type.
         /// </summary>
-        [BuiltInPostgresType("int8Multirange", PostgresTypeOIDs.Int8Multirange)]
+        [BuiltInPostgresType("int8multirange", PostgresTypeOIDs.Int8Multirange)]
         BigIntMultirange = Multirange | Bigint,
 
         /// <summary>
         /// Corresponds to the PostgreSQL "nummultirange" type.
         /// </summary>
-        [BuiltInPostgresType("numMultirange", PostgresTypeOIDs.NumMultirange)]
+        [BuiltInPostgresType("nummultirange", PostgresTypeOIDs.NumMultirange)]
         NumericMultirange = Multirange | Numeric,
 
         /// <summary>
         /// Corresponds to the PostgreSQL "tsmultirange" type.
         /// </summary>
-        [BuiltInPostgresType("tsMultirange", PostgresTypeOIDs.TsMultirange)]
+        [BuiltInPostgresType("tsmultirange", PostgresTypeOIDs.TsMultirange)]
         TimestampMultirange = Multirange | Timestamp,
 
         /// <summary>
         /// Corresponds to the PostgreSQL "tstzmultirange" type.
         /// </summary>
-        [BuiltInPostgresType("tstzMultirange", PostgresTypeOIDs.TsTzMultirange)]
+        [BuiltInPostgresType("tstzmultirange", PostgresTypeOIDs.TsTzMultirange)]
         TimestampTzMultirange = Multirange | TimestampTz,
 
         /// <summary>
         /// Corresponds to the PostgreSQL "datemultirange" type.
         /// </summary>
-        [BuiltInPostgresType("dateMultirange", PostgresTypeOIDs.DateMultirange)]
+        [BuiltInPostgresType("datemultirange", PostgresTypeOIDs.DateMultirange)]
         DateMultirange = Multirange | Date,
 
         #endregion Multirange types
