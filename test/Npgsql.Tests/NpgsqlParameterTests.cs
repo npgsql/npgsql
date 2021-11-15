@@ -155,7 +155,7 @@ namespace Npgsql.Tests
             var value = new DateTime(2004, 8, 24);
 
             var p = new NpgsqlParameter("address", value);
-            Assert.AreEqual(DbType.DateTime, p.DbType, "B:DbType");
+            Assert.AreEqual(DbType.DateTime2, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
             Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
@@ -486,7 +486,7 @@ namespace Npgsql.Tests
 
             p = new NpgsqlParameter();
             p.Value = DateTime.MaxValue;
-            Assert.AreEqual(DbType.DateTime, p.DbType, "#E:DbType1");
+            Assert.AreEqual(DbType.DateTime2, p.DbType, "#E:DbType1");
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#E:SqlDbType1");
             p.Value = null;
             p.ResetDbType();
@@ -496,7 +496,7 @@ namespace Npgsql.Tests
             p = new NpgsqlParameter("foo", NpgsqlDbType.Varchar);
             p.Value = DateTime.MaxValue;
             p.ResetDbType();
-            Assert.AreEqual(DbType.DateTime, p.DbType, "#F:DbType");
+            Assert.AreEqual(DbType.DateTime2, p.DbType, "#F:DbType");
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "#F:NpgsqlDbType");
             Assert.AreEqual(DateTime.MaxValue, p.Value, "#F:Value");
 
