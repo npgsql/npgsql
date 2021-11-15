@@ -467,7 +467,7 @@ namespace Npgsql.TypeMapping
                 NpgsqlDbType.JsonPath    => DbType.String,
 
                 // Date/time types
-                NpgsqlDbType.Timestamp   => DbType.DateTime,
+                NpgsqlDbType.Timestamp   => LegacyTimestampBehavior ? DbType.DateTime : DbType.DateTime2,
                 NpgsqlDbType.TimestampTz => LegacyTimestampBehavior ? DbType.DateTimeOffset : DbType.DateTime,
                 NpgsqlDbType.Date        => DbType.Date,
                 NpgsqlDbType.Time        => DbType.Time,
