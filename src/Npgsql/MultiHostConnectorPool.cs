@@ -14,7 +14,7 @@ namespace Npgsql
     {
         internal override bool OwnsConnectors => false;
 
-        readonly ConnectorPool[] _pools;
+        readonly ConnectorSource[] _pools;
 
         volatile int _roundRobinIndex = -1;
 
@@ -35,7 +35,9 @@ namespace Npgsql
                 else
                     poolSettings.Host = host.ToString();
 
-                _pools[i] = new ConnectorPool(poolSettings, poolSettings.ConnectionString, this);
+                _pools[i] = settings.Pooling
+                    ? new ConnectorPool(poolSettings, poolSettings.ConnectionString, this)
+                    : new UnpooledConnectorSource(poolSettings, poolSettings.ConnectionString);
             }
         }
 
@@ -63,14 +65,14 @@ namespace Npgsql
                 _ => false
             };
 
-        static ClusterState GetClusterState(ConnectorPool pool, bool ignoreExpiration = false)
+        static ClusterState GetClusterState(ConnectorSource pool, bool ignoreExpiration = false)
             => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration);
 
         static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
             => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
 
-        async ValueTask<NpgsqlConnector?> TryGetIdle(TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
+        async ValueTask<NpgsqlConnector?> TryGetIdleOrNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async,
+            TargetSessionAttributes preferredType, Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
             IList<Exception> exceptions, CancellationToken cancellationToken)
         {
             var pools = _pools;
@@ -85,54 +87,11 @@ namespace Npgsql
                 if (!clusterValidator(clusterState, preferredType))
                     continue;
 
-                if (pool.TryGetIdleConnector(out var connector))
-                {
-                    try
-                    {
-                        if (clusterState == ClusterState.Unknown)
-                        {
-                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                            Debug.Assert(clusterState != ClusterState.Unknown);
-                            if (!clusterValidator(clusterState, preferredType))
-                            {
-                                pool.Return(connector);
-                                continue;
-                            }
-                        }
-
-                        return connector;
-                    }
-                    catch (Exception ex)
-                    {
-                        pool.Return(connector);
-                        exceptions.Add(new NpgsqlException($"Unable to get an idle connection to {pool.Settings.Host}:{pool.Settings.Port}", ex));
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        async ValueTask<NpgsqlConnector?> TryOpenNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
-            IList<Exception> exceptions, CancellationToken cancellationToken)
-        {
-            var pools = _pools;
-            for (var i = 0; i < pools.Length; i++)
-            {
-                var pool = pools[poolIndex];
-                poolIndex++;
-                if (poolIndex == pools.Length)
-                    poolIndex = 0;
-
-                var clusterState = GetClusterState(pool);
-                if (!clusterValidator(clusterState, preferredType))
-                    continue;
+                NpgsqlConnector? connector = null;
 
                 try
                 {
-                    var connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                    if (connector is not null)
+                    if (pool.TryGetIdleConnector(out connector))
                     {
                         if (clusterState == ClusterState.Unknown)
                         {
@@ -146,11 +105,32 @@ namespace Npgsql
                         }
 
                         return connector;
+                    }
+                    else
+                    {
+                        connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        if (connector is not null)
+                        {
+                            if (clusterState == ClusterState.Unknown)
+                            {
+                                clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                                Debug.Assert(clusterState != ClusterState.Unknown);
+                                if (!clusterValidator(clusterState, preferredType))
+                                {
+                                    pool.Return(connector);
+                                    continue;
+                                }
+                            }
+
+                            return connector;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
                     exceptions.Add(ex);
+                    if (connector is not null)
+                        pool.Return(connector);
                 }
             }
 
@@ -219,11 +199,9 @@ namespace Npgsql
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
 
-            var connector = await TryGetIdle(timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
-                            await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
+            var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
-                                await TryGetIdle(timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken) ??
-                                await TryOpenNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
+                                await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
                             : null) ??
                             await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                             (checkUnpreferred ?
@@ -268,6 +246,12 @@ namespace Npgsql
         internal override void Return(NpgsqlConnector connector)
             => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
 
+        internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
+            => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostConnectorPool));
+
+        internal override ValueTask<NpgsqlConnector?> OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+            => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostConnectorPool));
+
         internal override void Clear()
         {
             foreach (var pool in _pools)
@@ -283,8 +267,9 @@ namespace Npgsql
 
                 foreach (var pool in _pools)
                 {
-                    numConnectors += pool.NumConnectors;
-                    idleCount += pool.IdleCount;
+                    var stat = pool.Statistics;
+                    numConnectors += stat.Total;
+                    idleCount += stat.Idle;
                 }
 
                 return (numConnectors, idleCount, numConnectors - idleCount);
