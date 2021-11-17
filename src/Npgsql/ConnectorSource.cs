@@ -37,6 +37,11 @@ namespace Npgsql
         internal abstract ValueTask<NpgsqlConnector> Get(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
 
+        internal abstract bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector);
+
+        internal abstract ValueTask<NpgsqlConnector?> OpenNewConnector(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
+
         internal abstract void Return(NpgsqlConnector connector);
 
         internal abstract void Clear();

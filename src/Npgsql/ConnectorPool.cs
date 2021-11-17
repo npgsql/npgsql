@@ -25,11 +25,7 @@ namespace Npgsql
 
         volatile int _numConnectors;
 
-        internal int NumConnectors => _numConnectors;
-
         volatile int _idleCount;
-
-        internal int IdleCount => _idleCount;
 
         /// <summary>
         /// Tracks all connectors currently managed by this pool, whether idle or busy.
@@ -190,7 +186,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal sealed override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
@@ -241,7 +237,7 @@ namespace Npgsql
             return true;
         }
 
-        internal async ValueTask<NpgsqlConnector?> OpenNewConnector(
+        internal sealed override async ValueTask<NpgsqlConnector?> OpenNewConnector(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             // As long as we're under max capacity, attempt to increase the connector count and open a new connection.

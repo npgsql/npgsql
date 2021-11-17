@@ -226,8 +226,6 @@ namespace Npgsql
                     throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
                 if (settings.ReplicationMode != ReplicationMode.Off)
                     throw new NotSupportedException("Replication is not supported with multiple hosts");
-                if (!settings.Pooling)
-                    throw new NotSupportedException("Pooling must be on with multiple hosts");
                 newPool = new MultiHostConnectorPool(settings, canonical);
             }
             else if (settings.Multiplexing)
