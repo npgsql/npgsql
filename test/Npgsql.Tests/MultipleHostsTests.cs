@@ -43,7 +43,7 @@ namespace Npgsql.Tests
 
         [Test]
         [TestCaseSource(nameof(MyCases))]
-        public async Task Connect_to_correct_host(string targetSessionAttributes, MockState[] servers, int expectedServer)
+        public async Task Connect_to_correct_host_pooled(string targetSessionAttributes, MockState[] servers, int expectedServer)
         {
             var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
             await using var __ = new DisposableWrapper(postmasters);
@@ -53,6 +53,31 @@ namespace Npgsql.Tests
                 Host = MultipleHosts(postmasters),
                 TargetSessionAttributes = targetSessionAttributes,
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Pooling = true
+            };
+
+            using var pool = CreateTempPool(connectionStringBuilder, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            Assert.That(conn.Port, Is.EqualTo(postmasters[expectedServer].Port));
+
+            for (var i = 0; i <= expectedServer; i++)
+                _ = await postmasters[i].WaitForServerConnection();
+        }
+
+        [Test]
+        [TestCaseSource(nameof(MyCases))]
+        public async Task Connect_to_correct_host_unpooled(string targetSessionAttributes, MockState[] servers, int expectedServer)
+        {
+            var postmasters = servers.Select(s => PgPostmasterMock.Start(state: s)).ToArray();
+            await using var __ = new DisposableWrapper(postmasters);
+
+            var connectionStringBuilder = new NpgsqlConnectionStringBuilder
+            {
+                Host = MultipleHosts(postmasters),
+                TargetSessionAttributes = targetSessionAttributes,
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Pooling = false
             };
 
             using var pool = CreateTempPool(connectionStringBuilder, out var connectionString);

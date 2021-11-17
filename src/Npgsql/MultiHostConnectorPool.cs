@@ -21,7 +21,7 @@ namespace Npgsql
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
         {
             var hosts = settings.Host!.Split(',');
-            _pools = new ConnectorPool[hosts.Length];
+            _pools = new ConnectorSource[hosts.Length];
             for (var i = 0; i < hosts.Length; i++)
             {
                 var poolSettings = settings.Clone();
