@@ -29,6 +29,16 @@ namespace Npgsql
             return connector;
         }
 
+        internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
+        {
+            connector = null;
+            return false;
+        }
+
+        internal override ValueTask<NpgsqlConnector?> OpenNewConnector(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+            => new((NpgsqlConnector?)null);
+
         internal override void Return(NpgsqlConnector connector)
         {
             Interlocked.Decrement(ref _numConnectors);
