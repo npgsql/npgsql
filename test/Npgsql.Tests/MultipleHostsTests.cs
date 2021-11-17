@@ -399,9 +399,12 @@ namespace Npgsql.Tests
             NpgsqlConnector secondConnector;
 
             await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
-            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 firstConnector = firstConnection.Connector!;
+            }
+
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
                 secondConnector = secondConnection.Connector!;
             }
 
@@ -443,9 +446,16 @@ namespace Npgsql.Tests
             NpgsqlConnector secondConnector;
 
             await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
-            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
             {
                 firstConnector = firstConnection.Connector!;
+            }
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
+                Assert.AreSame(firstConnector, secondConnection.Connector);
+            }
+            await using (var firstConnection = await OpenConnectionAsync(defaultConnectionString))
+            await using (var secondConnection = await OpenConnectionAsync(defaultConnectionString))
+            {
                 secondConnector = secondConnection.Connector!;
             }
 
