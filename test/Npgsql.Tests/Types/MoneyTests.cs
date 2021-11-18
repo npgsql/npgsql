@@ -27,7 +27,7 @@ namespace Npgsql.Tests.Types
         public async Task Money(string sqlLiteral, decimal money)
         {
             using var conn = await OpenConnectionAsync();
-            await conn.ExecuteNonQueryAsync("SET lc_monetary='en_US.UTF-8'");
+            await conn.ExecuteNonQueryAsync("SET lc_monetary='C'");
             await AssertType(conn, money, sqlLiteral, "money", NpgsqlDbType.Money, DbType.Currency, isDefault: false);
         }
 
