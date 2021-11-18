@@ -459,7 +459,9 @@ namespace Npgsql.TypeMapping
                 { typeof(NpgsqlRange<int>), "int4range" },
                 { typeof(NpgsqlRange<long>), "int8range" },
                 { typeof(NpgsqlRange<decimal>), "numrange" },
+#if NET6_0_OR_GREATER
                 { typeof(NpgsqlRange<DateOnly>), "daterange" },
+#endif
 
                 // Built-in multirange types
                 { typeof(NpgsqlRange<int>[]), "int4multirange" },
@@ -468,8 +470,10 @@ namespace Npgsql.TypeMapping
                 { typeof(List<NpgsqlRange<long>>), "int8multirange" },
                 { typeof(NpgsqlRange<decimal>[]), "nummultirange" },
                 { typeof(List<NpgsqlRange<decimal>>), "nummultirange" },
+#if NET6_0_OR_GREATER
                 { typeof(NpgsqlRange<DateOnly>[]), "datemultirange" },
                 { typeof(List<NpgsqlRange<DateOnly>>), "datemultirange" },
+#endif
             };
 
             // Recent versions of .NET Core have an internal ReadOnlyIPAddress type (returned e.g. for IPAddress.Loopback)

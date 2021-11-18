@@ -412,7 +412,7 @@ namespace Npgsql.TypeMapping
             // Strip any facet information (length/precision/scale)
             var parenIndex = typeName.IndexOf('(');
             if (parenIndex > -1)
-                typeName = typeName[..parenIndex];
+                typeName = typeName.Substring(0, parenIndex);
 
             return typeName switch
             {
@@ -512,7 +512,7 @@ namespace Npgsql.TypeMapping
                 "char" => NpgsqlDbType.InternalChar,
 
                 _ => typeName.EndsWith("[]", StringComparison.Ordinal) &&
-                     DataTypeNameToNpgsqlDbType(typeName[..^2]) is { } elementNpgsqlDbType &&
+                     DataTypeNameToNpgsqlDbType(typeName.Substring(0, typeName.Length - 2)) is { } elementNpgsqlDbType &&
                      elementNpgsqlDbType != NpgsqlDbType.Unknown
                     ? elementNpgsqlDbType | NpgsqlDbType.Array
                     : NpgsqlDbType.Unknown // e.g. ranges
