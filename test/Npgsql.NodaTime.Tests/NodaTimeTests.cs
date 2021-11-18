@@ -370,8 +370,12 @@ namespace Npgsql.NodaTime.Tests
                 isDefaultForReading: false);
 
         [Test]
-        public Task Datemultirange_as_array_of_DateInterval()
-            => AssertType(
+        public async Task Datemultirange_as_array_of_DateInterval()
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+            await AssertType(
                 new[]
                 {
                     new DateInterval(new(2002, 3, 4), new(2002, 3, 5)),
@@ -380,10 +384,15 @@ namespace Npgsql.NodaTime.Tests
                 "{[2002-03-04,2002-03-06),[2002-03-08,2002-03-11)}",
                 "datemultirange",
                 NpgsqlDbType.DateMultirange);
+        }
 
         [Test]
-        public Task Datemultirange_as_array_of_NpgsqlRange_of_LocalDate()
-            => AssertType(
+        public async Task Datemultirange_as_array_of_NpgsqlRange_of_LocalDate()
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+            await AssertType(
                 new[]
                 {
                     new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false),
@@ -393,6 +402,7 @@ namespace Npgsql.NodaTime.Tests
                 "datemultirange",
                 NpgsqlDbType.DateMultirange,
                 isDefaultForReading: false);
+        }
 
 #if NET6_0_OR_GREATER
         [Test]

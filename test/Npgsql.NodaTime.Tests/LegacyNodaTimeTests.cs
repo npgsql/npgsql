@@ -61,6 +61,10 @@ namespace Npgsql.NodaTime.Tests
 #if DEBUG
             Internal.NodaTimeUtils.LegacyTimestampBehavior = true;
             Util.Statics.LegacyTimestampBehavior = true;
+
+            // Clear any previous cached mappings/handlers in case tests were executed before the legacy flag was set
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+            NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
 #else
             Assert.Ignore(
                 "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
@@ -74,6 +78,10 @@ namespace Npgsql.NodaTime.Tests
 #if DEBUG
             Internal.NodaTimeUtils.LegacyTimestampBehavior = false;
             Util.Statics.LegacyTimestampBehavior = false;
+
+            // Clear any previous cached mappings/handlers to not affect test which will run later without the legacy flag
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+            NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
 #endif
         }
 

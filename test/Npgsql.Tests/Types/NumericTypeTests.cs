@@ -79,8 +79,13 @@ namespace Npgsql.Tests.Types
         [TestCase(double.NaN, "NaN", TestName = "Double_NaN")]
         [TestCase(double.PositiveInfinity, "Infinity", TestName = "Double_PositiveInfinity")]
         [TestCase(double.NegativeInfinity, "-Infinity", TestName = "Double_NegativeInfinity")]
-        public Task Double(double value, string sqlLiteral)
-            => AssertType(value, sqlLiteral, "double precision", NpgsqlDbType.Double, DbType.Double);
+        public async Task Double(double value, string sqlLiteral)
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "12.0");
+
+            await AssertType(value, sqlLiteral, "double precision", NpgsqlDbType.Double, DbType.Double);
+        }
 
         [Test]
         [TestCase(0.123456F, "0.123456", TestName = "Float")]

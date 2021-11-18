@@ -31,8 +31,12 @@ namespace Npgsql.Tests.Types
                 isDefaultForWriting: false);
 
         [Test]
-        public Task Datemultirange_as_array_of_NpgsqlRange_of_DateTime()
-            => AssertType(
+        public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateTime()
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+            await  AssertType(
                 new[]
                 {
                     new NpgsqlRange<DateTime>(new(2002, 3, 4), true, new(2002, 3, 6), false),
@@ -42,6 +46,7 @@ namespace Npgsql.Tests.Types
                 "datemultirange",
                 NpgsqlDbType.DateMultirange,
                 isDefaultForWriting: false);
+        }
 
 #if NET6_0_OR_GREATER
         [Test]
@@ -58,9 +63,14 @@ namespace Npgsql.Tests.Types
                 isDefaultForReading: false);
 
         [Test]
-        public Task Datemultirange_as_array_of_NpgsqlRange_of_DateOnly()
-            => AssertType(
-                new[] {
+        public async Task Datemultirange_as_array_of_NpgsqlRange_of_DateOnly()
+        {
+            await using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
+
+            await  AssertType(
+                new[]
+                {
                     new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),
                     new NpgsqlRange<DateOnly>(new(2002, 3, 8), true, new(2002, 3, 11), false)
                 },
@@ -68,6 +78,7 @@ namespace Npgsql.Tests.Types
                 "datemultirange",
                 NpgsqlDbType.DateMultirange,
                 isDefaultForReading: false);
+        }
 #endif
 
         #endregion
