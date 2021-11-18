@@ -13,7 +13,7 @@ using static Npgsql.Tests.TestUtil;
 namespace Npgsql.NodaTime.Tests
 {
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
-    public class NodaTimeTests : TypeTestBase
+    public class NodaTimeTests : TestBase
     {
         #region Timestamp without time zone
 

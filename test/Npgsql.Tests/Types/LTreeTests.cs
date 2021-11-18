@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class LTreeTests : MultiplexingTypeTestBase
+    public class LTreeTests : MultiplexingTestBase
     {
         [Test]
         public Task LQuery()

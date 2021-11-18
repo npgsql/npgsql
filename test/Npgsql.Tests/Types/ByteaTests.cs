@@ -12,7 +12,7 @@ namespace Npgsql.Tests.Types
     /// <summary>
     /// https://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </summary>
-    public class ByteaTests : MultiplexingTypeTestBase
+    public class ByteaTests : MultiplexingTestBase
     {
         [Test]
         [TestCase(new byte[] { 1, 2, 3, 4, 5 }, "\\x0102030405", TestName = "Bytea")]

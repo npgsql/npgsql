@@ -11,7 +11,7 @@ namespace Npgsql.NodaTime.Tests
 {
     // Since this test suite manipulates TimeZone, it is incompatible with multiplexing
     [NonParallelizable]
-    public class LegacyNodaTimeTests : TypeTestBase
+    public class LegacyNodaTimeTests : TestBase
     {
         [Test]
         public Task Timestamp_as_Instant()

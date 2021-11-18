@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class NumericTests : MultiplexingTypeTestBase
+    public class NumericTests : MultiplexingTestBase
     {
         static readonly object[] ReadWriteCases = new[]
         {

@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// https://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
-    class NetworkTypeTests : MultiplexingTypeTestBase
+    class NetworkTypeTests : MultiplexingTestBase
     {
         [Test]
         public Task Inet_v4_as_IPAddress()

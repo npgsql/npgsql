@@ -16,7 +16,7 @@ namespace Npgsql.Tests.Types
     /// <summary>
     /// https://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </summary>
-    public class NumericTypeTests : MultiplexingTypeTestBase
+    public class NumericTypeTests : MultiplexingTestBase
     {
         [Test]
         public async Task Int16()

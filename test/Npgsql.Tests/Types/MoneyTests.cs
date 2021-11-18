@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class MoneyTests : TypeTestBase
+    public class MoneyTests : TestBase
     {
         static readonly object[] MoneyValues = new[]
         {

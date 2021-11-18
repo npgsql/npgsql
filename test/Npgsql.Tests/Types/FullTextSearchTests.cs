@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class FullTextSearchTests : MultiplexingTypeTestBase
+    public class FullTextSearchTests : MultiplexingTestBase
     {
         public FullTextSearchTests(MultiplexingMode multiplexingMode)
             : base(multiplexingMode) { }
