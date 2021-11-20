@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Collections;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -11,16 +11,51 @@ namespace Npgsql.Tests.Types
             : base(multiplexingMode) { }
 
         [Test]
-        public async Task TsVector()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = conn.CreateCommand();
-            var inputVec = NpgsqlTsVector.Parse(" a:12345C  a:24D a:25B b c d 1 2 a:25A,26B,27,28");
+        public Task TsVector()
+            => AssertType(
+                NpgsqlTsVector.Parse("'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'"),
+                "'1' '2' 'a':24,25A,26B,27,28,12345C 'b' 'c' 'd'",
+                "tsvector",
+                NpgsqlDbType.TsVector);
 
-            cmd.CommandText = "Select :p";
-            cmd.Parameters.AddWithValue("p", inputVec);
-            var outputVec = await cmd.ExecuteScalarAsync();
-            Assert.AreEqual(inputVec.ToString(), outputVec!.ToString());
-        }
+        public static IEnumerable TsQueryTestCases() => new[]
+        {
+            new object[]
+            {
+                "'a'",
+                new NpgsqlTsQueryLexeme("a")
+            },
+            new object[]
+            {
+                "!'a'",
+                new NpgsqlTsQueryNot(
+                    new NpgsqlTsQueryLexeme("a"))
+            },
+            new object[]
+            {
+                "'a' | 'b'",
+                new NpgsqlTsQueryOr(
+                    new NpgsqlTsQueryLexeme("a"),
+                    new NpgsqlTsQueryLexeme("b"))
+            },
+            new object[]
+            {
+                "'a' & 'b'",
+                new NpgsqlTsQueryAnd(
+                    new NpgsqlTsQueryLexeme("a"),
+                    new NpgsqlTsQueryLexeme("b"))
+            },
+            new object[]
+            {
+                "'a' <-> 'b'",
+                new NpgsqlTsQueryFollowedBy(
+                    new NpgsqlTsQueryLexeme("a"), 1, new NpgsqlTsQueryLexeme("b"))
+            }
+        };
+
+        [Test]
+        [TestCaseSource(nameof(TsQueryTestCases))]
+        public Task TsQuery(string sqlLiteral, NpgsqlTsQuery query)
+            => AssertType(query, sqlLiteral, "tsquery", NpgsqlDbType.TsQuery);
     }
 }

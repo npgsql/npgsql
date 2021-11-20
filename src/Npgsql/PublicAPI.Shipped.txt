@@ -1517,13 +1517,14 @@ NpgsqlTypes.NpgsqlTsQueryLexeme.Weight.None = 0 -> NpgsqlTypes.NpgsqlTsQueryLexe
 NpgsqlTypes.NpgsqlTsQueryLexeme.Weights.get -> NpgsqlTypes.NpgsqlTsQueryLexeme.Weight
 NpgsqlTypes.NpgsqlTsQueryLexeme.Weights.set -> void
 NpgsqlTypes.NpgsqlTsQueryNot
-NpgsqlTypes.NpgsqlTsQueryNot.Child.get -> NpgsqlTypes.NpgsqlTsQuery?
+NpgsqlTypes.NpgsqlTsQueryNot.Child.get -> NpgsqlTypes.NpgsqlTsQuery!
 NpgsqlTypes.NpgsqlTsQueryNot.Child.set -> void
-NpgsqlTypes.NpgsqlTsQueryNot.NpgsqlTsQueryNot(NpgsqlTypes.NpgsqlTsQuery? child) -> void
+NpgsqlTypes.NpgsqlTsQueryNot.NpgsqlTsQueryNot(NpgsqlTypes.NpgsqlTsQuery! child) -> void
 NpgsqlTypes.NpgsqlTsQueryOr
 NpgsqlTypes.NpgsqlTsQueryOr.NpgsqlTsQueryOr(NpgsqlTypes.NpgsqlTsQuery! left, NpgsqlTypes.NpgsqlTsQuery! right) -> void
 NpgsqlTypes.NpgsqlTsVector
 NpgsqlTypes.NpgsqlTsVector.Count.get -> int
+NpgsqlTypes.NpgsqlTsVector.Equals(NpgsqlTypes.NpgsqlTsVector? other) -> bool
 NpgsqlTypes.NpgsqlTsVector.GetEnumerator() -> System.Collections.Generic.IEnumerator<NpgsqlTypes.NpgsqlTsVector.Lexeme>!
 NpgsqlTypes.NpgsqlTsVector.Lexeme
 NpgsqlTypes.NpgsqlTsVector.Lexeme.Count.get -> int
@@ -1884,6 +1885,8 @@ override NpgsqlTypes.NpgsqlTsQueryNot.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -
 override NpgsqlTypes.NpgsqlTsQueryNot.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTsQueryOr.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 override NpgsqlTypes.NpgsqlTsQueryOr.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsVector.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlTsVector.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTsVector.Lexeme.Equals(object? o) -> bool
 override NpgsqlTypes.NpgsqlTsVector.Lexeme.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTsVector.Lexeme.ToString() -> string!

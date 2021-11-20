@@ -10,7 +10,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Represents a PostgreSQL tsvector.
     /// </summary>
-    public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>
+    public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>, IEquatable<NpgsqlTsVector>
     {
         readonly List<Lexeme> _lexemes;
 
@@ -256,6 +256,37 @@ namespace NpgsqlTypes
         /// <returns></returns>
         public override string ToString() => string.Join(" ", _lexemes);
 
+        /// <inheritdoc />
+        public bool Equals(NpgsqlTsVector? other)
+        {
+            if (ReferenceEquals(this, other))
+                return true;
+
+            if (other is null || _lexemes.Count != other._lexemes.Count)
+                return false;
+
+            for (var i = 0; i < _lexemes.Count; i++)
+                if (!_lexemes[i].Equals(other._lexemes[i]))
+                    return false;
+
+            return true;
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+            => obj is NpgsqlTsVector other && Equals(other);
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+
+            foreach (var lexeme in _lexemes)
+                hash.Add(lexeme);
+
+            return hash.ToHashCode();
+        }
+
         /// <summary>
         /// Represents a lexeme. A lexeme consists of a text string and optional word entry positions.
         /// </summary>
@@ -483,9 +514,22 @@ namespace NpgsqlTypes
             /// Determines whether the specified object is equal to the current object.
             /// </summary>
             public bool Equals(Lexeme o)
-                => Text == o.Text &&
-                    ((WordEntryPositions == null && o.WordEntryPositions == null) ||
-                    (WordEntryPositions != null && WordEntryPositions.Equals(o.WordEntryPositions)));
+            {
+                if (Text != o.Text)
+                    return false;
+
+                if (WordEntryPositions is null)
+                    return o.WordEntryPositions is null;
+
+                if (o.WordEntryPositions is null || WordEntryPositions.Count != o.WordEntryPositions.Count)
+                    return false;
+
+                for (var i = 0; i < WordEntryPositions.Count; i++)
+                    if (!WordEntryPositions[i].Equals(o.WordEntryPositions[i]))
+                        return false;
+
+                return true;
+            }
 
             /// <summary>
             /// Determines whether the specified object is equal to the current object.

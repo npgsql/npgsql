@@ -9,75 +9,51 @@ namespace Npgsql.Tests.Types
     public class HstoreTests : MultiplexingTestBase
     {
         [Test]
-        public async Task Basic()
-        {
-            using var conn = await OpenConnectionAsync();
-
-            var expected = new Dictionary<string, string?> {
-                {"a", "3"},
-                {"b", null},
-                {"cd", "hello"}
-            };
-
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
-            cmd.Parameters.AddWithValue("p2", expected);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            for (var i = 0; i < cmd.Parameters.Count; i++)
-            {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
-                Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
-            }
-        }
+        public Task Hstore()
+            => AssertType(
+                new Dictionary<string, string?>
+                {
+                    {"a", "3"},
+                    {"b", null},
+                    {"cd", "hello"}
+                },
+                @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
+                "hstore",
+                NpgsqlDbType.Hstore);
 
         [Test]
-        public async Task Empty()
-        {
-            using var conn = await OpenConnectionAsync();
-
-            var expected = new Dictionary<string, string?>();
-
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
-            cmd.Parameters.AddWithValue("p2", expected);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            for (var i = 0; i < cmd.Parameters.Count; i++)
-            {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
-                Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
-            }
-        }
+        public Task Hstore_empty()
+            => AssertType(new Dictionary<string, string?>(), @"", "hstore", NpgsqlDbType.Hstore);
 
         [Test]
-        public async Task ImmutableDictionary()
+        public Task Hstore_as_ImmutableDictionary()
         {
-            using var conn = await OpenConnectionAsync();
-
-            var builder = ImmutableDictionary<string, string?>.Empty;
+            var builder = ImmutableDictionary<string, string?>.Empty.ToBuilder();
             builder.Add("a", "3");
             builder.Add("b", null);
             builder.Add("cd", "hello");
-            var expected = builder.ToImmutableDictionary();
+            var immutableDictionary = builder.ToImmutableDictionary();
 
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
-            cmd.Parameters.AddWithValue("p2", expected);
-
-            using var reader = await cmd.ExecuteReaderAsync();
-            reader.Read();
-            for (var i = 0; i < cmd.Parameters.Count; i++)
-            {
-                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
-                Assert.That(reader.GetFieldValue<ImmutableDictionary<string, string?>>(i), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldValue<ImmutableDictionary<string, string?>>(i), Is.EqualTo(expected));
-            }
+            return AssertType(
+                immutableDictionary,
+                @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
+                "hstore",
+                NpgsqlDbType.Hstore,
+                isDefaultForReading: false);
         }
+
+        [Test]
+        public Task Hstore_read_as_IDictionary()
+            => AssertTypeRead<IDictionary<string, string?>>(
+                new Dictionary<string, string?>
+                {
+                    {"a", "3"},
+                    {"b", null},
+                    {"cd", "hello"}
+                },
+                @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
+                "hstore",
+                isDefault: false);
 
         [OneTimeSetUp]
         public async Task SetUp()

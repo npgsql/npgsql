@@ -53,7 +53,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public async Task Insert_with_DataSet()
         {
             using var conn = await OpenConnectionAsync();
@@ -271,7 +270,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
         public async Task Update_letting_null_field_falue()
         {
             using var conn = await OpenConnectionAsync();

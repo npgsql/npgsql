@@ -17,7 +17,8 @@ namespace Npgsql.Tests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        public const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        public const string DefaultConnectionString =
+            "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;SSL Mode=Disable";
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
@@ -421,31 +422,6 @@ namespace Npgsql.Tests
         {
             LinkAddress = linkAddress;
         }
-    }
-
-    /// <summary>
-    /// Causes the test to be ignored on mono
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
-    public class MonoIgnore : Attribute, ITestAction
-    {
-        readonly string? _ignoreText;
-
-        public MonoIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
-
-        public void BeforeTest(ITest test)
-        {
-            if (Type.GetType("Mono.Runtime") != null)
-            {
-                var msg = "Ignored on mono";
-                if (_ignoreText != null)
-                    msg += ": " + _ignoreText;
-                Assert.Ignore(msg);
-            }
-        }
-
-        public void AfterTest(ITest test) { }
-        public ActionTargets Targets => ActionTargets.Test;
     }
 
     public enum PrepareOrNot

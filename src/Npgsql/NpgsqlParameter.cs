@@ -312,9 +312,12 @@ namespace Npgsql
                 if (_npgsqlDbType.HasValue)
                     return GlobalTypeMapper.NpgsqlDbTypeToDbType(_npgsqlDbType.Value);
 
-                if (_value != null) // Infer from value but don't cache
+                if (_dataTypeName is not null)
+                    return GlobalTypeMapper.NpgsqlDbTypeToDbType(GlobalTypeMapper.DataTypeNameToNpgsqlDbType(_dataTypeName));
+
+                if (Value is not null) // Infer from value but don't cache
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(Value, out var mapping)
                         ? mapping.DbType
                         : DbType.Object;
                 }
@@ -346,11 +349,14 @@ namespace Npgsql
                 if (_npgsqlDbType.HasValue)
                     return _npgsqlDbType.Value;
 
-                if (_value != null) // Infer from value
+                if (_dataTypeName is not null)
+                    return GlobalTypeMapper.DataTypeNameToNpgsqlDbType(_dataTypeName);
+
+                if (Value is not null) // Infer from value
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(Value, out var mapping)
                         ? mapping.NpgsqlDbType ?? NpgsqlDbType.Unknown
-                        : throw new NotSupportedException("Can't infer NpgsqlDbType for type " + _value.GetType());
+                        : throw new NotSupportedException("Can't infer NpgsqlDbType for type " + Value.GetType());
                 }
 
                 return NpgsqlDbType.Unknown;
@@ -377,18 +383,17 @@ namespace Npgsql
                 if (_dataTypeName != null)
                     return _dataTypeName;
 
-                string? dataTypeName = null;
                 if (_npgsqlDbType.HasValue)
                     return GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(_npgsqlDbType.Value);
 
-                if (_value != null) // Infer from value
+                if (Value != null) // Infer from value
                 {
-                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(_value, out var mapping)
+                    return GlobalTypeMapper.Instance.TryResolveMappingByValue(Value, out var mapping)
                         ? mapping.DataTypeName
                         : null;
                 }
 
-                return dataTypeName;
+                return null;
             }
             set
             {

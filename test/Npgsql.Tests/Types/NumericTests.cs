@@ -85,7 +85,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Read_decimal(string query, decimal expected)
+        public async Task Read(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT " + query, conn);
@@ -96,7 +96,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Write_decimal(string query, decimal expected)
+        public async Task Write(string query, decimal expected)
         {
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
@@ -107,32 +107,19 @@ namespace Npgsql.Tests.Types
             Assert.That(rdr.GetFieldValue<bool>(1));
         }
 
-        [Test]
-        public async Task Mapping()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Numeric) { Value = 8M });
-            cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Decimal) { Value = 8M });
-            cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.VarNumeric) { Value = 8M });
-            cmd.Parameters.Add(new NpgsqlParameter("p4", 8M));
 
-            using var rdr = await cmd.ExecuteReaderAsync();
-            rdr.Read();
-            for (var i = 0; i < cmd.Parameters.Count; i++)
-            {
-                Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
-                Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
-                Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<int>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<long>(i), Is.EqualTo(8));
-                Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
-                Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
-            }
+        [Test]
+        public async Task Numeric()
+        {
+            await AssertType(5.5m, "5.5", "numeric", NpgsqlDbType.Numeric, DbType.Decimal);
+            await AssertTypeWrite(5.5m, "5.5", "numeric", NpgsqlDbType.Numeric, DbType.VarNumeric, inferredDbType: DbType.Decimal);
+
+            await AssertType((short)8, "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
+            await AssertType(8,        "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
+            await AssertType((byte)8,  "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
+            await AssertType(8F,       "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
+            await AssertType(8D,       "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
+            await AssertType(8M,       "8", "numeric", NpgsqlDbType.Numeric, DbType.Decimal, isDefault: false);
         }
 
         [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]

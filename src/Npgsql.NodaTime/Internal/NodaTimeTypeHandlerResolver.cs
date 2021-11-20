@@ -97,13 +97,13 @@ namespace Npgsql.NodaTime.Internal
                 return _intervalHandler;
 
             if (typeof(T) == typeof(Interval))
-                return _timestampTzHandler;
+                return _timestampTzRangeHandler;
             if (typeof(T) == typeof(NpgsqlRange<Instant>))
-                return _timestampTzHandler;
+                return _timestampTzRangeHandler;
             if (typeof(T) == typeof(NpgsqlRange<ZonedDateTime>))
-                return _timestampTzHandler;
+                return _timestampTzRangeHandler;
             if (typeof(T) == typeof(NpgsqlRange<OffsetDateTime>))
-                return _timestampTzHandler;
+                return _timestampTzRangeHandler;
 
             // Note that DateInterval is a reference type, so not included in this method
             if (typeof(T) == typeof(NpgsqlRange<LocalDate>))
@@ -130,13 +130,24 @@ namespace Npgsql.NodaTime.Internal
             if (type == typeof(Period) || type == typeof(Duration))
                 return "interval";
 
+            // Ranges
+            if (type == typeof(NpgsqlRange<LocalDateTime>))
+                return "tsrange";
+
             if (type == typeof(Interval) ||
                 type == typeof(NpgsqlRange<Instant>) ||
                 type == typeof(NpgsqlRange<ZonedDateTime>) ||
                 type == typeof(NpgsqlRange<OffsetDateTime>))
+            {
                 return "tstzrange";
+            }
+
             if (type == typeof(DateInterval) || type == typeof(NpgsqlRange<LocalDate>))
                 return "daterange";
+
+            // Multiranges
+            if (type == typeof(NpgsqlRange<LocalDateTime>[]) || type == typeof(List<NpgsqlRange<LocalDateTime>>))
+                return "tsmultirange";
 
             if (type == typeof(Interval[]) ||
                 type == typeof(List<Interval>) ||
@@ -173,11 +184,13 @@ namespace Npgsql.NodaTime.Internal
                 "time with time zone"                        => new(NpgsqlDbType.TimeTz,                "time with time zone"),
                 "interval"                                   => new(NpgsqlDbType.Interval,              "interval"),
 
+                "tsrange"                                    => new(NpgsqlDbType.TimestampRange,        "tsrange"),
                 "tstzrange"                                  => new(NpgsqlDbType.TimestampTzRange,      "tstzrange"),
                 "daterange"                                  => new(NpgsqlDbType.DateRange,             "daterange"),
 
-                "datemultirange"                             => new(NpgsqlDbType.DateMultirange,        "datemultirange"),
+                "tsmultirange"                               => new(NpgsqlDbType.TimestampMultirange,   "tsmultirange"),
                 "tstzmultirange"                             => new(NpgsqlDbType.TimestampTzMultirange, "tstzmultirange"),
+                "datemultirange"                             => new(NpgsqlDbType.DateMultirange,        "datemultirange"),
 
                 _ => null
             };

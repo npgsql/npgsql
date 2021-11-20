@@ -6,43 +6,40 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class MoneyTests : MultiplexingTestBase
+    public class MoneyTests : TestBase
     {
-        static readonly object[] ReadWriteCases = new[]
+        static readonly object[] MoneyValues = new[]
         {
-            new object[] { "1.22::money", 1.22M },
-            new object[] { "1000.22::money", 1000.22M },
-            new object[] { "1000000.22::money", 1000000.22M },
-            new object[] { "1000000000.22::money", 1000000000.22M },
-            new object[] { "1000000000000.22::money", 1000000000000.22M },
-            new object[] { "1000000000000000.22::money", 1000000000000000.22M },
+            new object[] { "$1.22", 1.22M },
+            new object[] { "$1,000.22", 1000.22M },
+            new object[] { "$1,000,000.22", 1000000.22M },
+            new object[] { "$1,000,000,000.22", 1000000000.22M },
+            new object[] { "$1,000,000,000,000.22", 1000000000000.22M },
+            new object[] { "$1,000,000,000,000,000.22", 1000000000000000.22M },
 
-            new object[] { "(+92233720368547758.07::numeric)::money", +92233720368547758.07M },
-            new object[] { "(-92233720368547758.08::numeric)::money", -92233720368547758.08M },
+            new object[] { "$92,233,720,368,547,758.07", +92233720368547758.07M },
+            new object[] { "-$92,233,720,368,547,758.08", -92233720368547758.08M },
+            new object[] { "-$92,233,720,368,547,758.08", -92233720368547758.08M },
         };
 
         [Test]
-        [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Read(string query, decimal expected)
+        [TestCaseSource(nameof(MoneyValues))]
+        public async Task Money(string sqlLiteral, decimal money)
         {
             using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
-            Assert.That(
-                decimal.GetBits((decimal)(await cmd.ExecuteScalarAsync())!),
-                Is.EqualTo(decimal.GetBits(expected)));
+            await conn.ExecuteNonQueryAsync("SET lc_monetary='C'");
+            await AssertType(conn, money, sqlLiteral, "money", NpgsqlDbType.Money, DbType.Currency, isDefault: false);
         }
 
         [Test]
-        [TestCaseSource(nameof(ReadWriteCases))]
-        public async Task Write(string query, decimal expected)
+        public async Task Non_decimal_types_are_not_supported()
         {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = expected });
-            using var rdr = await cmd.ExecuteReaderAsync();
-            rdr.Read();
-            Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
-            Assert.That(rdr.GetFieldValue<bool>(1));
+            await AssertTypeUnsupportedRead<byte>("8", "money");
+            await AssertTypeUnsupportedRead<short>("8", "money");
+            await AssertTypeUnsupportedRead<int>("8", "money");
+            await AssertTypeUnsupportedRead<long>("8", "money");
+            await AssertTypeUnsupportedRead<float>("8", "money");
+            await AssertTypeUnsupportedRead<double>("8", "money");
         }
 
         static readonly object[] WriteWithLargeScaleCases = new[]
@@ -63,33 +60,5 @@ namespace Npgsql.Tests.Types
             Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
             Assert.That(rdr.GetFieldValue<bool>(1));
         }
-
-        [Test]
-        public async Task Mapping()
-        {
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Money) { Value = 8M });
-            cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) { Value = 8M });
-
-            using var rdr = await cmd.ExecuteReaderAsync();
-            rdr.Read();
-            for (var i = 0; i < cmd.Parameters.Count; i++)
-            {
-                Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
-                Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("money"));
-                Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
-                Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
-                Assert.That(() => rdr.GetFieldValue<byte>(i), Throws.InstanceOf<InvalidCastException>());
-                Assert.That(() => rdr.GetFieldValue<short>(i), Throws.InstanceOf<InvalidCastException>());
-                Assert.That(() => rdr.GetFieldValue<int>(i), Throws.InstanceOf<InvalidCastException>());
-                Assert.That(() => rdr.GetFieldValue<long>(i), Throws.InstanceOf<InvalidCastException>());
-                Assert.That(() => rdr.GetFieldValue<float>(i), Throws.InstanceOf<InvalidCastException>());
-                Assert.That(() => rdr.GetFieldValue<double>(i), Throws.InstanceOf<InvalidCastException>());
-            }
-        }
-
-        public MoneyTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
