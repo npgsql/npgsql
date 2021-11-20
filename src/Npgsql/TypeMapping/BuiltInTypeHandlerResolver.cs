@@ -40,8 +40,8 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
         { "bigint",           new(NpgsqlDbType.Bigint,   "bigint",           typeof(long)) },
         { "real",             new(NpgsqlDbType.Real,     "real",             typeof(float)) },
         { "double precision", new(NpgsqlDbType.Double,   "double precision", typeof(double)) },
-        { "numeric",          new(NpgsqlDbType.Numeric,  "decimal",          typeof(decimal), typeof(BigInteger)) },
-        { "decimal",          new(NpgsqlDbType.Numeric,  "decimal",          typeof(decimal), typeof(BigInteger)) },
+        { "numeric",          new(NpgsqlDbType.Numeric,  "numeric",          typeof(decimal), typeof(BigInteger)) },
+        { "decimal",          new(NpgsqlDbType.Numeric,  "numeric",          typeof(decimal), typeof(BigInteger)) },
         { "money",            new(NpgsqlDbType.Money,    "money") },
 
         // Text types
@@ -69,12 +69,12 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             , typeof(DateOnly)
 #endif
         ) },
-        { "time without time zone",      new(NpgsqlDbType.Time,        "timeout time zone"
+        { "time without time zone",      new(NpgsqlDbType.Time,        "time without time zone"
 #if NET6_0_OR_GREATER
             , typeof(TimeOnly)
 #endif
         ) },
-        { "time",                        new(NpgsqlDbType.Time,        "timeout time zone"
+        { "time",                        new(NpgsqlDbType.Time,        "time without time zone"
 #if NET6_0_OR_GREATER
             , typeof(TimeOnly)
 #endif
@@ -85,10 +85,20 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
 
         { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   "timestamp without time zone[]") },
         { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, "timestamp with time zone[]") },
-        { "tsrange",                       new(NpgsqlDbType.Range | NpgsqlDbType.Timestamp,   "tsrange") },
-        { "tstzrange",                     new(NpgsqlDbType.Range | NpgsqlDbType.TimestampTz, "tstzrange") },
-        { "tsmultirange",                  new(NpgsqlDbType.Multirange | NpgsqlDbType.Timestamp,   "tsmultirange") },
-        { "tstzmultirange",                new(NpgsqlDbType.Multirange | NpgsqlDbType.TimestampTz, "tstzmultirange") },
+
+        { "int4range",                     new(NpgsqlDbType.IntegerRange,     "int4range") },
+        { "int8range",                     new(NpgsqlDbType.BigIntRange,      "int8range") },
+        { "numrange",                      new(NpgsqlDbType.NumericRange,     "numrange") },
+        { "daterange",                     new(NpgsqlDbType.DateRange,        "daterange") },
+        { "tsrange",                       new(NpgsqlDbType.TimestampRange,   "tsrange") },
+        { "tstzrange",                     new(NpgsqlDbType.TimestampTzRange, "tstzrange") },
+
+        { "int4multirange",                new(NpgsqlDbType.IntegerMultirange,     "int4range") },
+        { "int8multirange",                new(NpgsqlDbType.BigIntMultirange,      "int8range") },
+        { "nummultirange",                 new(NpgsqlDbType.NumericMultirange,     "numrange") },
+        { "datemultirange",                new(NpgsqlDbType.DateMultirange,        "datemultirange") },
+        { "tsmultirange",                  new(NpgsqlDbType.TimestampMultirange,   "tsmultirange") },
+        { "tstzmultirange",                new(NpgsqlDbType.TimestampTzMultirange, "tstzmultirange") },
 
         // Network types
         { "cidr",      new(NpgsqlDbType.Cidr,     "cidr") },
@@ -408,8 +418,13 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             { typeof(PhysicalAddress),                 "macaddr" },
 
             // Full-text types
-            { typeof(NpgsqlTsQuery),  "tsquery" },
-            { typeof(NpgsqlTsVector), "tsvector" },
+            { typeof(NpgsqlTsVector),          "tsvector" },
+            { typeof(NpgsqlTsQueryLexeme),     "tsquery" },
+            { typeof(NpgsqlTsQueryAnd),        "tsquery" },
+            { typeof(NpgsqlTsQueryOr),         "tsquery" },
+            { typeof(NpgsqlTsQueryNot),        "tsquery" },
+            { typeof(NpgsqlTsQueryEmpty),      "tsquery" },
+            { typeof(NpgsqlTsQueryFollowedBy), "tsquery" },
 
             // Geometry types
             { typeof(NpgsqlBox),     "box" },
@@ -439,7 +454,27 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             // Internal types
             { typeof(NpgsqlLogSequenceNumber), "pg_lsn" },
             { typeof(NpgsqlTid),               "tid" },
-            { typeof(DBNull),                  "unknown" }
+            { typeof(DBNull),                  "unknown" },
+
+            // Built-in range types
+            { typeof(NpgsqlRange<int>), "int4range" },
+            { typeof(NpgsqlRange<long>), "int8range" },
+            { typeof(NpgsqlRange<decimal>), "numrange" },
+#if NET6_0_OR_GREATER
+            { typeof(NpgsqlRange<DateOnly>), "daterange" },
+#endif
+
+            // Built-in multirange types
+            { typeof(NpgsqlRange<int>[]), "int4multirange" },
+            { typeof(List<NpgsqlRange<int>>), "int4multirange" },
+            { typeof(NpgsqlRange<long>[]), "int8multirange" },
+            { typeof(List<NpgsqlRange<long>>), "int8multirange" },
+            { typeof(NpgsqlRange<decimal>[]), "nummultirange" },
+            { typeof(List<NpgsqlRange<decimal>>), "nummultirange" },
+#if NET6_0_OR_GREATER
+            { typeof(NpgsqlRange<DateOnly>[]), "datemultirange" },
+            { typeof(List<NpgsqlRange<DateOnly>>), "datemultirange" },
+#endif
         };
 
         // Recent versions of .NET Core have an internal ReadOnlyIPAddress type (returned e.g. for IPAddress.Loopback)
@@ -469,6 +504,8 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
                 !range.UpperBoundInfinite ? range.UpperBound.Kind : DateTimeKind.Unspecified),
 
             NpgsqlRange<DateTime>[] multirange => MultirangeHandler(GetMultirangeKind(multirange)),
+            List<NpgsqlRange<DateTime>> multirange => MultirangeHandler(GetMultirangeKind(multirange)),
+
             _ => null
         };
 
@@ -497,9 +534,9 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
                 ? range.UpperBound.Kind
                 : DateTimeKind.Unspecified;
 
-    static DateTimeKind GetMultirangeKind(NpgsqlRange<DateTime>[] multirange)
+    static DateTimeKind GetMultirangeKind(IList<NpgsqlRange<DateTime>> multirange)
     {
-        for (var i = 0; i < multirange.Length; i++)
+        for (var i = 0; i < multirange.Count; i++)
             if (!multirange[i].IsEmpty)
                 return GetRangeKind(multirange[i]);
 
