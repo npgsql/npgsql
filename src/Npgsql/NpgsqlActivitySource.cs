@@ -20,7 +20,7 @@ namespace Npgsql
 
         internal static bool IsEnabled => Source.HasListeners();
 
-        internal static Activity? CommandStart(NpgsqlConnector connector, string sql)
+        internal static Activity? CommandStart(NpgsqlConnector connector, string sql, bool isFullyPrepared)
         {
             var settings = connector.Settings;
             var activity = Source.StartActivity(settings.Database!, ActivityKind.Client);
@@ -32,6 +32,7 @@ namespace Npgsql
             activity.SetTag("db.user", settings.Username);
             activity.SetTag("db.name", settings.Database);
             activity.SetTag("db.statement", sql);
+            activity.SetTag("db.is_prepared", isFullyPrepared);
             activity.SetTag("db.connection_id", connector.Id);
 
             var endPoint = connector.ConnectedEndPoint;
