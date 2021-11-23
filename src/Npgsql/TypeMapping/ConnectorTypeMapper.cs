@@ -34,7 +34,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        volatile TypeHandlerResolver[] _resolvers;
+        volatile List<TypeHandlerResolver> _resolvers;
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
         readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -59,7 +59,7 @@ namespace Npgsql.TypeMapping
         {
             Connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-            _resolvers = Array.Empty<TypeHandlerResolver>();
+            _resolvers = new List<TypeHandlerResolver>();
         }
 
         #endregion Constructors
@@ -583,11 +583,22 @@ namespace Npgsql.TypeMapping
         {
             lock (this)
             {
-                var oldResolvers = _resolvers;
-                var newResolvers = new TypeHandlerResolver[oldResolvers.Length + 1];
-                Array.Copy(oldResolvers, 0, newResolvers, 1, oldResolvers.Length);
-                newResolvers[0] = resolverFactory.Create(Connector);
-                _resolvers = newResolvers;
+                // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapped.UseNodaTime,
+                // we replace an existing resolver of the same CLR type.
+
+                var newResolver = resolverFactory.Create(Connector);
+                var newResolverType = newResolver.GetType();
+
+                if (_resolvers[0].GetType() == newResolverType)
+                    _resolvers[0] = newResolver;
+                else
+                {
+                    for (var i = 0; i < _resolvers.Count; i++)
+                        if (_resolvers[i].GetType() == newResolverType)
+                            _resolvers.RemoveAt(i);
+
+                    _resolvers.Insert(0, newResolver);
+                }
 
                 _handlersByOID.Clear();
                 _handlersByNpgsqlDbType.Clear();
@@ -598,7 +609,6 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        [MemberNotNull(nameof(_resolvers))]
         public override void Reset()
         {
             lock (this)
@@ -612,10 +622,9 @@ namespace Npgsql.TypeMapping
                     _handlersByClrType.Clear();
                     _handlersByDataTypeName.Clear();
 
-                    var newResolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
-                    for (var i = 0; i < newResolvers.Length; i++)
-                        newResolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
-                    _resolvers = newResolvers;
+                    _resolvers.Clear();
+                    for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
+                        _resolvers.Add(globalMapper.ResolverFactories[i].Create(Connector));
 
                     _userTypeMappings.Clear();
 
