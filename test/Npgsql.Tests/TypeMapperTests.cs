@@ -51,59 +51,62 @@ namespace Npgsql.Tests
             }
         }
 
-         [Test]
-         public void Local_mapping()
-         {
-             var myFactory = new MyInt32TypeHandlerResolverFactory();
-             using var _ = CreateTempPool(ConnectionString, out var connectionString);
+        [Test]
+        public void Local_mapping()
+        {
+            var myFactory = new MyInt32TypeHandlerResolverFactory();
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
 
-             using (var conn = OpenConnection(connectionString))
-             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-             {
-                 conn.TypeMapper.AddTypeResolverFactory(myFactory);
-                 cmd.Parameters.AddWithValue("p", 8);
-                 cmd.ExecuteScalar();
-                 Assert.That(myFactory.Reads, Is.EqualTo(1));
-                 Assert.That(myFactory.Writes, Is.EqualTo(1));
-             }
+            using (var conn = OpenConnection(connectionString))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                conn.TypeMapper.AddTypeResolverFactory(myFactory);
+                cmd.Parameters.AddWithValue("p", 8);
+                cmd.ExecuteScalar();
+                Assert.That(myFactory.Reads, Is.EqualTo(1));
+                Assert.That(myFactory.Writes, Is.EqualTo(1));
+            }
 
-             // Make sure reopening (same physical connection) reverts the mapping
-             using (var conn = OpenConnection(connectionString))
-             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-             {
-                 cmd.Parameters.AddWithValue("p", 8);
-                 cmd.ExecuteScalar();
-                 Assert.That(myFactory.Reads, Is.EqualTo(1));
-                 Assert.That(myFactory.Writes, Is.EqualTo(1));
-             }
-         }
+            // Make sure reopening (same physical connection) reverts the mapping
+            using (var conn = OpenConnection(connectionString))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", 8);
+                cmd.ExecuteScalar();
+                Assert.That(myFactory.Reads, Is.EqualTo(1));
+                Assert.That(myFactory.Writes, Is.EqualTo(1));
+            }
+        }
 
-         [Test]
-         public void Global_reset()
-         {
-             var myFactory = new MyInt32TypeHandlerResolverFactory();
-             NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
-             using var _ = CreateTempPool(ConnectionString, out var connectionString);
+        [Test]
+        public void Global_reset()
+        {
+            var myFactory = new MyInt32TypeHandlerResolverFactory();
+            NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
 
-             using (OpenConnection(connectionString)) {}
-             // We now have a connector in the pool with our custom mapping
+            using (OpenConnection(connectionString))
+            {
+            }
+            // We now have a connector in the pool with our custom mapping
 
-             NpgsqlConnection.GlobalTypeMapper.Reset();
-             using (var conn = OpenConnection(connectionString))
-             {
-                 // Should be the pooled connector from before, but it should have picked up the reset
-                 conn.ExecuteScalar("SELECT 1");
-                 Assert.That(myFactory.Reads, Is.Zero);
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+            using (var conn = OpenConnection(connectionString))
+            {
+                // Should be the pooled connector from before, but it should have picked up the reset
+                conn.ExecuteScalar("SELECT 1");
+                Assert.That(myFactory.Reads, Is.Zero);
 
-                 // Now create a second *physical* connection to make sure it picks up the new mapping as well
-                 using (var conn2 = OpenConnection(connectionString))
-                 {
-                     conn2.ExecuteScalar("SELECT 1");
-                     Assert.That(myFactory.Reads, Is.Zero);
-                 }
-                 NpgsqlConnection.ClearPool(conn);
-             }
-         }
+                // Now create a second *physical* connection to make sure it picks up the new mapping as well
+                using (var conn2 = OpenConnection(connectionString))
+                {
+                    conn2.ExecuteScalar("SELECT 1");
+                    Assert.That(myFactory.Reads, Is.Zero);
+                }
+
+                NpgsqlConnection.ClearPool(conn);
+            }
+        }
 
         [Test]
         public async Task String_to_citext()

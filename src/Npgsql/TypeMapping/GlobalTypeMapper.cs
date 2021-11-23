@@ -168,7 +168,21 @@ namespace Npgsql.TypeMapping
             Lock.EnterWriteLock();
             try
             {
-                ResolverFactories.Insert(0, resolverFactory);
+                // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapped.UseNodaTime,
+                // we replace an existing resolver of the same CLR type.
+                var type = resolverFactory.GetType();
+
+                if (ResolverFactories[0].GetType() == type)
+                    ResolverFactories[0] = resolverFactory;
+                else
+                {
+                    for (var i = 0; i < ResolverFactories.Count; i++)
+                        if (ResolverFactories[i].GetType() == type)
+                            ResolverFactories.RemoveAt(i);
+
+                    ResolverFactories.Insert(0, resolverFactory);
+                }
+
                 RecordChange();
             }
             finally

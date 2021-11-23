@@ -27,8 +27,9 @@ namespace Npgsql
             Ordinates handleOrdinates = Ordinates.None,
             bool geographyAsDefault = false)
         {
-            mapper.AddTypeResolverFactory(new NetTopologySuiteTypeHandlerResolverFactory(coordinateSequenceFactory, precisionModel,
-                handleOrdinates, geographyAsDefault));
+            mapper.AddTypeResolverFactory(
+                new NetTopologySuiteTypeHandlerResolverFactory(
+                    coordinateSequenceFactory, precisionModel, handleOrdinates, geographyAsDefault));
             return mapper;
         }
     }
