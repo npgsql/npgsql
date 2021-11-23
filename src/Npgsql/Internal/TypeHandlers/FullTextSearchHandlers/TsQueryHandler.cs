@@ -11,6 +11,7 @@ using NpgsqlTypes;
 // TODO: Need to work on the nullability here
 #nullable disable
 #pragma warning disable CS8632
+#pragma warning disable RS0041
 
 namespace Npgsql.Internal.TypeHandlers.FullTextSearchHandlers
 {
