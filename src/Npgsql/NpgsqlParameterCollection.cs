@@ -480,6 +480,7 @@ namespace Npgsql
 
             InternalList.Clear();
             LookupClear();
+            PlaceholderType = PlaceholderType.NoParameters;
         }
 
         /// <inheritdoc />
