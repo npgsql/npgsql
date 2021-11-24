@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v2.4.0
 
       - name: NuGet Cache
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
