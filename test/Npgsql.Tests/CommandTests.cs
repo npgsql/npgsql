@@ -630,6 +630,31 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4171")]
+        public async Task Cached_command_clears_parameters_placeholder_type()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            await using (var cmd1 = conn.CreateCommand())
+            {
+                cmd1.CommandText = "SELECT @p1";
+                cmd1.Parameters.AddWithValue("@p1", 8);
+                await using var reader1 = await cmd1.ExecuteReaderAsync();
+                reader1.Read();
+                Assert.That(reader1[0], Is.EqualTo(8));
+            }
+
+            await using (var cmd2 = conn.CreateCommand())
+            {
+                cmd2.CommandText = "SELECT $1";
+                cmd2.Parameters.AddWithValue(8);
+                await using var reader2 = await cmd2.ExecuteReaderAsync();
+                reader2.Read();
+                Assert.That(reader2[0], Is.EqualTo(8));
+            }
+        }
+
+        [Test]
         public async Task Positional_output_parameters_are_not_supported()
         {
             await using var conn = await OpenConnectionAsync();
