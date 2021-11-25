@@ -480,7 +480,6 @@ namespace Npgsql
 
             InternalList.Clear();
             LookupClear();
-            PlaceholderType = PlaceholderType.NoParameters;
         }
 
         /// <inheritdoc />
@@ -647,6 +646,7 @@ namespace Npgsql
         internal void ValidateAndBind(ConnectorTypeMapper typeMapper)
         {
             HasOutputParameters = false;
+            PlaceholderType = PlaceholderType.NoParameters;
 
             for (var i = 0; i < InternalList.Count; i++)
             {

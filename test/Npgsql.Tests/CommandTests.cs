@@ -655,6 +655,22 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4171")]
+        public async Task Reuse_command_with_different_parameter_placeholder_types()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = "SELECT @p1";
+            cmd.Parameters.AddWithValue("@p1", 8);
+            _ = await cmd.ExecuteScalarAsync();
+
+            cmd.CommandText = "SELECT $1";
+            cmd.Parameters[0].ParameterName = null;
+            _ = await cmd.ExecuteScalarAsync();
+        }
+
+        [Test]
         public async Task Positional_output_parameters_are_not_supported()
         {
             await using var conn = await OpenConnectionAsync();
