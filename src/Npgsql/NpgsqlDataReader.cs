@@ -207,8 +207,7 @@ namespace Npgsql
         {
             // This is an optimized execution path that avoids calling any async methods for the (usual)
             // case where the next row (or CommandComplete) is already in memory.
-
-            if (_behavior.HasFlag(CommandBehavior.SingleRow))
+            if (_behavior.HasFlag(CommandBehavior.SingleRow) && (State == ReaderState.InResult || StatementIndex > 0))
                 return null;
 
             switch (State)
