@@ -33,8 +33,8 @@ await using (var cmd = new NpgsqlCommand("INSERT INTO data (some_field) VALUES (
 await using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
 await using (var reader = await cmd.ExecuteReaderAsync())
 {
-while (await reader.ReadAsync())
-    Console.WriteLine(reader.GetString(0));
+    while (await reader.ReadAsync())
+        Console.WriteLine(reader.GetString(0));
 }
 ```
 
