@@ -365,6 +365,22 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
         }
 
+        [Test, Description("Roundtrips a long, one-dimensional array of strings as objects, including a null")]
+        public async Task Strings_as_obj_with_null()
+        {
+            using var conn = await OpenConnectionAsync();
+            var largeString = new StringBuilder();
+            largeString.Append('a', conn.Settings.WriteBufferSize);
+            var paramValue = new object?[] { "value1", null, DBNull.Value, largeString.ToString(), "val3" };
+            var expected = new object?[] { "value1", null, null, largeString.ToString(), "val3" };
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) { Value = paramValue };
+            cmd.Parameters.Add(p);
+            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            reader.Read();
+            Assert.That(reader.GetFieldValue<string[]>(0), Is.EqualTo(expected));
+        }
+
         [Test, Description("Roundtrips a zero-dimensional array of ints, should return empty one-dimensional")]
         public async Task Zero_dimensional()
         {

@@ -383,7 +383,7 @@ namespace Npgsql.Internal.TypeHandlers
 
             foreach (var element in value)
             {
-                if (element is null)
+                if (element is null || element == DBNull.Value)
                     continue;
 
                 try
