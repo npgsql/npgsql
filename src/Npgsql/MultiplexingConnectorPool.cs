@@ -299,14 +299,11 @@ namespace Npgsql
                     // copy of the stats for the async writing that will continue in parallel with this loop.
                     var clonedStats = stats.Clone();
 
-                    // ReSharper disable once MethodSupportsCancellation
-                    task.ContinueWith((t, o) =>
+                    task.GetAwaiter().UnsafeOnCompleted(() =>
                     {
-                        var conn = (NpgsqlConnector)o!;
-
-                        if (t.IsFaulted)
+                        if (task.IsFaulted)
                         {
-                            FailWrite(conn, t.Exception!.UnwrapAggregate());
+                            FailWrite(connector, task.Exception!.UnwrapAggregate());
                             return;
                         }
 
@@ -314,13 +311,13 @@ namespace Npgsql
                         // occured. Complete the write, which will flush again (and update statistics).
                         try
                         {
-                            Flush(conn, ref clonedStats);
+                            Flush(connector, ref clonedStats);
                         }
                         catch (Exception e)
                         {
-                            FailWrite(conn, e);
+                            FailWrite(connector, e);
                         }
-                    }, connector);
+                    });
 
                     return false;
                 }
@@ -353,17 +350,16 @@ namespace Npgsql
                     // copy of the stats for the async writing that will continue in parallel with this loop.
                     var clonedStats = stats.Clone();
 
-                    task.ContinueWith((t, o) =>
+                    task.GetAwaiter().UnsafeOnCompleted(() =>
                     {
-                        var conn = (NpgsqlConnector)o!;
-                        if (t.IsFaulted)
+                        if (task.IsFaulted)
                         {
-                            FailWrite(conn, t.Exception!.UnwrapAggregate());
+                            FailWrite(connector, task.Exception!.UnwrapAggregate());
                             return;
                         }
 
-                        CompleteWrite(conn, ref clonedStats);
-                    }, connector);
+                        CompleteWrite(connector, ref clonedStats);
+                    });
 
                     return;
                 }
