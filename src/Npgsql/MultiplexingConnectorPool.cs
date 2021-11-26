@@ -173,7 +173,7 @@ namespace Npgsql
                         var minInFlight = int.MaxValue;
                         foreach (var c in Connectors)
                         {
-                            if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount < minInFlight)
+                            if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount > 0 && c.CommandsInFlightCount < minInFlight)
                             {
                                 minInFlight = c.CommandsInFlightCount;
                                 connector = c;
