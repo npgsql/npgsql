@@ -1091,8 +1091,7 @@ namespace Npgsql.Internal
 
         internal volatile int CommandsInFlightCount;
 
-        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } =
-            new() { RunContinuationsAsynchronously = true };
+        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new();
 
         async Task MultiplexingReadLoop()
         {
@@ -1100,47 +1099,55 @@ namespace Npgsql.Internal
             Debug.Assert(CommandsInFlightReader != null);
 
             NpgsqlCommand? command = null;
-            var commandsRead = 0;
+            var consumedButInFlight = false;
 
             try
             {
                 while (await CommandsInFlightReader.WaitToReadAsync())
                 {
-                    commandsRead = 0;
                     Debug.Assert(!InTransaction);
 
                     while (CommandsInFlightReader.TryRead(out command))
                     {
-                        commandsRead++;
+                        // A thread coming from reader.Dispose() - at the end wrapping back to the start of the loop - could be responsible for
+                        // dequeuing the next command, checking to see if that's ready and decrementing in flight before yielding back to user code.
+                        // Having that thread do that inline helps to keep the multiplexing thread busy enqueuing work onto the right connectors.
+                        consumedButInFlight = true;
+                        var readResult = ReadBuffer.Ensure(5, true);
+                        var isCompletedSync = readResult.IsCompleted; 
+                        
+                        // Before we wait for the resultset we make sure the thread originally running user code can continue. 
+                        if (!isCompletedSync) await Task.Yield();
+                        await readResult;
+                        
+                        consumedButInFlight = false;
+                        Interlocked.Decrement(ref CommandsInFlightCount);
+                        
+                        // This is as far as the thread running user code goes if everything for the next command was already ready.
+                        if (isCompletedSync) await Task.Yield();
 
-                        await ReadBuffer.Ensure(5, true);
-
-                        // We have a resultset for the command - hand back control to the command (which will
-                        // return it to the user)
+                        // We have a resultset for the command - hand back control to the command (which will return it to the user)
                         command.TraceReceivedFirstResponse();
                         ReaderCompleted.Reset();
                         command.ExecutionCompletion.SetResult(this);
 
-                        // Now wait until that command's reader is disposed. Note that RunContinuationsAsynchronously is
-                        // true, so that the user code calling NpgsqlDataReader.Dispose will not continue executing
-                        // synchronously here. The prevents issues if the code after the next command's execution
-                        // completion blocks.
+                        // Now wait until that command's reader is disposed.
                         await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
                         Debug.Assert(!InTransaction);
                     }
 
-                    // Atomically update the commands in-flight counter, and check if it reached 0. If so, the
-                    // connector is idle and can be returned.
+                    // Check if in flight reached 0. If so, the connector is idle and can be returned.
                     // Note that this is racing with over-capacity writing, which can select any connector at any
                     // time (see MultiplexingWriteLoop), and we must make absolutely sure that if a connector is
                     // returned to the pool, it is *never* written to unless properly dequeued from the Idle channel.
-                    if (Interlocked.Add(ref CommandsInFlightCount, -commandsRead) == 0)
+                    if (CommandsInFlightCount == 0)
                     {
                         // There's a race condition where the continuation of an asynchronous multiplexing write may not
                         // have executed yet, and the flush may still be in progress. We know all I/O has already
                         // been sent - because the reader has already consumed the entire resultset. So we wait until
                         // the connector's write lock has been released (long waiting will never occur here).
-                        SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
+                        bool SpinCondition() => MultiplexAsyncWritingLock == 0 || IsBroken;
+                        if (!SpinCondition()) SpinWait.SpinUntil(() => SpinCondition());
 
                         ResetReadBuffer();
                         _connectorSource.Return(this);
@@ -1152,17 +1159,21 @@ namespace Npgsql.Internal
             catch (Exception e)
             {
                 Debug.Assert(IsBroken);
-
-                // Decrement the commands already dequeued from the in-flight counter
-                Interlocked.Add(ref CommandsInFlightCount, -commandsRead);
-
+                
                 // When a connector is broken, the causing exception is stored on it. We fail commands with
                 // that exception - rather than the one thrown here - since the break may have happened during
                 // writing, and we want to bubble that one up.
 
                 // Drain any pending in-flight commands and fail them. Note that some have only been written
                 // to the buffer, and not sent to the server.
-                command?.ExecutionCompletion.SetException(_breakReason!);
+
+                // A command was in flight but already dequeued, decrement and complete it too.
+                if (consumedButInFlight)
+                {
+                    Interlocked.Decrement(ref CommandsInFlightCount);
+                    command!.ExecutionCompletion.SetException(_breakReason!);
+                }
+                
                 try
                 {
                     while (true)
@@ -1179,6 +1190,7 @@ namespace Npgsql.Internal
                     // All good, drained to the channel and failed all commands
                 }
 
+                CommandsInFlightCount = 0;
                 // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
                 _connectorSource.Return(this);
 
