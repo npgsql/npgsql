@@ -15,13 +15,13 @@ static class TaskExtensions
     /// <param name="getTaskFunc">Gets a <see cref="Task{TResult}"/>.</param>
     /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
+    /// <param name="useLegacyImplementation">An optional <see cref="Boolean"/> parameter for testing only. If set to true the method uses pre-dotnet 6.0 implementation for cancellation and timeout enforcement.</param>
     /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
     /// <returns>The <see cref="Task{TResult}"/> representing the asynchronous wait.</returns>
-    internal static async Task<TResult> ExecuteWithCancellationAndTimeoutAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc,
-        NpgsqlTimeout timeout, CancellationToken cancellationToken)
+    internal static async Task<TResult> ExecuteWithCancellationAndTimeoutAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
     {
         Task<TResult>? task = default;
-        await ExecuteWithCancellationAndTimeoutAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken);
+        await ExecuteWithCancellationAndTimeoutAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken, useLegacyImplementation);
         return await task!;
     }
 
@@ -32,17 +32,18 @@ static class TaskExtensions
     /// <param name="getTaskFunc">Gets a <see cref="Task"/>.</param>
     /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
+    /// <param name="useLegacyImplementation">An optional <see cref="Boolean"/> parameter for testing only. If set to true the method uses pre-dotnet 6.0 implementation for cancellation and timeout enforcement.</param>
     /// <returns>The <see cref="Task"/> representing the asynchronous wait.</returns>
-    internal static async Task ExecuteWithCancellationAndTimeoutAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout,
-        CancellationToken cancellationToken)
-    {
+    internal static async Task ExecuteWithCancellationAndTimeoutAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
+    { 
         Task? task = default;
         using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
         try
         {
             try
             {
-                await (task = getTaskFunc(combinedCts?.Token ?? cancellationToken)).WithCancellationAndTimeout(timeout, cancellationToken);
+                task = getTaskFunc(combinedCts?.Token ?? cancellationToken);
+                await WithCancellationAndTimeoutLocal(task);
             }
             catch (TimeoutException) when (!task!.IsCompleted)
             {
@@ -54,17 +55,27 @@ static class TaskExtensions
         catch
         {
             // Prevent unobserved Task notifications by observing the failed Task exception.
-            _ = task!.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Current);
+            // To test: comment the next line out and re-run TaskExtensionsTest.DelayedFaultedTaskCancellation.
+            _ = task!.ContinueWith( t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
             throw;
         }
-    }
 
+        Task WithCancellationAndTimeoutLocal(Task t)
+        {
+            if (useLegacyImplementation)
+            {
+                return WithCancellationAndTimeoutImplLegacy(t, timeout, cancellationToken);
+            }
+            return WithCancellationAndTimeout(t, timeout, cancellationToken);
+        }
+    }
+    
 #if NET6_0_OR_GREATER
-        static Task WithCancellationAndTimeout(this Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-            => task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
-#else
-    static async Task WithCancellationAndTimeout(this Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+    static Task WithCancellationAndTimeoutImpl(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        => task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
+#endif
+    
+    static async Task WithCancellationAndTimeoutImplLegacy(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
         var tasks = new Lazy<List<Task>>(() => new List<Task>());
 
@@ -103,7 +114,6 @@ static class TaskExtensions
                     task = Task.FromException(new TimeoutException());
                 }
             }
-
             await task;
         }
         finally
@@ -113,6 +123,12 @@ static class TaskExtensions
             registration.Dispose();
         }
     }
+    
+#if NET6_0_OR_GREATER
+    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        => WithCancellationAndTimeoutImpl(task, timeout, cancellationToken);
+#else
+    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        => WithCancellationAndTimeoutImplLegacy(task, timeout, cancellationToken);
 #endif
 }
-
