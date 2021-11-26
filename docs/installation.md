@@ -13,8 +13,8 @@ We occasionally publish previews to nuget.org as well - these are generally quit
 
 In additional to the official releases, we automatically publish CI packages for every build. You can use these to test new features or bug fixes that haven't been released yet. Two CI nuget feeds are available:
 
-* [The patch feed](https://www.myget.org/gallery/npgsql) contains CI packages for the next hotfix/patch version. These packages are generally very stable and safe.
-* [The vNext feed](https://www.myget.org/gallery/npgsql-unstable) contains CI packages for the next minor or major versions. These are less stable and should be tested with care.
+* [The patch feed](https://www.myget.org/feed/Packages/npgsql) contains CI packages for the next hotfix/patch version. These packages are generally very stable and safe.
+* [The vNext feed](https://www.myget.org/feed/Packages/npgsql-vnext) contains CI packages for the next minor or major versions. These are less stable and should be tested with care.
 
 ## Older, unsupported installation methods
 
