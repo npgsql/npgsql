@@ -1,5 +1,6 @@
 ﻿using Npgsql.Internal;
 using Npgsql.Util;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
@@ -8,7 +9,7 @@ using System.Transactions;
 
 namespace Npgsql
 {
-    abstract class ConnectorSource
+    abstract class ConnectorSource : IDisposable
     {
         internal NpgsqlConnectionStringBuilder Settings { get; }
 
@@ -47,6 +48,8 @@ namespace Npgsql
         internal abstract void Clear();
 
         internal abstract bool OwnsConnectors { get; }
+
+        public virtual void Dispose() { }
 
         #region Pending Enlisted Connections
 
