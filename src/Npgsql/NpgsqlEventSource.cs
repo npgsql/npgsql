@@ -27,8 +27,8 @@ namespace Npgsql
         PollingCounter? _preparedCommandsRatioCounter;
 
         PollingCounter? _poolsCounter;
-        PollingCounter? _idleConnectionsCounter;
-        PollingCounter? _busyConnectionsCounter;
+        readonly object _poolsLock = new();
+        readonly Dictionary<ConnectorSource, (PollingCounter IdleConnectionsCounter, PollingCounter BusyConnectionsCounter)?> _pools = new();
 
         PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
         PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
@@ -42,8 +42,6 @@ namespace Npgsql
         long _currentCommands;
         long _failedCommands;
 
-        readonly object _poolsLock = new();
-        readonly HashSet<ConnectorSource> _pools = new();
 
         long _multiplexingBatchesSent;
         long _multiplexingCommandsSent;
@@ -81,10 +79,12 @@ namespace Npgsql
 
         internal void PoolCreated(ConnectorSource pool)
         {
+#if !NETSTANDARD2_0
             lock (_poolsLock)
             {
-                _pools.Add(pool);
+                _pools.Add(pool, null);
             }
+#endif
         }
 
         internal void MultiplexingBatchSent(int numCommands, Stopwatch stopwatch)
@@ -96,36 +96,6 @@ namespace Npgsql
         }
 
 #if !NETSTANDARD2_0
-        double GetIdleConnections()
-        {
-            // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
-            // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
-            lock (_poolsLock)
-            {
-                var sum = 0;
-                foreach (var pool in _pools)
-                {
-                    sum += pool.Statistics.Idle;
-                }
-                return sum;
-            }
-        }
-
-        double GetBusyConnections()
-        {
-            // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards
-            // to different counters. So idle and busy and be unsynchronized, as they're not polled together.
-            lock (_poolsLock)
-            {
-                var sum = 0;
-                foreach (var pool in _pools)
-                {
-                    sum += pool.Statistics.Busy;
-                }
-                return sum;
-            }
-        }
-
         double GetPoolsCount()
         {
             lock (_poolsLock)
@@ -211,16 +181,6 @@ namespace Npgsql
                     DisplayName = "Connection Pools"
                 };
 
-                _idleConnectionsCounter = new PollingCounter("idle-connections", this, GetIdleConnections)
-                {
-                    DisplayName = "Idle Connections"
-                };
-
-                _busyConnectionsCounter = new PollingCounter("busy-connections", this, GetBusyConnections)
-                {
-                    DisplayName = "Busy Connections"
-                };
-
                 _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, GetMultiplexingAverageCommandsPerBatch)
                 {
                     DisplayName = "Average commands per multiplexing batch"
@@ -231,8 +191,21 @@ namespace Npgsql
                     DisplayName = "Average write time per multiplexing batch (us)",
                     DisplayUnits = "us"
                 };
+                lock (_poolsLock)
+                {
+                    foreach (var pool in _pools.Keys)
+                    {
+                        if (!_pools[pool].HasValue)
+                        {
+                            _pools[pool] = (
+                                new PollingCounter($"Idle Connections ({pool.Settings.ToStringWithoutPassword()}])", this, () => pool.Statistics.Idle),
+                                new PollingCounter($"Busy Connections ({pool.Settings.ToStringWithoutPassword()}])", this, () => pool.Statistics.Busy));
+                        }
+                    }
+                }
             }
         }
+
 #endif
     }
 }

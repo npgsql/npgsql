@@ -16,6 +16,8 @@ namespace Npgsql
 
         readonly ConnectorSource[] _pools;
 
+        internal ConnectorSource[] Pools => _pools;
+
         volatile int _roundRobinIndex = -1;
 
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
