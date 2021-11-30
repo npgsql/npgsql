@@ -74,10 +74,10 @@ static class TaskExtensions
     static Task WithCancellationAndTimeoutImpl(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         => task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
 #endif
-    
+
     static async Task WithCancellationAndTimeoutImplLegacy(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
-        var tasks = new Lazy<List<Task>>(() => new List<Task>());
+        var tasks = new List<Task>();
 
         Task? cancellationTask = default;
         CancellationTokenRegistration registration = default;
@@ -86,7 +86,7 @@ static class TaskExtensions
             var tcs = new TaskCompletionSource<bool>();
             registration = cancellationToken.Register(s => ((TaskCompletionSource<bool>)s!).TrySetResult(true), tcs);
             cancellationTask = tcs.Task;
-            tasks.Value.Add(cancellationTask);
+            tasks.Add(cancellationTask);
         }
 
         Task? delayTask = default;
@@ -96,15 +96,15 @@ static class TaskExtensions
             var timeLeft = timeout.CheckAndGetTimeLeft();
             delayCts = new CancellationTokenSource();
             delayTask = Task.Delay(timeLeft, delayCts.Token);
-            tasks.Value.Add(delayTask);
+            tasks.Add(delayTask);
         }
 
         try
         {
-            if (tasks.IsValueCreated)
+            if (tasks.Count != 0)
             {
-                tasks.Value.Add(task);
-                var result = await Task.WhenAny(tasks.Value);
+                tasks.Add(task);
+                var result = await Task.WhenAny(tasks);
                 if (result == cancellationTask)
                 {
                     task = Task.FromCanceled(cancellationToken);
@@ -123,12 +123,11 @@ static class TaskExtensions
             registration.Dispose();
         }
     }
-    
+
+    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken) =>
 #if NET6_0_OR_GREATER
-    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        => WithCancellationAndTimeoutImpl(task, timeout, cancellationToken);
+        WithCancellationAndTimeoutImpl(task, timeout, cancellationToken);
 #else
-    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        => WithCancellationAndTimeoutImplLegacy(task, timeout, cancellationToken);
+        WithCancellationAndTimeoutImplLegacy(task, timeout, cancellationToken);
 #endif
 }
