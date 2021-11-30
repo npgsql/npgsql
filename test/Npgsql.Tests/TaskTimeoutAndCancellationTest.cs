@@ -7,36 +7,37 @@ using Npgsql.Util;
 
 namespace Npgsql.Tests
 {
-    public class TaskExtensionsTest : TestBase
+    public class TaskTimeoutAndCancellationTest : TestBase
     {
-        const int Value = 777;
+        const int TestResultValue = 777;
+
         async Task<int> GetResultTaskAsync(int timeout, CancellationToken ct)
         {
             await Task.Delay(timeout, ct);
-            return Value;
+            return TestResultValue;
         }
 
         Task GetVoidTaskAsync(int timeout, CancellationToken ct) => Task.Delay(timeout, ct);
 
         [Theory]
         public async Task SuccessfulResultTaskAsync(bool useLegacyImplementation) =>
-            Assert.AreEqual(Value, await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation));
+            Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.WaitAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation));
 
         [Theory]
         public async Task SuccessfulVoidTaskAsync(bool useLegacyImplementation) =>
-            await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation);
+            await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation);
 
         [Theory]
         public void InfinitelyLongTaskTimeout(bool useLegacyImplementation) =>
             Assert.ThrowsAsync<TimeoutException>(async () =>
-                await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None, useLegacyImplementation));
+                await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None, useLegacyImplementation));
 
         [Theory]
         public void InfinitelyLongTaskCancellation(bool useLegacyImplementation)
         {
             using var cts = new CancellationTokenSource(10);
             Assert.ThrowsAsync<TaskCanceledException>(async () =>
-                await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token, useLegacyImplementation));
+                await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token, useLegacyImplementation));
         }
 
         /// <summary>
@@ -138,7 +139,7 @@ namespace Npgsql.Tests
             using var cts = cancel ? new CancellationTokenSource(timeoutMs) : null;
             try
             {
-                await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(
+                await TaskTimeoutAndCancellation.WaitAsync(
                     _ => nonCancellableTask,
                     timeout ? new NpgsqlTimeout(TimeSpan.FromMilliseconds(timeoutMs)) : NpgsqlTimeout.Infinite,
                     cts?.Token ?? CancellationToken.None,

@@ -952,7 +952,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             // and raise the exception, but the actual connection task is left running.
             var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
                 ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-                : (await TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(GetHostAddressesAsync, timeout, cancellationToken))
+                : (await TaskTimeoutAndCancellation.WaitAsync(GetHostAddressesAsync, timeout, cancellationToken))
                 .Select(a => new IPEndPoint(a, Port)).ToArray();
 
         // Give each IP an equal share of the remaining time
@@ -1018,7 +1018,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     return socket.ConnectAsync(endpoint);
 #endif
                 }
-                return TaskExtensions.ExecuteWithCancellationAndTimeoutAsync(ConnectAsync, perIpTimeout, cancellationToken);
+                return TaskTimeoutAndCancellation.WaitAsync(ConnectAsync, perIpTimeout, cancellationToken);
             }
         }
 

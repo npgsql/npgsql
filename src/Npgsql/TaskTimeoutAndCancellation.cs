@@ -6,10 +6,10 @@ using Npgsql.Util;
 
 namespace Npgsql;
 
-static class TaskExtensions
+static class TaskTimeoutAndCancellation
 {
     /// <summary>
-    /// Utility that executes a non-cancellable task and allows you to timeout and cancel awaiting for it.
+    /// Utility that executes a non-cancellable task while allowing to timeout and/or cancel awaiting for it.
     /// If the given task does not complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
     /// </summary>
     /// <param name="getTaskFunc">Gets a <see cref="Task{TResult}"/>.</param>
@@ -18,15 +18,15 @@ static class TaskExtensions
     /// <param name="useLegacyImplementation">An optional <see cref="Boolean"/> parameter for testing only. If set to true the method uses pre-dotnet 6.0 implementation for cancellation and timeout enforcement.</param>
     /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
     /// <returns>The <see cref="Task{TResult}"/> representing the asynchronous wait.</returns>
-    internal static async Task<TResult> ExecuteWithCancellationAndTimeoutAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
+    internal static async Task<TResult> WaitAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
     {
         Task<TResult>? task = default;
-        await ExecuteWithCancellationAndTimeoutAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken, useLegacyImplementation);
+        await WaitAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken, useLegacyImplementation);
         return await task!;
     }
 
     /// <summary>
-    /// Utility that executes a non-cancellable task and allows you to timeout and cancel awaiting for it.
+    /// Utility that executes a non-cancellable task while allowing to timeout and/or cancel awaiting for it.
     /// If the given task does not complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
     /// </summary>
     /// <param name="getTaskFunc">Gets a <see cref="Task"/>.</param>
@@ -34,7 +34,7 @@ static class TaskExtensions
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
     /// <param name="useLegacyImplementation">An optional <see cref="Boolean"/> parameter for testing only. If set to true the method uses pre-dotnet 6.0 implementation for cancellation and timeout enforcement.</param>
     /// <returns>The <see cref="Task"/> representing the asynchronous wait.</returns>
-    internal static async Task ExecuteWithCancellationAndTimeoutAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
+    internal static async Task WaitAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
     { 
         Task? task = default;
         using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
