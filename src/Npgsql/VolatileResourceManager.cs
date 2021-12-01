@@ -244,7 +244,6 @@ namespace Npgsql
 
         #region Dispose/Cleanup
 
-#pragma warning disable CS8625
         void Dispose()
         {
             if (_isDisposed)
@@ -254,7 +253,7 @@ namespace Npgsql
             if (_localTx != null)
             {
                 _localTx.Dispose();
-                _localTx = null;
+                _localTx = null!;
             }
 
             if (_connector.Connection != null)
@@ -272,7 +271,6 @@ namespace Npgsql
             _transaction = null!;
             _isDisposed = true;
         }
-#pragma warning restore CS8625
 
         void CheckDisposed()
         {

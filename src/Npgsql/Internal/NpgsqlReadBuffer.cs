@@ -155,7 +155,6 @@ namespace Npgsql.Internal
                 Debug.Assert(count <= buffer.Size);
                 Debug.Assert(count > buffer.ReadBytesLeft);
                 count -= buffer.ReadBytesLeft;
-                if (count <= 0) { return; }
 
                 if (buffer.ReadPosition == buffer.FilledBytes)
                 {
@@ -269,8 +268,6 @@ namespace Npgsql.Internal
             }
         }
 
-        internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
-
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
@@ -287,7 +284,6 @@ namespace Npgsql.Internal
         /// <summary>
         /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
         /// </summary>
-        /// <param name="len"></param>
         internal void Skip(long len)
         {
             Debug.Assert(ReadBytesLeft >= len);

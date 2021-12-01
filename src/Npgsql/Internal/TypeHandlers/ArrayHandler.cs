@@ -127,7 +127,7 @@ namespace Npgsql.Internal.TypeHandlers
             var dimLengths = new int[dimensions];
             await buf.Ensure(dimensions * 8, async);
 
-            for (var i = 0; i < dimensions; i++)
+            for (var i = 0; i < dimLengths.Length; i++)
             {
                 dimLengths[i] = buf.ReadInt32();
                 buf.ReadInt32(); // Lower bound
@@ -152,7 +152,7 @@ namespace Npgsql.Internal.TypeHandlers
 
                 // TODO: Overly complicated/inefficient...
                 indices[dimensions - 1]++;
-                for (var dim = dimensions - 1; dim >= 0; dim--)
+                for (var dim = indices.Length - 1; dim >= 0; dim--)
                 {
                     if (indices[dim] <= result.GetUpperBound(dim))
                         continue;

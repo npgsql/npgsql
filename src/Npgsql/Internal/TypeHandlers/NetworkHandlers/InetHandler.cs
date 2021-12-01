@@ -37,7 +37,6 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
         public override IPAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => DoRead(buf, len, fieldDescription, false).Address;
 
-#pragma warning disable CA1801 // Review unused parameters
         internal static (IPAddress Address, int Subnet) DoRead(
             NpgsqlReadBuffer buf,
             int len,
@@ -50,12 +49,11 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers
             Debug.Assert(isCidrHandler == isCidr);
             var numBytes = buf.ReadByte();
             var bytes = new byte[numBytes];
-            for (var i = 0; i < numBytes; i++)
+            for (var i = 0; i < bytes.Length; i++)
                 bytes[i] = buf.ReadByte();
 
             return (new IPAddress(bytes), mask);
         }
-#pragma warning restore CA1801 // Review unused parameters
 
         /// <inheritdoc />
         protected override (IPAddress Address, int Subnet) ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

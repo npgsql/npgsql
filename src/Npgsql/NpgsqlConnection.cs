@@ -326,15 +326,16 @@ namespace Npgsql
                     if (enlistToTransaction is not null)
                         EnlistTransaction(enlistToTransaction);
 
-                    timeout = new NpgsqlTimeout(connectionTimeout);
-
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
                     // Bring this up to date if needed.
                     // Note that in multiplexing execution, the pool-wide type mapper is used so no
                     // need to update the connector type mapper (this is why this is here).
                     if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                    {
+                        timeout = new NpgsqlTimeout(connectionTimeout);
                         await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+                    }
 
                     Log.Debug("Connection opened");
                     FullState = ConnectionState.Open;

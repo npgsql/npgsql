@@ -35,7 +35,7 @@ namespace Npgsql.BackendMessages
         {
             Count = source.Count;
             _fields = new FieldDescription?[Count];
-            for (var i = 0; i < Count; i++)
+            for (var i = 0; i < _fields.Length; i++)
                 _fields[i] = source._fields[i]!.Clone();
             _nameIndex = new Dictionary<string, int>(source._nameIndex);
             if (source._insensitiveIndex?.Count > 0)

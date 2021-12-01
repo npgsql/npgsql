@@ -427,7 +427,7 @@ namespace Npgsql.Internal
         public void WriteBytes(ReadOnlySpan<byte> buf)
         {
             Debug.Assert(buf.Length <= WriteSpaceLeft);
-            buf.CopyTo(new Span<byte>(Buffer, WritePosition, Buffer.Length - WritePosition));
+            buf.CopyTo(new Span<byte>(Buffer, WritePosition, WriteSpaceLeft));
             WritePosition += buf.Length;
         }
 

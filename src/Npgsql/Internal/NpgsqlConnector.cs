@@ -1207,16 +1207,13 @@ namespace Npgsql.Internal
 
         #region Backend message processing
 
-        internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
-            => ReadMessage(async: false, dataRowLoadingMode).GetAwaiter().GetResult();
-
         internal ValueTask<IBackendMessage> ReadMessage(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
             => ReadMessage(async, dataRowLoadingMode, readingNotifications: false)!;
 
         internal ValueTask<IBackendMessage?> ReadMessageWithNotifications(bool async)
             => ReadMessage(async, DataRowLoadingMode.NonSequential, readingNotifications: true);
 
-        internal ValueTask<IBackendMessage?> ReadMessage(
+        ValueTask<IBackendMessage?> ReadMessage(
             bool async,
             DataRowLoadingMode dataRowLoadingMode,
             bool readingNotifications)
