@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -217,8 +218,11 @@ namespace Npgsql
         static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
             => exceptions.Count == 0
                 ? new NpgsqlException("No suitable host was found.")
-                : new("Unable to connect to a suitable host. Check inner exception for more details.",
-                    new AggregateException(exceptions));
+                : exceptions[0] is PostgresException firstException &&
+                  exceptions.All(x => x is PostgresException ex && ex.SqlState == firstException.SqlState)
+                    ? firstException
+                    : new NpgsqlException("Unable to connect to a suitable host. Check inner exception for more details.",
+                        new AggregateException(exceptions));
 
         int GetRoundRobinIndex()
         {
