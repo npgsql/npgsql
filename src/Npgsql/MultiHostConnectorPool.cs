@@ -17,7 +17,7 @@ namespace Npgsql
 
         readonly ConnectorSource[] _pools;
 
-        volatile int _roundRobinIndex = -1;
+        readonly int[] _roundRobinIndex;
 
         public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
         {
@@ -39,6 +39,12 @@ namespace Npgsql
                 _pools[i] = settings.Pooling
                     ? new ConnectorPool(poolSettings, poolSettings.ConnectionString, this)
                     : new UnpooledConnectorSource(poolSettings, poolSettings.ConnectionString);
+            }
+
+            _roundRobinIndex = new int[7];
+            for (var i = 0; i < _roundRobinIndex.Length; i++)
+            {
+                _roundRobinIndex[i] = -1;
             }
         }
 
@@ -192,10 +198,10 @@ namespace Npgsql
         {
             var exceptions = new List<Exception>();
 
-            var poolIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
+            var preferredType = GetTargetSessionAttributes(conn);
+            var poolIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex(preferredType) : 0;
 
             var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
-            var preferredType = GetTargetSessionAttributes(conn);
             var checkUnpreferred =
                 preferredType == TargetSessionAttributes.PreferPrimary ||
                 preferredType == TargetSessionAttributes.PreferStandby;
@@ -224,25 +230,47 @@ namespace Npgsql
                     : new NpgsqlException("Unable to connect to a suitable host. Check inner exception for more details.",
                         new AggregateException(exceptions));
 
-        int GetRoundRobinIndex()
+        int GetRoundRobinIndex(TargetSessionAttributes preferredType)
         {
+            var preferredTypeIndex = (int)preferredType;
+            Debug.Assert(preferredTypeIndex >= 0 && preferredTypeIndex < _roundRobinIndex.Length);
+            var previousIndex = -1;
             while (true)
             {
-                var index = Interlocked.Increment(ref _roundRobinIndex);
+                var index = Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex]);
+                // Got the same index - try again
+                if (index == previousIndex)
+                    continue;
+
                 if (index >= 0)
-                    return index % _pools.Length;
+                {
+                    // The new index differs from the previous one - return it
+                    if (previousIndex != -1 && previousIndex != index)
+                        return index;
+
+                    index %= _pools.Length;
+                    var previousHostIndex = index == 0 ? _pools.Length - 1 : index - 1;
+                    var clusterState = GetClusterState(_pools[previousHostIndex]);
+                    if (IsPreferred(clusterState, preferredType))
+                        return index;
+
+                    // The previous host isn't valid - there is a high chance someone else already took the host we're attempting to get
+                    // Try again
+                    previousIndex = index;
+                    continue;
+                }
 
                 // Worst case scenario - we've wrapped around integer counter
                 if (index == int.MinValue)
                 {
                     // This is the thread which wrapped around the counter - reset it to 0
-                    _roundRobinIndex = 0;
+                    _roundRobinIndex[preferredTypeIndex] = 0;
                     return 0;
                 }
 
                 // This is not the thread which wrapped around the counter - just wait until it's 0 or more
                 var sw = new SpinWait();
-                while (_roundRobinIndex < 0)
+                while (_roundRobinIndex[preferredTypeIndex] < 0)
                     sw.SpinOnce();
             }
         }
