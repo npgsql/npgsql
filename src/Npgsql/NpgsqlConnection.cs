@@ -243,6 +243,8 @@ namespace Npgsql
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
                 NpgsqlEventSource.Log.PoolCreated(newPool);
             }
+            else
+                newPool.Dispose();
 
             // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
             if (_pool is MultiHostConnectorPool mhcp)
