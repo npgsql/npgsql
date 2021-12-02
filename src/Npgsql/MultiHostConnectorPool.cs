@@ -238,17 +238,20 @@ namespace Npgsql
             while (true)
             {
                 var index = Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex]);
-                // Got the same index - try again
-                if (index == previousIndex)
-                    continue;
-
                 if (index >= 0)
                 {
-                    // The new index differs from the previous one - return it
-                    if (previousIndex != -1 && previousIndex != index)
-                        return index;
-
                     index %= _pools.Length;
+
+                    if (previousIndex != -1)
+                    {
+                        // The new index differs from the previous one - return it
+                        if (previousIndex != index)
+                            return index;
+
+                        // Got the same index - try again
+                        continue; 
+                    }
+                    
                     var previousHostIndex = index == 0 ? _pools.Length - 1 : index - 1;
                     var clusterState = GetClusterState(_pools[previousHostIndex]);
                     if (IsPreferred(clusterState, preferredType))
