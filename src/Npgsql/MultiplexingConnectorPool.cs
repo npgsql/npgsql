@@ -41,7 +41,7 @@ namespace Npgsql
         /// </summary>
         readonly int _writeCoalescingBufferThresholdBytes;
 
-        readonly SemaphoreSlim? _bootstrapSemaphore;
+        readonly SemaphoreSlim _bootstrapSemaphore;
 
         // TODO: Make this configurable
         const int MultiplexingCommandChannelBound = 4096;
@@ -68,23 +68,13 @@ namespace Npgsql
                 });
             _multiplexCommandReader = multiplexCommandChannel.Reader;
             MultiplexCommandWriter = multiplexCommandChannel.Writer;
-
-            // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
-            // pool clearing
-
-            _ = Task.Run(MultiplexingWriteLoop)
-                .ContinueWith(t =>
-                {
-                    // Note that we *must* observe the exception if the task is faulted.
-                    Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
-                        t.Exception!);
-                }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         /// <summary>
-        /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
+        /// Called exactly once per multiplexing pool, when the first connection is opened, with three goals:
         /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
         /// 2. Cause any connection exceptions (e.g. bad username) to be thrown from NpgsqlConnection.Open
+        /// 3. Start the multiplexing write loop after we've made sure that's the exact pool we're going to use
         /// </summary>
         internal async Task BootstrapMultiplexing(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
@@ -110,6 +100,16 @@ namespace Npgsql
                 // concurrently) but just in case.
                 MultiplexingTypeMapper = connector.TypeMapper;
                 await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+
+                // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
+                // pool clearing
+                var __ = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
+                    .ContinueWith(t =>
+                    {
+                        // Note that we *must* observe the exception if the task is faulted.
+                        Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
+                                t.Exception!);
+                    }, TaskContinuationOptions.OnlyOnFaulted);
 
                 IsBootstrapped = true;
             }
@@ -402,6 +402,12 @@ namespace Npgsql
             }
 
             // ReSharper disable once FunctionNeverReturns
+        }
+
+        public override void Dispose()
+        {
+            _bootstrapSemaphore.Dispose();
+            base.Dispose();
         }
 
         struct MultiplexingStats
