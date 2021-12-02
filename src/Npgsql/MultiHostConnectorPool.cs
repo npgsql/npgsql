@@ -237,44 +237,25 @@ namespace Npgsql
             var previousIndex = -1;
             while (true)
             {
-                var index = Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex]);
-                if (index >= 0)
+                var index = (int)(unchecked((uint)Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex])) % _pools.Length);
+                if (previousIndex != -1)
                 {
-                    index %= _pools.Length;
-
-                    if (previousIndex != -1)
-                    {
-                        // The new index differs from the previous one - return it
-                        if (previousIndex != index)
-                            return index;
-
-                        // Got the same index - try again
-                        continue; 
-                    }
-                    
-                    var previousHostIndex = index == 0 ? _pools.Length - 1 : index - 1;
-                    var clusterState = GetClusterState(_pools[previousHostIndex]);
-                    if (IsPreferred(clusterState, preferredType))
+                    // The new index differs from the previous one - return it
+                    if (previousIndex != index)
                         return index;
 
-                    // The previous host isn't valid - there is a high chance someone else already took the host we're attempting to get
-                    // Try again
-                    previousIndex = index;
+                    // Got the same index - try again
                     continue;
                 }
 
-                // Worst case scenario - we've wrapped around integer counter
-                if (index == int.MinValue)
-                {
-                    // This is the thread which wrapped around the counter - reset it to 0
-                    _roundRobinIndex[preferredTypeIndex] = 0;
-                    return 0;
-                }
+                var previousHostIndex = index == 0 ? _pools.Length - 1 : index - 1;
+                var clusterState = GetClusterState(_pools[previousHostIndex]);
+                if (IsPreferred(clusterState, preferredType))
+                    return index;
 
-                // This is not the thread which wrapped around the counter - just wait until it's 0 or more
-                var sw = new SpinWait();
-                while (_roundRobinIndex[preferredTypeIndex] < 0)
-                    sw.SpinOnce();
+                // The previous host isn't valid - there is a high chance someone else already took the host we're attempting to get
+                // Try again
+                previousIndex = index;
             }
         }
 
