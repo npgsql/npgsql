@@ -234,20 +234,10 @@ namespace Npgsql
         {
             var preferredTypeIndex = (int)preferredType;
             Debug.Assert(preferredTypeIndex >= 0 && preferredTypeIndex < _roundRobinIndex.Length);
-            var previousIndex = -1;
-            while (true)
+            // We have 20 attempts to get an index
+            for (var i = 0; i < 20; i++)
             {
-                var index = (int)(unchecked((uint)Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex])) % _pools.Length);
-                if (previousIndex != -1)
-                {
-                    // The new index differs from the previous one - return it
-                    if (previousIndex != index)
-                        return index;
-
-                    // Got the same index - try again
-                    continue;
-                }
-
+                var index = GetNewIndex();
                 var previousHostIndex = index == 0 ? _pools.Length - 1 : index - 1;
                 var clusterState = GetClusterState(_pools[previousHostIndex]);
                 if (IsPreferred(clusterState, preferredType))
@@ -255,8 +245,13 @@ namespace Npgsql
 
                 // The previous host isn't valid - there is a high chance someone else already took the host we're attempting to get
                 // Try again
-                previousIndex = index;
             }
+
+            // Either we're very unlucky, or every single host isn't valid
+            // Just return the new index and hope for the best
+            return GetNewIndex();
+
+            int GetNewIndex() => (int)(unchecked((uint)Interlocked.Increment(ref _roundRobinIndex[preferredTypeIndex])) % _pools.Length);
         }
 
         internal override void Return(NpgsqlConnector connector)
