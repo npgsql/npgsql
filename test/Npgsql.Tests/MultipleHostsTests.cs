@@ -270,22 +270,25 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task All_hosts_are_unavailable()
+        public async Task All_hosts_are_unavailable(
+            [Values] bool pooling,
+            [Values(PostgresErrorCodes.InvalidCatalogName, PostgresErrorCodes.CannotConnectNow)] string errorCode)
         {
-            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary, startupErrorCode: PostgresErrorCodes.CannotConnectNow);
-            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby, startupErrorCode: PostgresErrorCodes.CannotConnectNow);
+            await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary, startupErrorCode: errorCode);
+            await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby, startupErrorCode: errorCode);
 
             var builder = new NpgsqlConnectionStringBuilder
             {
                 Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
                 ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
-                TargetSessionAttributes = "any"
+                TargetSessionAttributes = "any",
+                Pooling = pooling,
             };
 
             using var _ = CreateTempPool(builder.ConnectionString, out var connectionString);
 
             var ex = Assert.ThrowsAsync<PostgresException>(async () => await OpenConnectionAsync(connectionString))!;
-            Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.CannotConnectNow));
+            Assert.That(ex.SqlState, Is.EqualTo(errorCode));
         }
 
         [Test]

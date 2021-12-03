@@ -178,10 +178,9 @@ namespace Npgsql
                 }
                 catch (Exception ex)
                 {
+                    exceptions.Add(ex);
                     if (connector is not null)
                         pool.Return(connector);
-
-                    exceptions.Add(new NpgsqlException($"Unable to connect to {pool.Settings.Host}:{pool.Settings.Port}", ex));
                 }
             }
 
