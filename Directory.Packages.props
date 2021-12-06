@@ -27,7 +27,7 @@
 
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="3.13.2" />
-    <PackageVersion Include="NLog" Version="4.7.12" />
+    <PackageVersion Include="NLog" Version="4.7.13" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.0.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.1.0" />
