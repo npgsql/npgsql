@@ -1189,7 +1189,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
         {
             var behavior = CommandBehavior.SingleRow;
-            if (!Parameters.HasOutputParameters)
+            if (IsWrappedByBatch || !Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
 
             var reader = await ExecuteReader(behavior, async, cancellationToken);
