@@ -241,7 +241,11 @@ namespace Npgsql
                 Debug.Assert(_pool is not MultiHostConnectorPoolWrapper);
                 // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                NpgsqlEventSource.Log.PoolCreated(newPool);
+                if (_pool is MultiHostConnectorPool multiHostConnectorPool)
+                    foreach (var hostPool in multiHostConnectorPool.Pools)
+                        NpgsqlEventSource.Log.PoolCreated(hostPool);
+                else
+                    NpgsqlEventSource.Log.PoolCreated(newPool);
             }
             else
                 newPool.Dispose();
