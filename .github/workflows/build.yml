@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '6.0.100'
+  dotnet_sdk_version: '6.0.x'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Hack to support latest prerelease dotnet SDK, https://github.com/dotnet/installer/issues/12230#issuecomment-936348246
