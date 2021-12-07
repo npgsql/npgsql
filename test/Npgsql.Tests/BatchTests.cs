@@ -374,6 +374,14 @@ LANGUAGE 'plpgsql'");
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4202")]
+        public async Task ExecuteScalar_without_parameters()
+        {
+            await using var conn = await OpenConnectionAsync();
+            var batch = new NpgsqlBatch(conn) { BatchCommands = { new("SELECT 1") } };
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
         #endregion Miscellaneous
 
         #region Initialization / setup / teardown
