@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.ExceptionServices;
@@ -17,12 +19,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Sources;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
+using Npgsql;
+using Npgsql.Internal;
 
 namespace Npgsql.Internal
 {
@@ -1086,13 +1091,23 @@ namespace Npgsql.Internal
 
         #region I/O
 
-        readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
+        internal readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
         internal readonly ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter;
 
         internal volatile int CommandsInFlightCount;
 
-        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new();
+        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new() { RunContinuationsAsynchronously = true, GlobalAsync = true };
+        
+        //
+        // [ThreadStatic] 
+        // internal static NpgsqlConnector? LastConnector;
 
+        internal bool Schedule(NpgsqlCommand command)
+        {
+            return CommandsInFlightWriter.TryWrite(command);
+        }
+        
+        
         async Task MultiplexingReadLoop()
         {
             Debug.Assert(Settings.Multiplexing);
@@ -1109,30 +1124,22 @@ namespace Npgsql.Internal
 
                     while (CommandsInFlightReader.TryRead(out command))
                     {
-                        // A thread coming from reader.Dispose() - at the end wrapping back to the start of the loop - could be responsible for
-                        // dequeuing the next command, checking to see if that's ready and decrementing in flight before yielding back to user code.
-                        // Having that thread do that inline helps to keep the multiplexing thread busy enqueuing work onto the right connectors.
                         consumedButInFlight = true;
+
                         var readResult = ReadBuffer.Ensure(5, true);
-                        var isCompletedSync = readResult.IsCompleted; 
-                        
-                        // Before we wait for the resultset we make sure the thread originally running user code can continue. 
-                        if (!isCompletedSync) await Task.Yield();
+
                         await readResult;
+                        // We have a resultset for the command - hand back control to the command (which will return it to the user)
+                        command.TraceReceivedFirstResponse();
+                        
+                        command.ExecutionCompletion.SetResult(this);
+                        
+                        // Now wait until that command's reader is disposed.
+                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
                         
                         consumedButInFlight = false;
                         Interlocked.Decrement(ref CommandsInFlightCount);
-                        
-                        // This is as far as the thread running user code goes if everything for the next command was already ready.
-                        if (isCompletedSync) await Task.Yield();
-
-                        // We have a resultset for the command - hand back control to the command (which will return it to the user)
-                        command.TraceReceivedFirstResponse();
                         ReaderCompleted.Reset();
-                        command.ExecutionCompletion.SetResult(this);
-
-                        // Now wait until that command's reader is disposed.
-                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
                         Debug.Assert(!InTransaction);
                     }
 

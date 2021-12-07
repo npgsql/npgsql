@@ -1262,13 +1262,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
         {
-            using (NoSynchronizationContextScope.Enter())
                 return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
         }
 
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
-            = new();
+            = new() { RunContinuationsAsynchronously = true, GlobalAsync = false };
 
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
@@ -1445,7 +1444,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
                     // the first read). But waiting on writing would allow us to do sync writing and async reading.
                     ExecutionCompletion.Reset();
-                    await pool.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
+                    using (NoSynchronizationContextScope.Enter())
+                        await pool.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
                     connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
                     // TODO: Overload of StartBindingScope?
                     conn.Connector = connector;
@@ -1593,10 +1593,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         NpgsqlBatchCommand TruncateStatementsToOne()
         {
+            NpgsqlBatchCommand statement;
             switch (InternalBatchCommands.Count)
             {
             case 0:
-                var statement = new NpgsqlBatchCommand();
+                statement = new NpgsqlBatchCommand();
                 InternalBatchCommands.Add(statement);
                 return statement;
 

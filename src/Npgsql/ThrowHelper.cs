@@ -37,5 +37,8 @@ namespace Npgsql
         [DoesNotReturn]
         internal static void ThrowInvalidOperationException_BinaryImportParametersMismatch(int columnCount, int valueCount) =>
             throw new InvalidOperationException($"The binary import operation was started with {columnCount} column(s), but {valueCount} value(s) were provided.");
+
+        public static void ThrowInvalidOperationException() => 
+            throw new InvalidOperationException();
     }
 }

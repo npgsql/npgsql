@@ -42,6 +42,7 @@ namespace Npgsql
         readonly int _writeCoalescingBufferThresholdBytes;
 
         readonly SemaphoreSlim? _bootstrapSemaphore;
+        Thread _t = null!;
 
         // TODO: Make this configurable
         const int MultiplexingCommandChannelBound = 4096;
@@ -64,7 +65,7 @@ namespace Npgsql
                 new BoundedChannelOptions(MultiplexingCommandChannelBound)
                 {
                     FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true
+                    SingleReader = false
                 });
             _multiplexCommandReader = multiplexCommandChannel.Reader;
             MultiplexCommandWriter = multiplexCommandChannel.Writer;
@@ -101,6 +102,30 @@ namespace Npgsql
                 if (IsBootstrapped)
                     return;
 
+                _t = new Thread(() =>
+                {
+                    while (true)
+                    {
+                        var anySome = false;
+                        foreach (var c in Connectors)
+                        {
+                            if (c is null || c.CommandsInFlightCount == 0) continue;
+                            anySome = true;
+
+                            Console.WriteLine(
+                                $"in flight count: {c.CommandsInFlightCount}");
+                        }
+
+                        ThreadPool.GetMaxThreads(out var maxT, out var a);
+                        
+                        if (anySome) 
+                            Console.WriteLine($"ThreadPool: {ThreadPool.ThreadCount} of {maxT} Multiplexer pending: {_multiplexCommandReader.Count}");
+
+                        Thread.Sleep(1000);
+                    }
+                });
+                _t.Start();
+                
                 var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
                 using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
 
@@ -270,7 +295,7 @@ namespace Npgsql
                             numPrepared++;
                 }
 
-                var written = connector.CommandsInFlightWriter!.TryWrite(command);
+                var written = connector.Schedule(command);
                 Debug.Assert(written, $"Failed to enqueue command to {connector.CommandsInFlightWriter}");
 
                 // Purposefully don't wait for I/O to complete
