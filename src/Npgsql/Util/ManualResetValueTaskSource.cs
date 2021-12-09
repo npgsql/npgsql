@@ -5,14 +5,11 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
-using Npgsql.Internal;
 
 namespace Npgsql.Util
 {
     sealed class ManualResetValueTaskSource<TResult> : IValueTaskSource<TResult>, IValueTaskSource
     {
-        
-        
         [StructLayout(LayoutKind.Auto)]
         public struct ManualResetValueTaskSourceCore
         {
@@ -406,16 +403,6 @@ namespace Npgsql.Util
             }
         }
 
-        internal static class ManualResetValueTaskSourceCoreShared // separated out of generic to avoid unnecessary duplication
-        {
-            internal static readonly Action<object?> s_sentinel = CompletionSentinel;
-            static void CompletionSentinel(object? _) // named method to aid debugging
-            {
-                Debug.Fail("The sentinel delegate should never be invoked.");
-                ThrowHelper.ThrowInvalidOperationException();
-            }
-        }
-    
         ManualResetValueTaskSourceCore _core;
         
         public bool GlobalAsync { get => _core.GlobalAsync; set => _core.GlobalAsync = value; }
@@ -432,4 +419,15 @@ namespace Npgsql.Util
         public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags)
             => _core.OnCompleted(continuation, state, token, flags);
     }
+    
+    static class ManualResetValueTaskSourceCoreShared // separated out of generic to avoid unnecessary duplication
+    {
+        internal static readonly Action<object?> s_sentinel = CompletionSentinel;
+        static void CompletionSentinel(object? _) // named method to aid debugging
+        {
+            Debug.Fail("The sentinel delegate should never be invoked.");
+            ThrowHelper.ThrowInvalidOperationException();
+        }
+    }
+
 }

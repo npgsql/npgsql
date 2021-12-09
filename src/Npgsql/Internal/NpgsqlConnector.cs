@@ -1109,8 +1109,36 @@ namespace Npgsql.Internal
 
         ManualResetValueTaskSource<object?> WorkItemCompleted { get; } = new() { RunContinuationsAsynchronously = false };
         
+        class ReusableCommandWorkItem : IThreadPoolWorkItem
+        {
+            NpgsqlCommand _command;
+            readonly NpgsqlConnector _connector;
+
+            public ReusableCommandWorkItem(NpgsqlConnector connector) => _connector = connector;
+            
+            public void Init(NpgsqlCommand command) => _command = command;
+            
+            public async void Execute()
+            {
+                var command = _command;
+                var connector = _connector;
+                // We have a resultset for the command - hand back control to the command (which will return it to the user)
+                command.TraceReceivedFirstResponse();
+                command.ExecutionCompletion.SetResult(connector);
+                
+                // Now wait until that command's reader is disposed.
+                await new ValueTask(connector.ReaderCompleted, connector.ReaderCompleted.Version);
+                connector.ReaderCompleted.Reset();
+                connector.WorkItemCompleted.SetResult(null);
+            }
+        }
+
+        ReusableCommandWorkItem? ReusableWorkItem { get; set; }
+        
         async Task MultiplexingReadLoop()
         {
+            ReusableWorkItem ??= new ReusableCommandWorkItem(this);
+            
             Debug.Assert(Settings.Multiplexing);
             Debug.Assert(CommandsInFlightReader != null);
 
@@ -1128,22 +1156,11 @@ namespace Npgsql.Internal
                         consumedButInFlight = true;
                         await ReadBuffer.Ensure(5, true);
 
-                        ThreadPool.UnsafeQueueUserWorkItem(static async state =>
-                        {
-                            var (command, connector) = state;
-                            // We have a resultset for the command - hand back control to the command (which will return it to the user)
-                            command.TraceReceivedFirstResponse();
-                            command.ExecutionCompletion.SetResult(connector);
-                        
-                            // Now wait until that command's reader is disposed.
-                            await new ValueTask(connector.ReaderCompleted, connector.ReaderCompleted.Version);
-                            connector.ReaderCompleted.Reset();
-                            connector.WorkItemCompleted.SetResult(null);
-                            
-                        }, (command, this), false);
-
+                        ReusableWorkItem.Init(command);
+                        ThreadPool.UnsafeQueueUserWorkItem(ReusableWorkItem, false);
                         await new ValueTask(WorkItemCompleted, WorkItemCompleted.Version);
                         WorkItemCompleted.Reset();
+                        
                         consumedButInFlight = false;
                         Interlocked.Decrement(ref CommandsInFlightCount);
                         Debug.Assert(!InTransaction);
@@ -1159,8 +1176,8 @@ namespace Npgsql.Internal
                         // have executed yet, and the flush may still be in progress. We know all I/O has already
                         // been sent - because the reader has already consumed the entire resultset. So we wait until
                         // the connector's write lock has been released (long waiting will never occur here).
-                        bool SpinCondition() => MultiplexAsyncWritingLock == 0 || IsBroken;
-                        if (!SpinCondition()) SpinWait.SpinUntil(() => SpinCondition());
+                        if (!(MultiplexAsyncWritingLock == 0 || IsBroken))  
+                            SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
                         ResetReadBuffer();
                         _connectorSource.Return(this);
