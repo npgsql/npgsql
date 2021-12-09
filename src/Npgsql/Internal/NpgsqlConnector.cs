@@ -1096,7 +1096,7 @@ namespace Npgsql.Internal
 
         internal volatile int CommandsInFlightCount;
 
-        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new() { RunContinuationsAsynchronously = true, GlobalAsync = true };
+        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new() { RunContinuationsAsynchronously = false, GlobalAsync = true };
         
         //
         // [ThreadStatic] 
@@ -1106,7 +1106,8 @@ namespace Npgsql.Internal
         {
             return CommandsInFlightWriter.TryWrite(command);
         }
-        
+
+        ManualResetValueTaskSource<object?> WorkItemCompleted { get; } = new() { RunContinuationsAsynchronously = false };
         
         async Task MultiplexingReadLoop()
         {
@@ -1125,21 +1126,26 @@ namespace Npgsql.Internal
                     while (CommandsInFlightReader.TryRead(out command))
                     {
                         consumedButInFlight = true;
+                        await ReadBuffer.Ensure(5, true);
 
-                        var readResult = ReadBuffer.Ensure(5, true);
+                        ThreadPool.UnsafeQueueUserWorkItem(static async state =>
+                        {
+                            var (command, connector) = state;
+                            // We have a resultset for the command - hand back control to the command (which will return it to the user)
+                            command.TraceReceivedFirstResponse();
+                            command.ExecutionCompletion.SetResult(connector);
+                        
+                            // Now wait until that command's reader is disposed.
+                            await new ValueTask(connector.ReaderCompleted, connector.ReaderCompleted.Version);
+                            connector.ReaderCompleted.Reset();
+                            connector.WorkItemCompleted.SetResult(null);
+                            
+                        }, (command, this), false);
 
-                        await readResult;
-                        // We have a resultset for the command - hand back control to the command (which will return it to the user)
-                        command.TraceReceivedFirstResponse();
-                        
-                        command.ExecutionCompletion.SetResult(this);
-                        
-                        // Now wait until that command's reader is disposed.
-                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
-                        
+                        await new ValueTask(WorkItemCompleted, WorkItemCompleted.Version);
+                        WorkItemCompleted.Reset();
                         consumedButInFlight = false;
                         Interlocked.Decrement(ref CommandsInFlightCount);
-                        ReaderCompleted.Reset();
                         Debug.Assert(!InTransaction);
                     }
 

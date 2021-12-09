@@ -1267,7 +1267,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
-            = new() { RunContinuationsAsynchronously = true, GlobalAsync = false };
+            = new() { RunContinuationsAsynchronously = false, GlobalAsync = false };
 
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
