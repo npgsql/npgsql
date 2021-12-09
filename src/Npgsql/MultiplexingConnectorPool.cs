@@ -119,7 +119,9 @@ namespace Npgsql
                         ThreadPool.GetMaxThreads(out var maxT, out var a);
                         
                         if (anySome) 
-                            Console.WriteLine($"ThreadPool: {ThreadPool.ThreadCount} of {maxT} Multiplexer pending: {_multiplexCommandReader.Count}");
+                            Console.WriteLine($"ThreadPool: {ThreadPool.ThreadCount} of {maxT} Multiplexer pending: {_multiplexCommandReader.Count}, was spinning: {DidSpin}");
+                        
+                        DidSpin = false;
 
                         Thread.Sleep(1000);
                     }
@@ -144,6 +146,8 @@ namespace Npgsql
             }
         }
 
+        bool DidSpin { get; set; }
+        
         async Task MultiplexingWriteLoop()
         {
             // This method is async, but only ever yields when there are no pending commands in the command channel.
@@ -214,7 +218,9 @@ namespace Npgsql
                             // writeable (non-writing) connector even if it has in-flight commands. Maybe something
                             // with better back-off.
                             // On the other hand, this is exactly *one* thread doing spin-wait, maybe not that bad.
+
                             spinwait.SpinOnce();
+                            DidSpin = true;
                             continue;
                         }
 
