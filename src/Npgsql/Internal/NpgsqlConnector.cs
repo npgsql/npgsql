@@ -1201,6 +1201,7 @@ namespace Npgsql.Internal
                 if (consumedButInFlight)
                 {
                     Interlocked.Decrement(ref CommandsInFlightCount);
+                    command!.ExecutionCompletion.RunContinuationsAsynchronously = true;
                     command!.ExecutionCompletion.SetException(_breakReason!);
                 }
                 
@@ -1212,6 +1213,7 @@ namespace Npgsql.Internal
 
                         // TODO: the exception we have here is sometimes just the result of the write loop breaking
                         // the connector, so it doesn't represent the actual root cause.
+                        pendingCommand.ExecutionCompletion.RunContinuationsAsynchronously = true;
                         pendingCommand.ExecutionCompletion.SetException(_breakReason!);
                     }
                 }
