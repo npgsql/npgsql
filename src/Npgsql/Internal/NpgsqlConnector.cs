@@ -1096,49 +1096,15 @@ namespace Npgsql.Internal
 
         internal volatile int CommandsInFlightCount;
 
-        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new() { RunContinuationsAsynchronously = false, GlobalAsync = true };
+        internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } = new() { RunContinuationsAsynchronously = true, GlobalAsync = true };
         
-        //
-        // [ThreadStatic] 
-        // internal static NpgsqlConnector? LastConnector;
-
         internal bool Schedule(NpgsqlCommand command)
         {
             return CommandsInFlightWriter.TryWrite(command);
         }
-
-        ManualResetValueTaskSource<object?> WorkItemCompleted { get; } = new() { RunContinuationsAsynchronously = false };
-        
-        class ReusableCommandWorkItem : IThreadPoolWorkItem
-        {
-            NpgsqlCommand _command;
-            readonly NpgsqlConnector _connector;
-
-            public ReusableCommandWorkItem(NpgsqlConnector connector) => _connector = connector;
-            
-            public void Init(NpgsqlCommand command) => _command = command;
-            
-            public async void Execute()
-            {
-                var command = _command;
-                var connector = _connector;
-                // We have a resultset for the command - hand back control to the command (which will return it to the user)
-                command.TraceReceivedFirstResponse();
-                command.ExecutionCompletion.SetResult(connector);
-                
-                // Now wait until that command's reader is disposed.
-                await new ValueTask(connector.ReaderCompleted, connector.ReaderCompleted.Version);
-                connector.ReaderCompleted.Reset();
-                connector.WorkItemCompleted.SetResult(null);
-            }
-        }
-
-        ReusableCommandWorkItem? ReusableWorkItem { get; set; }
-        
+    
         async Task MultiplexingReadLoop()
         {
-            ReusableWorkItem ??= new ReusableCommandWorkItem(this);
-            
             Debug.Assert(Settings.Multiplexing);
             Debug.Assert(CommandsInFlightReader != null);
 
@@ -1156,12 +1122,14 @@ namespace Npgsql.Internal
                         consumedButInFlight = true;
                         await ReadBuffer.Ensure(5, true);
 
-                        ReusableWorkItem.Init(command);
-                        ThreadPool.UnsafeQueueUserWorkItem(ReusableWorkItem, false);
-                        await new ValueTask(WorkItemCompleted, WorkItemCompleted.Version);
-                        WorkItemCompleted.Reset();
-                        
+                        // We have a resultset for the command - hand back control to the command (which will return it to the user)
+                        command.TraceReceivedFirstResponse();
                         consumedButInFlight = false;
+                        command.ExecutionCompletion.SetResult(this);
+                        // Now wait until that command's reader is disposed.
+                        await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
+                        ReaderCompleted.Reset();
+
                         Interlocked.Decrement(ref CommandsInFlightCount);
                         Debug.Assert(!InTransaction);
                     }

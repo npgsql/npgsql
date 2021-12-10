@@ -65,7 +65,8 @@ namespace Npgsql
                 new BoundedChannelOptions(MultiplexingCommandChannelBound)
                 {
                     FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = false
+                    SingleReader = false,
+                    AllowSynchronousContinuations = true
                 });
             _multiplexCommandReader = multiplexCommandChannel.Reader;
             MultiplexCommandWriter = multiplexCommandChannel.Writer;

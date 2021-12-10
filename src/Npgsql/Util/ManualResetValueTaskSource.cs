@@ -178,14 +178,14 @@ namespace Npgsql.Util
                             case null:
                                 ThreadPool.UnsafeQueueUserWorkItem(continuation, state, preferLocal: !GlobalAsync);
 
-                                //         if (_executionContext != null)
-                                //         {
-                                //             ThreadPool.QueueUserWorkItem(continuation, state, preferLocal: false);
-                                //         }
-                                //         else
-                                //         {
-                                //             ThreadPool.UnsafeQueueUserWorkItem(continuation, state, preferLocal: false);
-                                //         }
+                                // if (_executionContext != null)
+                                // {
+                                //     ThreadPool.QueueUserWorkItem(continuation, state, preferLocal: !GlobalAsync);
+                                // }
+                                // else
+                                // {
+                                //     ThreadPool.UnsafeQueueUserWorkItem(continuation, state, preferLocal: !GlobalAsync);
+                                // }
                                 break;
                             //
                             case SynchronizationContext sc:
