@@ -294,7 +294,7 @@ jobs:
               fi
           fi
 
-  publish-myget:
+  publish-ci:
     needs: build
     runs-on: ubuntu-20.04
     if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
@@ -336,41 +336,7 @@ jobs:
         run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql/api/v3/index.json
         working-directory: nupkgs
 
-  publish-github:
-    needs: build
-    runs-on: ubuntu-20.04
-    if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2.4.0
-
-      - name: NuGet Cache
-        uses: actions/cache@v2.1.7
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v1.9.0
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
-
-      - name: Pack
-        run: dotnet pack Npgsql.sln --configuration Release --output nupkgs --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
-
-#      - name: Upload artifacts (nupkg)
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: Npgsql.CI
-#          path: nupkgs
-
-      - name: Publish packages to github
-        working-directory: nupkgs
-        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/npgsql/index.json
-
-  release-nuget-org:
+  release:
     needs: build
     runs-on: ubuntu-20.04
     if: github.event_name == 'push' && startsWith(github.repository, 'npgsql/') && needs.build.outputs.is_release == 'true'
