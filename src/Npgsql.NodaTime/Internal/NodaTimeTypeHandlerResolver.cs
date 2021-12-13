@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using NodaTime;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
@@ -21,8 +20,8 @@ namespace Npgsql.NodaTime.Internal
         readonly TimeTzHandler _timeTzHandler;
         readonly IntervalHandler _intervalHandler;
 
-        readonly TimestampTzRangeHandler _timestampTzRangeHandler;
-        readonly DateRangeHandler _dateRangeHandler;
+        TimestampTzRangeHandler? _timestampTzRangeHandler;
+        DateRangeHandler? _dateRangeHandler;
         DateMultirangeHandler? _dateMultirangeHandler;
         TimestampTzMultirangeHandler? _timestampTzMultirangeHandler;
 
@@ -41,8 +40,8 @@ namespace Npgsql.NodaTime.Internal
             _timeTzHandler = new TimeTzHandler(PgType("time with time zone"));
             _intervalHandler = new IntervalHandler(PgType("interval"));
 
-            _timestampTzRangeHandler = new TimestampTzRangeHandler(PgType("tstzrange"), _timestampTzHandler);
-            _dateRangeHandler = new DateRangeHandler(PgType("daterange"), _dateHandler);
+            // Note that the range handlers are absent on some pseudo-PostgreSQL databases (e.g. CockroachDB), and multirange types
+            // were only introduced in PG14. So we resolve these lazily.
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -55,13 +54,10 @@ namespace Npgsql.NodaTime.Internal
                 "time with time zone" => _timeTzHandler,
                 "interval" => _intervalHandler,
 
-                "tstzrange" => _timestampTzRangeHandler,
-                "daterange" => _dateRangeHandler,
-
-                "tstzmultirange"
-                    => _timestampTzMultirangeHandler ??= new TimestampTzMultirangeHandler((PostgresMultirangeType)PgType("tstzmultirange"), _timestampTzRangeHandler),
-                "datemultirange"
-                    => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), _dateRangeHandler),
+                "tstzrange" => TsTzRange(),
+                "daterange" => DateRange(),
+                "tstzmultirange" => TsTzMultirange(),
+                "datemultirange" => DateMultirange(),
 
                 _ => null
             };
@@ -184,5 +180,18 @@ namespace Npgsql.NodaTime.Internal
 
 
         PostgresType PgType(string pgTypeName) => _databaseInfo.GetPostgresTypeByName(pgTypeName);
+
+        TimestampTzRangeHandler TsTzRange()
+            => _timestampTzRangeHandler ??= new TimestampTzRangeHandler(PgType("tstzrange"), _timestampTzHandler);
+
+        DateRangeHandler DateRange()
+            => _dateRangeHandler ??= new DateRangeHandler(PgType("daterange"), _dateHandler);
+
+        NpgsqlTypeHandler TsTzMultirange()
+            => _timestampTzMultirangeHandler ??=
+                new TimestampTzMultirangeHandler((PostgresMultirangeType)PgType("tstzmultirange"), TsTzRange());
+
+        NpgsqlTypeHandler DateMultirange()
+            => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), DateRange());
     }
 }
