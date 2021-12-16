@@ -103,7 +103,7 @@ namespace Npgsql.Replication.PgOutput
             => other != null && (
                 ReferenceEquals(this, other) ||
                 ProtocolVersion == other.ProtocolVersion && PublicationNames.Equals(other.PublicationNames) && Binary == other.Binary &&
-                Streaming == other.Streaming);
+                Streaming == other.Streaming && Messages == other.Messages);
 
         /// <inheritdoc />
         public override bool Equals(object? obj)
@@ -117,9 +117,10 @@ namespace Npgsql.Replication.PgOutput
             hashCode = (hashCode * 397) ^ PublicationNames.GetHashCode();
             hashCode = (hashCode * 397) ^ Binary.GetHashCode();
             hashCode = (hashCode * 397) ^ Streaming.GetHashCode();
+            hashCode = (hashCode * 397) ^ Messages.GetHashCode();
             return hashCode;
 #else
-            return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming);
+            return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming, Messages);
 #endif
         }
     }
