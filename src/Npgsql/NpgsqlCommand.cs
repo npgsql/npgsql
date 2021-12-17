@@ -1303,6 +1303,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     try
                     {
+                        var isFullyPrepared = false;
+
                         switch (IsExplicitlyPrepared)
                         {
                         case true:
@@ -1322,7 +1324,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             else
                                 Parameters.ValidateAndBind(connector.TypeMapper);
 
-                            NpgsqlEventSource.Log.CommandStartPrepared();
+                            isFullyPrepared = true;
                             break;
 
                         case false:
@@ -1356,7 +1358,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 _connectorPreparedOn = connector;
                                 if (numPrepared == InternalBatchCommands.Count)
-                                    NpgsqlEventSource.Log.CommandStartPrepared();
+                                    isFullyPrepared = true;
                             }
 
                             break;
@@ -1366,8 +1368,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                             LogCommand(connector);
+                        if (isFullyPrepared)
+                            NpgsqlEventSource.Log.CommandStartPrepared();
                         NpgsqlEventSource.Log.CommandStart(CommandText);
-                        TraceCommandStart(connector);
+                        TraceCommandStart(connector, isFullyPrepared);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
                         lock (connector.CancelLock)
@@ -1556,11 +1560,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #endregion Tracing
 
-        internal void TraceCommandStart(NpgsqlConnector connector)
+        internal void TraceCommandStart(NpgsqlConnector connector, bool isFullyPrepared)
         {
             Debug.Assert(CurrentActivity is null);
             if (NpgsqlActivitySource.IsEnabled)
-                CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+                CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText, isFullyPrepared);
         }
 
         internal void TraceReceivedFirstResponse()
@@ -1635,7 +1639,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
         }
 
-        void LogCommand(NpgsqlConnector connector)
+        internal void LogCommand(NpgsqlConnector connector)
         {
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");

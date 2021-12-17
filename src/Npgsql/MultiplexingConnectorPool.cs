@@ -226,7 +226,6 @@ namespace Npgsql
                 {
                     stats.Reset();
                     connector.FlagAsNotWritableForMultiplexing();
-                    command.TraceCommandStart(connector);
 
                     // Read queued commands and write them to the connector's buffer, for as long as we're
                     // under our write threshold and timer delay.
@@ -261,14 +260,23 @@ namespace Npgsql
                 // to buffer in memory), and the actual flush will occur at the level above. For cases where the
                 // command overflows the buffer, async I/O is done, and we schedule continuations separately -
                 // but the main thread continues to handle other commands on other connectors.
+                var isFullyPrepared = false;
+
                 if (_autoPrepare)
                 {
                     // TODO: Need to log based on numPrepared like in non-multiplexing mode...
-                    var numPrepared = 0;
+                    isFullyPrepared = true;
                     for (var i = 0; i < command.InternalBatchCommands.Count; i++)
-                        if (command.InternalBatchCommands[i].TryAutoPrepare(connector))
-                            numPrepared++;
+                        if (!command.InternalBatchCommands[i].TryAutoPrepare(connector))
+                            isFullyPrepared = false;
                 }
+
+                if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+                    command.LogCommand(connector);
+                if (isFullyPrepared)
+                    NpgsqlEventSource.Log.CommandStartPrepared();
+                NpgsqlEventSource.Log.CommandStart(command.CommandText);
+                command.TraceCommandStart(connector, isFullyPrepared);
 
                 var written = connector.CommandsInFlightWriter!.TryWrite(command);
                 Debug.Assert(written, $"Failed to enqueue command to {connector.CommandsInFlightWriter}");
