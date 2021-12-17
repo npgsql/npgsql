@@ -36,7 +36,7 @@ timestamp with time zone    | DateTime (Utc<sup>1</sup>) | DateTimeOffset (Offse
 date                        | DateTime                   | DateOnly (6.0+)
 time without time zone      | TimeSpan                   | TimeOnly (6.0+)
 time with time zone         | DateTimeOffset             |
-interval                    | TimeSpan                   |
+interval                    | TimeSpan<sup>3</sup>       | <xref:NpgsqlTypes.NpgsqlInterval>
 cidr                        | (IPAddress, int)           | NpgsqlInet
 inet                        | IPAddress                  | NpgsqlInet, (IPAddress, int)
 macaddr                     | PhysicalAddress            |
@@ -70,6 +70,8 @@ array types                 | Array (of element type)    |
 <sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
 
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
+
+<sup>3</sup> PostgreSQL intervals with month or year components cannot be read as TimeSpan. Consider using NodaTime's [Period](https://nodatime.org/3.0.x/api/NodaTime.Period.html) type, or <xref:NpgsqlTypes.NpgsqlInterval>.
 
 The Default .NET type column specifies the data type `NpgsqlDataReader.GetValue()` will return.
 
@@ -110,7 +112,7 @@ timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |      
 date                        | DateOnly (6.0+)                            | DateTime                                | Date                  | Date
 time without time zone      | TimeOnly (6.0+)                            | TimeSpan                                | Time                  | Time
 time with time zone         |                                            | DateTimeOffset                          | TimeTz                |
-interval                    | TimeSpan                                   |                                         | Interval              |
+interval                    | TimeSpan                                   | <xref:NpgsqlTypes.NpgsqlInterval>       | Interval              |
 cidr                        |                                            | ValueTuple\<IPAddress, int\>, IPAddress | Cidr                  |
 inet                        | IPAddress                                  | ValueTuple\<IPAddress, int\>            | Inet                  |
 macaddr                     | PhysicalAddress                            |                                         | MacAddr               |
