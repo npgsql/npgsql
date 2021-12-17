@@ -39,7 +39,7 @@ namespace NpgsqlTypes
         public int Days { get; }
 
         /// <summary>
-        /// All time units other than days, months and years.
+        /// Remaining time unit smaller than a day, in microseconds.
         /// </summary>
         public long Time { get; }
 
