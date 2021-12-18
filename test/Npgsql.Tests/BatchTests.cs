@@ -326,10 +326,9 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
-            await using var batch = new NpgsqlBatch(conn)
-            {
-                BatchCommands = { new($"SELECT {function}()") }
-            };
+            // We use NpgsqlConnection.CreateBatch to test that the batch isn't recycled when referenced in an exception
+            var batch = conn.CreateBatch();
+            batch.BatchCommands.Add(new($"SELECT {function}()"));
 
             try
             {
@@ -340,6 +339,12 @@ LANGUAGE 'plpgsql'");
             {
                 Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
             }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            batch.Dispose();
+            var cmd2 = conn.CreateBatch();
+            Assert.AreNotSame(cmd2, batch);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -353,25 +358,29 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
-            await using var batch = new NpgsqlBatch(conn)
-            {
-                BatchCommands =
-                {
-                    new("SELECT 1"),
-                    new($"SELECT {function}()")
-                }
-            };
+            // We use NpgsqlConnection.CreateBatch to test that the batch isn't recycled when referenced in an exception
+            var batch = conn.CreateBatch();
+            batch.BatchCommands.Add(new("SELECT 1"));
+            batch.BatchCommands.Add(new($"SELECT {function}()"));
 
-            await using var reader = await batch.ExecuteReaderAsync(Behavior);
-            try
+            await using (var reader = await batch.ExecuteReaderAsync(Behavior))
             {
-                await reader.NextResultAsync();
-                Assert.Fail();
+                try
+                {
+                    await reader.NextResultAsync();
+                    Assert.Fail();
+                }
+                catch (PostgresException e)
+                {
+                    Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+                }
             }
-            catch (PostgresException e)
-            {
-                Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
-            }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            batch.Dispose();
+            var cmd2 = conn.CreateBatch();
+            Assert.AreNotSame(cmd2, batch);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4202")]
