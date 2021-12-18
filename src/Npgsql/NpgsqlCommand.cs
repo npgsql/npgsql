@@ -70,7 +70,7 @@ public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Whether this command is cached by <see cref="NpgsqlConnection" /> and returned by <see cref="NpgsqlConnection.CreateCommand" />.
     /// </summary>
-    bool _isCached;
+    internal bool IsCached { get; set; }
 
 #if DEBUG
     internal static bool EnableSqlRewriting;
@@ -162,7 +162,7 @@ public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
         => _connector = connector;
 
     internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
-        => new(null, connection) { _isCached = true };
+        => new(null, connection) { IsCached = true };
 
     #endregion Constructors
 
@@ -1533,7 +1533,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Transaction = null;
 
-        if (_isCached && _connection is not null && _connection.CachedCommand is null)
+        if (IsCached && _connection is not null && _connection.CachedCommand is null)
         {
             // TODO: Optimize NpgsqlParameterCollection to recycle NpgsqlParameter instances as well
             // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
@@ -1546,7 +1546,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             return;
         }
 
-        _isCached = false;
+        IsCached = false;
         State = CommandState.Disposed;
     }
 

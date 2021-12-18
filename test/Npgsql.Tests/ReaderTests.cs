@@ -596,8 +596,8 @@ LANGUAGE 'plpgsql';
             Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<PostgresException>());
         }
 
-        [Test]
-        public async Task NpgsqlException_BatchCommand_is_null()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
+        public async Task NpgsqlException_references_BatchCommand_with_single_command()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -607,7 +607,9 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
-            await using var cmd = new NpgsqlCommand($"SELECT {function}()", conn);
+            // We use NpgsqlConnection.CreateCommand to test that the command isn't recycled when referenced in an exception
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT {function}()";
 
             try
             {
@@ -616,12 +618,18 @@ LANGUAGE 'plpgsql'");
             }
             catch (PostgresException e)
             {
-                Assert.That(e.BatchCommand, Is.Null);
+                Assert.That(e.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
             }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            cmd.Dispose();
+            var cmd2 = conn.CreateCommand();
+            Assert.AreNotSame(cmd2, cmd);
         }
 
-        [Test]
-        public async Task NpgsqlException_BatchCommand_is_null_with_legacy_batching()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
+        public async Task NpgsqlException_references_BatchCommand_with_multiple_commands()
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -631,18 +639,28 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
-            await using var cmd = new NpgsqlCommand($"SELECT 1; {function}()", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            // We use NpgsqlConnection.CreateCommand to test that the command isn't recycled when referenced in an exception
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT 1; {function}()";
 
-            try
+            await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
             {
-                await reader.NextResultAsync();
-                Assert.Fail();
+                try
+                {
+                    await reader.NextResultAsync();
+                    Assert.Fail();
+                }
+                catch (PostgresException e)
+                {
+                    Assert.That(e.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
+                }
             }
-            catch (PostgresException e)
-            {
-                Assert.That(e.BatchCommand, Is.Null);
-            }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            cmd.Dispose();
+            var cmd2 = conn.CreateCommand();
+            Assert.AreNotSame(cmd2, cmd);
         }
 
         #region SchemaOnly
