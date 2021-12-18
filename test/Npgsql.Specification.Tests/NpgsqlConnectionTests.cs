@@ -1,12 +1,11 @@
 using AdoNet.Specification.Tests;
 
-namespace Npgsql.Specification.Tests
+namespace Npgsql.Specification.Tests;
+
+public sealed class NpgsqlConnectionTests : ConnectionTestBase<NpgsqlDbFactoryFixture>
 {
-    public sealed class NpgsqlConnectionTests : ConnectionTestBase<NpgsqlDbFactoryFixture>
+    public NpgsqlConnectionTests(NpgsqlDbFactoryFixture fixture)
+        : base(fixture)
     {
-        public NpgsqlConnectionTests(NpgsqlDbFactoryFixture fixture)
-            : base(fixture)
-        {
-        }
     }
 }
