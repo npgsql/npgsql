@@ -504,12 +504,19 @@ namespace Npgsql
             {
                 State = ReaderState.Consumed;
 
-                // Reference the triggering statement from the exception (for batching)
-                if (e is PostgresException postgresException &&
-                    Command.IsWrappedByBatch &&
-                    StatementIndex >= 0 && StatementIndex < _statements.Count)
+
+                // Reference the triggering statement from the exception
+                if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
                 {
                     postgresException.BatchCommand = _statements[StatementIndex];
+
+                    // Prevent the command or batch from by recycled (by the connection) when it's disposed. This is important since
+                    // the exception is very likely to escape the using statement of the command, and by that time some other user may
+                    // already be using the recycled instance.
+                    if (!Command.IsWrappedByBatch)
+                    {
+                        Command.IsCached = false;
+                    }
                 }
 
                 // An error means all subsequent statements were skipped by PostgreSQL.
