@@ -2,26 +2,25 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace Npgsql.SourceGenerators
+namespace Npgsql.SourceGenerators;
+
+static class EmbeddedResource
 {
-    static class EmbeddedResource
+    public static string GetContent(string relativePath)
     {
-        public static string GetContent(string relativePath)
-        {
-            var baseName = Assembly.GetExecutingAssembly().GetName().Name;
-            var resourceName = relativePath
-                .TrimStart('.')
-                .Replace(Path.DirectorySeparatorChar, '.')
-                .Replace(Path.AltDirectorySeparatorChar, '.');
+        var baseName = Assembly.GetExecutingAssembly().GetName().Name;
+        var resourceName = relativePath
+            .TrimStart('.')
+            .Replace(Path.DirectorySeparatorChar, '.')
+            .Replace(Path.AltDirectorySeparatorChar, '.');
 
-            using var stream = Assembly.GetExecutingAssembly()
-                .GetManifestResourceStream(baseName + "." + resourceName);
+        using var stream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream(baseName + "." + resourceName);
 
-            if (stream == null)
-                throw new NotSupportedException();
+        if (stream == null)
+            throw new NotSupportedException();
 
-            using var reader = new StreamReader(stream);
-            return reader.ReadToEnd();
-        }
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }

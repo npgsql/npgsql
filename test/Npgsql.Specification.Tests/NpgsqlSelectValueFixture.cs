@@ -5,13 +5,13 @@ using System.Data;
 using System.Linq;
 using AdoNet.Specification.Tests;
 
-namespace Npgsql.Specification.Tests
+namespace Npgsql.Specification.Tests;
+
+public class NpgsqlSelectValueFixture : NpgsqlDbFactoryFixture, ISelectValueFixture, IDeleteFixture, IDisposable
 {
-    public class NpgsqlSelectValueFixture : NpgsqlDbFactoryFixture, ISelectValueFixture, IDeleteFixture, IDisposable
+    public NpgsqlSelectValueFixture()
     {
-        public NpgsqlSelectValueFixture()
-        {
-            Utility.ExecuteNonQuery(this, @"
+        Utility.ExecuteNonQuery(this, @"
 DROP TABLE IF EXISTS select_value;
 CREATE TABLE select_value
 (
@@ -39,38 +39,37 @@ INSERT INTO select_value VALUES
 (4, NULL, false, '0001-01-01', '0001-01-01', '0001-01-01', 0.000000000000001, 2.23e-308, '33221100-5544-7766-9988-aabbccddeeff', -32768, -2147483648, -9223372036854775808, 1.18e-38, NULL, '00:00:00'),
 (5, NULL, true, '9999-12-31', '9999-12-31 23:59:59.999', '9999-12-31 23:59:59.999 +14:00', 99999999999999999999.999999999999999, 1.79e308, 'ccddeeff-aabb-8899-7766-554433221100', 32767, 2147483647, 9223372036854775807, 3.40e38, NULL, '23:59:59.999');
 ");
-        }
-
-        public void Dispose() => Utility.ExecuteNonQuery(this, "DROP TABLE IF EXISTS select_value;");
-
-        public string CreateSelectSql(DbType dbType, ValueKind kind) =>
-            $"SELECT \"{dbType.ToString()}\" FROM select_value WHERE id = {(int)kind};";
-
-        public string CreateSelectSql(byte[] value) =>
-            $@"SELECT E'{string.Join("", value.Select(x => @"\x" + x.ToString("X2")))}'::bytea";
-
-        public string SelectNoRows => "SELECT 1 WHERE 0 = 1;";
-
-        public IReadOnlyCollection<DbType> SupportedDbTypes { get; } = new ReadOnlyCollection<DbType>(new[]
-        {
-            DbType.Binary,
-            DbType.Boolean,
-            DbType.Date,
-            DbType.DateTime,
-            DbType.DateTimeOffset,
-            DbType.Decimal,
-            DbType.Double,
-            DbType.Guid,
-            DbType.Int16,
-            DbType.Int32,
-            DbType.Int64,
-            DbType.Single,
-            DbType.String,
-            DbType.Time
-        });
-
-        public Type NullValueExceptionType => typeof(InvalidCastException);
-
-        public string DeleteNoRows => "DELETE FROM select_value WHERE 1 = 0";
     }
+
+    public void Dispose() => Utility.ExecuteNonQuery(this, "DROP TABLE IF EXISTS select_value;");
+
+    public string CreateSelectSql(DbType dbType, ValueKind kind) =>
+        $"SELECT \"{dbType.ToString()}\" FROM select_value WHERE id = {(int)kind};";
+
+    public string CreateSelectSql(byte[] value) =>
+        $@"SELECT E'{string.Join("", value.Select(x => @"\x" + x.ToString("X2")))}'::bytea";
+
+    public string SelectNoRows => "SELECT 1 WHERE 0 = 1;";
+
+    public IReadOnlyCollection<DbType> SupportedDbTypes { get; } = new ReadOnlyCollection<DbType>(new[]
+    {
+        DbType.Binary,
+        DbType.Boolean,
+        DbType.Date,
+        DbType.DateTime,
+        DbType.DateTimeOffset,
+        DbType.Decimal,
+        DbType.Double,
+        DbType.Guid,
+        DbType.Int16,
+        DbType.Int32,
+        DbType.Int64,
+        DbType.Single,
+        DbType.String,
+        DbType.Time
+    });
+
+    public Type NullValueExceptionType => typeof(InvalidCastException);
+
+    public string DeleteNoRows => "DELETE FROM select_value WHERE 1 = 0";
 }

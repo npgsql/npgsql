@@ -1,15 +1,14 @@
 ﻿using System;
 
-namespace Npgsql.Util
+namespace Npgsql.Util;
+
+static class VersionExtensions
 {
-    static class VersionExtensions
-    {
-        /// <summary>
-        /// Allocation free helper function to find if version is greater than expected
-        /// </summary>
-        public static bool IsGreaterOrEqual(this Version version, int major, int minor)
-            => version.Major != major
-                ? version.Major > major
-                : version.Minor >= minor;
-    }
+    /// <summary>
+    /// Allocation free helper function to find if version is greater than expected
+    /// </summary>
+    public static bool IsGreaterOrEqual(this Version version, int major, int minor)
+        => version.Major != major
+            ? version.Major > major
+            : version.Minor >= minor;
 }

@@ -1,9 +1,8 @@
-namespace Npgsql.Replication.PgOutput
+namespace Npgsql.Replication.PgOutput;
+
+enum TupleType : byte
 {
-    enum TupleType : byte
-    {
-        Key = (byte)'K',
-        NewTuple = (byte)'N',
-        OldTuple = (byte)'O',
-    }
+    Key = (byte)'K',
+    NewTuple = (byte)'N',
+    OldTuple = (byte)'O',
 }

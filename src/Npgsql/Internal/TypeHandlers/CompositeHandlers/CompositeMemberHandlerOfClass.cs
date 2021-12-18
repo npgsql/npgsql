@@ -7,100 +7,99 @@ using System.Threading.Tasks;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
-namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
+namespace Npgsql.Internal.TypeHandlers.CompositeHandlers;
+
+sealed class CompositeClassMemberHandler<TComposite, TMember> : CompositeMemberHandler<TComposite>
+    where TComposite : class
 {
-    sealed class CompositeClassMemberHandler<TComposite, TMember> : CompositeMemberHandler<TComposite>
-        where TComposite : class
+    delegate TMember GetMember(TComposite composite);
+    delegate void SetMember(TComposite composite, TMember value);
+
+    readonly GetMember? _get;
+    readonly SetMember? _set;
+    readonly NpgsqlTypeHandler _handler;
+
+    public CompositeClassMemberHandler(FieldInfo fieldInfo, PostgresType postgresType, NpgsqlTypeHandler handler)
+        : base(fieldInfo, postgresType)
     {
-        delegate TMember GetMember(TComposite composite);
-        delegate void SetMember(TComposite composite, TMember value);
+        var composite = Expression.Parameter(typeof(TComposite), "composite");
+        var value = Expression.Parameter(typeof(TMember), "value");
 
-        readonly GetMember? _get;
-        readonly SetMember? _set;
-        readonly NpgsqlTypeHandler _handler;
+        _get = Expression
+            .Lambda<GetMember>(Expression.Field(composite, fieldInfo), composite)
+            .Compile();
+        _set = Expression
+            .Lambda<SetMember>(Expression.Assign(Expression.Field(composite, fieldInfo), value), composite, value)
+            .Compile();
+        _handler = handler;
+    }
 
-        public CompositeClassMemberHandler(FieldInfo fieldInfo, PostgresType postgresType, NpgsqlTypeHandler handler)
-            : base(fieldInfo, postgresType)
-        {
-            var composite = Expression.Parameter(typeof(TComposite), "composite");
-            var value = Expression.Parameter(typeof(TMember), "value");
+    public CompositeClassMemberHandler(PropertyInfo propertyInfo, PostgresType postgresType, NpgsqlTypeHandler handler)
+        : base(propertyInfo, postgresType)
+    {
+        var getMethod = propertyInfo.GetGetMethod();
+        if (getMethod != null)
+            _get = (GetMember)Delegate.CreateDelegate(typeof(GetMember), getMethod);
 
-            _get = Expression
-                .Lambda<GetMember>(Expression.Field(composite, fieldInfo), composite)
-                .Compile();
-            _set = Expression
-                .Lambda<SetMember>(Expression.Assign(Expression.Field(composite, fieldInfo), value), composite, value)
-                .Compile();
-            _handler = handler;
-        }
+        var setMethod = propertyInfo.GetSetMethod();
+        if (setMethod != null)
+            _set = (SetMember)Delegate.CreateDelegate(typeof(SetMember), setMethod);
 
-        public CompositeClassMemberHandler(PropertyInfo propertyInfo, PostgresType postgresType, NpgsqlTypeHandler handler)
-            : base(propertyInfo, postgresType)
-        {
-            var getMethod = propertyInfo.GetGetMethod();
-            if (getMethod != null)
-                _get = (GetMember)Delegate.CreateDelegate(typeof(GetMember), getMethod);
+        Debug.Assert(setMethod != null || getMethod != null);
 
-            var setMethod = propertyInfo.GetSetMethod();
-            if (setMethod != null)
-                _set = (SetMember)Delegate.CreateDelegate(typeof(SetMember), setMethod);
+        _handler = handler;
+    }
 
-            Debug.Assert(setMethod != null || getMethod != null);
+    public override async ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async)
+    {
+        if (_set == null)
+            ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
 
-            _handler = handler;
-        }
+        await buffer.Ensure(sizeof(uint) + sizeof(int), async);
 
-        public override async ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async)
-        {
-            if (_set == null)
-                ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
+        var oid = buffer.ReadUInt32();
+        Debug.Assert(oid == PostgresType.OID);
 
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async);
+        var length = buffer.ReadInt32();
+        if (length == -1)
+            return;
 
-            var oid = buffer.ReadUInt32();
-            Debug.Assert(oid == PostgresType.OID);
+        var value = NullableHandler<TMember>.Exists
+            ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async)
+            : await _handler.Read<TMember>(buffer, length, async);
 
-            var length = buffer.ReadInt32();
-            if (length == -1)
-                return;
+        _set(composite, value);
+    }
 
-            var value = NullableHandler<TMember>.Exists
-                ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async)
-                : await _handler.Read<TMember>(buffer, length, async);
+    public override ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
+        => throw new NotSupportedException();
 
-            _set(composite, value);
-        }
+    public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
+    {
+        if (_get == null)
+            ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
-        public override ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
-            => throw new NotSupportedException();
+        if (buffer.WriteSpaceLeft < sizeof(int))
+            await buffer.Flush(async, cancellationToken);
 
-        public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
-        {
-            if (_get == null)
-                ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
+        buffer.WriteUInt32(PostgresType.OID);
+        if (NullableHandler<TMember>.Exists)
+            await NullableHandler<TMember>.WriteAsync(_handler, _get(composite), buffer, lengthCache, null, async, cancellationToken);
+        else
+            await _handler.WriteWithLength(_get(composite), buffer, lengthCache, null, async, cancellationToken);
+    }
 
-            if (buffer.WriteSpaceLeft < sizeof(int))
-                await buffer.Flush(async, cancellationToken);
+    public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
+    {
+        if (_get == null)
+            ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
-            buffer.WriteUInt32(PostgresType.OID);
-            if (NullableHandler<TMember>.Exists)
-                await NullableHandler<TMember>.WriteAsync(_handler, _get(composite), buffer, lengthCache, null, async, cancellationToken);
-            else
-                await _handler.WriteWithLength(_get(composite), buffer, lengthCache, null, async, cancellationToken);
-        }
+        var value = _get(composite);
+        if (value is null)
+            return 0;
 
-        public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
-        {
-            if (_get == null)
-                ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
-
-            var value = _get(composite);
-            if (value is null)
-                return 0;
-
-            return NullableHandler<TMember>.Exists
-                ? NullableHandler<TMember>.ValidateAndGetLength(_handler, value, ref lengthCache, null)
-                : _handler.ValidateAndGetLength(value, ref lengthCache, null);
-        }
+        return NullableHandler<TMember>.Exists
+            ? NullableHandler<TMember>.ValidateAndGetLength(_handler, value, ref lengthCache, null)
+            : _handler.ValidateAndGetLength(value, ref lengthCache, null);
     }
 }
