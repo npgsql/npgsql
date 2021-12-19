@@ -35,14 +35,13 @@ static class TaskTimeoutAndCancellation
     /// <param name="useLegacyImplementation">An optional <see cref="Boolean"/> parameter for testing only. If set to true the method uses pre-dotnet 6.0 implementation for cancellation and timeout enforcement.</param>
     /// <returns>The <see cref="Task"/> representing the asynchronous wait.</returns>
     internal static async Task WaitAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken, bool useLegacyImplementation = false)
-    { 
-        Task? task = default;
+    {
         using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
+        var task = getTaskFunc(combinedCts?.Token ?? cancellationToken);
         try
         {
             try
             {
-                task = getTaskFunc(combinedCts?.Token ?? cancellationToken);
                 await WithCancellationAndTimeoutLocal(task);
             }
             catch (TimeoutException) when (!task!.IsCompleted)
@@ -56,7 +55,7 @@ static class TaskTimeoutAndCancellation
         {
             // Prevent unobserved Task notifications by observing the failed Task exception.
             // To test: comment the next line out and re-run TaskExtensionsTest.DelayedFaultedTaskCancellation.
-            _ = task!.ContinueWith( t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
+            _ = task.ContinueWith( t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
             throw;
         }
 
