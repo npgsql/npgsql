@@ -84,7 +84,7 @@ Host Recheck Seconds      | Controls for how long the host's cached state will b
 
 Parameter                | Description                                                                                          | Default
 ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------
-Options                  | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS), surrounded by single ticks. Introduced in 5.0. | PGOPTIONS
+Options<sup>[1](#misc_sup_1)</sup> | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS) (e.g. `Options=-c synchronous_commit=local`). Introduced in 5.0. | PGOPTIONS
 Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
@@ -94,7 +94,12 @@ Timezone                 | Gets or sets the session timezone.                   
 EF Template Database     | The database template to specify when creating a database in Entity Framework.                       | template1
 EF Admin Database        | The database admin to specify when creating and dropping a database in Entity Framework.             | template1
 Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.                   | false
-Array Nullability Mode   | Configure the way arrays of value types are returned when requested as object instances. Possible values are: Never (arrays of value types are always returned as non-nullable arrays), Always (arrays of value types are always returned as nullable arrays) and PerInstance (the type of array that gets returned is determined at runtime).             | Never
+Array Nullability Mode   | Configure the way arrays of value types are returned when requested as object instances. Possible values are: `Never` (arrays of value types are always returned as non-nullable arrays), `Always` (arrays of value types are always returned as nullable arrays) and `PerInstance` (the type of array that gets returned is determined at runtime).             | Never
+
+<sup id="misc_sup_1">1</sup>The `Options` connection string parameter is essentially the string of command line options that get passed to the [`postgres`](https://www.postgresql.org/docs/current/app-postgres.html) program when the process is started.
+It is most commonly used to set named run-time parameters via the `-c` option but other options can be used too (althoug not all of them make sense in that context).
+Setting multiple options is possible by separating them with a space character. Space and backslash characters in option values need to be escaped by prefixing a backslash character.
+Example: `Options=-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing`
 
 ## Compatibility
 
