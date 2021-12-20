@@ -263,7 +263,7 @@ class ConnectorPool : ConnectorSource
                     throw new NpgsqlException($"Could not find free slot in {Connectors} when opening. Please report a bug.");
 
                 // Only start pruning if it was this thread that incremented open count past _min.
-                if (numConnectors == _min)
+                if (numConnectors >= _min)
                     EnablePruning();
 
                 return connector;
@@ -349,8 +349,7 @@ class ConnectorPool : ConnectorSource
         // Statement order is important since we have synchronous completions on the channel.
         IdleConnectorWriter.TryWrite(null);
 
-        // Only turn off the timer one time, when it was this Close that brought Open back to _min.
-        if (numConnectors == _min)
+        if (numConnectors <= _min)
             DisablePruning();
     }
 
@@ -364,8 +363,16 @@ class ConnectorPool : ConnectorSource
     // Manual reactivation of timer happens in callback
     void EnablePruning()
     {
+        if (_pruningTimerEnabled)
+        {
+            return;
+        }
         lock (_pruningTimer)
         {
+            if (_pruningTimerEnabled)
+            {
+                return;
+            }
             _pruningTimerEnabled = true;
             _pruningTimer.Change(_pruningSamplingInterval, Timeout.InfiniteTimeSpan);
         }
@@ -373,8 +380,16 @@ class ConnectorPool : ConnectorSource
 
     void DisablePruning()
     {
+        if (!_pruningTimerEnabled)
+        {
+            return;
+        }
         lock (_pruningTimer)
         {
+            if (!_pruningTimerEnabled)
+            {
+                return;
+            }
             _pruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
             _pruningSampleIndex = 0;
             _pruningTimerEnabled = false;
