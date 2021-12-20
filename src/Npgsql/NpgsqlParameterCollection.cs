@@ -662,7 +662,13 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             newParam.Collection = this;
             other.InternalList.Add(newParam);
         }
-        other._caseInsensitiveLookup = _caseInsensitiveLookup;
+
+        if (LookupEnabled)
+        {
+            other._caseInsensitiveLookup = new Dictionary<string, int>(_caseInsensitiveLookup!, StringComparer.OrdinalIgnoreCase);
+            if (TwoPassCompatMode)
+                other._caseSensitiveLookup = new Dictionary<string, int>(_caseSensitiveLookup!, StringComparer.Ordinal);    
+        }
     }
 
     internal void ValidateAndBind(ConnectorTypeMapper typeMapper)
