@@ -62,6 +62,16 @@ public class NpgsqlParameterTest : TestBase
     }
 
     [Test]
+    public void Positional_parameter_is_positional()
+    {
+        var p = new NpgsqlParameter(NpgsqlParameter.PositionalName, 1);
+        Assert.That(p.IsPositional, Is.True);
+
+        var p2 = new NpgsqlParameter(null, 1);
+        Assert.That(p2.IsPositional, Is.True);
+    }
+
+    [Test]
     public void Infer_data_type_name_from_NpgsqlDbType()
     {
         var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
