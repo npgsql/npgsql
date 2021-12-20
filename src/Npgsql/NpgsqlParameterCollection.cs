@@ -53,7 +53,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
         if (TwoPassCompatMode && !_caseSensitiveLookup!.ContainsKey(name))
             _caseSensitiveLookup[name] = index;
-        
+
         if (!_caseInsensitiveLookup.ContainsKey(name))
             _caseInsensitiveLookup[name] = index;
     }
@@ -73,7 +73,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             }
             _caseSensitiveLookup[name] = index;
         }
-            
+
         if (!_caseInsensitiveLookup.TryGetValue(name, out var indexCi) || index < indexCi)
         {
             foreach (var kv in _caseInsensitiveLookup)
@@ -106,7 +106,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 if (index < kv.Value)
                     _caseInsensitiveLookup[kv.Key] = kv.Value - 1;
             }
-            
+
             // Fix-up the case-insensitive lookup to point to the next match, if any.
             for (var i = 0; i < InternalList.Count; i++)
             {
@@ -117,7 +117,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                     break;
                 }
             }
-        }        
+        }
 
     }
 
@@ -137,7 +137,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         var oldName = parameter.ParameterName;
         var oldTrimmedName = parameter.TrimmedName;
         parameter.ChangeParameterName(value);
-            
+
         if (_caseInsensitiveLookup is null || _caseInsensitiveLookup.Count == 0)
             return;
 
@@ -183,7 +183,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             if (!string.Equals(parameterName, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("Parameter name must be a case-insensitive match with the property 'ParameterName' on the given NpgsqlParameter", nameof(parameterName));
-                
+
             var oldValue = InternalList[index];
             LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
@@ -205,7 +205,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 throw new ArgumentNullException(nameof(value));
             if (value.Collection is not null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
-                
+
             var oldValue = InternalList[index];
 
             if (ReferenceEquals(oldValue, value))
@@ -230,7 +230,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             throw new ArgumentNullException(nameof(value));
         if (value.Collection is not null)
             throw new InvalidOperationException("The parameter already belongs to a collection");
-            
+
         InternalList.Add(value);
         value.Collection = this;
         if (!value.IsPositional)
@@ -368,7 +368,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             if (TwoPassCompatMode && _caseSensitiveLookup!.TryGetValue(parameterName, out var indexCs))
                 return indexCs;
-                
+
             if (_caseInsensitiveLookup!.TryGetValue(parameterName, out var indexCi))
                 return indexCi;
 
@@ -400,7 +400,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         {
             if (TwoPassCompatMode)
                 _caseSensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.Ordinal);
-                
+
             _caseInsensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
 
             for (var i = 0; i < InternalList.Count; i++)
@@ -598,7 +598,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             throw new ArgumentNullException(nameof(item));
         if (item.Collection != null)
             throw new Exception("The parameter already belongs to a collection");
-            
+
         InternalList.Insert(index, item);
         item.Collection = this;
         if (!item.IsPositional)
