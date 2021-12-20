@@ -174,11 +174,8 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
-    public void One_pass_finds_case_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    public void Finds_case_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        if (_compatMode == CompatMode.TwoPass)
-            return;
-
         using var command = new NpgsqlCommand();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
@@ -188,11 +185,8 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
-    public void One_pass_finds_case_sensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    public void Finds_case_sensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        if (_compatMode == CompatMode.TwoPass)
-            return;
-
         using var command = new NpgsqlCommand();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
