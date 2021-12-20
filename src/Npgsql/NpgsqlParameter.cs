@@ -35,7 +35,8 @@ namespace Npgsql
         private protected  object? _value;
         private protected  string _sourceColumn;
 
-        internal string TrimmedName { get; private protected set; } = string.Empty;
+        internal string TrimmedName { get; private protected set; } = PositionalName;
+        internal const string PositionalName = "";
 
         /// <summary>
         /// Can be used to communicate a value from the validation phase to the writing phase.
@@ -246,18 +247,21 @@ namespace Npgsql
             get => _name;
             set
             {
-                var oldName = _name;
-                var oldTrimmedName = TrimmedName;
-                // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                if (value == null)
-                    _name = TrimmedName = string.Empty;
-                else if (value.Length > 0 && (value[0] == ':' || value[0] == '@'))
-                    TrimmedName = (_name = value).Substring(1);
+                if (Collection is not null)
+                    Collection.ChangeParameterName(this, value);
                 else
-                    _name = TrimmedName = value;
-
-                Collection?.ChangeParameterName(this, oldName, oldTrimmedName);
+                    ChangeParameterName(value);
             }
+        }
+
+        internal void ChangeParameterName(string? value)
+        {
+            if (value == null)
+                _name = TrimmedName = PositionalName;
+            else if (value.Length > 0 && (value[0] == ':' || value[0] == '@'))
+                TrimmedName = (_name = value).Substring(1);
+            else
+                _name = TrimmedName = value;
         }
 
         internal bool IsPositional => ParameterName.Length == 0;

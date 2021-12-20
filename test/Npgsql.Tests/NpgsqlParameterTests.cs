@@ -62,6 +62,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void Positional_parameter_is_positional()
+        {
+            var p = new NpgsqlParameter(NpgsqlParameter.PositionalName, 1);
+            Assert.That(p.IsPositional, Is.True);
+
+            var p2 = new NpgsqlParameter(null, 1);
+            Assert.That(p2.IsPositional, Is.True);
+        }
+
+        [Test]
         public void Infer_data_type_name_from_NpgsqlDbType()
         {
             var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
@@ -71,7 +81,7 @@ namespace Npgsql.Tests
         [Test]
         public void Infer_data_type_name_from_DbType()
         {
-            var p = new NpgsqlParameter("par_field1", DbType.String , 50);
+            var p = new NpgsqlParameter("par_field1", DbType.String, 50);
             Assert.That(p.DataTypeName, Is.EqualTo("text"));
         }
 
@@ -207,8 +217,8 @@ namespace Npgsql.Tests
         public void Constructor7()
         {
             var p1 = new NpgsqlParameter("p1Name", NpgsqlDbType.Varchar, 20,
-                                         "srcCol", ParameterDirection.InputOutput, false, 0, 0,
-                                         DataRowVersion.Original, "foo");
+                "srcCol", ParameterDirection.InputOutput, false, 0, 0,
+                DataRowVersion.Original, "foo");
             Assert.AreEqual(DbType.String, p1.DbType, "DbType");
             Assert.AreEqual(ParameterDirection.InputOutput, p1.Direction, "Direction");
             Assert.AreEqual(false, p1.IsNullable, "IsNullable");
@@ -289,7 +299,7 @@ namespace Npgsql.Tests
                 Size = 4,
 
                 SourceVersion = DataRowVersion.Proposed,
-                SourceColumn ="source",
+                SourceColumn = "source",
                 SourceColumnNullMapping = true,
             };
             var actual = (NpgsqlParameter<int>)expected.Clone();
@@ -320,13 +330,13 @@ namespace Npgsql.Tests
         public void InferType_invalid_throws()
         {
             var notsupported = new object[]
-                                        {
-                                            ushort.MaxValue,
-                                            uint.MaxValue,
-                                            ulong.MaxValue,
-                                            sbyte.MaxValue,
-                                            new NpgsqlParameter()
-                                        };
+            {
+                ushort.MaxValue,
+                uint.MaxValue,
+                ulong.MaxValue,
+                sbyte.MaxValue,
+                new NpgsqlParameter()
+            };
 
             var param = new NpgsqlParameter();
 
