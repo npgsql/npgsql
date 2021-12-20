@@ -20,18 +20,18 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
     internal List<NpgsqlParameter> InternalList { get; } = new(5);
 #if DEBUG
-    internal static bool CaseInsensitiveCompatMode;
+    internal static bool TwoPassCompatMode;
 #else
-        internal static readonly bool CaseInsensitiveCompatMode;
+        internal static readonly bool TwoPassCompatMode;
 #endif
 
     static NpgsqlParameterCollection()
-        => CaseInsensitiveCompatMode = AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsensitiveDbParameters", out var enabled)
-                                       && enabled;
+        => TwoPassCompatMode = AppContext.TryGetSwitch("Npgsql.EnableLegacyCaseInsensitiveDbParameters", out var enabled)
+                               && enabled;
 
     // Dictionary lookups for GetValue to improve performance
     Dictionary<string, int>? _lookup;
-    Dictionary<string, int>? _caseInsensitiveLookup;
+    Dictionary<string, int>? _caseSensitiveLookup;
 
     /// <summary>
     /// Initializes a new instance of the NpgsqlParameterCollection class.
@@ -43,21 +43,32 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     void LookupClear()
     {
         _lookup?.Clear();
-        _caseInsensitiveLookup?.Clear();
+        _caseSensitiveLookup?.Clear();
     }
 
     void LookupAdd(string name, int index)
     {
+        if (TwoPassCompatMode && _caseSensitiveLookup is not null && !_caseSensitiveLookup.ContainsKey(name))
+            _caseSensitiveLookup[name] = index;
+            
         if (_lookup is not null && !_lookup.ContainsKey(name))
             _lookup[name] = index;
-
-        if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null && !_caseInsensitiveLookup.ContainsKey(name))
-            _caseInsensitiveLookup[name] = index;
     }
 
     void LookupInsert(string name, int index)
     {
-        if (_lookup is not null && (!_lookup.TryGetValue(name, out var indexCs) || index < indexCs))
+        if (TwoPassCompatMode && _caseSensitiveLookup is not null &&
+            (!_caseSensitiveLookup.TryGetValue(name, out var indexCs) || index < indexCs))
+        {
+            foreach (var kv in _caseSensitiveLookup)
+            {
+                if (index <= kv.Value)
+                    _caseSensitiveLookup[kv.Key] = kv.Value + 1;
+            }
+            _caseSensitiveLookup[name] = index;
+        }
+            
+        if (_lookup is not null && (!_lookup.TryGetValue(name, out var indexCi) || index < indexCi))
         {
             foreach (var kv in _lookup)
             {
@@ -65,17 +76,6 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                     _lookup[kv.Key] = kv.Value + 1;
             }
             _lookup[name] = index;
-        }
-
-        if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null &&
-            (!_caseInsensitiveLookup.TryGetValue(name, out var indexCi) || index < indexCi))
-        {
-            foreach (var kv in _caseInsensitiveLookup)
-            {
-                if (index <= kv.Value)
-                    _caseInsensitiveLookup[kv.Key] = kv.Value + 1;
-            }
-            _caseInsensitiveLookup[name] = index;
         }
     }
 
@@ -90,23 +90,27 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                     _lookup[kv.Key] = kv.Value - 1;
             }
         }
-
-        if (CaseInsensitiveCompatMode && _caseInsensitiveLookup is not null &&
-            _caseInsensitiveLookup.TryGetValue(name, out var indexCi) && indexCi == index)
+            
+        if (TwoPassCompatMode && _lookup is not null && _caseSensitiveLookup is not null)
         {
-            _caseInsensitiveLookup.Remove(name);
-            foreach (var kv in _caseInsensitiveLookup)
+            if (_caseSensitiveLookup.TryGetValue(name, out var indexCs) && indexCs == index)
             {
-                if (index < kv.Value)
-                    _caseInsensitiveLookup[kv.Key] = kv.Value - 1;
+                _caseSensitiveLookup.Remove(name);
+                foreach (var kv in _caseSensitiveLookup)
+                {
+                    if (index < kv.Value)
+                        _caseSensitiveLookup[kv.Key] = kv.Value - 1;
+                }
             }
-
+                
+            // Fix-up the case-insensitive lookup to point to the next match, if any.
+            // In the single pass mode we prevent duplicates from being added.
             for (var i = 0; i < InternalList.Count; i++)
             {
                 var value = InternalList[i];
                 if (string.Equals(name, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _caseInsensitiveLookup[value.TrimmedName] = i;
+                    _lookup[value.TrimmedName] = i;
                     break;
                 }
             }
@@ -115,7 +119,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
     void LookupChangeName(NpgsqlParameter parameter, string oldName, string oldTrimmedName, int index)
     {
-        if (string.Equals(oldTrimmedName, parameter.TrimmedName, CaseInsensitiveCompatMode ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        if (string.Equals(oldTrimmedName, parameter.TrimmedName, StringComparison.OrdinalIgnoreCase))
             return;
 
         if (oldName.Length != 0)
@@ -124,8 +128,20 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             LookupAdd(parameter.TrimmedName, index);
     }
 
-    internal void ChangeParameterName(NpgsqlParameter parameter, string oldName, string oldTrimmedName)
+    internal void ChangeParameterName(NpgsqlParameter parameter, string? value)
     {
+        if (!TwoPassCompatMode && value is not null && value != NpgsqlParameter.PositionalName)
+        {
+            var newNameIndex = IndexOf(value);
+            if (newNameIndex != -1 && !ReferenceEquals(InternalList[newNameIndex], parameter))
+                throw new ArgumentException("A parameter having the same case-insentive name was already added to the collection.",
+                    nameof(value));
+        }
+
+        var oldName = parameter.ParameterName;
+        var oldTrimmedName = parameter.TrimmedName;
+        parameter.ChangeParameterName(value);
+            
         if (_lookup is null || _lookup.Count == 0)
             return;
 
@@ -169,6 +185,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             if (index == -1)
                 throw new ArgumentException("Parameter not found");
 
+            if (!string.Equals(parameterName, value.TrimmedName, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Parameter name must be a case-insensitive match with the property 'ParameterName' on the given NpgsqlParameter", nameof(parameterName));
+                
             var oldValue = InternalList[index];
             LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
 
@@ -190,10 +209,10 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 throw new ArgumentNullException(nameof(value));
             if (value.Collection is not null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
-
+                
             var oldValue = InternalList[index];
 
-            if (oldValue == value)
+            if (ReferenceEquals(oldValue, value))
                 return;
 
             LookupChangeName(value, oldValue.ParameterName, oldValue.TrimmedName, index);
@@ -215,7 +234,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             throw new ArgumentNullException(nameof(value));
         if (value.Collection is not null)
             throw new InvalidOperationException("The parameter already belongs to a collection");
-
+        if (!TwoPassCompatMode && !value.IsPositional && IndexOf(value.TrimmedName) != -1)
+            throw new ArgumentException("A parameter having the same case-insentive name was already added to the collection", nameof(value));
+            
         InternalList.Add(value);
         value.Collection = this;
         if (!value.IsPositional)
@@ -351,35 +372,42 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             if (_lookup is null)
                 BuildLookup();
 
-            if (_lookup!.TryGetValue(parameterName, out var indexCs))
+            if (TwoPassCompatMode && _caseSensitiveLookup!.TryGetValue(parameterName, out var indexCs))
                 return indexCs;
-
-            if (CaseInsensitiveCompatMode && _caseInsensitiveLookup!.TryGetValue(parameterName, out var indexCi))
+                
+            if (_lookup!.TryGetValue(parameterName, out var indexCi))
                 return indexCi;
 
             return -1;
         }
 
+        // Start with case-sensitive search in two pass mode.
+        if (TwoPassCompatMode)
+        {
+            for (var i = 0; i < InternalList.Count; i++)
+            {
+                var name = InternalList[i].TrimmedName;
+                if (string.Equals(parameterName, InternalList[i].TrimmedName))
+                    return i;
+            }
+        }
+
+        // Then do case-insensitive search.
         for (var i = 0; i < InternalList.Count; i++)
         {
             var name = InternalList[i].TrimmedName;
-            if (ReferenceEquals(parameterName, name) || string.Equals(parameterName, name))
+            if (ReferenceEquals(parameterName, name) || string.Equals(parameterName, name, StringComparison.OrdinalIgnoreCase))
                 return i;
         }
-
-        // Fall back to a case-insensitive search.
-        if (CaseInsensitiveCompatMode)
-            for (var i = 0; i < InternalList.Count; i++)
-                if (string.Equals(parameterName, InternalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
-                    return i;
 
         return -1;
 
         void BuildLookup()
         {
-            _lookup = new Dictionary<string, int>(InternalList.Count, StringComparer.Ordinal);
-            if (CaseInsensitiveCompatMode)
-                _caseInsensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
+            if (TwoPassCompatMode)
+                _caseSensitiveLookup = new Dictionary<string, int>(InternalList.Count, StringComparer.Ordinal);
+                
+            _lookup = new Dictionary<string, int>(InternalList.Count, StringComparer.OrdinalIgnoreCase);
 
             for (var i = 0; i < InternalList.Count; i++)
             {
@@ -576,7 +604,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             throw new ArgumentNullException(nameof(item));
         if (item.Collection != null)
             throw new Exception("The parameter already belongs to a collection");
-
+        if (!TwoPassCompatMode && !item.IsPositional && IndexOf(item.TrimmedName) != -1)
+            throw new ArgumentException("A parameter having the same case-insentive name was already added to the collection", nameof(item));
+            
         InternalList.Insert(index, item);
         item.Collection = this;
         if (!item.IsPositional)

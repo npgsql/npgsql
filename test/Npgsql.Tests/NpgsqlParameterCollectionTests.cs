@@ -9,8 +9,8 @@ namespace Npgsql.Tests;
 
 // This test class has global effects on case sensitive matching in param collection.
 [NonParallelizable]
-[TestFixture(CompatMode.CaseSensitive)]
-[TestFixture(CompatMode.CaseInsensitive)]
+[TestFixture(CompatMode.OnePass)]
+[TestFixture(CompatMode.TwoPass)]
 public class NpgsqlParameterCollectionTests
 {
     readonly CompatMode _compatMode;
@@ -76,7 +76,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Remove_duplicate_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        if (_compatMode == CompatMode.CaseSensitive)
+        if (_compatMode == CompatMode.OnePass)
             return;
 
         using var command = new NpgsqlCommand();
@@ -128,7 +128,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Correct_index_returned_for_duplicate_ParameterName([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        if (_compatMode == CompatMode.CaseSensitive)
+        if (_compatMode == CompatMode.OnePass)
             return;
 
         using var command = new NpgsqlCommand();
@@ -159,9 +159,9 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
-    public void Case_sensitive_fails_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    public void One_pass_finds_case_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        if (_compatMode == CompatMode.CaseInsensitive)
+        if (_compatMode == CompatMode.TwoPass)
             return;
 
         using var command = new NpgsqlCommand();
@@ -169,7 +169,228 @@ public class NpgsqlParameterCollectionTests
         for (var i = 0; i < count; i++)
             parameters.Add(new NpgsqlParameter($"p{i}", i));
 
-        Assert.That(command.Parameters.IndexOf("P1"), Is.EqualTo(-1));
+        Assert.That(command.Parameters.IndexOf("P1"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void One_pass_finds_case_sensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.That(command.Parameters.IndexOf("p1"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void One_pass_add_does_not_throw_on_positional_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            Assert.DoesNotThrow(() =>
+            {
+                parameters.Add(new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
+            });
+    }
+
+    [Test]
+    public void One_pass_insert_does_not_throw_on_positional_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            Assert.DoesNotThrow(() =>
+            {
+                parameters.Insert(i, new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
+            });
+    }
+
+    [Test]
+    public void One_pass_name_change_does_not_throw_on_positional_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter("", i));
+
+        parameters.Add(new NpgsqlParameter("p", count));
+        parameters[count].ParameterName = NpgsqlParameter.PositionalName;
+    }
+
+    [Test]
+    public void One_pass_add_throws_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            command.Parameters.Add(new NpgsqlParameter("p1", 1));
+        });
+    }
+
+    [Test]
+    public void One_pass_insert_throws_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            command.Parameters.Insert(1, new NpgsqlParameter("p1", 1));
+        });
+    }
+
+    [Test]
+    public void One_pass_name_change_throws_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.TwoPass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        // Same instance, changing its name to what it already is.
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters[1].ParameterName = "p1";
+        });
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            command.Parameters[1].ParameterName = "p2";
+        });
+    }
+
+    [Test]
+    public void Two_pass_add_does_not_throw_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.OnePass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters.Add(new NpgsqlParameter("p1", 1));
+        });
+
+        // Positional
+        command.Parameters.Clear();
+
+        for (var i = 0; i < count; i++)
+            Assert.DoesNotThrow(() =>
+            {
+                command.Parameters.Add(new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
+            });
+    }
+
+    [Test]
+    public void Two_pass_insert_does_not_throw_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.OnePass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters.Insert(1, new NpgsqlParameter("p1", 1));
+        });
+
+        // Positional
+        command.Parameters.Clear();
+
+        for (var i = 0; i < count; i++)
+            Assert.DoesNotThrow(() =>
+            {
+                command.Parameters.Insert(i, new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
+            });
+    }
+
+    [Test]
+    public void Two_pass_name_change_does_not_throw_on_duplicate([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        if (_compatMode == CompatMode.OnePass)
+            return;
+
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        // Same instance, changing its name to what it already is.
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters[1].ParameterName = "p1";
+        });
+
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters[1].ParameterName = "p2";
+        });
+
+        // Positional
+        command.Parameters.Clear();
+
+        for (var i = 0; i < count; i++)
+            command.Parameters.Add(new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
+
+        command.Parameters.Add(new NpgsqlParameter("p", count));
+        command.Parameters[count].ParameterName = NpgsqlParameter.PositionalName;
+    }
+
+
+    [Test]
+    public void Throws_on_indexer_mismatch([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        using var command = new NpgsqlCommand();
+        var parameters = command.Parameters;
+        for (var i = 0; i < count; i++)
+            parameters.Add(new NpgsqlParameter($"p{i}", i));
+
+        Assert.DoesNotThrow(() =>
+        {
+            command.Parameters["p1"] = new NpgsqlParameter("p1", 1);
+            command.Parameters["p1"] = new NpgsqlParameter("P1", 1);
+        });
+
+        Assert.Throws<ArgumentException>(() =>
+        {
+            command.Parameters["p1"] = new NpgsqlParameter("p2", 1);
+        });
     }
 
     [Test]
@@ -178,7 +399,7 @@ public class NpgsqlParameterCollectionTests
         using var command = new NpgsqlCommand();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
-            parameters.Add(new NpgsqlParameter("", i));
+            parameters.Add(new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
 
         Assert.That(command.Parameters.IndexOf(""), Is.EqualTo(0));
     }
@@ -186,7 +407,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void IndexOf_falls_back_to_first_insensitive_match([Values] bool manyParams)
     {
-        if (_compatMode == CompatMode.CaseSensitive)
+        if (_compatMode == CompatMode.OnePass)
             return;
 
         using var command = new NpgsqlCommand();
@@ -207,6 +428,9 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void IndexOf_prefers_case_sensitive_match([Values] bool manyParams)
     {
+        if (_compatMode == CompatMode.OnePass)
+            return;
+
         using var command = new NpgsqlCommand();
         var parameters = command.Parameters;
 
@@ -246,11 +470,11 @@ public class NpgsqlParameterCollectionTests
         var command = new NpgsqlCommand();
         command.Parameters.Add(param);
 
-        param.ParameterName = "";
+        param.ParameterName = null;
 
         // These should not throw exceptions
-        Assert.AreEqual(0, command.Parameters.IndexOf(""));
-        Assert.AreEqual("", param.ParameterName);
+        Assert.AreEqual(0, command.Parameters.IndexOf(param.ParameterName));
+        Assert.AreEqual(NpgsqlParameter.PositionalName, param.ParameterName);
     }
 
     public NpgsqlParameterCollectionTests(CompatMode compatMode)
@@ -258,9 +482,9 @@ public class NpgsqlParameterCollectionTests
         _compatMode = compatMode;
 
 #if DEBUG
-        NpgsqlParameterCollection.CaseInsensitiveCompatMode = compatMode == CompatMode.CaseInsensitive;
+        NpgsqlParameterCollection.TwoPassCompatMode = compatMode == CompatMode.TwoPass;
 #else
-            if (compatMode == CompatMode.CaseInsensitive)
+            if (compatMode == CompatMode.TwoPass)
                 Assert.Ignore("Cannot test case-insensitive NpgsqlParameterCollection behavior in RELEASE");
 #endif
     }
@@ -282,6 +506,6 @@ public class NpgsqlParameterCollectionTests
 
 public enum CompatMode
 {
-    CaseInsensitive,
-    CaseSensitive
+    TwoPass,
+    OnePass
 }
