@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <ItemGroup>
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NLog" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit3TestAdapter" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
+    <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
+  </ItemGroup>
+</Project>

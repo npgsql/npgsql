@@ -1,9 +1,8 @@
-﻿namespace Npgsql.BackendMessages
+﻿namespace Npgsql.BackendMessages;
+
+class CloseCompletedMessage : IBackendMessage
 {
-    class CloseCompletedMessage : IBackendMessage
-    {
-        public BackendMessageCode Code => BackendMessageCode.CloseComplete;
-        internal static readonly CloseCompletedMessage Instance = new CloseCompletedMessage();
-        CloseCompletedMessage() { }
-    }
+    public BackendMessageCode Code => BackendMessageCode.CloseComplete;
+    internal static readonly CloseCompletedMessage Instance = new();
+    CloseCompletedMessage() { }
 }

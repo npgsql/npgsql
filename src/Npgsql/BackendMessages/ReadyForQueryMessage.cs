@@ -1,14 +1,15 @@
-﻿namespace Npgsql.BackendMessages
+﻿using Npgsql.Internal;
+
+namespace Npgsql.BackendMessages;
+
+class ReadyForQueryMessage : IBackendMessage
 {
-    class ReadyForQueryMessage : IBackendMessage
-    {
-        public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
+    public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 
-        internal TransactionStatus TransactionStatusIndicator { get; private set; }
+    internal TransactionStatus TransactionStatusIndicator { get; private set; }
 
-        internal ReadyForQueryMessage Load(NpgsqlReadBuffer buf) {
-            TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
-            return this;
-        }
+    internal ReadyForQueryMessage Load(NpgsqlReadBuffer buf) {
+        TransactionStatusIndicator = (TransactionStatus)buf.ReadByte();
+        return this;
     }
 }

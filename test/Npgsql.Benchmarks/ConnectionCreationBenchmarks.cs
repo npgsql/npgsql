@@ -1,30 +1,29 @@
-﻿using System.Data.SqlClient;
-using BenchmarkDotNet.Attributes;
+﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+using Microsoft.Data.SqlClient;
 
 // ReSharper disable UnusedMember.Global
 
-namespace Npgsql.Benchmarks
+namespace Npgsql.Benchmarks;
+
+[Config(typeof(Config))]
+public class ConnectionCreationBenchmarks
 {
-    [Config(typeof(Config))]
-    public class ConnectionCreationBenchmarks
+    const string NpgsqlConnectionString = "Host=foo;Database=bar;Username=user;Password=password";
+    const string SqlClientConnectionString = @"Data Source=(localdb)\mssqllocaldb";
+
+    [Benchmark]
+    public NpgsqlConnection Npgsql() => new(NpgsqlConnectionString);
+
+    [Benchmark]
+    public SqlConnection SqlClient() => new(SqlClientConnectionString);
+
+    class Config : ManualConfig
     {
-        const string NpgsqlConnectionString = "Host=foo;Database=bar;Username=user;Password=password";
-        const string SqlClientConnectionString = @"Data Source=(localdb)\mssqllocaldb";
-
-        [Benchmark]
-        public NpgsqlConnection Npgsql() => new NpgsqlConnection(NpgsqlConnectionString);
-
-        [Benchmark]
-        public SqlConnection SqlClient() => new SqlConnection(SqlClientConnectionString);
-
-        class Config : ManualConfig
+        public Config()
         {
-            public Config()
-            {
-                Add(StatisticColumn.OperationsPerSecond);
-            }
+            AddColumn(StatisticColumn.OperationsPerSecond);
         }
     }
 }

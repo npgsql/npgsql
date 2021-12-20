@@ -4,34 +4,33 @@ using BenchmarkDotNet.Configs;
 
 // ReSharper disable AssignNullToNotNullAttribute.Global
 
-namespace Npgsql.Benchmarks
+namespace Npgsql.Benchmarks;
+
+[Config(typeof(Config))]
+public class Commit
 {
-    [Config(typeof(Config))]
-    public class Commit
+    readonly NpgsqlConnection _conn;
+    readonly NpgsqlCommand _cmd;
+
+    public Commit()
     {
-        readonly NpgsqlConnection _conn;
-        readonly NpgsqlCommand _cmd;
+        _conn = BenchmarkEnvironment.OpenConnection();
+        _cmd = new NpgsqlCommand("SELECT 1", _conn);
+    }
 
-        public Commit()
-        {
-            _conn = BenchmarkEnvironment.OpenConnection();
-            _cmd = new NpgsqlCommand("SELECT 1", _conn);
-        }
+    [Benchmark]
+    public void Basic()
+    {
+        var tx = _conn.BeginTransaction();
+        _cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
 
-        [Benchmark]
-        public void Basic()
+    class Config : ManualConfig
+    {
+        public Config()
         {
-            var tx = _conn.BeginTransaction();
-            _cmd.ExecuteNonQuery();
-            tx.Commit();
-        }
-
-        class Config : ManualConfig
-        {
-            public Config()
-            {
-                Add(StatisticColumn.OperationsPerSecond);
-            }
+            AddColumn(StatisticColumn.OperationsPerSecond);
         }
     }
 }

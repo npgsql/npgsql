@@ -1,20 +1,19 @@
 ﻿using System;
 
-namespace Npgsql.Logging
+namespace Npgsql.Logging;
+
+class NoOpLoggingProvider : INpgsqlLoggingProvider
 {
-    class NoOpLoggingProvider : INpgsqlLoggingProvider
-    {
-        public NpgsqlLogger CreateLogger(string name) => NoOpLogger.Instance;
-    }
+    public NpgsqlLogger CreateLogger(string name) => NoOpLogger.Instance;
+}
 
-    class NoOpLogger : NpgsqlLogger
-    {
-        internal static NoOpLogger Instance = new NoOpLogger();
+class NoOpLogger : NpgsqlLogger
+{
+    internal static NoOpLogger Instance = new();
 
-        NoOpLogger() {}
-        public override bool IsEnabled(NpgsqlLogLevel level) => false;
-        public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception? exception = null)
-        {
-        }
+    NoOpLogger() {}
+    public override bool IsEnabled(NpgsqlLogLevel level) => false;
+    public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception? exception = null)
+    {
     }
 }

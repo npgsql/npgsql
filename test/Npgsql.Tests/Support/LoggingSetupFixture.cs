@@ -15,9 +15,6 @@ public class LoggingSetupFixture
     [OneTimeSetUp]
     public void Setup()
     {
-        if (TestUtil.IsOnBuildServer)
-            Console.Error.WriteLine("Running tests on: " + TestBase.ConnectionString);
-
         var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
         if (logLevelText == null)
             return;

@@ -1,16 +1,17 @@
-﻿namespace Npgsql.BackendMessages
+﻿using Npgsql.Internal;
+
+namespace Npgsql.BackendMessages;
+
+class BackendKeyDataMessage : IBackendMessage
 {
-    class BackendKeyDataMessage : IBackendMessage
+    public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
+
+    internal int BackendProcessId { get; private set; }
+    internal int BackendSecretKey { get; private set; }
+
+    internal BackendKeyDataMessage(NpgsqlReadBuffer buf)
     {
-        public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
-
-        internal int BackendProcessId { get; private set; }
-        internal int BackendSecretKey { get; private set; }
-
-        internal BackendKeyDataMessage(NpgsqlReadBuffer buf)
-        {
-            BackendProcessId = buf.ReadInt32();
-            BackendSecretKey = buf.ReadInt32();
-        }
+        BackendProcessId = buf.ReadInt32();
+        BackendSecretKey = buf.ReadInt32();
     }
 }

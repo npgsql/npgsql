@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Threading.Tasks;
 
-namespace Npgsql
+namespace Npgsql;
+
+interface ICancelable : IDisposable, IAsyncDisposable
 {
-    interface ICancelable : IDisposable
-    {
-        void Cancel();
-    }
+    void Cancel();
+
+    Task CancelAsync();
 }

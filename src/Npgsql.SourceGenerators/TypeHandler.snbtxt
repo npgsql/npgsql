@@ -1,0 +1,36 @@
+{{ for using in usings }}
+using {{ using }};
+{{ end }}
+
+#nullable enable
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+#pragma warning disable RS0016 // Add public types and members to the declared API
+#pragma warning disable 618 // Member is obsolete
+
+namespace {{ namespace }}
+{
+    partial class {{ type_name }}
+    {
+        public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => value switch
+            {
+                {{ for interface in interfaces }}
+                {{ interface.handled_type }} converted => (({{ interface.name }})this).ValidateAndGetLength(converted, {{ is_simple ? "" : "ref lengthCache, " }}parameter),
+                {{ end }}
+
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {{ type_name }}")
+            };
+
+        public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value switch
+            {
+                {{ for interface in interfaces }}
+                {{ interface.handled_type }} converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+                {{ end }}
+
+                DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {{ type_name }}")
+            };
+    }
+}

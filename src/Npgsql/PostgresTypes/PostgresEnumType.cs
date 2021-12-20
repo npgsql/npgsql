@@ -1,27 +1,26 @@
 ﻿using System.Collections.Generic;
 
-namespace Npgsql.PostgresTypes
+namespace Npgsql.PostgresTypes;
+
+/// <summary>
+/// Represents a PostgreSQL enum data type.
+/// </summary>
+/// <remarks>
+/// See https://www.postgresql.org/docs/current/static/datatype-enum.html.
+/// </remarks>
+public class PostgresEnumType : PostgresType
 {
     /// <summary>
-    /// Represents a PostgreSQL enum data type.
+    /// The enum's fields.
     /// </summary>
-    /// <remarks>
-    /// See https://www.postgresql.org/docs/current/static/datatype-enum.html.
-    /// </remarks>
-    public class PostgresEnumType : PostgresType
-    {
-        /// <summary>
-        /// The enum's fields.
-        /// </summary>
-        public IReadOnlyList<string> Labels => MutableLabels;
+    public IReadOnlyList<string> Labels => MutableLabels;
 
-        internal List<string> MutableLabels { get; } = new List<string>();
+    internal List<string> MutableLabels { get; } = new();
 
-        /// <summary>
-        /// Constructs a representation of a PostgreSQL enum data type.
-        /// </summary>
-        protected internal PostgresEnumType(string ns, string name, uint oid)
-            : base(ns, name, oid)
-        {}
-    }
+    /// <summary>
+    /// Constructs a representation of a PostgreSQL enum data type.
+    /// </summary>
+    protected internal PostgresEnumType(string ns, string name, uint oid)
+        : base(ns, name, oid)
+    {}
 }

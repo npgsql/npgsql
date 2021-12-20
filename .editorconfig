@@ -9,8 +9,16 @@ end_of_line = LF
 [*.cs]
 indent_style = space
 indent_size = 4
-; trim_trailing_whitespace = true
+trim_trailing_whitespace = true
 insert_final_newline = true
+guidelines = 140
+max_line_length = 140
+
+; 2-column space indentation
+[*.json]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
 
 [*.cs]
 dotnet_style_qualification_for_field = false:error
@@ -38,3 +46,22 @@ csharp_style_inlined_variable_declaration = true:suggestion
 csharp_style_throw_expression = true:suggestion
 csharp_style_conditional_delegate_call = true:suggestion
 csharp_indent_case_contents_when_block = false
+csharp_indent_switch_labels = false
+
+# Code analysis rules
+
+# Reliability Rules
+
+[src/Npgsql/**.cs]
+# CA1310: Specify StringComparison for correctness
+dotnet_diagnostic.CA1310.severity = error
+
+# CA2016: Forward the 'CancellationToken' parameter to methods that take one
+dotnet_diagnostic.CA2016.severity = error
+
+[src/*/Internal/**.cs]
+# RS0016: Symbol is not part of the declared API
+dotnet_diagnostic.RS0016.severity = none
+
+# CS1591: Missing XML comment for publicly visible type or member
+dotnet_diagnostic.CS1591.severity = none

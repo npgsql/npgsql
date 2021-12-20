@@ -6,8 +6,10 @@ using System.Threading;
 using System.Transactions;
 using NUnit.Framework;
 
-// TransactionScope exists in netstandard20, but distributed transactions do not
-#if NET461
+// TransactionScope exists in netstandard20, but distributed transactions do not.
+// We used to support distributed transactions back when we targeted .NET Framework, keeping them here in case
+// they get ported to .NET Core (https://github.com/dotnet/runtime/issues/715)
+#if DISTRIBUTED_TRANSACTIONS
 
 namespace Npgsql.Tests
 {
@@ -15,7 +17,7 @@ namespace Npgsql.Tests
     public class DistributedTransactionTests : TestBase
     {
         [Test]
-        public void TwoConnections()
+        public void Two_connections()
         {
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
             using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
@@ -38,7 +40,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TwoConnectionsRollback()
+        public void Two_connections_rollback()
         {
             using (new TransactionScope())
             using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
@@ -54,7 +56,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Ignore("Flaky")]
-        public void DistributedRollback()
+        public void Distributed_rollback()
         {
             var disposedCalled = false;
             var tx = new TransactionScope();
@@ -84,7 +86,7 @@ namespace Npgsql.Tests
 
         [Test(Description = "Transaction race, bool distributed")]
         [Explicit("Fails on Appveyor (https://ci.appveyor.com/project/roji/npgsql/build/3.3.0-250)")]
-        public void TransactionRace([Values(false, true)] bool distributed)
+        public void Transaction_race([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -151,7 +153,7 @@ Exception {2}",
         }
 
         [Test]
-        public void TwoConnectionsWithFailure()
+        public void Two_connections_with_failure()
         {
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
             using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
@@ -178,7 +180,7 @@ Exception {2}",
         }
 
         [Test(Description = "Connection reuse race after transaction, bool distributed"), Explicit]
-        public void ConnectionReuseRaceAfterTransaction([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_after_transaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -227,7 +229,7 @@ Exception {2}",
         }
 
         [Test(Description = "Connection reuse race after rollback, bool distributed"), Explicit("Currently failing.")]
-        public void ConnectionReuseRaceAfterRollback([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_after_rollback([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -277,7 +279,7 @@ Exception {2}",
 
         [Test(Description = "Connection reuse race chaining transactions, bool distributed")]
         [Explicit]
-        public void ConnectionReuseRaceChainingTransaction([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_chaining_transaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -350,7 +352,7 @@ Exception {2}",
         }
 
         [Test]
-        public void ReuseConnectionWithEscalation()
+        public void Reuse_connection_with_escalation()
         {
             using (new TransactionScope())
             {
@@ -387,6 +389,37 @@ Exception {2}",
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
+        public void Multiple_unpooled_connections_do_not_reuse()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Enlist = true
+            };
+
+            using var scope = new TransactionScope();
+
+            int processId;
+
+            using (var conn1 = OpenConnection(csb))
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
+            {
+                processId = conn1.ProcessID;
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var conn2 = OpenConnection(csb))
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
+            {
+                // The connection reuse optimization isn't implemented for unpooled connections (though it could be)
+                Assert.That(conn2.ProcessID, Is.Not.EqualTo(processId));
+                cmd.ExecuteNonQuery();
+            }
+
+            scope.Complete();
+        }
+
         #region Utilities
 
         void AssertNoPreparedTransactions()
@@ -398,7 +431,7 @@ Exception {2}",
             using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
-                return (int)(long)cmd.ExecuteScalar();
+                return (int)(long)cmd.ExecuteScalar()!;
             }
         }
 
@@ -411,11 +444,11 @@ Exception {2}",
         static void AssertHasDistributedIdentifier()
             => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.Not.EqualTo(Guid.Empty), "Distributed identifier not found");
 
-        public static string ConnectionStringEnlistOn =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
+        public string ConnectionStringEnlistOn
+            => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
 
-        public static string ConnectionStringEnlistOff =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+        public string ConnectionStringEnlistOff
+            => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
 
         static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
         {
@@ -459,11 +492,11 @@ Start formatting event queue, going to sleep a bit for late events
                 var name = $"{(durable ? "Durable" : "Volatile")} resource {Counter}";
                 var resource = new EnlistResource(shouldRollBack, name, eventQueue);
                 if (durable)
-                    Transaction.Current.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
+                    Transaction.Current!.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
                 else
-                    Transaction.Current.EnlistVolatile(resource, EnlistmentOptions.None);
+                    Transaction.Current!.EnlistVolatile(resource, EnlistmentOptions.None);
 
-                Transaction.Current.TransactionCompleted += resource.Current_TransactionCompleted;
+                Transaction.Current.TransactionCompleted += resource.Current_TransactionCompleted!;
 
                 eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
@@ -555,7 +588,7 @@ Start formatting event queue, going to sleep a bit for late events
             {
                 try
                 {
-                    Transaction.Current.EnlistPromotableSinglePhase(new FakePromotableSinglePhaseNotification());
+                    Transaction.Current!.EnlistPromotableSinglePhase(new FakePromotableSinglePhaseNotification());
                 }
                 catch (NotImplementedException)
                 {
@@ -566,7 +599,7 @@ Start formatting event queue, going to sleep a bit for late events
             _controlConn = OpenConnection();
 
             // Make sure prepared transactions are enabled in postgresql.conf (disabled by default)
-            if (int.Parse((string)_controlConn.ExecuteScalar("SHOW max_prepared_transactions")) == 0)
+            if (int.Parse((string)_controlConn.ExecuteScalar("SHOW max_prepared_transactions")!) == 0)
             {
                 TestUtil.IgnoreExceptOnBuildServer("max_prepared_transactions is set to 0 in your postgresql.conf");
                 _controlConn.Close();
@@ -576,7 +609,7 @@ Start formatting event queue, going to sleep a bit for late events
             var lingeringTrqnsqctions = new List<string>();
             using (var cmd = new NpgsqlCommand("SELECT gid FROM pg_prepared_xacts WHERE database=@database", _controlConn))
             {
-                cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database);
+                cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database!);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
