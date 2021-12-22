@@ -250,7 +250,7 @@ public class NodaTimeTests : TestBase
             isDefaultForReading: false);
 
     [Test]
-    public async Task Tsmultirange_as_array_of_Interval()
+    public async Task Tstzmultirange_as_array_of_Interval()
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
@@ -271,7 +271,7 @@ public class NodaTimeTests : TestBase
     }
 
     [Test]
-    public async Task Tsmultirange_as_array_of_NpgsqlRange_of_Instant()
+    public async Task Tstzmultirange_as_array_of_NpgsqlRange_of_Instant()
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
@@ -293,7 +293,7 @@ public class NodaTimeTests : TestBase
     }
 
     [Test]
-    public async Task Tsmultirange_as_array_of_NpgsqlRange_of_ZonedDateTime()
+    public async Task Tstzmultirange_as_array_of_NpgsqlRange_of_ZonedDateTime()
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
@@ -315,7 +315,7 @@ public class NodaTimeTests : TestBase
     }
 
     [Test]
-    public async Task Tsmultirange_as_array_of_NpgsqlRange_of_OffsetDateTime()
+    public async Task Tstzmultirange_as_array_of_NpgsqlRange_of_OffsetDateTime()
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
