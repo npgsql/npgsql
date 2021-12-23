@@ -39,17 +39,6 @@ namespace Npgsql.Tests.Replication
                 TestUtil.IgnoreExceptOnBuildServer(
                     $"max_wal_senders is too low ({maxWalSenders}) and could lead to transient failures. Skipping replication tests");
             }
-
-            if (CurrentServerVersion >= new Version(13, 0))
-            {
-                var logicalDecodingWorkMem = (string)(await conn.ExecuteScalarAsync("SHOW logical_decoding_work_mem"))!;
-                if (logicalDecodingWorkMem != "64kB")
-                {
-                    TestUtil.IgnoreExceptOnBuildServer(
-                        $"logical_decoding_work_mem is set to '{logicalDecodingWorkMem}', but must be set to '64kB' in order for the " +
-                        "streaming replication tests to work correctly. Skipping replication tests");
-                }
-            }
         }
 
         private protected async Task<TConnection> OpenReplicationConnectionAsync(NpgsqlConnectionStringBuilder? csb = null, CancellationToken cancellationToken = default)

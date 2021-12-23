@@ -245,6 +245,8 @@ namespace Npgsql.Replication.PgOutput
                     await _readBuffer.Skip(Length, async: true);
                 }
             }
+
+            _columnConsumed = true;
         }
 
         void CheckAndMarkConsumed()
