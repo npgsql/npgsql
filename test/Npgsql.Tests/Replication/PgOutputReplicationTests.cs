@@ -143,7 +143,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 insertMsg = await NextMessage<InsertMessage>(messages);
                 Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
                 Assert.That(insertMsg.Relation, Is.SameAs(relationMsg));
-                await foreach(var tuple in insertMsg.NewRow) // Don't consume the value to trigger eventual bugs
+                await foreach (var tuple in insertMsg.NewRow) // Don't consume the value to trigger eventual bugs
                     Assert.That(tuple.Kind, IsBinary ? Is.EqualTo(TupleDataKind.BinaryValue) : Is.EqualTo(TupleDataKind.TextValue));
 
                 // Remaining inserts

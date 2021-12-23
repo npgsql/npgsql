@@ -700,7 +700,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                           $"{nameof(LastReceivedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastReceivedLsn))}, " +
                           $"{nameof(LastFlushedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastFlushedLsn))}, " +
                           $"{nameof(LastAppliedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastAppliedLsn))} " +
-                          $"at {timestamp}, .", Connector.Id);
+                          $"at {timestamp.ToLocalTime()}, .", Connector.Id);
             }
         }
         finally
