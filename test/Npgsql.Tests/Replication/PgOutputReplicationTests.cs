@@ -88,8 +88,8 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
-                await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} VALUES (1, 'val1'), (2, NULL);
-                                                    INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(3, 15000) s(i);");
+                await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} VALUES (1, 'val1'), (2, NULL), (3, 'ignored');
+                                                    INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(4, 15000) s(i);");
                 await tran.CommitAsync();
 
                 using var streamingCts = new CancellationTokenSource();
@@ -139,8 +139,15 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 Assert.That(columnEnumerator.Current.IsDBNull, Is.True);
                 Assert.That(await columnEnumerator.MoveNextAsync(), Is.False);
 
+                // Insert third value
+                insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.TransactionXid, IsStreaming ? Is.EqualTo(transactionXid) : Is.Null);
+                Assert.That(insertMsg.Relation, Is.SameAs(relationMsg));
+                await foreach(var tuple in insertMsg.NewRow) // Don't consume the value to trigger eventual bugs
+                    Assert.That(tuple.Kind, IsBinary ? Is.EqualTo(TupleDataKind.BinaryValue) : Is.EqualTo(TupleDataKind.TextValue));
+
                 // Remaining inserts
-                for (var insertCount = 0; insertCount < 14998; insertCount++)
+                for (var insertCount = 0; insertCount < 14997; insertCount++)
                 {
                     await NextMessage<InsertMessage>(messages);
                 }
@@ -1060,7 +1067,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         if (IsBinary)
             TestUtil.MinimumPgVersion(c, "14.0", "Sending replication values in binary representation was introduced in PostgreSQL 14");
         if (IsStreaming)
+        {
             TestUtil.MinimumPgVersion(c, "14.0", "Streaming of in-progress transactions was introduced in PostgreSQL 14");
+            var logicalDecodingWorkMem = (string)(await c.ExecuteScalarAsync("SHOW logical_decoding_work_mem"))!;
+            if (logicalDecodingWorkMem != "64kB")
+            {
+                TestUtil.IgnoreExceptOnBuildServer(
+                    $"logical_decoding_work_mem is set to '{logicalDecodingWorkMem}', but must be set to '64kB' in order for the " +
+                    "streaming replication tests to work correctly. Skipping replication tests");
+            }
+        }
     }
 
     public enum ProtocolVersion : ulong
