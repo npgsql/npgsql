@@ -25,18 +25,19 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
     // compatibility.
     const string OutputPlugin = "test_decoding";
 
-    [TestCase(true)]
-    [TestCase(false)]
-    public Task CreateLogicalReplicationSlot(bool temporary)
+    [Test]
+    public Task CreateLogicalReplicationSlot([Values]bool temporary, [Values]bool twoPhase)
         => SafeReplicationTest(
             async (slotName, _) =>
             {
                 await using var c = await OpenConnectionAsync();
+                if (twoPhase)
+                    TestUtil.MinimumPgVersion(c, "15.0", "Replication slots with two phase commit support were introduced in PostgreSQL 15");
                 if (temporary)
                     TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
 
                 await using var rc = await OpenReplicationConnectionAsync();
-                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary);
+                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary, twoPhase: twoPhase);
 
                 using var cmd =
                     new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.SlotName}'",
@@ -45,6 +46,8 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
 
                 Assert.That(reader.Read, Is.True);
                 Assert.That(reader.GetFieldValue<string>(reader.GetOrdinal("slot_type")), Is.EqualTo("logical"));
+                if (c.PostgreSqlVersion >= Version.Parse("15.0"))
+                    Assert.That(reader.GetFieldValue<bool>(reader.GetOrdinal("two_phase")), Is.EqualTo(twoPhase));
                 if (c.PostgreSqlVersion >= Version.Parse("10.0"))
                     Assert.That(reader.GetFieldValue<bool>(reader.GetOrdinal("temporary")), Is.EqualTo(temporary));
                 Assert.That(reader.GetFieldValue<bool>(reader.GetOrdinal("active")), Is.EqualTo(temporary));

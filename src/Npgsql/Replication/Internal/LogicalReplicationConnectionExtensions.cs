@@ -42,6 +42,11 @@ public static class LogicalReplicationConnectionExtensions
     /// executing the command. This option must be used in a transaction, and <see cref="LogicalSlotSnapshotInitMode.Use"/>
     /// must be the first command run in that transaction. Finally, <see cref="LogicalSlotSnapshotInitMode.NoExport"/> will
     /// just use the snapshot for logical decoding as normal but won't do anything else with it.</param>
+    /// <param name="twoPhase">
+    /// If <see langword="true"/>, this logical replication slot supports decoding of two-phase transactions. With this option,
+    /// two-phase commands like PREPARE TRANSACTION, COMMIT PREPARED and ROLLBACK PREPARED are decoded and transmitted.
+    /// The transaction will be decoded and transmitted at PREPARE TRANSACTION time. The default is <see langword="false"/>.
+    /// </param>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
@@ -53,6 +58,7 @@ public static class LogicalReplicationConnectionExtensions
         string outputPlugin,
         bool isTemporary = false,
         LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null,
+        bool twoPhase = false,
         CancellationToken cancellationToken = default)
     {
         using var _ = NoSynchronizationContextScope.Enter();
@@ -83,6 +89,8 @@ public static class LogicalReplicationConnectionExtensions
                     slotSnapshotInitMode,
                     $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
             });
+            if (twoPhase)
+                builder.Append(" TWO_PHASE");
 
             return connection.CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
         }
