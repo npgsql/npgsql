@@ -398,6 +398,30 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
     }
 
+    internal async Task<PhysicalReplicationSlot?> ReadReplicationSlotInternal(string slotName, CancellationToken cancellationToken = default)
+    {
+        var result = await ReadSingleRow($"READ_REPLICATION_SLOT {slotName}", cancellationToken);
+        var slotType = (string?)result[0];
+
+        // Currently (2021-12-30) slot_type is always 'physical' for existing slots or null for slot names that don't exist but that
+        // might change and we'd have to adopt our implementation in that case so check it just in case
+        switch (slotType)
+        {
+            case "physical":
+                var restartLsn = (string?)result[1];
+                var restartTli = (ulong?)result[2];
+                return new PhysicalReplicationSlot(
+                    slotName.ToLowerInvariant(),
+                    restartLsn == null ? null : NpgsqlLogSequenceNumber.Parse(restartLsn),
+                    restartTli);
+            case null:
+                return null;
+            default:
+                throw new NotSupportedException(
+                    $"The replication slot type '{slotType}' is currently not supported by Npgsql. Please file an issue.");
+        }
+    }
+
     internal IAsyncEnumerator<XLogDataMessage> StartReplicationInternalWrapper(
         string command,
         bool bypassingStream,
@@ -788,6 +812,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 results[i] = buf.ReadString(len);
                 continue;
             case "integer":
+            {
                 var str = buf.ReadString(len);
                 if (!uint.TryParse(str, NumberStyles.None, null, out var num))
                 {
@@ -798,6 +823,20 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                 results[i] = num;
                 continue;
+            }
+            case "bigint":
+            {
+                var str = buf.ReadString(len);
+                if (!ulong.TryParse(str, NumberStyles.None, null, out var num))
+                {
+                    throw Connector.Break(
+                        new NpgsqlException(
+                            $"Could not parse '{str}' as unsigned integer in field {field.Name}"));
+                }
+
+                results[i] = num;
+                continue;
+            }
             case "bytea":
                 try
                 {

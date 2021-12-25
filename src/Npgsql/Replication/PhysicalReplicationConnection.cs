@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -46,7 +47,8 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
-    /// <returns>A <see cref="PhysicalReplicationSlot"/> that wraps the newly-created replication slot.
+    /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> that represents the
+    /// newly-created replication slot.
     /// </returns>
     public Task<PhysicalReplicationSlot> CreateReplicationSlot(
         string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
@@ -76,6 +78,26 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     }
 
     /// <summary>
+    /// Read some information associated to a replication slot.
+    /// <remarks>
+    /// This command is currently only supported for physical replication slots.
+    /// </remarks>
+    /// </summary>
+    /// <param name="slotName">
+    /// The name of the slot to read. Must be a valid replication slot name
+    /// </param>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns>A <see cref="Task{T}"/> representing a <see cref="PhysicalReplicationSlot"/> or <see langword="null"/>
+    /// if the replication slot does not exist.</returns>
+    public Task<PhysicalReplicationSlot?> ReadReplicationSlot(string slotName, CancellationToken cancellationToken = default)
+    {
+        using (NoSynchronizationContextScope.Enter())
+            return ReadReplicationSlotInternal(slotName, cancellationToken);
+    }
+
+    /// <summary>
     /// Instructs the server to start streaming the WAL for physical replication, starting at WAL location
     /// <paramref name="walLocation"/>. The server can reply with an error, for example if the requested
     /// section of the WAL has already been recycled.
@@ -97,7 +119,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
         NpgsqlLogSequenceNumber walLocation,
         CancellationToken cancellationToken,
-        uint timeline = default)
+        ulong timeline = default)
     {
         using (NoSynchronizationContextScope.Enter())
             return StartPhysicalReplication(slot, walLocation, cancellationToken, timeline);
@@ -105,7 +127,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         async IAsyncEnumerable<XLogDataMessage> StartPhysicalReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
             [EnumeratorCancellation] CancellationToken cancellationToken,
-            uint timeline)
+            ulong timeline)
         {
             var builder = new StringBuilder("START_REPLICATION");
             if (slot != null)
@@ -140,6 +162,35 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
     /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(
-        NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
+        NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, ulong timeline = default)
         => StartReplication(slot: null, walLocation: walLocation, timeline: timeline, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Instructs the server to start streaming the WAL for physical replication, starting at the WAL location
+    /// and timeline id specified in <paramref name="slot"/>. The server can reply with an error, for example
+    /// if the requested section of the WAL has already been recycled.
+    /// </summary>
+    /// <remarks>
+    /// If the client requests a timeline that's not the latest but is part of the history of the server, the server
+    /// will stream all the WAL on that timeline starting from the requested start point up to the point where the
+    /// server switched to another timeline.
+    /// </remarks>
+    /// <param name="slot">
+    /// The replication slot that will be updated as replication progresses so that the server
+    /// knows which WAL segments are still needed by the standby.
+    /// <remarks>
+    /// The <paramref name="slot"/> must contain a valid <see cref="PhysicalReplicationSlot.RestartLsn"/> to be used for this overload.
+    /// </remarks>
+    /// </param>
+    /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
+    /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
+    /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+    public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot slot, CancellationToken cancellationToken)
+    {
+        if (!slot.RestartLsn.HasValue)
+            throw new ArgumentException($"For this overload of {nameof(StartReplication)} the {nameof(slot)} argument must contain a " +
+                                        $"valid {nameof(slot.RestartLsn)}. Please use an overload with the walLocation argument otherwise.",
+                nameof(slot));
+        return StartReplication(slot, slot.RestartLsn.Value, cancellationToken, slot.RestartTimeline ?? default);
+    }
 }
