@@ -65,7 +65,10 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
-            var data = SerializeJsonDocument((JsonDocument)(object)value!);
+            var data = parameter?.ConvertedValue != null
+                ? (byte[])parameter.ConvertedValue
+                : SerializeJsonDocument((JsonDocument)(object)value!);
+
             if (parameter != null)
                 parameter.ConvertedValue = data;
             return lengthCache.Set(data.Length + _headerLen);
