@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -65,10 +66,8 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
-            var data = SerializeJsonDocument((JsonDocument)(object)value!);
-            if (parameter != null)
-                parameter.ConvertedValue = data;
-            return lengthCache.Set(data.Length + _headerLen);
+            var paramLength = GetSizeOfSerializedValue(parameter, (object)value!);
+            return lengthCache.Set(paramLength + _headerLen);
         }
 
         // User POCO, need to serialize. At least internally ArrayPool buffers are used...
@@ -77,6 +76,32 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             parameter.ConvertedValue = s;
 
         return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
+    }
+
+    private int GetSizeOfSerializedValue(NpgsqlParameter? parameter, object value)
+    {
+        if (parameter?.ConvertedValue != null)
+        {
+            if (parameter.ConvertedValue is ReadOnlySequence<byte> sequence)
+            {
+                return (int)sequence.Length;
+            }
+            else if (parameter.ConvertedValue is byte[] byteParam)
+            {
+                return byteParam.Length;
+            }
+            else
+            {
+                throw new Exception($"Unknown type {value.GetType().FullName}");
+            }
+        }
+        var serializedBytes = SerializeJsonDocument((JsonDocument)value);
+        if (parameter != null)
+        {
+            parameter.ConvertedValue = serializedBytes;
+        }
+
+        return serializedBytes.Length;
     }
 
     /// <inheritdoc />
@@ -104,10 +129,29 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(JsonDocument))
         {
-            var data = parameter?.ConvertedValue != null
-                ? (byte[])parameter.ConvertedValue
-                : SerializeJsonDocument((JsonDocument)(object)value!);
-            await buf.WriteBytesRaw(data, async, cancellationToken);
+            if (parameter?.ConvertedValue != null)
+            {
+                if (parameter.ConvertedValue is ReadOnlySequence<byte> sequence)
+                {
+                    foreach (var segment in sequence)
+                    {
+                        buf.DirectWrite(segment.Span);
+                    }
+                }
+                else if (parameter.ConvertedValue is byte[] bytes)
+                {
+                    await buf.WriteBytesRaw(bytes, async, cancellationToken);
+                }
+                else
+                {
+                    throw new Exception($"Unknown type {parameter.ConvertedValue.GetType().FullName}");
+                }
+            }
+            else
+            {
+                var data = SerializeJsonDocument((JsonDocument)(object)value!);
+                await buf.WriteBytesRaw(data, async, cancellationToken);
+            }
         }
         else
         {
