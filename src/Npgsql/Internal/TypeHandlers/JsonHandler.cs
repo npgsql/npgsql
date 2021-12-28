@@ -86,13 +86,9 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             {
                 return (int)sequence.Length;
             }
-            else if (parameter.ConvertedValue is byte[] byteParam)
-            {
-                return byteParam.Length;
-            }
             else
             {
-                throw new Exception($"Unknown type {value.GetType().FullName}");
+                return ((byte[])parameter.ConvertedValue).Length;
             }
         }
         var serializedBytes = SerializeJsonDocument((JsonDocument)value);
@@ -138,13 +134,9 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
                         buf.DirectWrite(segment.Span);
                     }
                 }
-                else if (parameter.ConvertedValue is byte[] bytes)
-                {
-                    await buf.WriteBytesRaw(bytes, async, cancellationToken);
-                }
                 else
                 {
-                    throw new Exception($"Unknown type {parameter.ConvertedValue.GetType().FullName}");
+                    await buf.WriteBytesRaw((byte[])parameter.ConvertedValue, async, cancellationToken);
                 }
             }
             else
