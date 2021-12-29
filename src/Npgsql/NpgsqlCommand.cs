@@ -1642,12 +1642,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             foreach (var s in InternalBatchCommands)
             {
                 sb.Append("\t").AppendLine(s.FinalCommandText);
-                var p = s.Parameters.InternalList;
+                var p = s.PositionalParameters;
                 if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
                     for (var i = 0; i < p.Count; i++)
                     {
-                        sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":");
+                        sb.Append("\t").Append("Parameter $").Append(i + 1).Append(":");
                         switch (p[i].Value)
                         {
                         case IList list:
