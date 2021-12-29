@@ -336,6 +336,48 @@ public class NodaTimeTests : TestBase
             isDefaultForReading: false);
     }
 
+    [Test]
+    public async Task Tstzrange_array_as_array_of_Interval()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await AssertType<Array>(
+            new[]
+            {
+                new Interval(
+                    new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
+                    new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()),
+                new Interval(
+                    new LocalDateTime(1998, 4, 13, 13, 26, 38).InUtc().ToInstant(),
+                    new LocalDateTime(1998, 4, 13, 15, 26, 38).InUtc().ToInstant()),
+            },
+            @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\"")""}",
+            "tstzrange[]",
+            NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isDefaultForWriting: false);
+    }
+
+    [Test]
+    public async Task Tstzrange_array_as_array_of_NpgsqlRange_of_Instant()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await AssertType(
+            new[]
+            {
+                new NpgsqlRange<Instant>(
+                    new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(),
+                    new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()),
+                new NpgsqlRange<Instant>(
+                    new LocalDateTime(1998, 4, 13, 13, 26, 38).InUtc().ToInstant(),
+                    new LocalDateTime(1998, 4, 13, 15, 26, 38).InUtc().ToInstant()),
+            },
+            @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\""]"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\""]""}",
+            "tstzrange[]",
+            NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isDefault: false);
+    }
+
     #endregion Timestamp with time zone
 
     #region Date
@@ -418,6 +460,40 @@ public class NodaTimeTests : TestBase
             NpgsqlDbType.DateRange,
             isDefaultForReading: false);
 #endif
+
+    [Test]
+    public async Task Daterange_array_as_array_of_DateInterval()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await AssertType<Array>(
+            new[]
+            {
+                new DateInterval(new(2002, 3, 4), new(2002, 3, 5)),
+                new DateInterval(new(2002, 3, 8), new(2002, 3, 10))
+            },
+            @"{""[2002-03-04,2002-03-06)"",""[2002-03-08,2002-03-11)""}",
+            "daterange[]",
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefaultForWriting: false);
+    }
+
+    [Test]
+    public async Task Daterange_array_as_array_of_NpgsqlRange_of_LocalDate()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await AssertType(
+            new[]
+            {
+                new NpgsqlRange<LocalDate>(new(2002, 3, 4), true, new(2002, 3, 6), false),
+                new NpgsqlRange<LocalDate>(new(2002, 3, 8), true, new(2002, 3, 11), false)
+            },
+            @"{""[2002-03-04,2002-03-06)"",""[2002-03-08,2002-03-11)""}",
+            "daterange[]",
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array,
+            isDefault: false);
+    }
 
     #endregion Date
 
