@@ -459,6 +459,10 @@ namespace Npgsql
                         case BackendMessageCode.CommandComplete:
                         case BackendMessageCode.EmptyQueryResponse:
                             break;
+                        case BackendMessageCode.CopyInResponse:
+                            throw Connector.Break(new NotSupportedException(
+                                "COPY isn't supported in regular command execution - see https://www.npgsql.org/doc/copy.html for documentation on COPY with Npgsql. " +
+                                "If you are trying to execute a SQL script created by pg_dump, pass the '--inserts' switch to disable generating COPY statements."));
                         default:
                             throw Connector.UnexpectedMessageReceived(msg.Code);
                         }

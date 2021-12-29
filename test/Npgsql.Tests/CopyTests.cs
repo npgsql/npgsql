@@ -1041,6 +1041,21 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
             Assert.That(async () => await conn.ExecuteScalarAsync($"SELECT foo FROM {table}"), Is.EqualTo(3));
         }
 
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4199")]
+        public async Task Copy_is_not_supported_in_regular_command_execution()
+        {
+            using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+
+            Assert.That(() => conn.ExecuteNonQueryAsync($@"
+COPY {table} (foo) FROM stdin;
+1
+2
+\.
+"), Throws.Exception.TypeOf<NotSupportedException>());
+        }
+
         #endregion
 
         #region Utils
