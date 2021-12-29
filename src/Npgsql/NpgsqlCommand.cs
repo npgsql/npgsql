@@ -1533,12 +1533,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             Transaction = null;
 
+            State = CommandState.Disposed;
+
             if (IsCached && _connection is not null && _connection.CachedCommand is null)
             {
                 // TODO: Optimize NpgsqlParameterCollection to recycle NpgsqlParameter instances as well
                 // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
 
-                State = CommandState.Idle;
                 _commandText = string.Empty;
                 CommandType = CommandType.Text;
                 _parameters.Clear();
@@ -1547,7 +1548,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             IsCached = false;
-            State = CommandState.Disposed;
         }
 
         #endregion

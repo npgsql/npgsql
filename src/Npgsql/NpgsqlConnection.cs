@@ -582,6 +582,7 @@ namespace Npgsql
             if (cachedCommand is not null)
             {
                 CachedCommand = null;
+                cachedCommand.State = CommandState.Idle;
                 return cachedCommand;
             }
 
