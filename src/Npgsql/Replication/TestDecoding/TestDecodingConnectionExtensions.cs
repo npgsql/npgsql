@@ -41,6 +41,11 @@ public static class TestDecodingConnectionExtensions
     /// first command run in that transaction. Finally, <see cref="LogicalSlotSnapshotInitMode.NoExport"/> will just use
     /// the snapshot for logical decoding as normal but won't do anything else with it.
     /// </param>
+    /// <param name="twoPhase">
+    /// If <see langword="true"/>, this logical replication slot supports decoding of two-phase transactions. With this option,
+    /// two-phase commands like PREPARE TRANSACTION, COMMIT PREPARED and ROLLBACK PREPARED are decoded and transmitted.
+    /// The transaction will be decoded and transmitted at PREPARE TRANSACTION time. The default is <see langword="false"/>.
+    /// </param>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
@@ -52,12 +57,13 @@ public static class TestDecodingConnectionExtensions
         string slotName,
         bool temporarySlot = false,
         LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null,
+        bool twoPhase = false,
         CancellationToken cancellationToken = default)
     {
         // We don't enter NoSynchronizationContextScope here since we (have to) do it in CreateReplicationSlotForPlugin, because
         // otherwise it wouldn't be set for external plugins.
         var options = await connection.CreateLogicalReplicationSlot(
-            slotName, "test_decoding", temporarySlot, slotSnapshotInitMode, cancellationToken).ConfigureAwait(false);
+            slotName, "test_decoding", temporarySlot, slotSnapshotInitMode, twoPhase, cancellationToken).ConfigureAwait(false);
         return new TestDecodingReplicationSlot(options);
     }
 
