@@ -586,6 +586,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (cachedCommand is not null)
         {
             CachedCommand = null;
+            cachedCommand.State = CommandState.Idle;
             return cachedCommand;
         }
 
