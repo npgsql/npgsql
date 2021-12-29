@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NodaTime;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -25,6 +26,11 @@ namespace Npgsql.NodaTime.Internal
         DateMultirangeHandler? _dateMultirangeHandler;
         TimestampTzMultirangeHandler? _timestampTzMultirangeHandler;
 
+        NpgsqlTypeHandler? _timestampTzRangeArray;
+        NpgsqlTypeHandler? _dateRangeArray;
+
+        readonly ArrayNullabilityMode _arrayNullabilityMode;
+
         internal NodaTimeTypeHandlerResolver(NpgsqlConnector connector)
         {
             _databaseInfo = connector.DatabaseInfo;
@@ -42,6 +48,8 @@ namespace Npgsql.NodaTime.Internal
 
             // Note that the range handlers are absent on some pseudo-PostgreSQL databases (e.g. CockroachDB), and multirange types
             // were only introduced in PG14. So we resolve these lazily.
+
+            _arrayNullabilityMode = connector.Settings.ArrayNullabilityMode;
         }
 
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
@@ -58,6 +66,9 @@ namespace Npgsql.NodaTime.Internal
                 "daterange" => DateRange(),
                 "tstzmultirange" => TsTzMultirange(),
                 "datemultirange" => DateMultirange(),
+
+                "tstzrange[]" => TsTzRangeArray(),
+                "daterange[]" => DateRangeArray(),
 
                 _ => null
             };
@@ -193,5 +204,13 @@ namespace Npgsql.NodaTime.Internal
 
         NpgsqlTypeHandler DateMultirange()
             => _dateMultirangeHandler ??= new DateMultirangeHandler((PostgresMultirangeType)PgType("datemultirange"), DateRange());
+
+        NpgsqlTypeHandler TsTzRangeArray()
+            => _timestampTzRangeArray ??=
+                new ArrayHandler<Interval>((PostgresArrayType)PgType("tstzrange[]"), TsTzRange(), _arrayNullabilityMode);
+
+        NpgsqlTypeHandler DateRangeArray()
+            => _dateRangeArray ??=
+                new ArrayHandler<DateInterval>((PostgresArrayType)PgType("daterange[]"), DateRange(), _arrayNullabilityMode);
     }
 }
