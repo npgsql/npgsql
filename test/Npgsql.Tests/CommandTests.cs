@@ -1261,5 +1261,21 @@ LANGUAGE 'plpgsql' VOLATILE;";
             .With.InnerException.TypeOf<PostgresException>());
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4134")]
+    public async Task Cached_command_double_dispose()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        var cmd1 = conn.CreateCommand();
+        cmd1.Dispose();
+        cmd1.Dispose();
+
+        var cmd2 = conn.CreateCommand();
+        Assert.That(cmd2, Is.SameAs(cmd1));
+
+        cmd2.CommandText = "SELECT 1";
+        Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(1));
+    }
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
