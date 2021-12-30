@@ -92,7 +92,7 @@ public static class LogicalReplicationConnectionExtensions
             if (twoPhase)
                 builder.Append(" TWO_PHASE");
 
-            return connection.CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
+            return connection.CreateReplicationSlot(builder.ToString(), cancellationToken);
         }
     }
 

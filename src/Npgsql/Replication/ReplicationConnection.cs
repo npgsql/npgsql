@@ -26,6 +26,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 {
     #region Fields
 
+    static readonly Version FirstVersionWithTwoPhaseSupport = new(15, 0);
     static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new(13, 0);
     static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new(10, 0);
     static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
@@ -360,80 +361,36 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
     }
 
-    internal async Task<ReplicationSlotOptions> CreateReplicationSlot(
-        string command, bool temporarySlot, CancellationToken cancellationToken = default)
+    internal async Task<ReplicationSlotOptions> CreateReplicationSlot(string command, CancellationToken cancellationToken = default)
     {
-        CheckDisposed();
-
-        using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
-
-        Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
-        await Connector.WriteQuery(command, true, cancellationToken);
-        await Connector.Flush(true, cancellationToken);
-
         try
         {
-            var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
-            Debug.Assert(rowDescription.Count == 4);
-            Debug.Assert(rowDescription[0].TypeOID == 25u, "slot_name expected as text");
-            Debug.Assert(rowDescription[1].TypeOID == 25u, "consistent_point expected as text");
-            Debug.Assert(rowDescription[2].TypeOID == 25u, "snapshot_name expected as text");
-            Debug.Assert(rowDescription[3].TypeOID == 25u, "output_plugin expected as text");
-            Expect<DataRowMessage>(await Connector.ReadMessage(true), Connector);
-            var buf = Connector.ReadBuffer;
-            await buf.EnsureAsync(2);
-            var results = new object[buf.ReadInt16()];
-            Debug.Assert(results.Length == 4);
-
-            // slot_name
-            await buf.EnsureAsync(4);
-            var len = buf.ReadInt32();
-            Debug.Assert(len > 0, "slot_name should never be empty");
-            await buf.EnsureAsync(len);
-            var slotNameResult = buf.ReadString(len);
-
-            // consistent_point
-            await buf.EnsureAsync(4);
-            len = buf.ReadInt32();
-            Debug.Assert(len > 0, "consistent_point should never be empty");
-            await buf.EnsureAsync(len);
-            var consistentPoint   = NpgsqlLogSequenceNumber.Parse(buf.ReadString(len));
-
-            // snapshot_name
-            await buf.EnsureAsync(4);
-            len = buf.ReadInt32();
-            string? snapshotName;
-            if (len == -1)
-                snapshotName = null;
-            else
-            {
-                await buf.EnsureAsync(len);
-                snapshotName = buf.ReadString(len);
-            }
-
-            // output_plugin
-            await buf.EnsureAsync(4);
-            len = buf.ReadInt32();
-            if (len != -1)
-            {
-                await buf.EnsureAsync(len);
-                buf.Skip(len); // We know already what we created
-            }
-
-            Expect<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
-            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
-
-            return new ReplicationSlotOptions(slotNameResult, consistentPoint, snapshotName);
+            var result = await ReadSingleRow(command, cancellationToken);
+            var slotName = (string)result[0];
+            var consistentPoint = (string)result[1];
+            var snapshotName = (string?)result[2];
+            return new ReplicationSlotOptions(slotName, NpgsqlLogSequenceNumber.Parse(consistentPoint), snapshotName);
         }
         catch (PostgresException e)
         {
-            if (!Connector.IsBroken && PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode && e.SqlState == PostgresErrorCodes.SyntaxError)
+            if (Connector.IsBroken || e.SqlState != PostgresErrorCodes.SyntaxError)
+                throw;
+
+            if ( PostgreSqlVersion < FirstVersionWithTwoPhaseSupport && command.Contains("TWO_PHASE"))
+                throw new NotSupportedException("Logical replication support for prepared transactions was introduced in PostgreSQL " +
+                                                FirstVersionWithTwoPhaseSupport.ToString(1) +
+                                                ". Using PostgreSQL version " +
+                                                (PostgreSqlVersion.Build == -1
+                                                    ? PostgreSqlVersion.ToString(2)
+                                                    : PostgreSqlVersion.ToString(3)) +
+                                                " you have to set the twoPhase argument to false.", e);
+            if (PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode)
             {
-                if (temporarySlot)
+                if (command.Contains("TEMPORARY"))
                     throw new NotSupportedException("Temporary replication slots were introduced in PostgreSQL " +
                                                     $"{FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode.ToString(1)}. " +
                                                     $"Using PostgreSQL version {PostgreSqlVersion.ToString(3)} you " +
-                                                    $"have to set the {nameof(temporarySlot)} argument to false.", e);
+                                                    $"have to set the isTemporary argument to false.", e);
                 if (command.Contains("_SNAPSHOT"))
                     throw new NotSupportedException(
                         "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +

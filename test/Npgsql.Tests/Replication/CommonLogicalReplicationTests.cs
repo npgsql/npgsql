@@ -89,6 +89,41 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                     .And.InnerException.Property("SqlState").EqualTo(PostgresErrorCodes.SyntaxError));
             });
 
+    [Test(Description = "Tests whether we throw a helpful exception about unsupported temporary replication slots on old servers.")]
+    public Task CreateLogicalReplicationSlot_with_isTemporary_set_to_true_on_old_postgres_throws()
+        => SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MaximumPgVersionExclusive(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+                Assert.That(async () =>
+                {
+                    await using var rc = await OpenReplicationConnectionAsync();
+                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, isTemporary: true);
+                }, Throws.InstanceOf<NotSupportedException>()
+                    .With.Message.StartsWith("Temporary replication slots were introduced in PostgreSQL")
+                    .And.InnerException.TypeOf<PostgresException>()
+                    .And.InnerException.Property("SqlState").EqualTo(PostgresErrorCodes.SyntaxError));
+            });
+
+    [Test(Description = "Tests whether we throw a helpful exception about the unsupported TWO_PHASE syntax on old servers.")]
+    public Task CreateLogicalReplicationSlot_with_twoPhase_set_to_true_on_old_postgres_throws()
+        => SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MaximumPgVersionExclusive(c, "15.0",
+                    "Logical replication support for prepared transactions was  introduced in PostgreSQL 15");
+                Assert.That(async () =>
+                {
+                    await using var rc = await OpenReplicationConnectionAsync();
+                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, twoPhase: true);
+                }, Throws.InstanceOf<NotSupportedException>()
+                    .With.Message.StartsWith("Logical replication support for prepared transactions was introduced in PostgreSQL")
+                    .And.InnerException.TypeOf<PostgresException>()
+                    .And.InnerException.Property("SqlState").EqualTo(PostgresErrorCodes.SyntaxError));
+            });
+
     [Test(Description = "We can use the exported snapshot to query the database in the very moment the replication slot was created.")]
     public Task CreateLogicalReplicationSlot_with_SnapshotInitMode_Export()
         => SafeReplicationTest(

@@ -63,7 +63,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             if (reserveWal)
                 builder.Append(" RESERVE_WAL");
 
-            var slotOptions = await CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
+            var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken);
 
             return new PhysicalReplicationSlot(slotOptions.SlotName);
         }
