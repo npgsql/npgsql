@@ -331,7 +331,7 @@ namespace Npgsql
 
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (numConnectors == _min)
-                        EnablePruning();
+                        UpdatePruningTimer();
 
                     return connector;
                 }
@@ -419,7 +419,7 @@ namespace Npgsql
 
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (numConnectors == _min)
-                DisablePruning();
+                UpdatePruningTimer();
         }
 
         #region Pending Enlisted Connections
@@ -468,23 +468,22 @@ namespace Npgsql
 
         #region Pruning
 
-        // Manual reactivation of timer happens in callback
-        void EnablePruning()
+        void UpdatePruningTimer()
         {
             lock (_pruningTimer)
             {
-                _pruningTimerEnabled = true;
-                _pruningTimer.Change(_pruningSamplingInterval, Timeout.InfiniteTimeSpan);
-            }
-        }
-
-        void DisablePruning()
-        {
-            lock (_pruningTimer)
-            {
-                _pruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                _pruningSampleIndex = 0;
-                _pruningTimerEnabled = false;
+                var numConnectors = _numConnectors;
+                if (numConnectors > _min && !_pruningTimerEnabled)
+                {
+                    _pruningTimerEnabled = true;
+                    _pruningTimer.Change(_pruningSamplingInterval, Timeout.InfiniteTimeSpan);
+                }
+                else if (numConnectors <= _min && _pruningTimerEnabled)
+                {
+                    _pruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                    _pruningSampleIndex = 0;
+                    _pruningTimerEnabled = false;
+                }
             }
         }
 
