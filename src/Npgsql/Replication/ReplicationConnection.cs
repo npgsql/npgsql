@@ -371,12 +371,9 @@ public abstract class ReplicationConnection : IAsyncDisposable
             var snapshotName = (string?)result[2];
             return new ReplicationSlotOptions(slotName, NpgsqlLogSequenceNumber.Parse(consistentPoint), snapshotName);
         }
-        catch (PostgresException e)
+        catch (PostgresException e) when (!Connector.IsBroken && e.SqlState == PostgresErrorCodes.SyntaxError)
         {
-            if (Connector.IsBroken || e.SqlState != PostgresErrorCodes.SyntaxError)
-                throw;
-
-            if ( PostgreSqlVersion < FirstVersionWithTwoPhaseSupport && command.Contains("TWO_PHASE"))
+            if (PostgreSqlVersion < FirstVersionWithTwoPhaseSupport && command.Contains(" TWO_PHASE"))
                 throw new NotSupportedException("Logical replication support for prepared transactions was introduced in PostgreSQL " +
                                                 FirstVersionWithTwoPhaseSupport.ToString(1) +
                                                 ". Using PostgreSQL version " +
@@ -386,12 +383,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
                                                 " you have to set the twoPhase argument to false.", e);
             if (PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode)
             {
-                if (command.Contains("TEMPORARY"))
+                if (command.Contains(" TEMPORARY"))
                     throw new NotSupportedException("Temporary replication slots were introduced in PostgreSQL " +
                                                     $"{FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode.ToString(1)}. " +
                                                     $"Using PostgreSQL version {PostgreSqlVersion.ToString(3)} you " +
                                                     $"have to set the isTemporary argument to false.", e);
-                if (command.Contains("_SNAPSHOT"))
+                if (command.Contains(" EXPORT_SNAPSHOT") || command.Contains(" NOEXPORT_SNAPSHOT") || command.Contains(" USE_SNAPSHOT"))
                     throw new NotSupportedException(
                         "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
                         $"{FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
