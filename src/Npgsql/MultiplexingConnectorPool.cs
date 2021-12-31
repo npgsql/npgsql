@@ -185,7 +185,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
                     {
                         // TODO: This is problematic - when absolutely all connectors are both busy *and* currently
                         // performing (async) I/O, this will spin-wait.
-                        // We could call ExecuteWithTimeoutAndCancellationAsync, but that would wait for an idle connector, whereas we want any
+                        // We could call WaitAsync, but that would wait for an idle connector, whereas we want any
                         // writeable (non-writing) connector even if it has in-flight commands. Maybe something
                         // with better back-off.
                         // On the other hand, this is exactly *one* thread doing spin-wait, maybe not that bad.
