@@ -20,23 +20,23 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     [Test]
     public async Task SuccessfulResultTaskAsync() =>
-        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None));
+        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None));
 
     [Test]
     public async Task SuccessfulVoidTaskAsync() =>
-        await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None);
+        await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None);
 
     [Test]
     public void InfinitelyLongTaskTimeout() =>
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None));
+            await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None));
 
     [Test]
     public void InfinitelyLongTaskCancellation()
     {
         using var cts = new CancellationTokenSource(10);
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token));
+            await TaskTimeoutAndCancellation.ExecuteAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token));
     }
 
     /// <summary>
@@ -138,7 +138,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
         using var cts = cancel ? new CancellationTokenSource(timeoutMs) : null;
         try
         {
-            await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(
+            await TaskTimeoutAndCancellation.ExecuteAsync(
                 _ => nonCancellableTask,
                 timeout ? new NpgsqlTimeout(TimeSpan.FromMilliseconds(timeoutMs)) : NpgsqlTimeout.Infinite,
                 cts?.Token ?? CancellationToken.None);
