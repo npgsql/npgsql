@@ -36,8 +36,7 @@ static class TaskTimeoutAndCancellation
     /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
     /// <returns>The <see cref="Task"/> representing the asynchronous wait.</returns>
-    internal static async Task ExecuteWithTimeoutAndCancellationAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout,
-        CancellationToken cancellationToken)
+    internal static async Task ExecuteWithTimeoutAndCancellationAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
         using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
         var task = getTaskFunc(combinedCts?.Token ?? cancellationToken);
@@ -58,8 +57,7 @@ static class TaskTimeoutAndCancellation
         {
             // Prevent unobserved Task notifications by observing the failed Task exception.
             // To test: comment the next line out and re-run TaskExtensionsTest.DelayedFaultedTaskCancellation.
-            _ = task.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Current);
+            _ = task.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
             throw;
         }
     }
