@@ -937,20 +937,19 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
     }
 
-        async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            Task<IPAddress[]> GetHostAddressesAsync(CancellationToken ct) =>
+    async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+    {
+        Task<IPAddress[]> GetHostAddressesAsync(CancellationToken ct) =>
 #if NET6_0_OR_GREATER
-                Dns.GetHostAddressesAsync(Host, ct);
+            Dns.GetHostAddressesAsync(Host, ct);
 #else
-                Dns.GetHostAddressesAsync(Host);
+            Dns.GetHostAddressesAsync(Host);
 #endif
 
-            // Note that there aren't any timeout-able DNS methods before .NET 6.0. 
-            // .NET 6.0 added cancellation support to GetHostAddressesAsync, which allows us to implement real
-            // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
-            // and raise the exception, but the actual connection task is left running.
-            var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
+        // Whether the framework and/or the OS platform support Dns.GetHostAddressesAsync cancellation API or they do not,
+        // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.WaitAsync. It stops waiting
+        // and raises the exception, while the actual task may be left running.
+        var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
                 ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
                 : (await TaskTimeoutAndCancellation.WaitAsync(GetHostAddressesAsync, timeout, cancellationToken))
                 .Select(a => new IPEndPoint(a, Port)).ToArray();
@@ -1005,22 +1004,20 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
         }
 
-            static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
-            {
-                // .NET 5.0 added cancellation support to ConnectAsync, which allows us to implement real
-                // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
-                // and raise the exception, but the actual connection task is left running.
-                Task ConnectAsync(CancellationToken ct)
-                {
+        static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
+        {
+            // Whether the framework and/or the OS platform support Socket.ConnectAsync cancellation API or they do not,
+            // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.WaitAsync. It stops waiting
+            // and raises the exception, while the actual task may be left running.
+            Task ConnectAsync(CancellationToken ct) =>
 #if NET5_0_OR_GREATER
-                    return socket.ConnectAsync(endpoint, ct).AsTask();
+                socket.ConnectAsync(endpoint, ct).AsTask();
 #else
-                    return socket.ConnectAsync(endpoint);
+                socket.ConnectAsync(endpoint);
 #endif
-                }
-                return TaskTimeoutAndCancellation.WaitAsync(ConnectAsync, perIpTimeout, cancellationToken);
-            }
+            return TaskTimeoutAndCancellation.WaitAsync(ConnectAsync, perIpTimeout, cancellationToken);
         }
+    }
 
     void SetSocketOptions(Socket socket)
     {

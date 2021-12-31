@@ -18,25 +18,25 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     Task GetVoidTaskAsync(int timeout, CancellationToken ct) => Task.Delay(timeout, ct);
 
-    [Theory]
-    public async Task SuccessfulResultTaskAsync(bool useLegacyImplementation) =>
-        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.WaitAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation));
+    [Test]
+    public async Task SuccessfulResultTaskAsync() =>
+        Assert.AreEqual(TestResultValue, await TaskTimeoutAndCancellation.WaitAsync(ct => GetResultTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None));
 
-    [Theory]
-    public async Task SuccessfulVoidTaskAsync(bool useLegacyImplementation) =>
-        await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None, useLegacyImplementation);
+    [Test]
+    public async Task SuccessfulVoidTaskAsync() =>
+        await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(10, ct), NpgsqlTimeout.Infinite, CancellationToken.None);
 
-    [Theory]
-    public void InfinitelyLongTaskTimeout(bool useLegacyImplementation) =>
+    [Test]
+    public void InfinitelyLongTaskTimeout() =>
         Assert.ThrowsAsync<TimeoutException>(async () =>
-            await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None, useLegacyImplementation));
+            await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), new NpgsqlTimeout(TimeSpan.FromMilliseconds(10)), CancellationToken.None));
 
-    [Theory]
-    public void InfinitelyLongTaskCancellation(bool useLegacyImplementation)
+    [Test]
+    public void InfinitelyLongTaskCancellation()
     {
         using var cts = new CancellationTokenSource(10);
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token, useLegacyImplementation));
+            await TaskTimeoutAndCancellation.WaitAsync(ct => GetVoidTaskAsync(Timeout.Infinite, ct), NpgsqlTimeout.Infinite, cts.Token));
     }
 
     /// <summary>
@@ -46,13 +46,13 @@ public class TaskTimeoutAndCancellationTest : TestBase
     /// The test is based on timing and depends on availability of thread pool threads. Therefore it could become unstable if the environment is under pressure.
     /// </remarks>
     [Theory, IssueLink("https://github.com/npgsql/npgsql/issues/4149")]
-    [TestCase("CancelAndTimeout", false)]
-    [TestCase("CancelOnly", false)]
-    [TestCase("TimeoutOnly", false)]
-    [TestCase("CancelAndTimeout", true)]
-    [TestCase("CancelOnly", true)]
-    [TestCase("TimeoutOnly", true)]
-    public Task DelayedFaultedTaskCancellation(string testCase, bool useLegacyImplementation) => RunDelayedFaultedTaskTestAsync(async getUnobservedTaskException =>
+    [TestCase("CancelAndTimeout")]
+    [TestCase("CancelOnly")]
+    [TestCase("TimeoutOnly")]
+    [TestCase("CancelAndTimeout")]
+    [TestCase("CancelOnly")]
+    [TestCase("TimeoutOnly")]
+    public Task DelayedFaultedTaskCancellation(string testCase) => RunDelayedFaultedTaskTestAsync(async getUnobservedTaskException =>
     {
         var cancel = true;
         var timeout = true;
@@ -69,7 +69,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
         var notifyDelayCompleted = new SemaphoreSlim(0, 1);
 
         // Invoke the method that creates a delayed execution Task that fails subsequently.
-        await CreateTaskAndPreemptWithCancellationAsync(500, cancel, timeout, useLegacyImplementation, notifyDelayCompleted);
+        await CreateTaskAndPreemptWithCancellationAsync(500, cancel, timeout, notifyDelayCompleted);
 
         // Wait enough time for the non-cancelable task to notify us that an exception is thrown.
         await notifyDelayCompleted.WaitAsync();
@@ -117,7 +117,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
     /// <summary>
     /// Create a delayed execution, non-Cancellable Task that fails subsequently after the Task goes out of scope.
     /// </summary>
-    static async Task CreateTaskAndPreemptWithCancellationAsync(int delayMs, bool cancel, bool timeout, bool useLegacyImplementation, SemaphoreSlim notifyDelayCompleted)
+    static async Task CreateTaskAndPreemptWithCancellationAsync(int delayMs, bool cancel, bool timeout, SemaphoreSlim notifyDelayCompleted)
     {
         var nonCancellableTask = Task.Delay(delayMs, CancellationToken.None)
             .ContinueWith(
@@ -141,8 +141,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
             await TaskTimeoutAndCancellation.WaitAsync(
                 _ => nonCancellableTask,
                 timeout ? new NpgsqlTimeout(TimeSpan.FromMilliseconds(timeoutMs)) : NpgsqlTimeout.Infinite,
-                cts?.Token ?? CancellationToken.None,
-                useLegacyImplementation);
+                cts?.Token ?? CancellationToken.None);
         }
         catch (TimeoutException)
         {
