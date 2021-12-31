@@ -9,30 +9,34 @@ namespace Npgsql;
 static class TaskTimeoutAndCancellation
 {
     /// <summary>
-    /// Utility that executes a non-cancellable task while allowing to timeout and/or cancel awaiting for it.
+    /// Utility that executes a potentially non-cancellable <see cref="Task{TResult}"/> while allowing to timeout and/or cancel awaiting for it.
     /// If the given task does not complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
+    /// The executed <see cref="Task{TResult}"/> may be left in an incomplete state after the <see cref="Task{TResult}"/> that this method returns completes dues to timeout and/or cancellation request.
+    /// The method guarantees that the abandoned, incomplete <see cref="Task{TResult}"/> is not going to produce <see cref="TaskScheduler.UnobservedTaskException"/> event if it eventually fails later.
     /// </summary>
-    /// <param name="getTaskFunc">Gets a <see cref="Task{TResult}"/>.</param>
-    /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+    /// <param name="getTaskFunc">Gets the <see cref="Task{TResult}"/> for execution with a combined <see cref="CancellationToken"/> that attempts to cancel the <see cref="Task{TResult}"/> in an event of the timeout or external cancellation request.</param>
+    /// <param name="timeout">The timeout after which the <see cref="Task{TResult}"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
     /// <typeparam name="TResult">The result <see cref="Type"/>.</typeparam>
     /// <returns>The <see cref="Task{TResult}"/> representing the asynchronous wait.</returns>
-    internal static async Task<TResult> WaitAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+    internal static async Task<TResult> ExecuteWithTimeoutAndCancellationAsync<TResult>(Func<CancellationToken, Task<TResult>> getTaskFunc, NpgsqlTimeout timeout, CancellationToken cancellationToken)
     {
         Task<TResult>? task = default;
-        await WaitAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken);
+        await ExecuteWithTimeoutAndCancellationAsync(ct => (Task)(task = getTaskFunc(ct)), timeout, cancellationToken);
         return await task!;
     }
 
     /// <summary>
-    /// Utility that executes a non-cancellable task while allowing to timeout and/or cancel awaiting for it.
+    /// Utility that executes a potentially non-cancellable <see cref="Task"/> while allowing to timeout and/or cancel awaiting for it.
     /// If the given task does not complete within <paramref name="timeout"/>, a <see cref="TimeoutException"/> is thrown.
+    /// The executed <see cref="Task"/> may be left in an incomplete state after the <see cref="Task"/> that this method returns completes dues to timeout and/or cancellation request.
+    /// The method guarantees that the abandoned, incomplete <see cref="Task"/> is not going to produce <see cref="TaskScheduler.UnobservedTaskException"/> event if it eventually fails later.
     /// </summary>
-    /// <param name="getTaskFunc">Gets a <see cref="Task"/>.</param>
+    /// <param name="getTaskFunc">Gets the <see cref="Task"/> for execution with a combined <see cref="CancellationToken"/> that attempts to cancel the <see cref="Task"/> in an event of the timeout or external cancellation request.</param>
     /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
     /// <returns>The <see cref="Task"/> representing the asynchronous wait.</returns>
-    internal static async Task WaitAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout,
+    internal static async Task ExecuteWithTimeoutAndCancellationAsync(Func<CancellationToken, Task> getTaskFunc, NpgsqlTimeout timeout,
         CancellationToken cancellationToken)
     {
         using var combinedCts = timeout.IsSet ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : null;
@@ -41,7 +45,7 @@ static class TaskTimeoutAndCancellation
         {
             try
             {
-                await WithCancellationAndTimeout(task, timeout, cancellationToken);
+                await task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
             }
             catch (TimeoutException) when (!task!.IsCompleted)
             {
@@ -60,11 +64,15 @@ static class TaskTimeoutAndCancellation
         }
     }
 
-#if NET6_0_OR_GREATER
-    static Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken) =>
-        task.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken);
-#else
-    static async Task WithCancellationAndTimeout(Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
+#if !NET6_0_OR_GREATER
+    /// <summary>
+    /// Gets a <see cref="Task"/> that will complete when this <see cref="Task"/> completes, when the specified timeout expires, or when the specified <see cref="CancellationToken"/> has cancellation requested.
+    /// </summary>
+    /// <param name="task">The <see cref="Task"/> representing the asynchronous wait.</param>
+    /// <param name="timeout">The timeout after which the <see cref="Task"/> should be faulted with a <see cref="TimeoutException"/> if it hasn't otherwise completed.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for a cancellation request.</param>
+    /// <returns>The <see cref="Task"/> representing the asynchronous wait.  It may or may not be the same instance as the current instance.</returns>
+    static async Task WaitAsync(this Task task, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var tasks = new List<Task>();
 
@@ -80,13 +88,14 @@ static class TaskTimeoutAndCancellation
 
         Task? delayTask = default;
         CancellationTokenSource? delayCts = default;
-        if (timeout.IsSet)
+        if (timeout != Timeout.InfiniteTimeSpan)
         {
-            var timeLeft = timeout.CheckAndGetTimeLeft();
+            var timeLeft = timeout;
             delayCts = new CancellationTokenSource();
             delayTask = Task.Delay(timeLeft, delayCts.Token);
             tasks.Add(delayTask);
         }
+
 
         try
         {

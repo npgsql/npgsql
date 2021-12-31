@@ -947,12 +947,12 @@ public sealed partial class NpgsqlConnector : IDisposable
 #endif
 
         // Whether the framework and/or the OS platform support Dns.GetHostAddressesAsync cancellation API or they do not,
-        // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.WaitAsync. It stops waiting
+        // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync. It stops waiting
         // and raises the exception, while the actual task may be left running.
         var endpoints = NpgsqlConnectionStringBuilder.IsUnixSocket(Host, Port, out var socketPath)
-                ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
-                : (await TaskTimeoutAndCancellation.WaitAsync(GetHostAddressesAsync, timeout, cancellationToken))
-                .Select(a => new IPEndPoint(a, Port)).ToArray();
+            ? new EndPoint[] { new UnixDomainSocketEndPoint(socketPath) }
+            : (await TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(GetHostAddressesAsync, timeout, cancellationToken))
+            .Select(a => new IPEndPoint(a, Port)).ToArray();
 
         // Give each IP an equal share of the remaining time
         var perIpTimespan = default(TimeSpan);
@@ -1007,7 +1007,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         static Task OpenSocketConnectionAsync(Socket socket, EndPoint endpoint, NpgsqlTimeout perIpTimeout, CancellationToken cancellationToken)
         {
             // Whether the framework and/or the OS platform support Socket.ConnectAsync cancellation API or they do not,
-            // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.WaitAsync. It stops waiting
+            // we always fake-cancel the operation with the help of TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync. It stops waiting
             // and raises the exception, while the actual task may be left running.
             Task ConnectAsync(CancellationToken ct) =>
 #if NET5_0_OR_GREATER
@@ -1015,7 +1015,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 #else
                 socket.ConnectAsync(endpoint);
 #endif
-            return TaskTimeoutAndCancellation.WaitAsync(ConnectAsync, perIpTimeout, cancellationToken);
+            return TaskTimeoutAndCancellation.ExecuteWithTimeoutAndCancellationAsync(ConnectAsync, perIpTimeout, cancellationToken);
         }
     }
 
