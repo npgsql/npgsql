@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -19,8 +20,6 @@ partial class NpgsqlConnector
 {
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        Log.Trace("Authenticating...", Id);
-
         timeout.CheckAndApply(this);
         var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
         switch (msg.AuthRequestType)
@@ -86,7 +85,7 @@ partial class NpgsqlConnector
             var sslStream = (SslStream)_stream;
             if (sslStream.RemoteCertificate is null)
             {
-                Log.Warn("Remote certificate null, falling back to SCRAM-SHA-256");
+                Logger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
             }
             else
             {
@@ -96,7 +95,7 @@ partial class NpgsqlConnector
                 var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
                 if (algorithmName is null)
                 {
-                    Log.Warn("Signature algorithm was null, falling back to SCRAM-SHA-256");
+                    Logger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
                 }
                 else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
                          algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
@@ -114,7 +113,8 @@ partial class NpgsqlConnector
                 }
                 else
                 {
-                    Log.Warn($"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
+                    Logger.LogWarning(
+                        $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
                 }
 
                 if (hashAlgorithm != null)
@@ -446,7 +446,7 @@ partial class NpgsqlConnector
         if (ProvidePasswordCallback is { } passwordCallback)
             try
             {
-                Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
+                Logger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
                 password = passwordCallback(Host, Port, Settings.Database!, username);
             }
             catch (Exception e)
@@ -467,7 +467,7 @@ partial class NpgsqlConnector
                 .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
             if (matchingEntry != null)
             {
-                Log.Trace("Taking password from pgpass file");
+                Logger.LogTrace("Taking password from pgpass file");
                 password = matchingEntry.Password;
             }
         }

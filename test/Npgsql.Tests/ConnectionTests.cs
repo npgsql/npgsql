@@ -1782,5 +1782,143 @@ CREATE TABLE record ()");
         Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
     }
 
+    #region Logging tests
+
+    [Test, NonParallelizable]
+    public async Task Log_Open_Close()
+    {
+        await using var conn = CreateConnection();
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+        var (host, port, database) = (csb.Host, csb.Port, csb.Database);
+
+        int processId;
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await conn.OpenAsync();
+
+            var tx = await conn.BeginTransactionAsync();
+            processId = conn.ProcessID;
+            await tx.CommitAsync();
+
+            await conn.CloseAsync();
+        }
+
+        var openingConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.OpeningConnection);
+        AssertLoggingConnectionString(conn, openingConnectionEvent.State);
+        AssertLoggingStateContains(openingConnectionEvent, "Host", host);
+        AssertLoggingStateContains(openingConnectionEvent, "Port", port);
+        AssertLoggingStateContains(openingConnectionEvent, "Database", database);
+
+        var openedConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.OpenedConnection);
+        AssertLoggingConnectionString(conn, openedConnectionEvent.State);
+        AssertLoggingStateContains(openedConnectionEvent, "Host", host);
+        AssertLoggingStateContains(openedConnectionEvent, "Port", port);
+        AssertLoggingStateContains(openedConnectionEvent, "Database", database);
+
+        var closingConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.ClosingConnection);
+        AssertLoggingConnectionString(conn, closingConnectionEvent.State);
+        AssertLoggingStateContains(closingConnectionEvent, "Host", host);
+        AssertLoggingStateContains(closingConnectionEvent, "Port", port);
+        AssertLoggingStateContains(closingConnectionEvent, "Database", database);
+
+        var closedConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.ClosedConnection);
+        AssertLoggingConnectionString(conn, closedConnectionEvent.State);
+        AssertLoggingStateContains(closedConnectionEvent, "Host", host);
+        AssertLoggingStateContains(closedConnectionEvent, "Port", port);
+        AssertLoggingStateContains(closedConnectionEvent, "Database", database);
+
+        if (!IsMultiplexing)
+        {
+            AssertLoggingStateContains(openedConnectionEvent, "ConnectorId", processId);
+            AssertLoggingStateContains(closingConnectionEvent, "ConnectorId", processId);
+            AssertLoggingStateContains(closedConnectionEvent, "ConnectorId", processId);
+        }
+    }
+
+    [Test, NonParallelizable]
+    public async Task Log_Open_Close_physical()
+    {
+        if (IsMultiplexing)
+            return;
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+
+        using var _ = CreateTempPool(csb, out var connString);
+        await using var conn = new NpgsqlConnection(connString);
+
+        int processId, port;
+        string host, database;
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await conn.OpenAsync();
+            (processId, host, port, database) = (conn.ProcessID, conn.Host!, conn.Port, conn.Database);
+            await conn.CloseAsync();
+        }
+
+        var openingConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.OpeningPhysicalConnection);
+        AssertLoggingConnectionString(conn, openingConnectionEvent.State);
+        AssertLoggingStateContains(openingConnectionEvent, "Host", host);
+        AssertLoggingStateContains(openingConnectionEvent, "Port", port);
+        AssertLoggingStateContains(openingConnectionEvent, "Database", database);
+
+        var openedConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.OpenedPhysicalConnection);
+        AssertLoggingConnectionString(conn, openedConnectionEvent.State);
+        AssertLoggingStateContains(openedConnectionEvent, "ConnectorId", processId);
+        AssertLoggingStateContains(openingConnectionEvent, "Host", host);
+        AssertLoggingStateContains(openingConnectionEvent, "Port", port);
+        AssertLoggingStateContains(openingConnectionEvent, "Database", database);
+        AssertLoggingStateContains(openedConnectionEvent, "DurationMs");
+
+        var closingConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.ClosingPhysicalConnection);
+        AssertLoggingConnectionString(conn, closingConnectionEvent.State);
+        AssertLoggingStateContains(closingConnectionEvent, "ConnectorId", processId);
+        AssertLoggingStateContains(closingConnectionEvent, "Host", host);
+        AssertLoggingStateContains(closingConnectionEvent, "Port", port);
+        AssertLoggingStateContains(closingConnectionEvent, "Database", database);
+
+        var closededConnectionEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.ClosedPhysicalConnection);
+        AssertLoggingConnectionString(conn, closededConnectionEvent.State);
+        AssertLoggingStateContains(closededConnectionEvent, "ConnectorId", processId);
+        AssertLoggingStateContains(closededConnectionEvent, "Host", host);
+        AssertLoggingStateContains(closededConnectionEvent, "Port", port);
+        AssertLoggingStateContains(closededConnectionEvent, "Database", database);
+    }
+
+    [Test, NonParallelizable]
+    public async Task Log_Open_Close_physical_is_not_logged_for_pooled_connection()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await conn.CloseAsync();
+
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await conn.OpenAsync();
+            await conn.CloseAsync();
+        }
+
+        var ids = new[]
+        {
+            NpgsqlEventId.OpeningPhysicalConnection,
+            NpgsqlEventId.OpenedPhysicalConnection,
+            NpgsqlEventId.ClosingPhysicalConnection,
+            NpgsqlEventId.ClosedPhysicalConnection
+        };
+
+        foreach (var id in ids)
+            Assert.That(ListLoggerProvider.Instance.Log.Count(l => l.Id == id), Is.Zero);
+    }
+
+    void AssertLoggingConnectionString(NpgsqlConnection connection, object? logState)
+    {
+        var keyValuePairs = (IEnumerable<KeyValuePair<string, object?>>)logState!;
+        var connectionString = keyValuePairs.Single(kvp => kvp.Key == "ConnectionString").Value;
+        Assert.That(connectionString, Is.EqualTo(connection.ConnectionString));
+        Assert.That(connectionString, Does.Not.Contain("Password"));
+    }
+
+    #endregion Logging tests
+
     public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

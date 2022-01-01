@@ -1,4 +1,8 @@
 ﻿#nullable enable
+Npgsql.NpgsqlLoggingConfiguration
+static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
+*REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
+*REMOVED*abstract Npgsql.Logging.NpgsqlLogger.Log(Npgsql.Logging.NpgsqlLogLevel level, int connectorId, string! msg, System.Exception? exception = null) -> void
 *REMOVED*const NpgsqlTypes.NpgsqlDate.MaxYear = 5874897 -> int
 *REMOVED*const NpgsqlTypes.NpgsqlDate.MinYear = -4714 -> int
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.DaysPerMonth = 30 -> int
@@ -11,6 +15,21 @@
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
+*REMOVED*Npgsql.Logging.ConsoleLoggingProvider
+*REMOVED*Npgsql.Logging.ConsoleLoggingProvider.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel minLevel = Npgsql.Logging.NpgsqlLogLevel.Info, bool printLevel = false, bool printConnectorId = false) -> void
+*REMOVED*Npgsql.Logging.ConsoleLoggingProvider.CreateLogger(string! name) -> Npgsql.Logging.NpgsqlLogger!
+*REMOVED*Npgsql.Logging.INpgsqlLoggingProvider
+*REMOVED*Npgsql.Logging.INpgsqlLoggingProvider.CreateLogger(string! name) -> Npgsql.Logging.NpgsqlLogger!
+*REMOVED*Npgsql.Logging.NpgsqlLogger
+*REMOVED*Npgsql.Logging.NpgsqlLogger.NpgsqlLogger() -> void
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Debug = 2 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Error = 5 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Fatal = 6 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Info = 3 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Trace = 1 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogLevel.Warn = 4 -> Npgsql.Logging.NpgsqlLogLevel
+*REMOVED*Npgsql.Logging.NpgsqlLogManager
 *REMOVED*Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
@@ -135,6 +154,10 @@
 *REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.Equals(object? obj) -> bool
 *REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.GetHashCode() -> int
 *REMOVED*override NpgsqlTypes.NpgsqlTimeSpan.ToString() -> string!
+*REMOVED*static Npgsql.Logging.NpgsqlLogManager.IsParameterLoggingEnabled.get -> bool
+*REMOVED*static Npgsql.Logging.NpgsqlLogManager.IsParameterLoggingEnabled.set -> void
+*REMOVED*static Npgsql.Logging.NpgsqlLogManager.Provider.get -> Npgsql.Logging.INpgsqlLoggingProvider!
+*REMOVED*static Npgsql.Logging.NpgsqlLogManager.Provider.set -> void
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly

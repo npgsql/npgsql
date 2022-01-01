@@ -1,6 +1,6 @@
 ﻿using System;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages;
 
@@ -26,7 +26,7 @@ class ErrorOrNoticeMessage
     internal string? Line { get; }
     internal string? Routine { get; }
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ErrorOrNoticeMessage));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ExceptionLogger;
 
     // ReSharper disable once FunctionComplexityOverflow
     internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf, bool includeDetail)
@@ -67,16 +67,18 @@ class ErrorOrNoticeMessage
                 break;
             case ErrorFieldTypeCode.Position:
                 var positionStr = buf.ReadNullTerminatedStringRelaxed();
-                if (!int.TryParse(positionStr, out var tmpPosition)) {
-                    Log.Warn("Non-numeric position in ErrorResponse: " + positionStr);
+                if (!int.TryParse(positionStr, out var tmpPosition))
+                {
+                    Logger.LogWarning("Non-numeric position in ErrorResponse: " + positionStr);
                     continue;
                 }
                 position = tmpPosition;
                 break;
             case ErrorFieldTypeCode.InternalPosition:
                 var internalPositionStr = buf.ReadNullTerminatedStringRelaxed();
-                if (!int.TryParse(internalPositionStr, out var internalPositionTmp)) {
-                    Log.Warn("Non-numeric position in ErrorResponse: " + internalPositionStr);
+                if (!int.TryParse(internalPositionStr, out var internalPositionTmp))
+                {
+                    Logger.LogWarning("Non-numeric position in ErrorResponse: " + internalPositionStr);
                     continue;
                 }
                 internalPosition = internalPositionTmp;

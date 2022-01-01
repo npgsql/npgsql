@@ -2,7 +2,6 @@ using System;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using Npgsql.Logging;
 
 namespace Npgsql;
 

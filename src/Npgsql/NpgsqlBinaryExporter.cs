@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -28,6 +28,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     int _leftToReadInDataMsg, _columnLen;
 
     short _column;
+    ulong _rowsExported;
 
     /// <summary>
     /// The number of columns, as returned from the backend in the CopyInResponse.
@@ -36,7 +37,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     NpgsqlTypeHandler?[] _typeHandlerCache;
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
 
     /// <summary>
     /// Current timeout
@@ -96,6 +97,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         NumColumns = copyOutResponse.NumColumns;
         _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
+        _rowsExported = 0;
         await ReadHeader(async);
     }
 
@@ -176,6 +178,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         Debug.Assert(numColumns == NumColumns);
 
         _column = 0;
+        _rowsExported++;
         return NumColumns;
     }
 
@@ -409,7 +412,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_isDisposed)
             return;
 
-        if (!_isConsumed && !_connector.IsBroken)
+        if (_isConsumed)
+        {
+            LogMessages.BinaryCopyOperationCompleted(Logger, _rowsExported, _connector.Id);
+        }
+        else if (!_connector.IsBroken)
         {
             try
             {
@@ -424,11 +431,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             }
             catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
             {
-                Log.Debug($"Caught an exception while disposing the {nameof(NpgsqlBinaryExporter)}, indicating that it was cancelled.", e, _connector.Id);
+                LogMessages.CopyOperationCancelled(Logger, _connector.Id);
             }
             catch (Exception e)
             {
-                Log.Error($"Caught an exception while disposing the {nameof(NpgsqlBinaryExporter)}.", e, _connector.Id);
+                LogMessages.ExceptionWhenDisposingCopyOperation(Logger, _connector.Id, e);
             }
         }
 
@@ -441,7 +448,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         Debug.Assert(!_isDisposed);
         var connector = _connector;
-        Log.Debug("COPY operation ended", connector?.Id ?? -1);
 
         if (connector != null)
         {

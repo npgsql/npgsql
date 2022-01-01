@@ -1277,5 +1277,104 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
+    #region Logging
+
+    [Test, NonParallelizable]
+    public async Task Log_ExecuteScalar_single_statement_without_parameters()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains("SELECT 1"));
+        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT 1");
+        AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+    }
+
+    [Test, NonParallelizable]
+    public async Task Log_ExecuteScalar_single_statement_with_positional_parameters()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT $1, $2", conn);
+        cmd.Parameters.Add(new() { Value = 8 });
+        cmd.Parameters.Add(new() { NpgsqlDbType = NpgsqlDbType.Integer, Value = DBNull.Value });
+
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed")
+            .And.Contains("SELECT $1, $2")
+            .And.Contains("Parameters: [8, NULL]"));
+        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
+        AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 8, "NULL" });
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+    }
+
+    [Test, NonParallelizable]
+    public async Task Log_ExecuteScalar_single_statement_with_named_parameters()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        cmd.Parameters.Add(new() { ParameterName = "p1", Value = 8 });
+        cmd.Parameters.Add(new() { ParameterName = "p2", NpgsqlDbType = NpgsqlDbType.Integer, Value = DBNull.Value });
+
+        using (ListLoggerProvider.Instance.Record())
+        {
+            await cmd.ExecuteScalarAsync();
+        }
+
+        var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed")
+            .And.Contains("SELECT $1, $2")
+            .And.Contains("Parameters: [8, NULL]"));
+        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
+        AssertLoggingStateContains(executingCommandEvent, "Parameters", new object[] { 8, "NULL" });
+
+        if (!IsMultiplexing)
+            AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+    }
+
+    [Test, NonParallelizable]
+    public async Task Log_ExecuteScalar_single_statement_with_parameter_logging_off()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT $1, $2", conn);
+        cmd.Parameters.Add(new() { Value = 8 });
+        cmd.Parameters.Add(new() { Value = 9 });
+
+        using (ListLoggerProvider.Instance.Record())
+        {
+            try
+            {
+                NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = false;
+                await cmd.ExecuteScalarAsync();
+            }
+            finally
+            {
+                NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = true;
+            }
+        }
+
+        var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+        Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains($"SELECT $1, $2"));
+        AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT $1, $2");
+        AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+    }
+
+    #endregion Logging
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

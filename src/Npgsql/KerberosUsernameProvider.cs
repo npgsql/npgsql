@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Npgsql.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Npgsql;
 
@@ -16,7 +16,7 @@ class KerberosUsernameProvider
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(KerberosUsernameProvider));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     internal static string? GetUsername(bool includeRealm)
     {
@@ -33,7 +33,7 @@ class KerberosUsernameProvider
         var klistPath = FindInPath("klist");
         if (klistPath == null)
         {
-            Log.Debug("klist not found in PATH, skipping Kerberos username detection");
+            Logger.LogDebug("klist not found in PATH, skipping Kerberos username detection");
             return;
         }
 
@@ -47,14 +47,14 @@ class KerberosUsernameProvider
         var process = Process.Start(processStartInfo);
         if (process is null)
         {
-            Log.Debug($"klist process could not be started");
+            Logger.LogDebug("klist process could not be started");
             return;
         }
 
         process.WaitForExit();
         if (process.ExitCode != 0)
         {
-            Log.Debug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
+            Logger.LogDebug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
             return;
         }
 
@@ -62,14 +62,14 @@ class KerberosUsernameProvider
         for (var i = 0; i < 2; i++)
             if ((line = process.StandardOutput.ReadLine()) == null)
             {
-                Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
+                Logger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
                 return;
             }
 
         var components = line!.Split(':');
         if (components.Length != 2)
         {
-            Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
+            Logger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
             return;
         }
 
@@ -77,7 +77,7 @@ class KerberosUsernameProvider
         components = principalWithRealm.Split('@');
         if (components.Length != 2)
         {
-            Log.Debug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
+            Logger.LogDebug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
             return;
         }
 

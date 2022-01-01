@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using static Npgsql.Util.Statics;
 
 #pragma warning disable 1591
@@ -64,7 +64,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
     };
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlRawCopyStream));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
 
     #endregion
 
@@ -430,11 +430,11 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                     }
                     catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
                     {
-                        Log.Debug($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}, indicating that it was cancelled.", e, _connector.Id);
+                        LogMessages.CopyOperationCancelled(Logger, _connector.Id);
                     }
                     catch (Exception e)
                     {
-                        Log.Error($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}.", e, _connector.Id);
+                        LogMessages.ExceptionWhenDisposingCopyOperation(Logger, _connector.Id, e);
                     }
                 }
             }
@@ -450,7 +450,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     void Cleanup()
     {
         Debug.Assert(!_isDisposed);
-        Log.Debug("COPY operation ended", _connector.Id);
+        LogMessages.CopyOperationCompleted(Logger, _connector.Id);
         _connector.CurrentCopyOperation = null;
         _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
         _connector = null;

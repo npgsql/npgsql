@@ -7,8 +7,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -17,7 +17,7 @@ class ConnectorPool : ConnectorSource
 {
     #region Fields and properties
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorPool));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     readonly int _max;
     readonly int _min;
@@ -222,7 +222,7 @@ class ConnectorPool : ConnectorSource
 
         if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
         {
-            Log.Debug("Connection has exceeded its maximum lifetime and will be closed.", connector.Id);
+            LogMessages.ConnectionExceededMaximumLifetime(Logger, _connectionLifetime, connector.Id);
             CloseConnector(connector);
             return false;
         }
@@ -327,9 +327,9 @@ class ConnectorPool : ConnectorSource
         {
             connector.Close();
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            Log.Warn("Exception while closing connector", e, connector.Id);
+            LogMessages.ExceptionWhenClosingPhysicalConnection(Logger, connector.Id, exception);
         }
 
         var i = 0;

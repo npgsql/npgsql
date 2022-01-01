@@ -61,6 +61,8 @@ public static class LogicalReplicationConnectionExtensions
         bool twoPhase = false,
         CancellationToken cancellationToken = default)
     {
+        connection.CheckDisposed();
+
         using var _ = NoSynchronizationContextScope.Enter();
         return CreateLogicalReplicationSlotCore();
 
@@ -92,7 +94,11 @@ public static class LogicalReplicationConnectionExtensions
             if (twoPhase)
                 builder.Append(" TWO_PHASE");
 
-            return connection.CreateReplicationSlot(builder.ToString(), cancellationToken);
+            var command = builder.ToString();
+
+            LogMessages.CreatingReplicationSlot(ReplicationConnection.Logger, slotName, command, connection.Connector.Id);
+
+            return connection.CreateReplicationSlot(command, cancellationToken);
         }
     }
 
@@ -145,7 +151,11 @@ public static class LogicalReplicationConnectionExtensions
                     .Append(')');
             }
 
-            var enumerator = connection.StartReplicationInternalWrapper(builder.ToString(), bypassingStream, cancellationToken);
+            var command = builder.ToString();
+
+            LogMessages.StartingLogicalReplication(ReplicationConnection.Logger, slot.Name, command, connection.Connector.Id);
+
+            var enumerator = connection.StartReplicationInternalWrapper(command, bypassingStream, cancellationToken);
             while (await enumerator.MoveNextAsync())
                 yield return enumerator.Current;
         }
