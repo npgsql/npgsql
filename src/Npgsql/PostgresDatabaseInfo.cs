@@ -6,9 +6,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -38,10 +38,7 @@ class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 /// </summary>
 class PostgresDatabaseInfo : NpgsqlDatabaseInfo
 {
-    /// <summary>
-    /// The Npgsql logger instance.
-    /// </summary>
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(PostgresDatabaseInfo));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     /// <summary>
     /// The PostgreSQL types detected in the database.
@@ -255,7 +252,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var elementPostgresType))
                 {
-                    Log.Trace($"Array type '{typname}' refers to unknown element with OID {elemtypoid}, skipping", conn.Id);
+                    Logger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
                     continue;
                 }
 
@@ -269,7 +267,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var subtypePostgresType))
                 {
-                    Log.Trace($"Range type '{typname}' refers to unknown subtype with OID {elemtypoid}, skipping", conn.Id);
+                    Logger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
                     continue;
                 }
 
@@ -282,14 +281,15 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var type))
                 {
-                    Log.Trace($"Multirange type '{typname}' refers to unknown range with OID {elemtypoid}, skipping", conn.Id);
+                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
                     continue;
                 }
 
                 if (type is not PostgresRangeType rangePostgresType)
                 {
-                    Log.Trace($"Multirange type '{typname}' refers to non-range type {type.Name}, skipping",
-                        conn.Id);
+                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
+                        typname, type.Name);
                     continue;
                 }
 
@@ -311,7 +311,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var basePostgresType))
                 {
-                    Log.Trace($"Domain type '{typname}' refers to unknown base type with OID {elemtypoid}, skipping", conn.Id);
+                    Logger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
                     continue;
                 }
 
@@ -352,7 +353,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                 if (!byOID.TryGetValue(oid, out var type))  // See #2020
                 {
-                    Log.Warn($"Skipping composite type with OID {oid} which was not found in pg_type");
+                    Logger.LogWarning("Skipping composite type with OID {CompositeTypeOID} which was not found in pg_type", oid);
                     byOID.Remove(oid);
                     skipCurrent = true;
                     continue;
@@ -361,7 +362,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 currentComposite = type as PostgresCompositeType;
                 if (currentComposite == null)
                 {
-                    Log.Warn($"Type {type.Name} was referenced as a composite type but is a {type.GetType()}");
+                    Logger.LogWarning("Type {TypeName} was referenced as a composite type but is a {type}", type.Name, type.GetType());
                     byOID.Remove(oid);
                     skipCurrent = true;
                     continue;
@@ -375,7 +376,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             if (!byOID.TryGetValue(atttypid, out var fieldType))  // See #2020
             {
-                Log.Warn($"Skipping composite type {currentComposite!.DisplayName} with field {attname} with type OID {atttypid}, which could not be resolved to a PostgreSQL type.");
+                Logger.LogWarning("Skipping composite type '{CompositeTypeName}' with field '{fieldName}' with type OID '{FieldTypeOID}', which could not be resolved to a PostgreSQL type.",
+                    currentComposite!.DisplayName, attname, atttypid);
                 byOID.Remove(oid);
                 skipCurrent = true;
                 continue;
@@ -409,7 +411,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                     if (!byOID.TryGetValue(oid, out var type))  // See #2020
                     {
-                        Log.Warn($"Skipping enum type with OID {oid} which was not found in pg_type");
+                        Logger.LogWarning("Skipping enum type with OID {OID} which was not found in pg_type", oid);
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;
@@ -418,7 +420,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     currentEnum = type as PostgresEnumType;
                     if (currentEnum == null)
                     {
-                        Log.Warn($"Type {type.Name} was referenced as an enum type but is a {type.GetType()}");
+                        Logger.LogWarning("Type type '{TypeName}' was referenced as an enum type but is a {Type}", type.Name, type.GetType());
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;

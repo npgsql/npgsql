@@ -51,6 +51,8 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     public Task<PhysicalReplicationSlot> CreateReplicationSlot(
         string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
     {
+        CheckDisposed();
+
         using var _ = NoSynchronizationContextScope.Enter();
         return CreatePhysicalReplicationSlot(slotName, isTemporary, reserveWal, cancellationToken);
 
@@ -62,6 +64,10 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             builder.Append(" PHYSICAL");
             if (reserveWal)
                 builder.Append(" RESERVE_WAL");
+
+            var command = builder.ToString();
+
+            LogMessages.CreatingReplicationSlot(Logger, slotName, command, Connector.Id);
 
             var slotOptions = await CreateReplicationSlot(builder.ToString(), cancellationToken);
 
@@ -108,7 +114,11 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
             if (timeline != default)
                 builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
 
-            var enumerator = StartReplicationInternalWrapper(builder.ToString(), bypassingStream: false, cancellationToken);
+            var command = builder.ToString();
+
+            LogMessages.StartingPhysicalReplication(Logger, slot?.Name, command, Connector.Id);
+
+            var enumerator = StartReplicationInternalWrapper(command, bypassingStream: false, cancellationToken);
             while (await enumerator.MoveNextAsync())
                 yield return enumerator.Current;
         }

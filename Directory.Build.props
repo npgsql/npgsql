@@ -23,9 +23,9 @@
   </PropertyGroup>
 
   <!-- In netstandard2.0, the BCL isn't annotated for nullability so we disable nullability there -->
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netcoreapp3.1'">
     <Nullable>disable</Nullable>
-    <NoWarn>$(NoWarn);CS8632</NoWarn>
+    <NoWarn>$(NoWarn);CS8632;CS8600</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

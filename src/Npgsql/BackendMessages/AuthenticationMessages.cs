@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using Npgsql.Util;
 
 namespace Npgsql.BackendMessages;
@@ -130,7 +130,7 @@ class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
 
 class AuthenticationSCRAMServerFirstMessage
 {
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(AuthenticationSCRAMServerFirstMessage));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     internal string Nonce { get; }
     internal string Salt { get; }
@@ -151,7 +151,7 @@ class AuthenticationSCRAMServerFirstMessage
             else if (part.StartsWith("i=", StringComparison.Ordinal))
                 iteration = int.Parse(part.Substring(2));
             else
-                Log.Debug("Unknown part in SCRAM server-first message:" + part);
+                Logger.LogDebug("Unknown part in SCRAM server-first message:" + part);
         }
 
         if (nonce == null)
@@ -186,7 +186,7 @@ class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
 
 class AuthenticationSCRAMServerFinalMessage
 {
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(AuthenticationSCRAMServerFinalMessage));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     internal string ServerSignature { get; }
 
@@ -200,7 +200,7 @@ class AuthenticationSCRAMServerFinalMessage
             if (part.StartsWith("v=", StringComparison.Ordinal))
                 serverSignature = part.Substring(2);
             else
-                Log.Debug("Unknown part in SCRAM server-first message:" + part);
+                Logger.LogDebug("Unknown part in SCRAM server-first message:" + part);
         }
 
         if (serverSignature == null)

@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -31,6 +31,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// The number of columns in the current (not-yet-written) row.
     /// </summary>
     short _column;
+    ulong _rowsImported;
 
     /// <summary>
     /// The number of columns, as returned from the backend in the CopyInResponse.
@@ -41,7 +42,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     NpgsqlParameter?[] _params;
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryImporter));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
 
     /// <summary>
     /// Current timeout
@@ -99,6 +100,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         NumColumns = copyInResponse.NumColumns;
         _params = new NpgsqlParameter[NumColumns];
+        _rowsImported = 0;
         _buf.StartCopyMode();
         WriteHeader();
     }
@@ -142,6 +144,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _buf.WriteInt16(NumColumns);
 
         _column = 0;
+        _rowsImported++;
     }
 
     /// <summary>
@@ -557,7 +560,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (_state == ImporterState.Disposed)
             return;
         var connector = _connector;
-        Log.Debug("COPY operation ended", connector?.Id ?? -1);
+
+        LogMessages.BinaryCopyOperationCompleted(Logger, _rowsImported, connector?.Id ?? -1);
 
         if (connector != null)
         {

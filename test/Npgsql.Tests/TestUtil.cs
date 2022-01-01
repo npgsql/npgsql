@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
-using NUnit.Framework.Interfaces;
 
 namespace Npgsql.Tests
 {
@@ -360,38 +361,65 @@ namespace Npgsql.Tests
             public void Dispose()
                 => _action();
         }
+
+        internal static object AssertLoggingStateContains(
+            (LogLevel Level, EventId Id, string Message, object? State, Exception? Exception) log,
+            string key)
+        {
+            if (log.State is not IEnumerable<KeyValuePair<string, object>> keyValuePairs || keyValuePairs.All(kvp => kvp.Key != key))
+            {
+                Assert.Fail($@"Dod not find logging state key ""{key}""");
+                throw new Exception();
+            }
+
+            return keyValuePairs.Single(kvp => kvp.Key == key).Value;
+        }
+
+        internal static void AssertLoggingStateContains<T>(
+            (LogLevel Level, EventId Id, string Message, object? State, Exception? Exception) log,
+            string key,
+            T value)
+            => Assert.That(log.State, Contains.Item(new KeyValuePair<string, T>(key, value)));
+
+        internal static void AssertLoggingStateDoesNotContain(
+            (LogLevel Level, EventId Id, string Message, object? State, Exception? Exception) log,
+            string key)
+        {
+            var value = log.State is IEnumerable<KeyValuePair<string, object>> keyValuePairs &&
+                        keyValuePairs.FirstOrDefault(kvp => kvp.Key == key) is { } kvpPair
+                ? kvpPair.Value
+                : null;
+
+            Assert.That(value, Is.Null, $@"Found logging state (""{key}"", {value}");
+        }
     }
 
     public static class NpgsqlConnectionExtensions
     {
         public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return cmd.ExecuteNonQuery();
+            using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            return cmd.ExecuteNonQuery();
         }
 
         public static object? ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return cmd.ExecuteScalar();
+            using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            return cmd.ExecuteScalar();
         }
 
         public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null,
             CancellationToken cancellationToken = default)
         {
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return await cmd.ExecuteNonQueryAsync(cancellationToken);
+            using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            return await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
 
         public static async Task<object?> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null,
             CancellationToken cancellationToken = default)
         {
-            var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-            using (cmd)
-                return await cmd.ExecuteScalarAsync(cancellationToken);
+            using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+            return await cmd.ExecuteScalarAsync(cancellationToken);
         }
     }
 

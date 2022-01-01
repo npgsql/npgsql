@@ -4,8 +4,8 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Logging;
 
 namespace Npgsql;
 
@@ -62,7 +62,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     }
     IsolationLevel _isolationLevel;
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlTransaction));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.TransactionLogger;
 
     const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
 
@@ -80,7 +80,6 @@ public sealed class NpgsqlTransaction : DbTransaction
         if (!_connector.DatabaseInfo.SupportsTransactions)
             return;
 
-        Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
         switch (isolationLevel)
         {
         case IsolationLevel.RepeatableRead:
@@ -108,6 +107,8 @@ public sealed class NpgsqlTransaction : DbTransaction
         _connector.TransactionStatus = TransactionStatus.Pending;
         _isolationLevel = isolationLevel;
         IsDisposed = false;
+
+        LogMessages.StartedTransaction(Logger, isolationLevel, _connector.Id);
     }
 
     #endregion
@@ -128,8 +129,8 @@ public sealed class NpgsqlTransaction : DbTransaction
 
         using (_connector.StartUserAction(cancellationToken))
         {
-            Log.Debug("Committing transaction", _connector.Id);
             await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
+            LogMessages.CommittedTransaction(Logger, _connector.Id);
         }
     }
 
@@ -166,7 +167,10 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
 
         using (_connector.StartUserAction(cancellationToken))
+        {
             await _connector.Rollback(async, cancellationToken);
+            LogMessages.RolledBackTransaction(Logger, _connector.Id);
+        }
     }
 
     /// <summary>
@@ -216,7 +220,7 @@ public sealed class NpgsqlTransaction : DbTransaction
         // have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
         using var _ = _connector.StartUserAction();
 
-        Log.Debug($"Creating savepoint {name}", _connector.Id);
+        LogMessages.CreatingSavepoint(Logger, name, _connector.Id);
 
         if (RequiresQuoting(name))
             name = $"\"{name.Replace("\"", "\"\"")}\"";
@@ -270,12 +274,9 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            Log.Debug($"Rolling back savepoint {name}", _connector.Id);
-
-            if (RequiresQuoting(name))
-                name = $"\"{name.Replace("\"", "\"\"")}\"";
-
-            await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}", async, cancellationToken);
+            var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
+            await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {quotedName}", async, cancellationToken);
+            LogMessages.RolledBackToSavepoint(Logger, name, _connector.Id);
         }
     }
 
@@ -319,12 +320,9 @@ public sealed class NpgsqlTransaction : DbTransaction
             return;
         using (_connector.StartUserAction(cancellationToken))
         {
-            Log.Debug($"Releasing savepoint {name}", _connector.Id);
-
-            if (RequiresQuoting(name))
-                name = $"\"{name.Replace("\"", "\"\"")}\"";
-
-            await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}", async, cancellationToken);
+            var quotedName = RequiresQuoting(name) ? $"\"{name.Replace("\"", "\"\"")}\"" : name;
+            await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {quotedName}", async, cancellationToken);
+            LogMessages.ReleasedSavepoint(Logger, name, _connector.Id);
         }
     }
 
@@ -376,10 +374,9 @@ public sealed class NpgsqlTransaction : DbTransaction
                     _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
                     Rollback();
                 }
-                catch (Exception ex)
+                catch
                 {
                     Debug.Assert(_connector.IsBroken);
-                    Log.Error("Exception while disposing a transaction", ex, _connector.Id);
                 }
             }
 
@@ -421,9 +418,9 @@ public sealed class NpgsqlTransaction : DbTransaction
             catch (Exception ex)
             {
                 Debug.Assert(_connector.IsBroken);
-                Log.Error("Exception while disposing a transaction", ex, _connector.Id);
+                LogMessages.ExceptionDuringTransactionDispose(Logger, _connector.Id, ex);
             }
-                
+
             IsDisposed = true;
             _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }

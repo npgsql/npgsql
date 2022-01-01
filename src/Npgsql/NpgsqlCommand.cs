@@ -11,12 +11,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
 using Npgsql.BackendMessages;
-using Npgsql.Logging;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 
 namespace Npgsql;
@@ -75,14 +75,14 @@ public sealed class NpgsqlCommand : DbCommand, ICloneable, IComponent
 #if DEBUG
     internal static bool EnableSqlRewriting;
 #else
-        internal static readonly bool EnableSqlRewriting;
+    internal static readonly bool EnableSqlRewriting;
 #endif
 
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
     static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlCommand));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CommandLogger;
 
     #endregion Fields
 
@@ -525,7 +525,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         using (connector.StartUserAction())
         {
-            Log.Debug($"Deriving Parameters for query: {CommandText}", connector.Id);
+            LogMessages.DerivingParameters(Logger, CommandText, connector.Id);
 
             if (IsWrappedByBatch)
                 foreach (var batchCommand in InternalBatchCommands)
@@ -644,8 +644,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
             }
 
-            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                Log.Debug(string.Join("; ", InternalBatchCommands.Select(c => c.CommandText)), connector.Id);
+            if (Logger.IsEnabled(LogLevel.Debug) && needToPrepare)
+                LogMessages.PreparingCommandExplicitly(Logger, string.Join("; ", InternalBatchCommands.Select(c => c.CommandText)), connector.Id);
         }
         else
         {
@@ -660,8 +660,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             foreach (var batchCommand in InternalBatchCommands)
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
 
-            if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                Log.Debug($"Preparing: {CommandText}", connector.Id);
+            if (Logger.IsEnabled(LogLevel.Debug) && needToPrepare)
+                LogMessages.PreparingCommandExplicitly(Logger, CommandText, connector.Id);
         }
 
         _connectorPreparedOn = connector;
@@ -730,6 +730,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     else
                         sendTask.GetAwaiter().GetResult();
                 }
+
+                LogMessages.CommandPreparedExplicitly(Logger, connector.Id);
             }
             catch
             {
@@ -781,7 +783,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         var connector = connection.Connector!;
 
-        Log.Debug("Closing command's prepared statements", connector.Id);
+        LogMessages.UnpreparingCommand(Logger, connector.Id);
 
         using (connector.StartUserAction(cancellationToken))
         {
@@ -1364,8 +1366,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     State = CommandState.InProgress;
 
-                    if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                        LogCommand(connector);
+                    if (Logger.IsEnabled(LogLevel.Information))
+                    {
+                        connector.QueryLogStopWatch.Restart();
+
+                        if (Logger.IsEnabled(LogLevel.Debug))
+                            LogExecutingCompleted(connector, executing: true);
+                    }
+
                     NpgsqlEventSource.Log.CommandStart(CommandText);
                     TraceCommandStart(connector);
 
@@ -1635,41 +1643,67 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
     }
 
-    void LogCommand(NpgsqlConnector connector)
+    internal void LogExecutingCompleted(NpgsqlConnector connector, bool executing)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("Executing statement(s):");
-        foreach (var s in InternalBatchCommands)
+        var logParameters = NpgsqlLoggingConfiguration.IsParameterLoggingEnabled || connector.Settings.LogParameters;
+
+        if (InternalBatchCommands.Count == 1)
         {
-            sb.Append("\t").AppendLine(s.FinalCommandText);
-            var p = s.Parameters.InternalList;
-            if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
+            var singleCommand = InternalBatchCommands[0];
+
+            if (logParameters && singleCommand.PositionalParameters.Count > 0)
             {
-                for (var i = 0; i < p.Count; i++)
+                if (executing)
                 {
-                    sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":");
-                    switch (p[i].Value)
-                    {
-                    case IList list:
-                        for (var j = 0; j < list.Count; j++)
-                        {
-                            sb.Append("\t#").Append(j).Append(": ").Append(Convert.ToString(list[j], CultureInfo.InvariantCulture));
-                        }
-                        break;
-                    case DBNull _:
-                    case null:
-                        sb.Append("\t").Append(Convert.ToString("null", CultureInfo.InvariantCulture));
-                        break;
-                    default:
-                        sb.Append("\t").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
-                        break;
-                    }
-                    sb.AppendLine();
+                    LogMessages.ExecutingCommandWithParameters(
+                        Logger,
+                        singleCommand.FinalCommandText!,
+                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        connector.Id);
+                }
+                else
+                {
+                    LogMessages.CommandExecutionCompletedWithParameters(
+                        Logger,
+                        singleCommand.FinalCommandText!,
+                        singleCommand.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value!).ToArray(),
+                        connector.QueryLogStopWatch.ElapsedMilliseconds,
+                        connector.Id);
                 }
             }
+            else
+            {
+                if (executing)
+                    LogMessages.ExecutingCommand(Logger, singleCommand.FinalCommandText!, connector.Id);
+                else
+                    LogMessages.CommandExecutionCompleted(Logger, singleCommand.FinalCommandText!, connector.QueryLogStopWatch.ElapsedMilliseconds, connector.Id);
+            }
         }
-        Log.Debug(sb.ToString(), connector.Id);
-        connector.QueryLogStopWatch.Start();
+        else
+        {
+            if (logParameters)
+            {
+                var commands = InternalBatchCommands
+                    .Select(c => (
+                        c.CommandText,
+                        Parameters: (object[]?)c.PositionalParameters.Select(p => p.Value == DBNull.Value ? "NULL" : p.Value).ToArray()!)
+                    ).ToArray();
+
+                if (executing)
+                    LogMessages.ExecutingBatchWithParameters(Logger, commands, connector.Id);
+                else
+                    LogMessages.BatchExecutionCompletedWithParameters(Logger, commands, connector.QueryLogStopWatch.ElapsedMilliseconds, connector.Id);
+            }
+            else
+            {
+                var commands = InternalBatchCommands.Select(c => c.CommandText).ToArray().ToArray();
+
+                if (executing)
+                    LogMessages.ExecutingBatch(Logger, commands, connector.Id);
+                else
+                    LogMessages.BatchExecutionCompleted(Logger, commands, connector.QueryLogStopWatch.ElapsedMilliseconds, connector.Id);
+            }
+        }
     }
 
     /// <summary>

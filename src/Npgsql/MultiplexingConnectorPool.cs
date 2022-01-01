@@ -3,8 +3,8 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -13,7 +13,8 @@ namespace Npgsql;
 
 sealed class MultiplexingConnectorPool : ConnectorPool
 {
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(MultiplexingConnectorPool));
+    static readonly ILogger ConnectionLogger = NpgsqlLoggingConfiguration.ConnectionLogger;
+    static readonly ILogger CommandLogger = NpgsqlLoggingConfiguration.CommandLogger;
 
     readonly bool _autoPrepare;
 
@@ -107,8 +108,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
                 .ContinueWith(t =>
                 {
                     // Note that we *must* observe the exception if the task is faulted.
-                    Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
-                        t.Exception!);
+                    ConnectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
                 }, TaskContinuationOptions.OnlyOnFaulted);
 
             IsBootstrapped = true;
@@ -209,12 +209,12 @@ sealed class MultiplexingConnectorPool : ConnectorPool
                     break;
                 }
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                Log.Error("Exception opening a connection", ex);
+                LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(ConnectionLogger, exception);
 
                 // Fail the first command in the channel as a way of bubbling the exception up to the user
-                command.ExecutionCompletion.SetException(ex);
+                command.ExecutionCompletion.SetException(exception);
 
                 continue;
             }
@@ -388,7 +388,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             // if one connector was broken, chances are that all are (networking).
             Debug.Assert(connector.IsBroken);
 
-            Log.Error("Exception while writing commands", exception, connector.Id);
+            LogMessages.ExceptionWhenWritingMultiplexedCommands(CommandLogger, connector.Id, exception);
         }
 
         static void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)

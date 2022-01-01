@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using Npgsql.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Npgsql;
 
@@ -13,7 +13,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
     const int ThreadStayAliveMs = 10000;
     readonly string _threadName;
 
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(SingleThreadSynchronizationContext));
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
 
     internal SingleThreadSynchronizationContext(string threadName)
         => _threadName = threadName;
@@ -63,7 +63,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         }
         catch (Exception e)
         {
-            Log.Error($"Exception caught in {nameof(SingleThreadSynchronizationContext)}", e);
+            Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
         }
         finally
         {

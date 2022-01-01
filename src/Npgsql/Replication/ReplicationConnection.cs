@@ -1,5 +1,4 @@
 ﻿using Npgsql.BackendMessages;
-using Npgsql.Logging;
 using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
@@ -10,6 +9,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using static Npgsql.Util.Statics;
@@ -29,7 +29,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
     static readonly Version FirstVersionWithTwoPhaseSupport = new(15, 0);
     static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new(13, 0);
     static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new(10, 0);
-    static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
+    internal static readonly ILogger Logger = NpgsqlLoggingConfiguration.ReplicationLogger;
     readonly NpgsqlConnection _npgsqlConnection;
     readonly SemaphoreSlim _feedbackSemaphore = new(1, 1);
     string? _userFacingConnectionString;
@@ -423,7 +423,6 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         try
         {
-            Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
             await connector.WriteQuery(command, true, cancellationToken);
             await connector.Flush(true, cancellationToken);
 
@@ -497,11 +496,11 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     await buf.EnsureAsync(17);
                     var end = buf.ReadUInt64();
 
-                    if (Log.IsEnabled(NpgsqlLogLevel.Trace))
+                    if (Logger.IsEnabled(LogLevel.Trace))
                     {
                         var endLsn = new NpgsqlLogSequenceNumber(end);
-                        var timestamp = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified).ToLocalTime();
-                        Log.Trace($"Received replication primary keepalive message from the server with current end of WAL of {endLsn} and timestamp of {timestamp}...", Connector.Id);
+                        var timestamp = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
+                        LogMessages.ReceivedReplicationPrimaryKeepalive(Logger, endLsn, timestamp, Connector.Id);
                     }
                     else
                         buf.Skip(8);
@@ -512,7 +511,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
                     if (replyRequested)
                     {
-                        Log.Trace($"Attempting to send a replication standby status update because it was requested from the server via primary keepalive message...", Connector.Id);
+                        LogMessages.SendingReplicationStandbyStatusUpdate(Logger, "the server requested it", Connector.Id);
                         await SendFeedback(waitOnSemaphore: true, cancellationToken: CancellationToken.None);
                     }
 
@@ -606,7 +605,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             if (Connector.State != ConnectorState.Replication)
                 throw new InvalidOperationException("Status update can only be sent during replication");
 
-            Log.Trace($"Attempting to send a replication standby status update because the it was requested via {nameof(ReplicationConnection)}.{nameof(SendStatusUpdate)}()...", Connector.Id);
+            LogMessages.SendingReplicationStandbyStatusUpdate(Logger, nameof(SendStatusUpdate) + "was called", Connector.Id);
             await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
         }
     }
@@ -619,7 +618,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         if (!taken)
         {
-            Log.Trace($"Aborting feedback due to expired {nameof(WalReceiverStatusInterval)} because of a concurrent feedback request.", Connector.Id);
+            Logger.LogTrace($"Aborting feedback due to expired {nameof(WalReceiverStatusInterval)} because of a concurrent feedback request");
             return;
         }
 
@@ -635,7 +634,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
             buf.WriteByte(FrontendMessageCode.CopyData);
             buf.WriteInt32(len - 1);
-            buf.WriteByte((byte)'r');  // TODO: enum/const?
+            buf.WriteByte((byte)'r'); // TODO: enum/const?
             // We write the LSNs as Int64 here to save us the casting
             var lastReceivedLsn = Interlocked.Read(ref _lastReceivedLsn);
             var lastFlushedLsn = Interlocked.Read(ref _lastFlushedLsn);
@@ -648,14 +647,21 @@ public abstract class ReplicationConnection : IAsyncDisposable
             buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
             await connector.Flush(async: true, cancellationToken);
-            if (Log.IsEnabled(NpgsqlLogLevel.Trace))
+
+            if (Logger.IsEnabled(LogLevel.Trace))
             {
-                Log.Trace("Feedback message sent with " +
-                          $"{nameof(LastReceivedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastReceivedLsn))}, " +
-                          $"{nameof(LastFlushedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastFlushedLsn))}, " +
-                          $"{nameof(LastAppliedLsn)} of {new NpgsqlLogSequenceNumber(unchecked((ulong)lastAppliedLsn))} " +
-                          $"at {timestamp}, .", Connector.Id);
+                LogMessages.SentReplicationFeedbackMessage(
+                    Logger,
+                    new NpgsqlLogSequenceNumber(unchecked((ulong)lastReceivedLsn)),
+                    new NpgsqlLogSequenceNumber(unchecked((ulong)lastFlushedLsn)),
+                    new NpgsqlLogSequenceNumber(unchecked((ulong)lastAppliedLsn)),
+                    timestamp,
+                    Connector.Id);
             }
+        }
+        catch (Exception e)
+        {
+            LogMessages.ReplicationFeedbackMessageSendingFailed(Logger, _npgsqlConnection?.Connector?.Id, e);
         }
         finally
         {
@@ -673,12 +679,14 @@ public abstract class ReplicationConnection : IAsyncDisposable
             if (Connector.State != ConnectorState.Replication)
                 return;
 
-            Log.Trace($"Attempting to send a replication standby status update because half of the {nameof(WalReceiverTimeout)} of {WalReceiverTimeout} has expired...", Connector.Id);
+            if (Logger.IsEnabled(LogLevel.Trace))
+                LogMessages.SendingReplicationStandbyStatusUpdate(Logger, $"half of the {nameof(WalReceiverTimeout)} of {WalReceiverTimeout} has expired", Connector.Id);
+
             await SendFeedback(waitOnSemaphore: true, requestReply: true);
         }
-        catch (Exception e)
+        catch
         {
-            Log.Error("An exception occurred while requesting streaming replication feedback from the server.", e, _npgsqlConnection?.Connector?.Id ?? 0);
+            // Already logged inside SendFeedback
         }
     }
 
@@ -689,12 +697,14 @@ public abstract class ReplicationConnection : IAsyncDisposable
             if (Connector.State != ConnectorState.Replication)
                 return;
 
-            Log.Trace($"Attempting to send a replication standby status update because the {nameof(WalReceiverStatusInterval)} of {WalReceiverStatusInterval} has expired...", Connector.Id);
+            if (Logger.IsEnabled(LogLevel.Trace))
+                LogMessages.SendingReplicationStandbyStatusUpdate(Logger, $"{nameof(WalReceiverStatusInterval)} of {WalReceiverStatusInterval} has expired", Connector.Id);
+
             await SendFeedback();
         }
-        catch (Exception e)
+        catch
         {
-            Log.Error("An exception occurred while sending streaming replication feedback to the server.", e, _npgsqlConnection?.Connector?.Id ?? 0);
+            // Already logged inside SendFeedback
         }
     }
 
@@ -730,7 +740,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
             if (wait)
                 command += " WAIT";
 
-            Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
+            LogMessages.DroppingReplicationSlot(Logger, slotName, command, Connector.Id);
+
             await Connector.WriteQuery(command, true, CancellationToken.None);
             await Connector.Flush(true, CancellationToken.None);
 
@@ -752,7 +763,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
 
         using var _ = Connector.StartUserAction(cancellationToken, attemptPgCancellation: _pgCancellationSupported);
 
-        Log.Debug($"Executing replication command:{Environment.NewLine}\t{command}", Connector.Id);
+        LogMessages.ExecutingReplicationCommand(Logger, command, Connector.Id);
+
         await Connector.WriteQuery(command, true, cancellationToken);
         await Connector.Flush(true, cancellationToken);
 
@@ -890,7 +902,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             writeBuffer.Timeout = writeTimeout;
     }
 
-    void CheckDisposed()
+    internal void CheckDisposed()
     {
         if (_isDisposed)
             throw new ObjectDisposedException(GetType().Name);
