@@ -129,6 +129,7 @@ public class MultirangeTests : TestBase
 #endif
     }
 
+#if NET6_0_OR_GREATER
     [Test]
     public async Task Write_Datemultirange_DateOnly()
     {
@@ -161,6 +162,7 @@ public class MultirangeTests : TestBase
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[2020-01-01,2020-01-05),[2020-01-11,)}"));
         }
     }
+#endif
 
     [Test]
     public async Task Write_Datemultirange_DateTime()

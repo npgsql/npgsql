@@ -512,8 +512,8 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             if (IsMultiplexing || Behavior != CommandBehavior.Default)
                 return;
 
-            var startReaderClosedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            var continueReaderClosedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var startReaderClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var continueReaderClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             using var _ = CreateTempPool(ConnectionString, out var connectionString);
             await using var conn1 = await OpenConnectionAsync(connectionString);
@@ -525,7 +525,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
                 await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
                 reader.ReaderClosed += (s, e) =>
                 {
-                    startReaderClosedTcs.SetResult();
+                    startReaderClosedTcs.SetResult(new());
                     continueReaderClosedTcs.Task.GetAwaiter().GetResult();
                 };
             });
@@ -537,7 +537,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             cmd.CommandText = "SELECT 1";
             await using var reader = await cmd.ExecuteReaderAsync();
             Assert.That(reader.State, Is.EqualTo(ReaderState.BeforeResult));
-            continueReaderClosedTcs.SetResult();
+            continueReaderClosedTcs.SetResult(new());
             await readerCloseTask;
             Assert.That(reader.State, Is.EqualTo(ReaderState.BeforeResult));
         }
