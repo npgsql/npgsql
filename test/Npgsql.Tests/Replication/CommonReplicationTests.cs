@@ -240,9 +240,7 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
                 var info = await rc.IdentifySystem();
                 if (walSenderTimeout > TimeSpan.FromSeconds(3) && !TestUtil.IsOnBuildServer)
                     Assert.Ignore($"wal_sender_timeout is set to {walSenderTimeout}, skipping");
-                Console.WriteLine($"The server wal_sender_timeout is configured to {walSenderTimeout}");
                 var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
-                Console.WriteLine($"Setting {nameof(ReplicationConnection)}.{nameof(ReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
                 rc.WalReceiverStatusInterval = walReceiverStatusInterval;
                 await CreateReplicationSlot(slotName);
                 await c.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" (name) VALUES ('val1')");
