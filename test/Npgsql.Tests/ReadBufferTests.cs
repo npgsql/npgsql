@@ -107,7 +107,7 @@ class ReadBufferTests
 
         public MockStream() => Writer = new MockStreamWriter(this);
 
-        TaskCompletionSource _tcs = new();
+        TaskCompletionSource<object> _tcs = new();
         readonly byte[] _data = new byte[Size];
         int _filled;
 
@@ -121,7 +121,7 @@ class ReadBufferTests
         {
             if (_filled == 0)
             {
-                _tcs = new TaskCompletionSource();
+                _tcs = new TaskCompletionSource<object>();
                 if (async)
                     await _tcs.Task;
                 else
@@ -155,7 +155,7 @@ class ReadBufferTests
                     throw new Exception("Mock stream overrun");
                 bytes.CopyTo(new Span<byte>(_stream._data, _stream._filled, bytes.Length));
                 _stream._filled += bytes.Length;
-                _stream._tcs.TrySetResult();
+                _stream._tcs.TrySetResult(new());
                 return this;
             }
         }
