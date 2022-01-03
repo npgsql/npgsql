@@ -66,45 +66,51 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         if (TwoPassCompatMode &&
             (!_caseSensitiveLookup!.TryGetValue(name, out var indexCs) || index < indexCs))
         {
-            foreach (var kv in _caseSensitiveLookup)
+            for (var i = index + 1; i < InternalList.Count; i++)
             {
-                if (index <= kv.Value)
-                    _caseSensitiveLookup[kv.Key] = kv.Value + 1;
+                var parameterName = InternalList[i].TrimmedName;
+                if (_caseSensitiveLookup.TryGetValue(parameterName, out var currentI) && currentI + 1 == i)
+                    _caseSensitiveLookup[parameterName] = i;
             }
+
             _caseSensitiveLookup[name] = index;
         }
 
         if (!_caseInsensitiveLookup.TryGetValue(name, out var indexCi) || index < indexCi)
         {
-            foreach (var kv in _caseInsensitiveLookup)
+            for (var i = index + 1; i < InternalList.Count; i++)
             {
-                if (index <= kv.Value)
-                    _caseInsensitiveLookup[kv.Key] = kv.Value + 1;
+                var parameterName = InternalList[i].TrimmedName;
+                if (_caseInsensitiveLookup.TryGetValue(parameterName, out var currentI) && currentI + 1 == i)
+                    _caseInsensitiveLookup[parameterName] = i;
             }
+
             _caseInsensitiveLookup[name] = index;
         }
     }
 
     void LookupRemove(string name, int index)
     {
-        if (_caseInsensitiveLookup is null) 
+        if (_caseInsensitiveLookup is null)
             return;
 
         if (TwoPassCompatMode && _caseSensitiveLookup!.Remove(name))
         {
-            foreach (var kv in _caseSensitiveLookup)
+            for (var i = index; i < InternalList.Count; i++)
             {
-                if (index < kv.Value)
-                    _caseSensitiveLookup[kv.Key] = kv.Value - 1;
+                var parameterName = InternalList[i].TrimmedName;
+                if (_caseSensitiveLookup.TryGetValue(parameterName, out var currentI) && currentI - 1 == i)
+                    _caseSensitiveLookup[parameterName] = i;
             }
         }
 
         if (_caseInsensitiveLookup.Remove(name))
         {
-            foreach (var kv in _caseInsensitiveLookup)
+            for (var i = index; i < InternalList.Count; i++)
             {
-                if (index < kv.Value)
-                    _caseInsensitiveLookup[kv.Key] = kv.Value - 1;
+                var parameterName = InternalList[i].TrimmedName;
+                if (_caseInsensitiveLookup.TryGetValue(parameterName, out var currentI) && currentI - 1 == i)
+                    _caseInsensitiveLookup[parameterName] = i;
             }
 
             // Fix-up the case-insensitive lookup to point to the next match, if any.
