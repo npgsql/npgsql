@@ -847,6 +847,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         batchCommand.FinalCommandText = batchCommand.CommandText;
                         batchCommand.PositionalParameters = batchCommand.Parameters.InternalList;
                     }
+
+                    ValidateParameterCount(batchCommand);
                     break;
 
                 case PlaceholderType.NoParameters:
@@ -869,12 +871,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         parser.ParseRawQuery(this, standardConformingStrings);
                         if (InternalBatchCommands.Count > 1 && _parameters.HasOutputParameters)
                             throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
+                        for (var i = 0; i < InternalBatchCommands.Count; i++)
+                            ValidateParameterCount(InternalBatchCommands[i]);
                     }
                     else
                     {
                         parser.ParseRawQuery(batchCommand, standardConformingStrings);
                         if (batchCommand.Parameters.HasOutputParameters)
                             throw new NotSupportedException("Batches cannot cannot have out parameters");
+                        ValidateParameterCount(batchCommand);
                     }
 
                     break;
@@ -933,15 +938,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 batchCommand ??= TruncateStatementsToOne();
                 batchCommand.FinalCommandText = sb.ToString();
                 batchCommand.PositionalParameters.AddRange(inputList);
+                ValidateParameterCount(batchCommand);
                 break;
 
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
             }
 
-            for (var i = 0; i < InternalBatchCommands.Count; i++)
-                if (InternalBatchCommands[i].PositionalParameters.Count > ushort.MaxValue)
-                    throw new NpgsqlException($"A statement cannot have more than {ushort.MaxValue} parameters");
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static void ValidateParameterCount(NpgsqlBatchCommand batchCommand)
+            {
+                if (batchCommand.PositionalParameters.Count > ushort.MaxValue)
+                     throw new NpgsqlException($"A statement cannot have more than {ushort.MaxValue} parameters");
+            }
         }
 
         #endregion
