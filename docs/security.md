@@ -14,24 +14,24 @@ For documentation about all auth methods supported by PostgreSQL, [see this page
 
 By default PostgreSQL connections are unencrypted, but you can turn on SSL/TLS encryption if you wish. First, you have to set up your PostgreSQL to receive SSL/TLS connections [as described here](http://www.postgresql.org/docs/current/static/ssl-tcp.html). Once that's done, specify `SSL Mode` in your connection string as detailed below.
 
-### Versions 6.0+
+### [Version 6.0+](#tab/tabid-1)
 
 Starting with 6.0, the following `SSL Mode` values are supported (see the [PostgreSQL docs](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS) for more details):
 
-SSL Mode    | Eavesdropping protection | Man-in-the-middle protection | Statement
------------ | ------------------------ | ---------------------------- | ---------
-Disable     | No                       | No                           | I don't care about security, and I don't want to pay the overhead of encryption.
-Allow       | Maybe                    | No                           | I don't care about security, but I will pay the overhead of encryption if the server insists on it.
-Prefer      | Maybe                    | No                           | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
-Require*    | Yes                      | No                           | I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want.
-VerifyCA    | Yes                      | Depends on CA policy         | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
-VerifyFull  | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
+SSL Mode            | Eavesdropping protection | Man-in-the-middle protection | Statement
+------------------- | ------------------------ | ---------------------------- | ---------
+Disable             | No                       | No                           | I don't care about security, and I don't want to pay the overhead of encryption.
+Allow               | Maybe                    | No                           | I don't care about security, but I will pay the overhead of encryption if the server insists on it.
+Prefer              | Maybe                    | No                           | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
+Require<sup>1</sup> | Yes                      | No                           | I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want.
+VerifyCA            | Yes                      | Depends on CA policy         | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
+VerifyFull          | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-* `SSL Mode=Require` currently requires explicitly setting `Trust Server Certificate=true` as well; this requirement will be removed in a future version. This combination should be used with e.g. self-signed certificates.
+<sup>1</sup> `SSL Mode=Require` currently requires explicitly setting `Trust Server Certificate=true` as well; this requirement will be removed in a future version. This combination should be used with e.g. self-signed certificates.
 
-The default mode in 6.0 is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
+The default mode in 6.0+ is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
 
-### Older versions
+### [Older versions](#tab/tabid-2)
 
 Versions prior to 6.0 supported the following `SSL Mode` values:
 
@@ -41,9 +41,11 @@ Disable     | No                       | No                           | I don't 
 Prefer      | Maybe                    | Maybe                        | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
 Require     | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-The default mode prior 6.0 is `Disable`.
+The default mode prior to 6.0 was `Disable`.
 
 To disable certificate validation when using `Require`, set `Trust Server Certificate` to true; this allows connecting to servers with e.g. self-signed certificates, while still requiring encryption.
+
+---
 
 ### Advanced server certificate validation
 
@@ -66,7 +68,7 @@ To provide a password for a client certificate, set either the `SSL Password` (6
 Finally, you can set `ProvideClientCertificatesCallback` on `NpgsqlConnection` to further customize how client certificates are provided (this works like on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
 > [!NOTE]
-> Npgsql supports .PFX and PEM certificates starting with 6.0. Previously, only .PFX certificates were supported.
+> Npgsql supports .PFX and .PEM certificates starting with 6.0. Previously, only .PFX certificates were supported.
 
 ## Integrated Security (GSS/SSPI/Kerberos)
 
