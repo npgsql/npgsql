@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -423,11 +424,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened synchronously.
     /// </summary>
+    [RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
     public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
 
     /// <summary>
     /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened asynchronously.
     /// </summary>
+    [RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
     public PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
     #endregion Connection string management
@@ -2160,12 +2163,14 @@ public delegate string ProvidePasswordCallback(string host, int port, string dat
 /// Represents a method that allows the application to setup a connection with custom commands.
 /// </summary>
 /// <param name="connection">Physical connection to the database</param>
+[RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
 public delegate void PhysicalOpenCallback(NpgsqlConnector connection);
 
 /// <summary>
 /// Represents an asynchronous method that allows the application to setup a connection with custom commands.
 /// </summary>
 /// <param name="connection">Physical connection to the database</param>
+[RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
 public delegate Task PhysicalOpenAsyncCallback(NpgsqlConnector connection);
 
 #endregion
