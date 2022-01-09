@@ -57,8 +57,11 @@ namespace Npgsql.Internal
         ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; }
         RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
         ProvidePasswordCallback? ProvidePasswordCallback { get; }
-        PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
-        PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
+
+#pragma warning disable CA2252 // Experimental API
+        PhysicalOpenCallback? PhysicalOpenCallback { get; }
+        PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; }
+#pragma warning restore CA2252
 
         public Encoding TextEncoding { get; private set; } = default!;
 
@@ -312,8 +315,11 @@ namespace Npgsql.Internal
             ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
             ProvidePasswordCallback = conn.ProvidePasswordCallback;
+
+#pragma warning disable CA2252 // Experimental API
             PhysicalOpenCallback = conn.PhysicalOpenCallback;
             PhysicalOpenAsyncCallback = conn.PhysicalOpenAsyncCallback;
+#pragma warning restore CA2252
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
@@ -471,10 +477,12 @@ namespace Npgsql.Internal
                 OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
+#pragma warning disable CA2252 // Experimental API
                 if (async && PhysicalOpenAsyncCallback is not null)
                     await PhysicalOpenAsyncCallback(this);
                 else if (!async && PhysicalOpenCallback is not null)
                     PhysicalOpenCallback(this);
+#pragma warning restore CA2252
 
                 if (Settings.Multiplexing)
                 {

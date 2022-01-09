@@ -7,6 +7,9 @@
 
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
+
+    <!-- Suppress warnings for [RequiresPreviewFeatures] (<EnablePreviewFeatures> doesn't seem to work across <ProjectReference>) -->
+    <NoWarn>$(NoWarn);CA2252</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
