@@ -6,9 +6,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -16,104 +16,101 @@ using static Npgsql.Util.Statics;
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
 
-namespace Npgsql
+namespace Npgsql;
+
+/// <summary>
+/// The default implementation of <see cref="INpgsqlDatabaseInfoFactory"/>, for standard PostgreSQL databases..
+/// </summary>
+class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
-    /// <summary>
-    /// The default implementation of <see cref="INpgsqlDatabaseInfoFactory"/>, for standard PostgreSQL databases..
-    /// </summary>
-    class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+    /// <inheritdoc />
+    public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
-        /// <inheritdoc />
-        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
-        {
-            var db = new PostgresDatabaseInfo(conn);
-            await db.LoadPostgresInfo(conn, timeout, async);
-            Debug.Assert(db.LongVersion != null);
-            return db;
-        }
+        var db = new PostgresDatabaseInfo(conn);
+        await db.LoadPostgresInfo(conn, timeout, async);
+        Debug.Assert(db.LongVersion != null);
+        return db;
+    }
+}
+
+/// <summary>
+/// The default implementation of NpgsqlDatabase, for standard PostgreSQL databases.
+/// </summary>
+class PostgresDatabaseInfo : NpgsqlDatabaseInfo
+{
+    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
+
+    /// <summary>
+    /// The PostgreSQL types detected in the database.
+    /// </summary>
+    List<PostgresType>? _types;
+
+    /// <inheritdoc />
+    protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
+
+    /// <summary>
+    /// The PostgreSQL version string as returned by the version() function. Populated during loading.
+    /// </summary>
+    public string LongVersion { get; set; } = default!;
+
+    /// <summary>
+    /// True if the backend is Amazon Redshift; otherwise, false.
+    /// </summary>
+    public bool IsRedshift { get; private set; }
+
+    /// <inheritdoc />
+    public override bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4) && !IsRedshift;
+
+    /// <summary>
+    /// True if the 'pg_enum' table includes the 'enumsortorder' column; otherwise, false.
+    /// </summary>
+    public virtual bool HasEnumSortOrder => Version.IsGreaterOrEqual(9, 1);
+
+    /// <summary>
+    /// True if the 'pg_type' table includes the 'typcategory' column; otherwise, false.
+    /// </summary>
+    /// <remarks>
+    /// pg_type.typcategory is added after 8.4.
+    /// see: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
+    /// </remarks>
+    public virtual bool HasTypeCategory => Version.IsGreaterOrEqual(8, 4);
+
+    internal PostgresDatabaseInfo(NpgsqlConnector conn)
+        : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
+    {
     }
 
     /// <summary>
-    /// The default implementation of NpgsqlDatabase, for standard PostgreSQL databases.
+    /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
     /// </summary>
-    class PostgresDatabaseInfo : NpgsqlDatabaseInfo
+    /// <param name="conn">The database connection.</param>
+    /// <param name="timeout">The timeout while loading types from the backend.</param>
+    /// <param name="async">True to load types asynchronously.</param>
+    /// <returns>
+    /// A task representing the asynchronous operation.
+    /// </returns>
+    internal async Task LoadPostgresInfo(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
-        /// <summary>
-        /// The Npgsql logger instance.
-        /// </summary>
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(PostgresDatabaseInfo));
+        HasIntegerDateTimes =
+            conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
+            intDateTimes == "on";
 
-        /// <summary>
-        /// The PostgreSQL types detected in the database.
-        /// </summary>
-        List<PostgresType>? _types;
+        IsRedshift = conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
+        _types = await LoadBackendTypes(conn, timeout, async);
+    }
 
-        /// <inheritdoc />
-        protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
-
-        /// <summary>
-        /// The PostgreSQL version string as returned by the version() function. Populated during loading.
-        /// </summary>
-        public string LongVersion { get; set; } = default!;
-
-        /// <summary>
-        /// True if the backend is Amazon Redshift; otherwise, false.
-        /// </summary>
-        public bool IsRedshift { get; private set; }
-
-        /// <inheritdoc />
-        public override bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4) && !IsRedshift;
-
-        /// <summary>
-        /// True if the 'pg_enum' table includes the 'enumsortorder' column; otherwise, false.
-        /// </summary>
-        public virtual bool HasEnumSortOrder => Version.IsGreaterOrEqual(9, 1);
-
-        /// <summary>
-        /// True if the 'pg_type' table includes the 'typcategory' column; otherwise, false.
-        /// </summary>
-        /// <remarks>
-        /// pg_type.typcategory is added after 8.4.
-        /// see: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
-        /// </remarks>
-        public virtual bool HasTypeCategory => Version.IsGreaterOrEqual(8, 4);
-
-        internal PostgresDatabaseInfo(NpgsqlConnector conn)
-            : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
-        {
-        }
-
-        /// <summary>
-        /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
-        /// </summary>
-        /// <param name="conn">The database connection.</param>
-        /// <param name="timeout">The timeout while loading types from the backend.</param>
-        /// <param name="async">True to load types asynchronously.</param>
-        /// <returns>
-        /// A task representing the asynchronous operation.
-        /// </returns>
-        internal async Task LoadPostgresInfo(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
-        {
-            HasIntegerDateTimes =
-                conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
-                intDateTimes == "on";
-
-            IsRedshift = conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
-            _types = await LoadBackendTypes(conn, timeout, async);
-        }
-
-        /// <summary>
-        /// Generates a raw SQL query string to select type information.
-        /// </summary>
-        /// <remarks>
-        /// Select all types (base, array which is also base, enum, range, composite).
-        /// Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
-        /// Order by primitives first, container later.
-        /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
-        /// types).
-        /// </remarks>
-        static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites)
-            => $@"
+    /// <summary>
+    /// Generates a raw SQL query string to select type information.
+    /// </summary>
+    /// <remarks>
+    /// Select all types (base, array which is also base, enum, range, composite).
+    /// Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
+    /// Order by primitives first, container later.
+    /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
+    /// types).
+    /// </remarks>
+    static string GenerateLoadTypesQuery(bool withRange, bool withMultirange, bool loadTableComposites)
+        => $@"
 SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid
 FROM (
     -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a
@@ -161,8 +158,8 @@ ORDER BY CASE
        WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6  -- Domains over arrays last
 END;";
 
-        static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
-            => $@"
+    static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
+        => $@"
 -- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
 FROM pg_type AS typ
@@ -175,165 +172,229 @@ WHERE
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;";
 
-        static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
-            => $@"
+    static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
+        => $@"
 -- Load enum fields
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
 ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
-        /// <summary>
-        /// Loads type information from the backend specified by <paramref name="conn"/>.
-        /// </summary>
-        /// <param name="conn">The database connection.</param>
-        /// <param name="timeout">The timeout while loading types from the backend.</param>
-        /// <param name="async">True to load types asynchronously.</param>
-        /// <returns>
-        /// A collection of types loaded from the backend.
-        /// </returns>
-        /// <exception cref="TimeoutException" />
-        /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
-        internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    /// <summary>
+    /// Loads type information from the backend specified by <paramref name="conn"/>.
+    /// </summary>
+    /// <param name="conn">The database connection.</param>
+    /// <param name="timeout">The timeout while loading types from the backend.</param>
+    /// <param name="async">True to load types asynchronously.</param>
+    /// <returns>
+    /// A collection of types loaded from the backend.
+    /// </returns>
+    /// <exception cref="TimeoutException" />
+    /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
+    internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+    {
+        var commandTimeout = 0;  // Default to infinity
+        if (timeout.IsSet)
+            commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
+
+        var batchQuery = new StringBuilder()
+            .AppendLine("SELECT version();")
+            .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
+            .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
+
+        if (SupportsEnumTypes)
+            batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
+
+        timeout.CheckAndApply(conn);
+        await conn.WriteQuery(batchQuery.ToString(), async);
+        await conn.Flush(async);
+        var byOID = new Dictionary<uint, PostgresType>();
+        var buf = conn.ReadBuffer;
+
+        // First read the PostgreSQL version
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+
+        // We read the message in non-sequential mode which buffers the whole message.
+        // There is no need to ensure data within the message boundaries
+        Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
+        buf.Skip(2); // Column count
+        LongVersion = ReadNonNullableString(buf);
+        Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+
+        // Then load the types
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        IBackendMessage msg;
+        while (true)
         {
-            var commandTimeout = 0;  // Default to infinity
-            if (timeout.IsSet)
-                commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
+            msg = await conn.ReadMessage(async);
+            if (msg is not DataRowMessage)
+                break;
 
-            var batchQuery = new StringBuilder()
-                .AppendLine("SELECT version();")
-                .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
-                .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
-
-            if (SupportsEnumTypes)
-                batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
-
-            timeout.CheckAndApply(conn);
-            await conn.WriteQuery(batchQuery.ToString(), async);
-            await conn.Flush(async);
-            var byOID = new Dictionary<uint, PostgresType>();
-            var buf = conn.ReadBuffer;
-
-            // First read the PostgreSQL version
-            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-
-            // We read the message in non-sequential mode which buffers the whole message.
-            // There is no need to ensure data within the message boundaries
-            Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
             buf.Skip(2); // Column count
-            LongVersion = ReadNonNullableString(buf);
-            Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+            var nspname = ReadNonNullableString(buf);
+            var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+            Debug.Assert(oid != 0);
+            var typname = ReadNonNullableString(buf);
+            var typtype = ReadNonNullableString(buf)[0];
+            var typnotnull = ReadNonNullableString(buf)[0] == 't';
+            var len = buf.ReadInt32();
+            var elemtypoid = len == -1 ? 0 : uint.Parse(buf.ReadString(len), NumberFormatInfo.InvariantInfo);
 
-            // Then load the types
-            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-            IBackendMessage msg;
-            while (true)
+            switch (typtype)
             {
-                msg = await conn.ReadMessage(async);
-                if (msg is not DataRowMessage)
-                    break;
+            case 'b': // Normal base type
+                var baseType = new PostgresBaseType(nspname, typname, oid);
+                byOID[baseType.OID] = baseType;
+                continue;
 
-                buf.Skip(2); // Column count
-                var nspname = ReadNonNullableString(buf);
-                var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-                Debug.Assert(oid != 0);
-                var typname = ReadNonNullableString(buf);
-                var typtype = ReadNonNullableString(buf)[0];
-                var typnotnull = ReadNonNullableString(buf)[0] == 't';
-                var len = buf.ReadInt32();
-                var elemtypoid = len == -1 ? 0 : uint.Parse(buf.ReadString(len), NumberFormatInfo.InvariantInfo);
-
-                switch (typtype)
+            case 'a': // Array
+            {
+                Debug.Assert(elemtypoid > 0);
+                if (!byOID.TryGetValue(elemtypoid, out var elementPostgresType))
                 {
-                case 'b': // Normal base type
-                    var baseType = new PostgresBaseType(nspname, typname, oid);
-                    byOID[baseType.OID] = baseType;
-                    continue;
-
-                case 'a': // Array
-                {
-                    Debug.Assert(elemtypoid > 0);
-                    if (!byOID.TryGetValue(elemtypoid, out var elementPostgresType))
-                    {
-                        Log.Trace($"Array type '{typname}' refers to unknown element with OID {elemtypoid}, skipping", conn.Id);
-                        continue;
-                    }
-
-                    var arrayType = new PostgresArrayType(nspname, typname, oid, elementPostgresType);
-                    byOID[arrayType.OID] = arrayType;
+                    Logger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
                     continue;
                 }
 
-                case 'r': // Range
-                {
-                    Debug.Assert(elemtypoid > 0);
-                    if (!byOID.TryGetValue(elemtypoid, out var subtypePostgresType))
-                    {
-                        Log.Trace($"Range type '{typname}' refers to unknown subtype with OID {elemtypoid}, skipping", conn.Id);
-                        continue;
-                    }
-
-                    var rangeType = new PostgresRangeType(nspname, typname, oid, subtypePostgresType);
-                    byOID[rangeType.OID] = rangeType;
-                    continue;
-                }
-
-                case 'm': // Multirange
-                    Debug.Assert(elemtypoid > 0);
-                    if (!byOID.TryGetValue(elemtypoid, out var type))
-                    {
-                        Log.Trace($"Multirange type '{typname}' refers to unknown range with OID {elemtypoid}, skipping", conn.Id);
-                        continue;
-                    }
-
-                    if (type is not PostgresRangeType rangePostgresType)
-                    {
-                        Log.Trace($"Multirange type '{typname}' refers to non-range type {type.Name}, skipping",
-                            conn.Id);
-                        continue;
-                    }
-
-                    var multirangeType = new PostgresMultirangeType(nspname, typname, oid, rangePostgresType);
-                    byOID[multirangeType.OID] = multirangeType;
-                    continue;
-
-                case 'e': // Enum
-                    var enumType = new PostgresEnumType(nspname, typname, oid);
-                    byOID[enumType.OID] = enumType;
-                    continue;
-
-                case 'c': // Composite
-                    var compositeType = new PostgresCompositeType(nspname, typname, oid);
-                    byOID[compositeType.OID] = compositeType;
-                    continue;
-
-                case 'd': // Domain
-                    Debug.Assert(elemtypoid > 0);
-                    if (!byOID.TryGetValue(elemtypoid, out var basePostgresType))
-                    {
-                        Log.Trace($"Domain type '{typname}' refers to unknown base type with OID {elemtypoid}, skipping", conn.Id);
-                        continue;
-                    }
-
-                    var domainType = new PostgresDomainType(nspname, typname, oid, basePostgresType, typnotnull);
-                    byOID[domainType.OID] = domainType;
-                    continue;
-
-                case 'p': // pseudo-type (record, void)
-                    goto case 'b'; // Hack this as a base type
-
-                default:
-                    throw new ArgumentOutOfRangeException($"Unknown typtype for type '{typname}' in pg_type: {typtype}");
-                }
+                var arrayType = new PostgresArrayType(nspname, typname, oid, elementPostgresType);
+                byOID[arrayType.OID] = arrayType;
+                continue;
             }
-            Expect<CommandCompleteMessage>(msg, conn);
 
-            // Then load the composite type fields
+            case 'r': // Range
+            {
+                Debug.Assert(elemtypoid > 0);
+                if (!byOID.TryGetValue(elemtypoid, out var subtypePostgresType))
+                {
+                    Logger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
+                    continue;
+                }
+
+                var rangeType = new PostgresRangeType(nspname, typname, oid, subtypePostgresType);
+                byOID[rangeType.OID] = rangeType;
+                continue;
+            }
+
+            case 'm': // Multirange
+                Debug.Assert(elemtypoid > 0);
+                if (!byOID.TryGetValue(elemtypoid, out var type))
+                {
+                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
+                    continue;
+                }
+
+                if (type is not PostgresRangeType rangePostgresType)
+                {
+                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
+                        typname, type.Name);
+                    continue;
+                }
+
+                var multirangeType = new PostgresMultirangeType(nspname, typname, oid, rangePostgresType);
+                byOID[multirangeType.OID] = multirangeType;
+                continue;
+
+            case 'e': // Enum
+                var enumType = new PostgresEnumType(nspname, typname, oid);
+                byOID[enumType.OID] = enumType;
+                continue;
+
+            case 'c': // Composite
+                var compositeType = new PostgresCompositeType(nspname, typname, oid);
+                byOID[compositeType.OID] = compositeType;
+                continue;
+
+            case 'd': // Domain
+                Debug.Assert(elemtypoid > 0);
+                if (!byOID.TryGetValue(elemtypoid, out var basePostgresType))
+                {
+                    Logger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
+                        typname, elemtypoid);
+                    continue;
+                }
+
+                var domainType = new PostgresDomainType(nspname, typname, oid, basePostgresType, typnotnull);
+                byOID[domainType.OID] = domainType;
+                continue;
+
+            case 'p': // pseudo-type (record, void)
+                goto case 'b'; // Hack this as a base type
+
+            default:
+                throw new ArgumentOutOfRangeException($"Unknown typtype for type '{typname}' in pg_type: {typtype}");
+            }
+        }
+        Expect<CommandCompleteMessage>(msg, conn);
+
+        // Then load the composite type fields
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+
+        var currentOID = uint.MaxValue;
+        PostgresCompositeType? currentComposite = null;
+        var skipCurrent = false;
+
+        while (true)
+        {
+            msg = await conn.ReadMessage(async);
+            if (msg is not DataRowMessage)
+                break;
+
+            buf.Skip(2); // Column count
+            var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+            var attname = ReadNonNullableString(buf);
+            var atttypid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+
+            if (oid != currentOID)
+            {
+                currentOID = oid;
+
+                if (!byOID.TryGetValue(oid, out var type))  // See #2020
+                {
+                    Logger.LogWarning("Skipping composite type with OID {CompositeTypeOID} which was not found in pg_type", oid);
+                    byOID.Remove(oid);
+                    skipCurrent = true;
+                    continue;
+                }
+
+                currentComposite = type as PostgresCompositeType;
+                if (currentComposite == null)
+                {
+                    Logger.LogWarning("Type {TypeName} was referenced as a composite type but is a {type}", type.Name, type.GetType());
+                    byOID.Remove(oid);
+                    skipCurrent = true;
+                    continue;
+                }
+
+                skipCurrent = false;
+            }
+
+            if (skipCurrent)
+                continue;
+
+            if (!byOID.TryGetValue(atttypid, out var fieldType))  // See #2020
+            {
+                Logger.LogWarning("Skipping composite type '{CompositeTypeName}' with field '{fieldName}' with type OID '{FieldTypeOID}', which could not be resolved to a PostgreSQL type.",
+                    currentComposite!.DisplayName, attname, atttypid);
+                byOID.Remove(oid);
+                skipCurrent = true;
+                continue;
+            }
+
+            currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
+        }
+        Expect<CommandCompleteMessage>(msg, conn);
+
+        if (SupportsEnumTypes)
+        {
+            // Then load the enum fields
             Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
-            var currentOID = uint.MaxValue;
-            PostgresCompositeType? currentComposite = null;
-            var skipCurrent = false;
+            currentOID = uint.MaxValue;
+            PostgresEnumType? currentEnum = null;
+            skipCurrent = false;
 
             while (true)
             {
@@ -343,25 +404,23 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                 buf.Skip(2); // Column count
                 var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-                var attname = ReadNonNullableString(buf);
-                var atttypid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-
+                var enumlabel = ReadNonNullableString(buf);
                 if (oid != currentOID)
                 {
                     currentOID = oid;
 
                     if (!byOID.TryGetValue(oid, out var type))  // See #2020
                     {
-                        Log.Warn($"Skipping composite type with OID {oid} which was not found in pg_type");
+                        Logger.LogWarning("Skipping enum type with OID {OID} which was not found in pg_type", oid);
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;
                     }
 
-                    currentComposite = type as PostgresCompositeType;
-                    if (currentComposite == null)
+                    currentEnum = type as PostgresEnumType;
+                    if (currentEnum == null)
                     {
-                        Log.Warn($"Type {type.Name} was referenced as a composite type but is a {type.GetType()}");
+                        Logger.LogWarning("Type type '{TypeName}' was referenced as an enum type but is a {Type}", type.Name, type.GetType());
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;
@@ -373,73 +432,15 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (skipCurrent)
                     continue;
 
-                if (!byOID.TryGetValue(atttypid, out var fieldType))  // See #2020
-                {
-                    Log.Warn($"Skipping composite type {currentComposite!.DisplayName} with field {attname} with type OID {atttypid}, which could not be resolved to a PostgreSQL type.");
-                    byOID.Remove(oid);
-                    skipCurrent = true;
-                    continue;
-                }
-
-                currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
+                currentEnum!.MutableLabels.Add(enumlabel);
             }
             Expect<CommandCompleteMessage>(msg, conn);
-
-            if (SupportsEnumTypes)
-            {
-                // Then load the enum fields
-                Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
-
-                currentOID = uint.MaxValue;
-                PostgresEnumType? currentEnum = null;
-                skipCurrent = false;
-
-                while (true)
-                {
-                    msg = await conn.ReadMessage(async);
-                    if (msg is not DataRowMessage)
-                        break;
-
-                    buf.Skip(2); // Column count
-                    var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-                    var enumlabel = ReadNonNullableString(buf);
-                    if (oid != currentOID)
-                    {
-                        currentOID = oid;
-
-                        if (!byOID.TryGetValue(oid, out var type))  // See #2020
-                        {
-                            Log.Warn($"Skipping enum type with OID {oid} which was not found in pg_type");
-                            byOID.Remove(oid);
-                            skipCurrent = true;
-                            continue;
-                        }
-
-                        currentEnum = type as PostgresEnumType;
-                        if (currentEnum == null)
-                        {
-                            Log.Warn($"Type {type.Name} was referenced as an enum type but is a {type.GetType()}");
-                            byOID.Remove(oid);
-                            skipCurrent = true;
-                            continue;
-                        }
-
-                        skipCurrent = false;
-                    }
-
-                    if (skipCurrent)
-                        continue;
-
-                    currentEnum!.MutableLabels.Add(enumlabel);
-                }
-                Expect<CommandCompleteMessage>(msg, conn);
-            }
-
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
-            return byOID.Values.ToList();
-
-            static string ReadNonNullableString(NpgsqlReadBuffer buffer)
-                => buffer.ReadString(buffer.ReadInt32());
         }
+
+        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+        return byOID.Values.ToList();
+
+        static string ReadNonNullableString(NpgsqlReadBuffer buffer)
+            => buffer.ReadString(buffer.ReadInt32());
     }
 }

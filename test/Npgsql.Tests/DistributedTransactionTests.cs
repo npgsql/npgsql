@@ -17,7 +17,7 @@ namespace Npgsql.Tests
     public class DistributedTransactionTests : TestBase
     {
         [Test]
-        public void TwoConnections()
+        public void Two_connections()
         {
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
             using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
@@ -40,7 +40,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TwoConnectionsRollback()
+        public void Two_connections_rollback()
         {
             using (new TransactionScope())
             using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
@@ -56,7 +56,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Ignore("Flaky")]
-        public void DistributedRollback()
+        public void Distributed_rollback()
         {
             var disposedCalled = false;
             var tx = new TransactionScope();
@@ -86,7 +86,7 @@ namespace Npgsql.Tests
 
         [Test(Description = "Transaction race, bool distributed")]
         [Explicit("Fails on Appveyor (https://ci.appveyor.com/project/roji/npgsql/build/3.3.0-250)")]
-        public void TransactionRace([Values(false, true)] bool distributed)
+        public void Transaction_race([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -153,7 +153,7 @@ Exception {2}",
         }
 
         [Test]
-        public void TwoConnectionsWithFailure()
+        public void Two_connections_with_failure()
         {
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
             using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
@@ -180,7 +180,7 @@ Exception {2}",
         }
 
         [Test(Description = "Connection reuse race after transaction, bool distributed"), Explicit]
-        public void ConnectionReuseRaceAfterTransaction([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_after_transaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -229,7 +229,7 @@ Exception {2}",
         }
 
         [Test(Description = "Connection reuse race after rollback, bool distributed"), Explicit("Currently failing.")]
-        public void ConnectionReuseRaceAfterRollback([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_after_rollback([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -279,7 +279,7 @@ Exception {2}",
 
         [Test(Description = "Connection reuse race chaining transactions, bool distributed")]
         [Explicit]
-        public void ConnectionReuseRaceChainingTransaction([Values(false, true)] bool distributed)
+        public void Connection_reuse_race_chaining_transaction([Values(false, true)] bool distributed)
         {
             for (var i = 1; i <= 100; i++)
             {
@@ -352,7 +352,7 @@ Exception {2}",
         }
 
         [Test]
-        public void ReuseConnectionWithEscalation()
+        public void Reuse_connection_with_escalation()
         {
             using (new TransactionScope())
             {

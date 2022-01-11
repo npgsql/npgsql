@@ -28,16 +28,24 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{004A2E0F-D34A-44D4-8DF0-D2BC63B57073}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
-		.github\workflows\build.yml = .github\workflows\build.yml
 		Directory.Build.props = Directory.Build.props
 		Directory.Packages.props = Directory.Packages.props
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.SourceGenerators", "src\Npgsql.SourceGenerators\Npgsql.SourceGenerators.csproj", "{63026A19-60B8-4906-81CB-216F30E8094B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.TrimmingTests", "test\Npgsql.TrimmingTests\Npgsql.TrimmingTests.csproj", "{844EC023-21B8-448D-93AD-5F6857F15DFF}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.NodaTime.Tests", "test\Npgsql.NodaTime.Tests\Npgsql.NodaTime.Tests.csproj", "{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.OpenTelemetry", "src\Npgsql.OpenTelemetry\Npgsql.OpenTelemetry.csproj", "{DA29F063-1828-47D8-B051-800AF7C9A0BE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Github", "Github", "{BA7B6F53-D24D-45AC-927A-266857EA8D1E}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\build.yml = .github\workflows\build.yml
+		.github\dependabot.yml = .github\dependabot.yml
+		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
+		.github\workflows\rich-code-nav.yml = .github\workflows\rich-code-nav.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -127,14 +135,6 @@ Global
 		{63026A19-60B8-4906-81CB-216F30E8094B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{63026A19-60B8-4906-81CB-216F30E8094B}.Release|x86.ActiveCfg = Release|Any CPU
 		{63026A19-60B8-4906-81CB-216F30E8094B}.Release|x86.Build.0 = Release|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Debug|x86.Build.0 = Debug|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Release|x86.ActiveCfg = Release|Any CPU
-		{844EC023-21B8-448D-93AD-5F6857F15DFF}.Release|x86.Build.0 = Release|Any CPU
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Debug|x86.ActiveCfg = Debug|Any CPU
@@ -143,6 +143,14 @@ Global
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Release|x86.ActiveCfg = Release|Any CPU
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00}.Release|x86.Build.0 = Release|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Debug|x86.Build.0 = Debug|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|x86.ActiveCfg = Release|Any CPU
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -158,8 +166,9 @@ Global
 		{F7C53EBD-0075-474F-A083-419257D04080} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{A77E5FAF-D775-4AB4-8846-8965C2104E60} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{63026A19-60B8-4906-81CB-216F30E8094B} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
-		{844EC023-21B8-448D-93AD-5F6857F15DFF} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{DA29F063-1828-47D8-B051-800AF7C9A0BE} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{BA7B6F53-D24D-45AC-927A-266857EA8D1E} = {004A2E0F-D34A-44D4-8DF0-D2BC63B57073}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}

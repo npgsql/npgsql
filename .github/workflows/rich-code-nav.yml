@@ -9,7 +9,7 @@ on:
       - '*'
 
 env:
-  dotnet_sdk_version: '6.0.100-preview.7.21379.14'
+  dotnet_sdk_version: '6.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2.4.0
 
       - name: NuGet Cache
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -29,7 +29,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v1.8.1
+        uses: actions/setup-dotnet@v1.9.0
         with:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 

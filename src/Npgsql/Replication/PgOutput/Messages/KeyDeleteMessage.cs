@@ -1,37 +1,38 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol delete message for tables with REPLICA IDENTITY set to DEFAULT or USING INDEX.
+/// </summary>
+public sealed class KeyDeleteMessage : DeleteMessage
 {
+    readonly ReplicationTuple _tupleEnumerable;
+
     /// <summary>
-    /// Logical Replication Protocol delete message for tables with REPLICA IDENTITY set to DEFAULT or USING INDEX.
+    /// Columns representing the key.
     /// </summary>
-    public sealed class KeyDeleteMessage : DeleteMessage
+    public ReplicationTuple Key => _tupleEnumerable;
+
+    internal KeyDeleteMessage(NpgsqlConnector connector)
+        => _tupleEnumerable = new(connector);
+
+    internal KeyDeleteMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+        RelationMessage relation, ushort numColumns)
     {
-        /// <summary>
-        /// Columns representing the primary key.
-        /// </summary>
-        public ReadOnlyMemory<TupleData> KeyRow { get; private set; } = default!;
+        base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
 
-        internal KeyDeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
-            ReadOnlyMemory<TupleData> keyRow)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId);
-            KeyRow = keyRow;
-            return this;
-        }
+        _tupleEnumerable.Reset(numColumns, relation.RowDescription);
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override KeyDeleteMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new KeyDeleteMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, KeyRow.ToArray());
-            return clone;
-        }
+        return this;
     }
+
+    internal Task Consume(CancellationToken cancellationToken)
+        => _tupleEnumerable.Consume(cancellationToken);
 }

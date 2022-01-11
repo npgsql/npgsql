@@ -16,6 +16,7 @@ namespace Npgsql.Tests.Support
         const int ReadBufferSize = 8192;
         const int WriteBufferSize = 8192;
         const int CancelRequestCode = 1234 << 16 | 5678;
+        const int SslRequest = 80877103;
 
         static readonly Encoding Encoding = PGUtil.UTF8Encoding;
         static readonly Encoding RelaxedEncoding = PGUtil.RelaxedUTF8Encoding;
@@ -28,9 +29,10 @@ namespace Npgsql.Tests.Support
 
         readonly bool _completeCancellationImmediately;
         readonly MockState _state;
+        readonly string? _startupErrorCode;
 
-        ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
-        internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
+        ChannelWriter<Task<ServerOrCancellationRequest>> _pendingRequestsWriter { get; }
+        ChannelReader<Task<ServerOrCancellationRequest>> _pendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
         internal string Host { get; }
@@ -39,9 +41,10 @@ namespace Npgsql.Tests.Support
         internal static PgPostmasterMock Start(
             string? connectionString = null,
             bool completeCancellationImmediately = true,
-            MockState state = MockState.MultipleHostsDisabled)
+            MockState state = MockState.MultipleHostsDisabled,
+            string? startupErrorCode = null)
         {
-            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state);
+            var mock = new PgPostmasterMock(connectionString, completeCancellationImmediately, state, startupErrorCode);
             mock.AcceptClients();
             return mock;
         }
@@ -49,31 +52,22 @@ namespace Npgsql.Tests.Support
         internal PgPostmasterMock(
             string? connectionString = null,
             bool completeCancellationImmediately = true,
-            MockState state = MockState.MultipleHostsDisabled)
+            MockState state = MockState.MultipleHostsDisabled,
+            string? startupErrorCode = null)
         {
-            var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
-            PendingRequestsReader = pendingRequestsChannel.Reader;
+            var pendingRequestsChannel = Channel.CreateUnbounded<Task<ServerOrCancellationRequest>>();
+            _pendingRequestsReader = pendingRequestsChannel.Reader;
             _pendingRequestsWriter = pendingRequestsChannel.Writer;
 
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
 
             _completeCancellationImmediately = completeCancellationImmediately;
             _state = state;
+            _startupErrorCode = startupErrorCode;
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
-            _socket.Bind(endpoint);
-
-            // In some cases we can attempt to connect to a port, which was already in use (doesn't have to be a mock).
-            // Clearing the cached state, so the previous state is not leaking.
-            if (state != MockState.MultipleHostsDisabled)
-            {
-                var afterBindEndport = _socket.LocalEndPoint as IPEndPoint;
-                Debug.Assert(afterBindEndport is not null);
-                var host = afterBindEndport.Address.ToString();
-                var port = afterBindEndport.Port;
-                ClusterStateCache.RemoveClusterState(host, port);
-            }
+            _socket.Bind(endpoint);   
 
             var localEndPoint = (IPEndPoint)_socket.LocalEndPoint!;
             Host = localEndPoint.Address.ToString();
@@ -82,6 +76,9 @@ namespace Npgsql.Tests.Support
             connectionStringBuilder.Port = Port;
             connectionStringBuilder.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
             ConnectionString = connectionStringBuilder.ConnectionString;
+            // In some cases we can attempt to connect to a port, which was already in use (doesn't have to be a mock).
+            // Clearing the cached state, so the previous state is not leaking.  
+            ClusterStateCache.RemoveClusterState(Host, Port);
 
             _socket.Listen(5);
         }
@@ -93,6 +90,8 @@ namespace Npgsql.Tests.Support
 
             async Task DoAcceptClients()
             {
+                var expectClusterStateQuery = _state != MockState.MultipleHostsDisabled;
+
                 while (true)
                 {
                     var serverOrCancellationRequest = await Accept(_completeCancellationImmediately);
@@ -100,11 +99,25 @@ namespace Npgsql.Tests.Support
                     {
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
                         // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
-                        _ = server.Startup(_state).ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                        if (string.IsNullOrEmpty(_startupErrorCode))
+                        {
+                            // We may be accepting (and starting up) multiple connections in parallel, but some tests assume we return
+                            // server connections in FIFO. As a result, we enqueue immediately into the _pendingRequestsWriter channel,
+                            // but we enqueue a Task which represents the Startup completing.
+                            var closureExpectClusterStateQuery = expectClusterStateQuery;
+                            await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
+                            {
+                                await server.Startup(closureExpectClusterStateQuery, _state);
+                                return serverOrCancellationRequest;
+                            }));
+                            expectClusterStateQuery = false;
+                        }
+                        else
+                            _ = server.FailedStartup(_startupErrorCode);
                     }
                     else
                     {
-                        await _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest);
+                        await _pendingRequestsWriter.WriteAsync(Task.FromResult(serverOrCancellationRequest));
                     }
                 }
 
@@ -125,7 +138,19 @@ namespace Npgsql.Tests.Support
             var len = readBuffer.ReadInt32();
             await readBuffer.EnsureAsync(len - 4);
 
-            if (readBuffer.ReadInt32() == CancelRequestCode)
+            var request = readBuffer.ReadInt32();
+            if (request == SslRequest)
+            {
+                writeBuffer.WriteByte((byte)'N');
+                await writeBuffer.Flush(async: true);
+
+                await readBuffer.EnsureAsync(4);
+                len = readBuffer.ReadInt32();
+                await readBuffer.EnsureAsync(len - 4);
+                request = readBuffer.ReadInt32();
+            }
+
+            if (request == CancelRequestCode)
             {
                 var cancellationRequest = new PgCancellationRequest(readBuffer, writeBuffer, stream, readBuffer.ReadInt32(), readBuffer.ReadInt32());
                 if (completeCancellationImmediately)
@@ -165,7 +190,7 @@ namespace Npgsql.Tests.Support
 
         internal async ValueTask<PgServerMock> WaitForServerConnection()
         {
-            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            var serverOrCancellationRequest = await await _pendingRequestsReader.ReadAsync();
             if (serverOrCancellationRequest.Server is null)
                 throw new InvalidOperationException("Expected a server connection but got a cancellation request instead");
             return serverOrCancellationRequest.Server;
@@ -173,7 +198,7 @@ namespace Npgsql.Tests.Support
 
         internal async ValueTask<PgCancellationRequest> WaitForCancellationRequest()
         {
-            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            var serverOrCancellationRequest = await await _pendingRequestsReader.ReadAsync();
             if (serverOrCancellationRequest.CancellationRequest is null)
                 throw new InvalidOperationException("Expected cancellation request but got a server connection instead");
             return serverOrCancellationRequest.CancellationRequest;
@@ -181,15 +206,12 @@ namespace Npgsql.Tests.Support
 
         public async ValueTask DisposeAsync()
         {
-            if (_state != MockState.MultipleHostsDisabled)
-            {
-                var endpoint = _socket.LocalEndPoint as IPEndPoint;
-                Debug.Assert(endpoint is not null);
-                var host = endpoint.Address.ToString();
-                var port = endpoint.Port;
-                ClusterStateCache.RemoveClusterState(host, port);
-            }
-            
+            var endpoint = _socket.LocalEndPoint as IPEndPoint;
+            Debug.Assert(endpoint is not null);
+            var host = endpoint.Address.ToString();
+            var port = endpoint.Port;
+            ClusterStateCache.RemoveClusterState(host, port);
+
             // Stop accepting new connections
             _socket.Dispose();
             try

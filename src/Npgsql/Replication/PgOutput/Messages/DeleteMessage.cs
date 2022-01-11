@@ -1,24 +1,34 @@
 ﻿using NpgsqlTypes;
 using System;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Abstract base class for Logical Replication Protocol delete message types.
+/// </summary>
+public abstract class DeleteMessage : TransactionalMessage
 {
     /// <summary>
-    /// Abstract base class for Logical Replication Protocol delete message types.
+    /// The relation for this <see cref="InsertMessage" />.
     /// </summary>
-    public abstract class DeleteMessage : TransactionalMessage
-    {
-        /// <summary>
-        /// ID of the relation corresponding to the ID in the relation message.
-        /// </summary>
-        public uint RelationId { get; private set; }
+    public RelationMessage Relation { get; private set; } = null!;
 
-        private protected DeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid);
-            RelationId = relationId;
-            return this;
-        }
+    /// <summary>
+    /// ID of the relation corresponding to the ID in the relation message.
+    /// </summary>
+    [Obsolete("Use Relation.RelationId")]
+    public uint RelationId => Relation.RelationId;
+
+    private protected DeleteMessage() {}
+
+    private protected DeleteMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+        RelationMessage relation)
+    {
+        base.Populate(walStart, walEnd, serverClock, transactionXid);
+
+        Relation = relation;
+
+        return this;
     }
 }

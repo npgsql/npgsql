@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -112,24 +115,23 @@ namespace Npgsql.Tests
             // Consume SELECT result set to parse the CommandComplete
             await reader.CloseAsync();
 
-            // TODO: Not good, should not need to cast.
-            var command = (NpgsqlBatchCommand)batch.BatchCommands[0];
+            var command = batch.BatchCommands[0];
             Assert.That(command.RecordsAffected, Is.EqualTo(2));
             Assert.That(command.Rows, Is.EqualTo(2));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[1];
+            command = batch.BatchCommands[1];
             Assert.That(command.RecordsAffected, Is.EqualTo(1));
             Assert.That(command.Rows, Is.EqualTo(1));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[2];
+            command = batch.BatchCommands[2];
             Assert.That(command.RecordsAffected, Is.EqualTo(0));
             Assert.That(command.Rows, Is.EqualTo(0));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[3];
+            command = batch.BatchCommands[3];
             Assert.That(command.RecordsAffected, Is.EqualTo(-1));
             Assert.That(command.Rows, Is.EqualTo(2));
 
-            command = (NpgsqlBatchCommand)batch.BatchCommands[4];
+            command = batch.BatchCommands[4];
             Assert.That(command.RecordsAffected, Is.EqualTo(2));
             Assert.That(command.Rows, Is.EqualTo(2));
         }
@@ -158,13 +160,13 @@ namespace Npgsql.Tests
             // Consume SELECT result set to parse the CommandComplete
             await reader.CloseAsync();
 
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[0]).StatementType, Is.EqualTo(StatementType.Insert));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[1]).StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[2]).StatementType, Is.EqualTo(StatementType.Update));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[3]).StatementType, Is.EqualTo(StatementType.Other));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[4]).StatementType, Is.EqualTo(StatementType.Select));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[5]).StatementType, Is.EqualTo(StatementType.Delete));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[6]).StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Insert));
+            Assert.That(batch.BatchCommands[1].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(batch.BatchCommands[2].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(batch.BatchCommands[3].StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(batch.BatchCommands[4].StatementType, Is.EqualTo(StatementType.Select));
+            Assert.That(batch.BatchCommands[5].StatementType, Is.EqualTo(StatementType.Delete));
+            Assert.That(batch.BatchCommands[6].StatementType, Is.EqualTo(StatementType.Other));
         }
 
         [Test]
@@ -188,8 +190,8 @@ namespace Npgsql.Tests
 
             await batch.ExecuteNonQueryAsync();
 
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[0]).OID, Is.Not.EqualTo(0));
-            Assert.That(((NpgsqlBatchCommand)batch.BatchCommands[1]).OID, Is.EqualTo(0));
+            Assert.That(batch.BatchCommands[0].OID, Is.Not.EqualTo(0));
+            Assert.That(batch.BatchCommands[1].OID, Is.EqualTo(0));
         }
 
         #endregion NpgsqlBatchCommand
@@ -327,10 +329,9 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
-            await using var batch = new NpgsqlBatch(conn)
-            {
-                BatchCommands = { new($"SELECT {function}()") }
-            };
+            // We use NpgsqlConnection.CreateBatch to test that the batch isn't recycled when referenced in an exception
+            var batch = conn.CreateBatch();
+            batch.BatchCommands.Add(new($"SELECT {function}()"));
 
             try
             {
@@ -341,6 +342,12 @@ LANGUAGE 'plpgsql'");
             {
                 Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
             }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            batch.Dispose();
+            var cmd2 = conn.CreateBatch();
+            Assert.AreNotSame(cmd2, batch);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -354,28 +361,139 @@ CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
 LANGUAGE 'plpgsql'");
 
+            // We use NpgsqlConnection.CreateBatch to test that the batch isn't recycled when referenced in an exception
+            var batch = conn.CreateBatch();
+            batch.BatchCommands.Add(new("SELECT 1"));
+            batch.BatchCommands.Add(new($"SELECT {function}()"));
+
+            await using (var reader = await batch.ExecuteReaderAsync(Behavior))
+            {
+                try
+                {
+                    await reader.NextResultAsync();
+                    Assert.Fail();
+                }
+                catch (PostgresException e)
+                {
+                    Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+                }
+            }
+
+            // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
+            // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
+            batch.Dispose();
+            var cmd2 = conn.CreateBatch();
+            Assert.AreNotSame(cmd2, batch);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4202")]
+        public async Task ExecuteScalar_without_parameters()
+        {
+            await using var conn = await OpenConnectionAsync();
+            var batch = new NpgsqlBatch(conn) { BatchCommands = { new("SELECT 1") } };
+            Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(1));
+        }
+
+        #endregion Miscellaneous
+
+        #region Logging
+
+        [Test, NonParallelizable]
+        public async Task Log_ExecuteScalar_single_statement_without_parameters()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlBatch(conn)
+            {
+                BatchCommands = { new("SELECT 1") }
+            };
+
+            using (ListLoggerProvider.Instance.Record())
+            {
+                await cmd.ExecuteScalarAsync();
+            }
+
+            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+
+            Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains("SELECT 1"));
+            AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT 1");
+            AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+            if (!IsMultiplexing)
+                AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+        }
+
+        [Test, NonParallelizable]
+        public async Task Log_ExecuteScalar_multiple_statements_with_parameters()
+        {
+            await using var conn = await OpenConnectionAsync();
             await using var batch = new NpgsqlBatch(conn)
             {
                 BatchCommands =
                 {
-                    new("SELECT 1"),
-                    new($"SELECT {function}()")
+                    new("SELECT $1") { Parameters = { new() { Value = 8 } } },
+                    new("SELECT $1, 9") { Parameters = { new() { Value = 9 } } }
                 }
             };
 
-            await using var reader = await batch.ExecuteReaderAsync(Behavior);
-            try
+            using (ListLoggerProvider.Instance.Record())
             {
-                await reader.NextResultAsync();
-                Assert.Fail();
+                await batch.ExecuteScalarAsync();
             }
-            catch (PostgresException e)
-            {
-                Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
-            }
+
+            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+
+            // Note: the message formatter of Microsoft.Extensions.Logging doesn't seem to handle arrays inside tuples, so we get the
+            // following ugliness (https://github.com/dotnet/runtime/issues/63165). Serilog handles this fine.
+            Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[(SELECT $1, System.Object[]), (SELECT $1, 9, System.Object[])]"));
+            AssertLoggingStateDoesNotContain(executingCommandEvent, "CommandText");
+            AssertLoggingStateDoesNotContain(executingCommandEvent, "Parameters");
+
+            if (!IsMultiplexing)
+                AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
+
+            var batchCommands = (IList<(string CommandText, object[] Parameters)>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+            Assert.That(batchCommands.Count, Is.EqualTo(2));
+            Assert.That(batchCommands[0].CommandText, Is.EqualTo("SELECT $1"));
+            Assert.That(batchCommands[0].Parameters[0], Is.EqualTo(8));
+            Assert.That(batchCommands[1].CommandText, Is.EqualTo("SELECT $1, 9"));
+            Assert.That(batchCommands[1].Parameters[0], Is.EqualTo(9));
         }
 
-        #endregion Miscellaneous
+        [Test, NonParallelizable]
+        public async Task Log_ExecuteScalar_single_statement_with_parameter_logging_off()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var batch = new NpgsqlBatch(conn)
+            {
+                BatchCommands =
+                {
+                    new("SELECT $1") { Parameters = { new() { Value = 8 } } },
+                    new("SELECT $1, 9") { Parameters = { new() { Value = 9 } } }
+                }
+            };
+
+            using (ListLoggerProvider.Instance.Record())
+            {
+                try
+                {
+                    NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = false;
+                    await batch.ExecuteScalarAsync();
+                }
+                finally
+                {
+                    NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = true;
+                }
+            }
+
+            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+            Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[SELECT $1, SELECT $1, 9]"));
+            var batchCommands = (IList<string>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
+            Assert.That(batchCommands.Count, Is.EqualTo(2));
+            Assert.That(batchCommands[0], Is.EqualTo("SELECT $1"));
+            Assert.That(batchCommands[1], Is.EqualTo("SELECT $1, 9"));
+        }
+
+        #endregion Logging
 
         #region Initialization / setup / teardown
 

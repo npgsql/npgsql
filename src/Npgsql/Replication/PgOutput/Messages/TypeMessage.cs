@@ -1,48 +1,37 @@
 ﻿using NpgsqlTypes;
 using System;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol type message
+/// </summary>
+public sealed class TypeMessage : TransactionalMessage
 {
     /// <summary>
-    /// Logical Replication Protocol type message
+    /// ID of the data type.
     /// </summary>
-    public sealed class TypeMessage : TransactionalMessage
+    public uint TypeId { get; private set; }
+
+    /// <summary>
+    /// Namespace (empty string for pg_catalog).
+    /// </summary>
+    public string Namespace { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Name of the data type.
+    /// </summary>
+    public string Name { get; private set; } = string.Empty;
+
+    internal TypeMessage() {}
+
+    internal TypeMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint typeId, string ns, string name)
     {
-        /// <summary>
-        /// ID of the data type.
-        /// </summary>
-        public uint TypeId { get; private set; }
-
-        /// <summary>
-        /// Namespace (empty string for pg_catalog).
-        /// </summary>
-        public string Namespace { get; private set; } = string.Empty;
-
-        /// <summary>
-        /// Name of the data type.
-        /// </summary>
-        public string Name { get; private set; } = string.Empty;
-
-        internal TypeMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint typeId, string ns, string name)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid);
-            TypeId = typeId;
-            Namespace = ns;
-            Name = name;
-            return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override TypeMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new TypeMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, TypeId, Namespace, Name);
-            return clone;
-        }
+        base.Populate(walStart, walEnd, serverClock, transactionXid);
+        TypeId = typeId;
+        Namespace = ns;
+        Name = name;
+        return this;
     }
 }

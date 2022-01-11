@@ -2,7 +2,6 @@
   <ItemGroup>
     <PackageReference Include="NodaTime" />
     <PackageReference Include="NUnit" />
-    <PackageReference Include="NLog" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NUnit3TestAdapter" />
   </ItemGroup>

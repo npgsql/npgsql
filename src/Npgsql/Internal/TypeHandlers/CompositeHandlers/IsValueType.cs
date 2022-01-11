@@ -1,7 +1,6 @@
-﻿namespace Npgsql.Internal.TypeHandlers.CompositeHandlers
+﻿namespace Npgsql.Internal.TypeHandlers.CompositeHandlers;
+
+static class IsValueType<T>
 {
-    static class IsValueType<T>
-    {
-        public static readonly bool Value = typeof(T).IsValueType;
-    }
+    public static readonly bool Value = typeof(T).IsValueType;
 }

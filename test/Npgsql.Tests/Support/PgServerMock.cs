@@ -40,7 +40,7 @@ namespace Npgsql.Tests.Support
             _writeBuffer = writeBuffer;
         }
 
-        internal async Task Startup(MockState state)
+        internal async Task Startup(bool expectClusterStateQuery, MockState state)
         {
             // Read and skip the startup message
             await SkipMessage();
@@ -65,7 +65,7 @@ namespace Npgsql.Tests.Support
             WriteReadyForQuery();
             await FlushAsync();
 
-            if (state != MockState.MultipleHostsDisabled)
+            if (expectClusterStateQuery)
             {
                 // Write the response on the mock is primary/standby/read-write/read-only
                 await ExpectMessages(
@@ -81,6 +81,14 @@ namespace Npgsql.Tests.Support
 
                 await SendMockState(state);
             }
+        }
+
+        internal async Task FailedStartup(string errorCode)
+        {
+            // Read and skip the startup message
+            await SkipMessage();
+            WriteErrorResponse(errorCode);
+            await FlushAsync();
         }
 
         internal Task SendMockState(MockState state)

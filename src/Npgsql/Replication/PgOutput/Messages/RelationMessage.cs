@@ -2,96 +2,138 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Npgsql.BackendMessages;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol relation message
+/// </summary>
+public sealed class RelationMessage : TransactionalMessage
 {
     /// <summary>
-    /// Logical Replication Protocol relation message
+    /// ID of the relation.
     /// </summary>
-    public sealed class RelationMessage : TransactionalMessage
+    public uint RelationId { get; private set; }
+
+    /// <summary>
+    /// Namespace (empty string for pg_catalog).
+    /// </summary>
+    public string Namespace { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Relation name.
+    /// </summary>
+    public string RelationName { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Replica identity setting for the relation (same as <c>relreplident</c> in <c>pg_class</c>):
+    /// columns used to form “replica identity” for rows.
+    /// </summary>
+    public ReplicaIdentitySetting ReplicaIdentity { get; private set; }
+
+    /// <summary>
+    /// Relation columns
+    /// </summary>
+    public IReadOnlyList<Column> Columns => InternalColumns;
+
+    internal ReadOnlyArrayBuffer<Column> InternalColumns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty;
+
+    internal RowDescriptionMessage RowDescription { get; set; } = null!;
+
+    internal RelationMessage() {}
+
+    internal RelationMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
+        string relationName, ReplicaIdentitySetting relationReplicaIdentitySetting)
+    {
+        base.Populate(walStart, walEnd, serverClock, transactionXid);
+
+        RelationId = relationId;
+        Namespace = ns;
+        RelationName = relationName;
+        ReplicaIdentity = relationReplicaIdentitySetting;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Represents a column in a Logical Replication Protocol relation message
+    /// </summary>
+    public readonly struct Column
+    {
+        internal Column(ColumnFlags flags, string columnName, uint dataTypeId, int typeModifier)
+        {
+            Flags = flags;
+            ColumnName = columnName;
+            DataTypeId = dataTypeId;
+            TypeModifier = typeModifier;
+        }
+
+        /// <summary>
+        /// Flags for the column.
+        /// </summary>
+        public ColumnFlags Flags { get; }
+
+        /// <summary>
+        /// Name of the column.
+        /// </summary>
+        public string ColumnName { get; }
+
+        /// <summary>
+        /// ID of the column's data type.
+        /// </summary>
+        public uint DataTypeId { get; }
+
+        /// <summary>
+        /// Type modifier of the column (atttypmod).
+        /// </summary>
+        public int TypeModifier { get; }
+
+        /// <summary>
+        /// Flags for the column.
+        /// </summary>
+        [Flags]
+        public enum ColumnFlags
+        {
+            /// <summary>
+            /// No flags.
+            /// </summary>
+            None = 0,
+
+            /// <summary>
+            /// Marks the column as part of the key.
+            /// </summary>
+            PartOfKey = 1
+        }
+    }
+
+    /// <summary>
+    /// Replica identity setting for the relation (same as <c>relreplident</c> in <c>pg_class</c>).
+    /// </summary>
+    /// <remarks>
+    /// See <see href="https://www.postgresql.org/docs/current/catalog-pg-class.html" />
+    /// </remarks>
+    public enum ReplicaIdentitySetting : byte
     {
         /// <summary>
-        /// ID of the relation.
+        /// Default (primary key, if any).
         /// </summary>
-        public uint RelationId { get; private set; }
+        Default = (byte)'d',
 
         /// <summary>
-        /// Namespace (empty string for pg_catalog).
+        /// Nothing.
         /// </summary>
-        public string Namespace { get; private set; } = string.Empty;
+        Nothing = (byte)'n',
 
         /// <summary>
-        /// Relation name.
+        /// All columns.
         /// </summary>
-        public string RelationName { get; private set; } = string.Empty;
+        AllColumns = (byte)'f',
 
         /// <summary>
-        /// Replica identity setting for the relation (same as relreplident in pg_class).
+        /// Index with <c>indisreplident</c> set (same as nothing if the index used has been dropped)
         /// </summary>
-        public char RelationReplicaIdentitySetting { get; private set; }
-
-        /// <summary>
-        /// Relation columns
-        /// </summary>
-        public IReadOnlyList<Column> Columns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty!;
-
-        internal RelationMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, string ns,
-            string relationName, char relationReplicaIdentitySetting, ReadOnlyArrayBuffer<Column> columns)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid);
-            RelationId = relationId;
-            Namespace = ns;
-            RelationName = relationName;
-            RelationReplicaIdentitySetting = relationReplicaIdentitySetting;
-            Columns = columns;
-            return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override RelationMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new RelationMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, ((ReadOnlyArrayBuffer<Column>)Columns).Clone());
-            return clone;
-        }
-
-        /// <summary>
-        /// Represents a column in a Logical Replication Protocol relation message
-        /// </summary>
-        public readonly struct Column
-        {
-            internal Column(byte flags, string columnName, uint dataTypeId, int typeModifier)
-            {
-                Flags = flags;
-                ColumnName = columnName;
-                DataTypeId = dataTypeId;
-                TypeModifier = typeModifier;
-            }
-
-            /// <summary>
-            /// Flags for the column. Currently can be either 0 for no flags or 1 which marks the column as part of the key.
-            /// </summary>
-            public byte Flags { get; }
-
-            /// <summary>
-            /// Name of the column.
-            /// </summary>
-            public string ColumnName { get; }
-
-            /// <summary>
-            /// ID of the column's data type.
-            /// </summary>
-            public uint DataTypeId { get; }
-
-            /// <summary>
-            /// Type modifier of the column (atttypmod).
-            /// </summary>
-            public int TypeModifier { get; }
-        }
+        IndexWithIndIsReplIdent = (byte)'i'
     }
 }

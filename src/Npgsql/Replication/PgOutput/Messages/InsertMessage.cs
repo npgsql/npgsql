@@ -1,43 +1,50 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol insert message
+/// </summary>
+public sealed class InsertMessage : TransactionalMessage
 {
+    readonly ReplicationTuple _tupleEnumerable;
+
     /// <summary>
-    /// Logical Replication Protocol insert message
+    /// The relation for this <see cref="InsertMessage" />.
     /// </summary>
-    public sealed class InsertMessage : TransactionalMessage
+    public RelationMessage Relation { get; private set; } = null!;
+
+    /// <summary>
+    /// ID of the relation corresponding to the ID in the relation message.
+    /// </summary>
+    [Obsolete("Use Relation.RelationId")]
+    public uint RelationId => Relation.RelationId;
+
+    /// <summary>
+    /// Columns representing the new row.
+    /// </summary>
+    public ReplicationTuple NewRow => _tupleEnumerable;
+
+    internal InsertMessage(NpgsqlConnector connector)
+        => _tupleEnumerable = new(connector);
+
+    internal InsertMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+        RelationMessage relation, ushort numColumns)
     {
-        /// <summary>
-        /// ID of the relation corresponding to the ID in the relation message.
-        /// </summary>
-        public uint RelationId { get; private set; }
+        base.Populate(walStart, walEnd, serverClock, transactionXid);
 
-        /// <summary>
-        /// Columns representing the new row.
-        /// </summary>
-        public ReadOnlyMemory<TupleData> NewRow { get; private set; } = default!;
+        Relation = relation;
+        _tupleEnumerable.Reset(numColumns, relation.RowDescription);
 
-        internal InsertMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId,
-            ReadOnlyMemory<TupleData> newRow)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid);
-            RelationId = relationId;
-            NewRow = newRow;
-            return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override InsertMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new InsertMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, NewRow.ToArray());
-            return clone;
-        }
+        return this;
     }
+
+    internal Task Consume(CancellationToken cancellationToken)
+        => _tupleEnumerable.Consume(cancellationToken);
 }

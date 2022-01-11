@@ -52,6 +52,10 @@ csharp_indent_switch_labels = false
 
 # Reliability Rules
 
+[src/Npgsql/**.cs]
+# CA1310: Specify StringComparison for correctness
+dotnet_diagnostic.CA1310.severity = error
+
 # CA2016: Forward the 'CancellationToken' parameter to methods that take one
 dotnet_diagnostic.CA2016.severity = error
 

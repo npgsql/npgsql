@@ -2,43 +2,54 @@
 using System;
 using System.Collections.Generic;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol truncate message
+/// </summary>
+public sealed class TruncateMessage : TransactionalMessage
 {
     /// <summary>
-    /// Logical Replication Protocol truncate message
+    /// Option flags for TRUNCATE
     /// </summary>
-    public sealed class TruncateMessage : TransactionalMessage
+    public TruncateOptions Options { get; private set; }
+
+    /// <summary>
+    /// The relations being truncated.
+    /// </summary>
+    public IReadOnlyList<RelationMessage> Relations { get; private set; } = ReadOnlyArrayBuffer<RelationMessage>.Empty;
+
+    internal TruncateMessage() {}
+
+    internal TruncateMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, TruncateOptions options,
+        ReadOnlyArrayBuffer<RelationMessage> relations)
+    {
+        base.Populate(walStart, walEnd, serverClock, transactionXid);
+        Options = options;
+        Relations = relations;
+        return this;
+    }
+
+    /// <summary>
+    /// Enum representing the additional options for the TRUNCATE command as flags
+    /// </summary>
+    [Flags]
+    public enum TruncateOptions : byte
     {
         /// <summary>
-        /// Option flags for TRUNCATE
+        /// No additional option was specified
         /// </summary>
-        public TruncateOptions Options { get; private set; }
+        None = 0,
 
         /// <summary>
-        /// IDs of the relations corresponding to the ID in the relation message.
+        /// CASCADE was specified
         /// </summary>
-        public IReadOnlyList<uint> RelationIds { get; private set; } = ReadOnlyArrayBuffer<uint>.Empty;
+        Cascade = 1,
 
-        internal TruncateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, TruncateOptions options,
-            ReadOnlyArrayBuffer<uint> relationIds)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid);
-            Options = options;
-            RelationIds = relationIds;
-            return this;
-        }
-
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override TruncateMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new TruncateMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, Options, ((ReadOnlyArrayBuffer<uint>)RelationIds).Clone());
-            return clone;
-        }
+        /// <summary>
+        /// RESTART IDENTITY was specified
+        /// </summary>
+        RestartIdentity = 2
     }
 }

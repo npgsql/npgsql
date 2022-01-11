@@ -1,36 +1,38 @@
 ﻿using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol delete message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
+/// </summary>
+public sealed class FullDeleteMessage : DeleteMessage
 {
+    readonly ReplicationTuple _tupleEnumerable;
+
     /// <summary>
-    /// Logical Replication Protocol delete message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
+    /// Columns representing the deleted row.
     /// </summary>
-    public sealed class FullDeleteMessage : DeleteMessage
+    public ReplicationTuple OldRow => _tupleEnumerable;
+
+    internal FullDeleteMessage(NpgsqlConnector connector)
+        => _tupleEnumerable = new(connector);
+
+    internal FullDeleteMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+        RelationMessage relation, ushort numColumns)
     {
-        /// <summary>
-        /// Columns representing the old values.
-        /// </summary>
-        public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
+        base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
 
-        internal FullDeleteMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid, uint relationId, ReadOnlyMemory<TupleData> oldRow)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid, relationId);
-            OldRow = oldRow;
-            return this;
-        }
+        _tupleEnumerable.Reset(numColumns, relation.RowDescription);
 
-        /// <inheritdoc />
-#if NET5_0_OR_GREATER
-        public override FullDeleteMessage Clone()
-#else
-        public override PgOutputReplicationMessage Clone()
-#endif
-        {
-            var clone = new FullDeleteMessage();
-            clone.Populate(WalStart, WalEnd, ServerClock, TransactionXid, RelationId, OldRow.ToArray());
-            return clone;
-        }
+        return this;
     }
+
+    internal Task Consume(CancellationToken cancellationToken)
+        => _tupleEnumerable.Consume(cancellationToken);
 }
