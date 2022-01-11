@@ -96,13 +96,13 @@ public class NpgsqlBatch : DbBatch
 
     /// <inheritdoc cref="DbBatch.ExecuteReader"/>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
-        => _command.ExecuteReader();
+        => _command.ExecuteReader(behavior);
 
     /// <inheritdoc />
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(
         CommandBehavior behavior,
         CancellationToken cancellationToken)
-        => await ExecuteReaderAsync(cancellationToken);
+        => await ExecuteReaderAsync(behavior, cancellationToken);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CancellationToken)"/>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
