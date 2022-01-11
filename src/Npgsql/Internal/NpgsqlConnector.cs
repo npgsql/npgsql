@@ -835,7 +835,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                         var sslProtocols = SslProtocols.None;
                         // On .NET Framework SslProtocols.None can be disabled, see #3718
 #if NETSTANDARD2_0
-                            sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+                            sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12 | SslProtocols.Tls13;
 #endif
 
                         if (async)
