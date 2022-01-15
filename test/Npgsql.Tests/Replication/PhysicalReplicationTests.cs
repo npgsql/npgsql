@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Npgsql.Replication;
+using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication;
 
@@ -28,6 +29,37 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 Assert.That(reader.Read, Is.False);
                 await rc.DropReplicationSlot(slotName);
             });
+
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, false)]
+    public Task ReadReplicationSlot(bool createSlot, bool reserveWal)
+        => SafeReplicationTest(
+            async (slotName, _) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                TestUtil.MinimumPgVersion(c, "15.0", "The READ_REPLICATION_SLOT command was introduced in PostgreSQL 15");
+                if (createSlot)
+                    await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{slotName}', {reserveWal}, false)");
+                using var cmd =
+                    new NpgsqlCommand($@"SELECT slot_name, substring(pg_walfile_name(restart_lsn), 1, 8)::bigint AS timeline_id, restart_lsn
+                                            FROM pg_replication_slots
+                                            WHERE slot_name = '{slotName}'", c);
+                await using var reader = await cmd.ExecuteReaderAsync();
+                Assert.That(reader.Read, Is.EqualTo(createSlot));
+                var expectedSlotName = createSlot ? reader.GetFieldValue<string>(reader.GetOrdinal("slot_name")) : null;
+                var expectedTli = createSlot ? unchecked((ulong?)reader.GetFieldValue<long?>(reader.GetOrdinal("timeline_id"))) : null;
+                var expectedRestartLsn = createSlot ? reader.GetFieldValue<NpgsqlLogSequenceNumber?>(reader.GetOrdinal("restart_lsn")) : null;
+                Assert.That(reader.Read, Is.False);
+                await using var rc = await OpenReplicationConnectionAsync();
+
+                var slot = await rc.ReadReplicationSlot(slotName);
+
+                Assert.That(slot?.Name, Is.EqualTo(expectedSlotName));
+                Assert.That(slot?.RestartTimeline, Is.EqualTo(expectedTli));
+                Assert.That(slot?.RestartLsn, Is.EqualTo(expectedRestartLsn));
+
+            }, $"{nameof(ReadReplicationSlot)}_{reserveWal}");
 
     [Test]
     public Task Replication_with_slot()
