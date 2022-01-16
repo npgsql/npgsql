@@ -14,8 +14,8 @@ The .NET and PostgreSQL types differ in the resolution and range they provide; t
 
 PostgreSQL type             | Precision/Range                           | .NET Native Type             | Precision/Range
 ----------------------------|-------------------------------------------|------------------------------|----------------
-timestamp without time zone | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD
-timestamp with time zone    | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD
+timestamp with time zone    | 1 microsecond, 4713BC-294276AD            | DateTime (UTC)               | 100 nanoseconds, 1AD-9999AD
+timestamp without time zone | 1 microsecond, 4713BC-294276AD            | DateTime (Unspecified)       | 100 nanoseconds, 1AD-9999AD
 date                        | 1 day, 4713BC-5874897AD                   | DateOnly (6.0+), DateTime    | 100 nanoseconds, 1AD-9999AD
 time without time zone      | 1 microsecond, 0-24 hours                 | TimeOnly (6.0+), TimeSpan    | 100 nanoseconds, -10,675,199 - 10,675,199 days
 time with time zone         | 1 microsecond, 0-24 hours                 | DateTimeOffset (ignore date) | 100 nanoseconds, 1AD-9999AD
@@ -50,8 +50,8 @@ Note: in versions prior to 6.0, the connection string parameter `Convert Infinit
 
 PostgreSQL type             | Default .NET type          | Non-default .NET types
 --------------------------- | -------------------------- | ----------------------
-timestamp without time zone | DateTime (Unspecified)     |
 timestamp with time zone    | DateTime (Utc<sup>1</sup>) | DateTimeOffset (Offset=0)<sup>2</sup>
+timestamp without time zone | DateTime (Unspecified)     |
 date                        | DateTime                   | DateOnly (6.0+)
 time without time zone      | TimeSpan                   | TimeOnly (6.0+)
 time with time zone         | DateTimeOffset             |
@@ -67,11 +67,13 @@ interval                    | TimeSpan (<sup>3</sup>)    | <xref:NpgsqlTypes.Npg
 
 PostgreSQL type             | Default .NET types                         | Non-default .NET types                  | NpgsqlDbType          | DbType
 --------------------------- | ------------------------------------------ | --------------------------------------- | --------------------- | ------
-timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime, DateTime2
-timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTimeOffset
+timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTime<sup>2</sup>, DateTimeOffset
+timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime2
 date                        | DateOnly (6.0+)                            | DateTime                                | Date                  | Date
 time without time zone      | TimeOnly (6.0+)                            | TimeSpan                                | Time                  | Time
 time with time zone         |                                            | DateTimeOffset                          | TimeTz                |
 interval                    | TimeSpan                                   |                                         | Interval              |
 
 <sup>1</sup> UTC DateTime is written as `timestamp with time zone`, Local/Unspecified DateTimes are written as `timestamp without time zone`. In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), DateTime is always written as `timestamp without time zone`.
+
+<sup>2</sup>In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), `DbType.DateTime` is mapped to `timestamp without time zone`.

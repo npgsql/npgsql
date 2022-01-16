@@ -107,8 +107,8 @@ jsonb                       |                                            | strin
 xml                         |                                            | string, char[], char                    | Xml                   |
 uuid                        | Guid                                       |                                         | Uuid                  |
 bytea                       | byte[]                                     | ArraySegment\<byte\>                    | Bytea                 | Binary
-timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime, DateTime2
-timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTimeOffset
+timestamp with time zone    | DateTime (Utc)<sup>1</sup>, DateTimeOffset |                                         | TimestampTz           | DateTime<sup>2</sup>, DateTimeOffset
+timestamp without time zone | DateTime (Local/Unspecified)<sup>1</sup>   |                                         | Timestamp             | DateTime2
 date                        | DateOnly (6.0+)                            | DateTime                                | Date                  | Date
 time without time zone      | TimeOnly (6.0+)                            | TimeSpan                                | Time                  | Time
 time with time zone         |                                            | DateTimeOffset                          | TimeTz                |
@@ -140,6 +140,8 @@ enum types                  | Pre-mapped type                            |      
 array types                 | T[], List\<T\>                             |                                         | Array \| NpgsqlDbType |
 
 <sup>1</sup> UTC DateTime is written as `timestamp with time zone`, Local/Unspecified DateTimes are written as `timestamp without time zone`. In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), DateTime is always written as `timestamp without time zone`.
+
+<sup>2</sup>In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), `DbType.DateTime` is mapped to `timestamp without time zone`.
 
 Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type. For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`. To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
 
