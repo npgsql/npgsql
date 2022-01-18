@@ -286,6 +286,17 @@ public class NpgsqlParameterCollectionTests
     }
 
     [Test]
+    public void Cloning_succeeds([Values(LookupThreshold, LookupThreshold - 2)] int count)
+    {
+        var command = new NpgsqlCommand();
+        for (var i = 0; i < count; i++)
+        {
+            command.Parameters.Add(new NpgsqlParameter());
+        }
+        Assert.DoesNotThrow(() => command.Clone());
+    }
+
+    [Test]
     public void Clean_name()
     {
         var param = new NpgsqlParameter();
