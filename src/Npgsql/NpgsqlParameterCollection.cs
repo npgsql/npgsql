@@ -673,11 +673,14 @@ namespace Npgsql
                 other.InternalList.Add(newParam);
             }
 
-            if (LookupEnabled)
+            if (LookupEnabled && _caseInsensitiveLookup is not null)
             {
-                other._caseInsensitiveLookup = new Dictionary<string, int>(_caseInsensitiveLookup!, StringComparer.OrdinalIgnoreCase);
+                other._caseInsensitiveLookup = new Dictionary<string, int>(_caseInsensitiveLookup, StringComparer.OrdinalIgnoreCase);
                 if (TwoPassCompatMode)
-                    other._caseSensitiveLookup = new Dictionary<string, int>(_caseSensitiveLookup!, StringComparer.Ordinal);
+                {
+                    Debug.Assert(_caseSensitiveLookup is not null);
+                    other._caseSensitiveLookup = new Dictionary<string, int>(_caseSensitiveLookup, StringComparer.Ordinal);
+                }
             }
         }
 
