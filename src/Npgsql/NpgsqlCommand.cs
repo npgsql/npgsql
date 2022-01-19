@@ -1577,7 +1577,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText);
+            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, this);
     }
 
     internal void TraceReceivedFirstResponse()
@@ -1592,7 +1592,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.CommandStop(CurrentActivity);
+            NpgsqlActivitySource.CommandStop(CurrentActivity, this);
             CurrentActivity = null;
         }
     }

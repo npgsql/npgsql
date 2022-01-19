@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+    <PropertyGroup>
+        <SignAssembly>false</SignAssembly>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="NUnit" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NUnit3TestAdapter" />
+        <PackageReference Include="OpenTelemetry" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+        <ProjectReference Include="../../src/Npgsql.OpenTelemetry/Npgsql.OpenTelemetry.csproj" />
+        <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
+    </ItemGroup>
+</Project>

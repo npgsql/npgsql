@@ -1,4 +1,5 @@
 ﻿using System;
+using Npgsql.OpenTelemetry;
 using OpenTelemetry.Trace;
 
 // ReSharper disable once CheckNamespace
@@ -14,6 +15,12 @@ public static class TracerProviderBuilderExtensions
     /// </summary>
     public static TracerProviderBuilder AddNpgsql(
         this TracerProviderBuilder builder,
-        Action<NpgsqlTracingOptions>? options = null)
-        => builder.AddSource("Npgsql");
+        Action<NpgsqlTracingOptions>? configure = null)
+    {
+        var options = new NpgsqlTracingOptions();
+        configure?.Invoke(options);
+        return builder
+            .AddSource("Npgsql")
+            .AddInstrumentation(() => new NpgsqlTracingInstrumentation(options));
+    }
 }

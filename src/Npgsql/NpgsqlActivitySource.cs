@@ -19,8 +19,10 @@ static class NpgsqlActivitySource
     }
 
     internal static bool IsEnabled => Source.HasListeners();
+    
+    internal static NpgsqlTracingOptions? Options { get; set; }
 
-    internal static Activity? CommandStart(NpgsqlConnector connector, string sql)
+    internal static Activity? CommandStart(NpgsqlConnector connector, NpgsqlCommand command)
     {
         var settings = connector.Settings;
         var activity = Source.StartActivity(settings.Database!, ActivityKind.Client);
@@ -31,7 +33,7 @@ static class NpgsqlActivitySource
         activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
         activity.SetTag("db.user", settings.Username);
         activity.SetTag("db.name", settings.Database);
-        activity.SetTag("db.statement", sql);
+        activity.SetTag("db.statement", command.CommandText);
         activity.SetTag("db.connection_id", connector.Id);
 
         var endPoint = connector.ConnectedEndPoint;
@@ -54,6 +56,8 @@ static class NpgsqlActivitySource
         default:
             throw new ArgumentOutOfRangeException("Invalid endpoint type: " + endPoint.GetType());
         }
+        
+        Options?.Enrich?.Invoke(activity, "OnStartActivity", command);
 
         return activity;
     }
@@ -64,9 +68,11 @@ static class NpgsqlActivitySource
         activity.AddEvent(activityEvent);
     }
 
-    internal static void CommandStop(Activity activity)
+    internal static void CommandStop(Activity activity, NpgsqlCommand command)
     {
         activity.SetTag("otel.status_code", "OK");
+        activity.SetEndTime(DateTime.UtcNow);
+        Options?.Enrich?.Invoke(activity, "OnStopActivity", command);
         activity.Dispose();
     }
 
@@ -83,6 +89,8 @@ static class NpgsqlActivitySource
         activity.AddEvent(activityEvent);
         activity.SetTag("otel.status_code", "ERROR");
         activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
+        activity.SetEndTime(DateTime.UtcNow);
+        Options?.Enrich?.Invoke(activity, "OnException", ex);
         activity.Dispose();
     }
 }
