@@ -4,7 +4,7 @@
 
 To be able to improve performance, you first need to be able to see which queries are slow, and generally observe how your application is behaving. PostgreSQL provide some powerful features for knowing what's going on in the database; [the statistics collector](https://www.postgresql.org/docs/current/monitoring-stats.html) is a good place to start, and in particular the `pg_stat_activity` table, which shows which queries are being executed at any given point.
 
-Beyond PostgreSQL, Npgsql provides its own set of diagnostics features for tracing, logging and producing metrics. Tracing and metrics are particularly useful for performance analysis - consider collecting this data continuously on your production platform. These features are documented in the dedicated [diagnostics page](diagnostics.md).
+Beyond PostgreSQL, Npgsql provides its own set of diagnostics features for tracing, logging and producing metrics. Tracing and metrics are particularly useful for performance analysis - consider collecting this data continuously on your production platform. These features are documented in the dedicated [diagnostics page](diagnostics/overview.md).
 
 ## Prepared Statements
 

@@ -45,7 +45,17 @@
     - name: Legacy PostGIS
       ref: types/legacy-postgis.md
 - name: Diagnostics
-  href: diagnostics.md
+  items:
+  - name: Overview
+    href: diagnostics/overview.md
+  - name: Tracing
+    href: diagnostics/tracing.md
+  - name: Logging
+    href: diagnostics/logging.md
+  - name: Metrics
+    href: diagnostics/metrics.md
+  - name: Exceptions and notices
+    href: diagnostics/exceptions_notices.md
 - name: Performance
   href: performance.md
 - name: Prepared statements
