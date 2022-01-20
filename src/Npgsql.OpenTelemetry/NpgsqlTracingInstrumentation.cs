@@ -2,9 +2,9 @@ using System;
 
 namespace Npgsql.OpenTelemetry;
 
-internal sealed class NpgsqlTracingInstrumentation : IDisposable
+sealed class NpgsqlTracingInstrumentation : IDisposable
 {
-    readonly NpgsqlTracingOptions? _originalOptions;
+    readonly NpgsqlTracingOptions _originalOptions;
     
     public NpgsqlTracingInstrumentation(NpgsqlTracingOptions options)
     {

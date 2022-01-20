@@ -19,8 +19,8 @@ static class NpgsqlActivitySource
     }
 
     internal static bool IsEnabled => Source.HasListeners();
-    
-    internal static NpgsqlTracingOptions? Options { get; set; }
+
+    internal static NpgsqlTracingOptions Options { get; set; } = new();
 
     internal static Activity? CommandStart(NpgsqlConnector connector, NpgsqlCommand command)
     {
@@ -57,7 +57,7 @@ static class NpgsqlActivitySource
             throw new ArgumentOutOfRangeException("Invalid endpoint type: " + endPoint.GetType());
         }
         
-        Options?.Enrich?.Invoke(activity, "OnStartActivity", command);
+        Options.Enrich?.Invoke(activity, "OnStartActivity", command);
 
         return activity;
     }
@@ -72,7 +72,7 @@ static class NpgsqlActivitySource
     {
         activity.SetTag("otel.status_code", "OK");
         activity.SetEndTime(DateTime.UtcNow);
-        Options?.Enrich?.Invoke(activity, "OnStopActivity", command);
+        Options.Enrich?.Invoke(activity, "OnStopActivity", command);
         activity.Dispose();
     }
 
@@ -90,7 +90,7 @@ static class NpgsqlActivitySource
         activity.SetTag("otel.status_code", "ERROR");
         activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
         activity.SetEndTime(DateTime.UtcNow);
-        Options?.Enrich?.Invoke(activity, "OnException", ex);
+        Options.Enrich?.Invoke(activity, "OnException", ex);
         activity.Dispose();
     }
 }
