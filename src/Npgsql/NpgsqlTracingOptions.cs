@@ -9,10 +9,10 @@ namespace Npgsql;
 public class NpgsqlTracingOptions
 {
     /// <summary>
-    /// Gets or sets an action to enrich an Activity.
+    /// Gets or sets an action to enrich a Command Execution Activity.
     /// </summary>
     /// <remarks>
     /// <see href="https://www.npgsql.org/doc/diagnostics/tracing.html"/>
     /// </remarks>
-    public Action<Activity, string, object>? Enrich { get; set; }
+    public Action<Activity, string, object>? EnrichCommandExecution { get; set; }
 }

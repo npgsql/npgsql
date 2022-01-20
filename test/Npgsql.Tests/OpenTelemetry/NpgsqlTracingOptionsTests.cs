@@ -10,7 +10,7 @@ namespace Npgsql.Tests.OpenTelemetry;
 public class NpgsqlTracingOptionsTests : TestBase
 {
     [Test]
-    public void Activity_start_stop()
+    public void CommandExecution_start_stop()
     {
         using (var conn = OpenConnection())
         {
@@ -31,7 +31,7 @@ public class NpgsqlTracingOptionsTests : TestBase
     }
 
     [Test]
-    public void Activity_start_exception()
+    public void CommandExecution_start_exception()
     {
         var exception = Assert.Throws<PostgresException>(() =>
         {
@@ -57,7 +57,7 @@ public class NpgsqlTracingOptionsTests : TestBase
     {
         _enrichInvocations.Clear();
         _tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddNpgsql(o => o.Enrich = (activity, eventName, rawObject) => _enrichInvocations.Add((activity, eventName, rawObject)))
+            .AddNpgsql(o => o.EnrichCommandExecution = (activity, eventName, rawObject) => _enrichInvocations.Add((activity, eventName, rawObject)))
             .Build();
     }
 
