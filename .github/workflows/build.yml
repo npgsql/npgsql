@@ -150,11 +150,20 @@ jobs:
             curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }} |
             sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
             tail -n 1)
+          if [ -z "$OSGEO_VERSION" ]; then
+              OSGEO_VERSION=$(\
+                curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/archive |
+                sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p' |
+                tail -n 1)
+              POSTGIS_PATH="archive/"
+          else
+              POSTGIS_PATH=""
+          fi
 
           # Install PostGIS
           echo "Installing PostGIS (version: ${OSGEO_VERSION})"
           POSTGIS_FILE="postgis-bundle-pg${{ matrix.pg_major }}-${OSGEO_VERSION}x64"
-          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/${POSTGIS_FILE}.zip
+          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/${POSTGIS_PATH}${POSTGIS_FILE}.zip
           unzip postgis.zip -d postgis
           cp -a postgis/$POSTGIS_FILE/. pgsql/
 
