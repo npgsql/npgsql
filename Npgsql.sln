@@ -47,8 +47,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Github", "Github", "{BA7B6F
 		.github\workflows\rich-code-nav.yml = .github\workflows\rich-code-nav.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.OpenTelemetry.Tests", "test\Npgsql.OpenTelemetry.Tests\Npgsql.OpenTelemetry.Tests.csproj", "{44E4A08B-3D46-43CF-B030-8501F98EA1D7}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,14 +151,6 @@ Global
 		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|x86.ActiveCfg = Release|Any CPU
 		{DA29F063-1828-47D8-B051-800AF7C9A0BE}.Release|x86.Build.0 = Release|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Debug|x86.Build.0 = Debug|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Release|x86.ActiveCfg = Release|Any CPU
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -179,7 +169,6 @@ Global
 		{C00D2EB1-5719-4372-9E1C-5ED05DC23A00} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{DA29F063-1828-47D8-B051-800AF7C9A0BE} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{BA7B6F53-D24D-45AC-927A-266857EA8D1E} = {004A2E0F-D34A-44D4-8DF0-D2BC63B57073}
-		{44E4A08B-3D46-43CF-B030-8501F98EA1D7} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}

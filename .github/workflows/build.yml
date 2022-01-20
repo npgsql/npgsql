@@ -278,9 +278,7 @@ jobs:
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
-        run: |
-          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false"
-          dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.OpenTelemetry.Tests --logger "GitHubActions;report-warnings=false"
+        run: dotnet test -c ${{ matrix.config }} -f ${{ matrix.test_tfm }} test/Npgsql.Tests --logger "GitHubActions;report-warnings=false"
         shell: bash
 
       - name: Test Plugins

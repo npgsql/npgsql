@@ -6,8 +6,10 @@
     <PackageReference Include="Microsoft.CSharp" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="OpenTelemetry" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+    <ProjectReference Include="../../src/Npgsql.OpenTelemetry/Npgsql.OpenTelemetry.csproj" />
   </ItemGroup>
 </Project>

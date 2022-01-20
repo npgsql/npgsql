@@ -1,11 +1,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using Npgsql.Tests;
 using NUnit.Framework;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 
-namespace Npgsql.OpenTelemetry.Tests;
+namespace Npgsql.Tests.OpenTelemetry;
 
 [NonParallelizable]
 public class NpgsqlTracingOptionsTests : TestBase
