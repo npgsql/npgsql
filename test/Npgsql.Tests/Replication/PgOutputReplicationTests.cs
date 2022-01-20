@@ -54,12 +54,14 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 
     [Test]
     public Task CreatePgOutputReplicationSlot()
-        => SafeReplicationTest(
+    {
+        // There's nothing special here for binary data or when streaming so only execute once
+        if (IsBinary || IsStreaming)
+            return Task.CompletedTask;
+
+        return SafeReplicationTest(
             async (slotName, _) =>
             {
-                // There's nothing special here when streaming so only execute once
-                if (IsStreaming)
-                    return;
 
                 await using var c = await OpenConnectionAsync();
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -75,6 +77,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 Assert.That(reader.GetFieldValue<string>(reader.GetOrdinal("plugin")), Is.EqualTo("pgoutput"));
                 Assert.That(reader.Read, Is.False);
             });
+    }
 
     [Test(Description = "Tests whether INSERT commands get replicated as Logical Replication Protocol Messages")]
     public Task Insert()
@@ -777,7 +780,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     [Test]
     public Task Stream()
     {
-        if (!IsBinary)
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
             return Task.CompletedTask;
 
         return SafePgOutputReplicationTest(
@@ -814,9 +818,21 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 Assert.That(() => columnEnumerator.Current.Get(), Throws.Exception.TypeOf<InvalidOperationException>());
                 Assert.That(() => columnEnumerator.Current.Get<byte[]>(), Throws.Exception.TypeOf<InvalidOperationException>());
 
-                var someBytes = new byte[10];
-                Assert.That(await stream.ReadAsync(someBytes, 0, 10), Is.EqualTo(10));
-                Assert.That(someBytes, Is.EquivalentTo(bytes[..10]));
+                if (IsBinary)
+                {
+                    var someBytes = new byte[10];
+                    Assert.That(await stream.ReadAsync(someBytes, 0, 10), Is.EqualTo(10));
+                    Assert.That(someBytes, Is.EquivalentTo(bytes[..10]));
+                }
+                else
+                {
+                    // We assume bytea hex format here
+                    var hexString = "\\x" + BitConverter.ToString(bytes[..10]).Replace("-", string.Empty);
+                    var expected = Encoding.ASCII.GetBytes(hexString);
+                    var someBytes = new byte[expected.Length];
+                    Assert.That(await stream.ReadAsync(someBytes, 0, someBytes.Length), Is.EqualTo(someBytes.Length));
+                    Assert.That(someBytes, Is.EquivalentTo(expected));
+                }
 
                 await AssertTransactionCommit(messages);
 
@@ -828,7 +844,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
     [Test]
     public Task TextReader()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -837,7 +858,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
-                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1')");
+                var expectedText = "val1";
+                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, '{expectedText}')");
 
                 using var streamingCts = new CancellationTokenSource();
                 var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
@@ -847,12 +869,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await NextMessage<RelationMessage>(messages);
                 var insertMsg = await NextMessage<InsertMessage>(messages);
                 var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                await columnEnumerator.MoveNextAsync(); // We are not interested in the id field
                 await columnEnumerator.MoveNextAsync();
-
-                Assert.That(columnEnumerator.Current.GetFieldType(), Is.SameAs(IsBinary ? typeof(int) : typeof(string)));
-                Assert.That(columnEnumerator.Current.GetPostgresType().Name, Is.EqualTo("integer"));
-                Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("integer"));
-                Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                using var reader = columnEnumerator.Current.GetTextReader();
+                Assert.That(await reader.ReadToEndAsync(), Is.EqualTo(expectedText));
 
                 await AssertTransactionCommit(messages);
 
@@ -860,10 +880,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
 
     [Test]
     public Task ValueMetadata()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -895,10 +921,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
 
     [Test]
     public Task Null()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -946,6 +978,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
