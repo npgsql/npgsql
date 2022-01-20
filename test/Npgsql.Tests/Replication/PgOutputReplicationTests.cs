@@ -980,6 +980,73 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             });
     }
 
+    [NpgsqlTypes.PgName("descriptor")]
+    public class Descriptor
+    {
+        [NpgsqlTypes.PgName("id")]
+        public long Id { get; set; }
+
+        [NpgsqlTypes.PgName("name")]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    [Test, Parallelizable(ParallelScope.None)]
+    public Task CompositeType()
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                await using (var tmpConn = await OpenConnectionAsync())
+                    await tmpConn.ExecuteNonQueryAsync(@$"DROP TYPE IF EXISTS descriptor CASCADE;
+                                                CREATE TYPE descriptor AS (id bigint, name text);
+                                                CREATE TABLE {tableName} (descriptor_field descriptor);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                Internal.NpgsqlDatabaseInfo.Cache.Clear();
+                NpgsqlConnection.GlobalTypeMapper.MapComposite<Descriptor>("descriptor");
+                var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+                var expected = new Descriptor{Id = 1248, Name = "My Descriptor"};
+                var stringValue = $"({expected.Id},\"{expected.Name}\")";
+
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES ('{stringValue}')");
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                await AssertTransactionStart(messages);
+                await NextMessage<TypeMessage>(messages);
+                await NextMessage<RelationMessage>(messages);
+
+                // non-null
+                var columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
+                await columnEnumerator.MoveNextAsync();
+                Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                if (IsBinary)
+                {
+                    var result = await columnEnumerator.Current.Get<Descriptor>();
+                    Assert.That(result.Id, Is.EqualTo(expected.Id));
+                    Assert.That(result.Name, Is.EqualTo(expected.Name));
+                }
+                else
+                    Assert.That(await columnEnumerator.Current.Get(), Is.EqualTo(stringValue));
+                await columnEnumerator.MoveNextAsync();
+
+                await AssertTransactionCommit(messages);
+
+                streamingCts.Cancel();
+                await AssertReplicationCancellation(messages);
+                await c.ExecuteNonQueryAsync("DROP TYPE IF EXISTS descriptor CASCADE;");
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            });
+    }
+
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
         Assert.True(await messages.MoveNextAsync());

@@ -91,15 +91,20 @@ public abstract class ReplicationConnection : IAsyncDisposable
         set
         {
             _userFacingConnectionString = value;
-            _npgsqlConnection.ConnectionString = new NpgsqlConnectionStringBuilder(value)
+            var cs = new NpgsqlConnectionStringBuilder(value)
             {
                 Pooling = false,
                 Enlist = false,
                 Multiplexing = false,
                 KeepAlive = 0,
-                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                 ReplicationMode = ReplicationMode
-            }.ToString();
+            };
+
+            // Physical replication connections don't allow regular queries, so we can't load types from PG
+            if (ReplicationMode == ReplicationMode.Physical)
+                cs.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
+
+            _npgsqlConnection.ConnectionString = cs.ToString();
         }
     }
 

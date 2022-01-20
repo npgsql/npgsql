@@ -113,9 +113,6 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
         => $@"
 SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid
 FROM (
-    -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a
-    -- We first do this for the type (innerest-most subquery), and then for its element type
-    -- This also returns the array element, range subtype and domain base type as elemtypoid
     SELECT
         typ.oid, typ.typnamespace, typ.typname, typ.typtype, typ.typrelid, typ.typnotnull, typ.relkind,
         elemtyp.oid AS elemtypoid, elemtyp.typname AS elemtypname, elemcls.relkind AS elemrelkind,
@@ -140,27 +137,31 @@ FROM (
 ) AS t
 JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-    typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
-    (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
-    (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
-    (typtype = 'a' AND (  -- Array of...
-        elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
-        (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
-        (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
+    typtype IN ('b', 'r', 'm', 'e', 'd') OR
+    (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR
+    (typtype = 'p' AND typname IN ('record', 'void')) OR
+    (typtype = 'a' AND (
+        elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR
+        (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR
+        (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")})
     ))
 ORDER BY CASE
-       WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
-       WHEN typtype = 'r' THEN 1                        -- Ranges after
-       WHEN typtype = 'm' THEN 2                        -- Multiranges after
-       WHEN typtype = 'c' THEN 3                        -- Composites after
-       WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 4 -- Domains over non-arrays after
-       WHEN typtype = 'a' THEN 5                        -- Arrays after
-       WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6  -- Domains over arrays last
-END;";
+       WHEN typtype IN ('b', 'e', 'p') THEN 0
+       WHEN typtype = 'r' THEN 1
+       WHEN typtype = 'm' THEN 2
+       WHEN typtype = 'c' THEN 3
+       WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 4
+       WHEN typtype = 'a' THEN 5
+       WHEN typtype = 'd' AND elemtyptype = 'a' THEN 6
+END;"
+#if NET6_0_OR_GREATER
+    .ReplaceLineEndings("\n");
+#else
+    .Replace("\r\n", "\n").Replace('\r', '\n');
+#endif
 
     static string GenerateLoadCompositeTypesQuery(bool loadTableComposites)
         => $@"
--- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
 FROM pg_type AS typ
 JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
@@ -168,17 +169,26 @@ JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
-  attnum > 0 AND     -- Don't load system attributes
+  attnum > 0 AND
   NOT attisdropped
-ORDER BY typ.oid, att.attnum;";
+ORDER BY typ.oid, att.attnum;"
+#if NET6_0_OR_GREATER
+    .ReplaceLineEndings("\n");
+#else
+    .Replace("\r\n", "\n").Replace('\r', '\n');
+#endif
 
     static string GenerateLoadEnumFieldsQuery(bool withEnumSortOrder)
         => $@"
--- Load enum fields
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
-ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
+ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};"
+#if NET6_0_OR_GREATER
+    .ReplaceLineEndings("\n");
+#else
+    .Replace("\r\n", "\n").Replace('\r', '\n');
+#endif
 
     /// <summary>
     /// Loads type information from the backend specified by <paramref name="conn"/>.
@@ -197,16 +207,19 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         if (timeout.IsSet)
             commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-        var batchQuery = new StringBuilder()
-            .AppendLine("SELECT version();")
-            .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
-            .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
-
-        if (SupportsEnumTypes)
-            batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
+        var versionQuery = "SELECT version();";
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites);
+        var loadEnumFieldsQuery = SupportsEnumTypes
+            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
+            : string.Empty;
 
         timeout.CheckAndApply(conn);
-        await conn.WriteQuery(batchQuery.ToString(), async);
+        await conn.WriteQuery(versionQuery, async);
+        await conn.WriteQuery(loadTypesQuery, async);
+        await conn.WriteQuery(loadCompositeTypesQuery, async);
+        if (SupportsEnumTypes)
+            await conn.WriteQuery(loadEnumFieldsQuery, async);
         await conn.Flush(async);
         var byOID = new Dictionary<uint, PostgresType>();
         var buf = conn.ReadBuffer;
@@ -220,6 +233,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         buf.Skip(2); // Column count
         LongVersion = ReadNonNullableString(buf);
         Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the types
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -328,6 +342,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             }
         }
         Expect<CommandCompleteMessage>(msg, conn);
+        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the composite type fields
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -386,6 +401,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
         }
         Expect<CommandCompleteMessage>(msg, conn);
+        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         if (SupportsEnumTypes)
         {
@@ -435,9 +451,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 currentEnum!.MutableLabels.Add(enumlabel);
             }
             Expect<CommandCompleteMessage>(msg, conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         }
 
-        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         return byOID.Values.ToList();
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)
