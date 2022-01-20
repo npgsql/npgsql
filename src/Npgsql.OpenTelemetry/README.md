@@ -19,4 +19,4 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
 
 Once this is done, you should start seeing Npgsql trace data appearing in your application's console. At this point, you can look into exporting your trace data to a more useful destination: systems such as [Zipkin](https://zipkin.io/) or [Jaeger](https://www.jaegertracing.io/) can efficiently collect and store your data, and provide user interfaces for querying and exploring it.
 
-For more information, [visit the diagnostics documentation page](https://www.npgsql.org/doc/diagnostics.html).
+For more information, [visit the diagnostics documentation page](https://www.npgsql.org/doc/diagnostics/tracing.html).
