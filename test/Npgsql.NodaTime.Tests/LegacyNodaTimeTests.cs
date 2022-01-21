@@ -2,7 +2,6 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
-using NodaTime.TimeZones;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -41,6 +40,14 @@ public class LegacyNodaTimeTests : TestBase
             NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
             isDefault: false);
+
+    [Test]
+    public Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()
+        => AssertTypeUnsupported(Instant.MaxValue.InZone(DateTimeZone.Utc), "infinity", "timestamptz");
+
+    [Test]
+    public Task Timestamptz_OffsetDateTime_infinite_values_are_not_supported()
+        => AssertTypeUnsupported(Instant.MaxValue.WithOffset(Offset.Zero), "infinity", "timestamptz");
 
     #region Support
 
