@@ -21,9 +21,12 @@ namespace Npgsql.Tests.Replication
     {
         #region Open
 
-        [Test]
+        [Test, Parallelizable(ParallelScope.None)]
         public async Task Open()
         {
+            // Force type reloading from the replication connection if it is a logical replication connection
+            if (typeof(TConnection) == typeof(LogicalReplicationConnection))
+                Internal.NpgsqlDatabaseInfo.Cache.Clear();
             await using var rc = await OpenReplicationConnectionAsync();
         }
 

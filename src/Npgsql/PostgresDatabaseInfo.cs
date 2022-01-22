@@ -200,16 +200,110 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (timeout.IsSet)
                 commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-            var batchQuery = new StringBuilder()
-                .AppendLine("SELECT version();")
-                .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
-                .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
-
-            if (SupportsEnumTypes)
-                batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
+            var versionQuery = "SELECT version();";
+            var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites);
+            var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites);
+            var loadEnumFieldsQuery = SupportsEnumTypes
+                ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
+                : string.Empty;
 
             timeout.CheckAndApply(conn);
-            await conn.WriteQuery(batchQuery.ToString(), async);
+            // The Lexer (https://github.com/postgres/postgres/blob/master/src/backend/replication/repl_scanner.l)
+            // and Parser (https://github.com/postgres/postgres/blob/master/src/backend/replication/repl_gram.y)
+            // for replication connections are pretty picky and somewhat flawed.
+            // Currently (2022-01-22) they do not support
+            // - SQL batches containing multiple commands
+            // - The <CR> ('\r') in Windows or Mac newlines
+            // - Comments
+            // For this reason we need clean up our type loading queries for replication connections and execute
+            // them individually instead of batched.
+            // Theoretically we cold even use the extended protocol + batching for regular (non-replication)
+            // connections but that would branch our code even more for very little gain.
+            var isReplicationConnection = conn.Settings.ReplicationMode != ReplicationMode.Off;
+            if (isReplicationConnection)
+            {
+                await conn.WriteQuery(versionQuery, async);
+                await conn.WriteQuery(SanitizeForReplicationConnection(loadTypesQuery), async);
+                await conn.WriteQuery(SanitizeForReplicationConnection(loadCompositeTypesQuery), async);
+                if (SupportsEnumTypes)
+                    await conn.WriteQuery(SanitizeForReplicationConnection(loadEnumFieldsQuery), async);
+
+                static string SanitizeForReplicationConnection(string str)
+                {
+                    var sb = new StringBuilder(str.Length);
+                    using var c = str.GetEnumerator();
+                    while (c.MoveNext())
+                    {
+                        switch (c.Current)
+                        {
+                        case '\r':
+                            sb.Append('\n');
+                            // Check for a \n after the \r
+                            // and swallow it if it exists
+                            if (c.MoveNext())
+                            {
+                                if (c.Current == '-')
+                                    goto case '-';
+                                if (c.Current != '\n')
+                                    sb.Append(c.Current);
+                            }
+                            break;
+                        case '-':
+                            // Check if there is a second dash
+                            if (c.MoveNext())
+                            {
+                                if (c.Current == '\r')
+                                {
+                                    sb.Append('-');
+                                    goto case '\r';
+                                }
+                                if (c.Current != '-')
+                                {
+                                    sb.Append('-');
+                                    sb.Append(c.Current);
+                                    break;
+                                }
+
+                                // Comment mode
+                                // Swallow everything until we find a newline
+                                while (c.MoveNext())
+                                {
+                                    if (c.Current == '\r')
+                                        goto case '\r';
+                                    if (c.Current == '\n')
+                                    {
+                                        sb.Append('\n');
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            sb.Append(c.Current);
+                            break;
+                        }
+                    }
+
+                    return sb.ToString();
+                }
+            }
+            else
+            {
+                var batchQuery = new StringBuilder(
+                        versionQuery.Length +
+                        loadTypesQuery.Length +
+                        loadCompositeTypesQuery.Length +
+                        (SupportsEnumTypes
+                            ? loadEnumFieldsQuery.Length
+                            : 0))
+                    .AppendLine(versionQuery)
+                    .AppendLine(loadTypesQuery)
+                    .AppendLine(loadCompositeTypesQuery);
+
+                if (SupportsEnumTypes)
+                    batchQuery.AppendLine(loadEnumFieldsQuery);
+                await conn.WriteQuery(batchQuery.ToString(), async);
+            }
             await conn.Flush(async);
             var byOID = new Dictionary<uint, PostgresType>();
             var buf = conn.ReadBuffer;
@@ -223,6 +317,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             buf.Skip(2); // Column count
             LongVersion = ReadNonNullableString(buf);
             Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+            if (isReplicationConnection)
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
             // Then load the types
             Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -327,6 +423,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 }
             }
             Expect<CommandCompleteMessage>(msg, conn);
+            if (isReplicationConnection)
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
             // Then load the composite type fields
             Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -384,6 +482,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
             }
             Expect<CommandCompleteMessage>(msg, conn);
+            if (isReplicationConnection)
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
             if (SupportsEnumTypes)
             {
@@ -433,9 +533,12 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     currentEnum!.MutableLabels.Add(enumlabel);
                 }
                 Expect<CommandCompleteMessage>(msg, conn);
+                if (isReplicationConnection)
+                    Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
             }
 
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            if (!isReplicationConnection)
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
             return byOID.Values.ToList();
 
             static string ReadNonNullableString(NpgsqlReadBuffer buffer)
