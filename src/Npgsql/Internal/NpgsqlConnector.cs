@@ -23,6 +23,7 @@ using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
+using Npgsql.Properties;
 
 namespace Npgsql.Internal;
 
@@ -814,6 +815,12 @@ public sealed partial class NpgsqlConnector : IDisposable
                     }
                     else if (UserCertificateValidationCallback is not null)
                     {
+                        if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+                        {
+                            throw new NotSupportedException(
+                                string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
+                        }
+
                         certificateValidationCallback = UserCertificateValidationCallback;
                     }
                     else if (sslMode == SslMode.VerifyCA)
