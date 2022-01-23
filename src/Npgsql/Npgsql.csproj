@@ -46,4 +46,19 @@
     <None Include="README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\NpgsqlStrings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>NpgsqlStrings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\NpgsqlStrings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>NpgsqlStrings.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
 </Project>

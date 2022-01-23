@@ -2,6 +2,7 @@
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Properties;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -25,7 +26,7 @@ namespace Npgsql.Tests
         [Test, Description("Default user must run with md5 password encryption")]
         public void Default_user_uses_md5_password()
         {
-            if (!TestUtil.IsOnBuildServer)
+            if (!IsOnBuildServer)
                 Assert.Ignore("Only executed in CI");
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -100,7 +101,7 @@ namespace Npgsql.Tests
             }
             catch (Exception e)
             {
-                if (TestUtil.IsOnBuildServer)
+                if (IsOnBuildServer)
                     throw;
                 Console.WriteLine(e);
                 Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -123,7 +124,7 @@ namespace Npgsql.Tests
             }
             catch (Exception e)
             {
-                if (TestUtil.IsOnBuildServer)
+                if (IsOnBuildServer)
                     throw;
                 Console.WriteLine(e);
                 Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -147,7 +148,7 @@ namespace Npgsql.Tests
             }
             catch (Exception e)
             {
-                if (TestUtil.IsOnBuildServer)
+                if (IsOnBuildServer)
                     throw;
                 Console.WriteLine(e);
                 Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -195,7 +196,7 @@ namespace Npgsql.Tests
                     Assert.That(conn.IsScramPlus, Is.True);
                 }
             }
-            catch (Exception e) when (!TestUtil.IsOnBuildServer)
+            catch (Exception e) when (!IsOnBuildServer)
             {
                 Console.WriteLine(e);
                 Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
@@ -224,7 +225,7 @@ namespace Npgsql.Tests
                 await using var conn = await OpenConnectionAsync(csb);
                 Assert.IsTrue(conn.IsSecure);
             }
-            catch (Exception e) when (!TestUtil.IsOnBuildServer)
+            catch (Exception e) when (!IsOnBuildServer)
             {
                 Console.WriteLine(e);
                 Assert.Ignore("Only ssl user doesn't seem to be set up");
@@ -267,11 +268,41 @@ namespace Npgsql.Tests
                 await using var conn = await OpenConnectionAsync(csb);
                 Assert.IsFalse(conn.IsSecure);
             }
-            catch (Exception e) when (!TestUtil.IsOnBuildServer)
+            catch (Exception e) when (!IsOnBuildServer)
             {
                 Console.WriteLine(e);
                 Assert.Ignore("Only nonssl user doesn't seem to be set up");
             }
+        }
+
+        [Test]
+        public void Connect_with_VerifyFull_and_callback_throws()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.VerifyFull
+            };
+
+            var connection = CreateConnection(csb.ToString());
+            connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+            var ex = Assert.ThrowsAsync<NotSupportedException>(async () => await connection.OpenAsync())!;
+            Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, nameof(SslMode.VerifyFull))));
+        }
+
+        [Test]
+        public void Connect_with_VerifyCA_and_callback_throws()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.VerifyCA
+            };
+
+            var connection = CreateConnection(csb.ToString());
+            connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+            var ex = Assert.ThrowsAsync<NotSupportedException>(async () => await connection.OpenAsync())!;
+            Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, nameof(SslMode.VerifyCA))));
         }
 
         #region Setup / Teardown / Utils

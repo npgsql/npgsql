@@ -23,6 +23,7 @@ using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
+using Npgsql.Properties;
 
 namespace Npgsql.Internal
 {
@@ -809,6 +810,12 @@ namespace Npgsql.Internal
                         }
                         else if (UserCertificateValidationCallback is not null)
                         {
+                            if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+                            {
+                                throw new NotSupportedException(
+                                    string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
+                            }
+
                             certificateValidationCallback = UserCertificateValidationCallback;
                         }
                         else if (sslMode == SslMode.VerifyCA)
