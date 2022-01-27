@@ -315,17 +315,22 @@ class ConnectorPool : ConnectorSource
         if (Interlocked.CompareExchange(ref _isClearing, 1, 0) == 1)
             return;
 
-        var count = _idleCount;
-        while (count > 0 && _idleConnectorReader.TryRead(out var connector))
+        try
         {
-            if (CheckIdleConnector(connector))
+            var count = _idleCount;
+            while (count > 0 && _idleConnectorReader.TryRead(out var connector))
             {
-                CloseConnector(connector);
-                count--;
+                if (CheckIdleConnector(connector))
+                {
+                    CloseConnector(connector);
+                    count--;
+                }
             }
         }
-
-        _isClearing = 0;
+        finally
+        {
+            _isClearing = 0;
+        }
     }
 
     void CloseConnector(NpgsqlConnector connector)
