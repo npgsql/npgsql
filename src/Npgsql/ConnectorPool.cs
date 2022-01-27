@@ -58,6 +58,8 @@ namespace Npgsql
         volatile bool _pruningTimerEnabled;
         int _pruningSampleIndex;
 
+        volatile int _isClearing;
+
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         #endregion
@@ -294,7 +296,7 @@ namespace Npgsql
             // If Clear/ClearAll has been been called since this connector was first opened,
             // throw it away. The same if it's broken (in which case CloseConnector is only
             // used to update state/perf counter).
-            if (connector.ClearCounter < _clearCounter || connector.IsBroken)
+            if (connector.ClearCounter != _clearCounter || connector.IsBroken)
             {
                 CloseConnector(connector);
                 return;
@@ -310,14 +312,24 @@ namespace Npgsql
         {
             Interlocked.Increment(ref _clearCounter);
 
-            var count = _idleCount;
-            while (count > 0 && _idleConnectorReader.TryRead(out var connector))
+            if (Interlocked.CompareExchange(ref _isClearing, 1, 0) == 1)
+                return;
+
+            try
             {
-                if (CheckIdleConnector(connector))
+                var count = _idleCount;
+                while (count > 0 && _idleConnectorReader.TryRead(out var connector))
                 {
-                    CloseConnector(connector);
-                    count--;
+                    if (CheckIdleConnector(connector))
+                    {
+                        CloseConnector(connector);
+                        count--;
+                    }
                 }
+            }
+            finally
+            {
+                _isClearing = 0;
             }
         }
 
