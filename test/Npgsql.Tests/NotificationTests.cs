@@ -126,8 +126,8 @@ public class NotificationTests : MultiplexingTestBase
 
         var receivedNotification = false;
         await conn.ExecuteNonQueryAsync("LISTEN notifytest");
-        await notifyingConn.ExecuteNonQueryAsync("NOTIFY notifytest");
         conn.Notification += (o, e) => receivedNotification = true;
+        await notifyingConn.ExecuteNonQueryAsync("NOTIFY notifytest");
         await conn.WaitAsync(0);
         Assert.IsTrue(receivedNotification);
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
