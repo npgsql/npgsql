@@ -1,9 +1,8 @@
-﻿namespace Npgsql.BackendMessages
+﻿namespace Npgsql.BackendMessages;
+
+class NoDataMessage : IBackendMessage
 {
-    class NoDataMessage : IBackendMessage
-    {
-        public BackendMessageCode Code => BackendMessageCode.NoData;
-        internal static readonly NoDataMessage Instance = new();
-        NoDataMessage() { }
-    }
+    public BackendMessageCode Code => BackendMessageCode.NoData;
+    internal static readonly NoDataMessage Instance = new();
+    NoDataMessage() { }
 }

@@ -5,35 +5,34 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using NpgsqlTypes;
 
-namespace Npgsql.Replication.PgOutput.Messages
+namespace Npgsql.Replication.PgOutput.Messages;
+
+/// <summary>
+/// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to DEFAULT.
+/// </summary>
+public class DefaultUpdateMessage : UpdateMessage
 {
+    readonly ReplicationTuple _newRow;
+
     /// <summary>
-    /// Logical Replication Protocol update message for tables with REPLICA IDENTITY set to DEFAULT.
+    /// Columns representing the new row.
     /// </summary>
-    public class DefaultUpdateMessage : UpdateMessage
+    public override ReplicationTuple NewRow => _newRow;
+
+    internal DefaultUpdateMessage(NpgsqlConnector connector)
+        => _newRow = new(connector);
+
+    internal UpdateMessage Populate(
+        NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
+        RelationMessage relation, ushort numColumns)
     {
-        readonly ReplicationTuple _newRow;
+        base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
 
-        /// <summary>
-        /// Columns representing the new row.
-        /// </summary>
-        public override ReplicationTuple NewRow => _newRow;
+        _newRow.Reset(numColumns, relation.RowDescription);
 
-        internal DefaultUpdateMessage(NpgsqlConnector connector)
-            => _newRow = new(connector);
-
-        internal UpdateMessage Populate(
-            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint? transactionXid,
-            RelationMessage relation, ushort numColumns)
-        {
-            base.Populate(walStart, walEnd, serverClock, transactionXid, relation);
-
-            _newRow.Reset(numColumns, relation.RowDescription);
-
-            return this;
-        }
-
-        internal Task Consume(CancellationToken cancellationToken)
-            => _newRow.Consume(cancellationToken);
+        return this;
     }
+
+    internal Task Consume(CancellationToken cancellationToken)
+        => _newRow.Consume(cancellationToken);
 }

@@ -3,54 +3,53 @@ using System.Collections.Generic;
 using System.Diagnostics.Tracing;
 using NUnit.Framework;
 
-namespace Npgsql.Tests
+namespace Npgsql.Tests;
+
+[NonParallelizable]
+public class NpgsqlEventSourceTests : TestBase
 {
-    [NonParallelizable]
-    public class NpgsqlEventSourceTests : TestBase
+    [Test]
+    public void Command_start_stop()
     {
-        [Test]
-        public void Command_start_stop()
+        using (var conn = OpenConnection())
         {
-            using (var conn = OpenConnection())
-            {
-                // There is a new pool created, which sends a few queries to load pg types
-                ClearEvents();
-                conn.ExecuteScalar("SELECT 1");
-            }
-
-            var commandStart = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStartId);
-            Assert.That(commandStart.EventName, Is.EqualTo("CommandStart"));
-
-            var commandStop = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStopId);
-            Assert.That(commandStop.EventName, Is.EqualTo("CommandStop"));
+            // There is a new pool created, which sends a few queries to load pg types
+            ClearEvents();
+            conn.ExecuteScalar("SELECT 1");
         }
 
-        [OneTimeSetUp]
-        public void EnableEventSource()
-        {
-            _listener = new TestEventListener(_events);
-            _listener.EnableEvents(NpgsqlSqlEventSource.Log, EventLevel.Informational);
-        }
+        var commandStart = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStartId);
+        Assert.That(commandStart.EventName, Is.EqualTo("CommandStart"));
 
-        [OneTimeTearDown]
-        public void DisableEventSource()
-        {
-            _listener.DisableEvents(NpgsqlSqlEventSource.Log);
-            _listener.Dispose();
-        }
+        var commandStop = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStopId);
+        Assert.That(commandStop.EventName, Is.EqualTo("CommandStop"));
+    }
 
-        [SetUp]
-        public void ClearEvents() => _events.Clear();
+    [OneTimeSetUp]
+    public void EnableEventSource()
+    {
+        _listener = new TestEventListener(_events);
+        _listener.EnableEvents(NpgsqlSqlEventSource.Log, EventLevel.Informational);
+    }
 
-        TestEventListener _listener = null!;
+    [OneTimeTearDown]
+    public void DisableEventSource()
+    {
+        _listener.DisableEvents(NpgsqlSqlEventSource.Log);
+        _listener.Dispose();
+    }
 
-        readonly List<EventWrittenEventArgs> _events = new();
+    [SetUp]
+    public void ClearEvents() => _events.Clear();
 
-        class TestEventListener : EventListener
-        {
-            readonly List<EventWrittenEventArgs> _events;
-            public TestEventListener(List<EventWrittenEventArgs> events) => _events = events;
-            protected override void OnEventWritten(EventWrittenEventArgs eventData) => _events.Add(eventData);
-        }
+    TestEventListener _listener = null!;
+
+    readonly List<EventWrittenEventArgs> _events = new();
+
+    class TestEventListener : EventListener
+    {
+        readonly List<EventWrittenEventArgs> _events;
+        public TestEventListener(List<EventWrittenEventArgs> events) => _events = events;
+        protected override void OnEventWritten(EventWrittenEventArgs eventData) => _events.Add(eventData);
     }
 }
