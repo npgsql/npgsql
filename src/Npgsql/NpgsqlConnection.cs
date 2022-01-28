@@ -1603,7 +1603,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (timeout != -1 && timeout < 0)
             throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
         if (Settings.Multiplexing)
-            throw new NotSupportedException($"{nameof(Wait)} isn't supported in multiplexing mode");
+            throw new NotSupportedException($"Synchronous waiting for notifications isn't supported in multiplexing mode");
 
         CheckReady();
 
@@ -1643,16 +1643,21 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>true if an asynchronous message was received, false if timed out.</returns>
-    public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
+    public async Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
     {
-        if (Settings.Multiplexing)
-            throw new NotSupportedException($"{nameof(Wait)} isn't supported in multiplexing mode");
-
+        using var _ = NoSynchronizationContextScope.Enter();
+        
         CheckReady();
-
-        LogMessages.StartingWait(Logger, timeout, Connector!.Id);
-        using (NoSynchronizationContextScope.Enter())
-            return Connector!.Wait(async: true, timeout, cancellationToken);
+        var connector = StartBindingScope(ConnectorBindingScope.WaitForNotification);
+        LogMessages.StartingWait(Logger, timeout, connector.Id);
+        try
+        {
+            return await connector.Wait(async: true, timeout, cancellationToken);
+        }
+        finally
+        {
+            EndBindingScope(ConnectorBindingScope.WaitForNotification);
+        }
     }
 
     /// <summary>
@@ -1796,7 +1801,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
             try
             {
-                Debug.Assert(Settings.Multiplexing);
                 Debug.Assert(_pool != null);
 
                 var connector = await _pool.Get(this, timeout, async, cancellationToken);
@@ -1849,7 +1853,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         Debug.Assert(Connector != null, $"Ending binding scope {scope} but connector is null");
         Debug.Assert(_pool != null, $"Ending binding scope {scope} but _pool is null");
-        Debug.Assert(Settings.Multiplexing, $"Ending binding scope {scope} but multiplexing is disabled");
 
         // TODO: If enlisted transaction scope is still active, need to AddPendingEnlistedConnector, just like Close
         var connector = Connector;
@@ -2104,6 +2107,11 @@ enum ConnectorBindingScope
     /// The connection is bound to its connector for the scope of a COPY operation.
     /// </summary>
     Copy,
+    
+    /// <summary>
+    /// The connection is bound to its connector for the scope of a single NOTIFY operation.
+    /// </summary>
+    WaitForNotification,
 
     /// <summary>
     /// The connection is bound to its connector for the scope of a single reader.
