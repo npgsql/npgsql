@@ -525,26 +525,11 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
     public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+        var openMethod =
+            typeof(ConnectorTypeMapper).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
 
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(clrType, nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresCompositeType pgCompositeType)
-        {
-            throw new InvalidCastException(
-                $"Cannot map composite type {clrType.Name} to PostgreSQL type {pgName} which isn't a composite");
-        }
-
-        var userCompositeMapping =
-            (IUserTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
-                new object[] { clrType, nameTranslator }, null)!;
-
-        var handler = userCompositeMapping.CreateHandler(pgCompositeType, Connector);
-
-        ApplyUserMapping(pgCompositeType, clrType, handler);
+        method.Invoke(this, new object?[] { pgName, nameTranslator });
 
         return this;
     }
