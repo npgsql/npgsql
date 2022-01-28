@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Data;
-using System.Dynamic;
 using System.Linq;
+using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
@@ -220,7 +221,7 @@ public class CompositeTests : TestBase
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(Late_mapping),
+            ApplicationName = nameof(Global_mapping),
             Pooling = false
         };
         try
@@ -258,6 +259,60 @@ public class CompositeTests : TestBase
         {
             using var conn = OpenConnection(csb);
             conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
+        }
+    }
+
+    [Test]
+    public async Task Global_mapping_non_generic()
+    {
+        using var conn = OpenConnection();
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+
+        conn.ExecuteNonQuery($"CREATE TYPE {typeName} AS (x int, some_text text)");
+        NpgsqlConnection.GlobalTypeMapper.MapComposite(typeof(SomeComposite), typeName);
+        conn.ReloadTypes();
+        try
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" }});
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{typeName}"));
+                }
+            }
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>(typeName);
+        }
+    }
+
+    [Test]
+    public async Task Late_mapping_non_generic()
+    {
+        using var conn = OpenConnection();
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+
+        conn.ExecuteNonQuery($"CREATE TYPE {typeName} AS (x int, some_text text)");
+        conn.ReloadTypes();
+        conn.TypeMapper.MapComposite(typeof(SomeComposite), typeName);
+        try
+        {
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" }});
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{typeName}"));
+                }
+            }
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>(typeName);
         }
     }
 
