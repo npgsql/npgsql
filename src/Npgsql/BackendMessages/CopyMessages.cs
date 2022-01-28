@@ -3,93 +3,92 @@ using System.Collections.Generic;
 using Npgsql.Internal;
 using Npgsql.Util;
 
-namespace Npgsql.BackendMessages
+namespace Npgsql.BackendMessages;
+
+abstract class CopyResponseMessageBase : IBackendMessage
 {
-    abstract class CopyResponseMessageBase : IBackendMessage
+    public abstract BackendMessageCode Code { get; }
+
+    internal bool IsBinary { get; private set; }
+    internal short NumColumns { get; private set; }
+    internal List<FormatCode> ColumnFormatCodes { get; }
+
+    internal CopyResponseMessageBase()
     {
-        public abstract BackendMessageCode Code { get; }
-
-        internal bool IsBinary { get; private set; }
-        internal short NumColumns { get; private set; }
-        internal List<FormatCode> ColumnFormatCodes { get; }
-
-        internal CopyResponseMessageBase()
-        {
-            ColumnFormatCodes = new List<FormatCode>();
-        }
-
-        internal void Load(NpgsqlReadBuffer buf)
-        {
-            ColumnFormatCodes.Clear();
-
-            var binaryIndicator = buf.ReadByte();
-            IsBinary = binaryIndicator switch
-            {
-                0 => false,
-                1 => true,
-                _ => throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator)
-            };
-
-            NumColumns = buf.ReadInt16();
-            for (var i = 0; i < NumColumns; i++)
-                ColumnFormatCodes.Add((FormatCode)buf.ReadInt16());
-        }
+        ColumnFormatCodes = new List<FormatCode>();
     }
 
-    class CopyInResponseMessage : CopyResponseMessageBase
+    internal void Load(NpgsqlReadBuffer buf)
     {
-        public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
+        ColumnFormatCodes.Clear();
 
-        internal new CopyInResponseMessage Load(NpgsqlReadBuffer buf)
+        var binaryIndicator = buf.ReadByte();
+        IsBinary = binaryIndicator switch
         {
-            base.Load(buf);
-            return this;
-        }
-    }
+            0 => false,
+            1 => true,
+            _ => throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator)
+        };
 
-    class CopyOutResponseMessage : CopyResponseMessageBase
+        NumColumns = buf.ReadInt16();
+        for (var i = 0; i < NumColumns; i++)
+            ColumnFormatCodes.Add((FormatCode)buf.ReadInt16());
+    }
+}
+
+class CopyInResponseMessage : CopyResponseMessageBase
+{
+    public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
+
+    internal new CopyInResponseMessage Load(NpgsqlReadBuffer buf)
     {
-        public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
-
-        internal new CopyOutResponseMessage Load(NpgsqlReadBuffer buf)
-        {
-            base.Load(buf);
-            return this;
-        }
+        base.Load(buf);
+        return this;
     }
+}
 
-    class CopyBothResponseMessage : CopyResponseMessageBase
+class CopyOutResponseMessage : CopyResponseMessageBase
+{
+    public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
+
+    internal new CopyOutResponseMessage Load(NpgsqlReadBuffer buf)
     {
-        public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
-
-        internal new CopyBothResponseMessage Load(NpgsqlReadBuffer buf)
-        {
-            base.Load(buf);
-            return this;
-        }
+        base.Load(buf);
+        return this;
     }
+}
 
-    /// <summary>
-    /// Note that this message doesn't actually contain the data, but only the length. Data is processed
-    /// directly from the connector's buffer.
-    /// </summary>
-    class CopyDataMessage : IBackendMessage
+class CopyBothResponseMessage : CopyResponseMessageBase
+{
+    public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
+
+    internal new CopyBothResponseMessage Load(NpgsqlReadBuffer buf)
     {
-        public BackendMessageCode Code => BackendMessageCode.CopyData;
-
-        public int Length { get; private set; }
-
-        internal CopyDataMessage Load(int len)
-        {
-            Length = len;
-            return this;
-        }
+        base.Load(buf);
+        return this;
     }
+}
 
-    class CopyDoneMessage : IBackendMessage
+/// <summary>
+/// Note that this message doesn't actually contain the data, but only the length. Data is processed
+/// directly from the connector's buffer.
+/// </summary>
+class CopyDataMessage : IBackendMessage
+{
+    public BackendMessageCode Code => BackendMessageCode.CopyData;
+
+    public int Length { get; private set; }
+
+    internal CopyDataMessage Load(int len)
     {
-        public BackendMessageCode Code => BackendMessageCode.CopyDone;
-        internal static readonly CopyDoneMessage Instance = new();
-        CopyDoneMessage() { }
+        Length = len;
+        return this;
     }
+}
+
+class CopyDoneMessage : IBackendMessage
+{
+    public BackendMessageCode Code => BackendMessageCode.CopyDone;
+    internal static readonly CopyDoneMessage Instance = new();
+    CopyDoneMessage() { }
 }

@@ -1,9 +1,8 @@
-﻿namespace Npgsql.BackendMessages
+﻿namespace Npgsql.BackendMessages;
+
+class PortalSuspendedMessage : IBackendMessage
 {
-    class PortalSuspendedMessage : IBackendMessage
-    {
-        public BackendMessageCode Code => BackendMessageCode.PortalSuspended;
-        internal static readonly PortalSuspendedMessage Instance = new();
-        PortalSuspendedMessage() { }
-    }
+    public BackendMessageCode Code => BackendMessageCode.PortalSuspended;
+    internal static readonly PortalSuspendedMessage Instance = new();
+    PortalSuspendedMessage() { }
 }
