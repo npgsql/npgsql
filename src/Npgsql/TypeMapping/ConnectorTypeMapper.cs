@@ -627,15 +627,15 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             globalMapper.Lock.EnterReadLock();
             try
             {
-                _handlersByOID.Clear();
-                _handlersByNpgsqlDbType.Clear();
-                _handlersByClrType.Clear();
-                _handlersByDataTypeName.Clear();
-
                 var resolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
                 for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
                     resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
                 _resolvers = resolvers;
+
+                _handlersByOID.Clear();
+                _handlersByNpgsqlDbType.Clear();
+                _handlersByClrType.Clear();
+                _handlersByDataTypeName.Clear();
 
                 _userTypeMappings.Clear();
 
