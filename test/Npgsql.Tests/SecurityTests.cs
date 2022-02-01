@@ -240,10 +240,23 @@ public class SecurityTests : TestBase
             SslMode = SslMode.Require
         };
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
-        Assert.That(ex.Message, Is.EqualTo("To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
-                                           "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
-                                           "See https://www.npgsql.org/doc/release-notes/6.0.html for more details."));
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await OpenConnectionAsync(csb))!;
+        Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
+    }
+
+    [Test]
+    public async Task SslMode_Require_with_callback_without_TSC()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            Pooling = false
+        };
+
+        using var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+        await connection.OpenAsync();
     }
 
     [Test]
@@ -276,33 +289,50 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public void Connect_with_VerifyFull_and_callback_throws()
+    public void User_callback_is_invoked()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            SslMode = SslMode.VerifyFull
+            SslMode = SslMode.Require,
+            Pooling = false
         };
 
-        var connection = CreateConnection(csb.ToString());
-        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+        using var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => false;
 
-        var ex = Assert.ThrowsAsync<NotSupportedException>(async () => await connection.OpenAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, nameof(SslMode.VerifyFull))));
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+        Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
     }
 
     [Test]
-    public void Connect_with_VerifyCA_and_callback_throws()
+    public void Connect_with_Verify_and_callback_throws([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            SslMode = SslMode.VerifyCA
+            SslMode = sslMode
         };
 
         var connection = CreateConnection(csb.ToString());
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
-        var ex = Assert.ThrowsAsync<NotSupportedException>(async () => await connection.OpenAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, nameof(SslMode.VerifyCA))));
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode)));
+    }
+
+    [Test]
+    public void Connect_with_RootCertificate_and_callback_throws()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            RootCertificate = "foo"
+        };
+
+        var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback)));
     }
 
     #region Setup / Teardown / Utils
