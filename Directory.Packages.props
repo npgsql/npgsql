@@ -40,7 +40,7 @@
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.1" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="4.0.0" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="4.1.0" />
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.1" />
   </ItemGroup>
 </Project>
