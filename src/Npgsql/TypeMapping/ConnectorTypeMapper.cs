@@ -598,13 +598,15 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 var resolverIndex = 1;
                 for (var i = 0; i < currentResolvers.Length; i++)
                 {
-                    // Worst case scenario: we're attempting to add an entirely new TypeHandlerResolver.
-                    // We have to resize the resolvers array to not get out of bounds.
-                    if (i == currentResolvers.Length - 1 && resolverIndex == currentResolvers.Length)
-                        Array.Resize(ref resolvers, currentResolvers.Length + 1);
-
                     if (currentResolvers[i].GetType() != newResolverType)
+                    {
+                        // Worst case scenario: we're attempting to add an entirely new TypeHandlerResolver.
+                        // We have to resize the resolvers array to not get out of bounds.
+                        if (i == currentResolvers.Length - 1 && resolverIndex == currentResolvers.Length)
+                            Array.Resize(ref resolvers, currentResolvers.Length + 1);
+
                         resolvers[resolverIndex++] = currentResolvers[i];
+                    }
                 }
 
                 _resolvers = resolvers;
