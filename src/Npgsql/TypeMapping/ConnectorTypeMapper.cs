@@ -29,12 +29,18 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         get => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
         set
         {
+            // We're attempting to set the same NpgsqlDatabaseInfo as we already have.
+            // If so, there is no reason to reset type mappings since NpgsqlDatabaseInfo is immutable.
+            // This might happen with multiplexing due to sharing the same ConnectorTypeMapper between multiple connections.
+            if (_databaseInfo == value)
+                return;
+
             _databaseInfo = value;
             Reset();
         }
     }
 
-    volatile List<TypeHandlerResolver> _resolvers;
+    volatile TypeHandlerResolver[] _resolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
     readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -59,7 +65,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     {
         Connector = connector;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-        _resolvers = new List<TypeHandlerResolver>();
+        _resolvers = new TypeHandlerResolver[1];
     }
 
     #endregion Constructors
@@ -574,15 +580,34 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             var newResolver = resolverFactory.Create(Connector);
             var newResolverType = newResolver.GetType();
 
-            if (_resolvers[0].GetType() == newResolverType)
-                _resolvers[0] = newResolver;
+            var currentResolvers = _resolvers;
+
+            if (currentResolvers[0].GetType() == newResolverType)
+                currentResolvers[0] = newResolver;
             else
             {
-                for (var i = 0; i < _resolvers.Count; i++)
-                    if (_resolvers[i].GetType() == newResolverType)
-                        _resolvers.RemoveAt(i);
+                // The TypeHandlerResolver we're attempting to add isn't the first resolver,
+                // but it still might be at some other position.
+                // We assume that that specific TypeHandlerResolver is already there
+                // and create a new TypeHandlerResolver array with the same length as the original one.
+                // It's going to be enough if we're just shuffling TypeHandlerResolver's around.
+                // In the worst case scenario (that's an entirely new TypeHandlerResolver), we would have to resize the array.
+                var resolvers = new TypeHandlerResolver[currentResolvers.Length];
+                resolvers[0] = newResolver;
 
-                _resolvers.Insert(0, newResolver);
+                var resolverIndex = 1;
+                for (var i = 0; i < currentResolvers.Length; i++)
+                {
+                    // Worst case scenario: we're attempting to add an entirely new TypeHandlerResolver.
+                    // We have to resize the resolvers array to not get out of bounds.
+                    if (i == currentResolvers.Length - 1 && resolverIndex == currentResolvers.Length)
+                        Array.Resize(ref resolvers, currentResolvers.Length + 1);
+
+                    if (currentResolvers[i].GetType() != newResolverType)
+                        resolvers[resolverIndex++] = currentResolvers[i];
+                }
+
+                _resolvers = resolvers;
             }
 
             _handlersByOID.Clear();
@@ -607,9 +632,10 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 _handlersByClrType.Clear();
                 _handlersByDataTypeName.Clear();
 
-                _resolvers.Clear();
+                var resolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
                 for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
-                    _resolvers.Add(globalMapper.ResolverFactories[i].Create(Connector));
+                    resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                _resolvers = resolvers;
 
                 _userTypeMappings.Clear();
 
@@ -621,7 +647,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     }
                 }
 
-                ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
+                ChangeCounter = globalMapper.ChangeCounter;
             }
             finally
             {
