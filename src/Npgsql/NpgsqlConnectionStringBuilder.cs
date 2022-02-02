@@ -1569,6 +1569,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
+        if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
+            throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
     }
 
     internal string ToStringWithoutPassword()
@@ -1711,6 +1713,10 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     #endregion
 
     internal static readonly string[] EmptyStringArray = new string[0];
+}
+
+class Settings
+{
 }
 
 #region Attributes

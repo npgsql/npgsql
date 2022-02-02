@@ -250,6 +250,7 @@ public class SecurityTests : TestBase
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             SslMode = SslMode.Require,
+            TrustServerCertificate = false,
             Pooling = false
         };
 
@@ -289,7 +290,7 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public void User_callback_is_invoked()
+    public void User_callback_is_invoked([Values] bool acceptCertificate)
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
@@ -297,11 +298,24 @@ public class SecurityTests : TestBase
             Pooling = false
         };
 
-        using var connection = CreateConnection(csb.ToString());
-        connection.UserCertificateValidationCallback = (_, _, _, _) => false;
+        var callbackWasInvoked = false;
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
-        Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        using var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) =>
+        {
+            callbackWasInvoked = true;
+            return acceptCertificate;
+        };
+
+        if (acceptCertificate)
+            Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
+        else
+        {
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        }
+
+        Assert.That(callbackWasInvoked);
     }
 
     [Test]

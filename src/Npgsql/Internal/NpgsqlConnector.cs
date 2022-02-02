@@ -818,9 +818,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
                     RemoteCertificateValidationCallback? certificateValidationCallback;
 
-                    if (Settings.TrustServerCertificate && sslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
-                        throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
-
                     if (UserCertificateValidationCallback is not null)
                     {
                         if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
