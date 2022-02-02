@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -65,7 +66,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     {
         Connector = connector;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-        _resolvers = new TypeHandlerResolver[1];
+        _resolvers = Array.Empty<TypeHandlerResolver>();
     }
 
     #endregion Constructors
@@ -581,6 +582,8 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             var newResolverType = newResolver.GetType();
 
             var currentResolvers = _resolvers;
+            Debug.Assert(currentResolvers.Length > 0);
+            Debug.Assert(currentResolvers[0] is not null);
 
             if (currentResolvers[0].GetType() == newResolverType)
                 currentResolvers[0] = newResolver;
