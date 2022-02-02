@@ -17,7 +17,7 @@ Connections must be disposed when they are no longer needed - not doing so will 
 
 ### Pooling
 
-Opening and closing physical connections to PostgreSQL is an expensive and long process. Therefore, Npgsql connections are *pooled* by default: closing or disposing a connection doesn't close the underlying physical connection, but rather returns it to an internal pool managed by Npgsql. The next time a connection is opened, that pooled connection is returned again. The makes open and close extremely fast operations; do not hesitate to perform them a lot if needed, rather than holding a connection needlessly open for a long time.
+Opening and closing physical connections to PostgreSQL is an expensive and long process. Therefore, Npgsql connections are *pooled* by default: closing or disposing a connection doesn't close the underlying physical connection, but rather returns it to an internal pool managed by Npgsql. The next time a connection is opened, that pooled connection is returned again. This makes open and close extremely fast operations; do not hesitate to perform them a lot if needed, rather than holding a connection needlessly open for a long time.
 
 For information on tweaking the pooling behavior (or turning it off), see the [pooling section](connection-string-parameters.html#pooling) in the connection string page.
 
