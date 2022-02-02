@@ -95,12 +95,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
             using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
 
-            // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
-            // and have the connector rebind to ensure it has a different instance.
-            // The latter isn't strictly necessary (type mappers should always be usable
-            // concurrently) but just in case.
             MultiplexingTypeMapper = connector.TypeMapper;
-            await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
             // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
             // pool clearing
