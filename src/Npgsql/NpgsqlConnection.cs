@@ -2057,7 +2057,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (Settings.Multiplexing)
         {
             var multiplexingTypeMapper = ((MultiplexingConnectorPool)Pool).MultiplexingTypeMapper!;
-            multiplexingTypeMapper.DatabaseInfo = multiplexingTypeMapper.Connector.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
+            Debug.Assert(multiplexingTypeMapper == connector.TypeMapper,
+                "A connector must reference the exact same TypeMapper the MultiplexingConnectorPool does");
+            // It's very probable that we've called ReloadTypes on the different connection than
+            // the MultiplexingConnectorPool references.
+            // Which means, we have to explicitly call Reset after we change the connector's DatabaseInfo to reload type mappings.
+            multiplexingTypeMapper.Connector.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
+            multiplexingTypeMapper.Reset();
         }
     }
 
