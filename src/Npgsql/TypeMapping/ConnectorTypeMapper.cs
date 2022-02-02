@@ -33,7 +33,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             // We're attempting to set the same NpgsqlDatabaseInfo as we already have.
             // If so, there is no reason to reset type mappings since NpgsqlDatabaseInfo is immutable.
             // This might happen with multiplexing due to sharing the same ConnectorTypeMapper between multiple connections.
-            if (_databaseInfo == value)
+            if (ReferenceEquals(_databaseInfo, value))
                 return;
 
             _databaseInfo = value;
