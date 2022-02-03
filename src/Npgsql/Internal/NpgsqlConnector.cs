@@ -522,9 +522,15 @@ public sealed partial class NpgsqlConnector : IDisposable
             throw;
         }
 
-        static async Task OpenCore(NpgsqlConnector conn, SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        static async Task OpenCore(
+            NpgsqlConnector conn,
+            SslMode sslMode,
+            NpgsqlTimeout timeout,
+            bool async,
+            CancellationToken cancellationToken,
+            bool isFirstAttempt = true)
         {
-            await conn.RawOpen(sslMode, timeout, async, cancellationToken);
+            await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt);
 
             var username = conn.GetUsername();
             if (conn.Settings.Database == null)
@@ -550,7 +556,14 @@ public sealed partial class NpgsqlConnector : IDisposable
 
                 // If Prefer was specified and we failed (with SSL), retry without SSL.
                 // If Allow was specified and we failed (without SSL), retry with SSL
-                await OpenCore(conn, sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require, timeout, async, cancellationToken);
+                await OpenCore(
+                    conn,
+                    sslMode == SslMode.Prefer ? SslMode.Disable : SslMode.Require,
+                    timeout,
+                    async,
+                    cancellationToken,
+                    isFirstAttempt: false);
+
                 return;
             }
 
@@ -719,7 +732,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         throw new NpgsqlException("No username could be found, please specify one explicitly");
     }
 
-    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)
     {
         var cert = default(X509Certificate2?);
         try
@@ -750,7 +763,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             IsSecure = false;
 
-            if (sslMode == SslMode.Prefer || sslMode == SslMode.Require || sslMode == SslMode.VerifyCA || sslMode == SslMode.VerifyFull)
+            if (sslMode is SslMode.Prefer or SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
                 WriteSslRequest();
                 await Flush(async, cancellationToken);
@@ -804,24 +817,29 @@ public sealed partial class NpgsqlConnector : IDisposable
                     var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
                     RemoteCertificateValidationCallback? certificateValidationCallback;
-                    if (sslMode == SslMode.Prefer || sslMode == SslMode.Require)
+
+                    if (UserCertificateValidationCallback is not null)
                     {
+                        if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+                            throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
+
+                        if (Settings.RootCertificate is not null)
+                            throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback));
+
+                        certificateValidationCallback = UserCertificateValidationCallback;
+                    }
+                    else if (sslMode is SslMode.Prefer or SslMode.Require)
+                    {
+                        if (isFirstAttempt && sslMode is SslMode.Require && !Settings.TrustServerCertificate)
+                            throw new ArgumentException(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate);
+
                         certificateValidationCallback = SslTrustServerValidation;
                         checkCertificateRevocation = false;
                     }
-                    else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath)
+                    else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is
+                             { } certRootPath)
                     {
                         certificateValidationCallback = SslRootValidation(certRootPath, sslMode == SslMode.VerifyFull);
-                    }
-                    else if (UserCertificateValidationCallback is not null)
-                    {
-                        if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
-                        {
-                            throw new NotSupportedException(
-                                string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
-                        }
-
-                        certificateValidationCallback = UserCertificateValidationCallback;
                     }
                     else if (sslMode == SslMode.VerifyCA)
                     {

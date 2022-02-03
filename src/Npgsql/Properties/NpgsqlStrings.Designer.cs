@@ -50,5 +50,23 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseSslVerifyWithUserCallback", resourceCulture);
             }
         }
+        
+        internal static string CannotUseSslRootCertificateWithUserCallback {
+            get {
+                return ResourceManager.GetString("CannotUseSslRootCertificateWithUserCallback", resourceCulture);
+            }
+        }
+        
+        internal static string CannotUseSslModeRequireWithoutTrustServerCertificate {
+            get {
+                return ResourceManager.GetString("CannotUseSslModeRequireWithoutTrustServerCertificate", resourceCulture);
+            }
+        }
+        
+        internal static string CannotUseTrustServerCertificate {
+            get {
+                return ResourceManager.GetString("CannotUseTrustServerCertificate", resourceCulture);
+            }
+        }
     }
 }
