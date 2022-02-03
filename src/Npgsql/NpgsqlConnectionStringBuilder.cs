@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Npgsql.Internal;
 using Npgsql.Netstandard20;
+using Npgsql.Properties;
 using Npgsql.Replication;
 
 namespace Npgsql;
@@ -1568,13 +1569,8 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
-        if (SslMode == SslMode.Require && !TrustServerCertificate)
-            throw new NpgsqlException(
-                "To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
-                "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
-                "See https://www.npgsql.org/doc/release-notes/6.0.html for more details.");
-        if (TrustServerCertificate && (SslMode == SslMode.Allow || SslMode == SslMode.VerifyCA || SslMode == SslMode.VerifyFull))
-            throw new NpgsqlException($"TrustServerCertificate=true is not supported with SslMode={SslMode}");
+        if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
+            throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
     }
 
     internal string ToStringWithoutPassword()

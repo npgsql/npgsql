@@ -1050,9 +1050,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
 
     /// <summary>
+    /// <para>
     /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
-    /// Ignored if <see cref="NpgsqlConnectionStringBuilder.SslMode"/> is set to <see cref="SslMode.Allow"/>,
-    /// <see cref="SslMode.Prefer"/> or <see cref="SslMode.Require"/>.
+    /// </para>
+    /// <para>
+    /// Cannot be used in conjunction with <see cref="SslMode.Disable" />, <see cref="SslMode.VerifyCA" /> and
+    /// <see cref="SslMode.VerifyFull" />.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
