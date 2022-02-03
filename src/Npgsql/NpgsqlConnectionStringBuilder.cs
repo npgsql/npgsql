@@ -1715,10 +1715,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     internal static readonly string[] EmptyStringArray = new string[0];
 }
 
-class Settings
-{
-}
-
 #region Attributes
 
 /// <summary>
