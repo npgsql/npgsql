@@ -93,6 +93,15 @@ class ConnectionStringBuilderTests
     }
 
     [Test]
+    public void Enum_insensitive()
+    {
+        var builder = new NpgsqlConnectionStringBuilder();
+        builder.ConnectionString = "SslMode=require";
+        Assert.That(builder.SslMode, Is.EqualTo(SslMode.Require));
+        Assert.That(builder.Count, Is.EqualTo(1));
+    }
+
+    [Test]
     public void Clone()
     {
         var builder = new NpgsqlConnectionStringBuilder();
