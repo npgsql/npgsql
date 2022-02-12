@@ -1573,6 +1573,7 @@ CREATE TABLE record ()");
 
         string? dirToDelete = null;
         string passFile;
+        string? previousPassFile = null;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var dir = Path.Combine(Environment.GetEnvironmentVariable("APPDATA")!, "postgresql");
@@ -1580,13 +1581,18 @@ CREATE TABLE record ()");
             {
                 Directory.CreateDirectory(dir);
                 dirToDelete = dir;
-
             }
             passFile = Path.Combine(dir, "pgpass.conf");
         }
         else
         {
             passFile = Path.Combine(Environment.GetEnvironmentVariable("HOME")!, ".pgpass");
+        }
+
+        if (File.Exists(passFile))
+        {
+            previousPassFile = Path.GetTempFileName();
+            File.Move(passFile, previousPassFile);
         }
 
         try
@@ -1600,6 +1606,8 @@ CREATE TABLE record ()");
             File.Delete(passFile);
             if (dirToDelete is not null)
                 Directory.Delete(dirToDelete);
+            if (previousPassFile is not null)
+                File.Move(previousPassFile, passFile);
         }
     }
 
