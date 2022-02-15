@@ -36,7 +36,7 @@ while (await reader.ReadAsync())
 }
 ```
 
-The command contains the SQL to be executed, as wel as any parameters (see the [parameters section](#parameters) below). Commands can be executed in the following three ways:
+The command contains the SQL to be executed, as well as any parameters (see the [parameters section](#parameters) below). Commands can be executed in the following three ways:
 
 1. [ExecuteNonQueryAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executenonqueryasync): executes SQL which doesn't return any results, typically `INSERT`, `UPDATE` or `DELETE` statements. Returns the number of rows affected.
 2. [ExecuteScalarAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executescalarasync): executes SQL which returns a single, scalar value.
