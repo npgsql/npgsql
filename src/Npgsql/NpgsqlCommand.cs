@@ -633,6 +633,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
+                batchCommand.Parameters.HasOutputParameters = false;
+                batchCommand.Parameters.PlaceholderType = PlaceholderType.NoParameters;
+
                 foreach (var p in batchCommand.Parameters.InternalList)
                 {
                     batchCommand.Parameters.CalculatePlaceholderType(p);
@@ -649,6 +652,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
+            Parameters.HasOutputParameters = false;
+            Parameters.PlaceholderType = PlaceholderType.NoParameters;
+
             foreach (var p in Parameters.InternalList)
             {
                 Parameters.CalculatePlaceholderType(p);
