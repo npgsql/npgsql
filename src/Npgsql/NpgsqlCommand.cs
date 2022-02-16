@@ -633,15 +633,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand.Parameters.HasOutputParameters = false;
-                batchCommand.Parameters.PlaceholderType = PlaceholderType.NoParameters;
-
-                foreach (var p in batchCommand.Parameters.InternalList)
-                {
-                    batchCommand.Parameters.CalculatePlaceholderType(p);
-                    p.Bind(connector.TypeMapper);
-                }
-
+                Parameters.ProcessParameters(connector.TypeMapper, validate: false);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -652,15 +644,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
-            Parameters.HasOutputParameters = false;
-            Parameters.PlaceholderType = PlaceholderType.NoParameters;
-
-            foreach (var p in Parameters.InternalList)
-            {
-                Parameters.CalculatePlaceholderType(p);
-                p.Bind(connector.TypeMapper);
-            }
-
+            Parameters.ProcessParameters(connector.TypeMapper, validate: false);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -1335,9 +1319,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (IsWrappedByBatch)
                             foreach (var batchCommand in InternalBatchCommands)
-                                batchCommand.Parameters.ValidateAndBind(connector.TypeMapper);
+                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validate: true);
                         else
-                            Parameters.ValidateAndBind(connector.TypeMapper);
+                            Parameters.ProcessParameters(connector.TypeMapper, validate: true);
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         break;
@@ -1351,7 +1335,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand.Parameters.ValidateAndBind(connector.TypeMapper);
+                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validate: true);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1360,7 +1344,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            Parameters.ValidateAndBind(connector.TypeMapper);
+                            Parameters.ProcessParameters(connector.TypeMapper, validate: true);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1452,13 +1436,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand.Parameters.ValidateAndBind(pool.MultiplexingTypeMapper!);
+                        batchCommand.Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validate: true);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    Parameters.ValidateAndBind(pool.MultiplexingTypeMapper!);
+                    Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validate: true);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 
