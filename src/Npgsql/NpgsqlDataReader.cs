@@ -999,7 +999,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
     {
-        Logger.LogTrace("Cleaning up reader", Connector.Id);
+        LogMessages.ReaderCleanup(Logger, Connector.Id);
 
         // If multiplexing isn't on, _sendTask contains the task for the writing of this command.
         // Make sure that this task, which may have executed asynchronously and in parallel with the reading,

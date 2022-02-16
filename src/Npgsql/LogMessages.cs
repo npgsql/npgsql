@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Microsoft.Extensions.Logging;
-using Npgsql.Replication;
 using NpgsqlTypes;
 
 namespace Npgsql;
 
 // ReSharper disable InconsistentNaming
 #pragma warning disable SYSLIB1015 // Argument is not referenced from the logging message
+#pragma warning disable SYSLIB1006 // Multiple logging methods are using event id
 
 static partial class LogMessages
 {
@@ -20,7 +20,6 @@ static partial class LogMessages
         Message = "Opening connection to {Host}:{Port}/{Database}...")]
     internal static partial void OpeningConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString);
 
-#pragma warning disable SYSLIB1006 // Multiple logging methods are using event id
     [LoggerMessage(
         EventId = NpgsqlEventId.OpenedConnection,
         Level = LogLevel.Debug,
@@ -50,7 +49,6 @@ static partial class LogMessages
         Level = LogLevel.Debug,
         Message = "Closed multiplexing connection to {Host}:{Port}/{Database}")]
     internal static partial void ClosedMultiplexingConnection(ILogger logger, string Host, int Port, string Database, string ConnectionString);
-#pragma warning restore SYSLIB1006
 
     [LoggerMessage(
         EventId = NpgsqlEventId.OpeningPhysicalConnection,
@@ -142,11 +140,20 @@ static partial class LogMessages
         Message = "Exception opening a connection for multiplexing")]
     internal static partial void ExceptionWhenOpeningConnectionForMultiplexing(ILogger logger, Exception exception);
 
+    [LoggerMessage(
+        Level = LogLevel.Trace,
+        Message = "Start user action")]
+    internal static partial void StartUserAction(ILogger logger, int ConnectorId);
+
+    [LoggerMessage(
+        Level = LogLevel.Trace,
+        Message = "End user action")]
+    internal static partial void EndUserAction(ILogger logger, int ConnectorId);
+
     #endregion Connection
 
     #region Command
 
-#pragma warning disable SYSLIB1006
     [LoggerMessage(
         EventId = NpgsqlEventId.ExecutingCommand,
         Level = LogLevel.Debug,
@@ -203,7 +210,6 @@ static partial class LogMessages
         SkipEnabledCheck = true)]
     internal static partial void BatchExecutionCompletedWithParameters(
         ILogger logger, (string CommandText, object[] Parameters)[] BatchCommands, long DurationMs, int ConnectorId);
-#pragma warning restore SYSLIB1006
 
     [LoggerMessage(
         EventId = NpgsqlEventId.CancellingCommand,
@@ -253,6 +259,11 @@ static partial class LogMessages
         Level = LogLevel.Error,
         Message = "Exception while writing multiplexed commands")]
     internal static partial void ExceptionWhenWritingMultiplexedCommands(ILogger logger, int ConnectorId, Exception exception);
+
+    [LoggerMessage(
+        Level = LogLevel.Trace,
+        Message = "Cleaning up reader")]
+    internal static partial void ReaderCleanup(ILogger logger, int ConnectorId);
 
     #endregion Command
 
@@ -406,7 +417,6 @@ static partial class LogMessages
         Message = "Starting raw COPY operation")]
     internal static partial void StartingRawCopy(ILogger logger, int ConnectorId);
 
-#pragma warning disable SYSLIB1006
     [LoggerMessage(
         EventId = NpgsqlEventId.CopyOperationCompleted,
         Level = LogLevel.Information,
@@ -418,7 +428,6 @@ static partial class LogMessages
         Level = LogLevel.Information,
         Message = "COPY operation completed")]
     internal static partial void CopyOperationCompleted(ILogger logger, int ConnectorId);
-#pragma warning restore SYSLIB1006
 
     [LoggerMessage(
         EventId = NpgsqlEventId.CopyOperationCancelled,
