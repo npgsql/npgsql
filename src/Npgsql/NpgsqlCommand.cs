@@ -633,7 +633,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                Parameters.ProcessParameters(connector.TypeMapper, validate: false);
+                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validate: false);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
