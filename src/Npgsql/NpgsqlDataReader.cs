@@ -1826,7 +1826,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     /// <summary>
     /// Gets the data type information for the specified field.
-    /// This is be the PostgreSQL type name (e.g. double precision), not the .NET type
+    /// This is the PostgreSQL type name (e.g. double precision), not the .NET type
     /// (see <see cref="GetFieldType"/> for that).
     /// </summary>
     /// <param name="ordinal">The zero-based column index.</param>
