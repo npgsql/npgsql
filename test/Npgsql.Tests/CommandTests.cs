@@ -1277,5 +1277,24 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.That(await cmd2.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4330")]
+    public async Task Prepare_with_positional_placeholders_after_named()
+    {
+        if (IsMultiplexing)
+            return; // Explicit preparation
+
+        await using var conn = await OpenConnectionAsync();
+
+        await using var command = new NpgsqlCommand("SELECT @p", conn);
+        command.Parameters.AddWithValue("p", 10);
+        await command.ExecuteNonQueryAsync();
+
+        command.Parameters.Clear();
+
+        command.CommandText = "SELECT $1";
+        command.Parameters.Add(new() { NpgsqlDbType = NpgsqlDbType.Integer });
+        Assert.DoesNotThrowAsync(() => command.PrepareAsync());
+    }
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
