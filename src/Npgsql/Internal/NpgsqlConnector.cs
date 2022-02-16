@@ -2251,7 +2251,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // If keepalive isn't enabled, we don't use the semaphore and rely only on the connector's
         // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
         if (!_isKeepAliveEnabled)
-            return DoStartUserAction();
+            return DoStartUserAction(newState, command);
 
         lock (this)
         {
@@ -2277,7 +2277,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
                 // We now have both locks and are sure nothing else is running.
                 // Check that the connector is ready.
-                return DoStartUserAction();
+                return DoStartUserAction(newState, command);
             }
             catch
             {
@@ -2286,7 +2286,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
         }
 
-        UserAction DoStartUserAction()
+        UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command)
         {
             switch (State)
             {
@@ -2313,7 +2313,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            Logger.LogTrace("Start user action", Id);
+            LogMessages.StartUserAction(Logger, Id);
             State = newState;
             _currentCommand = command;
 
@@ -2344,7 +2344,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 var keepAlive = Settings.KeepAlive * 1000;
                 _keepAliveTimer!.Change(keepAlive, keepAlive);
 
-                Logger.LogTrace("End user action", Id);
+                LogMessages.EndUserAction(Logger, Id);
                 _currentCommand = null;
                 _userLock!.Release();
                 State = ConnectorState.Ready;
@@ -2355,7 +2355,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             if (IsReady || !IsConnected)
                 return;
 
-            Logger.LogTrace("End user action", Id);
+            LogMessages.EndUserAction(Logger, Id);
             _currentCommand = null;
             State = ConnectorState.Ready;
         }
@@ -2535,8 +2535,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal async Task ExecuteInternalCommand(byte[] data, bool async, CancellationToken cancellationToken = default)
     {
         Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
-
-        Logger.LogTrace("Executing internal pregenerated command", Id);
 
         await WritePregenerated(data, async, cancellationToken);
         await Flush(async, cancellationToken);

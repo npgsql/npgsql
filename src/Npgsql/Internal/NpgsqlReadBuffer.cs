@@ -583,9 +583,9 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             }
         }
 
-        return ReadLong(async);
+        return ReadLong(encoding, async);
 
-        async ValueTask<string> ReadLong(bool async)
+        async ValueTask<string> ReadLong(Encoding encoding, bool async)
         {
             var chunkSize = FilledBytes - ReadPosition;
             var tempBuf = ArrayPool<byte>.Shared.Rent(chunkSize + 1024);
