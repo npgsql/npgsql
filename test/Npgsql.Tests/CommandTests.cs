@@ -1228,7 +1228,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(9));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Timeout(5000)]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Timeout(5000), Ignore("Flaky")]
     public async Task Bug3509()
     {
         if (IsMultiplexing)
