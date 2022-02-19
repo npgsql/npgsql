@@ -9,6 +9,7 @@ using System.Threading;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.NameTranslation;
+using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -214,7 +215,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
             //    over DateTime), and the results cannot be cached.
             // 3. Uncached by-type lookup (for the very first resolution of a given type)
 
-            var type = value.GetType();
+            var type = value.GetType().UnwrapNullable();
             if (_mappingsByClrType.TryGetValue(type, out typeMapping))
                 return true;
 
@@ -222,7 +223,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
                 if ((typeMapping = resolverFactory.GetMappingByValueDependentValue(value)) is not null)
                     return true;
 
-            return TryResolveMappingByClrType(value.GetType(), out typeMapping);
+            return TryResolveMappingByClrType(type, out typeMapping);
         }
         finally
         {
@@ -245,7 +246,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
 
             if (clrType.IsArray)
             {
-                if (TryResolveMappingByClrType(clrType.GetElementType()!, out var elementMapping))
+                if (TryResolveMappingByClrType(clrType.GetElementType()!.UnwrapNullable(), out var elementMapping))
                 {
                     _mappingsByClrType[clrType] = typeMapping = new(
                         NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
@@ -263,7 +264,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
                 x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
             if (ilist != null)
             {
-                if (TryResolveMappingByClrType(ilist.GetGenericArguments()[0], out var elementMapping))
+                if (TryResolveMappingByClrType(ilist.GetGenericArguments()[0].UnwrapNullable(), out var elementMapping))
                 {
                     _mappingsByClrType[clrType] = typeMapping = new(
                         NpgsqlDbType.Array | elementMapping.NpgsqlDbType,
@@ -277,7 +278,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
 
             if (typeInfo.IsGenericType && clrType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
             {
-                if (TryResolveMappingByClrType(clrType.GetGenericArguments()[0], out var elementMapping))
+                if (TryResolveMappingByClrType(clrType.GetGenericArguments()[0].UnwrapNullable(), out var elementMapping))
                 {
                     _mappingsByClrType[clrType] = typeMapping = new(
                         NpgsqlDbType.Range | elementMapping.NpgsqlDbType,

@@ -311,13 +311,25 @@ public class DateTimeTests : TestBase
     }
 
     [Test]
+    public async Task Array_of_nullable_timestamptz()
+        => await AssertType(
+            new DateTime?[]
+            {
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                null
+            },
+            @"{""1998-04-12 15:26:38+02"",NULL}",
+            "timestamp with time zone[]",
+            NpgsqlDbType.TimestampTz | NpgsqlDbType.Array,
+            isDefaultForReading: false);
+
+    [Test]
     public Task Cannot_mix_DateTime_Kinds_in_array()
         => AssertTypeUnsupportedWrite<DateTime[], Exception>(new[]
         {
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local),
         });
-
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_range()

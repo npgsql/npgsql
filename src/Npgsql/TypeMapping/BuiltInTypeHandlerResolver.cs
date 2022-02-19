@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
-using System.Data;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -396,9 +396,7 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             { typeof(JsonDocument),       "jsonb" },
 
             // Date/time types
-            // The DateTime entry is for LegacyTimestampBehavior mode only. In regular mode we resolve through
-            // ResolveValueDependentValue below
-            { typeof(DateTime),       "timestamp without time zone" },
+            // DateTime is added below, only for LegacyTimestampBehavior
             { typeof(DateTimeOffset), "timestamp with time zone" },
 #if NET6_0_OR_GREATER
             { typeof(DateOnly),       "date" },
@@ -498,6 +496,12 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
             // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
             IList<DateTime> array => ArrayHandler(array.Count == 0 ? DateTimeKind.Unspecified : array[0].Kind),
+            IList<DateTime?> array => ArrayHandler(
+                array.Count == 0
+                    ? DateTimeKind.Unspecified
+                    : array.FirstOrDefault(d => d is not null) is { } dt
+                        ? dt.Kind
+                        : DateTimeKind.Unspecified),
 
             NpgsqlRange<DateTime> range => RangeHandler(!range.LowerBoundInfinite ? range.LowerBound.Kind :
                 !range.UpperBoundInfinite ? range.UpperBound.Kind : DateTimeKind.Unspecified),
@@ -557,6 +561,12 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
             IList<DateTime> array => array.Count == 0
                 ? "timestamp without time zone[]"
                 : array[0].Kind == DateTimeKind.Utc ? "timestamp with time zone[]" : "timestamp without time zone[]",
+
+            IList<DateTime?> array => array.Count == 0
+                ? "timestamp without time zone[]"
+                : array.FirstOrDefault(d => d is not null) is { } dt
+                    ? dt.Kind == DateTimeKind.Utc ? "timestamp with time zone[]" : "timestamp without time zone[]"
+                    : "timestamp without time zone[]",
 
             NpgsqlRange<DateTime> range => GetRangeKind(range) == DateTimeKind.Utc ? "tstzrange" : "tsrange",
 

@@ -148,6 +148,12 @@ static class EnumerableExtensions
     }
 }
 
+static class TypeExtensions
+{
+    public static Type UnwrapNullable(this Type type)
+        => Nullable.GetUnderlyingType(type) ?? type;
+}
+
 static class ExceptionExtensions
 {
     internal static Exception UnwrapAggregate(this Exception exception)
