@@ -5,6 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
+[NonParallelizable]
 class WriteBufferTests
 {
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]

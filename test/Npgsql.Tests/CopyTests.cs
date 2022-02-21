@@ -548,6 +548,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     }
 
     [Test]
+    [NonParallelizable]
     public async Task Enum()
     {
         if (IsMultiplexing)
@@ -602,6 +603,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
+    [NonParallelizable] // Constraint uq has to have unique name
     public async Task Error_during_import()
     {
         using var conn = await OpenConnectionAsync();

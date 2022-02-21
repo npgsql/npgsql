@@ -8,7 +8,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-[Parallelizable(ParallelScope.None)]
+[NonParallelizable]
 public class AutoPrepareTests : TestBase
 {
     [Test]
@@ -56,7 +56,8 @@ public class AutoPrepareTests : TestBase
             MaxAutoPrepare = 2
         };
 
-        using var conn = OpenConnection(csb);
+        using var _ = CreateTempPool(csb, out var connString);
+        using var conn = OpenConnection(connString);
         using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         checkCmd.Prepare();
 

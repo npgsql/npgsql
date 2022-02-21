@@ -1116,6 +1116,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     #endregion Bug1285
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
+    [NonParallelizable]
     public async Task Chunked_string_write_buffer_encoding_space()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1151,6 +1152,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
+    [NonParallelizable]
     public async Task Chunked_char_array_write_buffer_encoding_space()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1325,7 +1327,7 @@ $$;");
         }
     }
 
-    [Test, Timeout(5000)]
+    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3839")]
     public async Task SingleThreadedSynchronizationContext_deadlock()
     {
@@ -1346,41 +1348,43 @@ $$;");
         await Task.Yield();
     }
 
-    [Test, Timeout(10000)]
+    [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3924")]
     public async Task Bug3924()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             CommandTimeout = 10,
-            KeepAlive = 2,
+            KeepAlive = 5,
         };
 
         await using var postmaster = PgPostmasterMock.Start(csb.ConnectionString);
         await using var conn = await OpenConnectionAsync(postmaster.ConnectionString);
-        using var serverMock = await postmaster.WaitForServerConnection();
-
-        await serverMock.WriteScalarResponseAndFlush(1);
+        var serverMock = await postmaster.WaitForServerConnection();
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandTimeout = 2;
+            cmd.CommandTimeout = 1;
             cmd.CommandText = "SELECT 1";
-            await cmd.ExecuteNonQueryAsync();
+            var queryTask = cmd.ExecuteNonQueryAsync();
+            await serverMock.ExpectExtendedQuery();
+            _ = serverMock.WriteScalarResponseAndFlush(1);
+            await queryTask;
         }
 
         // Giving some time for keepalive to send a query and wait for a response for a little bit
-        // (2 seconds for keepalive performing, 2 seconds for a timeout, and 1 second just in case)
-        await Task.Delay(5000);
-
-        await serverMock.WriteReadyForQuery().FlushAsync();
-        await serverMock.WriteScalarResponseAndFlush(1);
+        await serverMock.ExpectMessage(FrontendMessageCode.Sync);
+        await Task.Delay(1000);
+        _ = serverMock.WriteReadyForQuery().FlushAsync();
 
         using (var cmd = conn.CreateCommand())
         {
-            cmd.CommandTimeout = 2;
+            cmd.CommandTimeout = 1;
             cmd.CommandText = "SELECT 1";
-            Assert.DoesNotThrowAsync(cmd.ExecuteNonQueryAsync);
+            var queryTask = cmd.ExecuteNonQueryAsync();
+            await serverMock.ExpectExtendedQuery();
+            _ = serverMock.WriteScalarResponseAndFlush(1);
+            Assert.DoesNotThrowAsync(async () => await queryTask);
         }
     }
 

@@ -19,22 +19,20 @@ public class ReaderOldSchemaTests : SyncOrAsyncTestBase
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
 
+        var constraintName = IsAsync ? "data2_pkey_async" : "data2_pkey_sync";
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (
     field_pk1 INT2 NOT NULL,
     field_pk2 INT2 NOT NULL,
     field_serial SERIAL,
-    CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
+    CONSTRAINT {constraintName} PRIMARY KEY (field_pk1, field_pk2)
 )");
 
         using var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         using var dr = command.ExecuteReader(CommandBehavior.KeyInfo);
         dr.Read();
         var dataTable = await GetSchemaTable(dr);
-#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
-        DataRow[] keyColumns =
-            dataTable!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray()!;
-#pragma warning restore 8602
+        var keyColumns = dataTable!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray()!;
         Assert.That(keyColumns, Has.Length.EqualTo(2));
         Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk1"), Is.EqualTo(1));
         Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk2"), Is.EqualTo(1));

@@ -38,6 +38,7 @@ public class TextTests : MultiplexingTestBase
         => AssertType('f', "f", "character(1)", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
 
     [Test]
+    [NonParallelizable]
     public async Task Citext_as_string()
     {
         await using var conn = await OpenConnectionAsync();

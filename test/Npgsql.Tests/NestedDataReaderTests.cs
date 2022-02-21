@@ -153,12 +153,13 @@ public class NestedDataReaderTests : TestBase
     }
 
     [Test]
+    [NonParallelizable]
     public async Task Composite()
     {
         await using var conn = await OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS nested_db_reader_composite");
         await conn.ExecuteNonQueryAsync("CREATE TYPE nested_db_reader_composite AS (c0 integer, c1 text)");
-        await Task.Run(() => conn.ReloadTypes());
+        conn.ReloadTypes();
         var sqls = new string[] { "SELECT ROW('1', '2')::nested_db_reader_composite",
             "SELECT ARRAY[ROW('1', '2')::nested_db_reader_composite]"};
         foreach (var sql in sqls)

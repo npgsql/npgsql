@@ -17,7 +17,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-[Timeout(60000)]
+[NonParallelizable]
 public class MultipleHostsTests : TestBase
 {
     static readonly object[] MyCases =
@@ -296,6 +296,7 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Flaky in CI on Mac")]
     public async Task First_host_is_down()
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -348,7 +349,8 @@ public class MultipleHostsTests : TestBase
     public void TargetSessionAttributes_default_is_null()
         => Assert.That(new NpgsqlConnectionStringBuilder().TargetSessionAttributes, Is.Null);
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Sets environment variable
     public async Task TargetSessionAttributes_uses_environment_variable()
     {
         using var envVarResetter = SetEnvironmentVariable("PGTARGETSESSIONATTRS", "prefer-standby");
@@ -834,7 +836,7 @@ public class MultipleHostsTests : TestBase
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
-    [Test, Timeout(10000), NonParallelizable]
+    [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
         PoolManager.Reset();
