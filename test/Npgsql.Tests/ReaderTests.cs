@@ -1344,7 +1344,7 @@ LANGUAGE plpgsql VOLATILE";
 
         [Test]
         public async Task GetStream<T>(
-            [Values(true, false)] bool isAsync,
+            [Values] bool isAsync,
             [ValueSource(nameof(GetStreamCases))] (T Generic, byte[] Binary) value)
         {
             var streamGetter = BuildStreamGetter(isAsync);

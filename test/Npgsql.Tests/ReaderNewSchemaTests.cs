@@ -649,7 +649,6 @@ CREATE TABLE {table2} (foo INTEGER)");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
-    [NonParallelizable]
     public async Task Domain_type()
     {
         if (IsRedshift)
@@ -657,7 +656,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         // if (IsMultiplexing)
         //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
-        var domainTypeName = IsAsync ? "mydomainasync" : "mydomainsync";
+        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
         await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");

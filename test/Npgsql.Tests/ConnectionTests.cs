@@ -842,12 +842,12 @@ public class ConnectionTests : MultiplexingTestBase
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         if (keepAlive)
         {
-            Assert.That(conn.Connector, Is.Not.EqualTo(connector));
+            Assert.That(conn.Connector, Is.Not.SameAs(connector));
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
         else
         {
-            Assert.That(conn.Connector, Is.EqualTo(connector));
+            Assert.That(conn.Connector, Is.SameAs(connector));
             Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Throws.Exception
                 .AssignableTo<NpgsqlException>());
         }

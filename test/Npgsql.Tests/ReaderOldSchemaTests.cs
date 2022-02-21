@@ -19,7 +19,7 @@ public class ReaderOldSchemaTests : SyncOrAsyncTestBase
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
 
-        var constraintName = IsAsync ? "data2_pkey_async" : "data2_pkey_sync";
+        var constraintName = GetUniqueIdentifier("pk");
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (
     field_pk1 INT2 NOT NULL,

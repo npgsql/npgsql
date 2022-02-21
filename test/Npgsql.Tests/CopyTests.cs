@@ -603,11 +603,11 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
-    [NonParallelizable] // Constraint uq has to have unique name
     public async Task Error_during_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT, CONSTRAINT uq UNIQUE(foo)", out var table);
+        var constraintName = GetUniqueIdentifier("uq");
+        await using var _ = await CreateTempTable(conn, $"foo INT, CONSTRAINT {constraintName} UNIQUE(foo)", out var table);
 
         var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY");
         writer.StartRow();
