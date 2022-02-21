@@ -1163,12 +1163,17 @@ LANGUAGE 'plpgsql'");
     enum ReloadTypesEnum { First, Second };
 
     [Test]
+    [NonParallelizable] // Anyone can reload DatabaseInfo between us opening a connection
     public async Task DatabaseInfo_is_shared()
     {
         if (IsMultiplexing)
             return;
-        using var conn1 = await OpenConnectionAsync();
-        using var conn2 = await OpenConnectionAsync();
+        // Create a temp pool to make sure the second connection will be new and not idle
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn1 = await OpenConnectionAsync(connString);
+        // Call RealoadTypes to force reload DatabaseInfo
+        conn1.ReloadTypes();
+        using var conn2 = await OpenConnectionAsync(connString);
         Assert.That(conn1.Connector!.DatabaseInfo, Is.SameAs(conn2.Connector!.DatabaseInfo));
     }
 
