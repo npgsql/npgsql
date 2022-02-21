@@ -1,12 +1,10 @@
-﻿using Npgsql;
+﻿using Microsoft.Extensions.Logging;
+using Npgsql;
 using Npgsql.Tests;
+using Npgsql.Tests.Support;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 [SetUpFixture]
 public class AssemblySetUp
@@ -14,6 +12,12 @@ public class AssemblySetUp
     [OneTimeSetUp]
     public void Setup()
     {
+        NpgsqlLoggingConfiguration.InitializeLogging(LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddProvider(ListLoggerProvider.Instance);
+        }), parameterLoggingEnabled: true);
+
         var connString = TestUtil.ConnectionString;
         using var conn = new NpgsqlConnection(connString);
         try
