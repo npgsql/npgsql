@@ -2035,6 +2035,8 @@ public sealed partial class NpgsqlConnector : IDisposable
             CurrentReader.Command.State = CommandState.Idle;
             try
             {
+                // Note that this never actually blocks on I/O, since the stream is also closed
+                // (which is why we don't need to call CloseAsync)
                 CurrentReader.Close();
             }
             catch
@@ -2048,6 +2050,8 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             try
             {
+                // Note that this never actually blocks on I/O, since the stream is also closed
+                // (which is why we don't need to call DisposeAsync)
                 CurrentCopyOperation.Dispose();
             }
             catch
