@@ -14,11 +14,9 @@ public class TypeMappingInfo
         => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, clrTypes);
 
     public NpgsqlDbType? NpgsqlDbType { get; }
-    DbType? dbType;
+    // Note that we can't cache the result due to nullable's assignment not being thread safe
     public DbType DbType
-        => dbType ??= NpgsqlDbType is null ? DbType.Object : GlobalTypeMapper.NpgsqlDbTypeToDbType(NpgsqlDbType.Value);
+        => NpgsqlDbType is null ? DbType.Object : GlobalTypeMapper.NpgsqlDbTypeToDbType(NpgsqlDbType.Value);
     public string? DataTypeName { get; }
     public Type[] ClrTypes { get; }
-
-    internal void Reset() => dbType = null;
 }
