@@ -34,10 +34,9 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                 ? socketPath
                 : $"tcp://{_host}:{_port}";
 
-    TimeSpan? _hostRecheckSecondsTranslated;
-
+    // Note that we can't cache the result due to nullable's assignment not being thread safe
     internal TimeSpan HostRecheckSecondsTranslated
-        => _hostRecheckSecondsTranslated ??= TimeSpan.FromSeconds(HostRecheckSeconds == 0 ? -1 : HostRecheckSeconds);
+        => TimeSpan.FromSeconds(HostRecheckSeconds == 0 ? -1 : HostRecheckSeconds);
 
     #endregion
 
@@ -990,7 +989,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                 throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
             _hostRecheckSeconds = value;
             SetValue(nameof(HostRecheckSeconds), value);
-            _hostRecheckSecondsTranslated = null;
         }
     }
     int _hostRecheckSeconds;
