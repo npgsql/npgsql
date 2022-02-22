@@ -2035,9 +2035,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             CurrentReader.Command.State = CommandState.Idle;
             try
             {
-                // Will never complete asynchronously (stream is already closed)
-                var readerCloseTask = CurrentReader.CloseAsync();
-                Debug.Assert(readerCloseTask.IsCompleted);
+                CurrentReader.Close();
             }
             catch
             {
@@ -2050,9 +2048,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             try
             {
-                // Will never complete asynchronously (stream is already closed)
-                var copyOperationDisposeTask = CurrentCopyOperation.DisposeAsync();
-                Debug.Assert(copyOperationDisposeTask.IsCompleted);
+                CurrentCopyOperation.Dispose();
             }
             catch
             {
