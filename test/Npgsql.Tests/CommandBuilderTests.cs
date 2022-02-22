@@ -517,7 +517,8 @@ $$ LANGUAGE SQL;
     {
         const string query = "SELECT @p::integer";
         const int answer = 42;
-        using var conn = await OpenConnectionAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn = await OpenConnectionAsync(connString);
         using var cmd = new NpgsqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
         cmd.Prepare();

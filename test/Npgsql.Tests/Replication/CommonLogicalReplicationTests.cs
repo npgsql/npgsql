@@ -17,6 +17,7 @@ namespace Npgsql.Tests.Replication;
 /// the methods they test are extension points for plugin developers.
 /// </remarks>
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable]
 public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
     // We use the test_decoding logical decoding plugin for the common

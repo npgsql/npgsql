@@ -113,10 +113,15 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
                 if (pid.Success)
                 {
                     await c.ExecuteNonQueryAsync($"SELECT pg_terminate_backend ({pid.Value})");
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync($"SELECT EXISTS(SELECT * FROM pg_stat_replication where pid = {pid.Value})"))! && i < 30; i++)
+                        await Task.Delay(TimeSpan.FromSeconds(1));
                 }
-                // Old backends don't report the PID
-                for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 30; i++)
-                    await Task.Delay(TimeSpan.FromSeconds(1));
+                else
+                {
+                    // Old backends don't report the PID
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 30; i++)
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                }
 
                 try
                 {

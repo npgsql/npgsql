@@ -28,6 +28,7 @@ namespace Npgsql.Tests.Replication;
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
     readonly ulong _protocolVersion;
@@ -87,7 +88,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -172,7 +173,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -236,7 +237,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -305,7 +306,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY FULL;
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -375,7 +376,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -438,7 +439,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -496,7 +497,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY FULL;
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -562,9 +563,9 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} (name) VALUES ('val1');
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
-                StringBuilder sb = new StringBuilder("TRUNCATE TABLE ").Append(tableName);
+                var sb = new StringBuilder("TRUNCATE TABLE ").Append(tableName);
                 if (truncateOptionFlags.HasFlag(TruncateOptions.RestartIdentity))
                     sb.Append(" RESTART IDENTITY");
                 if (truncateOptionFlags.HasFlag(TruncateOptions.Cascade))
@@ -622,7 +623,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
                 await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('value 1'), ('value 2');");
 
@@ -631,8 +632,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     .GetAsyncEnumerator();
 
                 await NextMessage<BeginMessage>(messages);
-
-                await rc.DisposeAsync();
             }, nameof(Dispose_while_replicating));
 
     [TestCase(true)]
@@ -649,7 +648,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 TestUtil.MinimumPgVersion(c, "14.0", "Replication of logical decoding messages was introduced in PostgreSQL 14");
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();

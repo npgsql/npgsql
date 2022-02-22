@@ -97,6 +97,7 @@ class RangeTests : MultiplexingTestBase
     }
 
     [Test]
+    [NonParallelizable]
     public async Task Range_with_long_subtype()
     {
         if (IsMultiplexing)

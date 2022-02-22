@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
+[NonParallelizable]
 public class NotificationTests : TestBase
 {
     [Test, Description("Simple LISTEN/NOTIFY scenario")]
@@ -57,7 +58,6 @@ public class NotificationTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    [Timeout(10000)]
     public void Wait()
     {
         using var conn = OpenConnection();
@@ -72,7 +72,6 @@ public class NotificationTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    //[Timeout(10000)]
     public void Wait_with_timeout()
     {
         using var conn = OpenConnection();
@@ -84,12 +83,11 @@ public class NotificationTests : TestBase
     public void Wait_with_prepended_message()
     {
         using (OpenConnection()) {}  // A DISCARD ALL is now prepended in the connection's write buffer
-        using (var conn = OpenConnection())
-            Assert.That(conn.Wait(100), Is.EqualTo(false));
+        using var conn = OpenConnection();
+        Assert.That(conn.Wait(100), Is.EqualTo(false));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    [Timeout(10000)]
     public async Task WaitAsync()
     {
         using var conn = OpenConnection();

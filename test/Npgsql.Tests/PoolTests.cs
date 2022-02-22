@@ -53,7 +53,7 @@ class PoolTests : TestBase
         Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
     }
 
-    [Test, Timeout(10000)]
+    [Test]
     public void Get_connector_from_exhausted_pool()
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -72,7 +72,7 @@ class PoolTests : TestBase
         conn2.Open();
     }
 
-    //[Test, Explicit, Timeout(10000)]
+    //[Test, Explicit]
     public async Task Get_connector_from_exhausted_pool_async()
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -142,7 +142,7 @@ class PoolTests : TestBase
             conn3.Open();
     }
 
-    [Test, Timeout(10000)]
+    [Test]
     [Explicit("Timing-based")]
     public async Task OpenAsync_cancel()
     {

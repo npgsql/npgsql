@@ -16,6 +16,7 @@ namespace Npgsql.Tests.Replication;
 [TestFixture(typeof(LogicalReplicationConnection))]
 [TestFixture(typeof(PhysicalReplicationConnection))]
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable]
 public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConnection>
     where TConnection : ReplicationConnection, new()
 {
@@ -221,7 +222,7 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
             async (slotName, _) =>
             {
                 await CreateReplicationSlot(slotName);
-                await using var rc = await OpenReplicationConnectionAsync();
+                var rc = await OpenReplicationConnectionAsync();
                 await rc.DisposeAsync();
                 Assert.That(async () => await rc.DropReplicationSlot(slotName), Throws.InstanceOf<ObjectDisposedException>()
                     .With.Property(nameof(ObjectDisposedException.ObjectName))
@@ -456,6 +457,7 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
     #region BugTests
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3534")]
+    [NonParallelizable]
     public Task Bug3534()
         => SafeReplicationTest(
             async (slotName, _) =>

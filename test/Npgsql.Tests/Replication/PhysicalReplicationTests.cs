@@ -67,7 +67,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
             async (slotName, tableName) =>
             {
                 // var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateReplicationSlot(slotName);
                 var info = await rc.IdentifySystem();
 
@@ -104,7 +104,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
     [Test]
     public async Task Replication_without_slot()
     {
-        var rc = await OpenReplicationConnectionAsync();
+        await using var rc = await OpenReplicationConnectionAsync();
         var info = await rc.IdentifySystem();
 
         using var streamingCts = new CancellationTokenSource();

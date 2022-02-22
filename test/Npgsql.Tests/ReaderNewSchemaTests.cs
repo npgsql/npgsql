@@ -656,9 +656,10 @@ CREATE TABLE {table2} (foo INTEGER)");
         // if (IsMultiplexing)
         //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.mydomain AS varchar(2)");
+        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
-        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (domain mydomain)");
+        await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");
         using var cmd = new NpgsqlCommand("SELECT domain FROM data", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
@@ -683,6 +684,7 @@ CREATE TABLE {table2} (foo INTEGER)");
     }
 
     [Test]
+    [NonParallelizable]
     public async Task NpgsqlDbType_extension()
     {
         using var conn = await OpenConnectionAsync();

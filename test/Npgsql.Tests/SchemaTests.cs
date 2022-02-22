@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
-
 namespace Npgsql.Tests;
 
+[NonParallelizable]
 public class SchemaTests : SyncOrAsyncTestBase
 {
     [Test]
@@ -366,6 +365,7 @@ ALTER TABLE data ADD PRIMARY KEY (id);");
     }
 
     [Test]
+    [NonParallelizable]
     public async Task Primary_key_composite()
     {
         using var conn = OpenConnection();

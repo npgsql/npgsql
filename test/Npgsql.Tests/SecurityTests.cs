@@ -157,7 +157,6 @@ public class SecurityTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1718")]
-    [Timeout(12000)]
     public void Bug1718()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -176,7 +175,6 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Timeout(2000)]
     public void ScramPlus()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)

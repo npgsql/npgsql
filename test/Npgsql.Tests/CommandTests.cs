@@ -137,7 +137,6 @@ public class CommandTests : MultiplexingTestBase
 
     [Test, Description("Checks that CommandTimeout gets enforced as a socket timeout")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/327")]
-    [Timeout(10000)]
     public async Task Timeout()
     {
         if (IsMultiplexing)
@@ -156,7 +155,6 @@ public class CommandTests : MultiplexingTestBase
 
     [Test, Description("Times out an async operation, testing that cancellation occurs successfully")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
-    [Timeout(10000)]
     public async Task Timeout_async_soft()
     {
         if (IsMultiplexing)
@@ -173,7 +171,6 @@ public class CommandTests : MultiplexingTestBase
 
     [Test, Description("Times out an async operation, with unsuccessful cancellation (socket break)")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
-    [Timeout(10000)]
     public async Task Timeout_async_hard()
     {
         if (IsMultiplexing)
@@ -245,7 +242,6 @@ public class CommandTests : MultiplexingTestBase
     }
 
     [Test]
-    [Timeout(10000)]
     public async Task Prepare_timeout_hard([Values] SyncOrAsync async)
     {
         if (IsMultiplexing)
@@ -281,7 +277,6 @@ public class CommandTests : MultiplexingTestBase
     #region Cancel
 
     [Test, Description("Basic cancellation scenario")]
-    [Timeout(6000)]
     public async Task Cancel()
     {
         if (IsMultiplexing)
@@ -372,7 +367,6 @@ public class CommandTests : MultiplexingTestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
-    [Timeout(6000)]
     public async Task Bug3466([Values(false, true)] bool isBroken)
     {
         if (IsMultiplexing)
@@ -392,7 +386,7 @@ public class CommandTests : MultiplexingTestBase
         using var cancellationSource = new CancellationTokenSource();
         using var cmd = new NpgsqlCommand("SELECT 1", conn)
         {
-            CommandTimeout = 3
+            CommandTimeout = 4
         };
         var t = Task.Run(() => cmd.ExecuteScalar());
         // We have to be sure the command's state is InProgress, otherwise the cancellation request will never be sent
@@ -430,7 +424,6 @@ public class CommandTests : MultiplexingTestBase
 
     [Test, Description("Check that cancel only affects the command on which its was invoked")]
     [Explicit("Timing-sensitive")]
-    [Timeout(3000)]
     public async Task Cancel_cross_command()
     {
         using var conn = await OpenConnectionAsync();
@@ -453,8 +446,8 @@ public class CommandTests : MultiplexingTestBase
     public async Task Cursor_statement()
     {
         using var conn = await OpenConnectionAsync();
-        using var t = conn.BeginTransaction();
         await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        using var t = conn.BeginTransaction();
 
         for (var x = 0; x < 5; x++)
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')");
@@ -815,7 +808,8 @@ public class CommandTests : MultiplexingTestBase
     [Test]
     public async Task Non_standards_conforming_strings()
     {
-        using var conn = await OpenConnectionAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        await using var conn = await OpenConnectionAsync(connString);
 
         if (IsMultiplexing)
         {
@@ -987,7 +981,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
     public async Task Invalid_UTF8()
     {
         const string badString = "SELECT 'abc\uD801\uD802d'";
-        using var conn = await OpenConnectionAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn = await OpenConnectionAsync(connString);
         Assert.That(() => conn.ExecuteScalarAsync(badString), Throws.Exception.TypeOf<EncoderFallbackException>());
     }
 
@@ -1071,7 +1066,6 @@ LANGUAGE 'plpgsql' VOLATILE;";
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
-    [Timeout(10000)]
     public async Task Many_parameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
     {
         if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
@@ -1187,7 +1181,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         }
     }
 
-    [Test, Timeout(10000)]
+    [Test]
     public void Batched_small_then_big_statements_do_not_deadlock_in_sync_io()
     {
         if (IsMultiplexing)
@@ -1228,7 +1222,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(9));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Timeout(5000), Ignore("Flaky")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3509"), Ignore("Flaky")]
     public async Task Bug3509()
     {
         if (IsMultiplexing)
@@ -1247,7 +1241,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
         var queryTask = Task.Run(async () => await conn.ExecuteNonQueryAsync("SELECT 1"));
         // TODO: kind of flaky - think of the way to rewrite
         // giving a queryTask some time to get stuck on a lock
-        await Task.Delay(100);
+        await Task.Delay(300);
         await serverMock
             .WriteErrorResponse("42")
             .WriteReadyForQuery()

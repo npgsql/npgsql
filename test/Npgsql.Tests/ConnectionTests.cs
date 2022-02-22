@@ -22,7 +22,6 @@ namespace Npgsql.Tests;
 public class ConnectionTests : MultiplexingTestBase
 {
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-    //[Timeout(5000)]
     public async Task Basic_lifecycle()
     {
         using var conn = new NpgsqlConnection(ConnectionString);
@@ -70,6 +69,7 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
+    [NonParallelizable] // Killing conn is using the default pool
     public async Task Broken_lifecycle([Values] bool openFromClose)
     {
         if (IsMultiplexing)
@@ -104,6 +104,8 @@ public class ConnectionTests : MultiplexingTestBase
 
         var sleep = conn.ExecuteNonQueryAsync("SELECT pg_sleep(5)");
 
+        // Wait for a query
+        await Task.Delay(1000);
         await using (var killingConn = await OpenConnectionAsync())
             killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
 
@@ -397,7 +399,6 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test]
-    [Timeout(10000)]
     public void Open_timeout_unknown_ip([Values(true, false)] bool async)
     {
         var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
@@ -435,7 +436,6 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test]
-    [Timeout(10000)]
     public void Connect_timeout_cancel()
     {
         var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
@@ -469,7 +469,7 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Client_encoding_env_var()
     {
         using (var testConn = await OpenConnectionAsync())
@@ -500,7 +500,7 @@ public class ConnectionTests : MultiplexingTestBase
     #region Timezone
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Timezone_env_var()
     {
         string newTimezone;
@@ -813,8 +813,9 @@ public class ConnectionTests : MultiplexingTestBase
 
     [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
     [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
-    [TestCase(false, TestName = "BreakConnectorInPoolWithoutKeepAlive")]
-    [TestCase(true, TestName = "BreakConnectorInPoolWithKeepAlive")]
+    [TestCase(false, TestName = nameof(Break_connector_in_pool) + "_without_keep_alive")]
+    [TestCase(true, TestName = nameof(Break_connector_in_pool) + "_with_keep_alive")]
+    [NonParallelizable]
     public async Task Break_connector_in_pool(bool keepAlive)
     {
         if (IsMultiplexing)
@@ -823,14 +824,16 @@ public class ConnectionTests : MultiplexingTestBase
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
         if (keepAlive)
             csb.KeepAlive = 1;
-        using var conn = new NpgsqlConnection(csb.ToString());
+        using var _ = CreateTempPool(csb, out var connString);
+        using var conn = new NpgsqlConnection(connString);
         conn.Open();
-        var connectorId = conn.ProcessID;
+        var connector = conn.Connector;
+        Assert.That(connector, Is.Not.Null);
         conn.Close();
 
         // Use another connection to kill the connector currently in the pool
         using (var conn2 = await OpenConnectionAsync())
-            conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+            conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({connector!.BackendProcessId})");
 
         // Allow some time for the terminate to occur
         Thread.Sleep(2000);
@@ -839,12 +842,12 @@ public class ConnectionTests : MultiplexingTestBase
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         if (keepAlive)
         {
-            Assert.That(conn.ProcessID, Is.Not.EqualTo(connectorId));
+            Assert.That(conn.Connector, Is.Not.SameAs(connector));
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
         else
         {
-            Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+            Assert.That(conn.Connector, Is.SameAs(connector));
             Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Throws.Exception
                 .AssignableTo<NpgsqlException>());
         }
@@ -888,7 +891,6 @@ public class ConnectionTests : MultiplexingTestBase
     #endregion
 
     [Test, Description("Tests closing a connector while a reader is open")]
-    [Timeout(10000)]
     public async Task Close_during_read([Values(PooledOrNot.Pooled, PooledOrNot.Unpooled)] PooledOrNot pooled)
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
@@ -1133,6 +1135,7 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
+    [NonParallelizable]
     public async Task ReloadTypes()
     {
         if (IsMultiplexing)
@@ -1160,12 +1163,17 @@ LANGUAGE 'plpgsql'");
     enum ReloadTypesEnum { First, Second };
 
     [Test]
+    [NonParallelizable] // Anyone can reload DatabaseInfo between us opening a connection
     public async Task DatabaseInfo_is_shared()
     {
         if (IsMultiplexing)
             return;
-        using var conn1 = await OpenConnectionAsync();
-        using var conn2 = await OpenConnectionAsync();
+        // Create a temp pool to make sure the second connection will be new and not idle
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn1 = await OpenConnectionAsync(connString);
+        // Call RealoadTypes to force reload DatabaseInfo
+        conn1.ReloadTypes();
+        using var conn2 = await OpenConnectionAsync(connString);
         Assert.That(conn1.Connector!.DatabaseInfo, Is.SameAs(conn2.Connector!.DatabaseInfo));
     }
 
@@ -1303,6 +1311,8 @@ CREATE TABLE record ()");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
+    [NonParallelizable]
+    [Platform(Exclude = "MacOsX", Reason = "Flaky in CI on Mac")]
     public async Task Non_UTF8_Encoding()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -1454,7 +1464,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Connect_UserNameFromEnvironment_Succeeds()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IntegratedSecurity = false };
@@ -1465,7 +1475,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Connect_PasswordFromEnvironment_Succeeds()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IntegratedSecurity = false };
@@ -1476,7 +1486,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Connect_OptionsFromEnvironment_Succeeds()
     {
         using (SetEnvironmentVariable("PGOPTIONS", "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"))
@@ -1513,6 +1523,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
+    [NonParallelizable] // Sets environment variable
     public async Task Use_pgpass_from_connection_string()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
@@ -1537,7 +1548,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Use_pgpass_from_environment_variable()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
@@ -1562,7 +1573,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public async Task Use_pgpass_from_homedir()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
@@ -1612,7 +1623,7 @@ CREATE TABLE record ()");
     }
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Sets environment variable
     public void Password_source_precedence()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
@@ -1662,7 +1673,6 @@ CREATE TABLE record ()");
 
     [Test, Description("Simulates a timeout during the authentication phase")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3227")]
-    [Timeout(10000)]
     public async Task Timeout_during_authentication()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
