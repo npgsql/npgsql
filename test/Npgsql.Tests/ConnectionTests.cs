@@ -813,8 +813,8 @@ public class ConnectionTests : MultiplexingTestBase
 
     [Test, Description("Breaks a connector while it's in the pool, with a keepalive and without")]
     [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
-    [TestCase(false, TestName = "Break_connector_in_pool_without_keep_alive")]
-    [TestCase(true, TestName = "Break_connector_in_pool_with_keep_alive")]
+    [TestCase(false, TestName = nameof(Break_connector_in_pool) + "_without_keep_alive")]
+    [TestCase(true, TestName = nameof(Break_connector_in_pool) + "_with_keep_alive")]
     [NonParallelizable]
     public async Task Break_connector_in_pool(bool keepAlive)
     {
