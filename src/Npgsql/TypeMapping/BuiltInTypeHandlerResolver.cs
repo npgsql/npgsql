@@ -156,12 +156,6 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
         { "unknown",  new(NpgsqlDbType.Unknown, "unknown") },
     };
 
-    internal static void ResetMappings()
-    {
-        foreach (var mapping in Mappings)
-            mapping.Value.Reset();
-    }
-
     #region Cached handlers
 
     // Numeric types
