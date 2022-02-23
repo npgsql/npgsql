@@ -235,6 +235,14 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        internal PgServerMock WriteNoData()
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.NoData);
+            _writeBuffer.WriteInt32(4);
+            return this;
+        }
+
         internal PgServerMock WriteDataRow(params byte[][] columnValues)
         {
             CheckDisposed();
