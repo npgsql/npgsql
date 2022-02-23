@@ -815,7 +815,6 @@ public class ConnectionTests : MultiplexingTestBase
     [Platform(Exclude = "MacOsX", Reason = "Fails only on mac, needs to be investigated")]
     [TestCase(false, TestName = nameof(Break_connector_in_pool) + "_without_keep_alive")]
     [TestCase(true, TestName = nameof(Break_connector_in_pool) + "_with_keep_alive")]
-    [NonParallelizable]
     public async Task Break_connector_in_pool(bool keepAlive)
     {
         if (IsMultiplexing)
@@ -825,20 +824,19 @@ public class ConnectionTests : MultiplexingTestBase
         if (keepAlive)
             csb.KeepAlive = 1;
         using var _ = CreateTempPool(csb, out var connString);
-        using var conn = new NpgsqlConnection(connString);
-        conn.Open();
+        await using var conn = await OpenConnectionAsync(connString);
         var connector = conn.Connector;
         Assert.That(connector, Is.Not.Null);
-        conn.Close();
+        await conn.CloseAsync();
 
         // Use another connection to kill the connector currently in the pool
-        using (var conn2 = await OpenConnectionAsync())
-            conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({connector!.BackendProcessId})");
+        await using (var conn2 = await OpenConnectionAsync())
+            await conn2.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({connector!.BackendProcessId})");
 
         // Allow some time for the terminate to occur
-        Thread.Sleep(2000);
+        await Task.Delay(3000);
 
-        conn.Open();
+        await conn.OpenAsync();
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         if (keepAlive)
         {

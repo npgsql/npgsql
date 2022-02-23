@@ -238,21 +238,31 @@ namespace Npgsql.Tests
         }
 
         /// <summary>
-        /// Generates a unique function name, usable for a single test.
-        /// Actual creation of the function is the responsibility of the caller.
+        /// Generates a unique type name, usable for a single test.
+        /// Actual creation of the type is the responsibility of the caller.
         /// </summary>
         /// <returns>
-        /// An <see cref="IDisposable"/> to drop the function at the end of the test.
+        /// An <see cref="IDisposable"/> to drop the type at the end of the test.
         /// </returns>
         internal static Task<IAsyncDisposable> GetTempTypeName(NpgsqlConnection conn, out string typeName)
         {
             typeName = "temp_type" + Interlocked.Increment(ref _tempTypeCounter);
-            return conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {typeName} CASCADE")
+            return EnsureTypeDoesNotExist(conn, typeName);
+        }
+
+        /// <summary>
+        /// Ensure the type does not exist, usable for a single test.
+        /// Actual creation of the type is the responsibility of the caller.
+        /// </summary>
+        /// <returns>
+        /// An <see cref="IDisposable"/> to drop the type at the end of the test.
+        /// </returns>
+        internal static Task<IAsyncDisposable> EnsureTypeDoesNotExist(NpgsqlConnection conn, string typeName)
+            => conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {typeName} CASCADE")
                 .ContinueWith(
                     (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TYPE"),
                     typeName,
                     TaskContinuationOptions.OnlyOnRanToCompletion);
-        }
 
         static volatile int _tempTableCounter;
         static volatile int _tempViewCounter;

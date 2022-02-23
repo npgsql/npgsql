@@ -920,7 +920,7 @@ LANGUAGE 'plpgsql'");
 CREATE TABLE {table1} (value int NOT NULL);
 CREATE TABLE {table2} (value int UNIQUE);
 ALTER TABLE ONLY {table1} ADD CONSTRAINT fkey FOREIGN KEY (value) REFERENCES {table2}(value) DEFERRABLE INITIALLY DEFERRED;
-CREATE FUNCTION {function}(_value int) RETURNS int AS $BODY$
+CREATE OR REPLACE FUNCTION {function}(_value int) RETURNS int AS $BODY$
 BEGIN
     INSERT INTO {table1}(value) VALUES(_value);
     RETURN _value;
