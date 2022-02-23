@@ -256,11 +256,7 @@ jobs:
           name: Npgsql.Release
           path: nupkgs
 
-      - name: Create Github release
-        uses: ncipollo/release-action@v1
-        with:
-          prerelease: ${{ needs.build.outputs.is_prerelease }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # TODO: Create a release
 
       - name: Publish to nuget.org
         run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_ORG_API_KEY }} --source https://api.nuget.org/v3/index.json
