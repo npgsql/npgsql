@@ -1045,15 +1045,13 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4199")]
     public async Task Copy_is_not_supported_in_regular_command_execution()
     {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+        // Run in a separate pool to protect other queries in multiplexing
+        // because we're going to break the connection on CopyInResponse
+        using var _ = CreateTempPool(ConnectionString, out var connectionString);
+        using var conn = await OpenConnectionAsync(connectionString);
+        await using var __ = await CreateTempTable(conn, "foo INT", out var table);
 
-        Assert.That(() => conn.ExecuteNonQueryAsync($@"
-COPY {table} (foo) FROM stdin;
-1
-2
-\.
-"), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => conn.ExecuteNonQuery($@"COPY {table} (foo) FROM stdin"), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
     #endregion
