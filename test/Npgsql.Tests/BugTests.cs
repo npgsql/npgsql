@@ -351,7 +351,7 @@ public class BugTests : TestBase
         await using var __ = await GetTempTypeName(conn, out var domainTypeName);
         await using var ___ = await GetTempTypeName(conn, out var compositeTypeName);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {enumTypeName} AS ENUM ('left', 'right')");
-        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS enum_type NOT NULL");
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS {enumTypeName} NOT NULL");
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {compositeTypeName} AS (value {domainTypeName})");
         await using var ____ = await CreateTempTable(conn, $"value {compositeTypeName}", out var tableName);
         await conn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES (ROW('left'))");
