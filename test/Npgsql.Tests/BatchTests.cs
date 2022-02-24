@@ -1,10 +1,10 @@
+using Npgsql.Tests.Support;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using Npgsql.Tests.Support;
-using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
@@ -30,7 +30,7 @@ namespace Npgsql.Tests
                 }
             };
 
-            await using var reader = await batch.ExecuteReaderAsync();
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
             Assert.That(await reader.ReadAsync(), Is.True);
             Assert.That(reader.FieldCount, Is.EqualTo(1));
             Assert.That(reader[0], Is.EqualTo(8));
@@ -57,7 +57,7 @@ namespace Npgsql.Tests
                 }
             };
 
-            await using var reader = await batch.ExecuteReaderAsync();
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
             Assert.That(await reader.ReadAsync(), Is.True);
             Assert.That(reader.FieldCount, Is.EqualTo(1));
             Assert.That(reader[0], Is.EqualTo(8));
@@ -86,7 +86,7 @@ namespace Npgsql.Tests
                 }
             };
 
-            Assert.That(() => batch.ExecuteReaderAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(() => batch.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         #endregion Parameters
@@ -287,7 +287,7 @@ namespace Npgsql.Tests
                 BatchCommands = { new("SELECT 8") }
             };
 
-            await using var reader = await batch.ExecuteReaderAsync();
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
             Assert.That(await reader.ReadAsync(), Is.True);
             Assert.That(reader.FieldCount, Is.EqualTo(1));
             Assert.That(reader[0], Is.EqualTo(8));
@@ -300,7 +300,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
             await using var batch = new NpgsqlBatch(conn);
-            await using var reader = await batch.ExecuteReaderAsync();
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
 
             Assert.That(await reader.ReadAsync(), Is.False);
             Assert.That(await reader.NextResultAsync(), Is.False);
@@ -315,7 +315,7 @@ namespace Npgsql.Tests
                 BatchCommands = { new("SELECT 1; SELECT 2") }
             };
 
-            Assert.That(() => batch.ExecuteReaderAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(() => batch.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/967")]
@@ -333,15 +333,8 @@ LANGUAGE 'plpgsql'");
             var batch = conn.CreateBatch();
             batch.BatchCommands.Add(new($"SELECT {function}()"));
 
-            try
-            {
-                await batch.ExecuteReaderAsync(Behavior);
-                Assert.Fail();
-            }
-            catch (PostgresException e)
-            {
-                Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
-            }
+            var e = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+            Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
 
             // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
             // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
@@ -368,15 +361,9 @@ LANGUAGE 'plpgsql'");
 
             await using (var reader = await batch.ExecuteReaderAsync(Behavior))
             {
-                try
-                {
-                    await reader.NextResultAsync();
-                    Assert.Fail();
-                }
-                catch (PostgresException e)
-                {
-                    Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
-                }
+
+                var e = Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())!;
+                Assert.That(e.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
             }
 
             // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
@@ -398,7 +385,8 @@ LANGUAGE 'plpgsql'");
 
         #region Logging
 
-        [Test, NonParallelizable]
+        [Test]
+        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_single_statement_without_parameters()
         {
             await using var conn = await OpenConnectionAsync();
@@ -422,7 +410,8 @@ LANGUAGE 'plpgsql'");
                 AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
         }
 
-        [Test, NonParallelizable]
+        [Test]
+        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_multiple_statements_with_parameters()
         {
             await using var conn = await OpenConnectionAsync();
@@ -459,7 +448,8 @@ LANGUAGE 'plpgsql'");
             Assert.That(batchCommands[1].Parameters[0], Is.EqualTo(9));
         }
 
-        [Test, NonParallelizable]
+        [Test]
+        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_single_statement_with_parameter_logging_off()
         {
             await using var conn = await OpenConnectionAsync();

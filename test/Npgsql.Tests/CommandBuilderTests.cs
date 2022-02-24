@@ -11,9 +11,6 @@ namespace Npgsql.Tests;
 
 class CommandBuilderTests : TestBase
 {
-    // TODO: REMOVE ME
-    bool IsMultiplexing = false;
-
     [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
     public async Task DeriveParameters_function_various()
     {
@@ -156,7 +153,7 @@ class CommandBuilderTests : TestBase
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
-                    CREATE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
+                    CREATE OR REPLACE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
                       'SELECT in1,in1+1' LANGUAGE 'sql';
                 ");
 
@@ -216,9 +213,6 @@ class CommandBuilderTests : TestBase
     [Test, Description("Tests if the right function according to search_path is used in function parameter derivation")]
     public async Task DeriveParameters_function_correct_schema_resolution()
     {
-        if (IsMultiplexing)
-            return;  // Uses search_path
-
         using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schema1);
         await using var __ = await CreateTempSchema(conn, out var schema2);
@@ -279,9 +273,6 @@ RESET search_path;
     [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
     public async Task DeriveParameters_throws_for_multiple_function_name_hits_in_search_path()
     {
-        if (IsMultiplexing)
-            return;  // Uses search_path
-
         using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schema1);
         await using var __ = await CreateTempSchema(conn, out var schema2);
@@ -332,7 +323,7 @@ INSERT INTO {table} VALUES
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
+CREATE OR REPLACE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
     SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
@@ -402,7 +393,7 @@ INSERT INTO {table} VALUES
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
+CREATE OR REPLACE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
     SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");

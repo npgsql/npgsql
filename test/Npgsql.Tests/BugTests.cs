@@ -1,16 +1,15 @@
-﻿using System;
+﻿using Npgsql.BackendMessages;
+using Npgsql.Tests.Support;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using NUnit.Framework;
+using System;
 using System.Data;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using NpgsqlTypes;
-using NUnit.Framework;
 using System.Transactions;
-using Npgsql.Tests.Support;
-
 using static Npgsql.Tests.TestUtil;
-using Npgsql.BackendMessages;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.Tests;
 
@@ -61,7 +60,7 @@ public class BugTests : TestBase
         for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
         {
             var paramName = $"@binary_param{i}";
-            sb.Append(",");
+            sb.Append(',');
             sb.Append(paramName);
             cmd.Parameters.AddWithValue(paramName, 8);
         }
@@ -99,13 +98,13 @@ public class BugTests : TestBase
     }
 
     [Test]
-    public void Bug1645()
+    public async Task Bug1645()
     {
-        using var conn = OpenConnection();
-        conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+        await using var conn = OpenConnection();
+        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var tableName);
         Assert.That(() =>
             {
-                using var writer = conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY");
+                using var writer = conn.BeginBinaryImport($"COPY {tableName} (field_text, field_int4) FROM STDIN BINARY");
                 writer.StartRow();
                 writer.Write("foo");
                 writer.Write(8);
@@ -116,7 +115,7 @@ public class BugTests : TestBase
                 .TypeOf<InvalidOperationException>()
                 .With.Property(nameof(InvalidOperationException.Message)).EqualTo("Catch me outside the using statement if you can!")
         );
-        Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.Zero);
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {tableName}"), Is.Zero);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3600")]
@@ -127,8 +126,7 @@ public class BugTests : TestBase
             CommandTimeout = 1,
         };
         await using var postmasterMock = PgPostmasterMock.Start(csb.ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var conn = await OpenConnectionAsync(postmasterMock.ConnectionString);
         var serverMock = await postmasterMock.WaitForServerConnection();
         await serverMock
             .WriteCopyInResponse()
@@ -141,13 +139,13 @@ public class BugTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
-    public void Bug1497()
+    public async Task Bug1497()
     {
-        using var conn = OpenConnection();
-        conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT4)");
-        conn.ExecuteNonQuery("INSERT INTO data (id) VALUES (NULL)");
-        using var cmd = new NpgsqlCommand("SELECT * FROM data", conn);
-        using var reader = cmd.ExecuteReader();
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT4", out var tableName);
+        conn.ExecuteNonQuery($"INSERT INTO {tableName} (id) VALUES (NULL)");
+        await using var cmd = new NpgsqlCommand($"SELECT * FROM {tableName}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
         var dt = new DataTable();
         dt.Load(reader);
     }
@@ -240,7 +238,7 @@ public class BugTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
-    public void Bug1987()
+    public async Task Bug1987()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
@@ -249,15 +247,16 @@ public class BugTests : TestBase
             Pooling = false
         };
 
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+        await using var conn = await OpenConnectionAsync(csb);
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>("mood");
+        conn.TypeMapper.MapEnum<Mood>(typeName);
         for (var i = 0; i < 2; i++)
         {
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
             cmd.Parameters.AddWithValue("p", Mood.Happy);
-            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Mood.Happy));
+            Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(Mood.Happy));
         }
     }
 
@@ -291,7 +290,6 @@ public class BugTests : TestBase
     }
 
     [Test]
-    [Ignore("Multiplexing: fails")]
     public void Bug1761()
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -346,28 +344,23 @@ public class BugTests : TestBase
     }
 
     [Test]
-    public void Bug2278()
+    public async Task Bug2278()
     {
-        using var conn = OpenConnection();
-        try
-        {
-            conn.ExecuteNonQuery("CREATE TYPE enum_type AS ENUM ('left', 'right')");
-            conn.ExecuteNonQuery("CREATE DOMAIN enum_domain AS enum_type NOT NULL");
-            conn.ExecuteNonQuery("CREATE TYPE composite_type AS (value enum_domain)");
-            conn.ExecuteNonQuery("CREATE TEMP TABLE data (value composite_type)");
-            conn.ExecuteNonQuery("INSERT INTO data (value) VALUES (ROW('left'))");
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(conn, out var enumTypeName);
+        await using var __ = await GetTempTypeName(conn, out var domainTypeName);
+        await using var ___ = await GetTempTypeName(conn, out var compositeTypeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {enumTypeName} AS ENUM ('left', 'right')");
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS {enumTypeName} NOT NULL");
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {compositeTypeName} AS (value {domainTypeName})");
+        await using var ____ = await CreateTempTable(conn, $"value {compositeTypeName}", out var tableName);
+        await conn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES (ROW('left'))");
 
-            conn.ReloadTypes();
-            conn.TypeMapper.MapComposite<Bug2278CompositeType>("composite_type");
-            conn.TypeMapper.MapEnum<Bug2278EnumType>("enum_type");
+        conn.ReloadTypes();
+        conn.TypeMapper.MapComposite<Bug2278CompositeType>(compositeTypeName);
+        conn.TypeMapper.MapEnum<Bug2278EnumType>(enumTypeName);
 
-            conn.ExecuteScalar("SELECT * FROM data AS d");
-        }
-        finally
-        {
-            conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; DROP TYPE IF EXISTS composite_type; DROP DOMAIN IF EXISTS enum_domain; DROP TYPE IF EXISTS enum_type");
-            conn.ReloadTypes();
-        }
+        await conn.ExecuteScalarAsync($"SELECT * FROM {tableName} AS d");
     }
 
     class Bug2278CompositeType
@@ -386,9 +379,11 @@ public class BugTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/2178")]
     public void Bug2178()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        builder.AutoPrepareMinUsages = 2;
-        builder.MaxAutoPrepare = 2;
+        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            AutoPrepareMinUsages = 2,
+            MaxAutoPrepare = 2
+        };
         using var conn = new NpgsqlConnection(builder.ConnectionString);
         using var cmd = new NpgsqlCommand();
         conn.Open();
@@ -403,11 +398,7 @@ public class BugTests : TestBase
         cmd.CommandText = "SELECT * FROM public.dummy_table_name";
         for (var i = 0; i < 3; ++i)
         {
-            try
-            {
-                cmd.ExecuteScalar();
-            }
-            catch { }
+            Assert.Throws<PostgresException>(() => cmd.ExecuteScalar());
         }
 
         cmd.CommandText = "SELECT 1";
@@ -416,24 +407,17 @@ public class BugTests : TestBase
     }
 
     [Test]
-    public void Bug2296()
+    public async Task Bug2296()
     {
-        using var conn = OpenConnection();
-        try
-        {
-            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.\"boolean\" AS bool");
-            conn.ExecuteNonQuery("CREATE TEMP TABLE data (mybool \"boolean\")");
-            conn.ExecuteNonQuery("INSERT INTO data (mybool) VALUES (TRUE)");
+        await using var conn = await OpenConnectionAsync();
+        // Note that the type has to be named boolean
+        await using var _ = await EnsureTypeDoesNotExist(conn, "\"boolean\"");
+        await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.\"boolean\" AS bool");
+        conn.ReloadTypes();
+        await using var __ = await CreateTempTable(conn, $"mybool \"boolean\"", out var tableName);
+        await conn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (mybool) VALUES (TRUE)");
 
-            conn.ReloadTypes();
-
-            conn.ExecuteScalar("SELECT mybool FROM data");
-        }
-        finally
-        {
-            conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; DROP TYPE IF EXISTS \"boolean\"");
-            conn.ReloadTypes();
-        }
+        await conn.ExecuteScalarAsync($"SELECT mybool FROM {tableName}");
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2660")]
@@ -1116,97 +1100,73 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     #endregion Bug1285
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-    [NonParallelizable]
     public async Task Chunked_string_write_buffer_encoding_space()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
         // write buffer size must be 8192 for this test to work
         // so guard against changes to the default / a change in the test harness
         builder.WriteBufferSize = 8192;
-        using var conn = OpenConnection(builder.ConnectionString);
+        await using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
-        try
-        {
-            conn.ExecuteNonQuery("CREATE TABLE bug_2849 (col1 text, col2 text)");
+        await using var _ = await CreateTempTable(conn, "col1 text, col2 text", out var tableName);
 
-            using var binaryImporter = conn.BeginBinaryImport("COPY bug_2849 FROM STDIN (FORMAT BINARY);");
-            // 8163 writespace left
-            await binaryImporter.StartRowAsync();
+        await using var binaryImporter = await conn.BeginBinaryImportAsync($"COPY {tableName} FROM STDIN (FORMAT BINARY);");
+        // 8163 writespace left
+        await binaryImporter.StartRowAsync();
 
-            // we need to almost fill the write buffer - we need one byte left in the buffer before we chunk the string for the column after this one!
-            var almostBufferFillingString = new string('a', 8152);
-            await binaryImporter.WriteAsync(almostBufferFillingString, NpgsqlTypes.NpgsqlDbType.Text);
+        // we need to almost fill the write buffer - we need one byte left in the buffer before we chunk the string for the column after this one!
+        var almostBufferFillingString = new string('a', 8152);
+        await binaryImporter.WriteAsync(almostBufferFillingString, NpgsqlDbType.Text);
 
-            var unicodeCharacterThatEncodesToThreeBytesInUtf8 = '\uD55C';
-            // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
-            // get encoded to multiple bytes
-            var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
-            await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter, NpgsqlDbType.Text);
+        var unicodeCharacterThatEncodesToThreeBytesInUtf8 = '\uD55C';
+        // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
+        // get encoded to multiple bytes
+        var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
+        await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter, NpgsqlDbType.Text);
 
-            await binaryImporter.CompleteAsync();
-        }
-        finally
-        {
-            conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
-        }
+        await binaryImporter.CompleteAsync();
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
-    [NonParallelizable]
     public async Task Chunked_char_array_write_buffer_encoding_space()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
         // write buffer size must be 8192 for this test to work
         // so guard against changes to the default / a change in the test harness
         builder.WriteBufferSize = 8192;
-        using var conn = OpenConnection(builder.ConnectionString);
+        await using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
-        try
-        {
-            conn.ExecuteNonQuery("CREATE TABLE bug_2849 (col1 text, col2 text)");
+        await using var _ = await CreateTempTable(conn, "col1 text, col2 text", out var tableName);
 
-            using var binaryImporter = conn.BeginBinaryImport("COPY bug_2849 FROM STDIN (FORMAT BINARY);");
-            // 8163 writespace left
-            await binaryImporter.StartRowAsync();
+        await using var binaryImporter = await conn.BeginBinaryImportAsync($"COPY {tableName} FROM STDIN (FORMAT BINARY);");
+        // 8163 writespace left
+        await binaryImporter.StartRowAsync();
 
-            // we need to almost fill the write buffer - we need one byte left in the buffer before we chunk the string for the column after this one!
-            var almostBufferFillingString = new string('a', 8152);
-            await binaryImporter.WriteAsync(almostBufferFillingString, NpgsqlTypes.NpgsqlDbType.Text);
+        // we need to almost fill the write buffer - we need one byte left in the buffer before we chunk the string for the column after this one!
+        var almostBufferFillingString = new string('a', 8152);
+        await binaryImporter.WriteAsync(almostBufferFillingString, NpgsqlDbType.Text);
 
-            var unicodeCharacterThatEncodesToThreeBytesInUtf8 = '\uD55C';
-            // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
-            // get encoded to multiple bytes
-            var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
-            await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter.ToCharArray(), NpgsqlDbType.Text);
+        var unicodeCharacterThatEncodesToThreeBytesInUtf8 = '\uD55C';
+        // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
+        // get encoded to multiple bytes
+        var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
+        await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter.ToCharArray(), NpgsqlDbType.Text);
 
-            await binaryImporter.CompleteAsync();
-        }
-        finally
-        {
-            conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
-        }
+        await binaryImporter.CompleteAsync();
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2371")]
-    public void NRE_in_BeginTextExport()
+    public async Task NRE_in_BeginTextExport()
     {
-        using var conn = OpenConnection();
-        try
-        {
-            using var transaction = conn.BeginTransaction();
-            var command = conn.CreateCommand();
-            command.CommandText = "CREATE OR REPLACE FUNCTION f_test() RETURNS TABLE (i INT) AS $$ BEGIN RETURN QUERY SELECT s.a FROM pg_stat_activity p; end; $$ LANGUAGE plpgsql;";
-            command.ExecuteNonQuery();
-            using var reader = conn.BeginTextExport("copy (select * FROM f_test())  TO STDOUT WITH (format csv)");
-            Assert.That(() => reader.ReadLine(), Throws.Exception
-                .TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
-            );
-        }
-        finally
-        {
-            conn.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
-        }
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = GetTempFunctionName(conn, out var funcName);
+        await using var transaction = await conn.BeginTransactionAsync();
+        await conn.ExecuteNonQueryAsync($"CREATE OR REPLACE FUNCTION {funcName}() RETURNS TABLE (i INT) AS $$ BEGIN RETURN QUERY SELECT s.a FROM pg_stat_activity p; end; $$ LANGUAGE plpgsql;");
+        using var reader = await conn.BeginTextExportAsync($"copy (select * FROM {funcName}())  TO STDOUT WITH (format csv)");
+        Assert.That(() => reader.ReadLine(), Throws.Exception
+            .TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+        );
     }
 
     public enum TestEnum
@@ -1226,25 +1186,26 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     }
 
     [Test]
-    public void CompositePostgresType()
+    public async Task CompositePostgresType()
     {
-        using var conn = OpenConnection();
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.comp1 as (x int, some_text text, test int)");
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+        await using var __ = GetTempFunctionName(conn, out var funcName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} as (x int, some_text text, test int)");
         conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("comp1");
+        conn.TypeMapper.MapComposite<SomeComposite>(typeName);
 
-        conn.ExecuteNonQuery(@"
-CREATE FUNCTION pg_temp.func(id int, out comp1 comp1, OUT comp2 COMP1[])
+        await conn.ExecuteNonQueryAsync(@$"
+CREATE OR REPLACE FUNCTION {funcName}(id int, out comp1 {typeName}, OUT comp2 {typeName}[])
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    comp1 = ROW(9, 'bar', 1)::comp1;
-    comp2 = ARRAY[ROW(9, 'bar', 1)::comp1];
+    comp1 = ROW(9, 'bar', 1)::{typeName};
+    comp2 = ARRAY[ROW(9, 'bar', 1)::{typeName}];
 END;
 $$;");
 
-        using var cmd = new NpgsqlCommand("SELECT pg_temp.func(0)", conn);
-        Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<InvalidCastException>());
+        Assert.ThrowsAsync<InvalidCastException>(async () => await conn.ExecuteScalarAsync($"SELECT {funcName}(0)"));
     }
 
     [Test]
