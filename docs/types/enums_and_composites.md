@@ -55,7 +55,7 @@ Note that your PostgreSQL enum and composites types (`some_enum_type` and `some_
 
 ## Name translation
 
-CLR type and field names are usually camel case (e.g. `SomeType`), whereas in PostgreSQL they are snake case (e.g. `some_type`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
+CLR type and field names are usually Pascal case (e.g. `SomeType`), whereas in PostgreSQL they are snake case (e.g. `some_type`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
 
 ```c#
 NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeType>("some_type", new NpgsqlNullNameTranslator());
