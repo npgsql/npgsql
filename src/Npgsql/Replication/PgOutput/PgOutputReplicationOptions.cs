@@ -17,8 +17,9 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="binary">Send values in binary representation</param>
     /// <param name="streaming">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
-    public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null)
-        : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming, messages)
+    /// <param name="twoPhase">Enable streaming of prepared transactions</param>
+    public PgOutputReplicationOptions(string publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null)
+        : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming, messages, twoPhase)
     { }
 
     /// <summary>
@@ -29,7 +30,8 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     /// <param name="binary">Send values in binary representation</param>
     /// <param name="streaming">Enable streaming of in-progress transactions</param>
     /// <param name="messages">Write logical decoding messages into the replication stream</param>
-    public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null)
+    /// <param name="twoPhase">Enable streaming of prepared transactions</param>
+    public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null)
     {
         var publicationNamesList = new List<string>(publicationNames);
         if (publicationNamesList.Count < 1)
@@ -46,6 +48,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         Binary = binary;
         Streaming = streaming;
         Messages = messages;
+        TwoPhase = twoPhase;
     }
 
     /// <summary>
@@ -85,6 +88,16 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     // See: https://github.com/postgres/postgres/commit/ac4645c0157fc5fcef0af8ff571512aa284a2cec
     public bool? Messages { get; }
 
+    /// <summary>
+    /// Enable streaming of prepared transactions
+    /// </summary>
+    /// <remarks>
+    /// This works in PostgreSQL versions 15+
+    /// </remarks>
+    // See: https://github.com/postgres/postgres/commit/a8fd13cab0ba815e9925dc9676e6309f699b5f72
+    // and https://github.com/postgres/postgres/commit/63cf61cdeb7b0450dcf3b2f719c553177bac85a2
+    public bool? TwoPhase { get; }
+
     internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
     {
         yield return new KeyValuePair<string, string?>("proto_version", ProtocolVersion.ToString(CultureInfo.InvariantCulture));
@@ -96,6 +109,8 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
             yield return new KeyValuePair<string, string?>("streaming", Streaming.Value ? "on" : "off");
         if (Messages != null)
             yield return new KeyValuePair<string, string?>("messages", Messages.Value ? "on" : "off");
+        if (TwoPhase != null)
+            yield return new KeyValuePair<string, string?>("two_phase", TwoPhase.Value ? "on" : "off");
     }
 
     /// <inheritdoc />
@@ -103,7 +118,7 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
         => other != null && (
             ReferenceEquals(this, other) ||
             ProtocolVersion == other.ProtocolVersion && PublicationNames.Equals(other.PublicationNames) && Binary == other.Binary &&
-            Streaming == other.Streaming && Messages == other.Messages);
+            Streaming == other.Streaming && Messages == other.Messages && TwoPhase == other.TwoPhase);
 
     /// <inheritdoc />
     public override bool Equals(object? obj)
@@ -113,14 +128,15 @@ public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     public override int GetHashCode()
     {
 #if NETSTANDARD2_0
-            var hashCode = ProtocolVersion.GetHashCode();
-            hashCode = (hashCode * 397) ^ PublicationNames.GetHashCode();
-            hashCode = (hashCode * 397) ^ Binary.GetHashCode();
-            hashCode = (hashCode * 397) ^ Streaming.GetHashCode();
-            hashCode = (hashCode * 397) ^ Messages.GetHashCode();
-            return hashCode;
+        var hashCode = ProtocolVersion.GetHashCode();
+        hashCode = (hashCode * 397) ^ PublicationNames.GetHashCode();
+        hashCode = (hashCode * 397) ^ Binary.GetHashCode();
+        hashCode = (hashCode * 397) ^ Streaming.GetHashCode();
+        hashCode = (hashCode * 397) ^ Messages.GetHashCode();
+        hashCode = (hashCode * 397) ^ TwoPhase.GetHashCode();
+        return hashCode;
 #else
-        return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming, Messages);
+        return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming, Messages, TwoPhase);
 #endif
     }
 }

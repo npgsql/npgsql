@@ -18,6 +18,8 @@ namespace Npgsql.Tests.Replication;
 [TestFixture(ProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 [TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 // We currently don't execute all possible combinations of settings for efficiency reasons because they don't
 // interact in the current implementation.
 // Feel free to uncomment some or all of the following lines if the implementation changed or you suspect a
@@ -27,6 +29,9 @@ namespace Npgsql.Tests.Replication;
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
 [NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
@@ -1046,6 +1051,85 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             });
     }
 
+    [Test]
+    public Task TwoPhase([Values]bool commit)
+    {
+        // Streaming of prepared transaction is only supported for
+        // logical streaming replication protocol >= 3
+        if (_protocolVersion < 3UL)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                var gid = Guid.NewGuid().ToString();
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName, twoPhase: true);
+
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
+	                                            PREPARE TRANSACTION '{gid}';");
+                try
+                {
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    // Begin Transaction
+                    var transactionXid = await AssertTransactionStart(messages);
+
+                    // Relation
+                    await NextMessage<RelationMessage>(messages);
+
+                    // Remaining inserts
+                    for (var insertCount = 0; insertCount < 15000; insertCount++)
+                    {
+                        await NextMessage<InsertMessage>(messages);
+                    }
+
+                    var prepareMessageBase = await AssertPrepare(messages);
+                    Assert.That(prepareMessageBase.TransactionXid, Is.EqualTo(transactionXid));
+                    Assert.That(prepareMessageBase.TransactionGid, Is.EqualTo(gid));
+
+                    if (commit)
+                    {
+                        await c.ExecuteNonQueryAsync(@$"COMMIT PREPARED '{gid}';");
+
+                        var commitPreparedMessage = await NextMessage<CommitPreparedMessage>(messages);
+                        Assert.That(commitPreparedMessage.TransactionXid, Is.EqualTo(transactionXid));
+                        Assert.That(commitPreparedMessage.TransactionGid, Is.EqualTo(gid));
+                    }
+                    else
+                    {
+                        await c.ExecuteNonQueryAsync(@$"ROLLBACK PREPARED '{gid}';");
+
+                        var rollbackPreparedMessage = await NextMessage<RollbackPreparedMessage>(messages);
+                        Assert.That(rollbackPreparedMessage.TransactionXid, Is.EqualTo(transactionXid));
+                        Assert.That(rollbackPreparedMessage.TransactionGid, Is.EqualTo(gid));
+                    }
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                }
+                finally
+                {
+                    try
+                    {
+                        await using var cx = await OpenConnectionAsync();
+                        await cx.ExecuteNonQueryAsync(@$"ROLLBACK PREPARED '{gid}';");
+                    }
+                    catch
+                    {
+                        // Give up
+                    }
+                }
+            }, $"{GetObjectName(nameof(TwoPhase))}_{(commit ? "commit" : "rollback")}");
+    }
+
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
         Assert.True(await messages.MoveNextAsync());
@@ -1056,7 +1140,11 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             Assert.That(IsStreaming);
             return streamStartMessage.TransactionXid;
         case BeginMessage beginMessage:
+            Assert.That(!IsStreaming);
             return beginMessage.TransactionXid;
+        case BeginPrepareMessage beginPrepareMessage:
+            Assert.That(!IsStreaming);
+            return beginPrepareMessage.TransactionXid;
         default:
             Assert.Fail("Expected transaction start message but got: " + messages.Current);
             throw new Exception();
@@ -1080,6 +1168,20 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             Assert.Fail("Expected transaction end message but got: " + messages.Current);
             throw new Exception();
         }
+    }
+
+    async Task<PrepareMessageBase> AssertPrepare(IAsyncEnumerator<PgOutputReplicationMessage> enumerator)
+    {
+        Assert.True(await enumerator.MoveNextAsync());
+        if (IsStreaming && enumerator.Current is StreamStopMessage)
+        {
+            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(enumerator.Current, Is.TypeOf<StreamPrepareMessage>());
+            return (PrepareMessageBase)enumerator.Current!;
+        }
+
+        Assert.That(enumerator.Current, Is.TypeOf<PrepareMessage>());
+        return (PrepareMessageBase)enumerator.Current!;
     }
 
     async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator, bool expectRelationMessage = false)
@@ -1161,6 +1263,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     {
         await using var c = await OpenConnectionAsync();
         TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
+        if (_protocolVersion > 2)
+            TestUtil.MinimumPgVersion(c, "15.0", "Logical Streaming Replication Protocol version 3 was introduced in PostgreSQL 15");
         if (_protocolVersion > 1)
             TestUtil.MinimumPgVersion(c, "14.0", "Logical Streaming Replication Protocol version 2 was introduced in PostgreSQL 14");
         if (IsBinary)
@@ -1182,6 +1286,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     {
         V1 = 1UL,
         V2 = 2UL,
+        V3 = 3UL,
     }
     public enum ReplicationDataMode
     {

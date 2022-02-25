@@ -20,28 +20,37 @@ class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
     readonly PgOutputReplicationOptions _options;
     readonly CancellationToken _baseCancellationToken;
     readonly NpgsqlLogSequenceNumber? _walLocation;
-    readonly Dictionary<uint, RelationMessage> _relations = new();
 
-    #region Cached messages
+    #region Cached logical streaming replication protocol messages
 
+    // V1
     readonly BeginMessage _beginMessage = new();
     readonly LogicalDecodingMessage _logicalDecodingMessage = new();
     readonly CommitMessage _commitMessage = new();
     readonly OriginMessage _originMessage = new();
-    readonly TruncateMessage _truncateMessage = new();
+    readonly Dictionary<uint, RelationMessage> _relations = new();
     readonly TypeMessage _typeMessage = new();
-    readonly StreamStartMessage _streamStartMessage = new();
-    readonly StreamStopMessage _streamStopMessage = new();
-    readonly StreamCommitMessage _streamCommitMessage = new();
-    readonly StreamAbortMessage _streamAbortMessage = new();
-    readonly ReadOnlyArrayBuffer<RelationMessage> _truncateMessageRelations = new();
-
     readonly InsertMessage _insertMessage;
     readonly DefaultUpdateMessage _defaultUpdateMessage;
     readonly FullUpdateMessage _fullUpdateMessage;
     readonly IndexUpdateMessage _indexUpdateMessage;
     readonly FullDeleteMessage _fullDeleteMessage;
     readonly KeyDeleteMessage _keyDeleteMessage;
+    readonly TruncateMessage _truncateMessage = new();
+    readonly ReadOnlyArrayBuffer<RelationMessage> _truncateMessageRelations = new();
+
+    // V2
+    readonly StreamStartMessage _streamStartMessage = new();
+    readonly StreamStopMessage _streamStopMessage = new();
+    readonly StreamCommitMessage _streamCommitMessage = new();
+    readonly StreamAbortMessage _streamAbortMessage = new();
+
+    // V3
+    readonly BeginPrepareMessage _beginPrepareMessage = new();
+    readonly PrepareMessage _prepareMessage = new();
+    readonly CommitPreparedMessage _commitPreparedMessage = new();
+    readonly RollbackPreparedMessage _rollbackPreparedMessage = new();
+    readonly StreamPrepareMessage _streamPrepareMessage = new();
 
     #endregion
 
@@ -398,6 +407,66 @@ class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
                     transactionXid: buf.ReadUInt32(), subtransactionXid: buf.ReadUInt32());
                 continue;
             }
+            case BackendReplicationMessageCode.BeginPrepare:
+            {
+                await buf.EnsureAsync(29);
+                yield return _beginPrepareMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                    prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionXid: buf.ReadUInt32(),
+                    transactionGid: buf.ReadNullTerminatedString());
+                continue;
+            }
+            case BackendReplicationMessageCode.Prepare:
+            {
+                await buf.EnsureAsync(30);
+                yield return _prepareMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                    flags: (PrepareMessage.PrepareFlags)buf.ReadByte(),
+                    prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionXid: buf.ReadUInt32(),
+                    transactionGid: buf.ReadNullTerminatedString());
+                continue;
+            }
+            case BackendReplicationMessageCode.CommitPrepared:
+            {
+                await buf.EnsureAsync(30);
+                yield return _commitPreparedMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                    flags: (CommitPreparedMessage.CommitPreparedFlags)buf.ReadByte(),
+                    commitPreparedLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    commitPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionXid: buf.ReadUInt32(),
+                    transactionGid: buf.ReadNullTerminatedString());
+                continue;
+            }
+            case BackendReplicationMessageCode.RollbackPrepared:
+            {
+                await buf.EnsureAsync(38);
+                yield return _rollbackPreparedMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                    flags: (RollbackPreparedMessage.RollbackPreparedFlags)buf.ReadByte(),
+                    preparedTransactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    rollbackPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionRollbackTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionXid: buf.ReadUInt32(),
+                    transactionGid: buf.ReadNullTerminatedString());
+                continue;
+            }
+            case BackendReplicationMessageCode.StreamPrepare:
+            {
+                await buf.EnsureAsync(30);
+                yield return _streamPrepareMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
+                    flags: (StreamPrepareMessage.StreamPrepareFlags)buf.ReadByte(),
+                    prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
+                    transactionXid: buf.ReadUInt32(),
+                    transactionGid: buf.ReadNullTerminatedString());
+                continue;
+            }
             default:
                 throw new NotSupportedException(
                     $"Invalid message code {messageCode} in Logical Replication Protocol.");
@@ -423,5 +492,10 @@ class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
         StreamStop = (byte)'E',
         StreamCommit = (byte)'c',
         StreamAbort = (byte)'A',
+        BeginPrepare = (byte)'b',
+        Prepare = (byte)'P',
+        CommitPrepared = (byte)'K',
+        RollbackPrepared = (byte)'r',
+        StreamPrepare = (byte)'p',
     }
 }
