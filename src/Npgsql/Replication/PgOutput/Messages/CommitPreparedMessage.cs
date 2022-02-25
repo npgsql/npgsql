@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages;
 /// <summary>
 /// Logical Replication Protocol commit prepared message
 /// </summary>
-public sealed class CommitPreparedMessage : PreparedTransactionMessageBase
+public sealed class CommitPreparedMessage : PreparedTransactionControlMessage
 {
     /// <summary>
     /// Flags for the commit prepared; currently unused.
@@ -16,12 +16,12 @@ public sealed class CommitPreparedMessage : PreparedTransactionMessageBase
     /// <summary>
     /// The LSN of the commit prepared.
     /// </summary>
-    public NpgsqlLogSequenceNumber CommitPreparedLsn => StartLsn;
+    public NpgsqlLogSequenceNumber CommitPreparedLsn => FirstLsn;
 
     /// <summary>
     /// The end LSN of the commit prepared transaction.
     /// </summary>
-    public NpgsqlLogSequenceNumber CommitPreparedEndLsn => EndLsn;
+    public NpgsqlLogSequenceNumber CommitPreparedEndLsn => SecondLsn;
 
     /// <summary>
     /// Commit timestamp of the transaction.
@@ -36,8 +36,8 @@ public sealed class CommitPreparedMessage : PreparedTransactionMessageBase
         uint transactionXid, string transactionGid)
     {
         base.Populate(walStart, walEnd, serverClock,
-            startLsn: commitPreparedLsn,
-            endLsn: commitPreparedEndLsn,
+            firstLsn: commitPreparedLsn,
+            secondLsn: commitPreparedEndLsn,
             timestamp: transactionCommitTimestamp,
             transactionXid: transactionXid,
             transactionGid: transactionGid);

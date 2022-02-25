@@ -447,7 +447,7 @@ class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
                 await buf.EnsureAsync(38);
                 yield return _rollbackPreparedMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                     flags: (RollbackPreparedMessage.RollbackPreparedFlags)buf.ReadByte(),
-                    rollbackPreparedLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
+                    preparedTransactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     rollbackPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),
                     transactionRollbackTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified),

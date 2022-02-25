@@ -1065,7 +1065,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 var gid = Guid.NewGuid().ToString();
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
-                                                    CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                 await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName, twoPhase: true);
 
@@ -1115,7 +1115,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }
-                catch
+                finally
                 {
                     try
                     {

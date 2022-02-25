@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages;
 /// <summary>
 /// Logical Replication Protocol rollback prepared message
 /// </summary>
-public sealed class RollbackPreparedMessage : PreparedTransactionMessageBase
+public sealed class RollbackPreparedMessage : PreparedTransactionControlMessage
 {
     /// <summary>
     /// Flags for the rollback prepared; currently unused.
@@ -14,14 +14,14 @@ public sealed class RollbackPreparedMessage : PreparedTransactionMessageBase
     public RollbackPreparedFlags Flags { get; private set; }
 
     /// <summary>
-    /// The LSN of the rollback prepared.
+    /// The end LSN of the prepared transaction.
     /// </summary>
-    public NpgsqlLogSequenceNumber RollbackPreparedLsn => StartLsn;
+    public NpgsqlLogSequenceNumber PreparedTransactionEndLsn => FirstLsn;
 
     /// <summary>
     /// The end LSN of the rollback prepared transaction.
     /// </summary>
-    public NpgsqlLogSequenceNumber RollbackPreparedEndLsn => EndLsn;
+    public NpgsqlLogSequenceNumber RollbackPreparedEndLsn => SecondLsn;
 
     /// <summary>
     /// Prepare timestamp of the transaction.
@@ -37,12 +37,12 @@ public sealed class RollbackPreparedMessage : PreparedTransactionMessageBase
 
     internal RollbackPreparedMessage Populate(
         NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, RollbackPreparedFlags flags,
-        NpgsqlLogSequenceNumber rollbackPreparedLsn, NpgsqlLogSequenceNumber rollbackPreparedEndLsn, DateTime transactionPrepareTimestamp, DateTime transactionRollbackTimestamp,
+        NpgsqlLogSequenceNumber preparedTransactionEndLsn, NpgsqlLogSequenceNumber rollbackPreparedEndLsn, DateTime transactionPrepareTimestamp, DateTime transactionRollbackTimestamp,
         uint transactionXid, string transactionGid)
     {
         base.Populate(walStart, walEnd, serverClock,
-            startLsn: rollbackPreparedLsn,
-            endLsn: rollbackPreparedEndLsn,
+            firstLsn: preparedTransactionEndLsn,
+            secondLsn: rollbackPreparedEndLsn,
             timestamp: transactionPrepareTimestamp,
             transactionXid: transactionXid,
             transactionGid: transactionGid);

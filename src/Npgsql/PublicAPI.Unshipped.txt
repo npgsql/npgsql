@@ -264,8 +264,8 @@ Npgsql.Replication.PgOutput.Messages.PrepareMessage
 Npgsql.Replication.PgOutput.Messages.PrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
 Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
 Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
-Npgsql.Replication.PgOutput.Messages.PreparedTransactionMessageBase
-Npgsql.Replication.PgOutput.Messages.PreparedTransactionMessageBase.TransactionGid.get -> string!
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage.TransactionGid.get -> string!
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 Npgsql.Replication.PgOutput.Messages.PrepareMessageBase
 Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
@@ -276,7 +276,7 @@ Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.Flags.get -> Npgsql
 Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
 Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
 Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.PreparedTransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
 Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionPrepareTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionRollbackTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage

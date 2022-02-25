@@ -6,10 +6,10 @@ namespace Npgsql.Replication.PgOutput.Messages;
 /// <summary>
 /// Abstract base class for Logical Replication Protocol prepare and begin prepare message
 /// </summary>
-public abstract class PreparedTransactionMessageBase : TransactionControlMessage
+public abstract class PreparedTransactionControlMessage : TransactionControlMessage
 {
-    private protected NpgsqlLogSequenceNumber StartLsn;
-    private protected NpgsqlLogSequenceNumber EndLsn;
+    private protected NpgsqlLogSequenceNumber FirstLsn;
+    private protected NpgsqlLogSequenceNumber SecondLsn;
     private protected DateTime Timestamp;
 
     /// <summary>
@@ -17,17 +17,17 @@ public abstract class PreparedTransactionMessageBase : TransactionControlMessage
     /// </summary>
     public string TransactionGid { get; private set; } = null!;
 
-    private protected PreparedTransactionMessageBase() {}
+    private protected PreparedTransactionControlMessage() {}
 
-    private protected PreparedTransactionMessageBase Populate(
+    private protected PreparedTransactionControlMessage Populate(
         NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-        NpgsqlLogSequenceNumber startLsn, NpgsqlLogSequenceNumber endLsn, DateTime timestamp,
+        NpgsqlLogSequenceNumber firstLsn, NpgsqlLogSequenceNumber secondLsn, DateTime timestamp,
         uint transactionXid, string transactionGid)
     {
         base.Populate(walStart, walEnd, serverClock, transactionXid);
 
-        StartLsn = startLsn;
-        EndLsn = endLsn;
+        FirstLsn = firstLsn;
+        SecondLsn = secondLsn;
         Timestamp = timestamp;
         TransactionGid = transactionGid;
 
