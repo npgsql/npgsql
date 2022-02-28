@@ -305,14 +305,11 @@ public class CommandTests : MultiplexingTestBase
         if (IsMultiplexing)
             return; // Multiplexing, cancellation
 
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
         await using var conn = await OpenConnectionAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 1";
 
-        var t = cmd.ExecuteScalarAsync(cts.Token);
+        var t = cmd.ExecuteScalarAsync(new(canceled: true));
         Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
         Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t);

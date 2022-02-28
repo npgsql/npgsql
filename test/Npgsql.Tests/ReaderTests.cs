@@ -1957,13 +1957,12 @@ LANGUAGE plpgsql VOLATILE";
             using var _ = CreateTempPool(ConnectionString, out var connString);
             await using var conn = await OpenConnectionAsync(connString);
             await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
-            using var cts = new CancellationTokenSource();
             await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            var cancelledToken = new CancellationToken(canceled: true);
             Assert.IsTrue(await reader.ReadAsync());
-            cts.Cancel();
-            while (await reader.ReadAsync(cts.Token)) { }
-            Assert.IsTrue(await reader.NextResultAsync(cts.Token));
-            while (await reader.ReadAsync(cts.Token)) { }
+            while (await reader.ReadAsync(cancelledToken)) { }
+            Assert.IsTrue(await reader.NextResultAsync(cancelledToken));
+            while (await reader.ReadAsync(cancelledToken)) { }
             Assert.IsFalse(conn.Connector!.UserCancellationRequested);
         }
 

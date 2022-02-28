@@ -59,9 +59,7 @@ public class PrepareTests: TestBase
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
         Assert.That(cmd.IsPrepared, Is.False);
 
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-        Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(cts.Token));
+        Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(new(canceled: true)));
         AssertNumPreparedStatements(conn, 0);
         Assert.That(cmd.IsPrepared, Is.False);
 
