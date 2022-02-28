@@ -68,7 +68,7 @@ public class BugTests : TestBase
 
         Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("54000")
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.ProgramLimitExceeded)
         );
     }
 
@@ -100,7 +100,7 @@ public class BugTests : TestBase
     [Test]
     public async Task Bug1645()
     {
-        await using var conn = OpenConnection();
+        await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var tableName);
         Assert.That(() =>
             {
@@ -217,7 +217,7 @@ public class BugTests : TestBase
         using var cmd = new NpgsqlCommand("INVALID SQL", conn);
         cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
         Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1986")]
@@ -1165,7 +1165,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         using var reader = await conn.BeginTextExportAsync($"copy (select * FROM {funcName}())  TO STDOUT WITH (format csv)");
         Assert.That(() => reader.ReadLine(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable)
         );
     }
 

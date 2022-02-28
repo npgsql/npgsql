@@ -191,7 +191,7 @@ public class TransactionTests : MultiplexingTestBase
             // Make sure the pending BEGIN TRANSACTION didn't leak from the previous open
             Assert.That(async () => await conn.ExecuteNonQueryAsync("SAVEPOINT foo"),
                 Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("25P01"));
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.NoActiveSqlTransaction));
         }
     }
 

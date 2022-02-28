@@ -146,7 +146,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
         Assert.That(() => inStream.Dispose(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("22P04")
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.BadCopyFileFormat)
         );
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
@@ -548,20 +548,20 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     }
 
     [Test]
-    [NonParallelizable]
     public async Task Enum()
     {
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: connection-specific mapping");
 
-        using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>();
+        conn.TypeMapper.MapEnum<Mood>(typeName);
 
-        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (mymood mood, mymoodarr mood[])");
+        await using var __ = await CreateTempTable(conn, $"mymood {typeName}, mymoodarr {typeName}[]", out var tableName);
 
-        using (var writer = conn.BeginBinaryImport("COPY data (mymood, mymoodarr) FROM STDIN BINARY"))
+        using (var writer = conn.BeginBinaryImport($"COPY {tableName} (mymood, mymoodarr) FROM STDIN BINARY"))
         {
             writer.StartRow();
             writer.Write(Mood.Happy);
@@ -570,7 +570,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
             Assert.That(rowsWritten, Is.EqualTo(1));
         }
 
-        using (var reader = conn.BeginBinaryExport("COPY data (mymood, mymoodarr) TO STDIN BINARY"))
+        using (var reader = conn.BeginBinaryExport($"COPY {tableName} (mymood, mymoodarr) TO STDIN BINARY"))
         {
             reader.StartRow();
             Assert.That(reader.Read<Mood>(), Is.EqualTo(Mood.Happy));
@@ -616,7 +616,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         writer.Write(8);
         Assert.That(() => writer.Complete(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UniqueViolation));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
@@ -910,8 +910,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     {
         using var conn = await OpenConnectionAsync();
         Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
-            Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+            Throws.Exception
+                .TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable)
         );
     }
 

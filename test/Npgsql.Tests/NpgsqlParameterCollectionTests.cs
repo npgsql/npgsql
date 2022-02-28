@@ -1,14 +1,13 @@
+using NpgsqlTypes;
+using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
-using NpgsqlTypes;
-using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-// This test class has global effects on case sensitive matching in param collection.
-[NonParallelizable]
+[NonParallelizable] // This test class has global effects on case sensitive matching in param collection.
 [TestFixture(CompatMode.OnePass)]
 [TestFixture(CompatMode.TwoPass)]
 public class NpgsqlParameterCollectionTests

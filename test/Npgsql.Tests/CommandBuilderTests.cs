@@ -141,7 +141,7 @@ class CommandBuilderTests : TestBase
         var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
@@ -267,7 +267,7 @@ RESET search_path;
         var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
 
     [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
@@ -300,7 +300,7 @@ SET search_path TO {schema1}, {schema2};
         var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42725"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.AmbiguousFunction));
     }
 
     #region Set returning functions

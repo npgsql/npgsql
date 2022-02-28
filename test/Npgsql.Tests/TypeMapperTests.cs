@@ -1,15 +1,14 @@
-﻿using System;
-using System.Data;
-using System.Threading.Tasks;
-using Npgsql.BackendMessages;
+﻿using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
+using System;
+using System.Data;
+using System.Threading.Tasks;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;

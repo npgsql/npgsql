@@ -173,37 +173,23 @@ $$ LANGUAGE 'plpgsql';");
     }
 
     [Test]
-    [NonParallelizable]
-    public void DataTypeName_is_populated()
+    public async Task DataTypeName_is_populated()
     {
         // On reading the source code for PostgreSQL9.3beta1, the only time that the
         // datatypename field is populated is when using domain types. So here we'll
         // create a domain that simply does not allow NULLs then try and cast NULL
         // to it.
-        const string dropDomain = @"DROP DOMAIN IF EXISTS public.intnotnull";
-        const string createDomain = @"CREATE DOMAIN public.intnotnull AS INT NOT NULL";
-        const string castStatement = @"SELECT CAST(NULL AS public.intnotnull)";
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
 
-        using var conn = OpenConnection();
-        TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
-        try
-        {
-            var command = new NpgsqlCommand(dropDomain, conn);
-            command.ExecuteNonQuery();
+        await using var _ = await GetTempTypeName(conn, out var domainName);
 
-            command = new NpgsqlCommand(createDomain, conn);
-            command.ExecuteNonQuery();
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainName} AS INT NOT NULL");
+        var pgEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync($"SELECT CAST(NULL AS {domainName})"))!;
 
-            command = new NpgsqlCommand(castStatement, conn);
-            //Cause the NOT NULL violation
-            command.ExecuteNonQuery();
-
-        }
-        catch (PostgresException ex)
-        {
-            Assert.AreEqual("public", ex.SchemaName);
-            Assert.AreEqual("intnotnull", ex.DataTypeName);
-        }
+        Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.NotNullViolation));
+        Assert.That(pgEx.SchemaName, Is.EqualTo("public"));
+        Assert.That(pgEx.DataTypeName, Is.EqualTo(domainName));
     }
 
     [Test]
