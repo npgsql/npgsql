@@ -156,10 +156,5 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         }
     }
 
-    private protected static CancellationTokenSource GetCancelledCancellationTokenSource()
-    {
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
-        return cts;
-    }
+    private protected static CancellationToken GetCancelledCancellationToken() => new(canceled: true);
 }
