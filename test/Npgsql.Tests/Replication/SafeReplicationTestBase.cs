@@ -113,13 +113,13 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
                 if (pid.Success)
                 {
                     await c.ExecuteNonQueryAsync($"SELECT pg_terminate_backend ({pid.Value})");
-                    for (var i = 0; (bool)(await c.ExecuteScalarAsync($"SELECT EXISTS(SELECT * FROM pg_stat_replication where pid = {pid.Value})"))! && i < 30; i++)
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync($"SELECT EXISTS(SELECT * FROM pg_stat_replication where pid = {pid.Value})"))! && i < 20; i++)
                         await Task.Delay(TimeSpan.FromSeconds(1));
                 }
                 else
                 {
                     // Old backends don't report the PID
-                    for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 30; i++)
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 20; i++)
                         await Task.Delay(TimeSpan.FromSeconds(1));
                 }
 
@@ -129,7 +129,7 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
                 }
                 catch (PostgresException e2) when (e2.SqlState == PostgresErrorCodes.ObjectInUse && e2.Message.Contains(slotName))
                 {
-                    // We failed to drop the slot, even after 30 seconds. Swallow the exception to avoid failing the test, we'll
+                    // We failed to drop the slot, even after 20 seconds. Swallow the exception to avoid failing the test, we'll
                     // likely drop it the next time the test is executed (Cleanup is executed before starting the test as well).
 
                     return;
@@ -156,10 +156,5 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         }
     }
 
-    private protected static CancellationTokenSource GetCancelledCancellationTokenSource()
-    {
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
-        return cts;
-    }
+    private protected static CancellationToken GetCancelledCancellationToken() => new(canceled: true);
 }

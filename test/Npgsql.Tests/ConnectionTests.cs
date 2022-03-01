@@ -203,7 +203,7 @@ public class ConnectionTests : MultiplexingTestBase
         using var conn = new NpgsqlConnection(connString);
         Assert.That(conn.Open, Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("28P01")
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.InvalidPassword)
         );
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
     }
@@ -353,48 +353,48 @@ public class ConnectionTests : MultiplexingTestBase
         using (var conn = new NpgsqlConnection(connectionString))
             Assert.That(() => conn.Open(),
                 Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000")
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.InvalidCatalogName)
             );
     }
 
     [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
     public void Mandatory_connection_string_params()
-    {
-        Assert.That(() => new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests").Open(), Throws.Exception.TypeOf<ArgumentException>());
-    }
+        => Assert.Throws<ArgumentException>(() =>
+            new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"));
 
     [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
-    public async Task Fail_connect_then_succeed()
+    public async Task Fail_connect_then_succeed([Values] bool pooling)
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: fails");
+        if (IsMultiplexing && !pooling) // Multiplexing doesn't work without pooling
+            return;
 
         var dbName = GetUniqueIdentifier(nameof(Fail_connect_then_succeed));
-        using var conn1 = await OpenConnectionAsync();
-        conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
+        await using var conn1 = await OpenConnectionAsync();
+        await conn1.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{dbName}\"");
         try
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Database = dbName,
-                Pooling = false
-            }.ToString();
+                Pooling = pooling
+            };
 
-            using var conn2 = new NpgsqlConnection(connString);
-            Assert.That(() => conn2.Open(),
-                Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("3D000") // database doesn't exist
-            );
+            // Create a temp pool to allow us to drop database at the end of the test
+            using var _ = CreateTempPool(csb, out var connString);
+
+            await using var conn2 = new NpgsqlConnection(connString);
+            var pgEx = Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync)!;
+            Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidCatalogName)); // database doesn't exist
             Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 
-            conn1.ExecuteNonQuery($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
+            await conn1.ExecuteNonQueryAsync($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
 
-            conn2.Open();
-            conn2.Close();
+            Assert.DoesNotThrowAsync(conn2.OpenAsync);
+            Assert.DoesNotThrowAsync(conn2.CloseAsync);
         }
         finally
         {
-            //conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
+            await conn1.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{dbName}\"");
         }
     }
 
@@ -1347,7 +1347,7 @@ CREATE TABLE record ()");
             {
                 Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM foo"),
                     Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021")
+                        .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.CharacterNotInRepertoire)
                         .Or.TypeOf<DecoderFallbackException>()
                 );
             }
@@ -1800,7 +1800,8 @@ CREATE TABLE record ()");
 
     #region Logging tests
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_Open_Close()
     {
         await using var conn = CreateConnection();
@@ -1853,7 +1854,8 @@ CREATE TABLE record ()");
         }
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_Open_Close_physical()
     {
         if (IsMultiplexing)
@@ -1902,7 +1904,8 @@ CREATE TABLE record ()");
         AssertLoggingStateContains(closededConnectionEvent, "Database", database);
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_Open_Close_physical_is_not_logged_for_pooled_connection()
     {
         await using var conn = await OpenConnectionAsync();

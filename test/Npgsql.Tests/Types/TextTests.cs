@@ -88,7 +88,7 @@ public class TextTests : MultiplexingTestBase
     public async Task Null_character()
     {
         var exception = await AssertTypeUnsupportedWrite<string, PostgresException>("string with \0\0\0 null \0bytes");
-        Assert.That(exception.SqlState, Is.EqualTo("22021"));
+        Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.CharacterNotInRepertoire));
     }
 
     [Test, Description("Tests some types which are aliased to strings")]

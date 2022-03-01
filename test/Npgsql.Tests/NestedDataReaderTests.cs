@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
@@ -153,15 +154,17 @@ public class NestedDataReaderTests : TestBase
     }
 
     [Test]
-    [NonParallelizable]
     public async Task Composite()
     {
         await using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS nested_db_reader_composite");
-        await conn.ExecuteNonQueryAsync("CREATE TYPE nested_db_reader_composite AS (c0 integer, c1 text)");
+        await using var _ = await GetTempTypeName(conn, out var typeName); ;
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS (c0 integer, c1 text)");
         conn.ReloadTypes();
-        var sqls = new string[] { "SELECT ROW('1', '2')::nested_db_reader_composite",
-            "SELECT ARRAY[ROW('1', '2')::nested_db_reader_composite]"};
+        var sqls = new string[]
+        {
+            $"SELECT ROW('1', '2')::{typeName}",
+            $"SELECT ARRAY[ROW('1', '2')::{typeName}]"
+        };
         foreach (var sql in sqls)
         {
             await using var command = new NpgsqlCommand(sql, conn);

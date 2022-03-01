@@ -481,12 +481,12 @@ SELECT COUNT(*) FROM pg_prepared_statements
         // Attempt to replace SELECT 1, but fail because of bad SQL.
         // Because of the issue, PreparedStatementManager.NumPrepared is reduced from 2 to 1
         Assert.That(() => conn.ExecuteNonQuery("SELECTBAD"), Throws.Exception.TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
         // Prevent SELECT 2 from being the LRU
         conn.ExecuteNonQuery("SELECT 2");
         // And attempt to replace again, reducing PreparedStatementManager.NumPrepared to 0
         Assert.That(() => conn.ExecuteNonQuery("SELECTBAD"), Throws.Exception.TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
 
         // Since PreparedStatementManager.NumPrepared is 0, Npgsql will now send DISCARD ALL, but our internal state thinks
         // SELECT 2 is still prepared.

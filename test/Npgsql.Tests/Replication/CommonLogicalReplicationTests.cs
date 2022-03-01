@@ -208,8 +208,8 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                 Assert.That(async () =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
-                    using var cts = GetCancelledCancellationTokenSource();
-                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, cancellationToken: cts.Token);
+                    var token = GetCancelledCancellationToken();
+                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, cancellationToken: token);
                 }, Throws.Exception.AssignableTo<OperationCanceledException>());
                 return Task.CompletedTask;
             });

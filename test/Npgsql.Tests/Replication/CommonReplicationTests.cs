@@ -35,8 +35,8 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
     public void Open_with_cancelled_token()
         => Assert.That(async () =>
         {
-            using var cts = GetCancelledCancellationTokenSource();
-            await using var rc = await OpenReplicationConnectionAsync(cancellationToken: cts.Token);
+            var token = GetCancelledCancellationToken();
+            await using var rc = await OpenReplicationConnectionAsync(cancellationToken: token);
         }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
     [Test]
@@ -67,8 +67,8 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
         => Assert.That(async () =>
         {
             await using var rc = await OpenReplicationConnectionAsync();
-            using var cts = GetCancelledCancellationTokenSource();
-            await rc.IdentifySystem(cts.Token);
+            var token = GetCancelledCancellationToken();
+            await rc.IdentifySystem(token);
         }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
     [Test]
@@ -120,8 +120,8 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
         Assert.That(async () =>
         {
             await using var rc = await OpenReplicationConnectionAsync();
-            using var cts = GetCancelledCancellationTokenSource();
-            await rc.Show("integer_datetimes", cts.Token);
+            var token = GetCancelledCancellationToken();
+            await rc.Show("integer_datetimes", token);
         }, Throws.Exception.AssignableTo<OperationCanceledException>());
     }
 
@@ -162,8 +162,8 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
         {
             await using var rc = await OpenReplicationConnectionAsync();
             var systemInfo = await rc.IdentifySystem();
-            using var cts = GetCancelledCancellationTokenSource();
-            await rc.TimelineHistory(systemInfo.Timeline, cts.Token);
+            var token = GetCancelledCancellationToken();
+            await rc.TimelineHistory(systemInfo.Timeline, token);
         }, Throws.Exception.AssignableTo<OperationCanceledException>());
 
     [Test]
@@ -212,8 +212,8 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
             {
                 await CreateReplicationSlot(slotName);
                 await using var rc = await OpenReplicationConnectionAsync();
-                using var cts = GetCancelledCancellationTokenSource();
-                Assert.That(async () => await rc.DropReplicationSlot(slotName, cancellationToken: cts.Token), Throws.Exception.AssignableTo<OperationCanceledException>());
+                var token = GetCancelledCancellationToken();
+                Assert.That(async () => await rc.DropReplicationSlot(slotName, cancellationToken: token), Throws.Exception.AssignableTo<OperationCanceledException>());
             });
 
     [Test]

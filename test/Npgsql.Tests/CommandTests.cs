@@ -1,3 +1,9 @@
+using Npgsql.BackendMessages;
+using Npgsql.Internal;
+using Npgsql.Tests.Support;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using NUnit.Framework;
 using System;
 using System.Buffers.Binary;
 using System.Data;
@@ -5,12 +11,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.BackendMessages;
-using Npgsql.Internal;
-using Npgsql.Tests.Support;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
-using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -28,7 +28,7 @@ public class CommandTests : MultiplexingTestBase
     [TestCase(new[] { true, false }, TestName = "QueryNonQuery")]
     public async Task Multiple_statements(bool[] queries)
     {
-        using var conn = await OpenConnectionAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
         var sb = new StringBuilder();
         foreach (var query in queries)
@@ -36,16 +36,17 @@ public class CommandTests : MultiplexingTestBase
         var sql = sb.ToString();
         foreach (var prepare in new[] { false, true })
         {
-            using var cmd = new NpgsqlCommand(sql, conn);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
             if (prepare && !IsMultiplexing)
-                cmd.Prepare();
-            using var reader = await cmd.ExecuteReaderAsync();
+                await cmd.PrepareAsync();
+            await using var reader = await cmd.ExecuteReaderAsync();
             var numResultSets = queries.Count(q => q);
             for (var i = 0; i < numResultSets; i++)
             {
-                Assert.That(reader.Read(), Is.True);
+                Assert.That(await reader.ReadAsync(), Is.True);
                 Assert.That(reader[0], Is.EqualTo(1));
-                Assert.That(reader.NextResult(), Is.EqualTo(i != numResultSets - 1));
+                Assert.That(await reader.NextResultAsync(), Is.EqualTo(i != numResultSets - 1));
             }
         }
     }
@@ -56,8 +57,9 @@ public class CommandTests : MultiplexingTestBase
         if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
             return;
 
-        using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT @p1; SELECT @p2";
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
         var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Text);
         cmd.Parameters.Add(p1);
@@ -66,13 +68,13 @@ public class CommandTests : MultiplexingTestBase
             cmd.Prepare();
         p1.Value = 8;
         p2.Value = "foo";
-        using var reader = await cmd.ExecuteReaderAsync();
-        Assert.That(reader.Read(), Is.True);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(await reader.ReadAsync(), Is.True);
         Assert.That(reader.GetInt32(0), Is.EqualTo(8));
-        Assert.That(reader.NextResult(), Is.True);
-        Assert.That(reader.Read(), Is.True);
+        Assert.That(await reader.NextResultAsync(), Is.True);
+        Assert.That(await reader.ReadAsync(), Is.True);
         Assert.That(reader.GetString(0), Is.EqualTo("foo"));
-        Assert.That(reader.NextResult(), Is.False);
+        Assert.That(await reader.NextResultAsync(), Is.False);
     }
 
     [Test]
@@ -120,7 +122,8 @@ public class CommandTests : MultiplexingTestBase
         Assert.That(reader.GetString(0), Is.EqualTo(expected2));
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Disables sql rewriting
     public async Task Legacy_batching_is_not_supported_when_EnableSqlParsing_is_disabled()
     {
         using var _ = DisableSqlRewriting();
@@ -128,7 +131,7 @@ public class CommandTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
         Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
     }
 
     #endregion
@@ -302,14 +305,11 @@ public class CommandTests : MultiplexingTestBase
         if (IsMultiplexing)
             return; // Multiplexing, cancellation
 
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
         await using var conn = await OpenConnectionAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT 1";
 
-        var t = cmd.ExecuteScalarAsync(cts.Token);
+        var t = cmd.ExecuteScalarAsync(new(canceled: true));
         Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
         Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
         Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
@@ -563,7 +563,8 @@ public class CommandTests : MultiplexingTestBase
             .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Disables sql rewriting
     public async Task Positional_parameters_are_supported_when_EnableSqlParsing_is_disabled()
     {
         using var _ = DisableSqlRewriting();
@@ -574,7 +575,8 @@ public class CommandTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Disables sql rewriting
     public async Task Named_parameters_are_not_supported_when_EnableSqlParsing_is_disabled()
     {
         using var _ = DisableSqlRewriting();
@@ -1292,7 +1294,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
 
     #region Logging
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_ExecuteScalar_single_statement_without_parameters()
     {
         await using var conn = await OpenConnectionAsync();
@@ -1312,7 +1315,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
             AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_ExecuteScalar_single_statement_with_positional_parameters()
     {
         await using var conn = await OpenConnectionAsync();
@@ -1336,7 +1340,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
             AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_ExecuteScalar_single_statement_with_named_parameters()
     {
         await using var conn = await OpenConnectionAsync();
@@ -1360,7 +1365,8 @@ LANGUAGE 'plpgsql' VOLATILE;";
             AssertLoggingStateContains(executingCommandEvent, "ConnectorId", conn.ProcessID);
     }
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Logging
     public async Task Log_ExecuteScalar_single_statement_with_parameter_logging_off()
     {
         await using var conn = await OpenConnectionAsync();

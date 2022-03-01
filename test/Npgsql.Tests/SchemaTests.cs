@@ -1,11 +1,11 @@
-﻿using System;
+﻿using NpgsqlTypes;
+using NUnit.Framework;
+using System;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using NpgsqlTypes;
-using NUnit.Framework;
 
 namespace Npgsql.Tests;
 

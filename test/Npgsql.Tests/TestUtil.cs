@@ -133,7 +133,7 @@ namespace Npgsql.Tests
                 else
                     conn.ExecuteNonQuery(testQuery);
             }
-            catch (PostgresException e) when (e.SqlState == "0A000"/*feature_not_supported*/)
+            catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.FeatureNotSupported)
             {
                 Assert.Ignore(e.Message);
             }
@@ -145,7 +145,7 @@ namespace Npgsql.Tests
             {
                 await EnsureExtensionAsync(conn, "postgis");
             }
-            catch (PostgresException e) when (e.SqlState == "58P01")
+            catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.UndefinedFile)
             {
                 // PostGIS packages aren't available for PostgreSQL prereleases
                 if (IsPgPrerelease(conn))

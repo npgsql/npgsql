@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+using static Npgsql.Tests.TestUtil;
+
 namespace Npgsql.Tests.Types;
 
 /// <remarks>
@@ -100,11 +102,15 @@ class RangeTests : MultiplexingTestBase
     [NonParallelizable]
     public async Task Range_with_long_subtype()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            MaxPoolSize = 1
+        };
+        await using var conn = await OpenConnectionAsync(csb);
 
-        using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
+        await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
@@ -113,11 +119,10 @@ class RangeTests : MultiplexingTestBase
             new string('z', conn.Settings.WriteBufferSize + 10)
         );
 
-        //var value = new NpgsqlRange<string>("bar", "foo");
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
         cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        reader.Read();
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
         Assert.That(reader[0], Is.EqualTo(value));
     }
 

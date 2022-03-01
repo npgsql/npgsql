@@ -354,33 +354,38 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
-        [NonParallelizable]
         public async Task GetDataTypeName_enum()
         {
-            if (IsMultiplexing)
-                Assert.Ignore("Multiplexing: ReloadTypes");
-
-            using var conn = await OpenConnectionAsync();
-            conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1
+            };
+            await using var conn = await OpenConnectionAsync(csb);
+            await using var _ = await GetTempTypeName(conn, out var typeName);
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('one')");
+            await Task.Yield(); // TODO: fix multiplexing deadlock bug
             conn.ReloadTypes();
-            using var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn);
-            using var reader = await cmd.ExecuteReaderAsync(Behavior);
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".my_enum"));
+            await using var cmd = new NpgsqlCommand($"SELECT 'one'::{typeName}", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            await reader.ReadAsync();
+            Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{typeName}"));
         }
 
         [Test]
         public async Task GetDataTypeName_domain()
         {
-            if (IsMultiplexing)
-                Assert.Ignore("Multiplexing: ReloadTypes");
-
-            using var conn = await OpenConnectionAsync();
-            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.my_domain AS VARCHAR(10)");
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1
+            };
+            await using var conn = await OpenConnectionAsync(csb);
+            await using var _ = await GetTempTypeName(conn, out var typeName);
+            await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
+            await Task.Yield(); // TODO: fix multiplexing deadlock bug
             conn.ReloadTypes();
-            using var cmd = new NpgsqlCommand("SELECT 'one'::my_domain", conn);
-            using var reader = await cmd.ExecuteReaderAsync(Behavior);
-            reader.Read();
+            await using var cmd = new NpgsqlCommand($"SELECT 'one'::{typeName}", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            await reader.ReadAsync();
             // In the RowDescription, PostgreSQL sends the type OID of the underlying type and not of the domain.
             Assert.That(reader.GetDataTypeName(0), Is.EqualTo("character varying(10)"));
         }
@@ -933,7 +938,7 @@ LANGUAGE plpgsql VOLATILE";
             using var reader = await cmd.ExecuteReaderAsync(Behavior);
             Assert.That(() => reader.NextResult(),
                 Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.ForeignKeyViolation));
         }
 
         [Test]
@@ -1952,13 +1957,12 @@ LANGUAGE plpgsql VOLATILE";
             using var _ = CreateTempPool(ConnectionString, out var connString);
             await using var conn = await OpenConnectionAsync(connString);
             await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
-            using var cts = new CancellationTokenSource();
             await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            var cancelledToken = new CancellationToken(canceled: true);
             Assert.IsTrue(await reader.ReadAsync());
-            cts.Cancel();
-            while (await reader.ReadAsync(cts.Token)) { }
-            Assert.IsTrue(await reader.NextResultAsync(cts.Token));
-            while (await reader.ReadAsync(cts.Token)) { }
+            while (await reader.ReadAsync(cancelledToken)) { }
+            Assert.IsTrue(await reader.NextResultAsync(cancelledToken));
+            while (await reader.ReadAsync(cancelledToken)) { }
             Assert.IsFalse(conn.Connector!.UserCancellationRequested);
         }
 

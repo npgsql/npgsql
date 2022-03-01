@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Npgsql.Internal;
+using Npgsql.Util;
+using NUnit.Framework;
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal;
-using Npgsql.Util;
-using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-[NonParallelizable]
+[NonParallelizable] // Parallel access to a single buffer
 class ReadBufferTests
 {
     [Test]

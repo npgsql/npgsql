@@ -34,7 +34,7 @@ class PoolTests : TestBase
             MaxPoolSize = 1
         }.ToString();
 
-        Assert.That(() => CreateConnection(connString), Throws.Exception.TypeOf<ArgumentException>());
+        Assert.Throws<ArgumentException>(() => CreateConnection(connString));
     }
 
     [Test]
@@ -68,7 +68,7 @@ class PoolTests : TestBase
 
         // Pool is exhausted
         using var conn2 = CreateConnection(connString);
-        new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite);
+        _ = Task.Delay(1000).ContinueWith(_ => conn1.Close());
         conn2.Open();
     }
 
@@ -294,7 +294,7 @@ class PoolTests : TestBase
                     AssertPoolState(pool, open: 1, idle: 0);
                 }
                 AssertPoolState(pool, open: 1, idle: 1);
-                return Thread.CurrentThread.ManagedThreadId;
+                return Environment.CurrentManagedThreadId;
             };
 
             // Start an async open which will not complete as the pool is exhausted.
@@ -303,7 +303,7 @@ class PoolTests : TestBase
             var asyncOpenerThreadId = asyncOpenerTask.GetAwaiter().GetResult();
             AssertPoolState(pool, open: 1, idle: 1);
 
-            Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));
+            Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Environment.CurrentManagedThreadId));
         }
         finally
         {
@@ -312,40 +312,26 @@ class PoolTests : TestBase
         }
     }
 
-    [Test]
+    [Test] //TODO: parallelize
     public void Release_waiter_on_connection_failure()
     {
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(Release_waiter_on_connection_failure),
             Port = 9999,
             MaxPoolSize = 1
-        }.ToString();
+        };
 
-        try
+        using var _ = CreateTempPool(csb, out var connString);
+        var tasks = Enumerable.Range(0, 2).Select(i => Task.Run(async () =>
         {
-            var tasks = Enumerable.Range(0, 2).Select(i => Task.Run(async () =>
-            {
-                using var conn = CreateConnection(connectionString);
-                await conn.OpenAsync();
-            })).ToArray();
+            await using var conn = CreateConnection(connString);
+            await conn.OpenAsync();
+        })).ToArray();
 
-            try
-            {
-                Task.WaitAll(tasks);
-            }
-            catch (AggregateException e)
-            {
-                foreach (var inner in e.InnerExceptions)
-                    Assert.That(inner, Is.TypeOf<NpgsqlException>());
-                return;
-            }
-            Assert.Fail();
-        }
-        finally
-        {
-            NpgsqlConnection.ClearPool(CreateConnection(connectionString));
-        }
+        var ex = Assert.Throws<AggregateException>(() => Task.WaitAll(tasks))!;
+        Assert.That(ex.InnerExceptions, Has.Count.EqualTo(2));
+        foreach (var inner in ex.InnerExceptions)
+            Assert.That(inner, Is.TypeOf<NpgsqlException>());
     }
 
     [Test]
