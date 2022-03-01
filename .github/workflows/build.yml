@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3
 
       - name: NuGet Cache
         uses: actions/cache@v2.1.7
@@ -129,7 +129,7 @@ jobs:
           sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
           
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v2.4.0
+      #- uses: actions/checkout@v3
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
 
@@ -320,7 +320,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3
 
       - name: NuGet Cache
         uses: actions/cache@v2.1.7
@@ -362,7 +362,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v2
