@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using NUnit.Framework;
@@ -48,8 +49,35 @@ public class NpgsqlTracingOptionsTests : TestBase
 
         var (stopActivity, stopEventName, stopObject) = _enrichInvocations[1];
         Assert.That(stopEventName, Is.EqualTo("OnException"));
-        Assert.That(stopObject, Is.SameAs(exception));
+        Assert.That(stopObject, Is.TypeOf<ValueTuple<NpgsqlCommand, Exception>>());
+        var (stopCommand, stopException) = (ValueTuple<NpgsqlCommand, Exception>)stopObject;
+        Assert.That(stopCommand.CommandText, Is.EqualTo("BO SELECTA"));
+        Assert.That(stopException, Is.SameAs(exception));
         Assert.That(stopActivity, Is.SameAs(startActivity));
+    }
+
+    [Test]
+    public void CommandExecution_start_exception_patternmatch()
+    {
+        var exception = Assert.Throws<PostgresException>(() =>
+        {
+            using var conn = OpenConnection();
+            conn.ExecuteScalar("BO SELECTA");
+        });
+
+        Assert.That(_enrichInvocations, Has.Count.EqualTo(2));
+        var (_, stopEventName, stopObject) = _enrichInvocations[1];
+
+        switch (stopEventName, stopObject)
+        {
+        case ("OnException", (NpgsqlCommand stopCommand, Exception stopException)):
+            Assert.That(stopCommand.CommandText, Is.EqualTo("BO SELECTA"));
+            Assert.That(stopException, Is.SameAs(exception));
+            break;
+        default:
+            Assert.Fail($"{nameof(stopEventName)}: '{stopEventName}', {nameof(stopObject)}.GetType(): '{stopObject.GetType()}'");
+            break;
+        }
     }
 
     [SetUp]

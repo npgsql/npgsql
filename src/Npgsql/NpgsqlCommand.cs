@@ -1601,7 +1601,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.SetException(CurrentActivity, e);
+            NpgsqlActivitySource.SetException(CurrentActivity, this, e);
             CurrentActivity = null;
         }
     }

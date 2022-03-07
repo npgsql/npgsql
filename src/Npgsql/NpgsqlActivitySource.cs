@@ -76,7 +76,7 @@ static class NpgsqlActivitySource
         activity.Dispose();
     }
 
-    internal static void SetException(Activity activity, Exception ex, bool escaped = true)
+    internal static void SetException(Activity activity, NpgsqlCommand command, Exception ex, bool escaped = true)
     {
         var tags = new ActivityTagsCollection
         {
@@ -90,7 +90,7 @@ static class NpgsqlActivitySource
         activity.SetTag("otel.status_code", "ERROR");
         activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
         activity.SetEndTime(DateTime.UtcNow);
-        Options.EnrichCommandExecution?.Invoke(activity, "OnException", ex);
+        Options.EnrichCommandExecution?.Invoke(activity, "OnException", (command, ex));
         activity.Dispose();
     }
 }
