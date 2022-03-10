@@ -275,16 +275,15 @@ class ConnectorPool : ConnectorSource
             catch
             {
                 // Physical open failed, decrement the open and busy counter back down.
-                numConnectors = Interlocked.Decrement(ref _numConnectors);
+                Interlocked.Decrement(ref _numConnectors);
 
                 // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
                 // to wake it up, so it will try opening (and probably throw immediately)
                 // Statement order is important since we have synchronous completions on the channel.
                 IdleConnectorWriter.TryWrite(null);
 
-                // Only turn off the timer one time, when it was this OpenNewConnector that brought Open back to _min.
-                if (numConnectors == _min)
-                    UpdatePruningTimer();
+                // Just in case we always call UpdatePruningTimer for failed physical open
+                UpdatePruningTimer();
 
                 throw;
             }
