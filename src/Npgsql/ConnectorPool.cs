@@ -246,6 +246,8 @@ namespace Npgsql
                         conn.Connector = null;
                         Interlocked.Decrement(ref State.Open);
                         ReleaseOneWaiter();
+                        // Just in case we always call UpdatePruningTimer for failed physical open
+                        UpdatePruningTimer();
                         throw;
                     }
 
@@ -261,8 +263,10 @@ namespace Npgsql
                     }
                     Debug.Assert(connector.PoolIndex != int.MaxValue);
 
-                    // Only start pruning if it was this thread that incremented open count past _min.
-                    if (prevOpenCount == _min)
+                    // Only start pruning if we've incremented open count past _min.
+                    // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
+                    // on NpgsqlConnector.Open due to timeout, CancellationToken or other reasons.
+                    if (prevOpenCount >= _min)
                         UpdatePruningTimer();
                     Counters.NumberOfPooledConnections.Increment();
                     Counters.NumberOfActiveConnections.Increment();
