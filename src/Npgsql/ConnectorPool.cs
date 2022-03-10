@@ -329,9 +329,11 @@ namespace Npgsql
                     if (i == _max)
                         throw new NpgsqlException($"Could not find free slot in {_connectors} when opening. Please report a bug.");
 
-                    // Only start pruning if it was this thread that incremented open count past _min.
-                    if (numConnectors == _min)
-                        UpdatePruningTimer();
+	                // Only start pruning if we've incremented open count past _min.
+	                // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
+	                // on NpgsqlConnector.Open due to timeout, CancellationToken or other reasons.
+	                if (numConnectors >= _min)
+	                    UpdatePruningTimer();
 
                     return connector;
                 }
@@ -345,6 +347,9 @@ namespace Npgsql
                     // to wake it up, so it will try opening (and probably throw immediately)
                     // Statement order is important since we have synchronous completions on the channel.
                     IdleConnectorWriter.TryWrite(null);
+
+                    // Just in case we always call UpdatePruningTimer for failed physical open
+                    UpdatePruningTimer();
 
                     throw;
                 }
