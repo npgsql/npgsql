@@ -265,7 +265,7 @@ class ConnectorPool : ConnectorSource
                     throw new NpgsqlException($"Could not find free slot in {Connectors} when opening. Please report a bug.");
 
                 // Only start pruning if we've incremented open count past _min.
-                // Note that we don't do it only once because the thread which incremented open count past _min might get exception
+                // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
                 // on NpgsqlConnector.Open due to timeout, CancellationToken or other reasons.
                 if (numConnectors >= _min)
                     UpdatePruningTimer();
