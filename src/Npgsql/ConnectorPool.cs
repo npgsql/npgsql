@@ -99,7 +99,7 @@ class ConnectorPool : ConnectorSource
         var connectionIdleLifetime = TimeSpan.FromSeconds(settings.ConnectionIdleLifetime);
         var pruningSamplingInterval = TimeSpan.FromSeconds(settings.ConnectionPruningInterval);
         if (connectionIdleLifetime < pruningSamplingInterval)
-            throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {pruningSamplingInterval}");
+            throw new ArgumentException($"Connection can't have {nameof(settings.ConnectionIdleLifetime)} {connectionIdleLifetime} under {nameof(settings.ConnectionPruningInterval)} {pruningSamplingInterval}");
 
         _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
         _pruningSampleSize = DivideRoundingUp(settings.ConnectionIdleLifetime, settings.ConnectionPruningInterval);
