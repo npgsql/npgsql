@@ -617,15 +617,8 @@ LANGUAGE 'plpgsql'");
             var cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT {function}()";
 
-            try
-            {
-                await cmd.ExecuteReaderAsync(Behavior);
-                Assert.Fail();
-            }
-            catch (PostgresException e)
-            {
-                Assert.That(e.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
-            }
+            var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync(Behavior))!;
+            Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[0]));
 
             // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
             // resources are referenced by the exception above, which is very likely to escape the using statement of the command.
@@ -651,15 +644,8 @@ LANGUAGE 'plpgsql'");
 
             await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
             {
-                try
-                {
-                    await reader.NextResultAsync();
-                    Assert.Fail();
-                }
-                catch (PostgresException e)
-                {
-                    Assert.That(e.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
-                }
+                var exception = Assert.ThrowsAsync<PostgresException>(() => reader.NextResultAsync())!;
+                Assert.That(exception.BatchCommand, Is.SameAs(cmd.InternalBatchCommands[1]));
             }
 
             // Make sure the command isn't recycled by the connection when it's disposed - this is important since internal command
