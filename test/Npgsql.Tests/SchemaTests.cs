@@ -541,6 +541,56 @@ CREATE TABLE types_table
         }
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4392")]
+    public async Task Enum_in_public_schema()
+    {
+        using var conn = OpenConnection();
+        try
+        {
+            conn.ExecuteNonQuery(@"
+CREATE TYPE colors AS ENUM ('red', 'yellow', 'blue');
+
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (color colors);");
+
+            var dataTable = await GetSchema(conn, "Columns", new[] { null, null, "data" });
+            var row = dataTable.Rows.Cast<DataRow>().Single();
+            Assert.That(row["data_type"], Is.EqualTo("colors"));
+        }
+        finally
+        {
+            conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+DROP TYPE IF EXISTS colors;");
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4392")]
+    public async Task Enum_in_non_public_schema()
+    {
+        using var conn = OpenConnection();
+        try
+        {
+            conn.ExecuteNonQuery(@"
+DROP SCHEMA IF EXISTS enum_schema CASCADE;
+CREATE SCHEMA enum_schema;
+CREATE TYPE enum_schema.colors AS ENUM ('red', 'yellow', 'blue');
+
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (color enum_schema.colors);");
+
+            var dataTable = await GetSchema(conn, "Columns", new[] { null, null, "data" });
+            var row = dataTable.Rows.Cast<DataRow>().Single();
+            Assert.That(row["data_type"], Is.EqualTo("enum_schema.colors"));
+        }
+        finally
+        {
+            conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+DROP SCHEMA IF EXISTS enum_schema CASCADE;");
+        }
+    }
+
     public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
     async Task<DataTable> GetSchema(NpgsqlConnection conn)
