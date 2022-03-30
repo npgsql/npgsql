@@ -270,5 +270,5 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     #endregion
 
     /// <inheritdoc />
-    public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
+    public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream, _encoding);
 }
