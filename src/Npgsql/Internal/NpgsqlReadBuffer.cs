@@ -231,17 +231,24 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                             !connector.PostgresCancellationPerformed &&
                             connector.PerformPostgresCancellation())
                         {
-                            // Note that if the cancellation timeout is negative, we flow down and break the connection immediately
-                            var cancellationTimeout = connector.Settings.CancellationTimeout;
-                            if (cancellationTimeout >= 0)
+                            // SslStream treats any IOException (including timeouts) as fatal and may return garbage if reused.
+                            // To prevent this, we flow down and break the connection immediatelly.
+                            // See #4305.
+                            // The check below is equal to !(connector.IsSecure && e is IOException)
+                            if (!connector.IsSecure || e is not IOException)
                             {
-                                if (cancellationTimeout > 0)
-                                    buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                // Note that if the cancellation timeout is negative, we flow down and break the connection immediately.
+                                var cancellationTimeout = connector.Settings.CancellationTimeout;
+                                if (cancellationTimeout >= 0)
+                                {
+                                    if (cancellationTimeout > 0)
+                                        buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                if (async)
-                                    finalCt = buffer.Cts.Start();
+                                    if (async)
+                                        finalCt = buffer.Cts.Start();
 
-                                continue;
+                                    continue;
+                                }
                             }
                         }
 
