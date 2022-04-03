@@ -229,26 +229,26 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                         // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
                         if (connector.AttemptPostgresCancellation &&
                             !connector.PostgresCancellationPerformed &&
-                            connector.PerformPostgresCancellation())
-                        {
-                            // SslStream treats any IOException (including timeouts) as fatal and may return garbage if reused.
+                            connector.PerformPostgresCancellation()
+#if NETSTANDARD2_0
+                            // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may return garbage if reused.
                             // To prevent this, we flow down and break the connection immediatelly.
                             // See #4305.
-                            // The check below is equal to !(connector.IsSecure && e is IOException)
-                            if (!connector.IsSecure || e is not IOException)
+                            && !(connector.IsSecure && e is IOException)
+#endif
+                            )
+                        {
+                            // Note that if the cancellation timeout is negative, we flow down and break the connection immediately.
+                            var cancellationTimeout = connector.Settings.CancellationTimeout;
+                            if (cancellationTimeout >= 0)
                             {
-                                // Note that if the cancellation timeout is negative, we flow down and break the connection immediately.
-                                var cancellationTimeout = connector.Settings.CancellationTimeout;
-                                if (cancellationTimeout >= 0)
-                                {
-                                    if (cancellationTimeout > 0)
-                                        buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                if (cancellationTimeout > 0)
+                                    buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                    if (async)
-                                        finalCt = buffer.Cts.Start();
+                                if (async)
+                                    finalCt = buffer.Cts.Start();
 
-                                    continue;
-                                }
+                                continue;
                             }
                         }
 
