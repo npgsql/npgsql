@@ -388,10 +388,13 @@ public class SecurityTests : TestBase
         await conn.CloseAsync();
         await conn.OpenAsync();
 
+        Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
         if (async)
-            Assert.AreSame(originalConnector, conn.Connector);
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
         else
-            Assert.AreNotSame(originalConnector, conn.Connector);
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
     }
 
     [Test]
@@ -435,6 +438,12 @@ public class SecurityTests : TestBase
         await conn.OpenAsync();
 
         Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
+        if (async)
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+        else
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
     }
 
     #region Setup / Teardown / Utils
