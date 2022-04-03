@@ -1332,9 +1332,18 @@ CREATE TABLE record ()");
 
             await using (var conn = await OpenConnectionAsync(goodConnectionString))
             {
+                const string value = "éàç";
                 await conn.ExecuteNonQueryAsync("CREATE TABLE foo (bar TEXT)");
-                await conn.ExecuteNonQueryAsync("INSERT INTO foo (bar) VALUES ('éàç')");
-                Assert.That(await conn.ExecuteScalarAsync("SELECT * FROM foo"), Is.EqualTo("éàç"));
+                await conn.ExecuteNonQueryAsync($"INSERT INTO foo (bar) VALUES ('{value}')");
+
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT * FROM foo";
+                await using var reader = await cmd.ExecuteReaderAsync();
+                Assert.IsTrue(await reader.ReadAsync());
+
+                using (var textReader = await reader.GetTextReaderAsync(0))
+                    Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
+                Assert.That(reader.GetString(0), Is.EqualTo(value));
             }
 
             // A normal connection with the default UTF8 encoding and client_encoding should fail
