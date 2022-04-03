@@ -1197,7 +1197,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         try
         {
             var read = async ? await reader.ReadAsync(cancellationToken) : reader.Read();
-            return read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            var value = read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            // We read the whole result set to trigger any errors
+            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            return value;
         }
         finally
         {

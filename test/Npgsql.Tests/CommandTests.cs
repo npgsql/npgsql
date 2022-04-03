@@ -1032,6 +1032,75 @@ LANGUAGE 'plpgsql' VOLATILE;";
     }
 
     [Test]
+    public async Task ExecuteNonQuery_Throws_PostgresException([Values] bool async)
+    {
+        if (!async && IsMultiplexing)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+
+        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
+        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
+            out var table2);
+
+        var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
+
+        var ex = async
+            ? Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync(sql))
+            : Assert.Throws<PostgresException>(() => conn.ExecuteNonQuery(sql));
+        Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
+    }
+
+    [Test]
+    public async Task ExecuteScalar_Throws_PostgresException([Values] bool async)
+    {
+        if (!async && IsMultiplexing)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+
+        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
+        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
+            out var table2);
+
+        var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
+
+        var ex = async
+            ? Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteScalarAsync(sql))
+            : Assert.Throws<PostgresException>(() => conn.ExecuteScalar(sql));
+        Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
+    }
+
+    [Test]
+    public async Task ExecuteReader_Throws_PostgresException([Values] bool async)
+    {
+        if (!async && IsMultiplexing)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+
+        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
+        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
+            out var table2);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"insert into {table2} ({table1}_id) values (1) returning id";
+
+        await using var reader = async
+            ? await cmd.ExecuteReaderAsync()
+            : cmd.ExecuteReader();
+
+        Assert.IsTrue(async ? await reader.ReadAsync() : reader.Read());
+        var value = reader.GetInt32(0);
+        Assert.That(value, Is.EqualTo(1));
+        Assert.IsFalse(async ? await reader.ReadAsync() : reader.Read());
+        var ex = async
+            ? Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())
+            : Assert.Throws<PostgresException>(() => reader.NextResult());
+        Assert.That(ex!.SqlState, Is.EqualTo(PostgresErrorCodes.ForeignKeyViolation));
+    }
+
+    [Test]
     public void Command_is_recycled()
     {
         using var conn = OpenConnection();
