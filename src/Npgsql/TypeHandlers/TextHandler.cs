@@ -307,6 +307,6 @@ namespace Npgsql.TypeHandlers
         #endregion
 
         /// <inheritdoc />
-        public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
+        public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream, _encoding);
     }
 }
