@@ -229,9 +229,16 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                         // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
                         if (connector.AttemptPostgresCancellation &&
                             !connector.PostgresCancellationPerformed &&
-                            connector.PerformPostgresCancellation())
+                            connector.PerformPostgresCancellation()
+#if NETSTANDARD2_0
+                            // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may return garbage if reused.
+                            // To prevent this, we flow down and break the connection immediatelly.
+                            // See #4305.
+                            && !(connector.IsSecure && e is IOException)
+#endif
+                            )
                         {
-                            // Note that if the cancellation timeout is negative, we flow down and break the connection immediately
+                            // Note that if the cancellation timeout is negative, we flow down and break the connection immediately.
                             var cancellationTimeout = connector.Settings.CancellationTimeout;
                             if (cancellationTimeout >= 0)
                             {

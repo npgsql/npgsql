@@ -347,6 +347,105 @@ public class SecurityTests : TestBase
         Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback)));
     }
 
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
+    public async Task Bug4305_Secure([Values] bool async)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            Username = "npgsql_tests_ssl",
+            Password = "npgsql_tests_ssl",
+            MaxPoolSize = 1,
+            TrustServerCertificate = true
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        NpgsqlConnection conn = default!;
+
+        try
+        {
+            conn = await OpenConnectionAsync(connString);
+            Assert.IsTrue(conn.IsSecure);
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("Only ssl user doesn't seem to be set up");
+        }
+
+        await using var __ = conn;
+        var originalConnector = conn.Connector;
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "select pg_sleep(30)";
+        cmd.CommandTimeout = 3;
+        var ex = async
+            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
+        if (async)
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+        else
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
+    public async Task Bug4305_not_Secure([Values] bool async)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Disable,
+            Username = "npgsql_tests_nossl",
+            Password = "npgsql_tests_nossl",
+            MaxPoolSize = 1
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        NpgsqlConnection conn = default!;
+
+        try
+        {
+            conn = await OpenConnectionAsync(connString);
+            Assert.IsFalse(conn.IsSecure);
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("Only nossl user doesn't seem to be set up");
+        }
+
+        await using var __ = conn;
+        var originalConnector = conn.Connector;
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "select pg_sleep(30)";
+        cmd.CommandTimeout = 3;
+        var ex = async
+            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
+        if (async)
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+        else
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
+    }
+
     #region Setup / Teardown / Utils
 
     [OneTimeSetUp]
