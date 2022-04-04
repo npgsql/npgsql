@@ -399,7 +399,7 @@ CREATE DOMAIN {domainName} AS TEXT");
 
         Assert.That(index["table_schema"], Is.EqualTo("public"));
         Assert.That(index["table_name"], Is.EqualTo(table));
-        Assert.That(index["index_name"], Is.EqualTo("idx_unique"));
+        Assert.That(index["index_name"], Is.EqualTo(constraint));
         Assert.That(index["type_desc"], Is.EqualTo(""));
 
         string[] indexColumnRestrictions = { null!, null!, table };
@@ -408,16 +408,15 @@ CREATE DOMAIN {domainName} AS TEXT");
 
         Assert.That(columns.All(r => r["constraint_catalog"].Equals(database)));
         Assert.That(columns.All(r => r["constraint_schema"].Equals("public")));
-        Assert.That(columns.All(r => r["constraint_name"].Equals("idx_unique")));
+        Assert.That(columns.All(r => r["constraint_name"].Equals(constraint)));
         Assert.That(columns.All(r => r["table_catalog"].Equals(database)));
         Assert.That(columns.All(r => r["table_schema"].Equals("public")));
         Assert.That(columns.All(r => r["table_name"].Equals(table)));
-        Assert.That(columns.All(r => r["index_name"].Equals("idx_unique")));
 
         Assert.That(columns[0]["column_name"], Is.EqualTo("f1"));
         Assert.That(columns[1]["column_name"], Is.EqualTo("f2"));
 
-        string[] indexColumnRestrictions3 = { (string) database! , "public", table, "idx_unique", "f1" };
+        string[] indexColumnRestrictions3 = { (string) database! , "public", table, constraint, "f1" };
         var dataTable3 = await GetSchema(conn, "INDEXCOLUMNS", indexColumnRestrictions3);
         var columns3 = dataTable3.Rows.Cast<DataRow>().ToList();
         Assert.That(columns3.Count, Is.EqualTo(1));
