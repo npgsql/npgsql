@@ -363,17 +363,33 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Unique_constraint()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, UNIQuE (f1, f2)", out var table);
+        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, UNIQUE (f1, f2)", out var table);
+
+        var database = await conn.ExecuteScalarAsync("SELECT current_database()");
 
         var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", new[] { null, null, table });
-        var rows = dataTable.Rows.Cast<DataRow>().ToList();
+        var columns = dataTable.Rows.Cast<DataRow>().ToList();
+
+        Assert.That(columns.All(r => r["constraint_catalog"].Equals(database)));
+        Assert.That(columns.All(r => r["constraint_schema"].Equals("public")));
+        Assert.That(columns.All(r => r["constraint_name"] is not null));
+        Assert.That(columns.All(r => r["table_catalog"].Equals(database)));
+        Assert.That(columns.All(r => r["table_schema"].Equals("public")));
+        Assert.That(columns.All(r => r["table_name"].Equals(table)));
+        Assert.That(columns.All(r => r["constraint_type"].Equals("UNIQUE KEY")));
+
+        Assert.That(columns[0]["column_name"], Is.EqualTo("f1"));
+        Assert.That(columns[0]["ordinal_number"], Is.EqualTo(1));
+
+        Assert.That(columns[1]["column_name"], Is.EqualTo("f2"));
+        Assert.That(columns[1]["ordinal_number"], Is.EqualTo(2));
     }
 
     [Test]
     public async Task Unique_index_composite()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, CONSTRAINT idx_unique UNIQuE (f1, f2)", out var table);
+        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, CONSTRAINT idx_unique UNIQUE (f1, f2)", out var table);
 
         var database = await conn.ExecuteScalarAsync("SELECT current_database()");
 
