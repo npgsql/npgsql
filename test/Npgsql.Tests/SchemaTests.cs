@@ -389,7 +389,8 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Unique_index_composite()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, CONSTRAINT idx_unique UNIQUE (f1, f2)", out var table);
+        var constraint = GetUniqueIdentifier("temp_constraint");
+        await using var _ = await CreateTempTable(conn, $"f1 INT, f2 INT, CONSTRAINT {constraint} UNIQUE (f1, f2)", out var table);
 
         var database = await conn.ExecuteScalarAsync("SELECT current_database()");
 

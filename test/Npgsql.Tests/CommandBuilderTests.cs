@@ -787,13 +787,14 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
     {
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
+        var constraint = GetUniqueIdentifier("temp_constraint");
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TEMP TABLE {table} (
     Cod varchar(5) NOT NULL,
     Descr varchar(40),
     Data date,
-    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+    CONSTRAINT {constraint} PRIMARY KEY (Cod)
 )");
 
         using var cmd = new NpgsqlCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM {table}", conn);
@@ -809,11 +810,12 @@ CREATE TEMP TABLE {table} (
     {
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
+        var constraint = GetUniqueIdentifier("temp_constraint");
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (
 Cod varchar(5) NOT NULL,
 Vettore character varying(20)[],
-CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+CONSTRAINT {constraint} PRIMARY KEY (Cod)
 )");
         using var daDataAdapter = new NpgsqlDataAdapter($"SELECT cod, vettore FROM {table} ORDER By cod", conn);
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);

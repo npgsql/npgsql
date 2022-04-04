@@ -906,11 +906,12 @@ LANGUAGE 'plpgsql'");
             await using var _ = await GetTempTableName(conn, out var table1);
             await using var __ = await GetTempTableName(conn, out var table2);
             await using var ___ = GetTempFunctionName(conn, out var function);
+            var constraint = GetUniqueIdentifier("temp_constraint");
 
             var initializeTablesSql = $@"
 CREATE TABLE {table1} (value int NOT NULL);
 CREATE TABLE {table2} (value int UNIQUE);
-ALTER TABLE ONLY {table1} ADD CONSTRAINT fkey FOREIGN KEY (value) REFERENCES {table2}(value) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY {table1} ADD CONSTRAINT {constraint} FOREIGN KEY (value) REFERENCES {table2}(value) DEFERRABLE INITIALLY DEFERRED;
 CREATE OR REPLACE FUNCTION {function}(_value int) RETURNS int AS $BODY$
 BEGIN
     INSERT INTO {table1}(value) VALUES(_value);
