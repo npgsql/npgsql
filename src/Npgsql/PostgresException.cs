@@ -214,6 +214,7 @@ public sealed class PostgresException : NpgsqlException
             case PostgresErrorCodes.SystemError:
             case PostgresErrorCodes.IoError:
             case PostgresErrorCodes.SerializationFailure:
+            case PostgresErrorCodes.DeadlockDetected:
             case PostgresErrorCodes.LockNotAvailable:
             case PostgresErrorCodes.ObjectInUse:
             case PostgresErrorCodes.ObjectNotInPrerequisiteState:
