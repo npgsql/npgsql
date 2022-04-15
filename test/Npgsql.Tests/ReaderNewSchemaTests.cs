@@ -572,6 +572,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [TestCase("character varying(10)[]", 10)]
     [TestCase("character(10)", 10)]
     [TestCase("character", 1)]
+    [TestCase("character(1)", 1)]
     [TestCase("numeric(1000, 2)", null, 1000, 2)]
     [TestCase("numeric(1000)", null, 1000, null)]
     [TestCase("numeric")]
