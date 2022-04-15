@@ -133,6 +133,7 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Flaky on MacOS")]
     public async Task Break_while_open()
     {
         if (IsMultiplexing)
