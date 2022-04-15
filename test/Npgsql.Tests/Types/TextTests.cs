@@ -35,7 +35,7 @@ public class TextTests : MultiplexingTestBase
 
     [Test]
     public Task Char_as_char()
-        => AssertType('f', "f", "character(1)", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
+        => AssertType('f', "f", "character", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
 
     [Test]
     [NonParallelizable]
