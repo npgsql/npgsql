@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -209,56 +210,62 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                     switch (e)
                     {
                     // Read timeout
-                    case OperationCanceledException _:
+                    case OperationCanceledException:
                     // Note that mono throws SocketException with the wrong error (see #1330)
-                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                    case IOException when (e.InnerException as SocketException)?.SocketErrorCode ==
                                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
                     {
                         Debug.Assert(e is OperationCanceledException ? async : !async);
 
-                        // When reading notifications (Wait), just throw TimeoutException or OperationCanceledException immediately.
-                        // Nothing to cancel, and no breaking of the connection.
-                        if (readingNotifications)
-                        {
-                            if (connector.UserCancellationRequested)
-                                throw;
-                            throw NpgsqlTimeoutException();
-                        }
-
-                        // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
-                        // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
-                        if (connector.AttemptPostgresCancellation &&
-                            !connector.PostgresCancellationPerformed &&
-                            connector.PerformPostgresCancellation()
+                        var isStreamBroken = false;
 #if NETSTANDARD2_0
-                            // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may return garbage if reused.
-                            // To prevent this, we flow down and break the connection immediatelly.
-                            // See #4305.
-                            && !(connector.IsSecure && e is IOException)
+                        // SslStream on .NET Framework treats any IOException (including timeouts) as fatal and may
+                        // return garbage if reused. To prevent this, we flow down and break the connection immediately.
+                        // See #4305.
+                        isStreamBroken = connector.IsSecure && e is IOException;
 #endif
-                            )
+
+                        if (!isStreamBroken)
                         {
-                            // Note that if the cancellation timeout is negative, we flow down and break the connection immediately.
-                            var cancellationTimeout = connector.Settings.CancellationTimeout;
-                            if (cancellationTimeout >= 0)
+                            // When reading notifications (Wait), just throw TimeoutException or
+                            // OperationCanceledException immediately.
+                            // Nothing to cancel, and no breaking of the connection.
+                            if (readingNotifications)
+                                throw CreateException(connector);
+
+                            // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
+                            // TODO: As an optimization, we can still attempt to send a cancellation request, but after
+                            // that immediately break the connection
+                            if (connector.AttemptPostgresCancellation &&
+                                !connector.PostgresCancellationPerformed &&
+                                connector.PerformPostgresCancellation())
                             {
-                                if (cancellationTimeout > 0)
-                                    buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                // Note that if the cancellation timeout is negative, we flow down and break the
+                                // connection immediately.
+                                var cancellationTimeout = connector.Settings.CancellationTimeout;
+                                if (cancellationTimeout >= 0)
+                                {
+                                    if (cancellationTimeout > 0)
+                                        buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                if (async)
-                                    finalCt = buffer.Cts.Start();
+                                    if (async)
+                                        finalCt = buffer.Cts.Start();
 
-                                continue;
+                                    continue;
+                                }
                             }
                         }
 
                         // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
                         // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                        throw connector.Break(!buffer.Connector.UserCancellationRequested
-                            ? NpgsqlTimeoutException()
-                            : connector.PostgresCancellationPerformed
-                                ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
-                                : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken));
+                        throw connector.Break(CreateException(connector));
+
+                        static Exception CreateException(NpgsqlConnector connector)
+                            => !connector.UserCancellationRequested
+                                ? NpgsqlTimeoutException()
+                                : connector.PostgresCancellationPerformed
+                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
+                                    : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
                     }
 
                     default:
