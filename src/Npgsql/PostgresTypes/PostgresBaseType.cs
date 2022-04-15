@@ -25,6 +25,10 @@ public class PostgresBaseType : PostgresType
             "time without time zone"      => $"time{facets} without time zone",
             "timestamp with time zone"    => $"timestamp{facets} with time zone",
             "time with time zone"         => $"time{facets} with time zone",
+
+            // We normalize character(1) to character - they mean the same
+            "character" when facets.Size == 1 => "character",
+
             _                             => $"{Name}{facets}"
         };
     }
