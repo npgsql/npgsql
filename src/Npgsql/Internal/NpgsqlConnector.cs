@@ -1259,7 +1259,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             readingNotifications ||
             ReadBuffer.ReadBytesLeft < 5)
         {
-            return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: readingNotifications);
+            return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications);
         }
 
         var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
