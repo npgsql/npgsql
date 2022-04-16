@@ -10,6 +10,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+        <PackageReference Include="System.Text.Json" />
 
         <!-- For this and the below, see https://github.com/dotnet/roslyn/discussions/47517#discussioncomment-64145 -->
         <PackageReference Include="Scriban.Signed" GeneratePathProperty="true" PrivateAssets="all" />
@@ -28,5 +29,6 @@
     <ItemGroup>
         <EmbeddedResource Include="TypeHandler.snbtxt" />
         <EmbeddedResource Include="NpgsqlConnectionStringBuilder.snbtxt" />
+        <EmbeddedResource Include="PostgresMinimalDatabaseInfo.snbtxt" />
     </ItemGroup>
 </Project>

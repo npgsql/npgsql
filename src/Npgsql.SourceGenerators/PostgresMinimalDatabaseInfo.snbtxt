@@ -1,0 +1,64 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Npgsql.Internal;
+using Npgsql.PostgresTypes;
+using Npgsql.Util;
+
+namespace Npgsql;
+
+partial class PostgresMinimalDatabaseInfo
+{
+    static readonly PostgresType[] Types;
+
+    static PostgresMinimalDatabaseInfo()
+    {
+        ///////////////////////////
+        // Referenced base types //
+        ///////////////////////////
+        {{ for base_type in referenced_base_types }}var t_{{ base_type.name }} = new PostgresBaseType("pg_catalog", "{{ base_type.name }}", {{ base_type.oid }}u);
+        {{ end }}
+
+        /////////////////////////////
+        // Referenced pseudo types //
+        /////////////////////////////
+        {{ for pseudo_type in referenced_pseudo_types }}var t_{{ pseudo_type.name }} = new PostgresBaseType("pg_catalog", "{{ pseudo_type.name }}", {{ pseudo_type.oid }}u);
+        {{ end }}
+
+        /////////////////
+        // Range types //
+        /////////////////
+        {{ for range_type in range_types }}var t_{{ range_type.name }} = new PostgresRangeType("pg_catalog", "{{ range_type.name }}", {{ range_type.oid }}u, t_{{ range_type.element_name }});
+        {{ end }}
+
+        //////////////////////
+        // Multirange types //
+        //////////////////////
+        {{ for multirange_type in multirange_types }}var t_{{ multirange_type.name }} = new PostgresMultirangeType("pg_catalog", "{{ multirange_type.name }}", {{ multirange_type.oid }}u, t_{{ multirange_type.element_name }});
+        {{ end }}
+
+        Types = new PostgresType[]
+        {
+            // Base types
+            {{ for base_type in referenced_base_types }}t_{{ base_type.name }},{{ end }}
+            {{ for base_type in unreferenced_base_types }}new PostgresBaseType("pg_catalog", "{{ base_type.name }}", {{ base_type.oid }}u),
+            {{ end }}
+
+            // Pseudo types
+            {{ for pseudo_type in referenced_pseudo_types }}t_{{ pseudo_type.name }},{{ end }}
+            {{ for pseudo_type in unreferenced_pseudo_types }}new PostgresBaseType("pg_catalog", "{{ pseudo_type.name }}", {{ pseudo_type.oid }}u),
+            {{ end }}
+
+            // Range types
+            {{ for range_type in range_types }}t_{{ range_type.name }},{{ end }}
+
+            // Multirange types
+            {{ for multirange_type in multirange_types }}t_{{ multirange_type.name }},{{ end }}
+
+            // Array types
+            {{ for array_type in array_types }}new PostgresArrayType("pg_catalog", "{{ array_type.name }}", {{ array_type.oid }}u, t_{{ array_type.element_name }}),
+            {{ end }}
+        };
+    }
+}

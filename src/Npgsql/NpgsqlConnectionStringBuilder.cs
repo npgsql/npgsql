@@ -1773,7 +1773,7 @@ public enum ServerCompatibilityMode
     /// </summary>
     Redshift,
     /// <summary>
-    /// The server is doesn't support full type loading from the PostgreSQL catalogs, support the basic set
+    /// The server doesn't support type loading from the PostgreSQL catalogs, support the basic set
     /// of types via information hardcoded inside Npgsql.
     /// </summary>
     NoTypeLoading,

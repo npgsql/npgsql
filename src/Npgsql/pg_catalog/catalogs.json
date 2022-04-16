@@ -33,90 +33,111 @@
    ],
    "pg_type" : [
       {
+         "array_type_oid" : "1000",
          "oid" : "16",
          "typname" : "bool"
       },
       {
+         "array_type_oid" : "1001",
          "oid" : "17",
          "typname" : "bytea"
       },
       {
+         "array_type_oid" : "1002",
          "oid" : "18",
          "typname" : "char"
       },
       {
+         "array_type_oid" : "1003",
          "oid" : "19",
          "typname" : "name"
       },
       {
+         "array_type_oid" : "1016",
          "oid" : "20",
          "typname" : "int8"
       },
       {
+         "array_type_oid" : "1005",
          "oid" : "21",
          "typname" : "int2"
       },
       {
+         "array_type_oid" : "1006",
          "oid" : "22",
          "typname" : "int2vector"
       },
       {
+         "array_type_oid" : "1007",
          "oid" : "23",
          "typname" : "int4"
       },
       {
+         "array_type_oid" : "1008",
          "oid" : "24",
          "typname" : "regproc"
       },
       {
+         "array_type_oid" : "1009",
          "oid" : "25",
          "typname" : "text"
       },
       {
+         "array_type_oid" : "1028",
          "oid" : "26",
          "typname" : "oid"
       },
       {
+         "array_type_oid" : "1010",
          "oid" : "27",
          "typname" : "tid"
       },
       {
+         "array_type_oid" : "1011",
          "oid" : "28",
          "typname" : "xid"
       },
       {
+         "array_type_oid" : "1012",
          "oid" : "29",
          "typname" : "cid"
       },
       {
+         "array_type_oid" : "1013",
          "oid" : "30",
          "typname" : "oidvector"
       },
       {
+         "array_type_oid" : "210",
          "oid" : "71",
          "typname" : "pg_type",
          "typtype" : "c"
       },
       {
+         "array_type_oid" : "270",
          "oid" : "75",
          "typname" : "pg_attribute",
          "typtype" : "c"
       },
       {
+         "array_type_oid" : "272",
          "oid" : "81",
          "typname" : "pg_proc",
          "typtype" : "c"
       },
       {
+         "array_type_oid" : "273",
          "oid" : "83",
          "typname" : "pg_class",
          "typtype" : "c"
       },
       {
+         "array_type_oid" : "199",
          "oid" : "114",
          "typname" : "json"
       },
       {
+         "array_type_oid" : "143",
          "oid" : "142",
          "typname" : "xml"
       },
@@ -142,38 +163,47 @@
          "typtype" : "p"
       },
       {
+         "array_type_oid" : "271",
          "oid" : "5069",
          "typname" : "xid8"
       },
       {
+         "array_type_oid" : "1017",
          "oid" : "600",
          "typname" : "point"
       },
       {
+         "array_type_oid" : "1018",
          "oid" : "601",
          "typname" : "lseg"
       },
       {
+         "array_type_oid" : "1019",
          "oid" : "602",
          "typname" : "path"
       },
       {
+         "array_type_oid" : "1020",
          "oid" : "603",
          "typname" : "box"
       },
       {
+         "array_type_oid" : "1027",
          "oid" : "604",
          "typname" : "polygon"
       },
       {
+         "array_type_oid" : "629",
          "oid" : "628",
          "typname" : "line"
       },
       {
+         "array_type_oid" : "1021",
          "oid" : "700",
          "typname" : "float4"
       },
       {
+         "array_type_oid" : "1022",
          "oid" : "701",
          "typname" : "float8"
       },
@@ -183,213 +213,263 @@
          "typtype" : "p"
       },
       {
+         "array_type_oid" : "719",
          "oid" : "718",
          "typname" : "circle"
       },
       {
+         "array_type_oid" : "791",
          "oid" : "790",
          "typname" : "money"
       },
       {
+         "array_type_oid" : "1040",
          "oid" : "829",
          "typname" : "macaddr"
       },
       {
+         "array_type_oid" : "1041",
          "oid" : "869",
          "typname" : "inet"
       },
       {
+         "array_type_oid" : "651",
          "oid" : "650",
          "typname" : "cidr"
       },
       {
+         "array_type_oid" : "775",
          "oid" : "774",
          "typname" : "macaddr8"
       },
       {
+         "array_type_oid" : "1034",
          "oid" : "1033",
          "typname" : "aclitem"
       },
       {
+         "array_type_oid" : "1014",
          "oid" : "1042",
          "typname" : "bpchar"
       },
       {
+         "array_type_oid" : "1015",
          "oid" : "1043",
          "typname" : "varchar"
       },
       {
+         "array_type_oid" : "1182",
          "oid" : "1082",
          "typname" : "date"
       },
       {
+         "array_type_oid" : "1183",
          "oid" : "1083",
          "typname" : "time"
       },
       {
+         "array_type_oid" : "1115",
          "oid" : "1114",
          "typname" : "timestamp"
       },
       {
+         "array_type_oid" : "1185",
          "oid" : "1184",
          "typname" : "timestamptz"
       },
       {
+         "array_type_oid" : "1187",
          "oid" : "1186",
          "typname" : "interval"
       },
       {
+         "array_type_oid" : "1270",
          "oid" : "1266",
          "typname" : "timetz"
       },
       {
+         "array_type_oid" : "1561",
          "oid" : "1560",
          "typname" : "bit"
       },
       {
+         "array_type_oid" : "1563",
          "oid" : "1562",
          "typname" : "varbit"
       },
       {
+         "array_type_oid" : "1231",
          "oid" : "1700",
          "typname" : "numeric"
       },
       {
+         "array_type_oid" : "2201",
          "oid" : "1790",
          "typname" : "refcursor"
       },
       {
+         "array_type_oid" : "2207",
          "oid" : "2202",
          "typname" : "regprocedure"
       },
       {
+         "array_type_oid" : "2208",
          "oid" : "2203",
          "typname" : "regoper"
       },
       {
+         "array_type_oid" : "2209",
          "oid" : "2204",
          "typname" : "regoperator"
       },
       {
+         "array_type_oid" : "2210",
          "oid" : "2205",
          "typname" : "regclass"
       },
       {
+         "array_type_oid" : "4192",
          "oid" : "4191",
          "typname" : "regcollation"
       },
       {
+         "array_type_oid" : "2211",
          "oid" : "2206",
          "typname" : "regtype"
       },
       {
+         "array_type_oid" : "4097",
          "oid" : "4096",
          "typname" : "regrole"
       },
       {
+         "array_type_oid" : "4090",
          "oid" : "4089",
          "typname" : "regnamespace"
       },
       {
+         "array_type_oid" : "2951",
          "oid" : "2950",
          "typname" : "uuid"
       },
       {
+         "array_type_oid" : "3221",
          "oid" : "3220",
          "typname" : "pg_lsn"
       },
       {
+         "array_type_oid" : "3643",
          "oid" : "3614",
          "typname" : "tsvector"
       },
       {
+         "array_type_oid" : "3644",
          "oid" : "3642",
          "typname" : "gtsvector"
       },
       {
+         "array_type_oid" : "3645",
          "oid" : "3615",
          "typname" : "tsquery"
       },
       {
+         "array_type_oid" : "3735",
          "oid" : "3734",
          "typname" : "regconfig"
       },
       {
+         "array_type_oid" : "3770",
          "oid" : "3769",
          "typname" : "regdictionary"
       },
       {
+         "array_type_oid" : "3807",
          "oid" : "3802",
          "typname" : "jsonb"
       },
       {
+         "array_type_oid" : "4073",
          "oid" : "4072",
          "typname" : "jsonpath"
       },
       {
+         "array_type_oid" : "2949",
          "oid" : "2970",
          "typname" : "txid_snapshot"
       },
       {
+         "array_type_oid" : "5039",
          "oid" : "5038",
          "typname" : "pg_snapshot"
       },
       {
+         "array_type_oid" : "3905",
          "oid" : "3904",
          "typname" : "int4range",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "3907",
          "oid" : "3906",
          "typname" : "numrange",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "3909",
          "oid" : "3908",
          "typname" : "tsrange",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "3911",
          "oid" : "3910",
          "typname" : "tstzrange",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "3913",
          "oid" : "3912",
          "typname" : "daterange",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "3927",
          "oid" : "3926",
          "typname" : "int8range",
          "typtype" : "r"
       },
       {
+         "array_type_oid" : "6150",
          "oid" : "4451",
          "typname" : "int4multirange",
          "typtype" : "m"
       },
       {
+         "array_type_oid" : "6151",
          "oid" : "4532",
          "typname" : "nummultirange",
          "typtype" : "m"
       },
       {
+         "array_type_oid" : "6152",
          "oid" : "4533",
          "typname" : "tsmultirange",
          "typtype" : "m"
       },
       {
+         "array_type_oid" : "6153",
          "oid" : "4534",
          "typname" : "tstzmultirange",
          "typtype" : "m"
       },
       {
+         "array_type_oid" : "6155",
          "oid" : "4535",
          "typname" : "datemultirange",
          "typtype" : "m"
       },
       {
+         "array_type_oid" : "6157",
          "oid" : "4536",
          "typname" : "int8multirange",
          "typtype" : "m"
@@ -405,6 +485,7 @@
          "typtype" : "p"
       },
       {
+         "array_type_oid" : "1263",
          "oid" : "2275",
          "typname" : "cstring",
          "typtype" : "p"
@@ -522,5 +603,6 @@
          "oid" : "4601",
          "typname" : "pg_brin_minmax_multi_summary"
       }
-   ]
+   ],
+   "version" : 15
 }

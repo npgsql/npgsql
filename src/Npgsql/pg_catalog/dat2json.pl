@@ -31,14 +31,14 @@ use constant PG_TYPE_CATALOG_FILE_NAME => 'pg_type.dat';
 # Positive lists of the keys we are interested in so that we can trim down our generated json files to the bare minimum.
 # This avoids creating PRs for .dat file changes that don't really affect our behavior
 use constant PG_RANGE_KEYS => qw(rngtypid rngsubtype rngmultitypid);
-use constant PG_TYPE_KEYS => qw(oid typname typtype);
+use constant PG_TYPE_KEYS => qw(oid typname typtype array_type_oid);
 
 die "Please pass the access token" unless defined $ARGV[0];
 run();
 
 sub run {
     my $access_token = shift(@ARGV);
-    my ($pg_range, $pg_type, $latestBranch, $pg_range_url, $pg_type_url, $httpResponse);
+    my ($pg_range, $pg_type, $latestMajor, $latestBranch, $pg_range_url, $pg_type_url, $httpResponse);
     my $ua = LWP::UserAgent->new;
     $ua->agent("Npgsql catalog updater");
 
@@ -57,6 +57,7 @@ sub run {
         $httpResponse = $ua->request($req);
         last unless $httpResponse->is_success;
         $pg_type = $httpResponse->decoded_content;
+        $latestMajor = $i;
         $latestBranch = $currentBranch;
     }
 
@@ -69,7 +70,7 @@ sub run {
     my $json = JSON->new->allow_nonref;
     $json->canonical();
 
-    my $newJson = $json->pretty->encode( { pg_range => $pg_range, pg_type => $pg_type } );
+    my $newJson = $json->pretty->encode( { pg_range => $pg_range, pg_type => $pg_type, version => $latestMajor } );
     my $catalogs_json_path = sprintf("%s/catalogs.json", dirname(__FILE__));
     open(my $fh, '+<:raw', $catalogs_json_path) or die "Failed to open '$catalogs_json_path': $!";
     read $fh, my $oldJson, -s $fh;
@@ -103,8 +104,8 @@ sub commit_and_pr {
     my ($access_token, $postgresBranch, $encoded_json) = @_;
 
     my $gh = Net::GitHub::V4->new( access_token => $access_token );
-    my $repositoryOwner = 'Brar';
-    my $repository = 'Npgsql';
+    my $repositoryOwner = 'npgsql';
+    my $repository = 'npgsql';
     my $currentBranch = 'main';
     if (defined($ENV{GITHUB_REPOSITORY_OWNER})) {
         $repositoryOwner = $ENV{GITHUB_REPOSITORY_OWNER};

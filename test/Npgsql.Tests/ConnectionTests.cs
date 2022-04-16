@@ -13,6 +13,8 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
+using Npgsql.Tests.Support;
+using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -1166,15 +1168,69 @@ LANGUAGE 'plpgsql'");
         };
 
         using var _ = CreateTempPool(builder, out var connectionString);
-        using var conn = await OpenConnectionAsync(connectionString);
-        // Arrays should not be supported in this mode
-        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"),
-            Throws.Exception.TypeOf<NotSupportedException>());
+        await using var conn = await OpenConnectionAsync(connectionString);
         // Test that some basic types do work
         Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 'foo'"), Is.EqualTo("foo"));
         Assert.That(await conn.ExecuteScalarAsync("SELECT TRUE"), Is.EqualTo(true));
         Assert.That(await conn.ExecuteScalarAsync("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+        //The following types with hardcoded oids should be supported in this mode:
+        // Arrays
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"), Is.EquivalentTo(new []{1,2,3}));
+        // Ranges
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '[3,7)'::int4range"), Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
+        // Arrays of ranges
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '{\"[3,7)\", \"[8,)\"}'::int4range[]"),
+            Is.EquivalentTo(new[] { new NpgsqlRange<int>(3, true, false, 7, false, false), new NpgsqlRange<int>(8, true, false, 0, false, true) }));
+        // Multiranges
+        if (conn.PostgreSqlVersion >= new Version(14, 0))
+            Assert.That(await conn.ExecuteScalarAsync("SELECT '{[3,7), [8,)}'::int4multirange"),
+                Is.EquivalentTo(new[]
+                    { new NpgsqlRange<int>(3, true, false, 7, false, false), new NpgsqlRange<int>(8, true, false, 0, false, true) }));
+    }
+
+    [Test, Description("Makes sure that PostgresMinimalDatabaseInfo and PostgresDatabaseInfo are equal for freshly created databases")]
+    public async Task NoTypeLoadingVsTypeLoading()
+    {
+        if (MultiplexingMode == MultiplexingMode.Multiplexing)
+            return;
+
+        await using var conn = await OpenConnectionAsync(ConnectionString);
+        MinimumPgVersion(conn, "14.0", "Current version for generation of PostgresMinimalDatabaseInfo is 14");
+        var databaseName = Guid.NewGuid().ToString("N");
+        try
+        {
+            await conn.ExecuteNonQueryAsync($"CREATE DATABASE \"{databaseName}\" TEMPLATE template0;");
+            var loadedCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = databaseName };
+            using var loadedPool = CreateTempPool(loadedCsb, out var loadedCs);
+            await using var loaded = await OpenConnectionAsync(loadedCs);
+            var generatedCsb = loadedCsb.Clone();
+            generatedCsb.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
+            using var generatedPool = CreateTempPool(generatedCsb, out var generatedCs);
+            await using var generated = await OpenConnectionAsync(generatedCs);
+            var loadedTypes = loaded.Connector!.DatabaseInfo.ByOID.Values.Where(t => t.Namespace == "pg_catalog").ToArray();
+            var generatedTypes = generated.Connector!.DatabaseInfo.ByOID;
+
+            // The generated PostgresMinimalDatabaseInfoFactory should contain all supported types (except for 4 table composite types) in
+            // pg_catalog and be generated from the .dat files from the latest released version so it should always contain at least as many
+            // types as the loaded PostgresDatabaseInfo for a freshly created database.
+            Assert.That(generatedTypes.Count, Is.GreaterThanOrEqualTo(loadedTypes.Length));
+            foreach (var loadedType in loadedTypes)
+            {
+                // The void type occurs in a fresh database but not in the .dat files
+                if (loadedType.OID == 2278 /* void */)
+                    continue;
+
+                var generatedType = generatedTypes[loadedType.OID];
+                Assert.That(generatedType.GetType(), Is.EqualTo(loadedType.GetType()));
+                Assert.That(generatedType.Namespace, Is.EqualTo(loadedType.Namespace));
+                Assert.That(generatedType.InternalName, Is.EqualTo(loadedType.InternalName));
+            }
+        }
+        finally
+        {
+            await conn.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{databaseName}\";");
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
