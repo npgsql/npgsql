@@ -748,7 +748,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         await using var writer = await conn.BeginBinaryImportAsync($"COPY {tableName}(house_number) FROM STDIN BINARY");
         int? value = 1;
         await writer.StartRowAsync();
-        var ex = Assert.ThrowsAsync<InvalidCastException>(async () => await writer.WriteAsync(value, NpgsqlDbType.Integer))!;
+        Assert.ThrowsAsync<InvalidCastException>(async () => await writer.WriteAsync(value, NpgsqlDbType.Integer));
     }
 
     #endregion
