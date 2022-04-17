@@ -153,7 +153,9 @@ public abstract class NpgsqlTypeHandler
         var parameterName = parameter is null
             ? null
             : parameter.TrimmedName == string.Empty
-                ? $"${parameter.Collection!.IndexOf(parameter) + 1}"
+                ? parameter.Collection is { } paramCollection
+                    ? $"${paramCollection.IndexOf(parameter) + 1}"
+                    : null // in case of COPY operations parameter isn't bound to a collection
                 : parameter.TrimmedName;
 
         throw new InvalidCastException(parameterName is null
