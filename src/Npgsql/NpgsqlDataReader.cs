@@ -623,7 +623,27 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
                 else
                 {
+                    var pStatement = statement.PreparedStatement;
+                    if (pStatement != null)
+                    {
+                        Debug.Assert(!pStatement.IsPrepared);
+                        if (pStatement.StatementBeingReplaced != null)
+                        {
+                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
+                            pStatement.StatementBeingReplaced.CompleteUnprepare();
+                            pStatement.StatementBeingReplaced = null;
+                        }
+                    }
+
                     Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+
+                    if (statement.IsPreparing)
+                    {
+                        pStatement!.State = PreparedState.Prepared;
+                        Connector.PreparedStatementManager.NumPrepared++;
+                        statement.IsPreparing = false;
+                    }
+
                     Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async), Connector);
                     var msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
@@ -659,12 +679,31 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             State = ReaderState.Consumed;
 
-            // Reference the triggering statement from the exception (for batching)
-            if (e is PostgresException postgresException &&
-                Command.IsWrappedByBatch &&
-                StatementIndex >= 0 && StatementIndex < _statements.Count)
+            // Reference the triggering statement from the exception
+            if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
             {
                 postgresException.BatchCommand = _statements[StatementIndex];
+
+                // Prevent the command or batch from by recycled (by the connection) when it's disposed. This is important since
+                // the exception is very likely to escape the using statement of the command, and by that time some other user may
+                // already be using the recycled instance.
+                if (!Command.IsWrappedByBatch)
+                {
+                    Command.IsCached = false;
+                }
+            }
+
+            // An error means all subsequent statements were skipped by PostgreSQL.
+            // If any of them were being prepared, we need to update our bookkeeping to put
+            // them back in unprepared state.
+            for (; StatementIndex < _statements.Count; StatementIndex++)
+            {
+                var statement = _statements[StatementIndex];
+                if (statement.IsPreparing)
+                {
+                    statement.IsPreparing = false;
+                    statement.PreparedStatement!.AbortPrepare();
+                }
             }
 
             throw;

@@ -1034,9 +1034,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 if (batchCommand.PreparedStatement?.State == PreparedState.Prepared)
                     continue;   // Prepared, we already have the RowDescription
-                Debug.Assert(batchCommand.PreparedStatement == null);
 
-                await connector.WriteParse(batchCommand.FinalCommandText!, string.Empty, batchCommand.PositionalParameters, async, cancellationToken);
+                await connector.WriteParse(batchCommand.FinalCommandText!, batchCommand.StatementName, batchCommand.PositionalParameters, async, cancellationToken);
                 await connector.WriteDescribe(StatementOrPortal.Statement, batchCommand.StatementName, async, cancellationToken);
                 wroteSomething = true;
             }
