@@ -1,6 +1,7 @@
 ﻿using NpgsqlTypes;
 using NUnit.Framework;
 using System;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using static Npgsql.Tests.TestUtil;
@@ -539,6 +540,25 @@ SELECT COUNT(*) FROM pg_prepared_statements
         // Due to the bug, _auto2 never gets cleaned up and this throws a 42P05 (prepared statement "_auto2" already exists)
         // when we try to use that slot
         Assert.That(await conn.ExecuteScalarAsync("SELECT 3"), Is.EqualTo(3));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4404")]
+    public async Task SchemaOnly()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            AutoPrepareMinUsages = 2,
+            MaxAutoPrepare = 10,
+        };
+
+        using var _ = CreateTempPool(csb, out var connString);
+        await using var conn = await OpenConnectionAsync(connString);
+        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+        }
     }
 
     void DumpPreparedStatements(NpgsqlConnection conn)
