@@ -1525,6 +1525,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     async ValueTask<TextReader> GetTextReader(int ordinal, bool async, CancellationToken cancellationToken = default)
     {
         var field = CheckRowAndGetField(ordinal);
+        await SeekToColumn(ordinal, async, cancellationToken);
+
+        if (ColumnLen == -1)
+            ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
+        if (Buffer.ReadBytesLeft >= ColumnLen)
+        {
+            PosInColumn += ColumnLen;
+            return new PreparedTextReader(field.Handler.Read<string>(Buffer, ColumnLen, field));
+        }
+
         if (field.Handler is ITextReaderHandler handler)
             return handler.GetTextReader(async
                 ? await GetStreamInternal(field, ordinal, true, cancellationToken)
