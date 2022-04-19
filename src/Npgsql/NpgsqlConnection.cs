@@ -330,10 +330,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // Note that in multiplexing execution, the pool-wide type mapper is used so no
                 // need to update the connector type mapper (this is why this is here).
                 if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                {
-                    timeout = new NpgsqlTimeout(connectionTimeout);
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
-                }
 
                 ConnectorBindingScope = ConnectorBindingScope.Connection;
                 connector.Connection = this;
