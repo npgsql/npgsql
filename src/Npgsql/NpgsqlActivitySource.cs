@@ -56,7 +56,7 @@ static class NpgsqlActivitySource
         default:
             throw new ArgumentOutOfRangeException("Invalid endpoint type: " + endPoint.GetType());
         }
-        
+
         Options.EnrichCommandExecution?.Invoke(activity, "OnStartActivity", command);
 
         return activity;
@@ -72,7 +72,11 @@ static class NpgsqlActivitySource
     {
         activity.SetTag("otel.status_code", "OK");
         activity.SetEndTime(DateTime.UtcNow);
-        Options.EnrichCommandExecution?.Invoke(activity, "OnStopActivity", command);
+        if (activity.IsAllDataRequested)
+        {
+            Options.EnrichCommandExecution?.Invoke(activity, "OnStopActivity", command);
+        }
+
         activity.Dispose();
     }
 
@@ -90,7 +94,11 @@ static class NpgsqlActivitySource
         activity.SetTag("otel.status_code", "ERROR");
         activity.SetTag("otel.status_description", ex is PostgresException pgEx ? pgEx.SqlState : ex.Message);
         activity.SetEndTime(DateTime.UtcNow);
-        Options.EnrichCommandExecution?.Invoke(activity, "OnException", (command, ex));
+        if (activity.IsAllDataRequested)
+        {
+            Options.EnrichCommandExecution?.Invoke(activity, "OnException", (command, ex));
+        }
+
         activity.Dispose();
     }
 }
