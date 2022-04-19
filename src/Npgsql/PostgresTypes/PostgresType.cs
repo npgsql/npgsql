@@ -40,6 +40,12 @@ public abstract class PostgresType
 
     #endregion
 
+    #region Private Properties
+
+    private readonly string[] _qualifiedNameExcludedSchemas = { "public", "pg_catalog" };
+
+    #endregion
+    
     #region Public Properties
 
     /// <summary>
@@ -72,6 +78,12 @@ public abstract class PostgresType
     /// </summary>
     public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
 
+    /// <summary>
+    /// A schema qualified name for this backend type, includes the namespace unless it is pg_catalog (the namespace
+    /// for all built-in types) or public.
+    /// </summary>
+    public string SchemaQualifiedName => _qualifiedNameExcludedSchemas.Contains(Namespace) ? Name : FullName;
+    
     /// <summary>
     /// The data type's internal PostgreSQL name (e.g. <c>_int4</c> not <c>integer[]</c>).
     /// See <see cref="Name"/> for a more user-friendly name.

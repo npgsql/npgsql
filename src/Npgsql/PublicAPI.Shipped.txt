@@ -833,6 +833,7 @@ Npgsql.PostgresTypes.PostgresType
 Npgsql.PostgresTypes.PostgresType.Array.get -> Npgsql.PostgresTypes.PostgresArrayType?
 Npgsql.PostgresTypes.PostgresType.DisplayName.get -> string!
 Npgsql.PostgresTypes.PostgresType.FullName.get -> string!
+Npgsql.PostgresTypes.PostgresType.SchemaQualifiedName.get -> string!
 Npgsql.PostgresTypes.PostgresType.InternalName.get -> string!
 Npgsql.PostgresTypes.PostgresType.Name.get -> string!
 Npgsql.PostgresTypes.PostgresType.Namespace.get -> string!
