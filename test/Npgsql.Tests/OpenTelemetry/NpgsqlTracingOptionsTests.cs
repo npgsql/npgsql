@@ -18,14 +18,19 @@ public class NpgsqlTracingOptionsTests : TestBase
             conn.ExecuteScalar("SELECT 1");
         }
 
-        Assert.That(_enrichInvocations, Has.Count.EqualTo(2));
+        Assert.That(_enrichInvocations, Has.Count.EqualTo(3));
 
         var (startActivity, startEventName, startObject) = _enrichInvocations[0];
         Assert.That(startEventName, Is.EqualTo("OnStartActivity"));
         Assert.That(startObject, Is.TypeOf<NpgsqlCommand>().With.Property("CommandText").EqualTo("SELECT 1"));
         Assert.That(startActivity.Kind, Is.EqualTo(ActivityKind.Client));
 
-        var (stopActivity, stopEventName, stopObject) = _enrichInvocations[1];
+        var (responseActivity, responseEventName, responseObject) = _enrichInvocations[1];
+        Assert.That(responseEventName, Is.EqualTo("OnFirstResponse"));
+        Assert.That(responseObject, Is.SameAs(startObject));
+        Assert.That(responseActivity, Is.SameAs(startActivity));
+
+        var (stopActivity, stopEventName, stopObject) = _enrichInvocations[2];
         Assert.That(stopEventName, Is.EqualTo("OnStopActivity"));
         Assert.That(stopObject, Is.SameAs(startObject));
         Assert.That(stopActivity, Is.SameAs(startActivity));

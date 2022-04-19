@@ -62,10 +62,14 @@ static class NpgsqlActivitySource
         return activity;
     }
 
-    internal static void ReceivedFirstResponse(Activity activity)
+    internal static void ReceivedFirstResponse(Activity activity, NpgsqlCommand command)
     {
         var activityEvent = new ActivityEvent("received-first-response");
         activity.AddEvent(activityEvent);
+        if (activity.IsAllDataRequested)
+        {
+            Options.EnrichCommandExecution?.Invoke(activity, "OnFirstResponse", command);
+        }
     }
 
     internal static void CommandStop(Activity activity, NpgsqlCommand command)

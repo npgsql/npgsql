@@ -1584,7 +1584,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         if (CurrentActivity is not null)
         {
-            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity);
+            NpgsqlActivitySource.ReceivedFirstResponse(CurrentActivity, this);
         }
     }
 
