@@ -754,7 +754,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         EnlistedTransaction = transaction;
         if (transaction == null)
         {
-            EnlistedTransaction = null;
+            EndBindingScope(ConnectorBindingScope.Transaction);
             return;
         }
 
