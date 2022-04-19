@@ -322,15 +322,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
 
-                ConnectorBindingScope = ConnectorBindingScope.Connection;
-                connector.Connection = this;
-                Connector = connector;
-
-                if (enlistToTransaction is not null)
-                    EnlistTransaction(enlistToTransaction);
-
-                timeout = new NpgsqlTimeout(connectionTimeout);
-
                 // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                 // (and ReloadTypes() called), or global mappings may have changed by the user.
                 // Bring this up to date if needed.
@@ -338,6 +329,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // need to update the connector type mapper (this is why this is here).
                 if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+
+                ConnectorBindingScope = ConnectorBindingScope.Connection;
+                connector.Connection = this;
+                Connector = connector;
+
+                if (enlistToTransaction is not null)
+                    EnlistTransaction(enlistToTransaction);
 
                 Log.Debug("Connection opened");
                 FullState = ConnectionState.Open;
