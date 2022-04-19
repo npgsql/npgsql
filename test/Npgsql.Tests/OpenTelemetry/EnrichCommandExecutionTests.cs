@@ -8,10 +8,14 @@ using OpenTelemetry.Trace;
 namespace Npgsql.Tests.OpenTelemetry;
 
 [NonParallelizable]
-public class NpgsqlTracingOptionsTests : TestBase
+[TestFixture(false, false)]
+[TestFixture(false, true)]
+[TestFixture(true, false)]
+[TestFixture(true, true)]
+public class EnrichCommandExecutionTests : TestBase
 {
     [Test]
-    public void CommandExecution_start_stop()
+    public void CommandExecutes_invokes_start_firstresponse_stop()
     {
         using (var conn = OpenConnection())
         {
@@ -37,7 +41,7 @@ public class NpgsqlTracingOptionsTests : TestBase
     }
 
     [Test]
-    public void CommandExecution_start_exception()
+    public void CommandThrows_invokes_start_exception()
     {
         var exception = Assert.Throws<PostgresException>(() =>
         {
@@ -62,7 +66,7 @@ public class NpgsqlTracingOptionsTests : TestBase
     }
 
     [Test]
-    public void CommandExecution_start_exception_patternmatch()
+    public void CommandThrows_invokes_start_exception_patternmatch()
     {
         var exception = Assert.Throws<PostgresException>(() =>
         {
@@ -90,7 +94,12 @@ public class NpgsqlTracingOptionsTests : TestBase
     {
         _enrichInvocations.Clear();
         _tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddNpgsql(o => o.EnrichCommandExecution = (activity, eventName, rawObject) => _enrichInvocations.Add((activity, eventName, rawObject)))
+            .AddNpgsql(o =>
+            {
+                o.EnrichCommandExecution = (activity, eventName, rawObject) => _enrichInvocations.Add((activity, eventName, rawObject));
+                o.RecordCommandExecutionException = _recordException;
+                o.RecordCommandExecutionFirstResponse = _recordFirstResponse;
+            })
             .Build();
     }
 
@@ -100,4 +109,13 @@ public class NpgsqlTracingOptionsTests : TestBase
     TracerProvider _tracerProvider = null!;
 
     readonly List<(Activity activity, string eventName, object rawObject)> _enrichInvocations = new();
+
+    readonly bool _recordException;
+    readonly bool _recordFirstResponse;
+
+    public EnrichCommandExecutionTests(bool recordException, bool recordFirstResponse)
+    {
+        _recordException = recordException;
+        _recordFirstResponse = recordFirstResponse;
+    }
 }

@@ -2,6 +2,10 @@
 Npgsql.NpgsqlLoggingConfiguration
 Npgsql.NpgsqlTracingOptions.EnrichCommandExecution.get -> System.Action<System.Diagnostics.Activity!, string!, object!>?
 Npgsql.NpgsqlTracingOptions.EnrichCommandExecution.set -> void
+Npgsql.NpgsqlTracingOptions.RecordCommandExecutionException.get -> bool
+Npgsql.NpgsqlTracingOptions.RecordCommandExecutionException.set -> void
+Npgsql.NpgsqlTracingOptions.RecordCommandExecutionFirstResponse.get -> bool
+Npgsql.NpgsqlTracingOptions.RecordCommandExecutionFirstResponse.set -> void
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.Log(Npgsql.Logging.NpgsqlLogLevel level, int connectorId, string! msg, System.Exception? exception = null) -> void
