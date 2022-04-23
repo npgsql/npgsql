@@ -431,6 +431,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
             NpgsqlDbType.Geometry  => "geometry",
             NpgsqlDbType.Geography => "geography",
+            
+            NpgsqlDbType.Cube => "cube",
 
             // Built-in range types
             NpgsqlDbType.IntegerRange     => "int4range",
@@ -543,6 +545,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
             "geometry" => NpgsqlDbType.Geometry,
             "geography" => NpgsqlDbType.Geography,
+            
+            "cube" => NpgsqlDbType.Cube,
 
             // Built-in range types
             "int4range" => NpgsqlDbType.IntegerRange,

@@ -97,6 +97,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     BitStringHandler? _bitHandler;
     VoidHandler? _voidHandler;
     HstoreHandler? _hstoreHandler;
+    CubeHandler? _cubeHandler;
 
     // Internal types
     Int2VectorHandler? _int2VectorHandler;
@@ -203,6 +204,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "bit varying" or "varbit" => BitVaryingHandler(),
             "bit"                     => BitHandler(),
             "hstore"                  => HstoreHandler(),
+            "cube"                    => CubeHandler(),
 
             // Internal types
             "int2vector" => Int2VectorHandler(),
@@ -331,6 +333,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             return UuidHandler();
         if (typeof(T) == typeof(BitVector32))
             return BitVaryingHandler();
+        if (typeof(T) == typeof(NpgsqlCube))
+            return CubeHandler();
 
         // Internal types
         if (typeof(T) == typeof(NpgsqlLogSequenceNumber))
@@ -414,6 +418,9 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler BitHandler()        => _bitHandler ??= new BitStringHandler(PgType("bit"));
     NpgsqlTypeHandler? HstoreHandler()    => _hstoreHandler ??= _databaseInfo.TryGetPostgresTypeByName("hstore", out var pgType)
         ? new HstoreHandler(pgType, _textHandler)
+        : null;
+    NpgsqlTypeHandler? CubeHandler() => _cubeHandler ??= _databaseInfo.TryGetPostgresTypeByName("cube", out var pgType)
+        ? new CubeHandler(pgType)
         : null;
 
     // Internal types

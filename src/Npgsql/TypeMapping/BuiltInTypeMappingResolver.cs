@@ -121,6 +121,7 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
         { "varbit",      new(NpgsqlDbType.Varbit,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
         { "bit",         new(NpgsqlDbType.Bit,     "bit") },
         { "hstore",      new(NpgsqlDbType.Hstore,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>), typeof(ImmutableDictionary<string, string?>)) },
+        { "cube" ,       new (NpgsqlDbType.Cube,   "cube")},
 
         // Internal types
         { "int2vector",  new(NpgsqlDbType.Int2Vector,   "int2vector") },
@@ -207,6 +208,7 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
             { typeof(BitVector32),                         "bit varying" },
             { typeof(Dictionary<string, string>),          "hstore" },
             { typeof(ImmutableDictionary<string, string>), "hstore" },
+            { typeof(NpgsqlCube),                          "cube" },
 
             // Internal types
             { typeof(NpgsqlLogSequenceNumber), "pg_lsn" },
