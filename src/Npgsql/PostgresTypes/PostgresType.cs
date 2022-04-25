@@ -1,4 +1,6 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using System.Linq;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL data type, such as int4 or text, as discovered from pg_type.
