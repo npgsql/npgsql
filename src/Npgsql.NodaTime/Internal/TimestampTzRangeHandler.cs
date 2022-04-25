@@ -49,11 +49,11 @@ public partial class TimestampTzRangeHandler : RangeHandler<Instant>,
 
     public int ValidateAndGetLength(Interval value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLengthRange(
-            new NpgsqlRange<Instant>(value.Start, true, !value.HasStart, value.End, false, !value.HasEnd), ref lengthCache, parameter);
+            new NpgsqlRange<Instant>(value.HasStart ? value.Start : default, true, !value.HasStart, value.HasEnd ? value.End : default, false, !value.HasEnd), ref lengthCache, parameter);
 
     public Task Write(Interval value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => WriteRange(new NpgsqlRange<Instant>(value.Start, true, !value.HasStart, value.End, false, !value.HasEnd),
+        => WriteRange(new NpgsqlRange<Instant>(value.HasStart ? value.Start : default, true, !value.HasStart, value.HasEnd ? value.End : default, false, !value.HasEnd),
             buf, lengthCache, parameter, async, cancellationToken);
 
     #region Boilerplate
