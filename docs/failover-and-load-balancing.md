@@ -1,7 +1,7 @@
 # Multiple Hosts, Failover and Load Balancing
 
 > [!NOTE]
-> The functionality described in this page is being introduced in Npgsql 6.0, which is still in preview.
+> The functionality described in this page was introduced in Npgsql 6.0.
 
 Npgsql 6.0 allows specifying multiple hosts in your application's connection strings, allowing various failover and load balancing scenarios to be supported without the need for any additional component such as pgpool or pgbouncer. This typically requires setting up replication between your multiple PostgreSQL servers, to keep your standby servers in sync with your primary; this can be done with the help of PostgreSQL logical or physical replication, and some cloud providers provide this out of the box. Whatever the solution chosen, it's important to understand that this is out of Npgsql's scope - Npgsql is only responsible for connecting to your multiple servers as described below, and not for keeping your servers in sync.
 
