@@ -15,6 +15,10 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
+*REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute
+*REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute() -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute(params string![]! synonyms) -> void
+*REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.Synonyms.get -> string![]!
 *REMOVED*Npgsql.Logging.ConsoleLoggingProvider
 *REMOVED*Npgsql.Logging.ConsoleLoggingProvider.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel minLevel = Npgsql.Logging.NpgsqlLogLevel.Info, bool printLevel = false, bool printConnectorId = false) -> void
 *REMOVED*Npgsql.Logging.ConsoleLoggingProvider.CreateLogger(string! name) -> Npgsql.Logging.NpgsqlLogger!

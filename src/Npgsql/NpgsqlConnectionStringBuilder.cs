@@ -1709,8 +1709,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     }
 
     #endregion
-
-    internal static readonly string[] EmptyStringArray = new string[0];
 }
 
 #region Attributes
@@ -1720,7 +1718,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 /// string. Optionally holds a set of synonyms for the property.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-public class NpgsqlConnectionStringPropertyAttribute : Attribute
+class NpgsqlConnectionStringPropertyAttribute : Attribute
 {
     /// <summary>
     /// Holds a list of synonyms for the property.
@@ -1731,17 +1729,13 @@ public class NpgsqlConnectionStringPropertyAttribute : Attribute
     /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
     /// </summary>
     public NpgsqlConnectionStringPropertyAttribute()
-    {
-        Synonyms = NpgsqlConnectionStringBuilder.EmptyStringArray;
-    }
+        => Synonyms = Array.Empty<string>();
 
     /// <summary>
     /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
     /// </summary>
     public NpgsqlConnectionStringPropertyAttribute(params string[] synonyms)
-    {
-        Synonyms = synonyms;
-    }
+        => Synonyms = synonyms;
 }
 
 #endregion
