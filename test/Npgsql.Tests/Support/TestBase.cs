@@ -31,12 +31,13 @@ namespace Npgsql.Tests
             DbType? inferredDbType = null,
             bool isDefaultForReading = true,
             bool isDefaultForWriting = true,
-            bool? isDefault = null)
+            bool? isDefault = null,
+            bool isNpgsqlDbTypeInferredFromClrType = true)
         {
             await using var connection = await OpenConnectionAsync();
             return await AssertType(
                 connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForReading, isDefaultForWriting,
-                isDefault);
+                isDefault, isNpgsqlDbTypeInferredFromClrType);
         }
 
         public async Task<T> AssertType<T>(
@@ -49,12 +50,13 @@ namespace Npgsql.Tests
             DbType? inferredDbType = null,
             bool isDefaultForReading = true,
             bool isDefaultForWriting = true,
-            bool? isDefault = null)
+            bool? isDefault = null,
+            bool isNpgsqlDbTypeInferredFromClrType = true)
         {
             if (isDefault is not null)
                 isDefaultForReading = isDefaultForWriting = isDefault.Value;
 
-            await AssertTypeWrite(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting);
+            await AssertTypeWrite(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType);
             return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading);
         }
 
@@ -72,10 +74,11 @@ namespace Npgsql.Tests
             NpgsqlDbType npgsqlDbType,
             DbType? dbType = null,
             DbType? inferredDbType = null,
-            bool isDefault = true)
+            bool isDefault = true,
+            bool isNpgsqlDbTypeInferredFromClrType = true)
         {
             await using var connection = await OpenConnectionAsync();
-            await AssertTypeWrite(connection, value, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault);
+            await AssertTypeWrite(connection, value, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault, isNpgsqlDbTypeInferredFromClrType);
         }
 
         internal static async Task<T> AssertTypeRead<T>(
@@ -100,7 +103,8 @@ namespace Npgsql.Tests
 
             if (isDefault)
             {
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(T)),
+                // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(dataTypeName.EndsWith("[]") ? typeof(Array) : typeof(T)),
                     $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
             }
 
@@ -120,7 +124,8 @@ namespace Npgsql.Tests
             NpgsqlDbType npgsqlDbType,
             DbType? dbType = null,
             DbType? inferredDbType = null,
-            bool isDefault = true)
+            bool isDefault = true,
+            bool isNpgsqlDbTypeInferredFromClrType = true)
         {
             // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
             // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
@@ -137,63 +142,72 @@ namespace Npgsql.Tests
             // 4. With only the value set (if it's the default)
             // 5. With only the value set, using generic NpgsqlParameter<T> (if it's the default)
 
-            var numParams = 2 + (dbType is not null ? 1 : 0) + (isDefault ? 2 : 0);
-            var sql = "SELECT " + string.Join(", ", Enumerable.Range(1, numParams).Select(i =>
-                "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
-
             var errorIdentifierIndex = 0;
-            var errorIdentifier = new Dictionary<int, string>
-            {
-                { errorIdentifierIndex++, $"NpgsqlDbType={npgsqlDbType}" },
-                { errorIdentifierIndex++, $"DataTypeName={pgTypeNameWithoutFacets}" }
-            };
+            var errorIdentifier = new Dictionary<int, string>();
 
-            await using var cmd = new NpgsqlCommand(sql, connection)
-            {
-                Parameters =
-                {
-                    new() { Value = value, NpgsqlDbType = npgsqlDbType },
-                    new() { Value = value, DataTypeName = pgTypeNameWithoutFacets }
-                }
-            };
+            await using var cmd = new NpgsqlCommand { Connection = connection };
 
+            // With NpgsqlDbType
+            var p = new NpgsqlParameter { Value = value, NpgsqlDbType = npgsqlDbType };
+            cmd.Parameters.Add(p);
+            errorIdentifier[errorIdentifierIndex++] = $"NpgsqlDbType={npgsqlDbType}";
+            CheckInference();
+
+            // With data type name
+            p = new NpgsqlParameter { Value = value, DataTypeName = pgTypeNameWithoutFacets };
+            cmd.Parameters.Add(p);
+            errorIdentifier[errorIdentifierIndex++] = $"DataTypeName={pgTypeNameWithoutFacets}";
+            CheckInference();
+
+            // With DbType
             if (dbType is not null)
             {
-                cmd.Parameters.Add(new() { Value = value, DbType = dbType.Value });
+                p = new NpgsqlParameter { Value = value, DbType = dbType.Value };
+                cmd.Parameters.Add(p);
                 errorIdentifier[errorIdentifierIndex++] = $"DbType={dbType}";
+                CheckInference();
             }
 
             if (isDefault)
             {
-                cmd.Parameters.Add(new() { Value = value });
-                cmd.Parameters.Add(new NpgsqlParameter<T> { TypedValue = value });
-                errorIdentifier[errorIdentifierIndex++] = "Value only (default)";
-                errorIdentifier[errorIdentifierIndex++] = "Value only (default)";
+                // With (non-generic) value only
+                p = new NpgsqlParameter { Value = value };
+                cmd.Parameters.Add(p);
+                errorIdentifier[errorIdentifierIndex++] = "Value only (non-generic)";
+                if (isNpgsqlDbTypeInferredFromClrType)
+                    CheckInference();
+
+                // With (generic) value only
+                p = new NpgsqlParameter<T> { TypedValue = value };
+                cmd.Parameters.Add(p);
+                errorIdentifier[errorIdentifierIndex++] = "Value only (generic)";
+                if (isNpgsqlDbTypeInferredFromClrType)
+                    CheckInference();
             }
 
-            Debug.Assert(numParams == cmd.Parameters.Count && numParams == errorIdentifierIndex);
+            Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex);
 
-            // First check inference on the parameter
-            for (var i = 0; i < numParams; i++)
-            {
-                var p = cmd.Parameters[i];
-
-                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
-                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[i]}");
-                Assert.That(p.DbType, Is.EqualTo(inferredDbType ?? dbType ?? DbType.Object),
-                    () => $"Got wrong inferred DbType when inferring with {errorIdentifier[i]}");
-
-                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
-                    () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[i]}");
-            }
+            cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
+                "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
 
             await using var reader = await cmd.ExecuteReaderAsync();
             await reader.ReadAsync();
 
-            for (var i = 0; i < numParams * 2; i += 2)
+            for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
             {
                 Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
                 Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
+            }
+
+            void CheckInference()
+            {
+                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
+                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+                Assert.That(p.DbType, Is.EqualTo(inferredDbType ?? dbType ?? DbType.Object),
+                    () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+
+                Assert.That(p.DataTypeName, Is.EqualTo(pgTypeNameWithoutFacets),
+                    () => $"Got wrong inferred DataTypeName when inferring with {errorIdentifier[errorIdentifierIndex]}");
             }
         }
 

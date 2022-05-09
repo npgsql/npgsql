@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Threading.Tasks;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -224,11 +225,41 @@ class RangeTests : MultiplexingTestBase
         Assert.That(actual, Is.EqualTo(range));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4441")]
+    public async Task Array_of_range()
+    {
+        bool supportsMultirange;
+
+        await using (var conn = await OpenConnectionAsync())
+        {
+            supportsMultirange = conn.PostgreSqlVersion.IsGreaterOrEqual(14, 0);
+        }
+
+        // Starting with PG14, we map CLR NpgsqlRange<T>[] to PG multiranges by default, but also support mapping to PG array of range.
+        // (wee also MultirangeTests for additional multirange-specific tests).
+        // Earlier versions don't have multirange, so the default mapping is to PG array of range.
+
+        // Note that when NpgsqlDbType inference, we don't know the PG version (since NpgsqlParameter can exist in isolation). So
+        // if NpgsqlParameter.Value is set to NpgsqlRange<T>[], NpgsqlDbType always returns multirange (hence
+        // isNpgsqlDbTypeInferredFromClrType is false).
+        await AssertType(
+            new NpgsqlRange<int>[]
+            {
+                new(3, lowerBoundIsInclusive: true, 4, upperBoundIsInclusive: false),
+                new(5, lowerBoundIsInclusive: true, 6, upperBoundIsInclusive: false)
+            },
+            @"{""[3,4)"",""[5,6)""}",
+            "int4range[]",
+            NpgsqlDbType.IntegerRange | NpgsqlDbType.Array,
+            isDefaultForWriting: !supportsMultirange,
+            isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
         using var conn = await OpenConnectionAsync();
-        TestUtil.MinimumPgVersion(conn, "9.2.0");
+        MinimumPgVersion(conn, "9.2.0");
     }
 
     #region ParseTests
