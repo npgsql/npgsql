@@ -68,7 +68,7 @@ public abstract class NpgsqlDatabaseInfo
     /// <summary>
     /// Whether the backend supports multirange types.
     /// </summary>
-    public virtual bool SupportsMultirangeTypes => Version.IsGreaterOrEqual(14, 0);
+    public virtual bool SupportsMultirangeTypes => Version.IsGreaterOrEqual(14);
 
     /// <summary>
     /// Whether the backend supports enum types.

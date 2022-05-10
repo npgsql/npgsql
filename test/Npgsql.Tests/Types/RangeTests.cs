@@ -232,7 +232,7 @@ class RangeTests : MultiplexingTestBase
 
         await using (var conn = await OpenConnectionAsync())
         {
-            supportsMultirange = conn.PostgreSqlVersion.IsGreaterOrEqual(14, 0);
+            supportsMultirange = conn.PostgreSqlVersion.IsGreaterOrEqual(14);
         }
 
         // Starting with PG14, we map CLR NpgsqlRange<T>[] to PG multiranges by default, but also support mapping to PG array of range.

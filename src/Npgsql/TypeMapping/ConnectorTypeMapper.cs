@@ -22,7 +22,6 @@ namespace Npgsql.TypeMapping;
 sealed class ConnectorTypeMapper : TypeMapperBase
 {
     internal NpgsqlConnector Connector { get; }
-    Version _pgVersion = null!;
     readonly object _writeLock = new();
 
     NpgsqlDatabaseInfo? _databaseInfo;
@@ -40,7 +39,6 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             _databaseInfo = value;
             Reset();
-            _pgVersion = value.Version;
         }
     }
 
@@ -333,9 +331,9 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             if (arrayElementType is not null)
             {
                 // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
-                if (_pgVersion.IsGreaterOrEqual(14, 0) &&
-                    arrayElementType.IsGenericType &&
-                    arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                if (arrayElementType.IsGenericType &&
+                    arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
+                    DatabaseInfo.Version.IsGreaterOrEqual(14))
                 {
                     var subtypeType = arrayElementType.GetGenericArguments()[0];
 
