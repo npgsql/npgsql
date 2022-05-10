@@ -118,7 +118,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     try
                     {
                         if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
-                            return handler;
+                            return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
                     }
                     catch (Exception e)
                     {
@@ -136,7 +136,8 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     throw new ArgumentException(
                         $"No array type could be found in the database for element {elementHandler.PostgresType}");
 
-                return elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
+                return _handlersByNpgsqlDbType[npgsqlDbType] =
+                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
@@ -147,7 +148,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     throw new ArgumentException(
                         $"No range type could be found in the database for subtype {subtypeHandler.PostgresType}");
 
-                return subtypeHandler.CreateRangeHandler(pgRangeType);
+                return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateRangeHandler(pgRangeType);
             }
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
@@ -158,7 +159,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     throw new ArgumentException(
                         $"No multirange type could be found in the database for subtype {subtypeHandler.PostgresType}");
 
-                return subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
+                return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
             }
 
             throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
