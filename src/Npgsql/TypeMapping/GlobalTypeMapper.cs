@@ -202,7 +202,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
 
     #region NpgsqlDbType/DbType inference for NpgsqlParameter
 
-    [RequiresUnreferencedCodeAttribute("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
+    [RequiresUnreferencedCode("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
     internal bool TryResolveMappingByValue(object value, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
     {
         Lock.EnterReadLock();

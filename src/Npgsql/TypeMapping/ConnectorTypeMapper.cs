@@ -14,6 +14,7 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
@@ -109,13 +110,27 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         lock (_writeLock)
         {
-            if (TryResolve(npgsqlDbType, out handler))
-                return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+            // First, try to resolve as a base type; translate the NpgsqlDbType to a PG data type name and look that up.
+            if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
+            {
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
+                            return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}",
+                            e);
+                    }
+                }
+            }
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Array, out var elementHandler))
-                    throw new ArgumentException($"Array type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
 
                 if (elementHandler.PostgresType.Array is not { } pgArrayType)
                     throw new ArgumentException(
@@ -127,8 +142,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Range, out var subtypeHandler))
-                    throw new ArgumentException($"Range type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
 
                 if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
                     throw new ArgumentException(
@@ -139,8 +153,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Multirange, out var subtypeHandler))
-                    throw new ArgumentException($"Multirange type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
 
                 if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
                     throw new ArgumentException(
@@ -151,28 +164,6 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                       "You may need to install an extension or upgrade to a newer version.");
-
-            bool TryResolve(NpgsqlDbType npgsqlDbType, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
-            {
-                if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
-                {
-                    foreach (var resolver in _resolvers)
-                    {
-                        try
-                        {
-                            if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
-                                return true;
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Error($"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}", e);
-                        }
-                    }
-                }
-
-                handler = null;
-                return false;
-            }
         }
     }
 
@@ -340,8 +331,10 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             var arrayElementType = GetArrayListElementType(type);
             if (arrayElementType is not null)
             {
-                // Arrays over range types are multiranges, not regular arrays.
-                if (arrayElementType.IsGenericType && arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
+                if (arrayElementType.IsGenericType &&
+                    arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
+                    DatabaseInfo.Version.IsGreaterOrEqual(14))
                 {
                     var subtypeType = arrayElementType.GetGenericArguments()[0];
 

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.Threading.Tasks;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -216,6 +217,36 @@ class RangeTests : MultiplexingTestBase
         await reader.ReadAsync();
         var actual = reader.GetFieldValue<NpgsqlRange<DateTimeOffset>>(0);
         Assert.That(actual, Is.EqualTo(range));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4441")]
+    public async Task Array_of_range()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        // Starting with PG14, we map CLR NpgsqlRange<T>[] to PG multiranges by default, but also support mapping to PG array of range.
+        // (wee also MultirangeTests for additional multirange-specific tests).
+        // Earlier versions don't have multirange, so the default mapping is to PG array of range.
+
+        // Note: more comprehensive testing was done in 7.0
+
+        await using var command = new NpgsqlCommand("SELECT $1", conn)
+        {
+            Parameters =
+            {
+                new()
+                {
+                    Value = new NpgsqlRange<int>[]
+                    {
+                        new(3, lowerBoundIsInclusive: true, 4, upperBoundIsInclusive: false),
+                        new(5, lowerBoundIsInclusive: true, 6, upperBoundIsInclusive: false)
+                    }
+                }
+            }
+        };
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.That(reader.GetDataTypeName(0), Is.EqualTo(conn.PostgreSqlVersion.IsGreaterOrEqual(14) ? "int4multirange" : "int4range[]"));
     }
 
     [OneTimeSetUp]
