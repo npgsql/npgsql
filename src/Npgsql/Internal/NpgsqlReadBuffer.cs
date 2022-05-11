@@ -83,7 +83,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     ColumnStream? _columnStream;
 
-    bool _usePool;
+    readonly bool _usePool;
     bool _disposed;
 
     /// <summary>
@@ -126,12 +126,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region I/O
 
-    internal void Ensure(int count)
-    {
-        if (count <= ReadBytesLeft)
-            return;
-        Ensure(count, false).GetAwaiter().GetResult();
-    }
+    internal void Ensure(int count) => Ensure(count, false).GetAwaiter().GetResult();
 
     public Task Ensure(int count, bool async)
         => Ensure(count, async, readingNotifications: false);
@@ -156,7 +151,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             Debug.Assert(count <= buffer.Size);
             Debug.Assert(count > buffer.ReadBytesLeft);
             count -= buffer.ReadBytesLeft;
-            if (count <= 0) { return; }
 
             if (buffer.ReadPosition == buffer.FilledBytes)
             {
@@ -194,7 +188,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                     // In this case, we consider it as timed out and fail with OperationCancelledException on next ReadAsync
                     // Or we consider it not timed out if we have already read everything (count == 0)
                     // In which case we reinitialize it on the next call to EnsureLong()
-                    if (async)
+                    if (async && count > 0)
                         buffer.Cts.RestartTimeoutWithoutReset();
                 }
                 catch (Exception e)

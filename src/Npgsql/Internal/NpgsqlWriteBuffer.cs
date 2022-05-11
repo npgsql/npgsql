@@ -127,9 +127,9 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         } else if (WritePosition == 0)
             return;
 
-        var finalCt = cancellationToken;
-        if (async && Timeout > TimeSpan.Zero)
-            finalCt = _timeoutCts.Start(cancellationToken);
+        var finalCt = async && Timeout > TimeSpan.Zero
+            ? _timeoutCts.Start(cancellationToken)
+            : cancellationToken;
 
         try
         {
@@ -137,7 +137,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             {
                 await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                 await Underlying.FlushAsync(finalCt);
-                _timeoutCts.Stop();
+                if (Timeout > TimeSpan.Zero) 
+                    _timeoutCts.Stop();
             }
             else
             {

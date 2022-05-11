@@ -19,7 +19,7 @@ class ResettableCancellationTokenSource : IDisposable
 
     public TimeSpan Timeout { get; set; }
 
-    volatile CancellationTokenSource _cts = new();
+    CancellationTokenSource _cts = new();
     CancellationTokenRegistration _registration;
 
     /// <summary>
@@ -128,8 +128,8 @@ class ResettableCancellationTokenSource : IDisposable
     /// </remarks>
     public void Stop()
     {
-        _cts.CancelAfter(InfiniteTimeSpan);
         _registration.Dispose();
+        _cts.CancelAfter(InfiniteTimeSpan);
 #if DEBUG
         _isRunning = false;
 #endif
