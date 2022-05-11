@@ -129,7 +129,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
         var finalCt = async && Timeout > TimeSpan.Zero
             ? _timeoutCts.Start(cancellationToken)
-            : CancellationToken.None;
+            : cancellationToken;
 
         try
         {
