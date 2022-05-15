@@ -192,12 +192,15 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription);
         }
 
-        // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
-        // than deserializing to string.
-        var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
-        return typeof(T) == typeof(JsonDocument)
-            ? (T)(object)JsonDocument.Parse(s)
-            : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
+        // JsonDocument is a view over its provided buffer, so we can't return one over our internal buffer (see #2811), so we deserialize
+        // a string and get a JsonDocument from that. #2818 tracks improving this.
+        if (typeof(T) == typeof(JsonDocument))
+            return (T)(object)JsonDocument.Parse(await _textHandler.Read(buf, byteLen, async, fieldDescription));
+
+        // User POCO
+        return buf.ReadBytesLeft >= byteLen
+            ? JsonSerializer.Deserialize<T>(buf.ReadSpan(byteLen), _serializerOptions)!
+            : JsonSerializer.Deserialize<T>(buf.GetStream(byteLen, canSeek: false), _serializerOptions)!;
     }
 
     /// <inheritdoc />

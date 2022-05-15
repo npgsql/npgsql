@@ -82,6 +82,28 @@ public class JsonTests : MultiplexingTestBase
             NpgsqlDbType,
             isDefault: false);
 
+    [Test]
+    public async Task As_poco_long()
+    {
+        using var conn = CreateConnection();
+        var bigString = new string('x', Math.Max(conn.Settings.ReadBufferSize, conn.Settings.WriteBufferSize));
+
+        await AssertType(
+            new WeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = bigString,
+                TemperatureC = 10
+            },
+            // Warning: in theory jsonb order and whitespace may change across versions
+            IsJsonb
+                ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": """ + bigString + @""", ""TemperatureC"": 10}"
+                : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""" + bigString + @"""}",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false);
+    }
+
     record WeatherForecast
     {
         public DateTime Date { get; set; }
