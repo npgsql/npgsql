@@ -198,9 +198,16 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             return (T)(object)JsonDocument.Parse(await _textHandler.Read(buf, byteLen, async, fieldDescription));
 
         // User POCO
-        return buf.ReadBytesLeft >= byteLen
-            ? JsonSerializer.Deserialize<T>(buf.ReadSpan(byteLen), _serializerOptions)!
-            : JsonSerializer.Deserialize<T>(buf.GetStream(byteLen, canSeek: false), _serializerOptions)!;
+        if (buf.ReadBytesLeft >= byteLen)
+            return JsonSerializer.Deserialize<T>(buf.ReadSpan(byteLen), _serializerOptions)!;
+
+#if NET6_0_OR_GREATER
+        return (async
+            ? await JsonSerializer.DeserializeAsync<T>(buf.GetStream(byteLen, canSeek: false), _serializerOptions)
+            : JsonSerializer.Deserialize<T>(buf.GetStream(byteLen, canSeek: false), _serializerOptions))!;
+#else
+        return JsonSerializer.Deserialize<T>(await _textHandler.Read(buf, byteLen, async, fieldDescription), _serializerOptions)!;
+#endif
     }
 
     /// <inheritdoc />
