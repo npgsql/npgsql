@@ -479,13 +479,17 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     public ReadOnlySpan<byte> ReadSpan(int len)
     {
         Debug.Assert(len <= ReadBytesLeft);
-        return new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
+        var span = new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
+        ReadPosition += len;
+        return span;
     }
 
     public ReadOnlyMemory<byte> ReadMemory(int len)
     {
         Debug.Assert(len <= ReadBytesLeft);
-        return new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
+        var memory = new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
+        ReadPosition += len;
+        return memory;
     }
 
     #endregion
