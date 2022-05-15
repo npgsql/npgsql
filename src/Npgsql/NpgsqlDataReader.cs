@@ -1361,6 +1361,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw new InvalidOperationException("A stream is already open for this reader");
 
         var t = SeekToColumn(ordinal, async, cancellationToken);
+        if (_isSequential)
+            CheckColumnStart();
         if (!t.IsCompleted)
             return new ValueTask<Stream>(GetStreamLong(this, field, t, cancellationToken));
 
