@@ -32,12 +32,13 @@ namespace Npgsql.Tests
             bool isDefaultForReading = true,
             bool isDefaultForWriting = true,
             bool? isDefault = null,
-            bool isNpgsqlDbTypeInferredFromClrType = true)
+            bool isNpgsqlDbTypeInferredFromClrType = true,
+            Func<T, T, bool>? comparer = null)
         {
             await using var connection = await OpenConnectionAsync();
             return await AssertType(
                 connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForReading, isDefaultForWriting,
-                isDefault, isNpgsqlDbTypeInferredFromClrType);
+                isDefault, isNpgsqlDbTypeInferredFromClrType, comparer);
         }
 
         public async Task<T> AssertType<T>(
@@ -51,13 +52,14 @@ namespace Npgsql.Tests
             bool isDefaultForReading = true,
             bool isDefaultForWriting = true,
             bool? isDefault = null,
-            bool isNpgsqlDbTypeInferredFromClrType = true)
+            bool isNpgsqlDbTypeInferredFromClrType = true,
+            Func<T, T, bool>? comparer = null)
         {
             if (isDefault is not null)
                 isDefaultForReading = isDefaultForWriting = isDefault.Value;
 
             await AssertTypeWrite(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType);
-            return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading);
+            return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer);
         }
 
 
@@ -82,7 +84,12 @@ namespace Npgsql.Tests
         }
 
         internal static async Task<T> AssertTypeRead<T>(
-            NpgsqlConnection connection, string sqlLiteral, string pgTypeName, T expected, bool isDefault = true)
+            NpgsqlConnection connection,
+            string sqlLiteral,
+            string pgTypeName,
+            T expected,
+            bool isDefault = true,
+            Func<T, T, bool>? comparer = null)
         {
             if (sqlLiteral.Contains('\''))
                 sqlLiteral = sqlLiteral.Replace("'", "''");
@@ -110,7 +117,7 @@ namespace Npgsql.Tests
 
             var actual = isDefault ? (T)reader.GetValue(0) : reader.GetFieldValue<T>(0);
 
-            Assert.That(actual, Is.EqualTo(expected),
+            Assert.That(actual, comparer is null ? Is.EqualTo(expected) : Is.EqualTo(expected).Using(new SimpleComparer<T>(comparer)),
                 $"Got wrong result from GetFieldValue value when reading '{truncatedSqlLiteral}'");
 
             return actual;
@@ -142,7 +149,7 @@ namespace Npgsql.Tests
             // 4. With only the value set (if it's the default)
             // 5. With only the value set, using generic NpgsqlParameter<T> (if it's the default)
 
-            var errorIdentifierIndex = 0;
+            var errorIdentifierIndex = -1;
             var errorIdentifier = new Dictionary<int, string>();
 
             await using var cmd = new NpgsqlCommand { Connection = connection };
@@ -150,13 +157,13 @@ namespace Npgsql.Tests
             // With NpgsqlDbType
             var p = new NpgsqlParameter { Value = value, NpgsqlDbType = npgsqlDbType };
             cmd.Parameters.Add(p);
-            errorIdentifier[errorIdentifierIndex++] = $"NpgsqlDbType={npgsqlDbType}";
+            errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
             CheckInference();
 
             // With data type name
             p = new NpgsqlParameter { Value = value, DataTypeName = pgTypeNameWithoutFacets };
             cmd.Parameters.Add(p);
-            errorIdentifier[errorIdentifierIndex++] = $"DataTypeName={pgTypeNameWithoutFacets}";
+            errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacets}";
             CheckInference();
 
             // With DbType
@@ -164,7 +171,7 @@ namespace Npgsql.Tests
             {
                 p = new NpgsqlParameter { Value = value, DbType = dbType.Value };
                 cmd.Parameters.Add(p);
-                errorIdentifier[errorIdentifierIndex++] = $"DbType={dbType}";
+                errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
                 CheckInference();
             }
 
@@ -173,24 +180,24 @@ namespace Npgsql.Tests
                 // With (non-generic) value only
                 p = new NpgsqlParameter { Value = value };
                 cmd.Parameters.Add(p);
-                errorIdentifier[errorIdentifierIndex++] = "Value only (non-generic)";
+                errorIdentifier[++errorIdentifierIndex] = "Value only (non-generic)";
                 if (isNpgsqlDbTypeInferredFromClrType)
                     CheckInference();
 
                 // With (generic) value only
                 p = new NpgsqlParameter<T> { TypedValue = value };
                 cmd.Parameters.Add(p);
-                errorIdentifier[errorIdentifierIndex++] = "Value only (generic)";
+                errorIdentifier[++errorIdentifierIndex] = "Value only (generic)";
                 if (isNpgsqlDbTypeInferredFromClrType)
                     CheckInference();
             }
 
-            Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex);
+            Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
 
             cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
                 "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
 
-            await using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
             await reader.ReadAsync();
 
             for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
@@ -257,6 +264,21 @@ namespace Npgsql.Tests
                 cmd.Parameters[0].DataTypeName = pgTypeName;
 
             return Assert.ThrowsAsync<TException>(() => cmd.ExecuteReaderAsync())!;
+        }
+
+        class SimpleComparer<T> : IEqualityComparer<T>
+        {
+            readonly Func<T, T, bool> _comparerDelegate;
+
+            public SimpleComparer(Func<T, T, bool> comparerDelegate)
+                => _comparerDelegate = comparerDelegate;
+
+            public bool Equals(T? x, T? y)
+                => x is null
+                    ? y is null
+                    : y is not null && _comparerDelegate(x, y);
+
+            public int GetHashCode(T obj) => throw new NotSupportedException();
         }
 
         #endregion Type testing
