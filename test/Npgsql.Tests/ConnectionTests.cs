@@ -832,7 +832,7 @@ public class ConnectionTests : MultiplexingTestBase
     public void Set_connection_string_to_empty()
     {
         var conn = new NpgsqlConnection(ConnectionString);
-        conn.ConnectionString = null;
+        conn.ConnectionString = "";
         Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
         Assert.That(conn.Settings.Host, Is.Null);
         Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
