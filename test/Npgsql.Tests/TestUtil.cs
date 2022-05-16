@@ -66,6 +66,18 @@ namespace Npgsql.Tests
             }
         }
 
+        public static void MaximumPgVersionExclusive(NpgsqlConnection conn, string maxVersion, string? ignoreText = null)
+        {
+            var max = new Version(maxVersion);
+            if (conn.PostgreSqlVersion >= max)
+            {
+                var msg = $"Postgresql backend version {conn.PostgreSqlVersion} is greater than or equal to the required (exclusive) maximum of {maxVersion}";
+                if (ignoreText != null)
+                    msg += ": " + ignoreText;
+                Assert.Ignore(msg);
+            }
+        }
+
         public static string GetUniqueIdentifier(string prefix)
             => prefix + Interlocked.Increment(ref _counter);
 

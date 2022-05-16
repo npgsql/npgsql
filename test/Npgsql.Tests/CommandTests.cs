@@ -1020,6 +1020,7 @@ namespace Npgsql.Tests
             // See also ReaderTests.Statements()
             using (var conn = OpenConnection())
             {
+                TestUtil.MaximumPgVersionExclusive(conn, "12.0", "WITH OIDS is not supported anymore as of PostgreSQL 12");
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
                 using (var cmd = new NpgsqlCommand(
                     "INSERT INTO data (name) VALUES (@p1);" +
