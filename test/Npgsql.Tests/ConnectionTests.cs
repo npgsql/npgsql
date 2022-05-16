@@ -785,7 +785,7 @@ public class ConnectionTests : MultiplexingTestBase
     #endregion Server version
 
     [Test]
-    public void Set_connection_string()
+    public void Setting_connection_string_while_open_throws()
     {
         using var conn = new NpgsqlConnection();
         conn.ConnectionString = ConnectionString;
@@ -799,6 +799,42 @@ public class ConnectionTests : MultiplexingTestBase
         var conn = new NpgsqlConnection();
         Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
         Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Constructor_with_null_connection_string()
+    {
+        var conn = new NpgsqlConnection(null);
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Constructor_with_empty_connection_string()
+    {
+        var conn = new NpgsqlConnection("");
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Set_connection_string_to_null()
+    {
+        var conn = new NpgsqlConnection(ConnectionString);
+        conn.ConnectionString = null;
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(conn.Settings.Host, Is.Null);
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Set_connection_string_to_empty()
+    {
+        var conn = new NpgsqlConnection(ConnectionString);
+        conn.ConnectionString = null;
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(conn.Settings.Host, Is.Null);
         Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
     }
 

@@ -171,13 +171,21 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     void GetPoolAndSettings()
     {
+        // Fast path: a pool already corresponds to this exact version of the connection string.
         if (PoolManager.TryGetValue(_connectionString, out _pool))
         {
             Settings = _pool.Settings;  // Great, we already have a pool
             return;
         }
 
-        // Connection string hasn't been seen before. Parse it.
+        // Connection string hasn't been seen before. Check for empty and parse (slow one-time path).
+        if (_connectionString == string.Empty)
+        {
+            Settings = DefaultSettings;
+            _pool = null;
+            return;
+        }
+
         var settings = new NpgsqlConnectionStringBuilder(_connectionString);
         settings.Validate();
         Settings = settings;
