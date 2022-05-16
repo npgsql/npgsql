@@ -42,6 +42,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
+                TestUtil.MaximumPgVersionExclusive(conn, "12.0", "WITH OIDS is not supported anymore as of PostgreSQL 12");
                 conn.ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
                 conn.ExecuteNonQuery(@"CREATE TEMP TABLE DATA2 (
                                 field_pk1                      INT2 NOT NULL,
