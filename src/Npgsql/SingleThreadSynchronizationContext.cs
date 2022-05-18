@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 
@@ -8,7 +9,8 @@ namespace Npgsql;
 sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
 {
     readonly BlockingCollection<CallbackAndState> _tasks = new();
-    Thread? _thread;
+    volatile Thread? _thread;
+    int _doingWork;
 
     const int ThreadStayAliveMs = 10000;
     readonly string _threadName;
@@ -24,27 +26,25 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
     {
         _tasks.Add(new CallbackAndState { Callback = callback, State = state });
 
-        if (_thread == null)
+        if (Interlocked.CompareExchange(ref _doingWork, 1, 0) == 0)
         {
-            lock (this)
-            {
-                if (_thread != null)
-                    return;
-                _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
-                _thread.Start();
-            }
+            // No one is working, let's wait for the thread to complete
+            var currentThread = _thread;
+            currentThread?.Join();
+            Debug.Assert(_thread is null);
+            _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
+            _thread.Start();
         }
     }
 
     public void Dispose()
     {
         _tasks.CompleteAdding();
-        _tasks.Dispose();
 
-        lock (this)
-        {
-            _thread?.Join();
-        }
+        var thread = _thread;
+        thread?.Join();
+
+        _tasks.Dispose();
     }
 
     void WorkLoop()
@@ -57,7 +57,26 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
             {
                 var taken = _tasks.TryTake(out var callbackAndState, ThreadStayAliveMs);
                 if (!taken)
-                    return;
+                {
+                    _doingWork = 0;
+                    
+                    // Ensure _doingWork is written before checking Count
+                    Interlocked.MemoryBarrier();
+
+                    if (_tasks.Count == 0)
+                    {
+                        return;
+                    }
+
+                    // There is new work, let's check whether someone's waiting for us to complete
+                    if (Interlocked.Exchange(ref _doingWork, 1) == 1)
+                    {
+                        // There actually is someone waiting for us to complete, just exiting
+                        return;
+                    }
+                    
+                    continue;
+                }
                 callbackAndState.Callback(callbackAndState.State);
             }
         }
@@ -67,7 +86,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         }
         finally
         {
-            lock (this) { _thread = null; }
+            _thread = null;
         }
     }
 
