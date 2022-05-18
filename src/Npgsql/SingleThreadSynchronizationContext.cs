@@ -83,6 +83,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         catch (Exception e)
         {
             Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
+            _doingWork = 0;
         }
         finally
         {
