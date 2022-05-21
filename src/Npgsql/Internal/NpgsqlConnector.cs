@@ -234,6 +234,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     bool _sendResetOnClose;
 
+    bool _sendRole;
+
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
     /// Note that in multi-host scenarios, this references the host-specific <see cref="ConnectorPool"/> rather than the
@@ -290,6 +292,8 @@ public sealed partial class NpgsqlConnector : IDisposable
     byte[]? _resetWithoutDeallocateMessage;
 
     int _resetWithoutDeallocateResponseCount;
+
+    byte[]? _roleMessage;
 
     // Backend
     readonly CommandCompleteMessage      _commandCompleteMessage      = new();
@@ -477,6 +481,13 @@ public sealed partial class NpgsqlConnector : IDisposable
             {
                 _sendResetOnClose = true;
                 GenerateResetMessage();
+            }
+
+            if (Settings.Role != null)
+            {
+                _sendRole = true;
+                GenerateRoleMessage();
+                PrependInternalMessage(_roleMessage!, 2);
             }
 
             OpenTimestamp = DateTime.UtcNow;
@@ -2111,6 +2122,12 @@ public sealed partial class NpgsqlConnector : IDisposable
         _resetWithoutDeallocateMessage = PregeneratedMessages.Generate(WriteBuffer, sb.ToString());
     }
 
+    void GenerateRoleMessage()
+    {
+        var query = string.Format("SET ROLE {0}", Settings.Role);
+        _roleMessage = PregeneratedMessages.Generate(WriteBuffer, query);
+    }
+
     /// <summary>
     /// Called when a pooled connection is closed, and its connector is returned to the pool.
     /// Resets the connector back to its initial state, releasing server-side sources
@@ -2171,6 +2188,9 @@ public sealed partial class NpgsqlConnector : IDisposable
                     // We simply send DISCARD ALL which is more efficient than sending the above messages separately
                     PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
                 }
+
+                if (_sendRole)
+                    PrependInternalMessage(_roleMessage!, 2);
             }
 
             DataReader.UnbindIfNecessary();
