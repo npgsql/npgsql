@@ -427,6 +427,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     }
     string? _timezone;
 
+    /// <summary>
+    /// The role to assume upon connection.
+    /// </summary>
+    [Category("Connection")]
+    [Description("The role to assume upon connection.")]
+    [DisplayName("Role")]
+    [NpgsqlConnectionStringProperty("Role")]
+    public string? Role
+    {
+        get => _role;
+        set
+        {
+            _role = value;
+            SetValue(nameof(Role), value);
+        }
+    }
+    string? _role;
+
     #endregion
 
     #region Properties - Security

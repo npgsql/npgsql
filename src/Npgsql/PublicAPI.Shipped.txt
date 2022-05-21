@@ -541,6 +541,8 @@ Npgsql.NpgsqlConnectionStringBuilder.PreloadReader.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.ReadBufferSize.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.ReadBufferSize.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.Remove(System.Collections.Generic.KeyValuePair<string!, object?> item) -> bool
+Npgsql.NpgsqlConnectionStringBuilder.Role.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.Role.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.RootCertificate.get -> string?
 Npgsql.NpgsqlConnectionStringBuilder.RootCertificate.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.SearchPath.get -> string?
