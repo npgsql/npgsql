@@ -9,7 +9,8 @@ namespace Npgsql.Tests;
 
 public class RoleTests : MultiplexingTestBase
 {
-    private const string TestRole = "npgsql_role";
+    private const string Role1 = "npgsql_tests_role1";
+    private const string Role2 = "npgsql_tests_role2";
 
     [Test]
     [TestCase(true, TestName = "Role")]
@@ -18,45 +19,41 @@ public class RoleTests : MultiplexingTestBase
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            Role = useRole ? TestRole : null,
+            Role = useRole ? Role1 : null,
             MaxPoolSize = 1,
+            MinPoolSize = 1,
         };
+        _ = builder.Username ?? throw new NullReferenceException($"Username provided by {nameof(MultiplexingTestBase)} is null.");
 
-        var doTest = async () =>
-        {
-            using var conn = await OpenConnectionAsync(builder);
-            var currentUser = await conn.ExecuteScalarAsync("SELECT current_user");
-            var currentUserAsString = currentUser as string;
+        var initialUser = useRole ? Role1 : builder.Username;
 
-            Assert.That(currentUserAsString, Is.Not.Null);
-            if (useRole)
-                Assert.That(currentUser, Is.EqualTo(TestRole));
-            else
-                Assert.That(currentUser, Is.EqualTo(builder.Username));
+        // Initial user is as expected
+        using var conn1 = await OpenConnectionAsync(builder);
+        await AssertCurrentUserIs(conn1, initialUser);
 
-            await conn.CloseAsync();
-        };
+        // User at the time a connection ends
+        //  * doesn't influence next connection in non-multiplexing mode
+        //  * does influence next connection in multiplexing mode
+        await conn1.ExecuteNonQueryAsync($"SET ROLE {Role2}");
+        await AssertCurrentUserIs(conn1, Role2);
+        await conn1.CloseAsync();
 
-        await doTest();
-        await doTest();
+        using var conn2 = await OpenConnectionAsync(builder);
+
+        if (!IsMultiplexing)
+            await AssertCurrentUserIs(conn2, initialUser);
+        else
+            await AssertCurrentUserIs(conn2, Role2);
+
+        await conn2.CloseAsync();
     }
 
-    [OneTimeSetUp]
-    public async Task Setup()
+    public async Task AssertCurrentUserIs(NpgsqlConnection conn, string expectedUser)
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        using var conn = await OpenConnectionAsync(builder);
-        var result = await conn.ExecuteNonQueryAsync($"CREATE ROLE {TestRole}");
-        await conn.CloseAsync();
-    }
-
-    [OneTimeTearDown]
-    public async Task TearDown()
-    {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        using var conn = await OpenConnectionAsync(builder);
-        var result = await conn.ExecuteNonQueryAsync($"DROP ROLE {TestRole}");
-        await conn.CloseAsync();
+        var currentUser = await conn.ExecuteScalarAsync("SELECT current_user");
+        var currentUserAsString = currentUser as string;
+        Assert.That(currentUserAsString, Is.Not.Null);
+        Assert.That(currentUser, Is.EqualTo(expectedUser));
     }
 
     public RoleTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) { }

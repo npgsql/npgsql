@@ -93,6 +93,8 @@ jobs:
           
           sudo -u postgres psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'"
           sudo -u postgres psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'"
+          sudo -u postgres psql -c "CREATE ROLE npgsql_tests_role1"
+          sudo -u postgres psql -c "CREATE ROLE npgsql_tests_role2"
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
           if [ -z "${{ matrix.pg_prerelease }}" ]; then
@@ -194,6 +196,9 @@ jobs:
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_ssl SUPERUSER LOGIN PASSWORD 'npgsql_tests_ssl'"
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_nossl SUPERUSER LOGIN PASSWORD 'npgsql_tests_nossl'"
 
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_role1"
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_role2"
+
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           if [ ${{ matrix.pg_major }} -ge 14 ]; then
             sed -i "s|password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
@@ -250,6 +255,9 @@ jobs:
             
             psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
             psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
+
+            psql -c "CREATE ROLE npgsql_tests_role1" postgres
+            psql -c "CREATE ROLE npgsql_tests_role2" postgres
 
             sudo sed -i '' 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
