@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Tests.Support;
+using Npgsql.Util;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Util.Statics;
@@ -1623,6 +1624,52 @@ CREATE TABLE record ()");
             Assert.That(async () => await OpenConnectionAsync(connectionString),
                 Throws.Exception.TypeOf<NpgsqlException>()
                     .With.InnerException.TypeOf<TimeoutException>());
+        }
+
+        [Test]
+        [NonParallelizable]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/4479")]
+        public async Task Breaking_connection_while_loading_database_info()
+        {
+            if (IsMultiplexing)
+                return;
+
+            using var _ = CreateTempPool(ConnectionString, out var connString);
+
+            await using var firstConn = new NpgsqlConnection(connString);
+            NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
+            try
+            {
+                // Test the first time we load the database info
+                Assert.ThrowsAsync<NotImplementedException>(firstConn.OpenAsync);
+            }
+            finally
+            {
+                NpgsqlDatabaseInfo.ResetFactories();
+            }
+
+            await firstConn.OpenAsync();
+            await using var secondConn = await OpenConnectionAsync(connString);
+            await secondConn.CloseAsync();
+            firstConn.ReloadTypes();
+
+            NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
+            try
+            {
+                // Test the case of loading the database info after type reloading
+                Assert.ThrowsAsync<NotImplementedException>(secondConn.OpenAsync);
+            }
+            finally
+            {
+                NpgsqlDatabaseInfo.ResetFactories();
+            }
+        }
+
+        class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+        {
+            public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+                => throw conn.Connector!.Break(new NotImplementedException());
         }
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
