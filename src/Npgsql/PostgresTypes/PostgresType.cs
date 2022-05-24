@@ -1,4 +1,7 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using System;
+using System.Linq;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL data type, such as int4 or text, as discovered from pg_type.
@@ -91,6 +94,8 @@ public abstract class PostgresType
     public PostgresRangeType? Range { get; internal set; }
 
     #endregion
+
+    internal string SchemaQualifiedName => Namespace is "pg_catalog" or "public" ? Name : FullName;
 
     internal virtual string GetPartialNameWithFacets(int typeModifier) => Name;
 

@@ -92,7 +92,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         lock (_writeLock)
         {
-            if ((handler = ResolveByDataTypeName(pgType.Name, throwOnError: false)) is not null)
+            if ((handler = ResolveByDataTypeName(pgType.SchemaQualifiedName, throwOnError: false)) is not null)
             {
                 _handlersByOID[oid] = handler;
                 return true;
@@ -408,7 +408,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
     {
         foreach (var resolver in _resolvers)
-            if ((mapping = resolver.GetMappingByDataTypeName(pgType.Name)) is not null)
+            if ((mapping = resolver.GetMappingByDataTypeName(pgType.SchemaQualifiedName)) is not null)
                 return true;
 
         switch (pgType)
@@ -662,7 +662,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
         foreach (var resolver in _resolvers)
-            if (resolver.GetMappingByDataTypeName(pgType.Name) is { } mapping)
+            if (resolver.GetMappingByDataTypeName(pgType.SchemaQualifiedName) is { } mapping)
                 return (mapping.NpgsqlDbType, pgType);
 
         switch (pgType)
