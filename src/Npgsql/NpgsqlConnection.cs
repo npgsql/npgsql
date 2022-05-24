@@ -291,6 +291,7 @@ namespace Npgsql
                     
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     Connector = connector;
+                    connectorIsBound = true;
 
                     if (enlistToTransaction is not null)
                         EnlistTransaction(enlistToTransaction);
