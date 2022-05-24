@@ -314,13 +314,17 @@ namespace Npgsql
                 if (Interlocked.CompareExchange(ref _numConnectors, numConnectors + 1, numConnectors) != numConnectors)
                     continue;
 
+                NpgsqlConnector? connector = null;
+                var i = 0;
+
                 try
                 {
                     // We've managed to increase the open counter, open a physical connections.
-                    var connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                    await connector.Open(timeout, async, cancellationToken);
-
-                    var i = 0;
+                    connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
+                    
+                    // Before Npgsql 6.0, NpgsqlConnector is already bound to a NpgsqlConnection at this point
+                    // Because of this, if that connector is broken, it will attempt to return itself to the pool
+                    // Which will fail, if we don't put it in the array of connectors
                     for (; i < _max; i++)
                         if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
                             break;
@@ -328,6 +332,8 @@ namespace Npgsql
                     Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when opening.");
                     if (i == _max)
                         throw new NpgsqlException($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+                    
+                    await connector.Open(timeout, async, cancellationToken);
 
 	                // Only start pruning if we've incremented open count past _min.
 	                // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
@@ -339,6 +345,15 @@ namespace Npgsql
                 }
                 catch
                 {
+                    if (i < _max && connector is not null)
+                    {
+                        // We do care if we were able to find that specific connector at that place
+                        // Since it might have been removed while the connector has been returning to the pool
+                        // And if so, there is nothing else for us to do
+                        if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == null)
+                            throw;
+                    }
+                    
                     // Physical open failed, decrement the open and busy counter back down.
                     conn.Connector = null;
                     Interlocked.Decrement(ref _numConnectors);

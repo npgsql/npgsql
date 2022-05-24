@@ -241,6 +241,7 @@ namespace Npgsql
                 Debug.Assert(!Settings.Multiplexing);
 
                 NpgsqlConnector? connector = null;
+                var connectorIsBound = false;
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
@@ -276,14 +277,9 @@ namespace Npgsql
                             connector = await _pool.Rent(this, timeout, async, cancellationToken2);
                     }
 
+                    connectorIsBound = Connector is not null;
                     Debug.Assert(connector.Connection == this,
                         $"Connection for opened connector {Connector} isn't the same as this connection");
-
-                    ConnectorBindingScope = ConnectorBindingScope.Connection;
-                    Connector = connector;
-
-                    if (enlistToTransaction is not null)
-                        EnlistTransaction(enlistToTransaction);
 
                     // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                     // (and ReloadTypes() called), or global mappings may have changed by the user.
@@ -292,6 +288,13 @@ namespace Npgsql
                     // need to update the connector type mapper (this is why this is here).
                     if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                         await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+                    
+                    ConnectorBindingScope = ConnectorBindingScope.Connection;
+                    Connector = connector;
+                    connectorIsBound = true;
+
+                    if (enlistToTransaction is not null)
+                        EnlistTransaction(enlistToTransaction);
 
                     Log.Debug("Connection opened");
                     FullState = ConnectionState.Open;
@@ -303,7 +306,9 @@ namespace Npgsql
                     Connector = null;
                     EnlistedTransaction = null;
 
-                    if (connector != null)
+                    // If the connector is not bound to this connection or it's not broken/closed
+                    // We have to close the connector ourselves
+                    if (connector != null && (!connectorIsBound || !connector.IsBroken && !connector.IsClosed))
                     {
                         if (_pool == null)
                             connector.Close();
