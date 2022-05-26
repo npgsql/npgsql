@@ -40,10 +40,10 @@ jobs:
             pg_major: 14
             config: Release
             test_tfm: net6.0
-#          - os: ubuntu-20.04
-#            pg_major: 14
-#            config: Release
-#            pg_prerelease: 'PG Prerelease'
+          - os: ubuntu-20.04
+            pg_major: 15
+            config: Release
+            pg_prerelease: 'PG Prerelease'
 
     outputs:
       is_release: ${{ steps.analyze_tag.outputs.is_release }}
