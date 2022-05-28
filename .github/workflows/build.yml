@@ -43,6 +43,7 @@ jobs:
           - os: ubuntu-20.04
             pg_major: 15
             config: Release
+            test_tfm: net6.0
             pg_prerelease: 'PG Prerelease'
 
     outputs:
