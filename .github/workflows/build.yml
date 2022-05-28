@@ -114,6 +114,7 @@ jobs:
           sudo sed -i 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
           sudo sed -i "s/#synchronous_standby_names =/synchronous_standby_names = 'npgsql_test_sync_standby' #/" $PGDATA/postgresql.conf
           sudo sed -i "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
+          sudo sed -i "s/#max_prepared_transactions = 0/max_prepared_transactions = 100/" $PGDATA/postgresql.conf
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
@@ -187,6 +188,7 @@ jobs:
           sed -i "s|#wal_sender_timeout =|wal_sender_timeout = 3s #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#synchronous_standby_names =|synchronous_standby_names = 'npgsql_test_sync_standby' #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#synchronous_commit =|synchronous_commit = local #|" pgsql/PGDATA/postgresql.conf
+          sed -i "s|#max_prepared_transactions = 0|max_prepared_transactions = 100|" pgsql/PGDATA/postgresql.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
 
           # Create npgsql_tests user with md5 password 'npgsql_tests'
@@ -259,6 +261,7 @@ jobs:
             sudo sed -i '' 's/#wal_sender_timeout =/wal_sender_timeout = 3s #/' $PGDATA/postgresql.conf
             sudo sed -i '' "s/#synchronous_standby_names =/synchronous_standby_names = 'npgsql_test_sync_standby' #/" $PGDATA/postgresql.conf
             sudo sed -i '' "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
+            sudo sed -i '' "s/#max_prepared_transactions = 0/max_prepared_transactions = 100/" $PGDATA/postgresql.conf
             # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
             sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
             sudo sh -c "echo 'hostssl all npgsql_tests_ssl all md5' >> $PGDATA/pg_hba.conf"
