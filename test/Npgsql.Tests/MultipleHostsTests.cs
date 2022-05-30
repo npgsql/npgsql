@@ -618,7 +618,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var server = await postmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.CrashShutdown).FlushAsync();
@@ -629,7 +629,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test, NonParallelizable]
@@ -648,7 +648,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(expectedState));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
 
         var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc"))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.UndefinedColumn));
@@ -656,7 +656,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(expectedState));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -670,7 +670,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var server = await postmaster.WaitForServerConnection();
         server.Close();
@@ -681,7 +681,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
@@ -699,7 +699,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
@@ -707,7 +707,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
@@ -725,7 +725,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
@@ -733,7 +733,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -751,7 +751,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         using var cts = new CancellationTokenSource();
 
@@ -763,7 +763,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -779,7 +779,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
 
         var server = await postmaster.WaitForServerConnection();
 
@@ -794,7 +794,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -819,7 +819,7 @@ public class MultipleHostsTests : TestBase
             Is.EqualTo(ClusterState.PrimaryReadWrite));
         Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
             Is.EqualTo(ClusterState.Standby));
-        Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(3));
+        Assert.That(primaryConn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(3));
 
         var server = await primaryPostmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.AdminShutdown).FlushAsync();
@@ -832,7 +832,7 @@ public class MultipleHostsTests : TestBase
             Is.EqualTo(ClusterState.Offline));
         Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
             Is.EqualTo(ClusterState.Standby));
-        Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(primaryConn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)

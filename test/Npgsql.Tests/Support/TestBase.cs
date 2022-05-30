@@ -285,6 +285,8 @@ namespace Npgsql.Tests
 
         #region Utilities for use by tests
 
+        protected static readonly NpgsqlDataSource DataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
+
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
             => new(connectionString ?? ConnectionString);
 

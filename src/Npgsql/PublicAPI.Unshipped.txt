@@ -34,6 +34,7 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*Npgsql.Logging.NpgsqlLogLevel.Trace = 1 -> Npgsql.Logging.NpgsqlLogLevel
 *REMOVED*Npgsql.Logging.NpgsqlLogLevel.Warn = 4 -> Npgsql.Logging.NpgsqlLogLevel
 *REMOVED*Npgsql.Logging.NpgsqlLogManager
+*REMOVED*Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
 *REMOVED*Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
@@ -241,6 +242,17 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.MinValue -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.Zero -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
+Npgsql.NpgsqlDataSource
+Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
+Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
+Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlDataSourceBuilder
+Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
+Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConnectionStringBuilder!
+Npgsql.NpgsqlDataSourceBuilder.NpgsqlDataSourceBuilder(string? connectionString = null) -> void
+Npgsql.NpgsqlDataSourceBuilder.GetDataSource() -> Npgsql.NpgsqlDataSource!
 Npgsql.Replication.PhysicalReplicationConnection.ReadReplicationSlot(string! slotName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PhysicalReplicationSlot?>!
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot! slot, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName) -> void
@@ -291,3 +303,16 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOption
 *REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.TwoPhase.get -> bool?
+override Npgsql.NpgsqlCommand.CreateDbParameter() -> System.Data.Common.DbParameter!
+override Npgsql.NpgsqlCommand.DbConnection.get -> System.Data.Common.DbConnection?
+override Npgsql.NpgsqlCommand.DbConnection.set -> void
+override Npgsql.NpgsqlCommand.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
+override Npgsql.NpgsqlCommand.DbTransaction.get -> System.Data.Common.DbTransaction?
+override Npgsql.NpgsqlCommand.DbTransaction.set -> void
+override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
+override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
+override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
+override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
+static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
+static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
+virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!

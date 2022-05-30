@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -10,7 +9,9 @@ namespace Npgsql;
 /// <inheritdoc />
 public class NpgsqlBatch : DbBatch
 {
-    readonly NpgsqlCommand _command;
+    internal const int DefaultBatchCommandsSize = 5;
+
+    private protected NpgsqlCommand Command { get; }
 
     /// <inheritdoc />
     protected override DbBatchCommandCollection DbBatchCommands => BatchCommands;
@@ -21,15 +22,15 @@ public class NpgsqlBatch : DbBatch
     /// <inheritdoc />
     public override int Timeout
     {
-        get => _command.CommandTimeout;
-        set => _command.CommandTimeout = value;
+        get => Command.CommandTimeout;
+        set => Command.CommandTimeout = value;
     }
 
     /// <inheritdoc cref="DbBatch.Connection"/>
     public new NpgsqlConnection? Connection
     {
-        get => _command.Connection;
-        set => _command.Connection = value;
+        get => Command.Connection;
+        set => Command.Connection = value;
     }
 
     /// <inheritdoc />
@@ -42,8 +43,8 @@ public class NpgsqlBatch : DbBatch
     /// <inheritdoc cref="DbBatch.Transaction"/>
     public new NpgsqlTransaction? Transaction
     {
-        get => _command.Transaction;
-        set => _command.Transaction = value;
+        get => Command.Transaction;
+        set => Command.Transaction = value;
     }
 
     /// <inheritdoc />
@@ -60,8 +61,8 @@ public class NpgsqlBatch : DbBatch
     /// </summary>
     internal bool AllResultTypesAreUnknown
     {
-        get => _command.AllResultTypesAreUnknown;
-        set => _command.AllResultTypesAreUnknown = value;
+        get => Command.AllResultTypesAreUnknown;
+        set => Command.AllResultTypesAreUnknown = value;
     }
 
     /// <summary>
@@ -71,9 +72,8 @@ public class NpgsqlBatch : DbBatch
     /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
     public NpgsqlBatch(NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
-        var batchCommands = new List<NpgsqlBatchCommand>(5);
-        _command = new(batchCommands);
-        BatchCommands = new NpgsqlBatchCommandCollection(batchCommands);
+        Command = new(DefaultBatchCommandsSize);
+        BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
 
         Connection = connection;
         Transaction = transaction;
@@ -81,9 +81,14 @@ public class NpgsqlBatch : DbBatch
 
     internal NpgsqlBatch(NpgsqlConnector connector)
     {
-        var batchCommands = new List<NpgsqlBatchCommand>(5);
-        _command = new(connector, batchCommands);
-        BatchCommands = new NpgsqlBatchCommandCollection(batchCommands);
+        Command = new(connector, DefaultBatchCommandsSize);
+        BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
+    }
+
+    private protected NpgsqlBatch(NpgsqlDataSourceCommand command)
+    {
+        Command = command;
+        BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
 
     /// <inheritdoc />
@@ -96,7 +101,7 @@ public class NpgsqlBatch : DbBatch
 
     /// <inheritdoc cref="DbBatch.ExecuteReader"/>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
-        => _command.ExecuteReader(behavior);
+        => Command.ExecuteReader(behavior);
 
     /// <inheritdoc />
     protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(
@@ -106,38 +111,38 @@ public class NpgsqlBatch : DbBatch
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CancellationToken)"/>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
-        => _command.ExecuteReaderAsync(cancellationToken);
+        => Command.ExecuteReaderAsync(cancellationToken);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CommandBehavior,CancellationToken)"/>
     public new Task<NpgsqlDataReader> ExecuteReaderAsync(
         CommandBehavior behavior,
         CancellationToken cancellationToken = default)
-        => _command.ExecuteReaderAsync(behavior, cancellationToken);
+        => Command.ExecuteReaderAsync(behavior, cancellationToken);
 
     /// <inheritdoc />
     public override int ExecuteNonQuery()
-        => _command.ExecuteNonQuery();
+        => Command.ExecuteNonQuery();
 
     /// <inheritdoc />
     public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
-        => _command.ExecuteNonQueryAsync(cancellationToken);
+        => Command.ExecuteNonQueryAsync(cancellationToken);
 
     /// <inheritdoc />
     public override object? ExecuteScalar()
-        => _command.ExecuteScalar();
+        => Command.ExecuteScalar();
 
     /// <inheritdoc />
     public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
-        => _command.ExecuteScalarAsync(cancellationToken);
+        => Command.ExecuteScalarAsync(cancellationToken);
 
     /// <inheritdoc />
     public override void Prepare()
-        => _command.Prepare();
+        => Command.Prepare();
 
     /// <inheritdoc />
     public override Task PrepareAsync(CancellationToken cancellationToken = default)
-        => _command.PrepareAsync(cancellationToken);
+        => Command.PrepareAsync(cancellationToken);
 
     /// <inheritdoc />
-    public override void Cancel() => _command.Cancel();
+    public override void Cancel() => Command.Cancel();
 }

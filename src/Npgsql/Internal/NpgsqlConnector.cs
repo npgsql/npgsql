@@ -236,12 +236,12 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
-    /// Note that in multi-host scenarios, this references the host-specific <see cref="ConnectorPool"/> rather than the
-    /// <see cref="MultiHostConnectorPool"/>,
+    /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
+    /// <see cref="MultiHostDataSource"/>,
     /// </summary>
-    readonly ConnectorSource _connectorSource;
+    readonly NpgsqlDataSource _connectorSource;
 
-    internal string UserFacingConnectionString => _connectorSource.UserFacingConnectionString;
+    internal string UserFacingConnectionString => _connectorSource.ConnectionString;
 
     /// <summary>
     /// Contains the UTC timestamp when this connector was opened, used to implement
@@ -312,7 +312,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Constructors
 
-    internal NpgsqlConnector(ConnectorSource connectorSource, NpgsqlConnection conn)
+    internal NpgsqlConnector(NpgsqlDataSource connectorSource, NpgsqlConnection conn)
         : this(connectorSource)
     {
         ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
@@ -333,7 +333,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
-    NpgsqlConnector(ConnectorSource connectorSource)
+    NpgsqlConnector(NpgsqlDataSource connectorSource)
     {
         Debug.Assert(connectorSource.OwnsConnectors);
         _connectorSource = connectorSource;
@@ -596,7 +596,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
         // a connector-specific mapper, which will later become shared pool-wide one.
         TypeMapper =
-            Settings.Multiplexing && ((MultiplexingConnectorPool)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+            Settings.Multiplexing && ((MultiplexingDataSource)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
                 ? multiplexingTypeMapper
                 : new ConnectorTypeMapper(this);
 
