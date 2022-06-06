@@ -111,7 +111,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     /// <param name="commandText">An optional SQL for the command.</param>
     public new NpgsqlCommand CreateCommand(string? commandText = null)
-        => new NpgsqlDataSourceCommand(CreateConnection());
+        => new NpgsqlDataSourceCommand(CreateConnection()) { CommandText = commandText };
 
     /// <summary>
     /// Creates a batch ready for use against this <see cref="NpgsqlDataSource" />.
