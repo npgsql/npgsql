@@ -116,13 +116,13 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionString" />.
     /// </summary>
     public static NpgsqlDataSource Create(string connectionString)
-        => Create(new NpgsqlConnectionStringBuilder(connectionString));
+        => new NpgsqlDataSourceBuilder(connectionString).GetDataSource();
 
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionStringBuilder" />.
     /// </summary>
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
-        => NpgsqlDataSourceBuilder.GetDataSource(connectionStringBuilder);
+        => Create(connectionStringBuilder.ToString());
 
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);

@@ -28,27 +28,24 @@ public class NpgsqlDataSourceBuilder
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource GetDataSource()
-        => GetDataSource(ConnectionStringBuilder);
-
-    internal static NpgsqlDataSource GetDataSource(NpgsqlConnectionStringBuilder settings)
     {
-        var connectionString = settings.ToString();
+        var connectionString = ConnectionStringBuilder.ToString();
 
-        settings.PostProcessAndValidate();
+        ConnectionStringBuilder.PostProcessAndValidate();
 
-        if (settings.Host!.Contains(","))
+        if (ConnectionStringBuilder.Host!.Contains(","))
         {
-            if (settings.Multiplexing)
+            if (ConnectionStringBuilder.Multiplexing)
                 throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
-            if (settings.ReplicationMode != ReplicationMode.Off)
+            if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
                 throw new NotSupportedException("Replication is not supported with multiple hosts");
-            return new MultiHostDataSource(settings, connectionString);
+            return new MultiHostDataSource(ConnectionStringBuilder, connectionString);
         }
 
-        return settings.Multiplexing
-            ? new MultiplexingDataSource(settings, connectionString)
-            : settings.Pooling
-                ? new PoolingDataSource(settings, connectionString)
-                : new UnpooledDataSource(settings, connectionString);
+        return ConnectionStringBuilder.Multiplexing
+            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString)
+            : ConnectionStringBuilder.Pooling
+                ? new PoolingDataSource(ConnectionStringBuilder, connectionString)
+                : new UnpooledDataSource(ConnectionStringBuilder, connectionString);
     }
 }
