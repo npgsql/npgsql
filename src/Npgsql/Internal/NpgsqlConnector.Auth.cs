@@ -85,7 +85,7 @@ partial class NpgsqlConnector
             var sslStream = (SslStream)_stream;
             if (sslStream.RemoteCertificate is null)
             {
-                Logger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
+                ConnectionLogger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
             }
             else
             {
@@ -95,7 +95,7 @@ partial class NpgsqlConnector
                 var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
                 if (algorithmName is null)
                 {
-                    Logger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
+                    ConnectionLogger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
                 }
                 else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
                          algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
@@ -113,7 +113,7 @@ partial class NpgsqlConnector
                 }
                 else
                 {
-                    Logger.LogWarning(
+                    ConnectionLogger.LogWarning(
                         $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
                 }
 
@@ -167,7 +167,7 @@ partial class NpgsqlConnector
         var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
         if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
-        var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
+        var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
         if (!firstServerMsg.Nonce.StartsWith(clientNonce, StringComparison.Ordinal))
             throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
@@ -201,13 +201,14 @@ partial class NpgsqlConnector
         if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
-        var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload);
+        var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload, ConnectionLogger);
         if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
             throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
         var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
         if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
             throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
+
 
         static string GetNonce()
         {
@@ -446,7 +447,7 @@ partial class NpgsqlConnector
         if (ProvidePasswordCallback is { } passwordCallback)
             try
             {
-                Logger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
+                ConnectionLogger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
                 password = passwordCallback(Host, Port, Settings.Database!, username);
             }
             catch (Exception e)
@@ -467,7 +468,7 @@ partial class NpgsqlConnector
                 .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
             if (matchingEntry != null)
             {
-                Logger.LogTrace("Taking password from pgpass file");
+                ConnectionLogger.LogTrace("Taking password from pgpass file");
                 password = matchingEntry.Password;
             }
         }

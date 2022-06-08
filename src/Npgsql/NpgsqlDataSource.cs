@@ -23,6 +23,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     internal NpgsqlConnectionStringBuilder Settings { get; }
 
+    internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
+
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
     private protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
@@ -32,12 +34,17 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     volatile bool _isDisposed;
 
-    internal NpgsqlDataSource(NpgsqlConnectionStringBuilder settings, string connectionString)
+    internal NpgsqlDataSource(
+        NpgsqlConnectionStringBuilder settings,
+        string connectionString,
+        NpgsqlLoggingConfiguration loggingConfiguration)
     {
         Settings = settings;
         ConnectionString = settings.PersistSecurityInfo
             ? connectionString
             : settings.ToStringWithoutPassword();
+
+        LoggingConfiguration = loggingConfiguration;
     }
 
     /// <summary>

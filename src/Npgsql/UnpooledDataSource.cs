@@ -9,8 +9,8 @@ namespace Npgsql;
 
 sealed class UnpooledDataSource : NpgsqlDataSource
 {
-    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, string connString)
-        : base(settings, connString)
+    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, string connString, NpgsqlLoggingConfiguration loggingConfiguration)
+        : base(settings, connString, loggingConfiguration)
     {
     }
 

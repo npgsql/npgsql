@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 
@@ -106,8 +107,8 @@ public sealed class PostgresException : NpgsqlException
             msg.Where, msg.SchemaName, msg.TableName, msg.ColumnName, msg.DataTypeName,
             msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
-    internal static PostgresException Load(NpgsqlReadBuffer buf, bool includeDetail)
-        => new(ErrorOrNoticeMessage.Load(buf, includeDetail));
+    internal static PostgresException Load(NpgsqlReadBuffer buf, bool includeDetail, ILogger exceptionLogger)
+        => new(ErrorOrNoticeMessage.Load(buf, includeDetail, exceptionLogger));
 
     internal PostgresException(SerializationInfo info, StreamingContext context)
         : base(info, context)

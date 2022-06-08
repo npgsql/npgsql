@@ -26,19 +26,22 @@ class PreparedStatementManager
     internal string NextPreparedStatementName() => "_p" + (++_preparedStatementIndex);
     ulong _preparedStatementIndex;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _commandLogger;
 
     internal const int CandidateCount = 100;
 
     internal PreparedStatementManager(NpgsqlConnector connector)
     {
         _connector = connector;
+        _commandLogger = connector.LoggingConfiguration.CommandLogger;
+
         MaxAutoPrepared = connector.Settings.MaxAutoPrepare;
         UsagesBeforePrepare = connector.Settings.AutoPrepareMinUsages;
+
         if (MaxAutoPrepared > 0)
         {
             if (MaxAutoPrepared > 256)
-                Logger.LogWarning($"{nameof(MaxAutoPrepared)} is over 256, performance degradation may occur. Please report via an issue.");
+                _commandLogger.LogWarning($"{nameof(MaxAutoPrepared)} is over 256, performance degradation may occur. Please report via an issue.");
             AutoPrepared = new PreparedStatement[MaxAutoPrepared];
             _candidates = new PreparedStatement[CandidateCount];
         }
@@ -163,7 +166,7 @@ class PreparedStatementManager
         }
 
         // Bingo, we've just passed the usage threshold, statement should get prepared
-        LogMessages.AutoPreparingStatement(Logger, sql, _connector.Id);
+        LogMessages.AutoPreparingStatement(_commandLogger, sql, _connector.Id);
 
         // Look for either an empty autoprepare slot, or the least recently used prepared statement which we'll replace it.
         var oldestTimestamp = DateTime.MaxValue;

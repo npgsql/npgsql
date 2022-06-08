@@ -64,7 +64,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
     };
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
+    readonly ILogger _copyLogger;
 
     #endregion
 
@@ -75,6 +75,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         _connector = connector;
         _readBuf = connector.ReadBuffer;
         _writeBuf = connector.WriteBuffer;
+        _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
     internal async Task Init(string copyCommand, bool async, CancellationToken cancellationToken = default)
@@ -430,11 +431,11 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                     }
                     catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
                     {
-                        LogMessages.CopyOperationCancelled(Logger, _connector.Id);
+                        LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
                     }
                     catch (Exception e)
                     {
-                        LogMessages.ExceptionWhenDisposingCopyOperation(Logger, _connector.Id, e);
+                        LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
                     }
                 }
             }
@@ -450,7 +451,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     void Cleanup()
     {
         Debug.Assert(!_isDisposed);
-        LogMessages.CopyOperationCompleted(Logger, _connector.Id);
+        LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
         _connector.CurrentCopyOperation = null;
         _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
         _connector = null;

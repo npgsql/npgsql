@@ -16,8 +16,6 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
     const int ThreadStayAliveMs = 10000;
     readonly string _threadName;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-
     internal SingleThreadSynchronizationContext(string threadName)
         => _threadName = threadName;
 
@@ -83,14 +81,14 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
+                    Trace.Write($"Exception caught in {nameof(SingleThreadSynchronizationContext)}:" + Environment.NewLine + e);
                 }
             }
         }
         catch (Exception e)
         {
             // Here we attempt to catch any exception coming from BlockingCollection _tasks
-            Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
+            Trace.Write($"Exception caught in {nameof(SingleThreadSynchronizationContext)}:" + Environment.NewLine + e);
             lock (_lockObject)
                 _doingWork = false;
         }

@@ -59,7 +59,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     /// </summary>
     internal int ChangeCounter { get; private set; }
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _commandLogger;
 
     #region Construction
 
@@ -68,6 +68,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         Connector = connector;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
         _resolvers = Array.Empty<TypeHandlerResolver>();
+        _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }
 
     #endregion Constructors
@@ -122,7 +123,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     }
                     catch (Exception e)
                     {
-                        Logger.LogError(e,
+                        _commandLogger.LogError(e,
                             $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
                     }
                 }
@@ -186,7 +187,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
                 }
             }
 
@@ -263,7 +264,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {typeof(T)}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {typeof(T)}");
                 }
             }
 
@@ -297,7 +298,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             }
             catch (Exception e)
             {
-                Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
             }
         }
 
@@ -323,7 +324,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
                 }
             }
 

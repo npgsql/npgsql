@@ -265,9 +265,12 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-    static readonly ILogger CommandLogger = NpgsqlLoggingConfiguration.CommandLogger;
-    static readonly ILogger CopyLogger = NpgsqlLoggingConfiguration.CopyLogger;
+    internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
+
+    internal ILogger ConnectionLogger { get; }
+    internal ILogger CommandLogger { get; }
+    internal ILogger TransactionLogger { get; }
+    internal ILogger CopyLogger { get; }
 
     internal readonly Stopwatch QueryLogStopWatch = new();
 
@@ -336,7 +339,14 @@ public sealed partial class NpgsqlConnector : IDisposable
     NpgsqlConnector(NpgsqlDataSource connectorSource)
     {
         Debug.Assert(connectorSource.OwnsConnectors);
+
         _connectorSource = connectorSource;
+
+        LoggingConfiguration = _connectorSource.LoggingConfiguration;
+        ConnectionLogger = LoggingConfiguration.ConnectionLogger;
+        CommandLogger = LoggingConfiguration.CommandLogger;
+        TransactionLogger = LoggingConfiguration.TransactionLogger;
+        CopyLogger = LoggingConfiguration.CopyLogger;
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
@@ -464,7 +474,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         Debug.Assert(State == ConnectorState.Closed);
 
         State = ConnectorState.Connecting;
-        LogMessages.OpeningPhysicalConnection(Logger, Host, Port, Database, UserFacingConnectionString);
+        LogMessages.OpeningPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -498,7 +508,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     .ContinueWith(t =>
                     {
                         // Note that we *must* observe the exception if the task is faulted.
-                        Logger.LogError(t.Exception!, "Exception bubbled out of multiplexing read loop", Id);
+                        ConnectionLogger.LogError(t.Exception!, "Exception bubbled out of multiplexing read loop", Id);
                     }, TaskContinuationOptions.OnlyOnFaulted);
             }
 
@@ -514,7 +524,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 }
             }
 
-            LogMessages.OpenedPhysicalConnection(Logger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
+            LogMessages.OpenedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
         }
         catch (Exception e)
         {
@@ -720,7 +730,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
+            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm, ConnectionLogger);
             if (username?.Length > 0)
                 return username;
         }
@@ -880,7 +890,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     ReadBuffer.Underlying = _stream;
                     WriteBuffer.Underlying = _stream;
                     IsSecure = true;
-                    Logger.LogTrace("SSL negotiation successful");
+                    ConnectionLogger.LogTrace("SSL negotiation successful");
                     break;
                 }
 
@@ -888,7 +898,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     throw new NpgsqlException("Additional unencrypted data received after SSL negotiation - this should never happen, and may be an indication of a man-in-the-middle attack.");
             }
 
-            Logger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
+            ConnectionLogger.LogTrace("Socket connected to {Host}:{Port}", Host, Port);
         }
         catch
         {
@@ -923,7 +933,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         for (var i = 0; i < endpoints.Length; i++)
         {
             var endpoint = endpoints[i];
-            Logger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
+            ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
                 endpoint.AddressFamily == AddressFamily.InterNetwork ||
                 endpoint.AddressFamily == AddressFamily.InterNetworkV6
@@ -967,7 +977,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     // ignored
                 }
 
-                Logger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
+                ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
 
                 if (i == endpoints.Length - 1)
                     throw new NpgsqlException($"Failed to connect to {endpoint}", e);
@@ -1004,7 +1014,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         for (var i = 0; i < endpoints.Length; i++)
         {
             var endpoint = endpoints[i];
-            Logger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
+            ConnectionLogger.LogTrace("Attempting to connect to {Endpoint}", endpoint);
             var protocolType =
                 endpoint.AddressFamily == AddressFamily.InterNetwork ||
                 endpoint.AddressFamily == AddressFamily.InterNetworkV6
@@ -1035,7 +1045,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 if (e is OperationCanceledException)
                     e = new TimeoutException("Timeout during connection attempt");
 
-                Logger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
+                ConnectionLogger.LogTrace(e, "Failed to connect to {Endpoint}", endpoint);
 
                 if (i == endpoints.Length - 1)
                     throw new NpgsqlException($"Failed to connect to {endpoint}", e);
@@ -1173,7 +1183,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 }
             }
 
-            Logger.LogTrace("Exiting multiplexing read loop", Id);
+            ConnectionLogger.LogTrace("Exiting multiplexing read loop", Id);
         }
         catch (Exception e)
         {
@@ -1208,7 +1218,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
             _connectorSource.Return(this);
 
-            Logger.LogError(e, "Exception in multiplexing read loop", Id);
+            ConnectionLogger.LogError(e, "Exception in multiplexing read loop", Id);
         }
 
         Debug.Assert(CommandsInFlightCount == 0);
@@ -1350,7 +1360,10 @@ public sealed partial class NpgsqlConnector : IDisposable
 
                         // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                         // and throw it as an exception when the ReadyForQuery is received (next).
-                        error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetail);
+                        error = PostgresException.Load(
+                            connector.ReadBuffer,
+                            connector.Settings.IncludeErrorDetail,
+                            connector.LoggingConfiguration.ExceptionLogger);
 
                         if (connector.State == ConnectorState.Connecting)
                         {
@@ -1455,8 +1468,8 @@ public sealed partial class NpgsqlConnector : IDisposable
             ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
             return null;
         case BackendMessageCode.NoticeResponse:
-            var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail);
-            LogMessages.ReceivedNotice(Logger, notice.MessageText, Id);
+            var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetail, LoggingConfiguration.ExceptionLogger);
+            LogMessages.ReceivedNotice(ConnectionLogger, notice.MessageText, Id);
             Connection?.OnNotice(notice);
             return null;
         case BackendMessageCode.NotificationResponse:
@@ -1533,7 +1546,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     internal Task Rollback(bool async, CancellationToken cancellationToken = default)
     {
-        Logger.LogDebug("Rolling back transaction", Id);
+        ConnectionLogger.LogDebug("Rolling back transaction", Id);
         return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
     }
 
@@ -1725,7 +1738,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             if (PostgresCancellationPerformed)
                 return true;
 
-            LogMessages.CancellingCommand(Logger, Id);
+            LogMessages.CancellingCommand(ConnectionLogger, Id);
             PostgresCancellationPerformed = true;
 
             try
@@ -1738,7 +1751,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 var socketException = e.InnerException as SocketException;
                 if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
                 {
-                    Logger.LogDebug(e, "Exception caught while attempting to cancel command", Id);
+                    ConnectionLogger.LogDebug(e, "Exception caught while attempting to cancel command", Id);
                     return false;
                 }
             }
@@ -1764,7 +1777,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             // actually being delivered before we continue with the user's logic.
             var count = _stream.Read(ReadBuffer.Buffer, 0, 1);
             if (count > 0)
-                Logger.LogError("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer.Buffer[0]);
+                ConnectionLogger.LogError("Received response after sending cancel request, shouldn't happen! First byte: " + ReadBuffer.Buffer[0]);
         }
         finally
         {
@@ -1879,7 +1892,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             if (IsReady)
             {
-                LogMessages.ClosingPhysicalConnection(Logger, Host, Port, Database, UserFacingConnectionString, Id);
+                LogMessages.ClosingPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
                 try
                 {
                     // At this point, there could be some prepended commands (like DISCARD ALL)
@@ -1891,7 +1904,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, "Exception while closing connector", Id);
+                    ConnectionLogger.LogError(e, "Exception while closing connector", Id);
                     Debug.Assert(IsBroken);
                 }
             }
@@ -1905,7 +1918,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             State = ConnectorState.Closed;
             FullCleanup();
-            LogMessages.ClosedPhysicalConnection(Logger, Host, Port, Database, UserFacingConnectionString, Id);
+            LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
         }
     }
 
@@ -1951,7 +1964,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     _connectorSource.Clear();
                 }
 
-                LogMessages.BreakingConnection(Logger, Id, reason);
+                LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
 
                 // Note that we may be reading and writing from the same connector concurrently, so safely set
                 // the original reason for the break before actually closing the socket etc.
@@ -2001,7 +2014,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             // (see Open)
         }
 
-        Logger.LogTrace("Cleaning up connector", Id);
+        ConnectionLogger.LogTrace("Cleaning up connector", Id);
         Cleanup();
 
         if (_isKeepAliveEnabled)
@@ -2313,7 +2326,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            LogMessages.StartUserAction(Logger, Id);
+            LogMessages.StartUserAction(ConnectionLogger, Id);
             State = newState;
             _currentCommand = command;
 
@@ -2344,7 +2357,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 var keepAlive = Settings.KeepAlive * 1000;
                 _keepAliveTimer!.Change(keepAlive, keepAlive);
 
-                LogMessages.EndUserAction(Logger, Id);
+                LogMessages.EndUserAction(ConnectionLogger, Id);
                 _currentCommand = null;
                 _userLock!.Release();
                 State = ConnectorState.Ready;
@@ -2355,7 +2368,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             if (IsReady || !IsConnected)
                 return;
 
-            LogMessages.EndUserAction(Logger, Id);
+            LogMessages.EndUserAction(ConnectionLogger, Id);
             _currentCommand = null;
             State = ConnectorState.Ready;
         }
@@ -2391,7 +2404,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             if (!IsReady)
                 return;
 
-            LogMessages.SendingKeepalive(Logger, Id);
+            LogMessages.SendingKeepalive(ConnectionLogger, Id);
             AttemptPostgresCancellation = false;
             var timeout = InternalCommandTimeout;
             WriteBuffer.Timeout = TimeSpan.FromSeconds(timeout);
@@ -2399,18 +2412,18 @@ public sealed partial class NpgsqlConnector : IDisposable
             WriteSync(async: false);
             Flush();
             SkipUntil(BackendMessageCode.ReadyForQuery);
-            LogMessages.CompletedKeepalive(Logger, Id);
+            LogMessages.CompletedKeepalive(ConnectionLogger, Id);
         }
         catch (Exception e)
         {
-            LogMessages.KeepaliveFailed(Logger, Id, e);
+            LogMessages.KeepaliveFailed(ConnectionLogger, Id, e);
             try
             {
                 Break(new NpgsqlException("Exception while sending a keepalive", e));
             }
             catch (Exception e2)
             {
-                Logger.LogError(e2, "Further exception while breaking connector on keepalive failure", Id);
+                ConnectionLogger.LogError(e2, "Further exception while breaking connector on keepalive failure", Id);
             }
         }
         finally
@@ -2454,7 +2467,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     return false;
             }
 
-            LogMessages.SendingKeepalive(Logger, Id);
+            LogMessages.SendingKeepalive(ConnectionLogger, Id);
 
             var keepaliveTime = Stopwatch.StartNew();
             await WriteSync(async, cancellationToken);
@@ -2487,7 +2500,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 if (msg.Code != BackendMessageCode.ReadyForQuery)
                     throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                LogMessages.CompletedKeepalive(Logger, Id);
+                LogMessages.CompletedKeepalive(ConnectionLogger, Id);
 
                 if (receivedNotification)
                     return true; // Notification was received during the keepalive

@@ -13,7 +13,8 @@ sealed class MultiHostDataSourceWrapper : NpgsqlDataSource
 
     readonly MultiHostDataSource _wrappedSource;
 
-    public MultiHostDataSourceWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource source) : base(settings, connString)
+    public MultiHostDataSourceWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource source)
+        : base(settings, connString, source.LoggingConfiguration)
         => _wrappedSource = source;
 
     internal override (int Total, int Idle, int Busy) Statistics => _wrappedSource.Statistics;

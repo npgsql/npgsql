@@ -24,7 +24,7 @@ class VolatileResourceManager : ISinglePhaseNotification
     bool IsPrepared => _preparedTxName != null;
     bool _isDisposed;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.TransactionLogger;
+    readonly ILogger _transactionLogger;
 
     const int MaximumRollbackAttempts = 20;
 
@@ -34,6 +34,7 @@ class VolatileResourceManager : ISinglePhaseNotification
         _transaction = transaction;
         // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
         _txId = transaction.TransactionInformation.LocalIdentifier;
+        _transactionLogger = _connector.LoggingConfiguration.TransactionLogger;
     }
 
     internal void Init()
@@ -42,7 +43,7 @@ class VolatileResourceManager : ISinglePhaseNotification
     public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
     {
         CheckDisposed();
-        LogMessages.CommittingSinglePhaseTransaction(Logger, _txId, _connector.Id);
+        LogMessages.CommittingSinglePhaseTransaction(_transactionLogger, _txId, _connector.Id);
 
         try
         {
@@ -66,7 +67,7 @@ class VolatileResourceManager : ISinglePhaseNotification
     public void Prepare(PreparingEnlistment preparingEnlistment)
     {
         CheckDisposed();
-        LogMessages.PreparingTwoPhaseTransaction(Logger, _txId, _connector.Id);
+        LogMessages.PreparingTwoPhaseTransaction(_transactionLogger, _txId, _connector.Id);
 
         // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
         _preparedTxName = $"{_transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
@@ -98,7 +99,7 @@ class VolatileResourceManager : ISinglePhaseNotification
     public void Commit(Enlistment enlistment)
     {
         CheckDisposed();
-        LogMessages.CommittingTwoPhaseTransaction(Logger, _txId, _connector.Id);
+        LogMessages.CommittingTwoPhaseTransaction(_transactionLogger, _txId, _connector.Id);
 
         try
         {
@@ -130,7 +131,7 @@ class VolatileResourceManager : ISinglePhaseNotification
         }
         catch (Exception e)
         {
-            LogMessages.TwoPhaseTransactionCommitFailed(Logger, _txId, _connector.Id, e);
+            LogMessages.TwoPhaseTransactionCommitFailed(_transactionLogger, _txId, _connector.Id, e);
         }
         finally
         {
@@ -159,7 +160,7 @@ class VolatileResourceManager : ISinglePhaseNotification
 
     public void InDoubt(Enlistment enlistment)
     {
-        LogMessages.TwoPhaseTransactionInDoubt(Logger, _txId, _connector.Id);
+        LogMessages.TwoPhaseTransactionInDoubt(_transactionLogger, _txId, _connector.Id);
 
         // TODO: Is this the correct behavior?
         try
@@ -175,7 +176,7 @@ class VolatileResourceManager : ISinglePhaseNotification
 
     void RollbackLocal()
     {
-        LogMessages.RollingBackSinglePhaseTransaction(Logger, _txId, _connector.Id);
+        LogMessages.RollingBackSinglePhaseTransaction(_transactionLogger, _txId, _connector.Id);
 
         try
         {
@@ -197,7 +198,7 @@ class VolatileResourceManager : ISinglePhaseNotification
                         throw new Exception(
                             $"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
 
-                    LogMessages.ConnectionInUseWhenRollingBack(Logger, _txId, _connector.Id);
+                    LogMessages.ConnectionInUseWhenRollingBack(_transactionLogger, _txId, _connector.Id);
                     _connector.PerformPostgresCancellation();
                     // Cancellations are asynchronous, give it some time
                     Thread.Sleep(500);
@@ -206,14 +207,14 @@ class VolatileResourceManager : ISinglePhaseNotification
         }
         catch
         {
-            LogMessages.SinglePhaseTransactionRollbackFailed(Logger, _txId, _connector.Id);
+            LogMessages.SinglePhaseTransactionRollbackFailed(_transactionLogger, _txId, _connector.Id);
         }
     }
 
     void RollbackTwoPhase()
     {
         // This only occurs if we've started a two-phase commit but one of the commits has failed.
-        LogMessages.RollingBackTwoPhaseTransaction(Logger, _txId, _connector.Id);
+        LogMessages.RollingBackTwoPhaseTransaction(_transactionLogger, _txId, _connector.Id);
 
         try
         {
@@ -245,7 +246,7 @@ class VolatileResourceManager : ISinglePhaseNotification
         }
         catch (Exception e)
         {
-            LogMessages.TwoPhaseTransactionRollbackFailed(Logger, _txId, _connector.Id, e);
+            LogMessages.TwoPhaseTransactionRollbackFailed(_transactionLogger, _txId, _connector.Id, e);
         }
     }
 
@@ -257,7 +258,7 @@ class VolatileResourceManager : ISinglePhaseNotification
         if (_isDisposed)
             return;
 
-        LogMessages.CleaningUpResourceManager(Logger, _txId, _connector.Id);
+        LogMessages.CleaningUpResourceManager(_transactionLogger, _txId, _connector.Id);
         if (_localTx != null)
         {
             _localTx.Dispose();

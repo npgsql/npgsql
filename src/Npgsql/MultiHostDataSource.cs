@@ -21,7 +21,8 @@ sealed class MultiHostDataSource : NpgsqlDataSource
 
     volatile int _roundRobinIndex = -1;
 
-    public MultiHostDataSource(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
+    public MultiHostDataSource(NpgsqlConnectionStringBuilder settings, string connString, NpgsqlLoggingConfiguration loggingConfiguration)
+        : base(settings, connString, loggingConfiguration)
     {
         var hosts = settings.Host!.Split(',');
         _pools = new NpgsqlDataSource[hosts.Length];
@@ -39,8 +40,8 @@ sealed class MultiHostDataSource : NpgsqlDataSource
                 poolSettings.Host = host.ToString();
 
             _pools[i] = settings.Pooling
-                ? new PoolingDataSource(poolSettings, poolSettings.ConnectionString, this)
-                : new UnpooledDataSource(poolSettings, poolSettings.ConnectionString);
+                ? new PoolingDataSource(poolSettings, poolSettings.ConnectionString, loggingConfiguration, this)
+                : new UnpooledDataSource(poolSettings, poolSettings.ConnectionString, loggingConfiguration);
         }
     }
 

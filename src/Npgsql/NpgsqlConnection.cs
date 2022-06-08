@@ -124,9 +124,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     internal ConnectorBindingScope ConnectorBindingScope { get; set; }
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-    static readonly ILogger CopyLogger = NpgsqlLoggingConfiguration.CopyLogger;
-    static readonly ILogger TransactionLogger = NpgsqlLoggingConfiguration.TransactionLogger;
+    ILogger _connectionLogger = default!; // Initialized in Open, shouldn't be used otherwise
 
     static readonly StateChangeEventArgs ClosedToOpenEventArgs = new(ConnectionState.Closed, ConnectionState.Open);
     static readonly StateChangeEventArgs OpenToClosedEventArgs = new(ConnectionState.Open, ConnectionState.Closed);
@@ -152,7 +150,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         => new()
         {
             _dataSource = dataSource,
-            _userFacingConnectionString = dataSource.ConnectionString
+            Settings = dataSource.Settings,
+            _userFacingConnectionString = dataSource.ConnectionString,
         };
 
     /// <summary>
@@ -218,7 +217,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // Really unseen, need to create a new pool
         // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
         // The connection string pool can either be added here or above, if it's added above we should just use that.
-        var newDataSource = NpgsqlDataSource.Create(canonical);
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(canonical);
+        dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
+        dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
+        var newDataSource = dataSourceBuilder.GetDataSource();
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
         if (_dataSource == newDataSource)
@@ -256,7 +258,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         FullState = ConnectionState.Connecting;
         _userFacingConnectionString = _dataSource.ConnectionString;
-        LogMessages.OpeningConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+        _connectionLogger = _dataSource.LoggingConfiguration.ConnectionLogger;
+        LogMessages.OpeningConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
 
         if (Settings.Multiplexing)
         {
@@ -273,7 +276,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             if (!((MultiplexingDataSource)_dataSource).IsBootstrapped)
                 return BootstrapMultiplexing(async, cancellationToken);
 
-            LogMessages.OpenedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+            LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
             FullState = ConnectionState.Open;
 
             return Task.CompletedTask;
@@ -323,7 +326,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 if (enlistToTransaction is not null)
                     EnlistTransaction(enlistToTransaction);
 
-                LogMessages.OpenedConnection(Logger, Host!, Port, Database, _userFacingConnectionString, connector.Id);
+                LogMessages.OpenedConnection(_connectionLogger, Host!, Port, Database, _userFacingConnectionString, connector.Id);
                 FullState = ConnectionState.Open;
             }
             catch
@@ -349,7 +352,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             {
                 var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                 await ((MultiplexingDataSource)NpgsqlDataSource).BootstrapMultiplexing(this, timeout, async, cancellationToken);
-                LogMessages.OpenedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+                LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
                 FullState = ConnectionState.Open;
             }
             catch
@@ -751,7 +754,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         volatileResourceManager.Init();
         EnlistedTransaction = transaction;
 
-        LogMessages.EnlistedVolatileResourceManager(TransactionLogger, transaction.TransactionInformation.LocalIdentifier, connector.Id);
+        LogMessages.EnlistedVolatileResourceManager(
+            Connector!.LoggingConfiguration.TransactionLogger,
+            transaction.TransactionInformation.LocalIdentifier,
+            connector.Id);
     }
 
     #endregion
@@ -819,7 +825,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ReleaseCloseLock();
 
             FullState = ConnectionState.Closed;
-            LogMessages.ClosedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+            LogMessages.ClosedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
 
             return Task.CompletedTask;
         }
@@ -835,7 +841,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         try
         {
             var connector = Connector;
-            LogMessages.ClosingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString, connector.Id);
+            LogMessages.ClosingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString, connector.Id);
 
             if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
             {
@@ -848,7 +854,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     Debug.Assert(Connector is null);
 
                     FullState = ConnectionState.Closed;
-                    LogMessages.ClosedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+                    LogMessages.ClosedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
                     return;
                 }
             }
@@ -904,7 +910,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 }
             }
 
-            LogMessages.ClosedConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString, connector.Id);
+            LogMessages.ClosedConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString, connector.Id);
             Connector = null;
             ConnectorBindingScope = ConnectorBindingScope.None;
             FullState = ConnectionState.Closed;
@@ -988,7 +994,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch (Exception ex)
         {
             // Block all exceptions bubbling up from the user's event handler
-            LogMessages.CaughtUserExceptionInNoticeEventHandler(Logger, ex);
+            LogMessages.CaughtUserExceptionInNoticeEventHandler(_connectionLogger, ex);
         }
     }
 
@@ -1001,7 +1007,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         catch (Exception ex)
         {
             // Block all exceptions bubbling up from the user's event handler
-            LogMessages.CaughtUserExceptionInNotificationEventHandler(Logger, ex);
+            LogMessages.CaughtUserExceptionInNotificationEventHandler(_connectionLogger, ex);
         }
     }
 
@@ -1156,7 +1162,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
         var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
-        LogMessages.StartingBinaryImport(CopyLogger, connector.Id);
+        LogMessages.StartingBinaryImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
         try
@@ -1210,7 +1216,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
         var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
-        LogMessages.StartingBinaryExport(CopyLogger, connector.Id);
+        LogMessages.StartingBinaryExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
         try
@@ -1270,7 +1276,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
         var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
-        LogMessages.StartingTextImport(CopyLogger, connector.Id);
+        LogMessages.StartingTextImport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
         try
@@ -1331,7 +1337,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
         var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
-        LogMessages.StartingTextExport(CopyLogger, connector.Id);
+        LogMessages.StartingTextExport(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
         try
@@ -1392,7 +1398,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckReady();
         var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
-        LogMessages.StartingRawCopy(CopyLogger, connector.Id);
+        LogMessages.StartingRawCopy(connector.LoggingConfiguration.CopyLogger, connector.Id);
         // no point in passing a cancellationToken here, as we register the cancellation in the Init method
         connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
         try
@@ -1592,7 +1598,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         CheckReady();
 
-        LogMessages.StartingWait(Logger, timeout, Connector!.Id);
+        LogMessages.StartingWait(_connectionLogger, timeout, Connector!.Id);
         return Connector!.Wait(async: false, timeout, CancellationToken.None).GetAwaiter().GetResult();
     }
 
@@ -1635,7 +1641,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         CheckReady();
 
-        LogMessages.StartingWait(Logger, timeout, Connector!.Id);
+        LogMessages.StartingWait(_connectionLogger, timeout, Connector!.Id);
         using (NoSynchronizationContextScope.Enter())
             return Connector!.Wait(async: true, timeout, cancellationToken);
     }

@@ -386,21 +386,21 @@ LANGUAGE 'plpgsql'");
         #region Logging
 
         [Test]
-        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_single_statement_without_parameters()
         {
-            await using var conn = await OpenConnectionAsync();
+            await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider);
+            await using var conn = await dataSource.OpenConnectionAsync();
             await using var cmd = new NpgsqlBatch(conn)
             {
                 BatchCommands = { new("SELECT 1") }
             };
 
-            using (ListLoggerProvider.Instance.Record())
+            using (listLoggerProvider.Record())
             {
                 await cmd.ExecuteScalarAsync();
             }
 
-            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+            var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
 
             Assert.That(executingCommandEvent.Message, Does.Contain("Command execution completed").And.Contains("SELECT 1"));
             AssertLoggingStateContains(executingCommandEvent, "CommandText", "SELECT 1");
@@ -411,10 +411,10 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_multiple_statements_with_parameters()
         {
-            await using var conn = await OpenConnectionAsync();
+            await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider);
+            await using var conn = await dataSource.OpenConnectionAsync();
             await using var batch = new NpgsqlBatch(conn)
             {
                 BatchCommands =
@@ -424,12 +424,12 @@ LANGUAGE 'plpgsql'");
                 }
             };
 
-            using (ListLoggerProvider.Instance.Record())
+            using (listLoggerProvider.Record())
             {
                 await batch.ExecuteScalarAsync();
             }
 
-            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+            var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
 
             // Note: the message formatter of Microsoft.Extensions.Logging doesn't seem to handle arrays inside tuples, so we get the
             // following ugliness (https://github.com/dotnet/runtime/issues/63165). Serilog handles this fine.
@@ -449,10 +449,10 @@ LANGUAGE 'plpgsql'");
         }
 
         [Test]
-        [NonParallelizable] // Logging
         public async Task Log_ExecuteScalar_single_statement_with_parameter_logging_off()
         {
-            await using var conn = await OpenConnectionAsync();
+            await using var dataSource = CreateLoggingDataSource(out var listLoggerProvider, sensitiveDataLoggingEnabled: false);
+            await using var conn = await dataSource.OpenConnectionAsync();
             await using var batch = new NpgsqlBatch(conn)
             {
                 BatchCommands =
@@ -462,20 +462,12 @@ LANGUAGE 'plpgsql'");
                 }
             };
 
-            using (ListLoggerProvider.Instance.Record())
+            using (listLoggerProvider.Record())
             {
-                try
-                {
-                    NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = false;
-                    await batch.ExecuteScalarAsync();
-                }
-                finally
-                {
-                    NpgsqlLoggingConfiguration.IsParameterLoggingEnabled = true;
-                }
+                await batch.ExecuteScalarAsync();
             }
 
-            var executingCommandEvent = ListLoggerProvider.Instance.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
+            var executingCommandEvent = listLoggerProvider.Log.Single(l => l.Id == NpgsqlEventId.CommandExecutionCompleted);
             Assert.That(executingCommandEvent.Message, Does.Contain("Batch execution completed").And.Contains("[SELECT $1, SELECT $1, 9]"));
             var batchCommands = (IList<string>)AssertLoggingStateContains(executingCommandEvent, "BatchCommands");
             Assert.That(batchCommands.Count, Is.EqualTo(2));

@@ -13,8 +13,8 @@ namespace Npgsql;
 
 sealed class MultiplexingDataSource : PoolingDataSource
 {
-    static readonly ILogger ConnectionLogger = NpgsqlLoggingConfiguration.ConnectionLogger;
-    static readonly ILogger CommandLogger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _connectionLogger;
+    readonly ILogger _commandLogger;
 
     readonly bool _autoPrepare;
 
@@ -48,8 +48,11 @@ sealed class MultiplexingDataSource : PoolingDataSource
     const int MultiplexingCommandChannelBound = 4096;
 
     internal MultiplexingDataSource(
-        NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource? parentPool = null)
-        : base(settings, connString, parentPool)
+        NpgsqlConnectionStringBuilder settings,
+        string connString,
+        NpgsqlLoggingConfiguration loggingConfiguration,
+        MultiHostDataSource? parentPool = null)
+        : base(settings, connString, loggingConfiguration, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
 
@@ -69,6 +72,9 @@ sealed class MultiplexingDataSource : PoolingDataSource
             });
         _multiplexCommandReader = multiplexCommandChannel.Reader;
         MultiplexCommandWriter = multiplexCommandChannel.Writer;
+
+        _connectionLogger = loggingConfiguration.ConnectionLogger;
+        _commandLogger = loggingConfiguration.CommandLogger;
     }
 
     /// <summary>
@@ -103,7 +109,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                 .ContinueWith(t =>
                 {
                     // Note that we *must* observe the exception if the task is faulted.
-                    ConnectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
                 }, TaskContinuationOptions.OnlyOnFaulted);
 
             IsBootstrapped = true;
@@ -206,7 +212,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             }
             catch (Exception exception)
             {
-                LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(ConnectionLogger, exception);
+                LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(_connectionLogger, exception);
 
                 // Fail the first command in the channel as a way of bubbling the exception up to the user
                 command.ExecutionCompletion.SetException(exception);
@@ -383,7 +389,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             // if one connector was broken, chances are that all are (networking).
             Debug.Assert(connector.IsBroken);
 
-            LogMessages.ExceptionWhenWritingMultiplexedCommands(CommandLogger, connector.Id, exception);
+            LogMessages.ExceptionWhenWritingMultiplexedCommands(_commandLogger, connector.Id, exception);
         }
 
         static void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)

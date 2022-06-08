@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -286,6 +288,25 @@ namespace Npgsql.Tests
         #region Utilities for use by tests
 
         protected static readonly NpgsqlDataSource DataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
+
+        protected virtual NpgsqlDataSource CreateLoggingDataSource(
+            out ListLoggerProvider listLoggerProvider,
+            string? connectionString = null,
+            bool sensitiveDataLoggingEnabled = true)
+        {
+            var builder = new NpgsqlDataSourceBuilder(connectionString ?? ConnectionString);
+            var provider = listLoggerProvider = new ListLoggerProvider();
+
+            builder.UseLoggerFactory(LoggerFactory.Create(loggerFactoryBuilder =>
+            {
+                loggerFactoryBuilder.SetMinimumLevel(LogLevel.Trace);
+                loggerFactoryBuilder.AddProvider(provider);
+            }));
+
+            builder.EnableParameterLogging(sensitiveDataLoggingEnabled);
+
+            return builder.GetDataSource();
+        }
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
             => new(connectionString ?? ConnectionString);
