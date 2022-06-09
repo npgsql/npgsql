@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,7 +62,6 @@ namespace Npgsql.Tests
             await AssertTypeWrite(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType);
             return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer);
         }
-
 
         public async Task<T> AssertTypeRead<T>(T expected, string sqlLiteral, string pgTypeName, bool isDefault = true)
         {
@@ -389,6 +389,16 @@ namespace Npgsql.Tests
             => new($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
         protected bool IsRedshift => new NpgsqlConnectionStringBuilder(ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
+
+        #endregion
+
+        #region Setup
+
+        [SetUp]
+        public void SetupEnglishFrameworkTexts()
+        {
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
+        }
 
         #endregion
     }
