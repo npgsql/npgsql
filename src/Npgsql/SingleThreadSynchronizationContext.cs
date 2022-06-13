@@ -36,6 +36,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
                 var currentThread = _thread;
                 currentThread?.Join();
                 Debug.Assert(_thread is null);
+                _doingWork = 1;
                 _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
                 _thread.Start();
             }
