@@ -9,6 +9,7 @@ namespace Npgsql;
 sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
 {
     readonly BlockingCollection<CallbackAndState> _tasks = new();
+    readonly object _lockObject = new();
     volatile Thread? _thread;
     int _doingWork;
 
@@ -26,14 +27,18 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
     {
         _tasks.Add(new CallbackAndState { Callback = callback, State = state });
 
-        if (Interlocked.CompareExchange(ref _doingWork, 1, 0) == 0)
+        lock (_lockObject)
         {
-            // No one is working, let's wait for the thread to complete
-            var currentThread = _thread;
-            currentThread?.Join();
-            Debug.Assert(_thread is null);
-            _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
-            _thread.Start();
+            if (_doingWork == 0)
+            {
+                // Either there is no thread, or the current thread is exiting
+                // In which case, wait for it to complete
+                var currentThread = _thread;
+                currentThread?.Join();
+                Debug.Assert(_thread is null);
+                _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
+                _thread.Start();
+            }
         }
     }
 
@@ -58,35 +63,38 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
                 var taken = _tasks.TryTake(out var callbackAndState, ThreadStayAliveMs);
                 if (!taken)
                 {
-                    _doingWork = 0;
-                    
-                    // Ensure _doingWork is written before checking Count
-                    Interlocked.MemoryBarrier();
-
-                    if (_tasks.Count == 0)
+                    lock (_lockObject)
                     {
-                        return;
+                        if (_tasks.Count == 0)
+                        {
+                            _doingWork = 0;
+                            return;
+                        }
                     }
 
-                    // There is new work, let's check whether someone's waiting for us to complete
-                    if (Interlocked.Exchange(ref _doingWork, 1) == 1)
-                    {
-                        // There actually is someone waiting for us to complete, just exiting
-                        return;
-                    }
-                    
                     continue;
                 }
-                callbackAndState.Callback(callbackAndState.State);
+
+                try
+                {
+                    Debug.Assert(_doingWork == 1);
+                    callbackAndState.Callback(callbackAndState.State);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
+                }
             }
         }
         catch (Exception e)
         {
+            // Here we attempt to catch any exception comming from BlockingCollection _tasks
             Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
             _doingWork = 0;
         }
         finally
         {
+            Debug.Assert(_doingWork == 0);
             _thread = null;
         }
     }
@@ -97,7 +105,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         internal object? State;
     }
 
-    internal struct Disposable : IDisposable
+    internal readonly struct Disposable : IDisposable
     {
         readonly SynchronizationContext? _synchronizationContext;
 
