@@ -230,6 +230,8 @@ public class ConnectionTests : MultiplexingTestBase
 
     #region ProvidePasswordCallback Tests
 
+#pragma warning disable CS0618 // ProvidePasswordCallback is Obsolete
+
     [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
     public async Task ProvidePasswordCallback_is_used()
     {
@@ -342,6 +344,9 @@ public class ConnectionTests : MultiplexingTestBase
             return goodPassword!;
         }
     }
+
+#pragma warning restore CS0618 // ProvidePasswordCallback is Obsolete
+
     #endregion
 
     [Test]

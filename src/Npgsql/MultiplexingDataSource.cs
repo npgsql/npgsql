@@ -50,9 +50,9 @@ sealed class MultiplexingDataSource : PoolingDataSource
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
         string connString,
-        NpgsqlLoggingConfiguration loggingConfiguration,
+        NpgsqlDataSourceConfiguration dataSourceConfig,
         MultiHostDataSource? parentPool = null)
-        : base(settings, connString, loggingConfiguration, parentPool)
+        : base(settings, connString, dataSourceConfig, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
 
@@ -73,8 +73,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _multiplexCommandReader = multiplexCommandChannel.Reader;
         MultiplexCommandWriter = multiplexCommandChannel.Writer;
 
-        _connectionLogger = loggingConfiguration.ConnectionLogger;
-        _commandLogger = loggingConfiguration.CommandLogger;
+        _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
+        _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
     }
 
     /// <summary>

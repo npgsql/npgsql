@@ -239,9 +239,9 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
     /// <see cref="MultiHostDataSource"/>,
     /// </summary>
-    readonly NpgsqlDataSource _connectorSource;
+    readonly NpgsqlDataSource _dataSource;
 
-    internal string UserFacingConnectionString => _connectorSource.ConnectionString;
+    internal string UserFacingConnectionString => _dataSource.ConnectionString;
 
     /// <summary>
     /// Contains the UTC timestamp when this connector was opened, used to implement
@@ -315,12 +315,14 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Constructors
 
-    internal NpgsqlConnector(NpgsqlDataSource connectorSource, NpgsqlConnection conn)
-        : this(connectorSource)
+    internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
+        : this(dataSource)
     {
         ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
         UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+#pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
+#pragma warning restore CS0618
 
 #pragma warning disable CA2252 // Experimental API
         PhysicalOpenCallback = conn.PhysicalOpenCallback;
@@ -329,20 +331,20 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     NpgsqlConnector(NpgsqlConnector connector)
-        : this(connector._connectorSource)
+        : this(connector._dataSource)
     {
         ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
         UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
-    NpgsqlConnector(NpgsqlDataSource connectorSource)
+    NpgsqlConnector(NpgsqlDataSource dataSource)
     {
-        Debug.Assert(connectorSource.OwnsConnectors);
+        Debug.Assert(dataSource.OwnsConnectors);
 
-        _connectorSource = connectorSource;
+        _dataSource = dataSource;
 
-        LoggingConfiguration = _connectorSource.LoggingConfiguration;
+        LoggingConfiguration = _dataSource.LoggingConfiguration;
         ConnectionLogger = LoggingConfiguration.ConnectionLogger;
         CommandLogger = LoggingConfiguration.CommandLogger;
         TransactionLogger = LoggingConfiguration.TransactionLogger;
@@ -350,7 +352,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
-        Settings = connectorSource.Settings;
+        Settings = dataSource.Settings;
         PostgresParameters = new Dictionary<string, string>();
 
         CancelLock = new object();
@@ -606,7 +608,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
         // a connector-specific mapper, which will later become shared pool-wide one.
         TypeMapper =
-            Settings.Multiplexing && ((MultiplexingDataSource)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+            Settings.Multiplexing && ((MultiplexingDataSource)_dataSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
                 ? multiplexingTypeMapper
                 : new ConnectorTypeMapper(this);
 
@@ -1179,7 +1181,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
                     ResetReadBuffer();
-                    _connectorSource.Return(this);
+                    _dataSource.Return(this);
                 }
             }
 
@@ -1216,7 +1218,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
 
             // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
-            _connectorSource.Return(this);
+            _dataSource.Return(this);
 
             ConnectionLogger.LogError(e, "Exception in multiplexing read loop", Id);
         }
@@ -1923,9 +1925,9 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => _connectorSource.TryRemovePendingEnlistedConnector(this, transaction);
+        => _dataSource.TryRemovePendingEnlistedConnector(this, transaction);
 
-    internal void Return() => _connectorSource.Return(this);
+    internal void Return() => _dataSource.Return(this);
 
     /// <inheritdoc />
     public void Dispose() => Close();
@@ -1961,7 +1963,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 {
                     ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                         Settings.HostRecheckSecondsTranslated);
-                    _connectorSource.Clear();
+                    _dataSource.Clear();
                 }
 
                 LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
