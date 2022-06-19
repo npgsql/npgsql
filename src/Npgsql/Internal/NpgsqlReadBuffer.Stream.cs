@@ -155,7 +155,7 @@ public sealed partial class NpgsqlReadBuffer
         }
 
 #if NETSTANDARD2_0
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #else
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
@@ -194,7 +194,7 @@ public sealed partial class NpgsqlReadBuffer
             => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
 
 #if NETSTANDARD2_0
-            public ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
 #else
         public override ValueTask DisposeAsync()
 #endif

@@ -63,13 +63,13 @@ public partial class JsonPathHandler : NpgsqlTypeHandler<string>, ITextReaderHan
     }
 
     /// <inheritdoc />
-    public TextReader GetTextReader(Stream stream, int byteLength)
+    public TextReader GetTextReader(Stream stream, int byteLength, NpgsqlReadBuffer buffer)
     {
         var version = stream.ReadByte();
         byteLength -= 1;
         if (version != JsonPathVersion)
             throw new NotSupportedException($"Don't know how to decode JSONPATH with wire format {version}, your connection is now broken");
 
-        return _textHandler.GetTextReader(stream, byteLength);
+        return _textHandler.GetTextReader(stream, byteLength, buffer);
     }
 }

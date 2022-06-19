@@ -6,11 +6,16 @@ namespace Npgsql
 {
     sealed class PreparedTextReader : TextReader
     {
-        private readonly string _str;
+        readonly string _str;
+        readonly Stream _stream;
 
-        private int _position;
+        int _position;
 
-        public PreparedTextReader(string str) => _str = str;
+        public PreparedTextReader(string str, Stream stream)
+        {
+            _str = str;
+            _stream = stream;
+        }
 
         public override int Peek()
         {
@@ -71,5 +76,13 @@ namespace Npgsql
         }
 
         public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            
+            if (disposing)
+                _stream.Dispose();
+        }
     }
 }
