@@ -69,6 +69,18 @@ public class ByteaTests : MultiplexingTestBase
             () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
 
     [Test]
+    public async Task Write_as_MemoryStream_long()
+    {
+        var rnd = new Random(1);
+        var bytes = new byte[8192 * 4];
+        rnd.NextBytes(bytes);
+        var expectedSql = "\\x" + ToHex(bytes);
+
+        await AssertTypeWrite(
+            () => new MemoryStream(bytes), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+    }
+
+    [Test]
     public async Task Write_as_FileStream()
     {
         var filePath = Path.GetTempFileName();
@@ -99,6 +111,60 @@ public class ByteaTests : MultiplexingTestBase
             fsList.Add(fs);
             return fs;
         }
+    }
+
+    [Test]
+    public async Task Write_as_FileStream_long()
+    {
+        var filePath = Path.GetTempFileName();
+        var fsList = new List<FileStream>();
+        var rnd = new Random(1);
+        try
+        {
+            var bytes = new byte[8192 * 4];
+            rnd.NextBytes(bytes);
+            await File.WriteAllBytesAsync(filePath, bytes);
+            var expectedSql = "\\x" + ToHex(bytes);
+
+            await AssertTypeWrite(
+                () => FileStreamFactory(filePath, fsList), expectedSql, "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+        }
+        finally
+        {
+            foreach (var fs in fsList)
+                await fs.DisposeAsync();
+
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch {}
+        }
+
+        FileStream FileStreamFactory(string filePath, List<FileStream> fsList)
+        {
+            var fs = File.OpenRead(filePath);
+            fsList.Add(fs);
+            return fs;
+        }
+    }
+
+    static string ToHex(ReadOnlySpan<byte> bytes)
+    {
+        var c = new char[bytes.Length * 2];
+
+        byte b;
+
+        for (int bx = 0, cx = 0; bx < bytes.Length; ++bx, ++cx)
+        {
+            b = ((byte)(bytes[bx] >> 4));
+            c[cx] = (char)(b > 9 ? b - 10 + 'a' : b + '0');
+
+            b = ((byte)(bytes[bx] & 0x0F));
+            c[++cx] = (char)(b > 9 ? b - 10 + 'a' : b + '0');
+        }
+
+        return new string(c);
     }
 
     [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]
