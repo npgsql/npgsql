@@ -479,8 +479,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             try
             {
                 var read = async
-                    ? await stream.ReadAsync(Buffer, WritePosition, WriteSpaceLeft, cancellationToken)
-                    : stream.Read(Buffer, WritePosition, WriteSpaceLeft);
+                    ? await stream.ReadAsync(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count), cancellationToken)
+                    : stream.Read(Buffer, WritePosition, Math.Min(WriteSpaceLeft, count));
                 if (read == 0)
                     throw new EndOfStreamException();
                 WritePosition += read;
@@ -492,6 +492,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             }
         }
         while (count > 0);
+        Debug.Assert(count == 0);
     }
 
     public void WriteNullTerminatedString(string s)

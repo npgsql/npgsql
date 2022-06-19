@@ -69,6 +69,20 @@ public class ByteaTests : MultiplexingTestBase
             () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
 
     [Test]
+    public Task Write_as_MemoryStream_truncated()
+    {
+        var msFactory = () =>
+        {
+            var ms = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+            ms.ReadByte();
+            return ms;
+        };
+
+        return AssertTypeWrite(
+            msFactory, "\\x020304", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+    }
+
+    [Test]
     public async Task Write_as_MemoryStream_long()
     {
         var rnd = new Random(1);
@@ -167,8 +181,8 @@ public class ByteaTests : MultiplexingTestBase
         return new string(c);
     }
 
-    [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]
-    public async Task Truncate()
+    [Test, Description("Tests that bytea array values are truncated when the NpgsqlParameter's Size is set")]
+    public async Task Truncate_array()
     {
         await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
@@ -191,6 +205,44 @@ public class ByteaTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
 
         Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
+    }
+
+    [Test, Description("Tests that bytea stream values are truncated when the NpgsqlParameter's Size is set")]
+    public async Task Truncate_stream()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        byte[] data = { 1, 2, 3, 4, 5, 6 };
+        var p = new NpgsqlParameter("p", new MemoryStream(data)) { Size = 4 };
+        cmd.Parameters.Add(p);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+
+        // NpgsqlParameter.Size needs to persist when value is changed
+        byte[] data2 = { 11, 12, 13, 14, 15, 16 };
+        p.Value = new MemoryStream(data2);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
+
+        // Handle with offset
+        byte[] data3 = { 11, 12, 13, 14, 15, 16 };
+        var data3ms = new MemoryStream(data3);
+        data3ms.ReadByte();
+        p.Value = data3ms;
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 12, 13, 14, 15 }));
+
+        p.Size = 0;
+        p.Value = new MemoryStream(data2);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
+        p.Size = -1;
+        p.Value = new MemoryStream(data2);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
+
+        Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
+
+        // NpgsqlParameter.Size larger than the value size should throw
+        p.Size = data2.Length + 10;
+        p.Value = new MemoryStream(data2);
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync())!;
+        Assert.That(ex.InnerException, Is.TypeOf<EndOfStreamException>());
     }
 
     [Test]
