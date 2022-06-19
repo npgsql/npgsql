@@ -7,7 +7,7 @@ using Npgsql.Properties;
 
 namespace Npgsql;
 
-class NpgsqlDataSourceBatch : NpgsqlBatch
+sealed class NpgsqlDataSourceBatch : NpgsqlBatch
 {
     internal NpgsqlDataSourceBatch(NpgsqlConnection connection)
         : base(new NpgsqlDataSourceCommand(DefaultBatchCommandsSize, connection))

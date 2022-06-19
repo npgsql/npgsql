@@ -7,7 +7,7 @@ using Npgsql.Properties;
 
 namespace Npgsql;
 
-class NpgsqlDataSourceCommand : NpgsqlCommand
+sealed class NpgsqlDataSourceCommand : NpgsqlCommand
 {
     internal NpgsqlDataSourceCommand(NpgsqlConnection connection)
         : base(cmdText: null, connection)
