@@ -472,7 +472,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
     public async Task WriteStreamRaw(Stream stream, int count, bool async, CancellationToken cancellationToken = default)
     {
-        do
+        while (count > 0)
         {
             if (WriteSpaceLeft == 0)
                 await Flush(async, cancellationToken);
@@ -491,7 +491,6 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
         }
-        while (count > 0);
         Debug.Assert(count == 0);
     }
 

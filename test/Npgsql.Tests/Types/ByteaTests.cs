@@ -103,7 +103,6 @@ public class ByteaTests : MultiplexingTestBase
         {
             await File.WriteAllBytesAsync(filePath, new byte[] { 1, 2, 3 });
 
-
             await AssertTypeWrite(
                 () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
         }
