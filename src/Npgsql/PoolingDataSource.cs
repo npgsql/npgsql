@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -13,7 +12,7 @@ using Npgsql.Util;
 
 namespace Npgsql;
 
-class ConnectorPool : ConnectorSource
+class PoolingDataSource : NpgsqlDataSource
 {
     #region Fields and properties
 
@@ -33,7 +32,7 @@ class ConnectorPool : ConnectorSource
     /// </summary>
     private protected readonly NpgsqlConnector?[] Connectors;
 
-    readonly MultiHostConnectorPool? _parentPool;
+    readonly MultiHostDataSource? _parentPool;
 
     /// <summary>
     /// Reader side for the idle connector channel. Contains nulls in order to release waiting attempts after
@@ -76,7 +75,7 @@ class ConnectorPool : ConnectorSource
 
     internal sealed override bool OwnsConnectors => true;
 
-    internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
+    internal PoolingDataSource(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource? parentPool = null)
         : base(settings, connString)
     {
         if (settings.MaxPoolSize < settings.MinPoolSize)
@@ -115,6 +114,8 @@ class ConnectorPool : ConnectorSource
     internal sealed override ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
+        CheckDisposed();
+
         return TryGetIdleConnector(out var connector)
             ? new ValueTask<NpgsqlConnector>(connector)
             : RentAsync(conn, timeout, async, cancellationToken);
@@ -399,7 +400,7 @@ class ConnectorPool : ConnectorSource
 
     static void PruneIdleConnectors(object? state)
     {
-        var pool = (ConnectorPool)state!;
+        var pool = (PoolingDataSource)state!;
         var samples = pool._pruningSamples;
         int toPrune;
         lock (pool._pruningTimer)

@@ -152,7 +152,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlBatchCommand> statements, Task? sendTask = null)
     {
         Command = command;
-        _connection = command.Connection;
+        _connection = command.InternalConnection;
         _behavior = behavior;
         _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
         _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);

@@ -11,7 +11,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
-sealed class MultiplexingConnectorPool : ConnectorPool
+sealed class MultiplexingDataSource : PoolingDataSource
 {
     static readonly ILogger ConnectionLogger = NpgsqlLoggingConfiguration.ConnectionLogger;
     static readonly ILogger CommandLogger = NpgsqlLoggingConfiguration.CommandLogger;
@@ -47,8 +47,8 @@ sealed class MultiplexingConnectorPool : ConnectorPool
     // TODO: Make this configurable
     const int MultiplexingCommandChannelBound = 4096;
 
-    internal MultiplexingConnectorPool(
-        NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
+    internal MultiplexingDataSource(
+        NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource? parentPool = null)
         : base(settings, connString, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
@@ -399,10 +399,14 @@ sealed class MultiplexingConnectorPool : ConnectorPool
         // ReSharper disable once FunctionNeverReturns
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        _bootstrapSemaphore.Dispose();
-        base.Dispose();
+        base.Dispose(disposing);
+
+        if (disposing)
+        {
+            _bootstrapSemaphore.Dispose();
+        }
     }
 
     struct MultiplexingStats

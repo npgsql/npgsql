@@ -116,7 +116,7 @@ public class ConnectionTests : MultiplexingTestBase
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         Assert.That(eventClosed, Is.True);
         Assert.That(conn.Connector is null);
-        Assert.AreEqual(0, conn.Pool.Statistics.Total);
+        Assert.AreEqual(0, conn.NpgsqlDataSource.Statistics.Total);
 
         if (openFromClose)
         {
@@ -129,7 +129,7 @@ public class ConnectionTests : MultiplexingTestBase
 
         Assert.DoesNotThrowAsync(conn.OpenAsync);
         Assert.AreEqual(1, await conn.ExecuteScalarAsync("SELECT 1"));
-        Assert.AreEqual(1, conn.Pool.Statistics.Total);
+        Assert.AreEqual(1, conn.NpgsqlDataSource.Statistics.Total);
         Assert.DoesNotThrowAsync(conn.CloseAsync);
     }
 
@@ -687,7 +687,7 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
-    public async Task DataSource()
+    public async Task DataSource_property()
     {
         using var conn = new NpgsqlConnection();
         Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
