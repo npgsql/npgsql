@@ -223,10 +223,9 @@ public class ByteaTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
 
         // Handle with offset
-        byte[] data3 = { 11, 12, 13, 14, 15, 16 };
-        var data3ms = new MemoryStream(data3);
-        data3ms.ReadByte();
-        p.Value = data3ms;
+        var data2ms = new MemoryStream(data2);
+        data2ms.ReadByte();
+        p.Value = data2ms;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 12, 13, 14, 15 }));
 
         p.Size = 0;
@@ -243,13 +242,36 @@ public class ByteaTests : MultiplexingTestBase
         p.Value = new MemoryStream(data2);
         var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync())!;
         Assert.That(ex.InnerException, Is.TypeOf<EndOfStreamException>());
+        if (!IsMultiplexing)
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+    }
+
+    [Test]
+    public async Task Write_as_NonSeekable_stream()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        byte[] data = { 1, 2, 3, 4, 5, 6 };
+        var p = new NpgsqlParameter("p", new NonSeekableStream(data)) { Size = 4 };
+        cmd.Parameters.Add(p);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+
+        var streamWithOffset = new NonSeekableStream(data);
+        streamWithOffset.ReadByte();
+        p.Value = streamWithOffset;
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 2, 3, 4, 5 }));
+
+        p.Value = new NonSeekableStream(data);
+        p.Size = 0;
+        Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync());
+        Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
     }
 
     [Test]
     public async Task Array_of_bytea()
     {
-        using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT :p1", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT :p1", conn);
         var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
         var inVal = new[] { bytes, bytes };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array, inVal);
@@ -257,6 +279,15 @@ public class ByteaTests : MultiplexingTestBase
         Assert.AreEqual(inVal.Length, retVal!.Length);
         Assert.AreEqual(inVal[0], retVal[0]);
         Assert.AreEqual(inVal[1], retVal[1]);
+    }
+
+    sealed class NonSeekableStream : MemoryStream
+    {
+        public override bool CanSeek => false;
+
+        public NonSeekableStream(byte[] data) : base(data)
+        {
+        }
     }
 
     public ByteaTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

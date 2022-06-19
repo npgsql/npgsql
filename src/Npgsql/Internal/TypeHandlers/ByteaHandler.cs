@@ -57,13 +57,18 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     {
         if (parameter != null && parameter.Size > 0)
             return parameter.Size;
-
-        // TODO: add message (and maybe break the connection?)
+        
         if (!stream.CanSeek)
-            throw new NpgsqlException();
+            throw new NpgsqlException("Cannot write a stream of bytes. Either provide a positive size, or a seekable stream.");
 
-        // TODO: perhaps try/catch with break?
-        return (int)(stream.Length - stream.Position);
+        try
+        {
+            return (int)(stream.Length - stream.Position);
+        }
+        catch (Exception ex)
+        {
+            throw new NpgsqlException("Cannot write a stream of bytes", ex);
+        }
     }
 
     /// <inheritdoc />
