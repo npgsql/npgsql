@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using Npgsql.Logging;
 
@@ -8,7 +9,9 @@ namespace Npgsql
     sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
     {
         readonly BlockingCollection<CallbackAndState> _tasks = new BlockingCollection<CallbackAndState>();
-        Thread? _thread;
+        readonly object _lockObject = new();
+        volatile Thread? _thread;
+        bool _doingWork;
 
         const int ThreadStayAliveMs = 10000;
         readonly string _threadName;
@@ -24,12 +27,16 @@ namespace Npgsql
         {
             _tasks.Add(new CallbackAndState { Callback = callback, State = state });
 
-            if (_thread == null)
+            lock (_lockObject)
             {
-                lock (this)
+                if (!_doingWork)
                 {
-                    if (_thread != null)
-                        return;
+                    // Either there is no thread, or the current thread is exiting
+                    // In which case, wait for it to complete
+                    var currentThread = _thread;
+                    currentThread?.Join();
+                    Debug.Assert(_thread is null);
+                    _doingWork = true;
                     _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
                     _thread.Start();
                 }
@@ -39,12 +46,10 @@ namespace Npgsql
         public void Dispose()
         {
             _tasks.CompleteAdding();
-            _tasks.Dispose();
+            var thread = _thread;
+            thread?.Join();
 
-            lock (this)
-            {
-                _thread?.Join();
-            }
+            _tasks.Dispose();
         }
 
         void WorkLoop()
@@ -57,17 +62,41 @@ namespace Npgsql
                 {
                     var taken = _tasks.TryTake(out var callbackAndState, ThreadStayAliveMs);
                     if (!taken)
-                        return;
-                    callbackAndState.Callback(callbackAndState.State);
+                    {
+                        lock (_lockObject)
+                        {
+                            if (_tasks.Count == 0)
+                            {
+                                _doingWork = false;
+                                return;
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    try
+                    {
+                        Debug.Assert(_doingWork);
+                        callbackAndState.Callback(callbackAndState.State);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error($"Exception caught in {nameof(SingleThreadSynchronizationContext)}", e);
+                    }
                 }
             }
             catch (Exception e)
             {
+                // Here we attempt to catch any exception coming from BlockingCollection _tasks
                 Log.Error($"Exception caught in {nameof(SingleThreadSynchronizationContext)}", e);
+                lock (_lockObject)
+                    _doingWork = false;
             }
             finally
             {
-                lock (this) { _thread = null; }
+                Debug.Assert(!_doingWork);
+                _thread = null;
             }
         }
 
@@ -77,7 +106,7 @@ namespace Npgsql
             internal object? State;
         }
 
-        internal struct Disposable : IDisposable
+        internal readonly struct Disposable : IDisposable
         {
             readonly SynchronizationContext? _synchronizationContext;
 
