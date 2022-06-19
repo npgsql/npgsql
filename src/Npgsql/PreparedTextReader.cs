@@ -22,25 +22,18 @@ namespace Npgsql
         {
             CheckDisposed();
             
-            var value = -1;
-            if (_position < _str.Length)
-                value = _str[_position];
-
-            return value;
+            return _position < _str.Length
+                ? _str[_position]
+                : -1;
         }
 
         public override int Read()
         {
             CheckDisposed();
             
-            var value = -1;
-            if (_position < _str.Length)
-            {
-                value = _str[_position];
-                _position++;
-            }
-
-            return value;
+            return _position < _str.Length
+                ? _str[_position++]
+                : -1;
         }
 
         public override int Read(char[] buffer, int index, int count)
