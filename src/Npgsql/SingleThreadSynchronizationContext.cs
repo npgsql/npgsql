@@ -91,7 +91,8 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         {
             // Here we attempt to catch any exception coming from BlockingCollection _tasks
             Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
-            _doingWork = false;
+            lock (_lockObject)
+                _doingWork = false;
         }
         finally
         {
