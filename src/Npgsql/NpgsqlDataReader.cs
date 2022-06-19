@@ -1355,34 +1355,22 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default) =>
         GetStreamInternal(CheckRowAndGetField(ordinal), ordinal, async, cancellationToken);
 
-    ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
+    async ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
     {
         if (_columnStream is { IsDisposed: false })
             throw new InvalidOperationException("A stream is already open for this reader");
 
-        var t = SeekToColumn(ordinal, async, cancellationToken);
+        using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
+        await SeekToColumn(ordinal, async, cancellationToken);
         if (_isSequential)
             CheckColumnStart();
-        if (!t.IsCompleted)
-            return new ValueTask<Stream>(GetStreamLong(this, field, t, cancellationToken));
 
         if (ColumnLen == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         PosInColumn += ColumnLen;
-        return new ValueTask<Stream>(_columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential));
-
-        static async Task<Stream> GetStreamLong(NpgsqlDataReader reader, FieldDescription field, Task seekTask, CancellationToken cancellationToken)
-        {
-            using var registration = reader.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-            await seekTask;
-            if (reader.ColumnLen == -1)
-                ThrowHelper.ThrowInvalidCastException_NoValue(field);
-
-            reader.PosInColumn += reader.ColumnLen;
-            return reader._columnStream = (NpgsqlReadBuffer.ColumnStream)reader.Buffer.GetStream(reader.ColumnLen, !reader._isSequential);
-        }
+        return _columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential);
     }
 
     #endregion
