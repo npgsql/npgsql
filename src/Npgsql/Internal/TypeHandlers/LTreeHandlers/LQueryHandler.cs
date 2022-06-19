@@ -81,12 +81,13 @@ public class LQueryHandler : TextHandler
 
     #endregion
 
-    public override TextReader GetTextReader(Stream stream)
+    public override TextReader GetTextReader(Stream stream, int byteLength)
     {
         var version = stream.ReadByte();
+        byteLength -= 1;
         if (version != LQueryProtocolVersion)
             throw new NpgsqlException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
 
-        return base.GetTextReader(stream);
+        return base.GetTextReader(stream, byteLength);
     }
 }

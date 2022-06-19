@@ -9,7 +9,7 @@ namespace Npgsql.Internal.TypeHandling;
 /// </summary>
 interface ITextReaderHandler
 {
-    TextReader GetTextReader(Stream stream);
+    TextReader GetTextReader(Stream stream, int byteLength);
 }
 
 #pragma warning disable CA1032

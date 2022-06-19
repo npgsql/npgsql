@@ -1515,21 +1515,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     async ValueTask<TextReader> GetTextReader(int ordinal, bool async, CancellationToken cancellationToken = default)
     {
         var field = CheckRowAndGetField(ordinal);
-        await SeekToColumn(ordinal, async, cancellationToken);
-
-        if (ColumnLen == -1)
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
-
-        if (Buffer.ReadBytesLeft >= ColumnLen)
-        {
-            PosInColumn += ColumnLen;
-            return new PreparedTextReader(field.Handler.Read<string>(Buffer, ColumnLen, field));
-        }
 
         if (field.Handler is ITextReaderHandler handler)
-            return handler.GetTextReader(async
+        {
+            var stream = async
                 ? await GetStreamInternal(field, ordinal, true, cancellationToken)
-                : GetStreamInternal(field, ordinal, false, CancellationToken.None).Result);
+                : GetStreamInternal(field, ordinal, false, CancellationToken.None).Result;
+            return handler.GetTextReader(stream, ColumnLen);
+        }
 
         throw new InvalidCastException($"The GetTextReader method is not supported for type {field.Handler.PgDisplayName}");
     }
