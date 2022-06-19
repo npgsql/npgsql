@@ -275,7 +275,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     {
         if (byteLength > 0 && buffer.ReadBytesLeft >= byteLength)
         {
-            return new PreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream);
+            return new PreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), (NpgsqlReadBuffer.ColumnStream)stream);
         }
         
         return new StreamReader(stream, _encoding);

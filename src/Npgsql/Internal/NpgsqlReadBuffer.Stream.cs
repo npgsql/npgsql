@@ -14,7 +14,7 @@ public sealed partial class NpgsqlReadBuffer
         readonly NpgsqlReadBuffer _buf;
         int _start, _len, _read;
         bool _canSeek;
-        bool _startCancellableOperations;
+        readonly bool _startCancellableOperations;
         internal bool IsDisposed { get; private set; }
 
         internal ColumnStream(NpgsqlConnector connector, bool startCancellableOperations = true)
@@ -121,6 +121,13 @@ public sealed partial class NpgsqlReadBuffer
                 ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
         }
 
+        public override int ReadByte()
+        {
+            Span<byte> byteSpan = stackalloc byte[1];
+            var read = Read(byteSpan);
+            return read > 0 ? byteSpan[0] : -1;
+        }
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             ValidateArguments(buffer, offset, count);
@@ -136,7 +143,7 @@ public sealed partial class NpgsqlReadBuffer
         }
 
 #if NETSTANDARD2_0
-            public int Read(Span<byte> span)
+        public int Read(Span<byte> span)
 #else
         public override int Read(Span<byte> span)
 #endif

@@ -1,17 +1,18 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 
 namespace Npgsql
 {
     sealed class PreparedTextReader : TextReader
     {
         readonly string _str;
-        readonly Stream _stream;
+        readonly NpgsqlReadBuffer.ColumnStream _stream;
 
         int _position;
 
-        public PreparedTextReader(string str, Stream stream)
+        public PreparedTextReader(string str, NpgsqlReadBuffer.ColumnStream stream)
         {
             _str = str;
             _stream = stream;
@@ -19,6 +20,8 @@ namespace Npgsql
 
         public override int Peek()
         {
+            CheckDisposed();
+            
             var value = -1;
             if (_position < _str.Length)
                 value = _str[_position];
@@ -28,6 +31,8 @@ namespace Npgsql
 
         public override int Read()
         {
+            CheckDisposed();
+            
             var value = -1;
             if (_position < _str.Length)
             {
@@ -40,6 +45,8 @@ namespace Npgsql
 
         public override int Read(char[] buffer, int index, int count)
         {
+            CheckDisposed();
+            
             if (buffer == null)
             {
                 throw new ArgumentNullException(nameof(buffer));
@@ -67,6 +74,8 @@ namespace Npgsql
 
         public override string ReadToEnd()
         {
+            CheckDisposed();
+            
             if (_position == _str.Length)
                 return string.Empty;
 
@@ -76,6 +85,12 @@ namespace Npgsql
         }
 
         public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
+        
+        void CheckDisposed()
+        {
+            if (_stream.IsDisposed)
+                throw new ObjectDisposedException(null);
+        }
 
         protected override void Dispose(bool disposing)
         {
