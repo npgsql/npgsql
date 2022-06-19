@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -17,7 +18,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
 /// Use it at your own risk.
 /// </remarks>
-public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
+public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>, INpgsqlTypeHandler<Stream>
 #if !NETSTANDARD2_0
     , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
 #endif
@@ -43,11 +44,25 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
 
     ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => throw new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading.");
+    
+    ValueTask<Stream> INpgsqlTypeHandler<Stream>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        => throw new NotSupportedException("Only writing Stream to PostgreSQL bytea is supported, no reading.");
 
     int ValidateAndGetLength(int bufferLen, NpgsqlParameter? parameter)
         => parameter == null || parameter.Size <= 0 || parameter.Size >= bufferLen
             ? bufferLen
             : parameter.Size;
+
+    int ValidateAndGetLength(Stream stream, NpgsqlParameter? parameter)
+    {
+        if (parameter != null && parameter.Size > 0)
+            return parameter.Size;
+
+        if (!stream.CanSeek)
+            throw new NpgsqlException();
+
+        return (int)(stream.Length - stream.Position);
+    }
 
     /// <inheritdoc />
     public override int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -56,6 +71,10 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     /// <inheritdoc />
     public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLength(value.Count, parameter);
+    
+    /// <inheritdoc />
+    public int ValidateAndGetLength(Stream value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        => ValidateAndGetLength(value, parameter);
 
     /// <inheritdoc />
     public override Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -64,6 +83,10 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     /// <inheritdoc />
     public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value.Array is null ? Task.CompletedTask : Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async, cancellationToken);
+    
+    /// <inheritdoc />
+    public Task Write(Stream value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        => Write(value, buf, ValidateAndGetLength(value, parameter), async, cancellationToken);
 
     async Task Write(byte[] value, NpgsqlWriteBuffer buf, int offset, int count, bool async, CancellationToken cancellationToken = default)
     {
@@ -79,6 +102,9 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
         await buf.Flush(async, cancellationToken);
         await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async, cancellationToken);
     }
+    
+    Task Write(Stream value, NpgsqlWriteBuffer buf, int count, bool async, CancellationToken cancellationToken = default) 
+        => buf.WriteStreamRaw(value, count, async, cancellationToken);
 
 #if !NETSTANDARD2_0
     /// <inheritdoc />

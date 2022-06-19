@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.IO;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -50,7 +51,6 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task Read_as_ReadOnlyMemory_not_supported()
         => AssertTypeUnsupportedRead<ReadOnlyMemory<byte>, NotSupportedException>("\\x010203", "bytea");
-
 #endif
 
     [Test]
@@ -61,6 +61,34 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task Read_as_ArraySegment_not_supported()
         => AssertTypeUnsupportedRead<ArraySegment<byte>, NotSupportedException>("\\x010203", "bytea");
+
+    [Test]
+    public Task Write_as_MemoryStream()
+        => AssertTypeWrite(
+            new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+
+    [Test]
+    public async Task Write_as_FileStream()
+    {
+        var filePath = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllBytesAsync(filePath, new byte[] { 1, 2, 3 });
+            await using var fs = File.OpenRead(filePath);
+
+            await AssertTypeWrite(
+                fs, "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch {}
+        }
+
+    }
 
     [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]
     public async Task Truncate()

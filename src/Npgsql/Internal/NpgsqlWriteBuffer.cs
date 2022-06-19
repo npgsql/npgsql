@@ -470,6 +470,30 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         }
     }
 
+    public async Task WriteStreamRaw(Stream stream, int count, bool async, CancellationToken cancellationToken = default)
+    {
+        do
+        {
+            if (WriteSpaceLeft == 0)
+                await Flush(async, cancellationToken);
+            try
+            {
+                var read = async
+                    ? await stream.ReadAsync(Buffer, WritePosition, WriteSpaceLeft, cancellationToken)
+                    : stream.Read(Buffer, WritePosition, WriteSpaceLeft);
+                if (read == 0)
+                    throw new EndOfStreamException();
+                WritePosition += read;
+                count -= read;
+            }
+            catch (Exception e)
+            {
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
+            }
+        }
+        while (count > 0);
+    }
+
     public void WriteNullTerminatedString(string s)
     {
         Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
