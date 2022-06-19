@@ -207,6 +207,7 @@ public class ByteaTests : MultiplexingTestBase
     }
 
     [Test, Description("Tests that bytea stream values are truncated when the NpgsqlParameter's Size is set")]
+    [NonParallelizable] // The last check will break the connection, which can fail other unrelated queries in multiplexing
     public async Task Truncate_stream()
     {
         await using var conn = await OpenConnectionAsync();
