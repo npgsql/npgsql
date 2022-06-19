@@ -11,7 +11,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
     readonly BlockingCollection<CallbackAndState> _tasks = new();
     readonly object _lockObject = new();
     volatile Thread? _thread;
-    int _doingWork;
+    bool _doingWork;
 
     const int ThreadStayAliveMs = 10000;
     readonly string _threadName;
@@ -29,14 +29,14 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
 
         lock (_lockObject)
         {
-            if (_doingWork == 0)
+            if (!_doingWork)
             {
                 // Either there is no thread, or the current thread is exiting
                 // In which case, wait for it to complete
                 var currentThread = _thread;
                 currentThread?.Join();
                 Debug.Assert(_thread is null);
-                _doingWork = 1;
+                _doingWork = true;
                 _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
                 _thread.Start();
             }
@@ -68,7 +68,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
                     {
                         if (_tasks.Count == 0)
                         {
-                            _doingWork = 0;
+                            _doingWork = false;
                             return;
                         }
                     }
@@ -78,7 +78,7 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
 
                 try
                 {
-                    Debug.Assert(_doingWork == 1);
+                    Debug.Assert(_doingWork);
                     callbackAndState.Callback(callbackAndState.State);
                 }
                 catch (Exception e)
@@ -89,13 +89,13 @@ sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDispo
         }
         catch (Exception e)
         {
-            // Here we attempt to catch any exception comming from BlockingCollection _tasks
+            // Here we attempt to catch any exception coming from BlockingCollection _tasks
             Logger.LogError(e, $"Exception caught in {nameof(SingleThreadSynchronizationContext)}");
-            _doingWork = 0;
+            _doingWork = false;
         }
         finally
         {
-            Debug.Assert(_doingWork == 0);
+            Debug.Assert(!_doingWork);
             _thread = null;
         }
     }
