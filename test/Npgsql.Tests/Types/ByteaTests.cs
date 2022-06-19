@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Threading.Tasks;
@@ -65,22 +66,26 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task Write_as_MemoryStream()
         => AssertTypeWrite(
-            new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+            () => new MemoryStream(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
 
     [Test]
     public async Task Write_as_FileStream()
     {
         var filePath = Path.GetTempFileName();
+        var fsList = new List<FileStream>();
         try
         {
             await File.WriteAllBytesAsync(filePath, new byte[] { 1, 2, 3 });
-            await using var fs = File.OpenRead(filePath);
+
 
             await AssertTypeWrite(
-                fs, "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+                () => FileStreamFactory(filePath, fsList), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
         }
         finally
         {
+            foreach (var fs in fsList)
+                await fs.DisposeAsync();
+
             try
             {
                 File.Delete(filePath);
@@ -88,6 +93,12 @@ public class ByteaTests : MultiplexingTestBase
             catch {}
         }
 
+        FileStream FileStreamFactory(string filePath, List<FileStream> fsList)
+        {
+            var fs = File.OpenRead(filePath);
+            fsList.Add(fs);
+            return fs;
+        }
     }
 
     [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]

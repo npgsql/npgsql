@@ -58,7 +58,7 @@ namespace Npgsql.Tests
             if (isDefault is not null)
                 isDefaultForReading = isDefaultForWriting = isDefault.Value;
 
-            await AssertTypeWrite(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType);
+            await AssertTypeWrite(connection, () => value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForWriting, isNpgsqlDbTypeInferredFromClrType);
             return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer);
         }
 
@@ -69,8 +69,20 @@ namespace Npgsql.Tests
             return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault);
         }
 
-        public async Task AssertTypeWrite<T>(
+        public Task AssertTypeWrite<T>(
             T value,
+            string expectedSqlLiteral,
+            string pgTypeName,
+            NpgsqlDbType npgsqlDbType,
+            DbType? dbType = null,
+            DbType? inferredDbType = null,
+            bool isDefault = true,
+            bool isNpgsqlDbTypeInferredFromClrType = true)
+            => AssertTypeWrite(() => value, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault,
+                isNpgsqlDbTypeInferredFromClrType);
+
+        public async Task AssertTypeWrite<T>(
+            Func<T> valueFactory,
             string expectedSqlLiteral,
             string pgTypeName,
             NpgsqlDbType npgsqlDbType,
@@ -80,7 +92,7 @@ namespace Npgsql.Tests
             bool isNpgsqlDbTypeInferredFromClrType = true)
         {
             await using var connection = await OpenConnectionAsync();
-            await AssertTypeWrite(connection, value, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault, isNpgsqlDbTypeInferredFromClrType);
+            await AssertTypeWrite(connection, valueFactory, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault, isNpgsqlDbTypeInferredFromClrType);
         }
 
         internal static async Task<T> AssertTypeRead<T>(
@@ -125,7 +137,7 @@ namespace Npgsql.Tests
 
         internal static async Task AssertTypeWrite<T>(
             NpgsqlConnection connection,
-            T value,
+            Func<T> valueFactory,
             string expectedSqlLiteral,
             string pgTypeName,
             NpgsqlDbType npgsqlDbType,
@@ -155,13 +167,13 @@ namespace Npgsql.Tests
             await using var cmd = new NpgsqlCommand { Connection = connection };
 
             // With NpgsqlDbType
-            var p = new NpgsqlParameter { Value = value, NpgsqlDbType = npgsqlDbType };
+            var p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
             CheckInference();
 
             // With data type name
-            p = new NpgsqlParameter { Value = value, DataTypeName = pgTypeNameWithoutFacets };
+            p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacets };
             cmd.Parameters.Add(p);
             errorIdentifier[++errorIdentifierIndex] = $"DataTypeName={pgTypeNameWithoutFacets}";
             CheckInference();
@@ -169,7 +181,7 @@ namespace Npgsql.Tests
             // With DbType
             if (dbType is not null)
             {
-                p = new NpgsqlParameter { Value = value, DbType = dbType.Value };
+                p = new NpgsqlParameter { Value = valueFactory(), DbType = dbType.Value };
                 cmd.Parameters.Add(p);
                 errorIdentifier[++errorIdentifierIndex] = $"DbType={dbType}";
                 CheckInference();
@@ -178,14 +190,14 @@ namespace Npgsql.Tests
             if (isDefault)
             {
                 // With (non-generic) value only
-                p = new NpgsqlParameter { Value = value };
+                p = new NpgsqlParameter { Value = valueFactory() };
                 cmd.Parameters.Add(p);
                 errorIdentifier[++errorIdentifierIndex] = "Value only (non-generic)";
                 if (isNpgsqlDbTypeInferredFromClrType)
                     CheckInference();
 
                 // With (generic) value only
-                p = new NpgsqlParameter<T> { TypedValue = value };
+                p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
                 cmd.Parameters.Add(p);
                 errorIdentifier[++errorIdentifierIndex] = "Value only (generic)";
                 if (isNpgsqlDbTypeInferredFromClrType)

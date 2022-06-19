@@ -58,9 +58,11 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
         if (parameter != null && parameter.Size > 0)
             return parameter.Size;
 
+        // TODO: add message (and maybe break the connection?)
         if (!stream.CanSeek)
             throw new NpgsqlException();
 
+        // TODO: perhaps try/catch with break?
         return (int)(stream.Length - stream.Position);
     }
 
