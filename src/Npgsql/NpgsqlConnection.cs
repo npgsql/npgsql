@@ -171,13 +171,21 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     void GetPoolAndSettings()
     {
+        // Fast path: a pool already corresponds to this exact version of the connection string.
         if (PoolManager.TryGetValue(_connectionString, out _pool))
         {
             Settings = _pool.Settings;  // Great, we already have a pool
             return;
         }
 
-        // Connection string hasn't been seen before. Parse it.
+        // Connection string hasn't been seen before. Check for empty and parse (slow one-time path).
+        if (_connectionString == string.Empty)
+        {
+            Settings = DefaultSettings;
+            _pool = null;
+            return;
+        }
+
         var settings = new NpgsqlConnectionStringBuilder(_connectionString);
         settings.Validate();
         Settings = settings;
@@ -324,15 +332,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
 
-                ConnectorBindingScope = ConnectorBindingScope.Connection;
-                connector.Connection = this;
-                Connector = connector;
-
-                if (enlistToTransaction is not null)
-                    EnlistTransaction(enlistToTransaction);
-
-                timeout = new NpgsqlTimeout(connectionTimeout);
-
                 // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
                 // (and ReloadTypes() called), or global mappings may have changed by the user.
                 // Bring this up to date if needed.
@@ -340,6 +339,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // need to update the connector type mapper (this is why this is here).
                 if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+
+                ConnectorBindingScope = ConnectorBindingScope.Connection;
+                connector.Connection = this;
+                Connector = connector;
+
+                if (enlistToTransaction is not null)
+                    EnlistTransaction(enlistToTransaction);
 
                 LogMessages.OpenedConnection(Logger, Host!, Port, Database, _userFacingConnectionString, connector.Id);
                 FullState = ConnectionState.Open;
@@ -754,7 +760,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         EnlistedTransaction = transaction;
         if (transaction == null)
         {
-            EnlistedTransaction = null;
+            EndBindingScope(ConnectorBindingScope.Transaction);
             return;
         }
 

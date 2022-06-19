@@ -25,16 +25,15 @@ sealed partial class TimestampHandler : NpgsqlSimpleTypeHandler<LocalDateTime>,
     public override LocalDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         => ReadLocalDateTime(buf);
 
-    // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
     internal static LocalDateTime ReadLocalDateTime(NpgsqlReadBuffer buf)
         => buf.ReadInt64() switch
         {
             long.MaxValue => DisableDateTimeInfinityConversions
                 ? throw new InvalidCastException(InfinityExceptionMessage)
-                : LocalDate.MaxIsoValue + LocalTime.MaxValue,
+                : LocalDateTime.MaxIsoValue,
             long.MinValue => DisableDateTimeInfinityConversions
                 ? throw new InvalidCastException(InfinityExceptionMessage)
-                : LocalDate.MinIsoValue + LocalTime.MinValue,
+                : LocalDateTime.MinIsoValue,
             var value => DecodeInstant(value).InUtc().LocalDateTime
         };
 
@@ -56,16 +55,15 @@ sealed partial class TimestampHandler : NpgsqlSimpleTypeHandler<LocalDateTime>,
 
     internal static void WriteLocalDateTime(LocalDateTime value, NpgsqlWriteBuffer buf)
     {
-        // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
         if (!DisableDateTimeInfinityConversions)
         {
-            if (value == LocalDate.MaxIsoValue + LocalTime.MaxValue)
+            if (value == LocalDateTime.MaxIsoValue)
             {
                 buf.WriteInt64(long.MaxValue);
                 return;
             }
 
-            if (value == LocalDate.MinIsoValue + LocalTime.MinValue)
+            if (value == LocalDateTime.MinIsoValue)
             {
                 buf.WriteInt64(long.MinValue);
                 return;

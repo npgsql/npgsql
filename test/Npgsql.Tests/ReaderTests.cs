@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
@@ -1420,8 +1419,46 @@ LANGUAGE plpgsql VOLATILE";
 
         static Func<NpgsqlDataReader, int, Task<Stream>> BuildStreamGetter(bool isAsync)
             => isAsync
-                ? (Func<NpgsqlDataReader, int, Task<Stream>>)((r, index) => r.GetStreamAsync(index))
+                ? (r, index) => r.GetStreamAsync(index)
                 : (r, index) => Task.FromResult(r.GetStream(index));
+
+        [Test]
+        public async Task GetStream_after_consuming_column_throws([Values] bool async)
+        {
+            if (!IsSequential)
+                return;
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand(@"SELECT '\xDEADBEEF'::bytea", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+
+            _ = reader.GetFieldValue<byte[]>(0);
+
+            if (async)
+                Assert.That(() => reader.GetStreamAsync(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            else
+                Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public async Task GetStream_in_middle_of_column_throws([Values] bool async)
+        {
+            if (!IsSequential)
+                return;
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand(@"SELECT '\xDEADBEEF'::bytea", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+
+            _ = reader.GetBytes(0, 0, new byte[2], 0, 2);
+
+            if (async)
+                Assert.That(() => reader.GetStreamAsync(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            else
+                Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
 
         #endregion GetBytes / GetStream
 
@@ -1577,6 +1614,44 @@ LANGUAGE plpgsql VOLATILE";
                 reader2.Read();
                 Assert.That(reader2.GetInt32(0), Is.EqualTo(9));
             }
+        }
+
+        [Test]
+        public async Task GetTextReader_after_consuming_column_throws([Values] bool async)
+        {
+            if (!IsSequential)
+                return;
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 'foo'", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+
+            _ = reader.GetString(0);
+
+            if (async)
+                Assert.That(() => reader.GetTextReaderAsync(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            else
+                Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public async Task GetTextReader_in_middle_of_column_throws([Values] bool async)
+        {
+            if (!IsSequential)
+                return;
+
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 'foo'", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await reader.ReadAsync();
+
+            _ = reader.GetChars(0, 0, new char[2], 0, 2);
+
+            if (async)
+                Assert.That(() => reader.GetTextReaderAsync(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            else
+                Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         #endregion GetChars / GetTextReader

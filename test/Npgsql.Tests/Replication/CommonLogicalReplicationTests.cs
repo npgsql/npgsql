@@ -172,7 +172,11 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                 }, Throws.InstanceOf<PostgresException>()
                     .With.Property("SqlState")
                     .EqualTo("XX000")
-                    .And.Message.Contains("USE_SNAPSHOT"));
+                    .And.Message.Contains(
+                        c.PostgreSqlVersion.Major < 15
+                            ? "USE_SNAPSHOT"
+                            : "(SNAPSHOT 'use')"
+                        ));
             });
 
     [Test]

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
+using Npgsql.Util;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Util.Statics;
@@ -784,7 +785,7 @@ public class ConnectionTests : MultiplexingTestBase
     #endregion Server version
 
     [Test]
-    public void Set_connection_string()
+    public void Setting_connection_string_while_open_throws()
     {
         using var conn = new NpgsqlConnection();
         conn.ConnectionString = ConnectionString;
@@ -798,6 +799,42 @@ public class ConnectionTests : MultiplexingTestBase
         var conn = new NpgsqlConnection();
         Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
         Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Constructor_with_null_connection_string()
+    {
+        var conn = new NpgsqlConnection(null);
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Constructor_with_empty_connection_string()
+    {
+        var conn = new NpgsqlConnection("");
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Set_connection_string_to_null()
+    {
+        var conn = new NpgsqlConnection(ConnectionString);
+        conn.ConnectionString = null;
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(conn.Settings.Host, Is.Null);
+        Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
+    }
+
+    [Test]
+    public void Set_connection_string_to_empty()
+    {
+        var conn = new NpgsqlConnection(ConnectionString);
+        conn.ConnectionString = "";
+        Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+        Assert.That(conn.Settings.Host, Is.Null);
         Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
     }
 
@@ -1806,6 +1843,51 @@ CREATE TABLE record ()");
 
         Assert.DoesNotThrowAsync(conn.OpenAsync);
         Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+    }
+
+    [Test]
+    [NonParallelizable]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
+    public async Task Breaking_connection_while_loading_database_info()
+    {
+        if (IsMultiplexing)
+            return;
+
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+
+        await using var firstConn = new NpgsqlConnection(connString);
+        NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
+        try
+        {
+            // Test the first time we load the database info
+            Assert.ThrowsAsync<NotImplementedException>(firstConn.OpenAsync);
+        }
+        finally
+        {
+            NpgsqlDatabaseInfo.ResetFactories();
+        }
+
+        await firstConn.OpenAsync();
+        await using var secondConn = await OpenConnectionAsync(connString);
+        await secondConn.CloseAsync();
+        firstConn.ReloadTypes();
+
+        NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
+        try
+        {
+            // Test the case of loading the database info after type reloading
+            Assert.ThrowsAsync<NotImplementedException>(secondConn.OpenAsync);
+        }
+        finally
+        {
+            NpgsqlDatabaseInfo.ResetFactories();
+        }
+    }
+
+    class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+    {
+        public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
+            => throw conn.Break(new NotImplementedException());
     }
 
     #region Logging tests
