@@ -171,10 +171,10 @@ public class ByteaTests : MultiplexingTestBase
 
         for (int bx = 0, cx = 0; bx < bytes.Length; ++bx, ++cx)
         {
-            b = ((byte)(bytes[bx] >> 4));
+            b = (byte)(bytes[bx] >> 4);
             c[cx] = (char)(b > 9 ? b - 10 + 'a' : b + '0');
 
-            b = ((byte)(bytes[bx] & 0x0F));
+            b = (byte)(bytes[bx] & 0x0F);
             c[++cx] = (char)(b > 9 ? b - 10 + 'a' : b + '0');
         }
 

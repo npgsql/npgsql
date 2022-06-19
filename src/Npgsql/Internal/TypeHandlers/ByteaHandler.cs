@@ -46,7 +46,7 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
         => throw new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading.");
     
     ValueTask<Stream> INpgsqlTypeHandler<Stream>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        => throw new NotSupportedException("Only writing Stream to PostgreSQL bytea is supported, no reading.");
+        => throw new NotSupportedException("Reading a PostgreSQL bytea as a Stream is unsupported, use NpgsqlDataReader.GetStream() instead..");
 
     int ValidateAndGetLength(int bufferLen, NpgsqlParameter? parameter)
         => parameter == null || parameter.Size <= 0 || parameter.Size >= bufferLen
@@ -67,7 +67,7 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
         }
         catch (Exception ex)
         {
-            throw new NpgsqlException("Cannot write a stream of bytes", ex);
+            throw new NpgsqlException("The remaining bytes in the provided Stream exceed the maximum length. The vaule may be truncated by setting NpgsqlParameter.Size.", ex);
         }
     }
 
