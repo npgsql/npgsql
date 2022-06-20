@@ -34,6 +34,75 @@ public class AuthenticationTests : MultiplexingTestBase
         using var ___ = await OpenConnectionAsync(connectionString);
     }
 
+    [Test]
+    public async Task Set_Password_on_NpgsqlDataSource()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        await using var dataSource = dataSourceBuilder.GetDataSource();
+
+        // No password provided
+        Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<NpgsqlException>());
+
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString);
+        dataSource.Password = connectionStringBuilder.Password!;
+
+        await using var connection1 = await dataSource.OpenConnectionAsync();
+        await using var connection2 = dataSource.OpenConnection();
+    }
+
+    [Test]
+    public async Task Periodic_password_provider()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
+
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new(password), TimeSpan.FromMinutes(1));
+        await using var dataSource = dataSourceBuilder.GetDataSource();
+
+        await using var connection1 = await dataSource.OpenConnectionAsync();
+        await using var connection2 = dataSource.OpenConnection();
+    }
+
+    [Test]
+    public async Task Periodic_password_provider_with_first_time_exception()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => throw new Exception("FOO"), TimeSpan.FromDays(30));
+        await using var dataSource = dataSourceBuilder.GetDataSource();
+
+        Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<NpgsqlException>()
+            .With.InnerException.With.Message.EqualTo("FOO"));
+        Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<NpgsqlException>()
+            .With.InnerException.With.Message.EqualTo("FOO"));
+    }
+
+    [Test]
+    public async Task Inline_password_provider()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
+
+        dataSourceBuilder.UseInlinePasswordProvider(_ => password, (_, _) => new(password));
+        await using var dataSource = dataSourceBuilder.GetDataSource();
+
+        await using var connection1 = await dataSource.OpenConnectionAsync();
+        await using var connection2 = dataSource.OpenConnection();
+    }
+
+    [Test]
+    public void Both_password_and_password_provider_is_not_supported()
+    {
+        // Periodic
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1));
+        Assert.That(() => dataSourceBuilder.GetDataSource(), Throws.Exception.TypeOf<NotSupportedException>());
+
+        // Inline
+        dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
+        dataSourceBuilder.UseInlinePasswordProvider(_ => "foo", (_, _) => new("foo"));
+        Assert.That(() => dataSourceBuilder.GetDataSource(), Throws.Exception.TypeOf<NotSupportedException>());
+    }
+
     #region pgpass
 
     [Test]
@@ -358,6 +427,15 @@ public class AuthenticationTests : MultiplexingTestBase
 #pragma warning restore CS0618 // ProvidePasswordCallback is Obsolete
 
     #endregion
+
+    NpgsqlDataSourceBuilder GetPasswordlessDataSourceBuilder()
+        => new(TestUtil.ConnectionString)
+        {
+            ConnectionStringBuilder =
+            {
+                Password = null
+            }
+        };
 
     public AuthenticationTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
