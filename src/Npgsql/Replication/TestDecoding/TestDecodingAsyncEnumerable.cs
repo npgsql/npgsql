@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -46,12 +47,36 @@ class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs());
         var encoding = _connection.Encoding!;
 
-        await foreach (var msg in stream.WithCancellation(cancellationToken))
+        var buffer = ArrayPool<byte>.Shared.Rent(4096);
+
+        try
         {
-            var memoryStream = new MemoryStream();
-            await msg.Data.CopyToAsync(memoryStream, 4096, CancellationToken.None);
-            var data = encoding.GetString(memoryStream.ToArray());
-            yield return _cachedMessage.Populate(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
+            await foreach (var msg in stream.WithCancellation(cancellationToken))
+            {
+                var len = (int)msg.Data.Length;
+                if (len > buffer.Length)
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                    buffer = ArrayPool<byte>.Shared.Rent(len);
+                }
+
+                var offset = 0;
+                while (offset < len)
+                {
+                    var read = await msg.Data.ReadAsync(buffer, offset, len - offset, CancellationToken.None);
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    offset += read;
+                }
+
+                var data = encoding.GetString(buffer, 0, len);
+
+                yield return _cachedMessage.Populate(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 }
