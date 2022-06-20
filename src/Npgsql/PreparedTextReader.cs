@@ -7,8 +7,8 @@ namespace Npgsql;
 
 sealed class PreparedTextReader : TextReader
 {
-    string _str;
-    NpgsqlReadBuffer.ColumnStream _stream;
+    string _str = null!;
+    NpgsqlReadBuffer.ColumnStream _stream = null!;
 
     int _position;
     bool _disposed;
