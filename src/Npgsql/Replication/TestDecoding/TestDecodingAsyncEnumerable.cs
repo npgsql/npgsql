@@ -54,6 +54,7 @@ class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
             await foreach (var msg in stream.WithCancellation(cancellationToken))
             {
                 var len = (int)msg.Data.Length;
+                Debug.Assert(msg.Data.Position == 0);
                 if (len > buffer.Length)
                 {
                     ArrayPool<byte>.Shared.Return(buffer);
@@ -69,6 +70,7 @@ class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
                     offset += read;
                 }
 
+                Debug.Assert(offset == len);
                 var data = encoding.GetString(buffer, 0, len);
 
                 yield return _cachedMessage.Populate(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
