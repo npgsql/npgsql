@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 
@@ -41,10 +42,25 @@ sealed class PreparedTextReader : TextReader
             : -1;
     }
 
-    public override int Read(char[] buffer, int index, int count)
+    public
+#if !NETSTANDARD2_0
+    override 
+#endif
+    int Read(Span<char> buffer)
     {
         CheckDisposed();
-        
+
+        var toRead = Math.Min(buffer.Length, _str.Length - _position);
+        if (toRead == 0)
+            return 0;
+
+        _str.AsSpan(_position, toRead).CopyTo(buffer);
+        _position += toRead;
+        return toRead;
+    }
+
+    public override int Read(char[] buffer, int index, int count)
+    {
         if (buffer == null)
         {
             throw new ArgumentNullException(nameof(buffer));
@@ -58,17 +74,19 @@ sealed class PreparedTextReader : TextReader
             throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
 
-        var toRead = Math.Min(count, _str.Length - _position);
-        if (toRead == 0)
-            return 0;
-
-        _str.CopyTo(_position, buffer, index, toRead);
-        _position += toRead;
-        return toRead;
+        return Read(buffer.AsSpan(index, count));
     }
 
     public override Task<int> ReadAsync(char[] buffer, int index, int count)
         => Task.FromResult(Read(buffer, index, count));
+
+    public
+#if !NETSTANDARD2_0
+    override 
+#endif
+    ValueTask<int> ReadAsync(Memory<char> buffer, CancellationToken cancellationToken = default) => new(Read(buffer.Span));
+
+    public override Task<string?> ReadLineAsync() => Task.FromResult<string?>(ReadLine());
 
     public override string ReadToEnd()
     {
@@ -83,7 +101,7 @@ sealed class PreparedTextReader : TextReader
     }
 
     public override Task<string> ReadToEndAsync() => Task.FromResult(ReadToEnd());
-    
+
     void CheckDisposed()
     {
         if (_disposed || _stream.IsDisposed)
