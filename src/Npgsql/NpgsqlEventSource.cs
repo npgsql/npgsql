@@ -27,8 +27,8 @@ sealed class NpgsqlEventSource : EventSource
     PollingCounter? _preparedCommandsRatioCounter;
 
     PollingCounter? _poolsCounter;
-    readonly object _poolsLock = new();
-    readonly Dictionary<ConnectorSource, (PollingCounter IdleConnectionsCounter, PollingCounter BusyConnectionsCounter)?> _pools = new();
+    readonly object _dataSourcesLock = new();
+    readonly Dictionary<NpgsqlDataSource, (PollingCounter IdleConnectionsCounter, PollingCounter BusyConnectionsCounter)?> _dataSources = new();
 
     PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
     PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
@@ -77,12 +77,12 @@ sealed class NpgsqlEventSource : EventSource
 
     internal void CommandFailed() => Interlocked.Increment(ref _failedCommands);
 
-    internal void PoolCreated(ConnectorSource pool)
+    internal void DataSourceCreated(NpgsqlDataSource dataSource)
     {
 #if !NETSTANDARD2_0
-        lock (_poolsLock)
+        lock (_dataSourcesLock)
         {
-            _pools.Add(pool, null);
+            _dataSources.Add(dataSource, null);
         }
 #endif
     }
@@ -96,11 +96,11 @@ sealed class NpgsqlEventSource : EventSource
     }
 
 #if !NETSTANDARD2_0
-    double GetPoolsCount()
+    double GetDataSourceCount()
     {
-        lock (_poolsLock)
+        lock (_dataSourcesLock)
         {
-            return _pools.Count;
+            return _dataSources.Count;
         }
     }
 
@@ -176,7 +176,7 @@ sealed class NpgsqlEventSource : EventSource
                 DisplayUnits = "%"
             };
 
-            _poolsCounter = new PollingCounter("connection-pools", this, GetPoolsCount)
+            _poolsCounter = new PollingCounter("connection-pools", this, GetDataSourceCount)
             {
                 DisplayName = "Connection Pools"
             };
@@ -191,15 +191,15 @@ sealed class NpgsqlEventSource : EventSource
                 DisplayName = "Average write time per multiplexing batch (us)",
                 DisplayUnits = "us"
             };
-            lock (_poolsLock)
+            lock (_dataSourcesLock)
             {
-                foreach (var pool in _pools.Keys)
+                foreach (var dataSource in _dataSources.Keys)
                 {
-                    if (!_pools[pool].HasValue)
+                    if (!_dataSources[dataSource].HasValue)
                     {
-                        _pools[pool] = (
-                            new PollingCounter($"Idle Connections ({pool.Settings.ToStringWithoutPassword()}])", this, () => pool.Statistics.Idle),
-                            new PollingCounter($"Busy Connections ({pool.Settings.ToStringWithoutPassword()}])", this, () => pool.Statistics.Busy));
+                        _dataSources[dataSource] = (
+                            new PollingCounter($"Idle Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Idle),
+                            new PollingCounter($"Busy Connections ({dataSource.Settings.ToStringWithoutPassword()}])", this, () => dataSource.Statistics.Busy));
                     }
                 }
             }

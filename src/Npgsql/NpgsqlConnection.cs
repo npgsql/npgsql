@@ -63,14 +63,14 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
-    ConnectorSource? _pool;
+    NpgsqlDataSource? _dataSource;
 
-    internal ConnectorSource Pool
+    internal NpgsqlDataSource NpgsqlDataSource
     {
         get
         {
-            Debug.Assert(_pool is not null);
-            return _pool;
+            Debug.Assert(_dataSource is not null);
+            return _dataSource;
         }
     }
 
@@ -148,6 +148,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public NpgsqlConnection(string? connectionString) : this()
         => ConnectionString = connectionString;
 
+    internal static NpgsqlConnection FromDataSource(NpgsqlDataSource dataSource)
+        => new()
+        {
+            _dataSource = dataSource,
+            _userFacingConnectionString = dataSource.ConnectionString
+        };
+
     /// <summary>
     /// Opens a database connection with the property settings specified by the <see cref="ConnectionString"/>.
     /// </summary>
@@ -169,12 +176,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             return Open(true, cancellationToken);
     }
 
-    void GetPoolAndSettings()
+    void SetupDataSource()
     {
         // Fast path: a pool already corresponds to this exact version of the connection string.
-        if (PoolManager.TryGetValue(_connectionString, out _pool))
+        if (PoolManager.Pools.TryGetValue(_connectionString, out _dataSource))
         {
-            Settings = _pool.Settings;  // Great, we already have a pool
+            Settings = _dataSource.Settings;  // Great, we already have a pool
             return;
         }
 
@@ -182,30 +189,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (_connectionString == string.Empty)
         {
             Settings = DefaultSettings;
-            _pool = null;
+            _dataSource = null;
             return;
         }
 
         var settings = new NpgsqlConnectionStringBuilder(_connectionString);
-        settings.Validate();
+        settings.PostProcessAndValidate();
         Settings = settings;
-
-        var hostsSeparator = settings.Host?.IndexOf(',');
-        if (hostsSeparator is -1)
-        {
-            if (settings.TargetSessionAttributesParsed is not null &&
-                settings.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
-            {
-                throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
-            }
-
-            if (!NpgsqlConnectionStringBuilder.IsUnixSocket(settings.Host!, settings.Port, out _) &&
-                NpgsqlConnectionStringBuilder.TrySplitHostPort(settings.Host!.AsSpan(), out var newHost, out var newPort))
-            {
-                settings.Host = newHost;
-                settings.Port = newPort;
-            }
-        }
 
         // The connection string may be equivalent to one that has already been seen though (e.g. different
         // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
@@ -214,56 +204,42 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // that are otherwise identical point to the same pool.
         var canonical = settings.ConnectionStringForMultipleHosts;
 
-        if (PoolManager.TryGetValue(canonical, out _pool))
+        if (PoolManager.Pools.TryGetValue(canonical, out _dataSource))
         {
             // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-            if (_pool is MultiHostConnectorPool mhcpCanonical)
-                _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, mhcpCanonical);
+            if (_dataSource is MultiHostDataSource mhdsCanonical)
+                _dataSource = new MultiHostDataSourceWrapper(Settings, _connectionString, mhdsCanonical);
             // The pool was found, but only under the canonical key - we're using a different version
             // for the first time. Map it via our own key for next time.
-            _pool = PoolManager.GetOrAdd(_connectionString, _pool);
+            _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
             return;
         }
 
         // Really unseen, need to create a new pool
         // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
         // The connection string pool can either be added here or above, if it's added above we should just use that.
-        ConnectorSource newPool;
-        if (hostsSeparator.HasValue && hostsSeparator != -1)
-        {
-            if (settings.Multiplexing)
-                throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
-            if (settings.ReplicationMode != ReplicationMode.Off)
-                throw new NotSupportedException("Replication is not supported with multiple hosts");
-            newPool = new MultiHostConnectorPool(settings, canonical);
-        }
-        else if (settings.Multiplexing)
-            newPool = new MultiplexingConnectorPool(settings, canonical);
-        else if (settings.Pooling)
-            newPool = new ConnectorPool(settings, canonical);
-        else
-            newPool = new UnpooledConnectorSource(settings, canonical);
+        var newDataSource = NpgsqlDataSource.Create(canonical);
 
-        _pool = PoolManager.GetOrAdd(canonical, newPool);
-        if (_pool == newPool)
+        _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
+        if (_dataSource == newDataSource)
         {
-            Debug.Assert(_pool is not MultiHostConnectorPoolWrapper);
+            Debug.Assert(_dataSource is not MultiHostDataSourceWrapper);
             // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
             // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-            if (_pool is MultiHostConnectorPool multiHostConnectorPool)
+            if (_dataSource is MultiHostDataSource multiHostConnectorPool)
                 foreach (var hostPool in multiHostConnectorPool.Pools)
-                    NpgsqlEventSource.Log.PoolCreated(hostPool);
+                    NpgsqlEventSource.Log.DataSourceCreated(hostPool);
             else
-                NpgsqlEventSource.Log.PoolCreated(newPool);
+                NpgsqlEventSource.Log.DataSourceCreated(newDataSource);
         }
         else
-            newPool.Dispose();
+            newDataSource.Dispose();
 
         // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-        if (_pool is MultiHostConnectorPool mhcp)
-            _pool = new MultiHostConnectorPoolWrapper(Settings, _connectionString, mhcp);
+        if (_dataSource is MultiHostDataSource mhds)
+            _dataSource = new MultiHostDataSourceWrapper(Settings, _connectionString, mhds);
 
-        _pool = PoolManager.GetOrAdd(_connectionString, _pool);
+        _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
     }
 
     internal Task Open(bool async, CancellationToken cancellationToken)
@@ -271,7 +247,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckClosed();
         Debug.Assert(Connector == null);
 
-        if (_pool is null)
+        if (_dataSource is null)
         {
             Debug.Assert(string.IsNullOrEmpty(_connectionString));
 
@@ -279,7 +255,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
 
         FullState = ConnectionState.Connecting;
-        _userFacingConnectionString = _pool.UserFacingConnectionString;
+        _userFacingConnectionString = _dataSource.ConnectionString;
         LogMessages.OpeningConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
 
         if (Settings.Multiplexing)
@@ -294,7 +270,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
             // If we've never connected with this connection string, open a physical connector in order to generate
             // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-            if (!((MultiplexingConnectorPool)_pool).IsBootstrapped)
+            if (!((MultiplexingDataSource)_dataSource).IsBootstrapped)
                 return BootstrapMultiplexing(async, cancellationToken);
 
             LogMessages.OpenedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
@@ -321,13 +297,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // to this transaction which has been closed. If so, return that as an optimization rather than
                 // opening a new one and triggering escalation to a distributed transaction.
                 // Otherwise just get a new connector and enlist below.
-                if (enlistToTransaction is not null && _pool.TryRentEnlistedPending(enlistToTransaction, this, out connector))
+                if (enlistToTransaction is not null && _dataSource.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                 {
                     EnlistedTransaction = enlistToTransaction;
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await _pool.Get(this, timeout, async, cancellationToken);
+                    connector = await _dataSource.Get(this, timeout, async, cancellationToken);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
@@ -372,7 +348,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             try
             {
                 var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                await ((MultiplexingConnectorPool)Pool).BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                await ((MultiplexingDataSource)NpgsqlDataSource).BootstrapMultiplexing(this, timeout, async, cancellationToken);
                 LogMessages.OpenedMultiplexingConnection(Logger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
                 FullState = ConnectionState.Open;
             }
@@ -404,7 +380,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             CheckClosed();
 
             _userFacingConnectionString = _connectionString = value ?? string.Empty;
-            GetPoolAndSettings();
+            SetupDataSource();
         }
     }
 
@@ -793,7 +769,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// If it is non-pooled, the physical connection will be closed.
     /// </summary>
 #if NETSTANDARD2_0
-        public Task CloseAsync()
+    public Task CloseAsync()
 #else
     public override Task CloseAsync()
 #endif
@@ -894,7 +870,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // If a *non-pooled* connection is being closed but is enlisted in an ongoing
                 // TransactionScope, we do nothing - simply detach the connector from the connection and leave
                 // it open. It will be closed when the TransactionScope is disposed.
-                _pool?.AddPendingEnlistedConnector(connector, EnlistedTransaction);
+                _dataSource?.AddPendingEnlistedConnector(connector, EnlistedTransaction);
 
                 EnlistedTransaction = null;
             }
@@ -1806,9 +1782,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             try
             {
                 Debug.Assert(Settings.Multiplexing);
-                Debug.Assert(_pool != null);
+                Debug.Assert(_dataSource != null);
 
-                var connector = await _pool.Get(this, timeout, async, cancellationToken);
+                var connector = await _dataSource.Get(this, timeout, async, cancellationToken);
                 Connector = connector;
                 connector.Connection = this;
                 ConnectorBindingScope = scope;
@@ -1857,7 +1833,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             return;
 
         Debug.Assert(Connector != null, $"Ending binding scope {scope} but connector is null");
-        Debug.Assert(_pool != null, $"Ending binding scope {scope} but _pool is null");
+        Debug.Assert(_dataSource != null, $"Ending binding scope {scope} but _pool is null");
         Debug.Assert(Settings.Multiplexing, $"Ending binding scope {scope} but multiplexing is disabled");
 
         // TODO: If enlisted transaction scope is still active, need to AddPendingEnlistedConnector, just like Close
@@ -2006,7 +1982,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         CheckOpen();
         Close();
 
-        _pool = null;
+        _dataSource = null;
         Settings = Settings.Clone();
         Settings.Database = dbName;
         ConnectionString = Settings.ToString();
@@ -2067,7 +2043,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         if (Settings.Multiplexing)
         {
-            var multiplexingTypeMapper = ((MultiplexingConnectorPool)Pool).MultiplexingTypeMapper!;
+            var multiplexingTypeMapper = ((MultiplexingDataSource)NpgsqlDataSource).MultiplexingTypeMapper!;
             Debug.Assert(multiplexingTypeMapper == connector.TypeMapper,
                 "A connector must reference the exact same TypeMapper the MultiplexingConnectorPool does");
             // It's very probable that we've called ReloadTypes on the different connection than

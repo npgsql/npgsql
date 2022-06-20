@@ -7,13 +7,13 @@ using System.Transactions;
 
 namespace Npgsql;
 
-sealed class MultiHostConnectorPoolWrapper : ConnectorSource
+sealed class MultiHostDataSourceWrapper : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
 
-    readonly MultiHostConnectorPool _wrappedSource;
+    readonly MultiHostDataSource _wrappedSource;
 
-    public MultiHostConnectorPoolWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool source) : base(settings, connString)
+    public MultiHostDataSourceWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource source) : base(settings, connString)
         => _wrappedSource = source;
 
     internal override (int Total, int Idle, int Busy) Statistics => _wrappedSource.Statistics;
@@ -22,9 +22,9 @@ sealed class MultiHostConnectorPoolWrapper : ConnectorSource
     internal override ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         => _wrappedSource.Get(conn, timeout, async, cancellationToken);
     internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
-        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostConnectorPoolWrapper));
+        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostDataSourceWrapper));
     internal override ValueTask<NpgsqlConnector?> OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
-        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostConnectorPoolWrapper));
+        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostDataSourceWrapper));
     internal override void Return(NpgsqlConnector connector)
         => _wrappedSource.Return(connector);
 

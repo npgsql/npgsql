@@ -151,7 +151,7 @@ public class SystemTransactionTests : TestBase
             scope.Complete();
         }
         AssertNumberOfRows(1);
-        Assert.True(PoolManager.TryGetValue(connString, out var pool));
+        Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));
         Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
         using (var conn = new NpgsqlConnection(connString))

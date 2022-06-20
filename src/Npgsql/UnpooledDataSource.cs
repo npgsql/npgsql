@@ -7,9 +7,9 @@ using Npgsql.Util;
 
 namespace Npgsql;
 
-sealed class UnpooledConnectorSource : ConnectorSource
+sealed class UnpooledDataSource : NpgsqlDataSource
 {
-    public UnpooledConnectorSource(NpgsqlConnectionStringBuilder settings, string connString)
+    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, string connString)
         : base(settings, connString)
     {
     }
@@ -23,6 +23,8 @@ sealed class UnpooledConnectorSource : ConnectorSource
     internal override async ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
+        CheckDisposed();
+
         var connector = new NpgsqlConnector(this, conn);
         await connector.Open(timeout, async, cancellationToken);
         Interlocked.Increment(ref _numConnectors);

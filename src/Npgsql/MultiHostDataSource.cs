@@ -11,20 +11,20 @@ using System.Transactions;
 
 namespace Npgsql;
 
-sealed class MultiHostConnectorPool : ConnectorSource
+sealed class MultiHostDataSource : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
 
-    readonly ConnectorSource[] _pools;
+    readonly NpgsqlDataSource[] _pools;
 
-    internal ConnectorSource[] Pools => _pools;
+    internal NpgsqlDataSource[] Pools => _pools;
 
     volatile int _roundRobinIndex = -1;
 
-    public MultiHostConnectorPool(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
+    public MultiHostDataSource(NpgsqlConnectionStringBuilder settings, string connString) : base(settings, connString)
     {
         var hosts = settings.Host!.Split(',');
-        _pools = new ConnectorSource[hosts.Length];
+        _pools = new NpgsqlDataSource[hosts.Length];
         for (var i = 0; i < hosts.Length; i++)
         {
             var poolSettings = settings.Clone();
@@ -39,8 +39,8 @@ sealed class MultiHostConnectorPool : ConnectorSource
                 poolSettings.Host = host.ToString();
 
             _pools[i] = settings.Pooling
-                ? new ConnectorPool(poolSettings, poolSettings.ConnectionString, this)
-                : new UnpooledConnectorSource(poolSettings, poolSettings.ConnectionString);
+                ? new PoolingDataSource(poolSettings, poolSettings.ConnectionString, this)
+                : new UnpooledDataSource(poolSettings, poolSettings.ConnectionString);
         }
     }
 
@@ -68,7 +68,7 @@ sealed class MultiHostConnectorPool : ConnectorSource
             _ => false
         };
 
-    static ClusterState GetClusterState(ConnectorSource pool, bool ignoreExpiration = false)
+    static ClusterState GetClusterState(NpgsqlDataSource pool, bool ignoreExpiration = false)
         => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration);
 
     static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
@@ -191,6 +191,8 @@ sealed class MultiHostConnectorPool : ConnectorSource
 
     internal override async ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
+        CheckDisposed();
+
         var exceptions = new List<Exception>();
 
         var poolIndex = conn.Settings.LoadBalanceHosts ? GetRoundRobinIndex() : 0;
@@ -249,13 +251,13 @@ sealed class MultiHostConnectorPool : ConnectorSource
     }
 
     internal override void Return(NpgsqlConnector connector)
-        => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostConnectorPool));
+        => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostDataSource));
 
     internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
-        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostConnectorPool));
+        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostDataSource));
 
     internal override ValueTask<NpgsqlConnector?> OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
-        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostConnectorPool));
+        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostDataSource));
 
     internal override void Clear()
     {

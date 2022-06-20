@@ -68,5 +68,17 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseTrustServerCertificate", resourceCulture);
             }
         }
+        
+        internal static string NotSupportedOnDataSourceCommand {
+            get {
+                return ResourceManager.GetString("NotSupportedOnDataSourceCommand", resourceCulture);
+            }
+        }
+        
+        internal static string NotSupportedOnDataSourceBatch {
+            get {
+                return ResourceManager.GetString("NotSupportedOnDataSourceBatch", resourceCulture);
+            }
+        }
     }
 }
