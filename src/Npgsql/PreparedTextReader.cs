@@ -18,6 +18,7 @@ sealed class PreparedTextReader : TextReader
         _str = str;
         _stream = stream;
         _disposed = false;
+        _position = 0;
     }
 
     public bool IsDisposed => _disposed;
