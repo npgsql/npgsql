@@ -12,18 +12,11 @@ public class AssemblySetUp
     [OneTimeSetUp]
     public void Setup()
     {
-        NpgsqlLoggingConfiguration.InitializeLogging(LoggerFactory.Create(builder =>
-        {
-            builder.SetMinimumLevel(LogLevel.Trace);
-            builder.AddProvider(ListLoggerProvider.Instance);
-        }), parameterLoggingEnabled: true);
-
         var connString = TestUtil.ConnectionString;
         using var conn = new NpgsqlConnection(connString);
         try
         {
             conn.Open();
-            return;
         }
         catch (PostgresException e)
         {

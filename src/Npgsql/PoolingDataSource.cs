@@ -16,8 +16,6 @@ class PoolingDataSource : NpgsqlDataSource
 {
     #region Fields and properties
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-
     readonly int _max;
     readonly int _min;
     readonly TimeSpan _connectionLifetime;
@@ -40,6 +38,8 @@ class PoolingDataSource : NpgsqlDataSource
     /// </summary>
     readonly ChannelReader<NpgsqlConnector?> _idleConnectorReader;
     internal ChannelWriter<NpgsqlConnector?> IdleConnectorWriter { get; }
+
+    readonly ILogger _logger;
 
     /// <summary>
     /// Incremented every time this pool is cleared via <see cref="NpgsqlConnection.ClearPool"/> or
@@ -75,8 +75,12 @@ class PoolingDataSource : NpgsqlDataSource
 
     internal sealed override bool OwnsConnectors => true;
 
-    internal PoolingDataSource(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource? parentPool = null)
-        : base(settings, connString)
+    internal PoolingDataSource(
+        NpgsqlConnectionStringBuilder settings,
+        string connString,
+        NpgsqlLoggingConfiguration loggingConfiguration,
+        MultiHostDataSource? parentPool = null)
+        : base(settings, connString, loggingConfiguration)
     {
         if (settings.MaxPoolSize < settings.MinPoolSize)
             throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
@@ -109,6 +113,8 @@ class PoolingDataSource : NpgsqlDataSource
 
         _connectionLifetime = TimeSpan.FromSeconds(settings.ConnectionLifetime);
         Connectors = new NpgsqlConnector[_max];
+
+        _logger = LoggingConfiguration.ConnectionLogger;
     }
 
     internal sealed override ValueTask<NpgsqlConnector> Get(
@@ -225,7 +231,7 @@ class PoolingDataSource : NpgsqlDataSource
 
         if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
         {
-            LogMessages.ConnectionExceededMaximumLifetime(Logger, _connectionLifetime, connector.Id);
+            LogMessages.ConnectionExceededMaximumLifetime(_logger, _connectionLifetime, connector.Id);
             CloseConnector(connector);
             return false;
         }
@@ -347,7 +353,7 @@ class PoolingDataSource : NpgsqlDataSource
         }
         catch (Exception exception)
         {
-            LogMessages.ExceptionWhenClosingPhysicalConnection(Logger, connector.Id, exception);
+            LogMessages.ExceptionWhenClosingPhysicalConnection(_logger, connector.Id, exception);
         }
 
         var i = 0;

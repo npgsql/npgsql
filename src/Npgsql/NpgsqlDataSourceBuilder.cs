@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Npgsql;
 
@@ -8,6 +8,9 @@ namespace Npgsql;
 /// </summary>
 public class NpgsqlDataSourceBuilder
 {
+    ILoggerFactory? _loggerFactory;
+    bool _sensitiveDataLoggingEnabled;
+
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
     /// </summary>
@@ -25,6 +28,30 @@ public class NpgsqlDataSourceBuilder
         => ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
 
     /// <summary>
+    /// Sets the <see cref="ILoggerFactory" /> that will be used for logging.
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory to be used.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseLoggerFactory(ILoggerFactory? loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+        return this;
+    }
+
+    /// <summary>
+    /// Enables parameters to be included in logging. This includes potentially sensitive information from data sent to PostgreSQL.
+    /// You should only enable this flag in development, or if you have the appropriate security measures in place based on the
+    /// sensitivity of this data.
+    /// </summary>
+    /// <param name="parameterLoggingEnabled">If <see langword="true" />, then sensitive data is logged.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder EnableParameterLogging(bool parameterLoggingEnabled = true)
+    {
+        _sensitiveDataLoggingEnabled = parameterLoggingEnabled;
+        return this;
+    }
+
+    /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource GetDataSource()
@@ -33,19 +60,23 @@ public class NpgsqlDataSourceBuilder
 
         ConnectionStringBuilder.PostProcessAndValidate();
 
+        var loggingConfiguration = _loggerFactory is null
+            ? NpgsqlLoggingConfiguration.NullConfiguration
+            : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled);
+
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
             if (ConnectionStringBuilder.Multiplexing)
                 throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
             if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
                 throw new NotSupportedException("Replication is not supported with multiple hosts");
-            return new MultiHostDataSource(ConnectionStringBuilder, connectionString);
+            return new MultiHostDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration);
         }
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString)
+            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, connectionString)
-                : new UnpooledDataSource(ConnectionStringBuilder, connectionString);
+                ? new PoolingDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration)
+                : new UnpooledDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration);
     }
 }

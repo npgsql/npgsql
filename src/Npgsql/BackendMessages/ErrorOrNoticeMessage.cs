@@ -26,10 +26,8 @@ class ErrorOrNoticeMessage
     internal string? Line { get; }
     internal string? Routine { get; }
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ExceptionLogger;
-
     // ReSharper disable once FunctionComplexityOverflow
-    internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf, bool includeDetail)
+    internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf, bool includeDetail, ILogger exceptionLogger)
     {
         (string? severity, string? invariantSeverity, string? code, string? message, string? detail, string? hint) = (null, null, null, null, null, null);
         var (position, internalPosition) = (0, 0);
@@ -69,7 +67,7 @@ class ErrorOrNoticeMessage
                 var positionStr = buf.ReadNullTerminatedStringRelaxed();
                 if (!int.TryParse(positionStr, out var tmpPosition))
                 {
-                    Logger.LogWarning("Non-numeric position in ErrorResponse: " + positionStr);
+                    exceptionLogger.LogWarning("Non-numeric position in ErrorResponse: " + positionStr);
                     continue;
                 }
                 position = tmpPosition;
@@ -78,7 +76,7 @@ class ErrorOrNoticeMessage
                 var internalPositionStr = buf.ReadNullTerminatedStringRelaxed();
                 if (!int.TryParse(internalPositionStr, out var internalPositionTmp))
                 {
-                    Logger.LogWarning("Non-numeric position in ErrorResponse: " + internalPositionStr);
+                    exceptionLogger.LogWarning("Non-numeric position in ErrorResponse: " + internalPositionStr);
                     continue;
                 }
                 internalPosition = internalPositionTmp;

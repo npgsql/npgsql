@@ -96,7 +96,7 @@ public static class LogicalReplicationConnectionExtensions
 
             var command = builder.ToString();
 
-            LogMessages.CreatingReplicationSlot(ReplicationConnection.Logger, slotName, command, connection.Connector.Id);
+            LogMessages.CreatingReplicationSlot(connection.ReplicationLogger, slotName, command, connection.Connector.Id);
 
             return connection.CreateReplicationSlot(command, cancellationToken);
         }
@@ -153,7 +153,7 @@ public static class LogicalReplicationConnectionExtensions
 
             var command = builder.ToString();
 
-            LogMessages.StartingLogicalReplication(ReplicationConnection.Logger, slot.Name, command, connection.Connector.Id);
+            LogMessages.StartingLogicalReplication(connection.ReplicationLogger, slot.Name, command, connection.Connector.Id);
 
             var enumerator = connection.StartReplicationInternalWrapper(command, bypassingStream, cancellationToken);
             while (await enumerator.MoveNextAsync())

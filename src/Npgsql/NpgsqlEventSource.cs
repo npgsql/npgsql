@@ -42,7 +42,6 @@ sealed class NpgsqlEventSource : EventSource
     long _currentCommands;
     long _failedCommands;
 
-
     long _multiplexingBatchesSent;
     long _multiplexingCommandsSent;
     long _multiplexingTicksWritten;

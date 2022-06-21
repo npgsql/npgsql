@@ -9,9 +9,7 @@ public class ListLoggerProvider : ILoggerProvider
     readonly ListLogger _logger;
     bool _recording;
 
-    public static ListLoggerProvider Instance = new();
-
-    ListLoggerProvider()
+    public ListLoggerProvider()
         => _logger = new ListLogger(this);
 
     public List<(LogLevel Level, EventId Id, string Message, object? State, Exception? Exception)> Log

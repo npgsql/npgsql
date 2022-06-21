@@ -141,15 +141,19 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal NpgsqlNestedDataReader? CachedFreeNestedDataReader;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _commandLogger;
 
     internal NpgsqlDataReader(NpgsqlConnector connector)
     {
         Connector = connector;
+        _commandLogger = connector.CommandLogger;
     }
 
     internal void Init(
-        NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlBatchCommand> statements, Task? sendTask = null)
+        NpgsqlCommand command,
+        CommandBehavior behavior,
+        List<NpgsqlBatchCommand> statements,
+        Task? sendTask = null)
     {
         Command = command;
         _connection = command.InternalConnection;
@@ -917,7 +921,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
         catch (Exception e)
         {
-            Logger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
+            _commandLogger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
             if (e is not PostgresException)
                 State = ReaderState.Disposed;
         }
@@ -948,7 +952,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
+                _commandLogger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
                 if (e is not PostgresException)
                     State = ReaderState.Disposed;
             }
@@ -1038,7 +1042,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
     {
-        LogMessages.ReaderCleanup(Logger, Connector.Id);
+        LogMessages.ReaderCleanup(_commandLogger, Connector.Id);
 
         // If multiplexing isn't on, _sendTask contains the task for the writing of this command.
         // Make sure that this task, which may have executed asynchronously and in parallel with the reading,
@@ -1057,14 +1061,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             catch (Exception e)
             {
                 // TODO: think of a better way to handle exceptions, see #1323 and #3163
-                Logger.LogDebug(e, "Exception caught while sending the request", Connector.Id);
+                _commandLogger.LogDebug(e, "Exception caught while sending the request", Connector.Id);
             }
         }
 
         State = ReaderState.Closed;
         Command.State = CommandState.Idle;
         Connector.CurrentReader = null;
-        if (Logger.IsEnabled(LogLevel.Information))
+        if (_commandLogger.IsEnabled(LogLevel.Information))
             Command.LogExecutingCompleted(Connector, executing: false);
         NpgsqlEventSource.Log.CommandStop();
         Connector.EndUserAction();

@@ -6,30 +6,15 @@ namespace Npgsql;
 /// <summary>
 /// Configures Npgsql logging
 /// </summary>
-public static class NpgsqlLoggingConfiguration
+public class NpgsqlLoggingConfiguration
 {
-    static NpgsqlLoggingConfiguration()
-    {
-        var nullFactory = new NullLoggerFactory();
+    internal static readonly NpgsqlLoggingConfiguration NullConfiguration
+        = new(NullLoggerFactory.Instance, isParameterLoggingEnabled: false);
 
-        ConnectionLogger = nullFactory.CreateLogger("Npgsql.Connection");
-        CommandLogger = nullFactory.CreateLogger("Npgsql.Command");
-        TransactionLogger = nullFactory.CreateLogger("Npgsql.Transaction");
-        CopyLogger = nullFactory.CreateLogger("Npgsql.Copy");
-        ReplicationLogger = nullFactory.CreateLogger("Npgsql.Replication");
-        ExceptionLogger = nullFactory.CreateLogger("Npgsql.Exception");
-    }
+    internal static ILoggerFactory GlobalLoggerFactory = NullLoggerFactory.Instance;
+    internal static bool GlobalIsParameterLoggingEnabled;
 
-    /// <summary>
-    /// Initializes Npgsql logging to use the provided <paramref name="loggerFactory" />.
-    /// Must be called before any Npgsql APIs are used.
-    /// </summary>
-    /// <param name="loggerFactory"></param>
-    /// <param name="parameterLoggingEnabled">
-    /// Determines whether parameter contents will be logged alongside SQL statements - this may reveal sensitive information.
-    /// Defaults to <see langword="false" />.
-    /// </param>
-    public static void InitializeLogging(ILoggerFactory loggerFactory, bool parameterLoggingEnabled = false)
+    internal NpgsqlLoggingConfiguration(ILoggerFactory loggerFactory, bool isParameterLoggingEnabled)
     {
         ConnectionLogger = loggerFactory.CreateLogger("Npgsql.Connection");
         CommandLogger = loggerFactory.CreateLogger("Npgsql.Command");
@@ -38,19 +23,37 @@ public static class NpgsqlLoggingConfiguration
         ReplicationLogger = loggerFactory.CreateLogger("Npgsql.Replication");
         ExceptionLogger = loggerFactory.CreateLogger("Npgsql.Exception");
 
-        IsParameterLoggingEnabled = parameterLoggingEnabled;
+        IsParameterLoggingEnabled = isParameterLoggingEnabled;
     }
 
-    internal static ILogger ConnectionLogger { get; private set; }
-    internal static ILogger CommandLogger { get; private set; }
-    internal static ILogger TransactionLogger { get; private set; }
-    internal static ILogger CopyLogger { get; private set; }
-    internal static ILogger ReplicationLogger { get; private set; }
-    internal static ILogger ExceptionLogger { get; private set; }
+    internal ILogger ConnectionLogger { get; }
+    internal ILogger CommandLogger { get; }
+    internal ILogger TransactionLogger { get; }
+    internal ILogger CopyLogger { get; }
+    internal ILogger ReplicationLogger { get; }
+    internal ILogger ExceptionLogger { get; }
 
     /// <summary>
     /// Determines whether parameter contents will be logged alongside SQL statements - this may reveal sensitive information.
     /// Defaults to false.
     /// </summary>
-    internal static bool IsParameterLoggingEnabled { get; set; }
+    internal bool IsParameterLoggingEnabled { get; }
+
+    /// <summary>
+    /// <para>
+    /// Globally initializes Npgsql logging to use the provided <paramref name="loggerFactory" />.
+    /// Must be called before any Npgsql APIs are used.
+    /// </para>
+    /// <para>
+    /// This is a legacy-only, backwards compatibility API. New applications should set the logger factory on
+    /// <see cref="NpgsqlDataSourceBuilder" /> and use the resulting <see cref="NpgsqlDataSource "/> instead.
+    /// </para>
+    /// </summary>
+    /// <param name="loggerFactory">The logging factory to use when logging from Npgsql.</param>
+    /// <param name="parameterLoggingEnabled">
+    /// Determines whether parameter contents will be logged alongside SQL statements - this may reveal sensitive information.
+    /// Defaults to <see langword="false" />.
+    /// </param>
+    public static void InitializeLogging(ILoggerFactory loggerFactory, bool parameterLoggingEnabled = false)
+        => (GlobalLoggerFactory, GlobalIsParameterLoggingEnabled) = (loggerFactory, parameterLoggingEnabled);
 }

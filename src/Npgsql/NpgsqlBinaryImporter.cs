@@ -42,7 +42,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
     NpgsqlParameter?[] _params;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
+    readonly ILogger _copyLogger;
 
     /// <summary>
     /// Current timeout
@@ -67,6 +67,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _buf = connector.WriteBuffer;
         _column = -1;
         _params = null!;
+        _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
     internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
@@ -561,7 +562,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             return;
         var connector = _connector;
 
-        LogMessages.BinaryCopyOperationCompleted(Logger, _rowsImported, connector?.Id ?? -1);
+        LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsImported, connector?.Id ?? -1);
 
         if (connector != null)
         {

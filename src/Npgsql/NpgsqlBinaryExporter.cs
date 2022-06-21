@@ -37,7 +37,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     NpgsqlTypeHandler?[] _typeHandlerCache;
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CopyLogger;
+    readonly ILogger _copyLogger;
 
     /// <summary>
     /// Current timeout
@@ -64,6 +64,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
         _column = -1;
         _typeHandlerCache = null!;
+        _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
     internal async Task Init(string copyToCommand, bool async, CancellationToken cancellationToken = default)
@@ -414,7 +415,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
         if (_isConsumed)
         {
-            LogMessages.BinaryCopyOperationCompleted(Logger, _rowsExported, _connector.Id);
+            LogMessages.BinaryCopyOperationCompleted(_copyLogger, _rowsExported, _connector.Id);
         }
         else if (!_connector.IsBroken)
         {
@@ -431,11 +432,11 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             }
             catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
             {
-                LogMessages.CopyOperationCancelled(Logger, _connector.Id);
+                LogMessages.CopyOperationCancelled(_copyLogger, _connector.Id);
             }
             catch (Exception e)
             {
-                LogMessages.ExceptionWhenDisposingCopyOperation(Logger, _connector.Id, e);
+                LogMessages.ExceptionWhenDisposingCopyOperation(_copyLogger, _connector.Id, e);
             }
         }
 
