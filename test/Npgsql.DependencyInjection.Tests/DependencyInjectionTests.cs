@@ -32,13 +32,15 @@ public class DependencyInjectionTests
         serviceCollection.AddNpgsqlDataSource(TestUtil.ConnectionString);
 
         using var serviceProvider = serviceCollection.BuildServiceProvider();
-        using var scope = serviceProvider.CreateScope();
-        var scopeServiceProvider = scope.ServiceProvider;
+        using var scope1 = serviceProvider.CreateScope();
+        using var scope2 = serviceProvider.CreateScope();
+        var scopeServiceProvider1 = scope1.ServiceProvider;
+        var scopeServiceProvider2 = scope2.ServiceProvider;
 
-        var connection1 = scopeServiceProvider.GetRequiredService<NpgsqlConnection>();
-        var connection2 = scopeServiceProvider.GetRequiredService<NpgsqlConnection>();
+        var dataSource1 = scopeServiceProvider1.GetRequiredService<NpgsqlDataSource>();
+        var dataSource2 = scopeServiceProvider2.GetRequiredService<NpgsqlDataSource>();
 
-        Assert.That(connection2, Is.SameAs(connection1));
+        Assert.That(dataSource2, Is.SameAs(dataSource1));
     }
 
     [Test]
@@ -62,7 +64,7 @@ public class DependencyInjectionTests
     }
 
     [Test]
-    public void NpgsqlConnection_is_registered_as_scoped_by_default()
+    public void NpgsqlConnection_is_registered_as_transient_by_default()
     {
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddNpgsqlDataSource("Host=localhost;Username=test;Password=test");
@@ -74,7 +76,7 @@ public class DependencyInjectionTests
         var connection1 = scopedServiceProvider1.GetRequiredService<NpgsqlConnection>();
         var connection2 = scopedServiceProvider1.GetRequiredService<NpgsqlConnection>();
 
-        Assert.That(connection2, Is.SameAs(connection1));
+        Assert.That(connection2, Is.Not.SameAs(connection1));
 
         using var scope2 = serviceProvider.CreateScope();
         var scopedServiceProvider2 = scope2.ServiceProvider;

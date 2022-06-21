@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddNpgsqlDataSource("Host=pg_server;Username=test;Password=test;Database=test");
 ```
 
-This registers a scoped [`NpgsqlConnection`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlConnection.html) which can get injected into your controllers:
+This registers a transient [`NpgsqlConnection`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlConnection.html) which can get injected into your controllers:
 
 ```csharp
 app.MapGet("/", async (NpgsqlConnection connection) =>
@@ -21,7 +21,7 @@ app.MapGet("/", async (NpgsqlConnection connection) =>
 });
 ```
 
-But wait! If all you want is to execute some simple SQL, just use the singleton [`NpgsqlDataSource`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlDataSource.html) to just execute a command directly:
+But wait! If all you want is to execute some simple SQL, just use the singleton [`NpgsqlDataSource`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlDataSource.html) to execute a command directly:
 
 ```csharp
 app.MapGet("/", async (NpgsqlDataSource dataSource) =>

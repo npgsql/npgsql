@@ -33,7 +33,7 @@ public static class NpgsqlServiceCollectionExtensions
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlDataSourceBuilder> dataSourceBuilderAction,
-        ServiceLifetime connectionLifetime = ServiceLifetime.Scoped,
+        ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
         ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
         => AddNpgsqlDataSourceCore(serviceCollection, connectionString, dataSourceBuilderAction, connectionLifetime, dataSourceLifetime);
 
@@ -54,7 +54,7 @@ public static class NpgsqlServiceCollectionExtensions
     public static IServiceCollection AddNpgsqlDataSource(
         this IServiceCollection serviceCollection,
         string connectionString,
-        ServiceLifetime connectionLifetime = ServiceLifetime.Scoped,
+        ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
         ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
         => AddNpgsqlDataSourceCore(
             serviceCollection, connectionString, dataSourceBuilderAction: null, connectionLifetime, dataSourceLifetime);
@@ -63,7 +63,7 @@ public static class NpgsqlServiceCollectionExtensions
         this IServiceCollection serviceCollection,
         string connectionString,
         Action<NpgsqlDataSourceBuilder>? dataSourceBuilderAction,
-        ServiceLifetime connectionLifetime = ServiceLifetime.Scoped,
+        ServiceLifetime connectionLifetime = ServiceLifetime.Transient,
         ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
     {
         serviceCollection.TryAdd(
