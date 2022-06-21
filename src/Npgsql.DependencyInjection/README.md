@@ -10,34 +10,38 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddNpgsqlDataSource("Host=pg_server;Username=test;Password=test;Database=test");
 ```
 
-This registers a scoped `NpgsqlConnection` which can get injected into your controllers:
+This registers a scoped [`NpgsqlConnection`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlConnection.html) which can get injected into your controllers:
 
 ```csharp
-public class MyController : Controller
+app.MapGet("/", async (NpgsqlConnection connection) =>
 {
-    private readonly NpgsqlConnection _connection;
-
-    public MyController(NpgsqlConnection connection)
-    {
-        _connection = connection;
-    }
-}
+    await connection.OpenAsync();
+    await using var command = new NpgsqlCommand("SELECT number FROM data LIMIT 1", connection);
+    return "Hello World: " + await command.ExecuteScalarAsync();
+});
 ```
 
-`AddNpgsqlDataSource` also registers a singleton `NpgsqlDataSource`, which can be handy when you need more than one connection in your controller, or other more sophisticated scenarios:
+But wait! If all you want is to execute some simple SQL, just use the singleton [`NpgsqlDataSource`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlDataSource.html) to just execute a command directly:
 
 ```csharp
-public class MyController : Controller
+app.MapGet("/", async (NpgsqlDataSource dataSource) =>
 {
-    private readonly NpgsqlDataSource _dataSource;
-
-    public MyController(NpgsqlDataSource dataSource)
-    {
-        _dataSource = dataSource;
-    }
-}
+    await using var command = dataSource.CreateCommand("SELECT number FROM data LIMIT 1");
+    return "Hello World: " + await command.ExecuteScalarAsync();
+});
 ```
 
-The `AddNpgsqlDataSource` method also accepts a lambda parameter allowing you to configure aspects of Npgsql beyond the connection string (e.g. logging).
+[`NpgsqlDataSource`](https://www.npgsql.org/doc/api/Npgsql.NpgsqlDataSource.html) can also come in handy when you need more than one connection:
+
+```csharp
+app.MapGet("/", async (NpgsqlDataSource dataSource) =>
+{
+    await using var connection1 = await dataSource.OpenConnectionAsync();
+    await using var connection2 = await dataSource.OpenConnectionAsync();
+    // Use the two connections...
+});
+```
+
+Finally, the `AddNpgsqlDataSource` method also accepts a lambda parameter allowing you to configure aspects of Npgsql beyond the connection string.
 
 For more information, [see the Npgsql documentation](https://www.npgsql.org/doc/index.html).

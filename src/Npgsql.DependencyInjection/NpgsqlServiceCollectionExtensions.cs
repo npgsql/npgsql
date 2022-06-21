@@ -66,7 +66,7 @@ public static class NpgsqlServiceCollectionExtensions
         ServiceLifetime connectionLifetime = ServiceLifetime.Scoped,
         ServiceLifetime dataSourceLifetime = ServiceLifetime.Singleton)
     {
-        serviceCollection.Add(
+        serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlDataSource),
                 sp =>
@@ -78,19 +78,19 @@ public static class NpgsqlServiceCollectionExtensions
                 },
                 dataSourceLifetime));
 
-        serviceCollection.Add(
+        serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(NpgsqlConnection),
                 sp => sp.GetRequiredService<NpgsqlDataSource>().CreateConnection(),
                 connectionLifetime));
 
-        serviceCollection.Add(
+        serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(DbDataSource),
                 sp => sp.GetRequiredService<NpgsqlDataSource>(),
                 dataSourceLifetime));
 
-        serviceCollection.Add(
+        serviceCollection.TryAdd(
             new ServiceDescriptor(
                 typeof(DbConnection),
                 sp => sp.GetRequiredService<NpgsqlConnection>(),
