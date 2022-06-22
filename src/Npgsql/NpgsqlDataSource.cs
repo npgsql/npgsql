@@ -111,7 +111,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     /// <param name="commandText">An optional SQL for the command.</param>
     public new NpgsqlCommand CreateCommand(string? commandText = null)
-        => new NpgsqlDataSourceCommand(CreateConnection());
+        => new NpgsqlDataSourceCommand(CreateConnection()) { CommandText = commandText };
 
     /// <summary>
     /// Creates a batch ready for use against this <see cref="NpgsqlDataSource" />.
@@ -123,7 +123,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionString" />.
     /// </summary>
     public static NpgsqlDataSource Create(string connectionString)
-        => new NpgsqlDataSourceBuilder(connectionString).GetDataSource();
+        => new NpgsqlDataSourceBuilder(connectionString).Build();
 
     /// <summary>
     /// Creates a new <see cref="NpgsqlDataSource" /> for the given <paramref name="connectionStringBuilder" />.

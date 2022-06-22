@@ -220,7 +220,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(canonical);
         dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
         dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
-        var newDataSource = dataSourceBuilder.GetDataSource();
+        var newDataSource = dataSourceBuilder.Build();
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
         if (_dataSource == newDataSource)

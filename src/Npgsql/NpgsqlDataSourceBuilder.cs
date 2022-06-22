@@ -54,7 +54,7 @@ public class NpgsqlDataSourceBuilder
     /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
-    public NpgsqlDataSource GetDataSource()
+    public NpgsqlDataSource Build()
     {
         var connectionString = ConnectionStringBuilder.ToString();
 

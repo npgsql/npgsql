@@ -317,7 +317,7 @@ namespace Npgsql.Tests
 
             builder.EnableParameterLogging(sensitiveDataLoggingEnabled);
 
-            return builder.GetDataSource();
+            return builder.Build();
         }
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
