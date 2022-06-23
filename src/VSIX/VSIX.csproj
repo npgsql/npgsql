@@ -28,6 +28,7 @@
     <StartAction>Program</StartAction>
     <StartProgram Condition="'$(DevEnvDir)' != ''">$(DevEnvDir)devenv.exe</StartProgram>
     <StartArguments>/rootsuffix Exp</StartArguments>
+    <RuntimeIdentifiers>win</RuntimeIdentifiers>
 
 	<!-- Specific options added in Npgsql -->
 
@@ -113,9 +114,9 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.0.202" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.Data.Framework" Version="16.3.29316.127" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="16.3.2099" />
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.2.32505.173" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Data.Framework" Version="17.2.32505.113" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.2.2186" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
