@@ -273,7 +273,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     /// <inheritdoc />
     public virtual TextReader GetTextReader(Stream stream, int byteLength, NpgsqlReadBuffer buffer)
     {
-        if (byteLength > 0 && buffer.ReadBytesLeft >= byteLength)
+        if (byteLength >= 0 && buffer.ReadBytesLeft >= byteLength)
         {
             return buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream);
         }
