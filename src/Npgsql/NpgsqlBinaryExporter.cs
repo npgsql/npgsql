@@ -219,9 +219,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             throw new InvalidOperationException("Not reading a row");
 
         var type = typeof(T);
-        var handler = _typeHandlerCache[_column];
+        ref var handler = ref _typeHandlerCache[_column];
         if (handler == null)
-            handler = _typeHandlerCache[_column] = _typeMapper.ResolveByClrType(type);
+            handler = _typeMapper.ResolveByClrType(type);
 
         return DoRead<T>(handler, async, cancellationToken);
     }
@@ -269,9 +269,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == -1 || _column == NumColumns)
             throw new InvalidOperationException("Not reading a row");
 
-        var handler = _typeHandlerCache[_column];
+        ref var handler = ref _typeHandlerCache[_column];
         if (handler == null)
-            handler = _typeHandlerCache[_column] = _typeMapper.ResolveByNpgsqlDbType(type);
+            handler = _typeMapper.ResolveByNpgsqlDbType(type);
 
         return DoRead<T>(handler, async, cancellationToken);
     }

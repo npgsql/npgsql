@@ -183,11 +183,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         CheckColumnIndex();
 
-        var p = _params[_column];
+        ref var p = ref _params[_column];
         if (p == null)
         {
             // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
+            p = typeof(T) == typeof(object)
                 ? new NpgsqlParameter()
                 : new NpgsqlParameter<T>();
         }
@@ -235,11 +235,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         CheckColumnIndex();
 
-        var p = _params[_column];
+        ref var p = ref _params[_column];
         if (p == null)
         {
             // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
+            p = typeof(T) == typeof(object)
                 ? new NpgsqlParameter()
                 : new NpgsqlParameter<T>();
             p.NpgsqlDbType = npgsqlDbType;
@@ -287,11 +287,11 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     {
         CheckColumnIndex();
 
-        var p = _params[_column];
+        ref var p = ref _params[_column];
         if (p == null)
         {
             // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
+            p = typeof(T) == typeof(object)
                 ? new NpgsqlParameter()
                 : new NpgsqlParameter<T>();
             p.DataTypeName = dataTypeName;

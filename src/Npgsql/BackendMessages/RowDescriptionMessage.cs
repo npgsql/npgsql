@@ -57,7 +57,10 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
 
         for (var i = 0; i < numFields; ++i)
         {
-            var field = _fields[i] ??= new();
+            ref var field = ref _fields[i];
+
+            if (field is null)
+                field = new();
 
             field.Populate(
                 typeMapper,
