@@ -51,11 +51,10 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         if (_caseInsensitiveLookup is null)
             return;
 
-        if (TwoPassCompatMode && !_caseSensitiveLookup!.ContainsKey(name))
-            _caseSensitiveLookup[name] = index;
+        if (TwoPassCompatMode)
+            _caseSensitiveLookup!.TryAdd(name, index);
 
-        if (!_caseInsensitiveLookup.ContainsKey(name))
-            _caseInsensitiveLookup[name] = index;
+        _caseInsensitiveLookup.TryAdd(name, index);
     }
 
     void LookupInsert(string name, int index)
@@ -387,7 +386,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             for (var i = 0; i < InternalList.Count; i++)
             {
                 var name = InternalList[i].TrimmedName;
-                if (string.Equals(parameterName, InternalList[i].TrimmedName))
+                if (string.Equals(parameterName, name))
                     return i;
             }
         }

@@ -70,8 +70,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
                 formatCode:            (FormatCode)buf.ReadInt16()
             );
 
-            if (!_nameIndex.ContainsKey(field.Name))
-                _nameIndex.Add(field.Name, i);
+            _nameIndex.TryAdd(field.Name, i);
         }
 
         return this;
@@ -144,8 +143,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
                 _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
 
             foreach (var kv in _nameIndex)
-                if (!_insensitiveIndex.ContainsKey(kv.Key))
-                    _insensitiveIndex[kv.Key] = kv.Value;
+                _insensitiveIndex.TryAdd(kv.Key, kv.Value);
         }
 
         return _insensitiveIndex.TryGetValue(name, out fieldIndex);
