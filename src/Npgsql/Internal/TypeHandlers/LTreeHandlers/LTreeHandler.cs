@@ -82,12 +82,12 @@ public class LTreeHandler : TextHandler
 
     #endregion
 
-    public override TextReader GetTextReader(Stream stream, int byteLength, NpgsqlReadBuffer buffer)
+    public override TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         var version = stream.ReadByte();
         if (version != LtreeProtocolVersion)
             throw new NpgsqlException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
-        return base.GetTextReader(stream, byteLength - 1, buffer);
+        return base.GetTextReader(stream, buffer);
     }
 }

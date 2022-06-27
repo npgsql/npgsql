@@ -1521,7 +1521,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             var stream = async
                 ? await GetStreamInternal(field, ordinal, true, cancellationToken)
                 : GetStreamInternal(field, ordinal, false, CancellationToken.None).Result;
-            return handler.GetTextReader(stream, ColumnLen, Buffer);
+            return handler.GetTextReader(stream, Buffer);
         }
 
         throw new InvalidCastException($"The GetTextReader method is not supported for type {field.Handler.PgDisplayName}");

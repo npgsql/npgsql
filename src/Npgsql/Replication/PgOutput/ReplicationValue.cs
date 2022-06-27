@@ -224,7 +224,7 @@ public class ReplicationValue
     /// </summary>
     public TextReader GetTextReader()
         => _fieldDescription.Handler is ITextReaderHandler handler
-            ? handler.GetTextReader(GetStream(), Length, _readBuffer)
+            ? handler.GetTextReader(GetStream(), _readBuffer)
             : throw new InvalidCastException(
                 $"The GetTextReader method is not supported for type {_fieldDescription.Handler.PgDisplayName}");
 

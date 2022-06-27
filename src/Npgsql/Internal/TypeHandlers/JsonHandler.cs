@@ -215,17 +215,16 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
         => ReadCustom<string>(buf, len, async, fieldDescription);
 
     /// <inheritdoc />
-    public TextReader GetTextReader(Stream stream, int byteLength, NpgsqlReadBuffer buffer)
+    public TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         if (_isJsonb)
         {
             var version = stream.ReadByte();
-            byteLength -= 1;
             if (version != JsonbProtocolVersion)
                 throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
         }
 
-        return _textHandler.GetTextReader(stream, byteLength, buffer);
+        return _textHandler.GetTextReader(stream, buffer);
     }
 
     byte[] SerializeJsonDocument(JsonDocument document)
