@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -270,5 +271,11 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     #endregion
 
     /// <inheritdoc />
-    public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream, _encoding);
+    public virtual TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
+    {
+        var byteLength = (int)(stream.Length - stream.Position);
+        return buffer.ReadBytesLeft >= byteLength 
+            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream) 
+            : new StreamReader(stream, _encoding);
+    }
 }

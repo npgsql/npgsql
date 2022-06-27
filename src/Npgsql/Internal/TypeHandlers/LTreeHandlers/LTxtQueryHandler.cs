@@ -82,12 +82,12 @@ public class LTxtQueryHandler : TextHandler
 
     #endregion
 
-    public override TextReader GetTextReader(Stream stream)
+    public override TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         var version = stream.ReadByte();
         if (version != LTxtQueryProtocolVersion)
             throw new NpgsqlException($"Don't know how to decode ltxtquery with wire format {version}, your connection is now broken");
 
-        return base.GetTextReader(stream);
+        return base.GetTextReader(stream, buffer);
     }
 }

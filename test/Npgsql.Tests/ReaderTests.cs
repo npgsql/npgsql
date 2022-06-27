@@ -1553,6 +1553,21 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
+        public async Task TextReader_zero_length_column()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT ''";
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.IsTrue(await reader.ReadAsync());
+
+            using var textReader = reader.GetTextReader(0);
+            Assert.That(textReader.Peek(), Is.EqualTo(-1));
+            Assert.That(textReader.ReadToEnd(), Is.EqualTo(string.Empty));
+        }
+
+        [Test]
         public async Task Open_TextReader_when_changing_columns()
         {
             using var conn = await OpenConnectionAsync();

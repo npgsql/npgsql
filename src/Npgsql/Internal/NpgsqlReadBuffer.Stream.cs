@@ -14,7 +14,7 @@ public sealed partial class NpgsqlReadBuffer
         readonly NpgsqlReadBuffer _buf;
         int _start, _len, _read;
         bool _canSeek;
-        bool _startCancellableOperations;
+        readonly bool _startCancellableOperations;
         internal bool IsDisposed { get; private set; }
 
         internal ColumnStream(NpgsqlConnector connector, bool startCancellableOperations = true)
@@ -121,6 +121,13 @@ public sealed partial class NpgsqlReadBuffer
                 ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
         }
 
+        public override int ReadByte()
+        {
+            Span<byte> byteSpan = stackalloc byte[1];
+            var read = Read(byteSpan);
+            return read > 0 ? byteSpan[0] : -1;
+        }
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             ValidateArguments(buffer, offset, count);
@@ -136,7 +143,7 @@ public sealed partial class NpgsqlReadBuffer
         }
 
 #if NETSTANDARD2_0
-            public int Read(Span<byte> span)
+        public int Read(Span<byte> span)
 #else
         public override int Read(Span<byte> span)
 #endif
@@ -155,7 +162,7 @@ public sealed partial class NpgsqlReadBuffer
         }
 
 #if NETSTANDARD2_0
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #else
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
@@ -194,7 +201,7 @@ public sealed partial class NpgsqlReadBuffer
             => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
 
 #if NETSTANDARD2_0
-            public ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
 #else
         public override ValueTask DisposeAsync()
 #endif
@@ -225,9 +232,9 @@ public sealed partial class NpgsqlReadBuffer
         if (buffer == null)
             throw new ArgumentNullException(nameof(buffer));
         if (offset < 0)
-            throw new ArgumentNullException(nameof(offset));
+            throw new ArgumentOutOfRangeException(nameof(offset));
         if (count < 0)
-            throw new ArgumentNullException(nameof(count));
+            throw new ArgumentOutOfRangeException(nameof(count));
         if (buffer.Length - offset < count)
             throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
     }
