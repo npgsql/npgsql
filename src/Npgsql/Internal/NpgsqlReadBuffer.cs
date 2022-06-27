@@ -564,7 +564,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     public TextReader GetPreparedTextReader(string str, Stream stream)
     {
-        if (_preparedTextReader == null || !_preparedTextReader.IsDisposed)
+        if (_preparedTextReader is not { IsDisposed: true })
             _preparedTextReader = new PreparedTextReader();
         
         _preparedTextReader.Init(str, (ColumnStream)stream);
