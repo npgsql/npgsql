@@ -221,6 +221,9 @@ partial class NpgsqlConnector
 
         static byte[] Hi(string str, byte[] salt, int count)
         {
+#if NET6_0_OR_GREATER
+            return Rfc2898DeriveBytes.Pbkdf2(str, salt, count, HashAlgorithmName.SHA256, 256 / 8);
+#else
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
             var salt1 = new byte[salt.Length + 4];
             byte[] hi, u1;
@@ -238,6 +241,7 @@ partial class NpgsqlConnector
             }
 
             return hi;
+#endif
         }
 
         static byte[] Xor(byte[] buffer1, byte[] buffer2)
