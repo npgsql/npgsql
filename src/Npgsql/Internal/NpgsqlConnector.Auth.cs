@@ -444,9 +444,7 @@ partial class NpgsqlConnector
 
     async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var password = async
-            ? await _dataSource.GetPasswordAsync(cancellationToken)
-            : _dataSource.GetPassword();
+        var password = await _dataSource.GetPasswordAsync(async, cancellationToken);
 
         if (password is not null)
             return password;

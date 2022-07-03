@@ -77,19 +77,6 @@ public class AuthenticationTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Inline_password_provider()
-    {
-        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
-        var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
-
-        dataSourceBuilder.UseInlinePasswordProvider(_ => password, (_, _) => new(password));
-        await using var dataSource = dataSourceBuilder.Build();
-
-        await using var connection1 = await dataSource.OpenConnectionAsync();
-        await using var connection2 = dataSource.OpenConnection();
-    }
-
-    [Test]
     public void Both_password_and_password_provider_is_not_supported()
     {
         // Periodic
@@ -99,7 +86,7 @@ public class AuthenticationTests : MultiplexingTestBase
 
         // Inline
         dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
-        dataSourceBuilder.UseInlinePasswordProvider(_ => "foo", (_, _) => new("foo"));
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("pa$$w0rd"), TimeSpan.FromMinutes(1));
         Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>());
     }
 

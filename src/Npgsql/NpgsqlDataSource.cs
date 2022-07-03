@@ -29,8 +29,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
-    readonly Func<NpgsqlConnectionStringBuilder, string>? _syncPasswordProvider;
-    readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _asyncPasswordProvider;
+    readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _passwordProviderCachingTime;
 
     readonly Timer? _passwordProviderTimer;
@@ -61,14 +60,14 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
-        (LoggingConfiguration, _syncPasswordProvider, _asyncPasswordProvider, _passwordProviderCachingTime) = dataSourceConfig;
+        (LoggingConfiguration, _periodicPasswordProvider, _passwordProviderCachingTime) = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
         _password = settings.Password;
 
         if (_passwordProviderCachingTime != default)
         {
-            Debug.Assert(_asyncPasswordProvider is not null && _syncPasswordProvider is null);
+            Debug.Assert(_periodicPasswordProvider is not null);
 
             _timerPasswordProviderCancellationTokenSource = new();
             _timerFirstRunTaskCompletionSource = new();
@@ -80,7 +79,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         try
         {
-            _password = await _asyncPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token);
+            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token);
 
             _timerFirstRunTaskCompletionSource!.TrySetResult(0);
         }
@@ -185,45 +184,24 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         set
         {
-            if (_syncPasswordProvider is not null || _asyncPasswordProvider is not null)
+            if (_periodicPasswordProvider is not null)
                 throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
 
             _password = value;
         }
     }
 
-    internal string? GetPassword()
+    internal async ValueTask<string?> GetPasswordAsync(bool async, CancellationToken cancellationToken = default)
     {
-        // Password provider with zero caching time - call the provider inline.
-        if (_syncPasswordProvider is not null && _passwordProviderCachingTime == default)
-        {
-            return _syncPasswordProvider(Settings);
-        }
-
         // A periodic password provider is configured, but the first timer hasn't executed yet (race condition).
         // Wait until that first run completes.
         if (_password is null && _passwordProviderCachingTime != default)
         {
-            _timerFirstRunTaskCompletionSource!.Task.GetAwaiter().GetResult();
-            Debug.Assert(_password is not null);
-        }
+            if (async)
+                await _timerFirstRunTaskCompletionSource!.Task;
+            else
+                _timerFirstRunTaskCompletionSource!.Task.GetAwaiter().GetResult();
 
-        return _password;
-    }
-
-    internal async ValueTask<string?> GetPasswordAsync(CancellationToken cancellationToken = default)
-    {
-        // Password provider with zero caching time - call the provider inline.
-        if (_asyncPasswordProvider is not null && _passwordProviderCachingTime == default)
-        {
-            return await _asyncPasswordProvider(Settings, cancellationToken);
-        }
-
-        // A periodic password provider is configured, but the first timer hasn't executed yet (race condition).
-        // Wait until that first run completes.
-        if (_password is null && _passwordProviderCachingTime != default)
-        {
-            await _timerFirstRunTaskCompletionSource!.Task;
             Debug.Assert(_password is not null);
         }
 

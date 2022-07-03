@@ -14,8 +14,7 @@ public class NpgsqlDataSourceBuilder
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
-    Func<NpgsqlConnectionStringBuilder, string>? _syncPasswordProvider;
-    Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _asyncPasswordProvider;
+    Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _passwordProviderCachingTime;
 
     /// <summary>
@@ -81,42 +80,8 @@ public class NpgsqlDataSourceBuilder
         if (cachingTime < TimeSpan.Zero)
             throw new ArgumentException(string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(cachingTime)), nameof(cachingTime));
 
-        _asyncPasswordProvider = passwordProvider;
+        _periodicPasswordProvider = passwordProvider;
         _passwordProviderCachingTime = cachingTime;
-
-        return this;
-    }
-
-    /// <summary>
-    /// Configures a password provider to be invoked inline, every time a physical connection is opened.
-    /// Consider using <see cref="UsePeriodicPasswordProvider" /> instead, which calls the password provider from a timer.
-    /// </summary>
-    /// <param name="syncPasswordProvider">
-    /// A synchronous callback which returns the password to be sent to PostgreSQL. This will be called when synchronously opening
-    /// connections (e.g. <see cref="NpgsqlConnection.Open()" />. Can be omitted if connections won't be opened synchronously.
-    /// </param>
-    /// <param name="asyncPasswordProvider">
-    /// An asynchronous callback which returns the password to be sent to PostgreSQL. This will be called when asynchronously opening
-    /// connections (e.g. <see cref="NpgsqlConnection.OpenAsync(CancellationToken)" />. Can be omitted if connections won't be opened
-    /// asynchronously.
-    /// </param>
-    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
-    /// <remarks>
-    /// <para>
-    /// Since the provided callbacks are invoked every time a physical connection is opened, they affect the total time taken to open the
-    /// connection. However, the callbacks aren't invoked when returning a pooled connection.
-    /// </para>
-    /// <para>
-    /// Consider using <see cref="UsePeriodicPasswordProvider" /> instead, which calls the password provider from a timer.
-    /// </para>
-    /// </remarks>
-    public NpgsqlDataSourceBuilder UseInlinePasswordProvider(
-        Func<NpgsqlConnectionStringBuilder, string>? syncPasswordProvider,
-        Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? asyncPasswordProvider)
-    {
-        _syncPasswordProvider = syncPasswordProvider;
-        _asyncPasswordProvider = asyncPasswordProvider;
-        _passwordProviderCachingTime = default;
 
         return this;
     }
@@ -130,7 +95,7 @@ public class NpgsqlDataSourceBuilder
 
         ConnectionStringBuilder.PostProcessAndValidate();
 
-        if ((_syncPasswordProvider is not null || _asyncPasswordProvider is not null) &&
+        if (_periodicPasswordProvider is not null &&
             (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
         {
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
@@ -142,8 +107,7 @@ public class NpgsqlDataSourceBuilder
 
         var config = new NpgsqlDataSourceConfiguration(
             loggingConfiguration,
-            _syncPasswordProvider,
-            _asyncPasswordProvider,
+            _periodicPasswordProvider,
             _passwordProviderCachingTime);
 
         if (ConnectionStringBuilder.Host!.Contains(","))
