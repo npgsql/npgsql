@@ -344,7 +344,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         _dataSource = dataSource;
 
-        LoggingConfiguration = _dataSource.LoggingConfiguration;
+        LoggingConfiguration = dataSource.LoggingConfiguration;
         ConnectionLogger = LoggingConfiguration.ConnectionLogger;
         CommandLogger = LoggingConfiguration.CommandLogger;
         TransactionLogger = LoggingConfiguration.TransactionLogger;
