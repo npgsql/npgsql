@@ -38,7 +38,7 @@ public class AuthenticationTests : MultiplexingTestBase
     public async Task Set_Password_on_NpgsqlDataSource()
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
-        await using var dataSource = dataSourceBuilder.GetDataSource();
+        await using var dataSource = dataSourceBuilder.Build();
 
         // No password provided
         Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<NpgsqlException>());
@@ -57,7 +57,7 @@ public class AuthenticationTests : MultiplexingTestBase
         var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
 
         dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new(password), TimeSpan.FromMinutes(1));
-        await using var dataSource = dataSourceBuilder.GetDataSource();
+        await using var dataSource = dataSourceBuilder.Build();
 
         await using var connection1 = await dataSource.OpenConnectionAsync();
         await using var connection2 = dataSource.OpenConnection();
@@ -68,7 +68,7 @@ public class AuthenticationTests : MultiplexingTestBase
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
         dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => throw new Exception("FOO"), TimeSpan.FromDays(30));
-        await using var dataSource = dataSourceBuilder.GetDataSource();
+        await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<NpgsqlException>()
             .With.InnerException.With.Message.EqualTo("FOO"));
@@ -83,7 +83,7 @@ public class AuthenticationTests : MultiplexingTestBase
         var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
 
         dataSourceBuilder.UseInlinePasswordProvider(_ => password, (_, _) => new(password));
-        await using var dataSource = dataSourceBuilder.GetDataSource();
+        await using var dataSource = dataSourceBuilder.Build();
 
         await using var connection1 = await dataSource.OpenConnectionAsync();
         await using var connection2 = dataSource.OpenConnection();
@@ -95,12 +95,12 @@ public class AuthenticationTests : MultiplexingTestBase
         // Periodic
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
         dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1));
-        Assert.That(() => dataSourceBuilder.GetDataSource(), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>());
 
         // Inline
         dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
         dataSourceBuilder.UseInlinePasswordProvider(_ => "foo", (_, _) => new("foo"));
-        Assert.That(() => dataSourceBuilder.GetDataSource(), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
     #region pgpass
