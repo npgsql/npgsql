@@ -54,7 +54,7 @@ partial class NpgsqlConnector
 
     async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = GetPassword(username);
+        var passwd = await GetPassword(username, async, cancellationToken);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
@@ -155,7 +155,7 @@ partial class NpgsqlConnector
             throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
         }
 
-        var passwd = GetPassword(username) ??
+        var passwd = await GetPassword(username, async, cancellationToken) ??
                      throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
         // Assumption: the write buffer is big enough to contain all our outgoing messages
@@ -260,7 +260,7 @@ partial class NpgsqlConnector
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
     {
-        var passwd = GetPassword(username);
+        var passwd = await GetPassword(username, async, cancellationToken);
         if (passwd == null)
             throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
@@ -442,13 +442,15 @@ partial class NpgsqlConnector
 
     class AuthenticationCompleteException : Exception { }
 
-    string? GetPassword(string username)
+    async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
     {
-        var password = Settings.Password;
-        if (password != null)
+        var password = await _dataSource.GetPasswordAsync(async, cancellationToken);
+
+        if (password is not null)
             return password;
 
         if (ProvidePasswordCallback is { } passwordCallback)
+        {
             try
             {
                 ConnectionLogger.LogTrace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
@@ -458,6 +460,7 @@ partial class NpgsqlConnector
             {
                 throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
             }
+        }
 
         if (password is null)
             password = PostgresEnvironment.Password;

@@ -404,6 +404,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// that was previously opened from the pool.
     /// </p>
     /// </remarks>
+    [Obsolete("Use NpgsqlDataSource.UsePeriodicPasswordProvider or UseInlinePasswordProvider")]
     public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
     /// <summary>
@@ -1946,7 +1947,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var conn = new NpgsqlConnection(_connectionString) {
             ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
             UserCertificateValidationCallback = UserCertificateValidationCallback,
+#pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
+#pragma warning restore CS0618
             _userFacingConnectionString = _userFacingConnectionString
         };
         return conn;
@@ -1969,7 +1972,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         return new NpgsqlConnection(csb.ToString()) {
             ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
             UserCertificateValidationCallback = UserCertificateValidationCallback,
+#pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
+#pragma warning restore CS0618
         };
     }
 

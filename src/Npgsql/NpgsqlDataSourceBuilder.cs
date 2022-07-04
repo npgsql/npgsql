@@ -1,5 +1,8 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Npgsql.Properties;
 
 namespace Npgsql;
 
@@ -10,6 +13,9 @@ public class NpgsqlDataSourceBuilder
 {
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
+
+    Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
+    TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
@@ -52,6 +58,45 @@ public class NpgsqlDataSourceBuilder
     }
 
     /// <summary>
+    /// Configures a periodic password provider, which is automatically called by the data source at some regular interval. This is the
+    /// recommended way to fetch a rotating access token.
+    /// </summary>
+    /// <param name="passwordProvider">A callback which returns the password to be sent to PostgreSQL.</param>
+    /// <param name="successRefreshInterval">How long to cache the password before re-invoking the callback.</param>
+    /// <param name="failureRefreshInterval">
+    /// If a password refresh attempt fails, it will be re-attempted with this interval.
+    /// This should typically be much lower than <paramref name="successRefreshInterval" />.
+    /// </param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// <para>
+    /// The provided callback is invoked in a timer, and not when opening connections. It therefore doesn't affect opening time.
+    /// </para>
+    /// <para>
+    /// The provided cancellation token is only triggered when the entire data source is disposed. If you'd like to apply a timeout to the
+    /// token fetching, do so within the provided callback.
+    /// </para>
+    /// </remarks>
+    public NpgsqlDataSourceBuilder UsePeriodicPasswordProvider(
+        Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? passwordProvider,
+        TimeSpan successRefreshInterval,
+        TimeSpan failureRefreshInterval)
+    {
+        if (successRefreshInterval < TimeSpan.Zero)
+            throw new ArgumentException(
+                string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(successRefreshInterval)), nameof(successRefreshInterval));
+        if (failureRefreshInterval < TimeSpan.Zero)
+            throw new ArgumentException(
+                string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(failureRefreshInterval)), nameof(failureRefreshInterval));
+
+        _periodicPasswordProvider = passwordProvider;
+        _periodicPasswordSuccessRefreshInterval = successRefreshInterval;
+        _periodicPasswordFailureRefreshInterval = failureRefreshInterval;
+
+        return this;
+    }
+
+    /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource Build()
@@ -60,9 +105,21 @@ public class NpgsqlDataSourceBuilder
 
         ConnectionStringBuilder.PostProcessAndValidate();
 
+        if (_periodicPasswordProvider is not null &&
+            (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
+        {
+            throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
+        }
+
         var loggingConfiguration = _loggerFactory is null
             ? NpgsqlLoggingConfiguration.NullConfiguration
             : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled);
+
+        var config = new NpgsqlDataSourceConfiguration(
+            loggingConfiguration,
+            _periodicPasswordProvider,
+            _periodicPasswordSuccessRefreshInterval,
+            _periodicPasswordFailureRefreshInterval);
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
@@ -70,13 +127,13 @@ public class NpgsqlDataSourceBuilder
                 throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
             if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
                 throw new NotSupportedException("Replication is not supported with multiple hosts");
-            return new MultiHostDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration);
+            return new MultiHostDataSource(ConnectionStringBuilder, connectionString, config);
         }
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration)
+            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString, config)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration)
-                : new UnpooledDataSource(ConnectionStringBuilder, connectionString, loggingConfiguration);
+                ? new PoolingDataSource(ConnectionStringBuilder, connectionString, config)
+                : new UnpooledDataSource(ConnectionStringBuilder, connectionString, config);
     }
 }
