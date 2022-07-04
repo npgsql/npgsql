@@ -10,6 +10,7 @@ env:
   dotnet_sdk_version: '3.1.x'
   postgis_version: 4
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
 
 jobs:
   release:
@@ -24,7 +25,9 @@ jobs:
         uses: microsoft/setup-msbuild@v1
 
       - name: Setup NuGet
-        uses: NuGet/setup-nuget@v1.0.2
+        uses: NuGet/setup-nuget@v1.0.6
+        with:
+          nuget-version: latest
         
       - name: Restore NuGet Packages for Npgsql
         run: nuget restore src\Npgsql\Npgsql.csproj
