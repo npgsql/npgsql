@@ -8,3 +8,7 @@
 Npgsql is a .NET data provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
 
 For any additional information, please visit the Npgsql website at [https://www.npgsql.org](https://www.npgsql.org).
+
+## What this repository is used for?
+
+VSIX support was removed from the official repository. This is local build of VSIX package, in order to support VS2017 & VS2019 (32-bit).
