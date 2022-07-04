@@ -237,7 +237,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
     /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
-    /// <see cref="MultiHostDataSource"/>,
+    /// <see cref="NpgsqlMultiHostDataSource"/>,
     /// </summary>
     readonly NpgsqlDataSource _dataSource;
 

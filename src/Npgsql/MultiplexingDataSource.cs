@@ -49,10 +49,9 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        string connString,
         NpgsqlDataSourceConfiguration dataSourceConfig,
-        MultiHostDataSource? parentPool = null)
-        : base(settings, connString, dataSourceConfig, parentPool)
+        NpgsqlMultiHostDataSource? parentPool = null)
+        : base(settings, dataSourceConfig, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
 
