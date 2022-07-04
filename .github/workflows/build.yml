@@ -46,3 +46,9 @@ jobs:
         with:
           name: Npgsql.vsix
           path: src/VSIX/bin/Release/Npgsql.vsix
+          
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: src/VSIX/bin/Release/Npgsql.vsix
