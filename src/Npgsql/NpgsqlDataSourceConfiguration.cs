@@ -7,4 +7,5 @@ namespace Npgsql;
 record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
-    TimeSpan AsyncPasswordProviderCachingTime);
+    TimeSpan PeriodicPasswordSuccessRefreshInterval,
+    TimeSpan PeriodicPasswordFailureRefreshInterval);

@@ -15,7 +15,7 @@ public class NpgsqlDataSourceBuilder
     bool _sensitiveDataLoggingEnabled;
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
-    TimeSpan _passwordProviderCachingTime;
+    TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
@@ -62,7 +62,11 @@ public class NpgsqlDataSourceBuilder
     /// recommended way to fetch a rotating access token.
     /// </summary>
     /// <param name="passwordProvider">A callback which returns the password to be sent to PostgreSQL.</param>
-    /// <param name="cachingTime">How long to cache the password before re-invoking the callback.</param>
+    /// <param name="successRefreshInterval">How long to cache the password before re-invoking the callback.</param>
+    /// <param name="failureRefreshInterval">
+    /// If a password refresh attempt fails, it will be re-attempted with this interval.
+    /// This should typically be much lower than <paramref name="successRefreshInterval" />.
+    /// </param>
     /// <returns>The same builder instance so that multiple calls can be chained.</returns>
     /// <remarks>
     /// <para>
@@ -75,13 +79,19 @@ public class NpgsqlDataSourceBuilder
     /// </remarks>
     public NpgsqlDataSourceBuilder UsePeriodicPasswordProvider(
         Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? passwordProvider,
-        TimeSpan cachingTime)
+        TimeSpan successRefreshInterval,
+        TimeSpan failureRefreshInterval)
     {
-        if (cachingTime < TimeSpan.Zero)
-            throw new ArgumentException(string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(cachingTime)), nameof(cachingTime));
+        if (successRefreshInterval < TimeSpan.Zero)
+            throw new ArgumentException(
+                string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(successRefreshInterval)), nameof(successRefreshInterval));
+        if (failureRefreshInterval < TimeSpan.Zero)
+            throw new ArgumentException(
+                string.Format(NpgsqlStrings.ArgumentMustBePositive, nameof(failureRefreshInterval)), nameof(failureRefreshInterval));
 
         _periodicPasswordProvider = passwordProvider;
-        _passwordProviderCachingTime = cachingTime;
+        _periodicPasswordSuccessRefreshInterval = successRefreshInterval;
+        _periodicPasswordFailureRefreshInterval = failureRefreshInterval;
 
         return this;
     }
@@ -108,7 +118,8 @@ public class NpgsqlDataSourceBuilder
         var config = new NpgsqlDataSourceConfiguration(
             loggingConfiguration,
             _periodicPasswordProvider,
-            _passwordProviderCachingTime);
+            _periodicPasswordSuccessRefreshInterval,
+            _periodicPasswordFailureRefreshInterval);
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {

@@ -2,7 +2,9 @@ using System;
 using System.Data;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Properties;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
@@ -56,18 +58,34 @@ public class AuthenticationTests : MultiplexingTestBase
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
         var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
 
-        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new(password), TimeSpan.FromMinutes(1));
-        await using var dataSource = dataSourceBuilder.Build();
+        var mre = new ManualResetEvent(false);
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) =>
+        {
+            mre.Set();
+            return new(password);
+        }, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10));
 
-        await using var connection1 = await dataSource.OpenConnectionAsync();
-        await using var connection2 = dataSource.OpenConnection();
+        await using (var dataSource = dataSourceBuilder.Build())
+        {
+            await using var connection1 = await dataSource.OpenConnectionAsync();
+            await using var connection2 = dataSource.OpenConnection();
+
+            mre.Reset();
+            if (!mre.WaitOne(TimeSpan.FromSeconds(30)))
+                Assert.Fail("Periodic password refresh did not occur");
+        }
+
+        mre.Reset();
+        if (mre.WaitOne(TimeSpan.FromSeconds(1)))
+            Assert.Fail("Periodic password refresh occurred after disposal of the data source");
     }
 
     [Test]
     public async Task Periodic_password_provider_with_first_time_exception()
     {
         var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
-        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => throw new Exception("FOO"), TimeSpan.FromDays(30));
+        dataSourceBuilder.UsePeriodicPasswordProvider(
+            (_, _) => throw new Exception("FOO"), TimeSpan.FromDays(30), TimeSpan.FromSeconds(10));
         await using var dataSource = dataSourceBuilder.Build();
 
         Assert.That(() => dataSource.OpenConnectionAsync(), Throws.Exception.TypeOf<NpgsqlException>()
@@ -79,15 +97,10 @@ public class AuthenticationTests : MultiplexingTestBase
     [Test]
     public void Both_password_and_password_provider_is_not_supported()
     {
-        // Periodic
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
-        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1));
-        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>());
-
-        // Inline
-        dataSourceBuilder = new NpgsqlDataSourceBuilder(TestUtil.ConnectionString);
-        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("pa$$w0rd"), TimeSpan.FromMinutes(1));
-        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>());
+        dataSourceBuilder.UsePeriodicPasswordProvider((_, _) => new("foo"), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(10));
+        Assert.That(() => dataSourceBuilder.Build(), Throws.Exception.TypeOf<NotSupportedException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword));
     }
 
     #region pgpass
