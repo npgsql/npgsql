@@ -34,7 +34,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     readonly Timer? _passwordProviderTimer;
     readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
-    volatile Task? _passwordRefreshTask;
+    readonly Task _passwordRefreshTask = null!;
     string? _password;
 
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
@@ -76,7 +76,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             _passwordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             // Trigger the first refresh attempt right now, outside the timer; this allows us to capture the Task so it can be observed
             // in GetPasswordAsync.
-            _passwordRefreshTask = Task.Run(async () => await RefreshPassword());
+            _passwordRefreshTask = Task.Run(RefreshPassword);
         }
     }
 
@@ -206,7 +206,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
         catch (Exception e)
         {
-            _connectionLogger.LogError(e, "Periodic password provider throw an exception");
+            _connectionLogger.LogError(e, "Periodic password provider threw an exception");
 
             _passwordProviderTimer!.Change(_periodicPasswordFailureRefreshInterval, Timeout.InfiniteTimeSpan);
 

@@ -63,7 +63,7 @@ public class AuthenticationTests : MultiplexingTestBase
         {
             mre.Set();
             return new(password);
-        }, TimeSpan.FromMilliseconds(100), TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10));
 
         await using (var dataSource = dataSourceBuilder.Build())
         {
@@ -92,6 +92,37 @@ public class AuthenticationTests : MultiplexingTestBase
             .With.InnerException.With.Message.EqualTo("FOO"));
         Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<NpgsqlException>()
             .With.InnerException.With.Message.EqualTo("FOO"));
+    }
+
+    [Test]
+    public async Task Periodic_password_provider_with_second_time_exception()
+    {
+        var dataSourceBuilder = GetPasswordlessDataSourceBuilder();
+        var password = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString).Password!;
+
+        var times = 0;
+        var mre = new ManualResetEvent(false);
+
+        dataSourceBuilder.UsePeriodicPasswordProvider(
+            (_, _) =>
+            {
+                if (times++ > 1)
+                {
+                    mre.Set();
+                    throw new Exception("FOO");
+                }
+
+                return new(password);
+            },
+            TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromMilliseconds(10));
+        await using var dataSource = dataSourceBuilder.Build();
+
+        mre.WaitOne();
+
+        // The periodic timer threw, but previously returned a password. Make sure we keep using that last known one.
+        using (await dataSource.OpenConnectionAsync()) {}
+        using (dataSource.OpenConnection()) {}
     }
 
     [Test]
