@@ -2,9 +2,8 @@ name: Publish
 
 on:
   push:
-    branches: [ vsix ]
-  pull_request:
-    branches: [ vsix ]
+    tags:
+      - "v*.*.*"
 
 env:
   dotnet_sdk_version: '3.1.x'
@@ -49,6 +48,5 @@ jobs:
           
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: src/VSIX/bin/Release/Npgsql.vsix
