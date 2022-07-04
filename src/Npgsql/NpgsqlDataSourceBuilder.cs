@@ -101,8 +101,6 @@ public class NpgsqlDataSourceBuilder
     /// </summary>
     public NpgsqlDataSource Build()
     {
-        var connectionString = ConnectionStringBuilder.ToString();
-
         ConnectionStringBuilder.PostProcessAndValidate();
 
         if (_periodicPasswordProvider is not null &&
@@ -123,17 +121,28 @@ public class NpgsqlDataSourceBuilder
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
+            if (ConnectionStringBuilder.TargetSessionAttributes is not null)
+                throw new InvalidOperationException(NpgsqlStrings.CannotSpecifyTargetSessionAttributes);
             if (ConnectionStringBuilder.Multiplexing)
                 throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
             if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
                 throw new NotSupportedException("Replication is not supported with multiple hosts");
-            return new MultiHostDataSource(ConnectionStringBuilder, connectionString, config);
+
+            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
         }
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, connectionString, config)
+            ? new MultiplexingDataSource(ConnectionStringBuilder, config)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, connectionString, config)
-                : new UnpooledDataSource(ConnectionStringBuilder, connectionString, config);
+                ? new PoolingDataSource(ConnectionStringBuilder, config)
+                : new UnpooledDataSource(ConnectionStringBuilder, config);
     }
+
+#pragma warning disable RS0016
+    /// <summary>
+    /// Builds and returns a <see cref="NpgsqlMultiHostDataSource" /> which is ready for use for load-balancing and failover scenarios.
+    /// </summary>
+    public NpgsqlMultiHostDataSource BuildMultiHost()
+        => Build() as NpgsqlMultiHostDataSource ?? throw new InvalidOperationException(NpgsqlStrings.MultipleHostsMustBeSpecified);
+#pragma warning restore RS0016
 }

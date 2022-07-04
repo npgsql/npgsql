@@ -50,12 +50,11 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
-        string connectionString,
         NpgsqlDataSourceConfiguration dataSourceConfig)
     {
         Settings = settings;
         ConnectionString = settings.PersistSecurityInfo
-            ? connectionString
+            ? settings.ToString()
             : settings.ToStringWithoutPassword();
 
         Configuration = dataSourceConfig;
@@ -179,11 +178,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    internal async ValueTask<string?> GetPasswordAsync(bool async, CancellationToken cancellationToken = default)
+    internal async ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
     {
         // A periodic password provider is configured, but the first refresh hasn't completed yet (race condition).
         // Wait until it completes.
-        if (_password is null && _passwordRefreshTask is not null)
+        if (_password is null && _periodicPasswordProvider is not null)
         {
             if (async)
                 await _passwordRefreshTask;

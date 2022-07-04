@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Properties;
 using static Npgsql.Tests.Support.MockState;
 using static Npgsql.Tests.TestUtil;
 
@@ -899,6 +900,74 @@ public class MultipleHostsTests : TestBase
                 Interlocked.Increment(ref queriesDone);
             }
         }
+    }
+
+    [Test]
+    public async Task DataSource_with_wrappers()
+    {
+        await using var primaryPostmasterMock = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmasterMock = PgPostmasterMock.Start(state: Standby);
+
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(primaryPostmasterMock, standbyPostmasterMock),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            }
+        };
+
+        await using var dataSource = builder.BuildMultiHost();
+        await using var primaryDataSource = dataSource.For(TargetSessionAttributes.Primary);
+        await using var standbyDataSource = dataSource.For(TargetSessionAttributes.Standby);
+
+        await using var primaryConnection = await primaryDataSource.OpenConnectionAsync();
+        Assert.That(primaryConnection.Port, Is.EqualTo(primaryPostmasterMock.Port));
+
+        await using var standbyConnection = await standbyDataSource.OpenConnectionAsync();
+        Assert.That(standbyConnection.Port, Is.EqualTo(standbyPostmasterMock.Port));
+    }
+
+    [Test]
+    public async Task DataSource_without_wrappers()
+    {
+        await using var primaryPostmasterMock = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmasterMock = PgPostmasterMock.Start(state: Standby);
+
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(primaryPostmasterMock, standbyPostmasterMock),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            }
+        };
+
+        await using var dataSource = builder.BuildMultiHost();
+
+        await using var primaryConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        Assert.That(primaryConnection.Port, Is.EqualTo(primaryPostmasterMock.Port));
+
+        await using var standbyConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Standby);
+        Assert.That(standbyConnection.Port, Is.EqualTo(standbyPostmasterMock.Port));
+    }
+
+    [Test]
+    public void DataSource_with_TargetSessionAttributes_is_not_supported()
+    {
+        var builder = new NpgsqlDataSourceBuilder("Host=foo,bar;Target Session Attributes=primary");
+
+        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSpecifyTargetSessionAttributes));
+    }
+
+    [Test]
+    public void DataSource_with_single_host_is_not_supported()
+    {
+        var builder = new NpgsqlDataSourceBuilder("Host=foo");
+
+        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
+            .With.Message.EqualTo(NpgsqlStrings.MultipleHostsMustBeSpecified));
     }
 
     static string MultipleHosts(params PgPostmasterMock[] postmasters)

@@ -30,7 +30,7 @@ class PoolingDataSource : NpgsqlDataSource
     /// </summary>
     private protected readonly NpgsqlConnector?[] Connectors;
 
-    readonly MultiHostDataSource? _parentPool;
+    readonly NpgsqlMultiHostDataSource? _parentPool;
 
     /// <summary>
     /// Reader side for the idle connector channel. Contains nulls in order to release waiting attempts after
@@ -77,10 +77,9 @@ class PoolingDataSource : NpgsqlDataSource
 
     internal PoolingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        string connString,
         NpgsqlDataSourceConfiguration dataSourceConfig,
-        MultiHostDataSource? parentPool = null)
-        : base(settings, connString, dataSourceConfig)
+        NpgsqlMultiHostDataSource? parentPool = null)
+        : base(settings, dataSourceConfig)
     {
         if (settings.MaxPoolSize < settings.MinPoolSize)
             throw new ArgumentException($"Connection can't have 'Max Pool Size' {settings.MaxPoolSize} under 'Min Pool Size' {settings.MinPoolSize}");
