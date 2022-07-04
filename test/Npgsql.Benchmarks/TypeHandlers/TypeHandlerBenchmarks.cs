@@ -78,12 +78,12 @@ public abstract class TypeHandlerBenchmarks<T>
             _value = value;
             _elementSize = _handler.ValidateAndGetLength(value, ref cache, null);
 
-            cache.Rewind();
+            cache?.Rewind();
 
             _handler.WriteWithLength(_value, _writeBuffer, cache, null, false);
-            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
+            Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, sizeof(int) + _elementSize);
 
-            _readBuffer.FilledBytes = _elementSize;
+            _readBuffer.FilledBytes = sizeof(int) + _elementSize;
             _writeBuffer.WritePosition = 0;
         }
     }

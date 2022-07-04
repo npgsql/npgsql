@@ -170,34 +170,75 @@ public abstract class NpgsqlTypeHandler
     /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public async Task WriteWithLength<TAny>(TAny? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+    public Task WriteWithLength<TAny>(TAny? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
-        // TODO: Possibly do a sync path when we don't do I/O (e.g. simple type handler, no flush)
-        if (buf.WriteSpaceLeft < 4)
-            await buf.Flush(async, cancellationToken);
-
         if (value is null or DBNull)
         {
-            buf.WriteInt32(-1);
-            return;
+            if (buf.WriteSpaceLeft >= sizeof(int))
+            {
+                buf.WriteInt32(-1);
+                return Task.CompletedTask;
+            }
+            else
+            {
+                return WriteNullAsync(buf, async, cancellationToken);
+            }
         }
+
+        var len = 0;
 
         switch (this)
         {
         case INpgsqlSimpleTypeHandler<TAny> simpleTypeHandler:
-            var len = simpleTypeHandler.ValidateAndGetLength(value, parameter);
-            buf.WriteInt32(len);
-            if (buf.WriteSpaceLeft < len)
-                await buf.Flush(async, cancellationToken);
-            simpleTypeHandler.Write(value, buf, parameter);
-            return;
+            len = simpleTypeHandler.ValidateAndGetLength(value, parameter);
+            if (buf.WriteSpaceLeft >= sizeof(int) + len)
+            {
+                buf.WriteInt32(len);
+                simpleTypeHandler.Write(value, buf, parameter);
+                return Task.CompletedTask;
+            }
+            break;
         case INpgsqlTypeHandler<TAny> typeHandler:
-            buf.WriteInt32(typeHandler.ValidateAndGetLength(value, ref lengthCache, parameter));
-            await typeHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
-            return;
-        default:
-            await WriteWithLengthCustom<TAny>(value, buf, lengthCache, parameter, async, cancellationToken);
-            return;
+            len = typeHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
+            if (buf.WriteSpaceLeft >= sizeof(int))
+            {
+                buf.WriteInt32(len);
+                return typeHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
+            }
+            break;
+        }
+
+        return WriteWithLengthAsync(value, buf, len, lengthCache, parameter, async, cancellationToken);
+
+        async static Task WriteNullAsync(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+
+            buf.WriteInt32(-1);
+        }
+
+        async Task WriteWithLengthAsync([DisallowNull] TAny value, NpgsqlWriteBuffer buf, int len, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async, cancellationToken);
+
+            switch (this)
+            {
+            case INpgsqlSimpleTypeHandler<TAny> simpleTypeHandler:
+                buf.WriteInt32(len);
+                if (buf.WriteSpaceLeft < len)
+                    await buf.Flush(async, cancellationToken);
+                simpleTypeHandler.Write(value, buf, parameter);
+                break;
+            case INpgsqlTypeHandler<TAny> typeHandler:
+                buf.WriteInt32(len);
+                await typeHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
+                break;
+            default:
+                await WriteWithLengthCustom<TAny>(value, buf, lengthCache, parameter, async, cancellationToken);
+                break;
+            }
         }
     }
 
