@@ -33,7 +33,10 @@ jobs:
         run: nuget restore src\Npgsql\Npgsql.csproj
 
       - name: Restore NuGet Packages for VSIX
-        run: nuget restore src\Npgsql\Npgsql.csproj
+        run: nuget restore src\VSIX\VSIX.csproj
+
+      - name: Create Npgsql
+        run: msbuild src\Npgsql\Npgsql.csproj -p:Configuration=Release -v:Minimal
 
       - name: Create VSIX
         run: msbuild src\VSIX\VSIX.csproj -p:Configuration=Release -v:Minimal
