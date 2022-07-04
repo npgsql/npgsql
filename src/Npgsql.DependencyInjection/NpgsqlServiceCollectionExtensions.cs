@@ -74,7 +74,7 @@ public static class NpgsqlServiceCollectionExtensions
                     var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
                     dataSourceBuilder.UseLoggerFactory(sp.GetService<ILoggerFactory>());
                     dataSourceBuilderAction?.Invoke(dataSourceBuilder);
-                    return dataSourceBuilder.GetDataSource();
+                    return dataSourceBuilder.Build();
                 },
                 dataSourceLifetime));
 
