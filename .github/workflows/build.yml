@@ -15,6 +15,9 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Hack to support latest prerelease dotnet SDK, https://github.com/dotnet/installer/issues/12230#issuecomment-936348246
   MSBuildEnableWorkloadResolver: false
+  # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
+  # with some of our tests
+  PGPASSWORD: ""
 
 jobs:
   build:
