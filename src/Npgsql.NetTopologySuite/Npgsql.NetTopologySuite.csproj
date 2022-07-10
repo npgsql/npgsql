@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="NetTopologySuite.IO.PostGIS" />
+    <PackageReference Include="NetTopologySuite" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
