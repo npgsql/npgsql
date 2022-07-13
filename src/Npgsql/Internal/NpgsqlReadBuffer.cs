@@ -595,9 +595,8 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         var index = Buffer.AsSpan(ReadPosition, FilledBytes - ReadPosition).IndexOf((byte)0);
         if (index >= 0)
         {
-            var byteLen = index + ReadPosition;
-            var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, byteLen));
-            ReadPosition += byteLen + 1;
+            var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, index));
+            ReadPosition += index + 1;
             return result;
         }
 
