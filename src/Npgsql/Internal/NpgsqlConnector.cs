@@ -353,10 +353,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         _isKeepAliveEnabled = Settings.KeepAlive > 0;
         if (_isKeepAliveEnabled)
-        {
             _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
-        }
-
+        
         DataReader = new NpgsqlDataReader(this);
 
         // TODO: Not just for automatic preparation anymore...
@@ -2268,9 +2266,19 @@ public sealed partial class NpgsqlConnector : IDisposable
             // Disable keepalive, it will be restarted at the end of the user action
             _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
 
-            // We now have both locks and are sure nothing else is running.
-            // Check that the connector is ready.
-            return DoStartUserAction(newState, command);
+            try
+            {
+                // Check that the connector is ready.
+                return DoStartUserAction(newState, command);
+            }
+            catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
+            {
+                // We failed, but there is no current operation.
+                // As such, we re-enable the keepalive.
+                var keepAlive = Settings.KeepAlive * 1000;
+                _keepAliveTimer!.Change(keepAlive, keepAlive);
+                throw;
+            }
         }
 
         UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command)
