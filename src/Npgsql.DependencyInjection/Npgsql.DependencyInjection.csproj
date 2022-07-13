@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Authors>Shay Rojansky</Authors>
         <TargetFramework>net6.0</TargetFramework>
-        <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net6.0</TargetFramework>
+        <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net7.0</TargetFramework>
         <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql;di;dependency injection</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>

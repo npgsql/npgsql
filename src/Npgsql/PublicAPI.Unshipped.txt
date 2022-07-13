@@ -317,6 +317,7 @@ override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
 override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
 override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
 override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
+override Npgsql.NpgsqlFactory.CreateDataSource(string! connectionString) -> System.Data.Common.DbDataSource!
 static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
 static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
 virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!

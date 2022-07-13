@@ -2,7 +2,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member (compatibility shim for old TFMs)
-#pragma warning disable RS0016 // TODO: Remove this after DbDataSource makes it into runtime
 
 #if !NET7_0_OR_GREATER
 
