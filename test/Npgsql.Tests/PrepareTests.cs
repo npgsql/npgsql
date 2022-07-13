@@ -70,6 +70,33 @@ public class PrepareTests: TestBase
         Assert.That(cmd2.IsPrepared, Is.True);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4209")]
+    public async Task Async_cancel_NullReferenceException()
+    {
+        for (var i = 0; i < 10; i++)
+        {
+            using var conn = OpenConnectionAndUnprepare();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            using var cts = new CancellationTokenSource();
+            using var mre = new ManualResetEventSlim();
+            var cancelTask = Task.Run(() =>
+            {
+                mre.Wait();
+                cts.Cancel();
+            });
+            try
+            {
+                mre.Set();
+                await cmd.PrepareAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // expected exception
+            }
+            await cancelTask;
+        }
+    }
+
     [Test]
     public void Unprepare()
         => Unprepare(false).GetAwaiter().GetResult();
