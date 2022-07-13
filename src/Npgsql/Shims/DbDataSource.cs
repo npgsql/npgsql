@@ -1,9 +1,9 @@
+#if !NET7_0_OR_GREATER
+
 using System.Threading;
 using System.Threading.Tasks;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member (compatibility shim for old TFMs)
-
-#if !NET7_0_OR_GREATER
 
 // ReSharper disable once CheckNamespace
 namespace System.Data.Common;
