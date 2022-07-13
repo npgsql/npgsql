@@ -29,12 +29,12 @@ jobs:
         os: [ubuntu-20.04, windows-2019]
         pg_major: [14, 13, 12, 11, 10]
         config: [Release]
-        test_tfm: [net6.0]
+        test_tfm: [net7.0]
         include:
           - os: ubuntu-20.04
             pg_major: 14
             config: Debug
-            test_tfm: net6.0
+            test_tfm: net7.0
           - os: ubuntu-20.04
             pg_major: 14
             config: Release
@@ -42,11 +42,11 @@ jobs:
           - os: macos-11
             pg_major: 14
             config: Release
-            test_tfm: net6.0
+            test_tfm: net7.0
           - os: ubuntu-20.04
             pg_major: 15
             config: Release
-            test_tfm: net6.0
+            test_tfm: net7.0
             pg_prerelease: 'PG Prerelease'
 
     outputs:
