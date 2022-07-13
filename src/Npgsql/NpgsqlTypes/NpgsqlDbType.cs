@@ -513,19 +513,19 @@ public enum NpgsqlDbType
     /// <summary>
     /// The PostgreSQL ltree type, each value is a label path "a.label.tree.value", forming a tree in a set.
     /// </summary>
-    /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+    /// <remarks>See https://www.postgresql.org/docs/current/static/ltree.html</remarks>
     LTree = 60, // Extension type
 
     /// <summary>
     /// The PostgreSQL lquery type for PostgreSQL extension ltree
     /// </summary>
-    /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+    /// <remarks>See https://www.postgresql.org/docs/current/static/ltree.html</remarks>
     LQuery = 61, // Extension type
 
     /// <summary>
     /// The PostgreSQL ltxtquery type for PostgreSQL extension ltree
     /// </summary>
-    /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+    /// <remarks>See https://www.postgresql.org/docs/current/static/ltree.html</remarks>
     LTxtQuery = 62, // Extension type
 
     #endregion

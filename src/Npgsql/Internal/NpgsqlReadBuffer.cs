@@ -279,8 +279,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
-
     internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
     internal NpgsqlReadBuffer AllocateOversize(int count)
@@ -297,7 +295,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     /// <summary>
     /// Does not perform any I/O - assuming that the bytes to be skipped are in the memory buffer.
     /// </summary>
-    /// <param name="len"></param>
     internal void Skip(long len)
     {
         Debug.Assert(ReadBytesLeft >= len);
@@ -595,15 +592,12 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     /// </summary>
     ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
     {
-        for (var i = ReadPosition; i < FilledBytes; i++)
+        var index = Buffer.AsSpan(ReadPosition, FilledBytes - ReadPosition).IndexOf((byte)0);
+        if (index >= 0)
         {
-            if (Buffer[i] == 0)
-            {
-                var byteLen = i - ReadPosition;
-                var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, byteLen));
-                ReadPosition += byteLen + 1;
-                return result;
-            }
+            var result = new ValueTask<string>(encoding.GetString(Buffer, ReadPosition, index));
+            ReadPosition += index + 1;
+            return result;
         }
 
         return ReadLong(encoding, async);

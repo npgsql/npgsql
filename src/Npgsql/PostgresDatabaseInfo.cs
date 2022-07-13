@@ -192,10 +192,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
     internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
-        var commandTimeout = 0;  // Default to infinity
-        if (timeout.IsSet)
-            commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-
         var versionQuery = "SELECT version();";
         var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites);
         var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites);
