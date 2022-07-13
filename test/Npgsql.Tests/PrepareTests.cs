@@ -94,6 +94,8 @@ public class PrepareTests: TestBase
                 // expected exception
             }
             await cancelTask;
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
         }
     }
 
