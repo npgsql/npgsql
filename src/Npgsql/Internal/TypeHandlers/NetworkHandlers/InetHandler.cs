@@ -50,7 +50,7 @@ public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IP
         Debug.Assert(isCidrHandler == isCidr);
         var numBytes = buf.ReadByte();
         var bytes = new byte[numBytes];
-        for (var i = 0; i < numBytes; i++)
+        for (var i = 0; i < bytes.Length; i++)
             bytes[i] = buf.ReadByte();
 
         return (new IPAddress(bytes), mask);

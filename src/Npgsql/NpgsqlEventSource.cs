@@ -187,7 +187,7 @@ sealed class NpgsqlEventSource : EventSource
 
             _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, GetMultiplexingAverageWriteTimePerBatch)
             {
-                DisplayName = "Average write time per multiplexing batch (us)",
+                DisplayName = "Average write time per multiplexing batch",
                 DisplayUnits = "us"
             };
             lock (_dataSourcesLock)

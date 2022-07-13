@@ -1284,7 +1284,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             Debug.Assert(conn is null);
             if (behavior.HasFlag(CommandBehavior.CloseConnection))
-                throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with ${nameof(NpgsqlConnector)}", nameof(behavior));
+                throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with {nameof(NpgsqlConnector)}", nameof(behavior));
             connector = _connector;
         }
         else
@@ -1457,7 +1457,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
                 // the first read). But waiting on writing would allow us to do sync writing and async reading.
                 ExecutionCompletion.Reset();
-                await pool.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
+                await pool.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
                 connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
                 // TODO: Overload of StartBindingScope?
                 conn.Connector = connector;
@@ -1475,7 +1475,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         catch (Exception e)
         {
             var reader = connector?.CurrentReader;
-            if (!(e is NpgsqlOperationInProgressException) && reader != null)
+            if (e is not NpgsqlOperationInProgressException && reader is not null)
                 await reader.Cleanup(async);
 
             TraceSetException(e);
