@@ -2,6 +2,8 @@
 using Microsoft.VisualStudio.Data.Services.SupportEntities;
 using Microsoft.VisualStudio.Shell;
 
+#nullable enable
+
 namespace Npgsql.VSIX
 {
     class NpgsqlProviderRegistration : RegistrationAttribute
@@ -24,7 +26,7 @@ namespace Npgsql.VSIX
                 providerKey.SetValue("PlatformVersion", "2.0");
                 providerKey.SetValue("ShortDisplayName", $"Provider_ShortDisplayName, {GetType().Namespace}.Resources, Npgsql.VSIX");
                 providerKey.SetValue("Technology", "{77AB9A9D-78B9-4ba7-91AC-873F5338F1D2}");
-                
+
                 var supportedObjectsKey = providerKey.CreateSubkey("SupportedObjects");
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionSupport));
                 supportedObjectsKey.CreateSubkey(nameof(IVsDataConnectionUIControl));

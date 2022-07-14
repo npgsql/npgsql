@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.Shell;
 [assembly: AssemblyTitle("NpgsqlVSIX")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyVersion("4.1.12.0")]
+[assembly: AssemblyVersion("4.1.12.4")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 
