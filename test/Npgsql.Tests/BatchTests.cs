@@ -137,6 +137,37 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public async Task RecordsAffected_and_Rows15()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            MinimumPgVersion(conn, "15.0", "MERGE command was introduced in PostgreSQL 15");
+
+            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+            await using var batch = new NpgsqlBatch(conn)
+            {
+                BatchCommands =
+                {
+                    new($"INSERT INTO {table} (name) VALUES ('a'), ('b')"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'")
+                }
+            };
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+            // Consume MERGE result set to parse the CommandComplete
+            await reader.CloseAsync();
+
+            var command = batch.BatchCommands[0];
+            Assert.That(command.RecordsAffected, Is.EqualTo(2));
+            Assert.That(command.Rows, Is.EqualTo(2));
+
+            command = batch.BatchCommands[1];
+            Assert.That(command.RecordsAffected, Is.EqualTo(1));
+            Assert.That(command.Rows, Is.EqualTo(1));
+        }
+
+        [Test]
         public async Task NpgsqlBatchCommand_StatementType()
         {
             await using var conn = await OpenConnectionAsync();
@@ -167,6 +198,32 @@ namespace Npgsql.Tests
             Assert.That(batch.BatchCommands[4].StatementType, Is.EqualTo(StatementType.Select));
             Assert.That(batch.BatchCommands[5].StatementType, Is.EqualTo(StatementType.Delete));
             Assert.That(batch.BatchCommands[6].StatementType, Is.EqualTo(StatementType.Other));
+        }
+
+        [Test]
+        public async Task NpgsqlBatchCommand_StatementType15()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            MinimumPgVersion(conn, "15.0", "MERGE command was introduced in PostgreSQL 15");
+
+            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+            await using var batch = new NpgsqlBatch(conn)
+            {
+                BatchCommands =
+                {
+                    new($"INSERT INTO {table} (name) VALUES ('a'), ('b')"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'")
+                }
+            };
+            await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+            // Consume MERGE result set to parse the CommandComplete
+            await reader.CloseAsync();
+
+            Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Insert));
+            Assert.That(batch.BatchCommands[1].StatementType, Is.EqualTo(StatementType.Merge));
         }
 
         [Test]

@@ -54,10 +54,18 @@ class CommandCompleteMessage : IBackendMessage
             return this;
 
         case (byte)'M':
-            if (!AreEqual(bytes, i, "MOVE "))
+            if (AreEqual(bytes, i, "MERGE "))
+            {
+                StatementType = StatementType.Merge;
+                i += 6;
+            }
+            else if (AreEqual(bytes, i, "MOVE "))
+            {
+                StatementType = StatementType.Move;
+                i += 5;
+            }
+            else
                 goto default;
-            StatementType = StatementType.Move;
-            i += 5;
             Rows = ParseNumber(bytes, ref i);
             return this;
 
