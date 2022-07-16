@@ -151,6 +151,11 @@ namespace Npgsql.Tests
             reader = await cmd.ExecuteReaderAsync(Behavior);
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(4));
+
+            cmd = new NpgsqlCommand($"MERGE INTO {table} S USING (SELECT 2 as int) T ON T.int = S.int WHEN MATCHED THEN UPDATE SET int = S.int", conn);
+            reader = await cmd.ExecuteReaderAsync(Behavior);
+            reader.Close();
+            Assert.That(reader.RecordsAffected, Is.EqualTo(1));
         }
 
 #pragma warning disable CS0618
