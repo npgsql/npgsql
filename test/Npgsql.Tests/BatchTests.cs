@@ -141,7 +141,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
 
-            MinimumPgVersion(conn, "15.0", "MERGE command was introduced in PostgreSQL 15");
+            MinimumPgVersion(conn, "15.0", "MERGE statement was introduced in PostgreSQL 15");
 
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
@@ -215,7 +215,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
 
-            MinimumPgVersion(conn, "15.0", "MERGE command was introduced in PostgreSQL 15");
+            MinimumPgVersion(conn, "15.0", "MERGE statement was introduced in PostgreSQL 15");
 
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
