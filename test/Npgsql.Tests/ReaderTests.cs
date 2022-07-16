@@ -14,6 +14,7 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -152,10 +153,13 @@ namespace Npgsql.Tests
             reader.Close();
             Assert.That(reader.RecordsAffected, Is.EqualTo(4));
 
-            cmd = new NpgsqlCommand($"MERGE INTO {table} S USING (SELECT 2 as int) T ON T.int = S.int WHEN MATCHED THEN UPDATE SET int = S.int", conn);
-            reader = await cmd.ExecuteReaderAsync(Behavior);
-            reader.Close();
-            Assert.That(reader.RecordsAffected, Is.EqualTo(1));
+            if (conn.PostgreSqlVersion.IsGreaterOrEqual(15))
+            {
+                cmd = new NpgsqlCommand($"MERGE INTO {table} S USING (SELECT 2 as int) T ON T.int = S.int WHEN MATCHED THEN UPDATE SET int = S.int", conn);
+                reader = await cmd.ExecuteReaderAsync(Behavior);
+                reader.Close();
+                Assert.That(reader.RecordsAffected, Is.EqualTo(1));
+            }
         }
 
 #pragma warning disable CS0618
