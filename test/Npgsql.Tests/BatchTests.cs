@@ -150,7 +150,9 @@ namespace Npgsql.Tests
                 BatchCommands =
                 {
                     new($"INSERT INTO {table} (name) VALUES ('a'), ('b')"),
-                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'")
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN NOT MATCHED THEN INSERT (name) VALUES ('b')"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN DELETE")
                 }
             };
             await using var reader = await batch.ExecuteReaderAsync(Behavior);
@@ -163,6 +165,14 @@ namespace Npgsql.Tests
             Assert.That(command.Rows, Is.EqualTo(2));
 
             command = batch.BatchCommands[1];
+            Assert.That(command.RecordsAffected, Is.EqualTo(1));
+            Assert.That(command.Rows, Is.EqualTo(1));
+
+            command = batch.BatchCommands[2];
+            Assert.That(command.RecordsAffected, Is.EqualTo(1));
+            Assert.That(command.Rows, Is.EqualTo(1));
+
+            command = batch.BatchCommands[3];
             Assert.That(command.RecordsAffected, Is.EqualTo(1));
             Assert.That(command.Rows, Is.EqualTo(1));
         }
@@ -214,7 +224,9 @@ namespace Npgsql.Tests
                 BatchCommands =
                 {
                     new($"INSERT INTO {table} (name) VALUES ('a'), ('b')"),
-                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'")
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN UPDATE SET name = 'c'"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN NOT MATCHED THEN INSERT (name) VALUES ('b')"),
+                    new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN MATCHED THEN DELETE")
                 }
             };
             await using var reader = await batch.ExecuteReaderAsync(Behavior);
@@ -224,6 +236,8 @@ namespace Npgsql.Tests
 
             Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Insert));
             Assert.That(batch.BatchCommands[1].StatementType, Is.EqualTo(StatementType.Merge));
+            Assert.That(batch.BatchCommands[2].StatementType, Is.EqualTo(StatementType.Merge));
+            Assert.That(batch.BatchCommands[3].StatementType, Is.EqualTo(StatementType.Merge));
         }
 
         [Test]
