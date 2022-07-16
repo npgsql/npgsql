@@ -137,7 +137,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task RecordsAffected_and_Rows15()
+        public async Task Merge_RecordsAffected_and_Rows()
         {
             await using var conn = await OpenConnectionAsync();
 
