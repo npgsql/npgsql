@@ -65,7 +65,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
                 builder.Append(" TEMPORARY");
             builder.Append(" PHYSICAL");
             if (reserveWal)
-                builder.Append(" RESERVE_WAL");
+                builder.Append(PostgreSqlVersion.Major > 14 ? " (RESERVE_WAL)" : " RESERVE_WAL");
 
             var command = builder.ToString();
 

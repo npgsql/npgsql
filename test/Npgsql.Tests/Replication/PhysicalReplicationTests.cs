@@ -11,12 +11,12 @@ namespace Npgsql.Tests.Replication;
 public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicationConnection>
 {
     [Test]
-    public Task CreateReplicationSlot()
+    public Task CreateReplicationSlot([Values]bool temporary, [Values]bool reserveWal)
         => SafeReplicationTest(
             async (slotName, _) =>
             {
                 await using var rc = await OpenReplicationConnectionAsync();
-                var slot = await rc.CreateReplicationSlot(slotName);
+                var slot = await rc.CreateReplicationSlot(slotName, temporary, reserveWal);
 
                 await using var c = await OpenConnectionAsync();
                 using var cmd =
@@ -28,7 +28,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 Assert.That(reader.GetFieldValue<string>(reader.GetOrdinal("slot_type")), Is.EqualTo("physical"));
                 Assert.That(reader.Read, Is.False);
                 await rc.DropReplicationSlot(slotName);
-            });
+            }, nameof(CreateReplicationSlot) + (temporary ? "_t" : "") + (reserveWal ? "_r" : ""));
 
     [TestCase(true, true)]
     [TestCase(true, false)]

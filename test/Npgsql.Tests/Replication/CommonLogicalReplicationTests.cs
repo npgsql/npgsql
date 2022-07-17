@@ -56,7 +56,7 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                     Assert.That(reader.GetFieldValue<NpgsqlLogSequenceNumber>(reader.GetOrdinal("confirmed_flush_lsn")),
                         Is.EqualTo(options.ConsistentPoint));
                 Assert.That(reader.Read, Is.False);
-            }, nameof(CreateLogicalReplicationSlot) + temporary);
+            }, nameof(CreateLogicalReplicationSlot) + (temporary ? "_tmp" : "") + (twoPhase ? "_tp" : ""));
 
     [Test]
     public Task CreateLogicalReplicationSlot_with_SnapshotInitMode_NoExport()
