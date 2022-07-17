@@ -1,0 +1,22 @@
+name: Update catalogs.json from PostgreSQL .dat files
+
+on:
+  push:
+    branches:
+      - main
+      - 'hotfix/**'
+      - DAT_FILE_UPDATER
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  update_catalogs:
+    name: Update catalogs.json from PostgreSQL .dat files if necessary and create a pull request in that case
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Update
+        run: |
+          sudo apt-get -y install libwww-perl libjson-perl libnet-github-perl > /dev/null
+          perl ./src/Npgsql/pg_catalog/dat2json.pl ${{ secrets.GITHUB_TOKEN }}

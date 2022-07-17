@@ -1,0 +1,526 @@
+{
+   "pg_range" : [
+      {
+         "rngmultitypid" : "int4multirange",
+         "rngsubtype" : "int4",
+         "rngtypid" : "int4range"
+      },
+      {
+         "rngmultitypid" : "nummultirange",
+         "rngsubtype" : "numeric",
+         "rngtypid" : "numrange"
+      },
+      {
+         "rngmultitypid" : "tsmultirange",
+         "rngsubtype" : "timestamp",
+         "rngtypid" : "tsrange"
+      },
+      {
+         "rngmultitypid" : "tstzmultirange",
+         "rngsubtype" : "timestamptz",
+         "rngtypid" : "tstzrange"
+      },
+      {
+         "rngmultitypid" : "datemultirange",
+         "rngsubtype" : "date",
+         "rngtypid" : "daterange"
+      },
+      {
+         "rngmultitypid" : "int8multirange",
+         "rngsubtype" : "int8",
+         "rngtypid" : "int8range"
+      }
+   ],
+   "pg_type" : [
+      {
+         "oid" : "16",
+         "typname" : "bool"
+      },
+      {
+         "oid" : "17",
+         "typname" : "bytea"
+      },
+      {
+         "oid" : "18",
+         "typname" : "char"
+      },
+      {
+         "oid" : "19",
+         "typname" : "name"
+      },
+      {
+         "oid" : "20",
+         "typname" : "int8"
+      },
+      {
+         "oid" : "21",
+         "typname" : "int2"
+      },
+      {
+         "oid" : "22",
+         "typname" : "int2vector"
+      },
+      {
+         "oid" : "23",
+         "typname" : "int4"
+      },
+      {
+         "oid" : "24",
+         "typname" : "regproc"
+      },
+      {
+         "oid" : "25",
+         "typname" : "text"
+      },
+      {
+         "oid" : "26",
+         "typname" : "oid"
+      },
+      {
+         "oid" : "27",
+         "typname" : "tid"
+      },
+      {
+         "oid" : "28",
+         "typname" : "xid"
+      },
+      {
+         "oid" : "29",
+         "typname" : "cid"
+      },
+      {
+         "oid" : "30",
+         "typname" : "oidvector"
+      },
+      {
+         "oid" : "71",
+         "typname" : "pg_type",
+         "typtype" : "c"
+      },
+      {
+         "oid" : "75",
+         "typname" : "pg_attribute",
+         "typtype" : "c"
+      },
+      {
+         "oid" : "81",
+         "typname" : "pg_proc",
+         "typtype" : "c"
+      },
+      {
+         "oid" : "83",
+         "typname" : "pg_class",
+         "typtype" : "c"
+      },
+      {
+         "oid" : "114",
+         "typname" : "json"
+      },
+      {
+         "oid" : "142",
+         "typname" : "xml"
+      },
+      {
+         "oid" : "194",
+         "typname" : "pg_node_tree"
+      },
+      {
+         "oid" : "3361",
+         "typname" : "pg_ndistinct"
+      },
+      {
+         "oid" : "3402",
+         "typname" : "pg_dependencies"
+      },
+      {
+         "oid" : "5017",
+         "typname" : "pg_mcv_list"
+      },
+      {
+         "oid" : "32",
+         "typname" : "pg_ddl_command",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "5069",
+         "typname" : "xid8"
+      },
+      {
+         "oid" : "600",
+         "typname" : "point"
+      },
+      {
+         "oid" : "601",
+         "typname" : "lseg"
+      },
+      {
+         "oid" : "602",
+         "typname" : "path"
+      },
+      {
+         "oid" : "603",
+         "typname" : "box"
+      },
+      {
+         "oid" : "604",
+         "typname" : "polygon"
+      },
+      {
+         "oid" : "628",
+         "typname" : "line"
+      },
+      {
+         "oid" : "700",
+         "typname" : "float4"
+      },
+      {
+         "oid" : "701",
+         "typname" : "float8"
+      },
+      {
+         "oid" : "705",
+         "typname" : "unknown",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "718",
+         "typname" : "circle"
+      },
+      {
+         "oid" : "790",
+         "typname" : "money"
+      },
+      {
+         "oid" : "829",
+         "typname" : "macaddr"
+      },
+      {
+         "oid" : "869",
+         "typname" : "inet"
+      },
+      {
+         "oid" : "650",
+         "typname" : "cidr"
+      },
+      {
+         "oid" : "774",
+         "typname" : "macaddr8"
+      },
+      {
+         "oid" : "1033",
+         "typname" : "aclitem"
+      },
+      {
+         "oid" : "1042",
+         "typname" : "bpchar"
+      },
+      {
+         "oid" : "1043",
+         "typname" : "varchar"
+      },
+      {
+         "oid" : "1082",
+         "typname" : "date"
+      },
+      {
+         "oid" : "1083",
+         "typname" : "time"
+      },
+      {
+         "oid" : "1114",
+         "typname" : "timestamp"
+      },
+      {
+         "oid" : "1184",
+         "typname" : "timestamptz"
+      },
+      {
+         "oid" : "1186",
+         "typname" : "interval"
+      },
+      {
+         "oid" : "1266",
+         "typname" : "timetz"
+      },
+      {
+         "oid" : "1560",
+         "typname" : "bit"
+      },
+      {
+         "oid" : "1562",
+         "typname" : "varbit"
+      },
+      {
+         "oid" : "1700",
+         "typname" : "numeric"
+      },
+      {
+         "oid" : "1790",
+         "typname" : "refcursor"
+      },
+      {
+         "oid" : "2202",
+         "typname" : "regprocedure"
+      },
+      {
+         "oid" : "2203",
+         "typname" : "regoper"
+      },
+      {
+         "oid" : "2204",
+         "typname" : "regoperator"
+      },
+      {
+         "oid" : "2205",
+         "typname" : "regclass"
+      },
+      {
+         "oid" : "4191",
+         "typname" : "regcollation"
+      },
+      {
+         "oid" : "2206",
+         "typname" : "regtype"
+      },
+      {
+         "oid" : "4096",
+         "typname" : "regrole"
+      },
+      {
+         "oid" : "4089",
+         "typname" : "regnamespace"
+      },
+      {
+         "oid" : "2950",
+         "typname" : "uuid"
+      },
+      {
+         "oid" : "3220",
+         "typname" : "pg_lsn"
+      },
+      {
+         "oid" : "3614",
+         "typname" : "tsvector"
+      },
+      {
+         "oid" : "3642",
+         "typname" : "gtsvector"
+      },
+      {
+         "oid" : "3615",
+         "typname" : "tsquery"
+      },
+      {
+         "oid" : "3734",
+         "typname" : "regconfig"
+      },
+      {
+         "oid" : "3769",
+         "typname" : "regdictionary"
+      },
+      {
+         "oid" : "3802",
+         "typname" : "jsonb"
+      },
+      {
+         "oid" : "4072",
+         "typname" : "jsonpath"
+      },
+      {
+         "oid" : "2970",
+         "typname" : "txid_snapshot"
+      },
+      {
+         "oid" : "5038",
+         "typname" : "pg_snapshot"
+      },
+      {
+         "oid" : "3904",
+         "typname" : "int4range",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "3906",
+         "typname" : "numrange",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "3908",
+         "typname" : "tsrange",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "3910",
+         "typname" : "tstzrange",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "3912",
+         "typname" : "daterange",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "3926",
+         "typname" : "int8range",
+         "typtype" : "r"
+      },
+      {
+         "oid" : "4451",
+         "typname" : "int4multirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "4532",
+         "typname" : "nummultirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "4533",
+         "typname" : "tsmultirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "4534",
+         "typname" : "tstzmultirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "4535",
+         "typname" : "datemultirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "4536",
+         "typname" : "int8multirange",
+         "typtype" : "m"
+      },
+      {
+         "oid" : "2249",
+         "typname" : "record",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2287",
+         "typname" : "_record",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2275",
+         "typname" : "cstring",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2276",
+         "typname" : "any",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2277",
+         "typname" : "anyarray",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2278",
+         "typname" : "void",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2279",
+         "typname" : "trigger",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "3838",
+         "typname" : "event_trigger",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2280",
+         "typname" : "language_handler",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2281",
+         "typname" : "internal",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2283",
+         "typname" : "anyelement",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "2776",
+         "typname" : "anynonarray",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "3500",
+         "typname" : "anyenum",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "3115",
+         "typname" : "fdw_handler",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "325",
+         "typname" : "index_am_handler",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "3310",
+         "typname" : "tsm_handler",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "269",
+         "typname" : "table_am_handler",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "3831",
+         "typname" : "anyrange",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "5077",
+         "typname" : "anycompatible",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "5078",
+         "typname" : "anycompatiblearray",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "5079",
+         "typname" : "anycompatiblenonarray",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "5080",
+         "typname" : "anycompatiblerange",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "4537",
+         "typname" : "anymultirange",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "4538",
+         "typname" : "anycompatiblemultirange",
+         "typtype" : "p"
+      },
+      {
+         "oid" : "4600",
+         "typname" : "pg_brin_bloom_summary"
+      },
+      {
+         "oid" : "4601",
+         "typname" : "pg_brin_minmax_multi_summary"
+      }
+   ]
+}
