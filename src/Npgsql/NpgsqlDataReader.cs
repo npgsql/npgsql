@@ -734,6 +734,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case StatementType.Delete:
             case StatementType.Copy:
             case StatementType.Move:
+            case StatementType.Merge:
                 if (!_recordsAffected.HasValue)
                     _recordsAffected = 0;
                 _recordsAffected += completed.Rows;
