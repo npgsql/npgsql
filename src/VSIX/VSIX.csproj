@@ -34,9 +34,6 @@
     <StartAction>Program</StartAction>
     <StartProgram Condition="'$(DevEnvDir)' != ''">$(DevEnvDir)devenv.exe</StartProgram>
     <StartArguments>/rootsuffix Exp</StartArguments>
-    <!-- Specific options added in Npgsql -->
-    <!-- See: http://comealive.io/AppVeyor-Times-Out-VSIX/ for the following line -->
-    <DeployExtension Condition="'$(AppVeyor)' != ''">False</DeployExtension>
     <!-- See: https://stackoverflow.com/questions/45938814/the-version-of-microsoft-net-sdk-used-by-this-project-is-insufficient-to-support -->
     <DependsOnNETStandard>false</DependsOnNETStandard>
   </PropertyGroup>
