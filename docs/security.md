@@ -22,12 +22,12 @@ SSL Mode            | Eavesdropping protection | Man-in-the-middle protection | 
 ------------------- | ------------------------ | ---------------------------- | ---------
 Disable             | No                       | No                           | I don't care about security, and I don't want to pay the overhead of encryption.
 Allow               | Maybe                    | No                           | I don't care about security, but I will pay the overhead of encryption if the server insists on it.
-Prefer              | Maybe                    | No                           | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
+Prefer (default)    | Maybe                    | No                           | I don't care about encryption, but I wish to pay the overhead of encryption if the server supports it.
 Require<sup>1</sup> | Yes                      | No                           | I want my data to be encrypted, and I accept the overhead. I trust that the network will make sure I always connect to the server I want.
 VerifyCA            | Yes                      | Depends on CA policy         | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server that I trust.
 VerifyFull          | Yes                      | Yes                          | I want my data encrypted, and I accept the overhead. I want to be sure that I connect to a server I trust, and that it's the one I specify.
 
-<sup>1</sup> `SSL Mode=Require` currently requires explicitly setting `Trust Server Certificate=true` as well; this requirement will be removed in a future version. This combination should be used with e.g. self-signed certificates.
+<sup>1</sup> `SSL Mode=Require` currently requires explicitly setting `Trust Server Certificate=true` as well (this requirement will be removed in a future version). This combination should be used with e.g. self-signed certificates, which don't need to be validated. As an alternative to `Trust Server Certificate=true`, provide your custom certificate validation via <xref:NpgsqlNpgsqlConnection.UserCertificateValidationCallback?displayProperty=nameWithType>.
 
 The default mode in 6.0+ is `Prefer`, which allows SSL but does not require it, and does not validate certificates.
 
@@ -53,7 +53,7 @@ If the root CA of the server certificate isn't installed in your machine's CA st
 
 Note that Npgsql does not perform certificate revocation validation by default, since this is an optional extension not implemented by all providers and CAs. To turn on certificate revocation validation, specify `Check Certificate Revocation=true` on the connection string.
 
-Finally, if the above options aren't sufficient for your scenario, you can set `UserCertificateValidationCallback` on `NpgsqlConnection` and define your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
+Finally, if the above options aren't sufficient for your scenario, you can set <xref:NpgsqlNpgsqlConnection.UserCertificateValidationCallback?displayProperty=nameWithType> and define your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
 ### Client certificates
 
