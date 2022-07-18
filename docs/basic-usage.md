@@ -164,6 +164,9 @@ await using var reader = await cmd.ExecuteReaderAsync();
 
 An <xref:Npgsql.NpgsqlBatch> simply contains a list of `NpgsqlBatchCommands`, each of which has a `CommandText` and a list of parameters (much like an <xref:Npgsql.NpgsqlCommand>). All statements and parameters are efficiently packed into a single packet - when possible - and sent to PostgreSQL.
 
+> [!NOTE]
+> If you haven't started an explicit transaction with <xref:Npgsql.NpgsqlConnection.BeginTransaction>, a batch is automatically wrapped in an implicit transaction. That is, if a statement within the batch fails, all later statements are skipped and the entire batch is rolled back.
+
 ### Legacy batching
 
 Prior to Npgsql 6.0, `NpgsqlBatch` did not yet exist, and batching could be done as follows:
@@ -183,12 +186,12 @@ Once a function or procedure has been defined, calling it is a simple matter of 
 
 ```c#
 // For functions
-using (var cmd = new NpgsqlCommand("SELECT my_func(1, 2)", conn))
-using (var reader = cmd.ExecuteReader()) { ... }
+using var cmd = new NpgsqlCommand("SELECT my_func(1, 2)", conn);
+using var reader = cmd.ExecuteReader();
 
 // For procedures
-using (var cmd = new NpgsqlCommand("CALL my_proc(1, 2)", conn))
-using (var reader = cmd.ExecuteReader()) { ... }
+using var cmd = new NpgsqlCommand("CALL my_proc(1, 2)", conn);
+using var reader = cmd.ExecuteReader();
 ```
 
 You can replace the parameter values above with regular placeholders (e.g. `@p1`), just like with a regular query.
