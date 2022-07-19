@@ -79,7 +79,7 @@ public static class LogicalReplicationConnectionExtensions
             if (isTemporary)
                 builder.Append(" TEMPORARY");
             builder.Append(" LOGICAL ").Append(outputPlugin);
-            if (connection.PostgreSqlVersion.Major > 14 && (slotSnapshotInitMode.HasValue || twoPhase))
+            if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
             {
                 builder.Append('(');
                 if (slotSnapshotInitMode.HasValue)
@@ -87,8 +87,8 @@ public static class LogicalReplicationConnectionExtensions
                     builder.Append(slotSnapshotInitMode switch
                     {
                         LogicalSlotSnapshotInitMode.Export => "SNAPSHOT 'export'",
-                        LogicalSlotSnapshotInitMode.Use => " SNAPSHOT 'use'",
-                        LogicalSlotSnapshotInitMode.NoExport => " SNAPSHOT 'nothing'",
+                        LogicalSlotSnapshotInitMode.Use => "SNAPSHOT 'use'",
+                        LogicalSlotSnapshotInitMode.NoExport => "SNAPSHOT 'nothing'",
                         _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
                             slotSnapshotInitMode,
                             $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
