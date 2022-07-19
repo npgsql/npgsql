@@ -77,6 +77,10 @@ namespace Npgsql.VSIX
                 Trace.WriteLine(ex.ToString());
             }
 #endif
+            finally
+            {
+                // empty
+            }
 
             // TODO: Authentication!
         }
