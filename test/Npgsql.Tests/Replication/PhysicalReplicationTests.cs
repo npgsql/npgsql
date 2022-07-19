@@ -15,10 +15,15 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
         => SafeReplicationTest(
             async (slotName, _) =>
             {
+                await using var c = await OpenConnectionAsync();
+                if (reserveWal)
+                    TestUtil.MinimumPgVersion(c, "10.0", "The RESERVE_WAL syntax was introduced in PostgreSQL 10");
+                if (temporary)
+                    TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+
                 await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateReplicationSlot(slotName, temporary, reserveWal);
 
-                await using var c = await OpenConnectionAsync();
                 using var cmd =
                     new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.Name}'",
                         c);
