@@ -27,12 +27,10 @@ namespace Npgsql.VSIX
                     savePasswordCheckBox.Checked = (bool)Site["Persist Security Info"];
                 }
             }
-#if DEBUG
             catch (Exception ex)
             {
                 Trace.WriteLine(ex.ToString());
             }
-#endif
             finally
             {
                 _loading = false;
@@ -44,47 +42,33 @@ namespace Npgsql.VSIX
             if (_loading)
                 return;  // TODO: Match with sample?
 
-            try
+            if (sender == hostTextBox)
+                Site["Host"] = hostTextBox.Text.Trim();
+            else if (sender == portNumericUpDown)
+                Site["Port"] = portNumericUpDown.Value;
+            else if (sender == databaseTextBox)
+                Site["Database"] = databaseTextBox.Text;
+            else if (sender == usernameTextBox)
+                Site["Username"] = usernameTextBox.Text;
+            else if (sender == passwordTextBox)
+                Site["Password"] = passwordTextBox.Text;
+            else if (sender == savePasswordCheckBox)
+                Site["Persist Security Info"] = savePasswordCheckBox.Checked;
+            else if (sender == windowsAuthCheckbox)
             {
-                if (sender == hostTextBox)
-                    Site["Host"] = hostTextBox.Text.Trim();
-                else if (sender == portNumericUpDown)
-                    Site["Port"] = portNumericUpDown.Value;
-                else if (sender == databaseTextBox)
-                    Site["Database"] = databaseTextBox.Text;
-                else if (sender == usernameTextBox)
-                    Site["Username"] = usernameTextBox.Text;
-                else if (sender == passwordTextBox)
-                    Site["Password"] = passwordTextBox.Text;
-                else if (sender == savePasswordCheckBox)
-                    Site["Persist Security Info"] = savePasswordCheckBox.Checked;
-                else if (sender == windowsAuthCheckbox)
+                var integratedSecurity = windowsAuthCheckbox.Checked;
+                Site["Integrated Security"] = integratedSecurity;
+                usernameTextBox.Enabled = !integratedSecurity;
+                passwordTextBox.Enabled = !integratedSecurity;
+                if (integratedSecurity)
                 {
-                    var integratedSecurity = windowsAuthCheckbox.Checked;
-                    Site["Integrated Security"] = integratedSecurity;
-                    usernameTextBox.Enabled = !integratedSecurity;
-                    passwordTextBox.Enabled = !integratedSecurity;
-                    if (integratedSecurity)
-                    {
-                        usernameTextBox.Text = "";
-                        passwordTextBox.Text = "";
-                    }
+                    usernameTextBox.Text = "";
+                    passwordTextBox.Text = "";
                 }
-            }
-#if DEBUG
-            catch (Exception ex)
-            {
-                Trace.WriteLine(ex.ToString());
-            }
-#endif
-            finally
-            {
-                // empty
             }
 
             // TODO: Authentication!
         }
-
         #region Private Fields
 
         /// <summary>
