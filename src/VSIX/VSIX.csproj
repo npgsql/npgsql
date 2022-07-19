@@ -27,7 +27,6 @@
     <SchemaVersion>2.0</SchemaVersion>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <UseCodebase>true</UseCodebase>
-    <!-- unmatched -->
     <NullableContextOptions>disable</NullableContextOptions>
     <TargetVsixContainerName>Npgsql.vsix</TargetVsixContainerName>
     <!-- Debug Parametwers -->

@@ -27,10 +27,12 @@ namespace Npgsql.VSIX
                     savePasswordCheckBox.Checked = (bool)Site["Persist Security Info"];
                 }
             }
+#if DEBUG
             catch (Exception ex)
             {
                 Trace.WriteLine(ex.ToString());
             }
+#endif
             finally
             {
                 _loading = false;
@@ -69,10 +71,12 @@ namespace Npgsql.VSIX
                     }
                 }
             }
+#if DEBUG
             catch (Exception ex)
             {
                 Trace.WriteLine(ex.ToString());
             }
+#endif
 
             // TODO: Authentication!
         }
