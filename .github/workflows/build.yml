@@ -39,7 +39,7 @@ jobs:
             pg_major: 14
             config: Release
             test_tfm: netcoreapp3.1
-          - os: macos-11
+          - os: macos-12
             pg_major: 14
             config: Release
             test_tfm: net7.0
@@ -83,7 +83,7 @@ jobs:
           dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
 
           sudo apt install pgdg-keyring
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main 14" >> /etc/apt/sources.list.d/pgdg.list'
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main ${{ matrix.pg_major }}" >> /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
