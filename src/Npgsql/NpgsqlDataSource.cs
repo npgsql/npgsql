@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Properties;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -23,7 +26,16 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     internal NpgsqlConnectionStringBuilder Settings { get; }
 
+    internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
+
+    readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
+    readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
+
+    readonly Timer? _passwordProviderTimer;
+    readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
+    readonly Task _passwordRefreshTask = null!;
+    string? _password;
 
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
@@ -34,17 +46,37 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     volatile bool _isDisposed;
 
+    readonly ILogger _connectionLogger;
+
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
-        string connectionString,
-        NpgsqlLoggingConfiguration loggingConfiguration)
+        NpgsqlDataSourceConfiguration dataSourceConfig)
     {
         Settings = settings;
         ConnectionString = settings.PersistSecurityInfo
-            ? connectionString
+            ? settings.ToString()
             : settings.ToStringWithoutPassword();
 
-        LoggingConfiguration = loggingConfiguration;
+        Configuration = dataSourceConfig;
+
+        (LoggingConfiguration, _periodicPasswordProvider, _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval)
+            = dataSourceConfig;
+        _connectionLogger = LoggingConfiguration.ConnectionLogger;
+
+        _password = settings.Password;
+
+        if (_periodicPasswordSuccessRefreshInterval != default)
+        {
+            Debug.Assert(_periodicPasswordProvider is not null);
+
+            _timerPasswordProviderCancellationTokenSource = new();
+
+            // Create the timer, but don't start it; the manual run below will will schedule the first refresh.
+            _passwordProviderTimer = new Timer(state => _ = RefreshPassword(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            // Trigger the first refresh attempt right now, outside the timer; this allows us to capture the Task so it can be observed
+            // in GetPasswordAsync.
+            _passwordRefreshTask = Task.Run(RefreshPassword);
+        }
     }
 
     /// <summary>
@@ -131,6 +163,56 @@ public abstract class NpgsqlDataSource : DbDataSource
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
 
+    /// <summary>
+    /// Manually sets the password to be used the next time a physical connection is opened.
+    /// Consider using <see cref="NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider" /> instead.
+    /// </summary>
+    public string Password
+    {
+        set
+        {
+            if (_periodicPasswordProvider is not null)
+                throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
+
+            _password = value;
+        }
+    }
+
+    internal async ValueTask<string?> GetPassword(bool async, CancellationToken cancellationToken = default)
+    {
+        // A periodic password provider is configured, but the first refresh hasn't completed yet (race condition).
+        // Wait until it completes.
+        if (_password is null && _periodicPasswordProvider is not null)
+        {
+            if (async)
+                await _passwordRefreshTask;
+            else
+                _passwordRefreshTask.GetAwaiter().GetResult();
+
+            Debug.Assert(_password is not null);
+        }
+
+        return _password;
+    }
+
+    async Task RefreshPassword()
+    {
+        try
+        {
+            _password = await _periodicPasswordProvider!(Settings, _timerPasswordProviderCancellationTokenSource!.Token);
+
+            _passwordProviderTimer!.Change(_periodicPasswordSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
+        }
+        catch (Exception e)
+        {
+            _connectionLogger.LogError(e, "Periodic password provider threw an exception");
+
+            _passwordProviderTimer!.Change(_periodicPasswordFailureRefreshInterval, Timeout.InfiniteTimeSpan);
+
+            throw new NpgsqlException("An exception was thrown from the periodic password provider", e);
+        }
+    }
+
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
 
@@ -152,7 +234,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         lock (_pendingEnlistedConnectors)
         {
             if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
+                list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>(1);
             list.Add(connector);
         }
     }
@@ -197,7 +279,17 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         if (disposing)
         {
+            var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
+            if (cancellationTokenSource is not null)
+            {
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource.Dispose();
+            }
+
+            _passwordProviderTimer?.Dispose();
+
             _isDisposed = true;
+
             Clear();
         }
     }

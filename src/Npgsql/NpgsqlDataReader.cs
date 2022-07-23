@@ -734,6 +734,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case StatementType.Delete:
             case StatementType.Copy:
             case StatementType.Move:
+            case StatementType.Merge:
                 if (!_recordsAffected.HasValue)
                     _recordsAffected = 0;
                 _recordsAffected += completed.Rows;
@@ -1079,13 +1080,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         if (_connection?.ConnectorBindingScope == ConnectorBindingScope.Reader)
         {
-            // We may unbind the current reader, which also sets the connector to null
-            var connector = Connector;
             UnbindIfNecessary();
 
             // TODO: Refactor... Use proper scope
             _connection.Connector = null;
-            connector.Connection = null;
+            Connector.Connection = null;
             _connection.ConnectorBindingScope = ConnectorBindingScope.None;
 
             // If the reader is being closed as part of the connection closing, we don't apply
@@ -1093,7 +1092,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                 _connection.Close();
 
-            connector.ReaderCompleted.SetResult(null);
+            Connector.ReaderCompleted.SetResult(null);
         }
         else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
         {

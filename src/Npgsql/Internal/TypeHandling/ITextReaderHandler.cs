@@ -11,5 +11,3 @@ interface ITextReaderHandler
 {
     TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer);
 }
-
-#pragma warning disable CA1032

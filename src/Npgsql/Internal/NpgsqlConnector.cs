@@ -211,12 +211,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal int UserTimeout { private get; set; }
 
     /// <summary>
-    /// A lock that's taken while a user action is in progress, e.g. a command being executed.
-    /// Only used when keepalive is enabled, otherwise null.
-    /// </summary>
-    SemaphoreSlim? _userLock;
-
-    /// <summary>
     /// A lock that's taken while a cancellation is being delivered; new queries are blocked until the
     /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
     /// command will accidentally cancel a later one, see #615.
@@ -237,11 +231,11 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
     /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
-    /// <see cref="MultiHostDataSource"/>,
+    /// <see cref="NpgsqlMultiHostDataSource"/>.
     /// </summary>
-    readonly NpgsqlDataSource _connectorSource;
+    readonly NpgsqlDataSource _dataSource;
 
-    internal string UserFacingConnectionString => _connectorSource.ConnectionString;
+    internal string UserFacingConnectionString => _dataSource.ConnectionString;
 
     /// <summary>
     /// Contains the UTC timestamp when this connector was opened, used to implement
@@ -315,12 +309,14 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Constructors
 
-    internal NpgsqlConnector(NpgsqlDataSource connectorSource, NpgsqlConnection conn)
-        : this(connectorSource)
+    internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
+        : this(dataSource)
     {
         ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
         UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+#pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
+#pragma warning restore CS0618
 
 #pragma warning disable CA2252 // Experimental API
         PhysicalOpenCallback = conn.PhysicalOpenCallback;
@@ -329,20 +325,20 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     NpgsqlConnector(NpgsqlConnector connector)
-        : this(connector._connectorSource)
+        : this(connector._dataSource)
     {
         ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
         UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
-    NpgsqlConnector(NpgsqlDataSource connectorSource)
+    NpgsqlConnector(NpgsqlDataSource dataSource)
     {
-        Debug.Assert(connectorSource.OwnsConnectors);
+        Debug.Assert(dataSource.OwnsConnectors);
 
-        _connectorSource = connectorSource;
+        _dataSource = dataSource;
 
-        LoggingConfiguration = _connectorSource.LoggingConfiguration;
+        LoggingConfiguration = dataSource.LoggingConfiguration;
         ConnectionLogger = LoggingConfiguration.ConnectionLogger;
         CommandLogger = LoggingConfiguration.CommandLogger;
         TransactionLogger = LoggingConfiguration.TransactionLogger;
@@ -350,18 +346,15 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
-        Settings = connectorSource.Settings;
+        Settings = dataSource.Settings;
         PostgresParameters = new Dictionary<string, string>();
 
         CancelLock = new object();
 
         _isKeepAliveEnabled = Settings.KeepAlive > 0;
         if (_isKeepAliveEnabled)
-        {
-            _userLock = new SemaphoreSlim(1, 1);
             _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
-        }
-
+        
         DataReader = new NpgsqlDataReader(this);
 
         // TODO: Not just for automatic preparation anymore...
@@ -606,7 +599,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
         // a connector-specific mapper, which will later become shared pool-wide one.
         TypeMapper =
-            Settings.Multiplexing && ((MultiplexingDataSource)_connectorSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
+            Settings.Multiplexing && ((MultiplexingDataSource)_dataSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
                 ? multiplexingTypeMapper
                 : new ConnectorTypeMapper(this);
 
@@ -1179,7 +1172,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
                     ResetReadBuffer();
-                    _connectorSource.Return(this);
+                    _dataSource.Return(this);
                 }
             }
 
@@ -1216,7 +1209,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
 
             // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
-            _connectorSource.Return(this);
+            _dataSource.Return(this);
 
             ConnectionLogger.LogError(e, "Exception in multiplexing read loop", Id);
         }
@@ -1243,16 +1236,13 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Backend message processing
 
-    internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
-        => ReadMessage(async: false, dataRowLoadingMode).GetAwaiter().GetResult();
-
     internal ValueTask<IBackendMessage> ReadMessage(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
         => ReadMessage(async, dataRowLoadingMode, readingNotifications: false)!;
 
     internal ValueTask<IBackendMessage?> ReadMessageWithNotifications(bool async)
         => ReadMessage(async, DataRowLoadingMode.NonSequential, readingNotifications: true);
 
-    internal ValueTask<IBackendMessage?> ReadMessage(
+    ValueTask<IBackendMessage?> ReadMessage(
         bool async,
         DataRowLoadingMode dataRowLoadingMode,
         bool readingNotifications)
@@ -1923,9 +1913,9 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => _connectorSource.TryRemovePendingEnlistedConnector(this, transaction);
+        => _dataSource.TryRemovePendingEnlistedConnector(this, transaction);
 
-    internal void Return() => _connectorSource.Return(this);
+    internal void Return() => _dataSource.Return(this);
 
     /// <inheritdoc />
     public void Dispose() => Close();
@@ -1961,7 +1951,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 {
                     ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
                         Settings.HostRecheckSecondsTranslated);
-                    _connectorSource.Clear();
+                    _dataSource.Clear();
                 }
 
                 LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
@@ -2019,8 +2009,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (_isKeepAliveEnabled)
         {
-            _userLock!.Dispose();
-            _userLock = null;
             _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
             _keepAliveTimer.Dispose();
         }
@@ -2273,28 +2261,22 @@ public sealed partial class NpgsqlConnector : IDisposable
                 throw IsBroken
                     ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
                     : new NpgsqlException("The connection is closed");
-            }  
-
-            if (!_userLock!.Wait(0))
-            {
-                var currentCommand = _currentCommand;
-                throw currentCommand == null
-                    ? new NpgsqlOperationInProgressException(State)
-                    : new NpgsqlOperationInProgressException(currentCommand);
             }
+
+            // Disable keepalive, it will be restarted at the end of the user action
+            _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
 
             try
             {
-                // Disable keepalive, it will be restarted at the end of the user action
-                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
-
-                // We now have both locks and are sure nothing else is running.
                 // Check that the connector is ready.
                 return DoStartUserAction(newState, command);
             }
-            catch
+            catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
             {
-                _userLock.Release();
+                // We failed, but there is no current operation.
+                // As such, we re-enable the keepalive.
+                var keepAlive = Settings.KeepAlive * 1000;
+                _keepAliveTimer!.Change(keepAlive, keepAlive);
                 throw;
             }
         }
@@ -2359,7 +2341,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
                 LogMessages.EndUserAction(ConnectionLogger, Id);
                 _currentCommand = null;
-                _userLock!.Release();
                 State = ConnectorState.Ready;
             }
         }
@@ -2409,7 +2390,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             var timeout = InternalCommandTimeout;
             WriteBuffer.Timeout = TimeSpan.FromSeconds(timeout);
             UserTimeout = timeout;
-            WriteSync(async: false);
+            WriteSync(async: false).GetAwaiter().GetResult();
             Flush();
             SkipUntil(BackendMessageCode.ReadyForQuery);
             LogMessages.CompletedKeepalive(ConnectionLogger, Id);

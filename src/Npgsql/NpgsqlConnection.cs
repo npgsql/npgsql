@@ -199,15 +199,16 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // The connection string may be equivalent to one that has already been seen though (e.g. different
         // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
         // and recheck.
-        // Note that we remove TargetSessionAttributes and LoadBalanceHosts to make all connection strings
-        // that are otherwise identical point to the same pool.
+        // Note that we remove TargetSessionAttributes to make all connection strings that are otherwise identical point to the same pool.
         var canonical = settings.ConnectionStringForMultipleHosts;
 
         if (PoolManager.Pools.TryGetValue(canonical, out _dataSource))
         {
-            // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-            if (_dataSource is MultiHostDataSource mhdsCanonical)
-                _dataSource = new MultiHostDataSourceWrapper(Settings, _connectionString, mhdsCanonical);
+            // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
+            // MultiHostDataSource with that TargetSessionAttributes.
+            if (_dataSource is NpgsqlMultiHostDataSource multiHostDataSource && settings.TargetSessionAttributesParsed.HasValue)
+                _dataSource = multiHostDataSource.For(settings.TargetSessionAttributesParsed.Value);
+
             // The pool was found, but only under the canonical key - we're using a different version
             // for the first time. Map it via our own key for next time.
             _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
@@ -228,7 +229,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             Debug.Assert(_dataSource is not MultiHostDataSourceWrapper);
             // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
             // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-            if (_dataSource is MultiHostDataSource multiHostConnectorPool)
+            if (_dataSource is NpgsqlMultiHostDataSource multiHostConnectorPool)
                 foreach (var hostPool in multiHostConnectorPool.Pools)
                     NpgsqlEventSource.Log.DataSourceCreated(hostPool);
             else
@@ -237,9 +238,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         else
             newDataSource.Dispose();
 
-        // We're wrapping the original pool in the other, as the original doesn't have the TargetSessionAttributes
-        if (_dataSource is MultiHostDataSource mhds)
-            _dataSource = new MultiHostDataSourceWrapper(Settings, _connectionString, mhds);
+        // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
+        // MultiHostDataSource with that TargetSessionAttributes.
+        if (_dataSource is NpgsqlMultiHostDataSource multiHostDataSource2 && settings.TargetSessionAttributesParsed.HasValue)
+            _dataSource = multiHostDataSource2.For(settings.TargetSessionAttributesParsed.Value);
 
         _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
     }
@@ -404,6 +406,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// that was previously opened from the pool.
     /// </p>
     /// </remarks>
+    [Obsolete("Use NpgsqlDataSource.UsePeriodicPasswordProvider or UseInlinePasswordProvider")]
     public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
     /// <summary>
@@ -1946,7 +1949,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var conn = new NpgsqlConnection(_connectionString) {
             ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
             UserCertificateValidationCallback = UserCertificateValidationCallback,
+#pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
+#pragma warning restore CS0618
             _userFacingConnectionString = _userFacingConnectionString
         };
         return conn;
@@ -1969,7 +1974,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         return new NpgsqlConnection(csb.ToString()) {
             ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
             UserCertificateValidationCallback = UserCertificateValidationCallback,
+#pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
+#pragma warning restore CS0618
         };
     }
 

@@ -11,7 +11,10 @@ using System.Transactions;
 
 namespace Npgsql;
 
-sealed class MultiHostDataSource : NpgsqlDataSource
+#pragma warning disable CS1591
+#pragma warning disable RS0016
+
+public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
 
@@ -19,10 +22,12 @@ sealed class MultiHostDataSource : NpgsqlDataSource
 
     internal NpgsqlDataSource[] Pools => _pools;
 
+    readonly MultiHostDataSourceWrapper[] _wrappers;
+
     volatile int _roundRobinIndex = -1;
 
-    public MultiHostDataSource(NpgsqlConnectionStringBuilder settings, string connString, NpgsqlLoggingConfiguration loggingConfiguration)
-        : base(settings, connString, loggingConfiguration)
+    internal NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
+        : base(settings, dataSourceConfig)
     {
         var hosts = settings.Host!.Split(',');
         _pools = new NpgsqlDataSource[hosts.Length];
@@ -40,10 +45,76 @@ sealed class MultiHostDataSource : NpgsqlDataSource
                 poolSettings.Host = host.ToString();
 
             _pools[i] = settings.Pooling
-                ? new PoolingDataSource(poolSettings, poolSettings.ConnectionString, loggingConfiguration, this)
-                : new UnpooledDataSource(poolSettings, poolSettings.ConnectionString, loggingConfiguration);
+                ? new PoolingDataSource(poolSettings, dataSourceConfig, this)
+                : new UnpooledDataSource(poolSettings, dataSourceConfig);
+        }
+
+        var targetSessionAttributeValues = Enum.GetValues(typeof(TargetSessionAttributes)).Cast<TargetSessionAttributes>().ToArray();
+        _wrappers = new MultiHostDataSourceWrapper[targetSessionAttributeValues.Max(t => (int)t) + 1];
+        foreach (var targetSessionAttribute in targetSessionAttributeValues)
+        {
+            _wrappers[(int)targetSessionAttribute] = new(this, targetSessionAttribute);
         }
     }
+
+    /// <summary>
+    /// Returns a new, unopened connection from this data source.
+    /// </summary>
+    /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
+    public NpgsqlConnection CreateConnection(TargetSessionAttributes targetSessionAttributes)
+        => NpgsqlConnection.FromDataSource(_wrappers[(int)targetSessionAttributes]);
+
+    /// <summary>
+    /// Returns a new, opened connection from this data source.
+    /// </summary>
+    /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
+    public NpgsqlConnection OpenConnection(TargetSessionAttributes targetSessionAttributes)
+    {
+        var connection = CreateConnection(targetSessionAttributes);
+
+        try
+        {
+            connection.Open();
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns a new, opened connection from this data source.
+    /// </summary>
+    /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    public async ValueTask<NpgsqlConnection> OpenConnectionAsync(
+        TargetSessionAttributes targetSessionAttributes,
+        CancellationToken cancellationToken = default)
+    {
+        var connection = CreateConnection(targetSessionAttributes);
+
+        try
+        {
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Returns an <see cref="NpgsqlDataSource" /> that wraps this multi-host one with the given server type.
+    /// </summary>
+    /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
+    public NpgsqlDataSource For(TargetSessionAttributes targetSessionAttributes)
+        => _wrappers[(int)targetSessionAttributes];
 
     static bool IsPreferred(ClusterState state, TargetSessionAttributes preferredType)
         => state switch
@@ -252,13 +323,13 @@ sealed class MultiHostDataSource : NpgsqlDataSource
     }
 
     internal override void Return(NpgsqlConnector connector)
-        => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(MultiHostDataSource));
+        => throw new NpgsqlException("Npgsql bug: a connector was returned to " + nameof(NpgsqlMultiHostDataSource));
 
     internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
-        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(MultiHostDataSource));
+        => throw new NpgsqlException("Npgsql bug: trying to get an idle connector from " + nameof(NpgsqlMultiHostDataSource));
 
     internal override ValueTask<NpgsqlConnector?> OpenNewConnector(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
-        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(MultiHostDataSource));
+        => throw new NpgsqlException("Npgsql bug: trying to open a new connector from " + nameof(NpgsqlMultiHostDataSource));
 
     internal override void Clear()
     {
@@ -319,5 +390,5 @@ sealed class MultiHostDataSource : NpgsqlDataSource
         => connection.Settings.TargetSessionAttributesParsed ??
            (PostgresEnvironment.TargetSessionAttributes is string s
                ? NpgsqlConnectionStringBuilder.ParseTargetSessionAttributes(s)
-               : default);
+               : TargetSessionAttributes.Any);
 }

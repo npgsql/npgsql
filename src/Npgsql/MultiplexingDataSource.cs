@@ -49,10 +49,9 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        string connString,
-        NpgsqlLoggingConfiguration loggingConfiguration,
-        MultiHostDataSource? parentPool = null)
-        : base(settings, connString, loggingConfiguration, parentPool)
+        NpgsqlDataSourceConfiguration dataSourceConfig,
+        NpgsqlMultiHostDataSource? parentPool = null)
+        : base(settings, dataSourceConfig, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
 
@@ -73,8 +72,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _multiplexCommandReader = multiplexCommandChannel.Reader;
         MultiplexCommandWriter = multiplexCommandChannel.Writer;
 
-        _connectionLogger = loggingConfiguration.ConnectionLogger;
-        _commandLogger = loggingConfiguration.CommandLogger;
+        _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
+        _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
     }
 
     /// <summary>
@@ -86,8 +85,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
     internal async Task BootstrapMultiplexing(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
     {
         var hasSemaphore = async
-            ? await _bootstrapSemaphore!.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
-            : _bootstrapSemaphore!.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
+            ? await _bootstrapSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            : _bootstrapSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
         // We've timed out - calling Check, to throw the correct exception
         if (!hasSemaphore)
@@ -265,10 +264,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
             if (_autoPrepare)
             {
                 // TODO: Need to log based on numPrepared like in non-multiplexing mode...
-                var numPrepared = 0;
                 for (var i = 0; i < command.InternalBatchCommands.Count; i++)
-                    if (command.InternalBatchCommands[i].TryAutoPrepare(connector))
-                        numPrepared++;
+                    command.InternalBatchCommands[i].TryAutoPrepare(connector);
             }
 
             var written = connector.CommandsInFlightWriter!.TryWrite(command);

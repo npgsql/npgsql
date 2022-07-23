@@ -11,11 +11,20 @@ sealed class MultiHostDataSourceWrapper : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
 
-    readonly MultiHostDataSource _wrappedSource;
+    readonly NpgsqlMultiHostDataSource _wrappedSource;
 
-    public MultiHostDataSourceWrapper(NpgsqlConnectionStringBuilder settings, string connString, MultiHostDataSource source)
-        : base(settings, connString, source.LoggingConfiguration)
+    public MultiHostDataSourceWrapper(NpgsqlMultiHostDataSource source, TargetSessionAttributes targetSessionAttributes)
+        : base(CloneSettingsForTargetSessionAttributes(source.Settings, targetSessionAttributes), source.Configuration)
         => _wrappedSource = source;
+
+    static NpgsqlConnectionStringBuilder CloneSettingsForTargetSessionAttributes(
+        NpgsqlConnectionStringBuilder settings,
+        TargetSessionAttributes targetSessionAttributes)
+    {
+        var clonedSettings = settings.Clone();
+        clonedSettings.TargetSessionAttributesParsed = targetSessionAttributes;
+        return clonedSettings;
+    }
 
     internal override (int Total, int Idle, int Busy) Statistics => _wrappedSource.Statistics;
 

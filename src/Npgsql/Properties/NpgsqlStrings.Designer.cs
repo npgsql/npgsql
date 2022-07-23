@@ -80,5 +80,35 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("NotSupportedOnDataSourceBatch", resourceCulture);
             }
         }
+        
+        internal static string CannotSetBothPasswordProviderAndPassword {
+            get {
+                return ResourceManager.GetString("CannotSetBothPasswordProviderAndPassword", resourceCulture);
+            }
+        }
+        
+        internal static string PasswordProviderMissing {
+            get {
+                return ResourceManager.GetString("PasswordProviderMissing", resourceCulture);
+            }
+        }
+        
+        internal static string ArgumentMustBePositive {
+            get {
+                return ResourceManager.GetString("ArgumentMustBePositive", resourceCulture);
+            }
+        }
+        
+        internal static string MultipleHostsMustBeSpecified {
+            get {
+                return ResourceManager.GetString("MultipleHostsMustBeSpecified", resourceCulture);
+            }
+        }
+        
+        internal static string CannotSpecifyTargetSessionAttributes {
+            get {
+                return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
+            }
+        }
     }
 }
