@@ -10,10 +10,14 @@ namespace Npgsql;
 
 partial class PostgresMinimalDatabaseInfo
 {
+    internal static readonly int CatalogVersion;
+
     static readonly PostgresType[] Types;
 
     static PostgresMinimalDatabaseInfo()
     {
+        CatalogVersion = {{ version }};
+
         ///////////////////////////
         // Referenced base types //
         ///////////////////////////

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Scriban;
@@ -11,38 +12,33 @@ using Scriban.Runtime;
 
 namespace Npgsql.SourceGenerators;
 
-[Generator]
-sealed class DatabaseInfoSourceGenerator : ISourceGenerator
+[Generator(LanguageNames.CSharp)]
+sealed class DatabaseInfoSourceGenerator : IIncrementalGenerator
 {
-    public void Initialize(GeneratorInitializationContext context) { }
-
-    public void Execute(GeneratorExecutionContext context)
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        CatalogInfo? catalogs = null;
-        var hasCatalogJson = false;
-        foreach (var file in context.AdditionalFiles)
+        var postgresMinimalDatabaseInfoSymbolName = context.CompilationProvider
+            .Select(static (c, _) => c.GetTypeByMetadataName("Npgsql.PostgresMinimalDatabaseInfo")?.Name
+                                     ?? throw new("Could not find PostgresMinimalDatabaseInfo"));
+
+        var sourceCode = context.AdditionalTextsProvider
+            .Where(static file => Path.GetFileName(file.Path) == "catalogs.json")
+            .Select(CreateSourceCodeFromJson);
+
+        var combined = sourceCode.Combine(postgresMinimalDatabaseInfoSymbolName);
+
+        context.RegisterSourceOutput(combined, (spc, pair) =>
         {
-            if (Path.GetFileName(file.Path) != "catalogs.json")
-                continue;
+            spc.AddSource(pair.Right + ".Generated.cs",  SourceText.From(pair.Left, Encoding.UTF8));
+        });
+    }
 
-            hasCatalogJson = true;
-            catalogs = JsonSerializer.Deserialize<CatalogInfo>(
-                file.GetText()?.ToString() ??
-                throw new Exception($"An error occurred when reading the additional build file '{file.Path}'"));
-        }
-
-        // There is no catalogs.json file in the additional files for this project.
-        // This probably means that the project just isn't interested in this source generator
-        if (!hasCatalogJson)
-            return;
-
-        if (catalogs == null)
-            throw new("This source generator needs a reference to a valid catalogs.json file in AdditionalFiles to perform it's work");
-
-        var compilation = context.Compilation;
-        var postgresMinimalDatabaseInfoSymbol = compilation.GetTypeByMetadataName("Npgsql.PostgresMinimalDatabaseInfo");
-        if (postgresMinimalDatabaseInfoSymbol is null)
-            throw new("Could not find PostgresMinimalDatabaseInfo");
+    static string CreateSourceCodeFromJson(AdditionalText file, CancellationToken cancellationToken)
+    {
+        var catalogs = JsonSerializer.Deserialize<CatalogInfo>(
+                           file.GetText(cancellationToken)?.ToString()
+                           ?? throw new Exception($"An error occurred when reading the additional build file '{file.Path}'"))
+                       ?? throw new("Failed to deserialize json.");
 
         var template = Template.Parse(EmbeddedResource.GetContent("PostgresMinimalDatabaseInfo.snbtxt"), "PostgresMinimalDatabaseInfo.snbtxt");
 
@@ -131,11 +127,12 @@ sealed class DatabaseInfoSourceGenerator : ISourceGenerator
                         Oid = t.array_type_oid!,
                         ElementName = t.typname,
                     }).ToArray(),
+            Version = catalogs.version,
         });
         var tc = new TemplateContext(obj);
         tc.AutoIndent = false;
         var output = template.Render(tc);
-        context.AddSource(postgresMinimalDatabaseInfoSymbol.Name + ".Generated.cs", SourceText.From(output, Encoding.UTF8));
+        return output!;
     }
 
     // ReSharper disable InconsistentNaming

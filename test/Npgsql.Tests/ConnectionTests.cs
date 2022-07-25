@@ -1176,7 +1176,7 @@ LANGUAGE 'plpgsql'");
         Assert.That(await conn.ExecuteScalarAsync("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
         //The following types with hardcoded oids should be supported in this mode:
         // Arrays
-        Assert.That(await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"), Is.EquivalentTo(new []{1,2,3}));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"), Is.EquivalentTo(new []{ 1, 2, 3 }));
         // Ranges
         Assert.That(await conn.ExecuteScalarAsync("SELECT '[3,7)'::int4range"), Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
         // Arrays of ranges
@@ -1190,46 +1190,40 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test, Description("Makes sure that PostgresMinimalDatabaseInfo and PostgresDatabaseInfo are equal for freshly created databases")]
-    public async Task NoTypeLoadingVsTypeLoading()
+    public async Task NoTypeLoading_vs_TypeLoading()
     {
         if (MultiplexingMode == MultiplexingMode.Multiplexing)
             return;
 
         await using var conn = await OpenConnectionAsync(ConnectionString);
-        MinimumPgVersion(conn, "14.0", "Current version for generation of PostgresMinimalDatabaseInfo is 14");
-        var databaseName = Guid.NewGuid().ToString("N");
-        try
-        {
-            await conn.ExecuteNonQueryAsync($"CREATE DATABASE \"{databaseName}\" TEMPLATE template0;");
-            var loadedCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = databaseName };
-            using var loadedPool = CreateTempPool(loadedCsb, out var loadedCs);
-            await using var loaded = await OpenConnectionAsync(loadedCs);
-            var generatedCsb = loadedCsb.Clone();
-            generatedCsb.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
-            using var generatedPool = CreateTempPool(generatedCsb, out var generatedCs);
-            await using var generated = await OpenConnectionAsync(generatedCs);
-            var loadedTypes = loaded.Connector!.DatabaseInfo.ByOID.Values.Where(t => t.Namespace == "pg_catalog").ToArray();
-            var generatedTypes = generated.Connector!.DatabaseInfo.ByOID;
+        var version = PostgresMinimalDatabaseInfo.CatalogVersion;
+        MinimumPgVersion(conn, $"{version}.0", $"Current version for generation of PostgresMinimalDatabaseInfo is {version}");
+        MaximumPgVersionExclusive(conn, $"{version + 1}.0", $"Current version for generation of PostgresMinimalDatabaseInfo is {version}");
+        await using var db = await CreateTempDatabase(conn, out var databaseName, "template0");
+        var loadedCsb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = databaseName };
+        await using var loadedSource = NpgsqlDataSource.Create(loadedCsb);
+        await using var loaded = await loadedSource.OpenConnectionAsync();
+        var generatedCsb = loadedCsb.Clone();
+        generatedCsb.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
+        await using var generatedSource = NpgsqlDataSource.Create(generatedCsb);
+        await using var generated = await generatedSource.OpenConnectionAsync();
+        var loadedTypes = loaded.Connector!.DatabaseInfo.ByOID.Values.Where(t => t.Namespace == "pg_catalog").ToArray();
+        var generatedTypes = generated.Connector!.DatabaseInfo.ByOID;
 
-            // The generated PostgresMinimalDatabaseInfoFactory should contain all supported types (except for 4 table composite types) in
-            // pg_catalog and be generated from the .dat files from the latest released version so it should always contain at least as many
-            // types as the loaded PostgresDatabaseInfo for a freshly created database.
-            Assert.That(generatedTypes.Count, Is.GreaterThanOrEqualTo(loadedTypes.Length));
-            foreach (var loadedType in loadedTypes)
-            {
-                // The void type occurs in a fresh database but not in the .dat files
-                if (loadedType.OID == 2278 /* void */)
-                    continue;
-
-                var generatedType = generatedTypes[loadedType.OID];
-                Assert.That(generatedType.GetType(), Is.EqualTo(loadedType.GetType()));
-                Assert.That(generatedType.Namespace, Is.EqualTo(loadedType.Namespace));
-                Assert.That(generatedType.InternalName, Is.EqualTo(loadedType.InternalName));
-            }
-        }
-        finally
+        // The generated PostgresMinimalDatabaseInfoFactory should contain all supported types (except for 4 table composite types) in
+        // pg_catalog and be generated from the .dat files from the latest released version so it should always contain at least as many
+        // types as the loaded PostgresDatabaseInfo for a freshly created database.
+        Assert.That(generatedTypes.Count, Is.GreaterThanOrEqualTo(loadedTypes.Length));
+        foreach (var loadedType in loadedTypes)
         {
-            await conn.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{databaseName}\";");
+            // The void type occurs in a fresh database but not in the .dat files
+            if (loadedType.OID == 2278 /* void */)
+                continue;
+
+            var generatedType = generatedTypes[loadedType.OID];
+            Assert.That(generatedType.GetType(), Is.EqualTo(loadedType.GetType()));
+            Assert.That(generatedType.Namespace, Is.EqualTo(loadedType.Namespace));
+            Assert.That(generatedType.InternalName, Is.EqualTo(loadedType.InternalName));
         }
     }
 

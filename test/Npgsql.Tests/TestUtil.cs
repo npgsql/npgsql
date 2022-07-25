@@ -190,6 +190,20 @@ namespace Npgsql.Tests
         }
 
         /// <summary>
+        /// Creates a database with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
+        /// drop it at the end of the test.
+        /// </summary>
+        internal static Task<IAsyncDisposable> CreateTempDatabase(NpgsqlConnection conn, out string databaseName, string? template = null)
+        {
+            databaseName = $"temp_db_{Interlocked.Increment(ref _tempDatabaseCounter):000}";
+            return conn.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS {databaseName}; CREATE DATABASE {databaseName}{(template == null ? "" : $" TEMPLATE \"{template}\"")}")
+                .ContinueWith(
+                    (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "DATABASE"),
+                    databaseName,
+                    TaskContinuationOptions.OnlyOnRanToCompletion);
+        }
+
+        /// <summary>
         /// Generates a unique table name, usable for a single test, and drops it if it already exists.
         /// Actual creation of the table is the responsibility of the caller.
         /// </summary>
@@ -285,6 +299,7 @@ namespace Npgsql.Tests
         static volatile int _tempViewCounter;
         static volatile int _tempFunctionCounter;
         static volatile int _tempSchemaCounter;
+        static volatile int _tempDatabaseCounter;
         static volatile int _tempTypeCounter;
         static volatile int _tempDomainCounter;
 
@@ -301,7 +316,10 @@ namespace Npgsql.Tests
             {
                 try
                 {
-                    await _conn.ExecuteNonQueryAsync($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
+                    if (_type.ToUpperInvariant() == "DATABASE")
+                        await _conn.ExecuteNonQueryAsync($"DROP DATABASE {_name}");
+                    else
+                        await _conn.ExecuteNonQueryAsync($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
                 }
                 catch
                 {

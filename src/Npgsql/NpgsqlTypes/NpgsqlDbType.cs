@@ -579,19 +579,3 @@ public enum NpgsqlDbType
 
     #endregion
 }
-
-/// <summary>
-/// Represents a built-in PostgreSQL type as it appears in pg_type, including its name and OID.
-/// Extension types with variable OIDs are not represented.
-/// </summary>
-class BuiltInPostgresType : Attribute
-{
-    internal string Name { get; }
-    internal uint OID { get; }
-
-    internal BuiltInPostgresType(string name, uint oid)
-    {
-        Name = name;
-        OID = oid;
-    }
-}
