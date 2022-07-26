@@ -33,7 +33,6 @@ use constant PG_TYPE_CATALOG_FILE_NAME => 'pg_type.dat';
 use constant PG_RANGE_KEYS => qw(rngtypid rngsubtype rngmultitypid);
 use constant PG_TYPE_KEYS => qw(oid typname typtype array_type_oid);
 
-die "Please pass the access token" unless defined $ARGV[0];
 run();
 
 sub run {
@@ -79,7 +78,7 @@ sub run {
         truncate $fh, 0;
         seek $fh, 0, 0;
         print $fh $newJson;
-        commit_and_pr($access_token, $latestBranch, encode_base64($newJson, ''));
+        commit_and_pr($access_token, $latestBranch, encode_base64($newJson, '')) if defined($access_token);
     }
     else {
         print "The file '$catalogs_json_path' is up to date.\n";
