@@ -505,6 +505,8 @@ class SqlQueryParser
         }
     }
 
+    // Is ASCII letter comparison optimization https://github.com/dotnet/runtime/blob/60cfaec2e6cffeb9a006bec4b8908ffcf71ac5b4/src/libraries/System.Private.CoreLib/src/System/Char.cs#L236
+
     static bool IsLetter(char ch)
         // [a-zA-Z]
         => (uint)((ch | 0x20) - 'a') <= ('z' - 'a');
