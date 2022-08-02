@@ -15,6 +15,8 @@ using System.Transactions;
 using Npgsql.Properties;
 using static Npgsql.Tests.Support.MockState;
 using static Npgsql.Tests.TestUtil;
+using IsolationLevel = System.Transactions.IsolationLevel;
+using TransactionStatus = Npgsql.Internal.TransactionStatus;
 
 namespace Npgsql.Tests;
 
@@ -834,6 +836,73 @@ public class MultipleHostsTests : TestBase
         Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
             Is.EqualTo(ClusterState.Standby));
         Assert.That(primaryConn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
+    }
+
+    [Test]
+    [TestCase("any", true)]
+    [TestCase("primary", true)]
+    [TestCase("standby", false)]
+    [TestCase("prefer-primary", true)]
+    [TestCase("prefer-standby", false)]
+    [TestCase("read-write", true)]
+    [TestCase("read-only", false)]
+    public async Task Transaction_enlist_reuses_connection(string targetSessionAttributes, bool primary)
+    {
+        await using var primaryPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+        await using var standbyPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+            TargetSessionAttributes = targetSessionAttributes,
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            MaxPoolSize = 10,
+        };
+
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled);
+
+        var query1Task = Query(csb.ConnectionString);
+
+        var server = primary
+            ? await primaryPostmaster.WaitForServerConnection()
+            : await standbyPostmaster.WaitForServerConnection();
+
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteNoData()
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .FlushAsync();
+        await query1Task;
+
+        var query2Task = Query(csb.ConnectionString);
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteNoData()
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .FlushAsync();
+        await query2Task;
+
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+        scope.Complete();
+
+        async Task Query(string connectionString)
+        {
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await cmd.ExecuteNonQueryAsync();
+        }
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)

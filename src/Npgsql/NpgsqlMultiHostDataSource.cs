@@ -130,15 +130,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             _ => preferredType == TargetSessionAttributes.Any
         };
 
-    static bool IsFallbackOrPreferred(ClusterState state, TargetSessionAttributes preferredType)
-        => state switch
-        {
-            ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-            ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
-            ClusterState.PrimaryReadOnly when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
-            ClusterState.Standby when preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby => true,
-            _ => false
-        };
+    static bool IsOnline(ClusterState state, TargetSessionAttributes preferredType)
+    {
+        Debug.Assert(preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby);
+        return state != ClusterState.Offline;
+    }
 
     static ClusterState GetClusterState(NpgsqlDataSource pool, bool ignoreExpiration = false)
         => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration);
@@ -277,11 +273,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
         var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                         (checkUnpreferred ?
-                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
+                            await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
                             : null) ??
                         await TryGet(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                         (checkUnpreferred ?
-                            await TryGet(conn, timeoutPerHost, async, preferredType, IsFallbackOrPreferred, poolIndex, exceptions, cancellationToken)
+                            await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
                             : null);
 
         if (connector is not null)
@@ -366,13 +362,33 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                 return false;
             }
 
+            var preferredType = GetTargetSessionAttributes(connection);
+            // First try to get a valid preferred connector.
+            if (TryGetValidConnector(list, preferredType, IsPreferred, out connector))
+            {
+                return true;
+            }
+
+            // Can't get valid preferred connector. Try to get an unpreferred connector, if supported.
+            if ((preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby)
+                && TryGetValidConnector(list, preferredType, IsOnline, out connector))
+            {
+                return true;
+            }
+
+            connector = null;
+            return false;
+        }
+
+        bool TryGetValidConnector(List<NpgsqlConnector> list, TargetSessionAttributes preferredType,
+            Func<ClusterState, TargetSessionAttributes, bool> validationFunc, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        {
             for (var i = list.Count - 1; i >= 0; i--)
             {
                 connector = list[i];
                 var lastKnownState = GetClusterState(connector.Host, connector.Port, ignoreExpiration: true);
                 Debug.Assert(lastKnownState != ClusterState.Unknown);
-                var preferredType = GetTargetSessionAttributes(connection);
-                if (IsFallbackOrPreferred(lastKnownState, preferredType))
+                if (validationFunc(lastKnownState, preferredType))
                 {
                     list.RemoveAt(i);
                     if (list.Count == 0)
@@ -388,7 +404,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
     static TargetSessionAttributes GetTargetSessionAttributes(NpgsqlConnection connection)
         => connection.Settings.TargetSessionAttributesParsed ??
-           (PostgresEnvironment.TargetSessionAttributes is string s
+           (PostgresEnvironment.TargetSessionAttributes is { } s
                ? NpgsqlConnectionStringBuilder.ParseTargetSessionAttributes(s)
                : TargetSessionAttributes.Any);
 }
