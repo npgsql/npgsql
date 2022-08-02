@@ -132,7 +132,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
     static bool IsOnline(ClusterState state, TargetSessionAttributes preferredType)
     {
-        Debug.Assert(preferredType == TargetSessionAttributes.PreferPrimary || preferredType == TargetSessionAttributes.PreferStandby);
+        Debug.Assert(preferredType == TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby);
         return state != ClusterState.Offline;
     }
 
