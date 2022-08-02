@@ -232,6 +232,12 @@ public sealed class PostgresException : NpgsqlException
         }
     }
 
+    /// <summary>
+    /// Always returns <see cref="NpgsqlErrorCode.PostgresError" />.
+    /// </summary>
+    public override NpgsqlErrorCode Code
+        => NpgsqlErrorCode.PostgresError;
+
     #region Message Fields
 
     /// <summary>
@@ -250,26 +256,15 @@ public sealed class PostgresException : NpgsqlException
     /// The SQLSTATE code for the error.
     /// </summary>
     /// <remarks>
-    /// Always present.
-    /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
-    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
+    /// <para>Always present.</para>
+    /// <para>Constants are defined in <seealso cref="PostgresErrorCodes"/>.</para>
+    /// <para>See https://www.postgresql.org/docs/current/static/errcodes-appendix.html.</para>
     /// </remarks>
 #if NET5_0_OR_GREATER
     public override string SqlState { get; }
 #else
-        public string SqlState { get; }
+    public string SqlState { get; }
 #endif
-
-    /// <summary>
-    /// The SQLSTATE code for the error.
-    /// </summary>
-    /// <remarks>
-    /// Always present.
-    /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
-    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
-    /// </remarks>
-    [Obsolete("Use SqlState instead")]
-    public string Code => SqlState;
 
     /// <summary>
     /// The primary human-readable error message. This should be accurate but terse.
