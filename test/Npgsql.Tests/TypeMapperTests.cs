@@ -125,6 +125,27 @@ public class TypeMapperTests : TestBase
         }
     }
 
+    [Test]
+    [NonParallelizable] // Drops extension
+    public async Task Citext_from_custom_schema()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempSchema(conn, out var schemaName);
+
+        await conn.ExecuteNonQueryAsync("DROP EXTENSION IF EXISTS citext");
+        await conn.ExecuteNonQueryAsync($"CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
+        conn.ReloadTypes();
+        NpgsqlConnection.ClearPool(conn);
+
+        await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
+
+        const string expected = "SomeValue";
+        await conn.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" VALUES('{expected}')");
+
+        var value = (string?)await conn.ExecuteScalarAsync($"SELECT created_by FROM \"{tableName}\" LIMIT 1");
+        Assert.That(value, Is.EqualTo(expected));
+    }
+
     #region Support
 
     class MyInt32TypeHandlerResolverFactory : TypeHandlerResolverFactory
