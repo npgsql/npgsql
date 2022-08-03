@@ -130,18 +130,25 @@ public class TypeMapperTests : TestBase
     public async Task Type_in_non_default_schema()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schemaName);
+        try
+        {
+            await using var _ = await CreateTempSchema(conn, out var schemaName);
 
-        await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
-        conn.ReloadTypes();
+            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
+            conn.ReloadTypes();
 
-        await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
+            await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
 
-        const string expected = "SomeValue";
-        await conn.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" VALUES('{expected}')");
+            const string expected = "SomeValue";
+            await conn.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" VALUES('{expected}')");
 
-        var value = (string?)await conn.ExecuteScalarAsync($"SELECT created_by FROM \"{tableName}\" LIMIT 1");
-        Assert.That(value, Is.EqualTo(expected));
+            var value = (string?)await conn.ExecuteScalarAsync($"SELECT created_by FROM \"{tableName}\" LIMIT 1");
+            Assert.That(value, Is.EqualTo(expected));
+        }
+        finally
+        {
+            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext");
+        }
     }
 
     #region Support
