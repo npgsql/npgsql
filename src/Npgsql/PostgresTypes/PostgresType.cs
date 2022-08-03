@@ -95,8 +95,6 @@ public abstract class PostgresType
 
     #endregion
 
-    internal string SchemaQualifiedName => Namespace is "pg_catalog" or "public" ? Name : FullName;
-
     internal virtual string GetPartialNameWithFacets(int typeModifier) => Name;
 
     /// <summary>
