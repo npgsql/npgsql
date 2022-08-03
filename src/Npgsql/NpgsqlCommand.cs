@@ -669,7 +669,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 using (connector.StartUserAction(cancellationToken))
                 {
-                    var sendTask = command.SendPrepare(connector, async, cancellationToken);
+                    var sendTask = command.SendPrepare(connector, async, CancellationToken.None);
                     if (sendTask.IsFaulted)
                         sendTask.GetAwaiter().GetResult();
 
