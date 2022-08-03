@@ -93,13 +93,19 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         lock (_writeLock)
         {
-            if ((handler = ResolveByDataTypeName(pgType.FullName, throwOnError: false)) is not null)
+            if ((handler = ResolveByDataTypeNameCore(pgType.FullName)) is not null)
             {
                 _handlersByOID[oid] = handler;
                 return true;
             }
             
-            if ((handler = ResolveByDataTypeName(pgType.Name, throwOnError: false)) is not null)
+            if ((handler = ResolveByDataTypeNameCore(pgType.Name)) is not null)
+            {
+                _handlersByOID[oid] = handler;
+                return true;
+            }
+            
+            if ((handler = ResolveByPgName(pgType.FullName, throwOnError: false)) is not null)
             {
                 _handlersByOID[oid] = handler;
                 return true;
@@ -175,9 +181,9 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     }
 
     internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
-        => ResolveByDataTypeName(typeName, throwOnError: true)!;
+        => ResolveByDataTypeNameCore(typeName) ?? ResolveByPgName(typeName, throwOnError: true)!;
 
-    NpgsqlTypeHandler? ResolveByDataTypeName(string typeName, bool throwOnError)
+    NpgsqlTypeHandler? ResolveByDataTypeNameCore(string typeName)
     {
         if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
             return handler;
@@ -197,39 +203,47 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
             }
 
-            if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
-                throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
+            return null;
+        }
+    }
+
+    NpgsqlTypeHandler? ResolveByPgName(string pgName, bool throwOnError)
+    {
+        lock (_writeLock)
+        {
+            if (DatabaseInfo.GetPostgresTypeByName(pgName) is not { } pgType)
+                throw new NotSupportedException("Could not find PostgreSQL type " + pgName);
 
             switch (pgType)
             {
             case PostgresArrayType pgArrayType:
             {
                 var elementHandler = ResolveByOID(pgArrayType.Element.OID);
-                return _handlersByDataTypeName[typeName] =
+                return _handlersByDataTypeName[pgName] =
                     elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             case PostgresRangeType pgRangeType:
             {
                 var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
-                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateRangeHandler(pgRangeType);
+                return _handlersByDataTypeName[pgName] = subtypeHandler.CreateRangeHandler(pgRangeType);
             }
 
             case PostgresMultirangeType pgMultirangeType:
             {
                 var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
-                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
+                return _handlersByDataTypeName[pgName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
             }
 
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
-                return _handlersByDataTypeName[typeName] =
+                return _handlersByDataTypeName[pgName] =
                     new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
             }
 
             case PostgresDomainType pgDomainType:
-                return _handlersByDataTypeName[typeName] = ResolveByOID(pgDomainType.BaseType.OID);
+                return _handlersByDataTypeName[pgName] = ResolveByOID(pgDomainType.BaseType.OID);
 
             case PostgresBaseType pgBaseType:
                 return throwOnError
