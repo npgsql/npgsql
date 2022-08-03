@@ -91,7 +91,9 @@ public class PrepareTests: TestBase
             }
             catch (OperationCanceledException)
             {
-                // expected exception
+                // There is a race between us checking the cancellation token and the cancellation itself.
+                // If the cancellation happens first, we get OperationCancelledException.
+                // In other case, PrepareAsync will not be cancelled and shouldn't throw any exceptions.
             }
             await cancelTask;
 
