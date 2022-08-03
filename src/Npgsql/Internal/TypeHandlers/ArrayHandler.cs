@@ -127,7 +127,7 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
         var dimLengths = new int[dimensions];
         await buf.Ensure(dimensions * 8, async);
 
-        for (var i = 0; i < dimensions; i++)
+        for (var i = 0; i < dimLengths.Length; i++)
         {
             dimLengths[i] = buf.ReadInt32();
             buf.ReadInt32(); // Lower bound

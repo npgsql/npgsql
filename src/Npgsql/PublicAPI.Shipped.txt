@@ -1123,6 +1123,7 @@ Npgsql.StatementType.CreateTableAs = 5 -> Npgsql.StatementType
 Npgsql.StatementType.Delete = 3 -> Npgsql.StatementType
 Npgsql.StatementType.Fetch = 7 -> Npgsql.StatementType
 Npgsql.StatementType.Insert = 2 -> Npgsql.StatementType
+Npgsql.StatementType.Merge = 10 -> Npgsql.StatementType
 Npgsql.StatementType.Move = 6 -> Npgsql.StatementType
 Npgsql.StatementType.Other = 9 -> Npgsql.StatementType
 Npgsql.StatementType.Select = 1 -> Npgsql.StatementType

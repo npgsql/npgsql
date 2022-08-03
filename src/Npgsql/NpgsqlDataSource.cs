@@ -234,7 +234,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         lock (_pendingEnlistedConnectors)
         {
             if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
+                list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>(1);
             list.Add(connector);
         }
     }
