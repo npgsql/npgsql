@@ -125,17 +125,15 @@ public class TypeMapperTests : TestBase
         }
     }
 
-    [Test]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
     [NonParallelizable] // Drops extension
-    public async Task Citext_from_custom_schema()
+    public async Task Type_in_non_default_schema()
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schemaName);
 
-        await conn.ExecuteNonQueryAsync("DROP EXTENSION IF EXISTS citext");
-        await conn.ExecuteNonQueryAsync($"CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
+        await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
         conn.ReloadTypes();
-        NpgsqlConnection.ClearPool(conn);
 
         await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
 

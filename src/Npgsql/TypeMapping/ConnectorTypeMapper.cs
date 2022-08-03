@@ -105,7 +105,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 return true;
             }
             
-            if ((handler = ResolveByPgName(pgType.FullName, throwOnError: false)) is not null)
+            if ((handler = ResolveComplexTypeByDataTypeName(pgType.FullName, throwOnError: false)) is not null)
             {
                 _handlersByOID[oid] = handler;
                 return true;
@@ -181,7 +181,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     }
 
     internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
-        => ResolveByDataTypeNameCore(typeName) ?? ResolveByPgName(typeName, throwOnError: true)!;
+        => ResolveByDataTypeNameCore(typeName) ?? ResolveComplexTypeByDataTypeName(typeName, throwOnError: true)!;
 
     NpgsqlTypeHandler? ResolveByDataTypeNameCore(string typeName)
     {
@@ -207,43 +207,43 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         }
     }
 
-    NpgsqlTypeHandler? ResolveByPgName(string pgName, bool throwOnError)
+    NpgsqlTypeHandler? ResolveComplexTypeByDataTypeName(string typeName, bool throwOnError)
     {
         lock (_writeLock)
         {
-            if (DatabaseInfo.GetPostgresTypeByName(pgName) is not { } pgType)
-                throw new NotSupportedException("Could not find PostgreSQL type " + pgName);
+            if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
+                throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
 
             switch (pgType)
             {
             case PostgresArrayType pgArrayType:
             {
                 var elementHandler = ResolveByOID(pgArrayType.Element.OID);
-                return _handlersByDataTypeName[pgName] =
+                return _handlersByDataTypeName[typeName] =
                     elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
             case PostgresRangeType pgRangeType:
             {
                 var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
-                return _handlersByDataTypeName[pgName] = subtypeHandler.CreateRangeHandler(pgRangeType);
+                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateRangeHandler(pgRangeType);
             }
 
             case PostgresMultirangeType pgMultirangeType:
             {
                 var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
-                return _handlersByDataTypeName[pgName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
+                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
             }
 
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
-                return _handlersByDataTypeName[pgName] =
+                return _handlersByDataTypeName[typeName] =
                     new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
             }
 
             case PostgresDomainType pgDomainType:
-                return _handlersByDataTypeName[pgName] = ResolveByOID(pgDomainType.BaseType.OID);
+                return _handlersByDataTypeName[typeName] = ResolveByOID(pgDomainType.BaseType.OID);
 
             case PostgresBaseType pgBaseType:
                 return throwOnError
