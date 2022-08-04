@@ -1059,6 +1059,114 @@ public class MultipleHostsTests : TestBase
         await using var connection = await dataSource.OpenConnectionAsync();
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4181")]
+    [Explicit("Fails until #4181 is fixed.")]
+    public async Task LoadBalancing_is_fair_if_first_host_is_down([Values]TargetSessionAttributes targetSessionAttributes)
+    {
+        await using var pDown = PgPostmasterMock.Start(state: Primary, startupErrorCode: PostgresErrorCodes.CannotConnectNow);
+        await using var pRw1 = PgPostmasterMock.Start(state: Primary);
+        await using var pR1 = PgPostmasterMock.Start(state: PrimaryReadOnly);
+        await using var s1 = PgPostmasterMock.Start(state: Standby);
+        await using var pRw2 = PgPostmasterMock.Start(state: Primary);
+        await using var pR2 = PgPostmasterMock.Start(state: PrimaryReadOnly);
+        await using var s2 = PgPostmasterMock.Start(state: Standby);
+
+        var hostList = $"{pDown.Host}:{pDown.Port}," +
+                       $"{pRw1.Host}:{pRw1.Port}," +
+                       $"{pR1.Host}:{pR1.Port}," +
+                       $"{s1.Host}:{s1.Port}," +
+                       $"{pRw2.Host}:{pRw2.Port}," +
+                       $"{pR2.Host}:{pR2.Port}," +
+                       $"{s2.Host}:{s2.Port}";
+
+        await using var dataSource = CreateDataSource(builder =>
+        {
+            builder.Host = hostList;
+            builder.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
+            builder.LoadBalanceHosts = true;
+            builder.TargetSessionAttributesParsed = targetSessionAttributes;
+
+        });
+        var connections = Enumerable.Repeat(0, 12).Select(_ => dataSource.OpenConnection()).ToArray();
+        await using var __ = new DisposableWrapper(connections);
+
+        switch (targetSessionAttributes)
+        {
+        case TargetSessionAttributes.Any:
+            Assert.That(connections[0].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[1].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[2].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[3].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[4].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[5].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[6].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[7].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[8].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[9].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[10].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[11].Port, Is.EqualTo(s2.Port));
+            break;
+        case TargetSessionAttributes.ReadWrite:
+            Assert.That(connections[0].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[1].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[2].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[3].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[4].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[5].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[6].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[7].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[8].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[9].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[10].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[11].Port, Is.EqualTo(pRw2.Port));
+            break;
+        case TargetSessionAttributes.ReadOnly:
+            Assert.That(connections[0].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[1].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[2].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[3].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[4].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[5].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[6].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[7].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[8].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[9].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[10].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[11].Port, Is.EqualTo(s2.Port));
+            break;
+        case TargetSessionAttributes.Primary:
+        case TargetSessionAttributes.PreferPrimary:
+            Assert.That(connections[0].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[1].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[2].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[3].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[4].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[5].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[6].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[7].Port, Is.EqualTo(pR2.Port));
+            Assert.That(connections[8].Port, Is.EqualTo(pRw1.Port));
+            Assert.That(connections[9].Port, Is.EqualTo(pR1.Port));
+            Assert.That(connections[10].Port, Is.EqualTo(pRw2.Port));
+            Assert.That(connections[11].Port, Is.EqualTo(pR2.Port));
+            break;
+        case TargetSessionAttributes.Standby:
+        case TargetSessionAttributes.PreferStandby:
+            Assert.That(connections[0].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[1].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[2].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[3].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[4].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[5].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[6].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[7].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[8].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[9].Port, Is.EqualTo(s2.Port));
+            Assert.That(connections[10].Port, Is.EqualTo(s1.Port));
+            Assert.That(connections[11].Port, Is.EqualTo(s2.Port));
+            break;
+        }
+    }
+
     static string MultipleHosts(params PgPostmasterMock[] postmasters)
         => string.Join(",", postmasters.Select(p => $"{p.Host}:{p.Port}"));
 
