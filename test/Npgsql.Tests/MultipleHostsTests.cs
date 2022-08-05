@@ -1013,12 +1013,31 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test]
-    public void DataSource_with_single_host_is_not_supported()
+    public async Task BuildMultiHost_with_single_host_is_supported()
     {
-        var builder = new NpgsqlDataSourceBuilder("Host=foo");
+        var builder = new NpgsqlDataSourceBuilder(ConnectionString);
+        await using var dataSource = builder.BuildMultiHost();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        Assert.That(await connection.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+    }
 
-        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
-            .With.Message.EqualTo(NpgsqlStrings.MultipleHostsMustBeSpecified));
+    [Test]
+    public async Task Build_with_multiple_hosts_is_supported()
+    {
+        await using var primaryPostmasterMock = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmasterMock = PgPostmasterMock.Start(state: Standby);
+
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(primaryPostmasterMock, standbyPostmasterMock),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            }
+        };
+
+        await using var dataSource = builder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
     }
 
     static string MultipleHosts(params PgPostmasterMock[] postmasters)

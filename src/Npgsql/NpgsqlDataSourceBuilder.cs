@@ -338,39 +338,11 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlDataSource Build()
     {
-        ConnectionStringBuilder.PostProcessAndValidate();
-
-        if (_periodicPasswordProvider is not null &&
-            (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
-        {
-            throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
-        }
-
-        var loggingConfiguration = _loggerFactory is null
-            ? NpgsqlLoggingConfiguration.NullConfiguration
-            : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled);
-
-        var config = new NpgsqlDataSourceConfiguration(
-            loggingConfiguration,
-            _userCertificateValidationCallback,
-            _clientCertificatesCallback,
-            _periodicPasswordProvider,
-            _periodicPasswordSuccessRefreshInterval,
-            _periodicPasswordFailureRefreshInterval,
-            _resolverFactories,
-            _userTypeMappings,
-            DefaultNameTranslator,
-            _syncConnectionInitializer,
-            _asyncConnectionInitializer);
+        var config = PrepareConfiguration();
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
-            if (ConnectionStringBuilder.TargetSessionAttributes is not null)
-                throw new InvalidOperationException(NpgsqlStrings.CannotSpecifyTargetSessionAttributes);
-            if (ConnectionStringBuilder.Multiplexing)
-                throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
-            if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
-                throw new NotSupportedException("Replication is not supported with multiple hosts");
+            ValidateMultiHost();
 
             return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
         }
@@ -382,11 +354,51 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
                 : new UnpooledDataSource(ConnectionStringBuilder, config);
     }
 
-#pragma warning disable RS0016
     /// <summary>
     /// Builds and returns a <see cref="NpgsqlMultiHostDataSource" /> which is ready for use for load-balancing and failover scenarios.
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
-        => Build() as NpgsqlMultiHostDataSource ?? throw new InvalidOperationException(NpgsqlStrings.MultipleHostsMustBeSpecified);
-#pragma warning restore RS0016
+    {
+        var config = PrepareConfiguration();
+
+        ValidateMultiHost();
+
+        return new(ConnectionStringBuilder, config);
+    }
+
+    NpgsqlDataSourceConfiguration PrepareConfiguration()
+    {
+        ConnectionStringBuilder.PostProcessAndValidate();
+
+        if (_periodicPasswordProvider is not null &&
+            (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
+        {
+            throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
+        }
+
+        return new(
+            _loggerFactory is null
+                ? NpgsqlLoggingConfiguration.NullConfiguration
+                : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
+            _userCertificateValidationCallback,
+            _clientCertificatesCallback,
+            _periodicPasswordProvider,
+            _periodicPasswordSuccessRefreshInterval,
+            _periodicPasswordFailureRefreshInterval,
+            _resolverFactories,
+            _userTypeMappings,
+            DefaultNameTranslator,
+            _syncConnectionInitializer,
+            _asyncConnectionInitializer);
+    }
+
+    void ValidateMultiHost()
+    {
+        if (ConnectionStringBuilder.TargetSessionAttributes is not null)
+            throw new InvalidOperationException(NpgsqlStrings.CannotSpecifyTargetSessionAttributes);
+        if (ConnectionStringBuilder.Multiplexing)
+            throw new NotSupportedException("Multiplexing is not supported with multiple hosts");
+        if (ConnectionStringBuilder.ReplicationMode != ReplicationMode.Off)
+            throw new NotSupportedException("Replication is not supported with multiple hosts");
+    }
 }

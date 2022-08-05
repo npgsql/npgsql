@@ -105,12 +105,6 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string MultipleHostsMustBeSpecified {
-            get {
-                return ResourceManager.GetString("MultipleHostsMustBeSpecified", resourceCulture);
-            }
-        }
-        
         internal static string CannotSpecifyTargetSessionAttributes {
             get {
                 return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
