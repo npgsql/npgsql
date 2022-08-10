@@ -110,5 +110,11 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
             }
         }
+        
+        internal static string CannotReadIntervalWithMonthsAsTimeSpan {
+            get {
+                return ResourceManager.GetString("CannotReadIntervalWithMonthsAsTimeSpan", resourceCulture);
+            }
+        }
     }
 }
