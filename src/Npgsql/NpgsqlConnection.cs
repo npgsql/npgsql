@@ -302,13 +302,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // to this transaction which has been closed. If so, return that as an optimization rather than
                 // opening a new one and triggering escalation to a distributed transaction.
                 // Otherwise just get a new connector and enlist below.
-                if (enlistToTransaction is not null && NpgsqlDataSource.TryRentEnlistedPending(enlistToTransaction, this, out connector))
+                if (enlistToTransaction is not null && _dataSource.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                 {
                     EnlistedTransaction = enlistToTransaction;
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await NpgsqlDataSource.Get(this, timeout, async, cancellationToken);
+                    connector = await _dataSource.Get(this, timeout, async, cancellationToken);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
