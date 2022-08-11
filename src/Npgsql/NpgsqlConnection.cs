@@ -302,13 +302,13 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // to this transaction which has been closed. If so, return that as an optimization rather than
                 // opening a new one and triggering escalation to a distributed transaction.
                 // Otherwise just get a new connector and enlist below.
-                if (enlistToTransaction is not null && _dataSource.TryRentEnlistedPending(enlistToTransaction, this, out connector))
+                if (enlistToTransaction is not null && NpgsqlDataSource.TryRentEnlistedPending(enlistToTransaction, this, out connector))
                 {
                     EnlistedTransaction = enlistToTransaction;
                     enlistToTransaction = null;
                 }
                 else
-                    connector = await _dataSource.Get(this, timeout, async, cancellationToken);
+                    connector = await NpgsqlDataSource.Get(this, timeout, async, cancellationToken);
 
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
@@ -319,7 +319,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // Note that in multiplexing execution, the pool-wide type mapper is used so no
                 // need to update the connector type mapper (this is why this is here).
                 if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                {
+                    // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
+                    // Start a user action to prevent this.
+                    var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+                }
 
                 ConnectorBindingScope = ConnectorBindingScope.Connection;
                 connector.Connection = this;
@@ -2044,6 +2049,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
         using var scope = StartTemporaryBindingScope(out var connector);
+        // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
+        // Start a user action to prevent this.
+        using var _ = connector.StartUserAction(ConnectorState.Executing);
         connector.LoadDatabaseInfo(
             forceReload: true,
             NpgsqlTimeout.Infinite,

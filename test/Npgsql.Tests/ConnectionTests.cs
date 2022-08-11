@@ -753,6 +753,31 @@ public class ConnectionTests : MultiplexingTestBase
         }
     }
 
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4603")]
+    public async Task Reload_types_keepalive_concurrent()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing doesn't support keepalive");
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            KeepAlive = 1,
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        await using var conn = await OpenConnectionAsync(connString);
+
+        var startTimestamp = Stopwatch.GetTimestamp();
+        // Give a few seconds for a KeepAlive to possibly perform
+        while (GetElapsedTime(startTimestamp).TotalSeconds < 2)
+            Assert.DoesNotThrow(conn.ReloadTypes);
+
+        // dotnet 3.1 doesn't have Stopwatch.GetElapsedTime method.
+        static TimeSpan GetElapsedTime(long startingTimestamp) =>
+            new((long)((Stopwatch.GetTimestamp() - startingTimestamp) * ((double)10000000 / Stopwatch.Frequency)));
+    }
+
     #region ChangeDatabase
 
     [Test]
