@@ -322,7 +322,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 {
                     // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
                     // Start a user action to prevent this.
-                    var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
+                    using var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
                 }
 
