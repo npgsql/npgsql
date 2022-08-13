@@ -856,23 +856,43 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (!EnableSqlRewriting)
                     throw new NotSupportedException($"Named parameters are not supported when Npgsql.{nameof(EnableSqlRewriting)} is disabled");
 
-                // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
-                parser ??= new SqlQueryParser();
-
                 if (batchCommand is null)
                 {
-                    parser.ParseRawQuery(this, standardConformingStrings);
+                    var queryText = CommandText;
+                    if (!ParsedQueryCache.TryGet(queryText, out var parsedQuery) || !parsedQuery.GenerateCommand(this))
+                    {
+                        // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
+                        parser ??= new SqlQueryParser();
+                        parser.ParseRawQuery(this, standardConformingStrings);
+                    }
+                    
                     if (InternalBatchCommands.Count > 1 && _parameters.HasOutputParameters)
                         throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                     for (var i = 0; i < InternalBatchCommands.Count; i++)
                         ValidateParameterCount(InternalBatchCommands[i]);
+
+                    if (InternalBatchCommands.Count == 1)
+                    {
+                        var internalBatchCommand = InternalBatchCommands[0];
+                        Debug.Assert(internalBatchCommand.FinalCommandText is not null);
+                        ParsedQueryCache.TryAdd(queryText, internalBatchCommand.FinalCommandText, internalBatchCommand.PositionalParameters);
+                    }
                 }
                 else
                 {
-                    parser.ParseRawQuery(batchCommand, standardConformingStrings);
+                    var queryText = batchCommand.CommandText;
+                    if (!ParsedQueryCache.TryGet(queryText, out var parsedQuery) || !parsedQuery.GenerateCommand(batchCommand))
+                    {
+                        // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
+                        parser ??= new SqlQueryParser();
+                        parser.ParseRawQuery(batchCommand, standardConformingStrings);
+                    }
+                    
                     if (batchCommand.Parameters.HasOutputParameters)
                         throw new NotSupportedException("Batches cannot cannot have out parameters");
                     ValidateParameterCount(batchCommand);
+                    Debug.Assert(batchCommand.FinalCommandText is not null);
+                    ParsedQueryCache.TryAdd(queryText, batchCommand.FinalCommandText, batchCommand.PositionalParameters);
                 }
 
                 break;
