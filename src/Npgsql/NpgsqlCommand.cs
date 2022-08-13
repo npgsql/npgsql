@@ -871,7 +871,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     for (var i = 0; i < InternalBatchCommands.Count; i++)
                         ValidateParameterCount(InternalBatchCommands[i]);
 
-                    if (InternalBatchCommands.Count == 1)
+                    if (parsedQuery is null && InternalBatchCommands.Count == 1)
                     {
                         var internalBatchCommand = InternalBatchCommands[0];
                         Debug.Assert(internalBatchCommand.FinalCommandText is not null);
@@ -891,8 +891,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (batchCommand.Parameters.HasOutputParameters)
                         throw new NotSupportedException("Batches cannot cannot have out parameters");
                     ValidateParameterCount(batchCommand);
-                    Debug.Assert(batchCommand.FinalCommandText is not null);
-                    ParsedQueryCache.TryAdd(queryText, batchCommand.FinalCommandText, batchCommand.PositionalParameters);
+
+                    if (parsedQuery is null)
+                    {
+                        Debug.Assert(batchCommand.FinalCommandText is not null);
+                        ParsedQueryCache.TryAdd(queryText, batchCommand.FinalCommandText, batchCommand.PositionalParameters);
+                    }
                 }
 
                 break;
