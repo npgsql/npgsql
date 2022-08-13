@@ -39,19 +39,19 @@ class ParsedQuery
             internalBatchCommands.Add(internalBatchCommand);
         }
 
-        return GenerateCommand(internalBatchCommand);
+        return GenerateCommand(internalBatchCommand, command.Parameters);
     }
 
-    internal bool GenerateCommand(NpgsqlBatchCommand command)
+    internal bool GenerateCommand(NpgsqlBatchCommand command, NpgsqlParameterCollection commandParameters)
     {
         command.FinalCommandText = Query;
         for (var i = 0; i < Parameters.Count; i++)
         {
             var parameterFound = false;
             var positionalParameter = Parameters[i];
-            for (var j = 0; j < command.Parameters.Count; j++)
+            for (var j = 0; j < commandParameters.Count; j++)
             {
-                var namedParameter = command.Parameters[j];
+                var namedParameter = commandParameters[j];
                 if (namedParameter.ParameterName == positionalParameter.Name)
                 {
                     command.PositionalParameters.Add(namedParameter);

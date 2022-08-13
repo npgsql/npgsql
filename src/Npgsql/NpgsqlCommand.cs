@@ -881,7 +881,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 else
                 {
                     var queryText = batchCommand.CommandText;
-                    if (!ParsedQueryCache.TryGet(queryText, out var parsedQuery) || !parsedQuery.GenerateCommand(batchCommand))
+                    if (!ParsedQueryCache.TryGet(queryText, out var parsedQuery) || !parsedQuery.GenerateCommand(batchCommand, batchCommand.Parameters))
                     {
                         // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
                         parser ??= new SqlQueryParser();
