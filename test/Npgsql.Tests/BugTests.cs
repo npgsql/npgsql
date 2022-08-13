@@ -69,6 +69,7 @@ public class BugTests : TestBase
         Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
             .TypeOf<PostgresException>()
             .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.ProgramLimitExceeded)
+                .Or.EqualTo(PostgresErrorCodes.TooManyColumns) // PostgreSQL 14.5, 13.8, 12.12, 11.17 and 10.22 changed the returned error
         );
     }
 
