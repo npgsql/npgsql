@@ -72,10 +72,9 @@ namespace Npgsql.Tests
                 }
                 cmd.CommandText = sb.ToString();
 
-                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                    .TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("54000")
-                );
+                var ex = Assert.Throws<PostgresException>(() => cmd.ExecuteNonQuery())!;
+                Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.ProgramLimitExceeded)
+                    .Or.EqualTo(PostgresErrorCodes.TooManyColumns)); // PostgreSQL 14.5, 13.8, 12.12, 11.17 and 10.22 changed the returned error
             }
         }
 
