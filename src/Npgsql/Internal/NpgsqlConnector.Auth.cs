@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -310,10 +311,34 @@ partial class NpgsqlConnector
         if (!IntegratedSecurity)
             throw new NpgsqlException("GSS/SSPI authentication but IntegratedSecurity not enabled");
 
+        var targetName = $"{KerberosServiceName}/{Host}";
+
+#if NET7_0_OR_GREATER
+        using var authContext = new NegotiateAuthentication(new NegotiateAuthenticationClientOptions{ TargetName = targetName});
+        var data = authContext.GetOutgoingBlob(ReadOnlySpan<byte>.Empty, out var statusCode)!;
+        Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
+        await WritePassword(data, 0, data.Length, async, UserCancellationToken);
+        await Flush(async, UserCancellationToken);
+        while (true)
+        {
+            var response = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
+                break;
+            var gssMsg = response as AuthenticationGSSContinueMessage;
+            if (gssMsg == null)
+                throw new NpgsqlException($"Received unexpected authentication request message {response.AuthRequestType}");
+            data = authContext.GetOutgoingBlob(gssMsg.AuthenticationData.AsSpan(), out statusCode)!;
+            if (statusCode == NegotiateAuthenticationStatusCode.Completed)
+                continue;
+            Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
+            await WritePassword(data, 0, data.Length, async, UserCancellationToken);
+            await Flush(async, UserCancellationToken);
+        }
+    }
+#else
         using var negotiateStream = new NegotiateStream(new GSSPasswordMessageStream(this), true);
         try
         {
-            var targetName = $"{KerberosServiceName}/{Host}";
             if (async)
                 await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
             else
@@ -441,6 +466,8 @@ partial class NpgsqlConnector
     }
 
     class AuthenticationCompleteException : Exception { }
+
+#endif
 
     async ValueTask<string?> GetPassword(string username, bool async, CancellationToken cancellationToken = default)
     {

@@ -337,6 +337,14 @@ public class AuthenticationTests : MultiplexingTestBase
             Assert.That(conn.Open, Throws.Exception.TypeOf<PostgresException>());
     }
 
+    [Test, Explicit("Requires user specific local setup")]
+    public async Task AuthenticateIntegratedSecurity()
+    {
+        await using var dataSource = NpgsqlDataSource.Create(new NpgsqlConnectionStringBuilder(ConnectionString)
+            { IntegratedSecurity = true, Username = null, Password = null });
+        await using var c = await  dataSource.OpenConnectionAsync();
+        Assert.That(c.State, Is.EqualTo(ConnectionState.Open));
+    }
 
     #region ProvidePasswordCallback Tests
 
