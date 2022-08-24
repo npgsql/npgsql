@@ -55,14 +55,14 @@ At this point, everything is ready to start replicating! Create this simple .NET
 
 ```csharp
 await using var conn = new LogicalReplicationConnection("<connection_string>");
-await conn.OpenAsync();
+await conn.Open();
 
 var slot = new PgOutputReplicationSlot("blog_slot");
 
 // The following will loop until the cancellation token is triggered, and will print message types coming from PostgreSQL:
 var cancellationTokenSource = new CancellationTokenSource();
 await foreach (var message in conn.StartReplication(
-    slot, new PgOutputReplicationOptions("blog_pub"), cancellationTokenSource.Token))
+    slot, new PgOutputReplicationOptions("blog_pub", 1), cancellationTokenSource.Token))
 {
     Console.WriteLine($"Received message type: {message.GetType().Name}");
 
