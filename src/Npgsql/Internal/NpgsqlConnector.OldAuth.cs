@@ -1,8 +1,9 @@
-﻿#if !NET7_0_OR_GREATER
-using System;
+﻿using System;
 using System.IO;
 using System.Net;
 using System.Net.Security;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -10,8 +11,33 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.Internal;
 
+
 partial class NpgsqlConnector
 {
+#if !NET6_0_OR_GREATER
+        static byte[] Hi(string str, byte[] salt, int count)
+        {
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
+            var salt1 = new byte[salt.Length + 4];
+            byte[] hi, u1;
+
+            Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
+            salt1[salt1.Length - 1] = 1;
+
+            hi = u1 = hmac.ComputeHash(salt1);
+
+            for (var i = 1; i < count; i++)
+            {
+                var u2 = hmac.ComputeHash(u1);
+                NpgsqlConnector.Xor(hi, u2);
+                u1 = u2;
+            }
+
+            return hi;
+        }
+#endif
+
+#if !NET7_0_OR_GREATER
     async Task AuthenticateGSS(bool async)
     {
         if (!IntegratedSecurity)
@@ -149,5 +175,5 @@ partial class NpgsqlConnector
     }
 
     class AuthenticationCompleteException : Exception { }
-}
 #endif
+}

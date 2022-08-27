@@ -217,44 +217,24 @@ partial class NpgsqlConnector
             rncProvider.GetBytes(nonceBytes);
             return Convert.ToBase64String(nonceBytes);
         }
+    }
 
-        static byte[] Hi(string str, byte[] salt, int count)
-        {
 #if NET6_0_OR_GREATER
-            return Rfc2898DeriveBytes.Pbkdf2(str, salt, count, HashAlgorithmName.SHA256, 256 / 8);
-#else
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
-            var salt1 = new byte[salt.Length + 4];
-            byte[] hi, u1;
-
-            Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
-            salt1[salt1.Length - 1] = 1;
-
-            hi = u1 = hmac.ComputeHash(salt1);
-
-            for (var i = 1; i < count; i++)
-            {
-                var u2 = hmac.ComputeHash(u1);
-                Xor(hi, u2);
-                u1 = u2;
-            }
-
-            return hi;
+    static byte[] Hi(string str, byte[] salt, int count)
+        => Rfc2898DeriveBytes.Pbkdf2(str, salt, count, HashAlgorithmName.SHA256, 256 / 8);
 #endif
-        }
 
-        static byte[] Xor(byte[] buffer1, byte[] buffer2)
-        {
-            for (var i = 0; i < buffer1.Length; i++)
-                buffer1[i] ^= buffer2[i];
-            return buffer1;
-        }
+    static byte[] Xor(byte[] buffer1, byte[] buffer2)
+    {
+        for (var i = 0; i < buffer1.Length; i++)
+            buffer1[i] ^= buffer2[i];
+        return buffer1;
+    }
 
-        static byte[] HMAC(byte[] data, string key)
-        {
-            using var hmacsha256 = new HMACSHA256(data);
-            return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
-        }
+    static byte[] HMAC(byte[] data, string key)
+    {
+        using var hmacsha256 = new HMACSHA256(data);
+        return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
     }
 
     async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
