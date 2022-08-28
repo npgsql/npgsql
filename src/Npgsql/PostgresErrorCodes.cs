@@ -467,7 +467,6 @@ public static class PostgresErrorCodes
 
     static readonly string[] CriticalFailureCodes =
     {
-        "08", // Connection error
         "53", // Insufficient resources
         AdminShutdown, // Self explanatory
         CrashShutdown, // Self explanatory
@@ -477,6 +476,7 @@ public static class PostgresErrorCodes
         "XX", // Internal error (database is dying)
     };
 
-    internal static bool IsCriticalFailure(PostgresException e)
-        => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x, StringComparison.Ordinal));
+    internal static bool IsCriticalFailure(PostgresException e, bool clusterError = true)
+        => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x, StringComparison.Ordinal)) ||
+           !clusterError && e.SqlState == ProtocolViolation; // We only treat ProtocolViolation as critical for connection
 }
