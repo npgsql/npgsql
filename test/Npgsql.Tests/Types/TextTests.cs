@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Text;
@@ -35,11 +36,11 @@ public class TextTests : MultiplexingTestBase
         => AssertType(Encoding.UTF8.GetBytes("foo"), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
 
     [Test]
-    public Task Text_as_memory_stream()
+    public Task Text_as_MemoryStream()
         => AssertTypeWrite(() => new MemoryStream(Encoding.UTF8.GetBytes("foo")), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
 
     [Test]
-    public async Task Text_as_memory_stream_truncated()
+    public async Task Text_as_MemoryStream_truncated()
     {
         var msFactory = () =>
         {
@@ -51,7 +52,7 @@ public class TextTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Text_as_memory_stream_long()
+    public async Task Text_as_MemoryStream_long()
     {
         await using var conn = await OpenConnectionAsync();
         var builder = new StringBuilder("ABCDEééé", conn.Settings.WriteBufferSize);
@@ -59,6 +60,65 @@ public class TextTests : MultiplexingTestBase
         var value = builder.ToString();
 
         await AssertTypeWrite(() => new MemoryStream(Encoding.UTF8.GetBytes(value)), value, "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+    }
+
+    [Test]
+    public async Task Text_as_FileStream()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var builder = new StringBuilder("ABCDEééé", conn.Settings.WriteBufferSize);
+        builder.Append('X', conn.Settings.WriteBufferSize);
+        var value = builder.ToString();
+        var filePath = Path.GetTempFileName();
+        var fsList = new List<FileStream>();
+        try
+        {
+            await File.WriteAllBytesAsync(filePath, Encoding.UTF8.GetBytes(value));
+
+            await AssertTypeWrite(() => FileStreamFactory(filePath, fsList), value, "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+        }
+        finally
+        {
+            foreach (var fs in fsList)
+                await fs.DisposeAsync();
+
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch { }
+        }
+    }
+
+    [Test]
+    public async Task Text_as_FileStream_long()
+    {
+        var filePath = Path.GetTempFileName();
+        var fsList = new List<FileStream>();
+        try
+        {
+            await File.WriteAllBytesAsync(filePath, Encoding.UTF8.GetBytes("foo"));
+
+            await AssertTypeWrite(() => FileStreamFactory(filePath, fsList), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+        }
+        finally
+        {
+            foreach (var fs in fsList)
+                await fs.DisposeAsync();
+
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch { }
+        }
+    }
+
+    private static FileStream FileStreamFactory(string filePath, List<FileStream> fsList)
+    {
+        var fs = File.OpenRead(filePath);
+        fsList.Add(fs);
+        return fs;
     }
 
     [Test]
@@ -110,6 +170,47 @@ public class TextTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
 
         Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
+    }
+
+    [Test, Description("Tests that strings stream values are truncated when the NpgsqlParameter's Size is set")]
+    [NonParallelizable] // The last check will break the connection, which can fail other unrelated queries in multiplexing
+    public async Task Truncate_stream()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        const string data = "SomeText";
+        var p = new NpgsqlParameter("p", new MemoryStream(Encoding.UTF8.GetBytes(data))) { Size = 4 };
+        cmd.Parameters.Add(p);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("Some"));
+
+        // NpgsqlParameter.Size needs to persist when value is changed
+        const string data2 = "AnotherValue";
+        var data2bytes = Encoding.UTF8.GetBytes(data2);
+        p.Value = new MemoryStream(data2bytes);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("Anot"));
+
+        // Handle with offset
+        var data2ms = new MemoryStream(data2bytes);
+        data2ms.ReadByte();
+        p.Value = data2ms;
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("noth"));
+
+        p.Size = 0;
+        p.Value = new MemoryStream(data2bytes);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
+        p.Size = -1;
+        p.Value = new MemoryStream(data2bytes);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
+
+        Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
+
+        // NpgsqlParameter.Size larger than the value size should throw
+        p.Size = data2.Length + 10;
+        p.Value = new MemoryStream(data2bytes);
+        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync())!;
+        Assert.That(ex.InnerException, Is.TypeOf<EndOfStreamException>());
+        if (!IsMultiplexing)
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/488")]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -57,11 +58,11 @@ public class JsonTests : MultiplexingTestBase
             new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
-    public async Task Write_as_MemoryStream()
+    public async Task As_MemoryStream()
         => await AssertTypeWrite(() => new MemoryStream(Encoding.ASCII.GetBytes(@"{""K"": ""V""}")), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
-    public async Task Write_as_MemoryStream_long()
+    public async Task As_MemoryStream_long()
     {
         await using var conn = CreateConnection();
         var value = new StringBuilder()
@@ -73,7 +74,7 @@ public class JsonTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Write_as_MemoryStream_truncated()
+    public async Task As_MemoryStream_truncated()
     {
         var msFactory = () =>
         {
@@ -82,6 +83,37 @@ public class JsonTests : MultiplexingTestBase
             return ms;
         };
         await AssertTypeWrite(msFactory, @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+    }
+
+    [Test]
+    public async Task As_FileStream()
+    {
+        var filePath = Path.GetTempFileName();
+        var fsList = new List<FileStream>();
+        try
+        {
+            await File.WriteAllBytesAsync(filePath, Encoding.ASCII.GetBytes(@"{""K"": ""V""}"));
+
+            await AssertTypeWrite(() => FileStreamFactory(filePath, fsList), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        }
+        finally
+        {
+            foreach (var fs in fsList)
+                await fs.DisposeAsync();
+
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch { }
+        }
+
+        FileStream FileStreamFactory(string filePath, List<FileStream> fsList)
+        {
+            var fs = File.OpenRead(filePath);
+            fsList.Add(fs);
+            return fs;
+        }
     }
 
     [Test]
