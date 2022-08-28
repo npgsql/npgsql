@@ -30,6 +30,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     internal override bool PreferTextWrite => true;
 
     readonly Encoding _encoding;
+    readonly ByteaHandler _byteaHandler;
 
     #region State
 
@@ -40,7 +41,10 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     /// <inheritdoc />
     protected internal TextHandler(PostgresType postgresType, Encoding encoding)
         : base(postgresType)
-        => _encoding = encoding;
+    {
+        _encoding = encoding;
+        _byteaHandler = new ByteaHandler(postgresType);
+    }
 
     #region Read
 
@@ -235,25 +239,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         => value.Length;
 
     public int ValidateAndGetLength([DisallowNull] Stream value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        => ValidateAndGetLength(value, parameter);
-
-    int ValidateAndGetLength(Stream stream, NpgsqlParameter? parameter)
-    {
-        if (parameter != null && parameter.Size > 0)
-            return parameter.Size;
-
-        if (!stream.CanSeek)
-            throw new NpgsqlException("Cannot write a stream of bytes. Either provide a positive size, or a seekable stream.");
-
-        try
-        {
-            return (int)(stream.Length - stream.Position);
-        }
-        catch (Exception ex)
-        {
-            throw new NpgsqlException("The remaining bytes in the provided Stream exceed the maximum length. The vaule may be truncated by setting NpgsqlParameter.Size.", ex);
-        }
-    }
+        => _byteaHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
 
     /// <inheritdoc />
     public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -293,7 +279,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         => buf.WriteBytesRaw(value, async, cancellationToken);
 
     public Task Write([DisallowNull] Stream value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => buf.WriteStreamRaw(value, ValidateAndGetLength(value, parameter), async, cancellationToken);
+        => _byteaHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
 
     #endregion
 
