@@ -23,7 +23,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// Use it at your own risk.
 /// </remarks>
 public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
-    INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
+    INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<Stream>, ITextReaderHandler
 {
     // Text types are handled a bit more efficiently when sent as text than as binary
     // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -176,6 +176,9 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         }
     }
 
+    ValueTask<Stream> INpgsqlTypeHandler<Stream>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        => throw new NotSupportedException("Reading a PostgreSQL text as a Stream is unsupported, use NpgsqlDataReader.GetStream() instead.");
+
     #endregion
 
     #region Write
@@ -231,6 +234,27 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value.Length;
 
+    public int ValidateAndGetLength([DisallowNull] Stream value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        => ValidateAndGetLength(value, parameter);
+
+    int ValidateAndGetLength(Stream stream, NpgsqlParameter? parameter)
+    {
+        if (parameter != null && parameter.Size > 0)
+            return parameter.Size;
+
+        if (!stream.CanSeek)
+            throw new NpgsqlException("Cannot write a stream of bytes. Either provide a positive size, or a seekable stream.");
+
+        try
+        {
+            return (int)(stream.Length - stream.Position);
+        }
+        catch (Exception ex)
+        {
+            throw new NpgsqlException("The remaining bytes in the provided Stream exceed the maximum length. The vaule may be truncated by setting NpgsqlParameter.Size.", ex);
+        }
+    }
+
     /// <inheritdoc />
     public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => WriteString(value, buf, lengthCache!, parameter, async, cancellationToken);
@@ -267,6 +291,9 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     /// <inheritdoc />
     public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => buf.WriteBytesRaw(value, async, cancellationToken);
+
+    public Task Write([DisallowNull] Stream value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        => buf.WriteStreamRaw(value, ValidateAndGetLength(value, parameter), async, cancellationToken);
 
     #endregion
 

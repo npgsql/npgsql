@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -23,7 +24,8 @@ class JsonHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             typeof(T) == typeof(char[]) ||
             typeof(T) == typeof(ArraySegment<char>) ||
             typeof(T) == typeof(char) ||
-            typeof(T) == typeof(byte[]))
+            typeof(T) == typeof(byte[]) ||
+            typeof(T) == typeof(Stream))
         {
             return await base.ReadCustom<T>(buf, len, async, fieldDescription);
         }
@@ -39,7 +41,8 @@ class JsonHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             typeof(T2) == typeof(char[]) ||
             typeof(T2) == typeof(ArraySegment<char>) ||
             typeof(T2) == typeof(char) ||
-            typeof(T2) == typeof(byte[]))
+            typeof(T2) == typeof(byte[]) ||
+            typeof(T2) == typeof(Stream))
         {
             return base.ValidateAndGetLengthCustom(value, ref lengthCache, parameter);
         }
@@ -56,7 +59,8 @@ class JsonHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             typeof(T2) == typeof(char[]) ||
             typeof(T2) == typeof(ArraySegment<char>) ||
             typeof(T2) == typeof(char) ||
-            typeof(T2) == typeof(byte[]))
+            typeof(T2) == typeof(byte[]) ||
+            typeof(T2) == typeof(Stream))
         {
             return base.WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken);
         }
@@ -74,7 +78,8 @@ class JsonHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             value is char[] ||
             value is ArraySegment<char> ||
             value is char ||
-            value is byte[])
+            value is byte[] ||
+            value is Stream)
         {
             return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
         }
@@ -90,7 +95,8 @@ class JsonHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             value is char[] ||
             value is ArraySegment<char> ||
             value is char ||
-            value is byte[])
+            value is byte[] ||
+            value is Stream)
         {
             return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
         }

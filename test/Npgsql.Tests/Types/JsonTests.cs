@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -54,6 +55,34 @@ public class JsonTests : MultiplexingTestBase
     public async Task Write_as_ArraySegment_of_char()
         => await AssertTypeWrite(
             new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+
+    [Test]
+    public async Task Write_as_MemoryStream()
+        => await AssertTypeWrite(() => new MemoryStream(Encoding.ASCII.GetBytes(@"{""K"": ""V""}")), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+
+    [Test]
+    public async Task Write_as_MemoryStream_long()
+    {
+        await using var conn = CreateConnection();
+        var value = new StringBuilder()
+            .Append(@"{""K"": """)
+            .Append('x', conn.Settings.WriteBufferSize)
+            .Append(@"""}")
+            .ToString();
+        await AssertTypeWrite(() => new MemoryStream(Encoding.ASCII.GetBytes(value)), value, PostgresType, NpgsqlDbType, isDefault: false);
+    }
+
+    [Test]
+    public async Task Write_as_MemoryStream_truncated()
+    {
+        var msFactory = () =>
+        {
+            var ms = new MemoryStream(Encoding.ASCII.GetBytes(@"x{""K"": ""V""}"));
+            ms.ReadByte();
+            return ms;
+        };
+        await AssertTypeWrite(msFactory, @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+    }
 
     [Test]
     public async Task As_JsonDocument()

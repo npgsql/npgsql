@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
@@ -32,6 +33,33 @@ public class TextTests : MultiplexingTestBase
     [Test]
     public Task Text_as_array_of_bytes()
         => AssertType(Encoding.UTF8.GetBytes("foo"), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+
+    [Test]
+    public Task Text_as_memory_stream()
+        => AssertTypeWrite(() => new MemoryStream(Encoding.UTF8.GetBytes("foo")), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+
+    [Test]
+    public async Task Text_as_memory_stream_truncated()
+    {
+        var msFactory = () =>
+        {
+            var ms = new MemoryStream(Encoding.UTF8.GetBytes("foo"));
+            ms.ReadByte();
+            return ms;
+        };
+        await AssertTypeWrite(msFactory, "oo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+    }
+
+    [Test]
+    public async Task Text_as_memory_stream_long()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var builder = new StringBuilder("ABCDEééé", conn.Settings.WriteBufferSize);
+        builder.Append('X', conn.Settings.WriteBufferSize);
+        var value = builder.ToString();
+
+        await AssertTypeWrite(() => new MemoryStream(Encoding.UTF8.GetBytes(value)), value, "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
+    }
 
     [Test]
     public Task Char_as_char()
