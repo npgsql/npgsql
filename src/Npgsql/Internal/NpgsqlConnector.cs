@@ -1361,9 +1361,9 @@ public sealed partial class NpgsqlConnector : IDisposable
                             // an RFQ. Instead, the server closes the connection immediately
                             throw error;
                         }
-                        else if (PostgresErrorCodes.IsCriticalFailure(error))
+                        else if (PostgresErrorCodes.IsCriticalFailure(error, clusterError: false))
                         {
-                            // Consider the database offline
+                            // Consider the connection dead
                             throw connector.Break(error);
                         }
 
