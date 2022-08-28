@@ -1365,5 +1365,31 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.DoesNotThrowAsync(() => command.PrepareAsync());
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4621")]
+    [Description("Most of 08* errors are coming whenever there was an error while connecting to a remote server from a cluster, so the connection to the cluster is still OK")]
+    public async Task Postgres_connection_errors_not_break_connection()
+    {
+        if (IsMultiplexing)
+            return;
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+        await using var conn = await OpenConnectionAsync(connectionString);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1";
+        var queryTask = cmd.ExecuteNonQueryAsync();
+
+        var server = await postmasterMock.WaitForServerConnection();
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        var ex = Assert.ThrowsAsync<PostgresException>(async () => await queryTask)!;
+        Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection));
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+    }
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
