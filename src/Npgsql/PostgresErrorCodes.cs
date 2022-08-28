@@ -478,5 +478,5 @@ public static class PostgresErrorCodes
 
     internal static bool IsCriticalFailure(PostgresException e, bool clusterError = true)
         => CriticalFailureCodes.Any(x => e.SqlState.StartsWith(x, StringComparison.Ordinal)) ||
-           clusterError && e.SqlState == ProtocolViolation; // We only treat ProtocolViolation as critical for connection
+           !clusterError && e.SqlState == ProtocolViolation; // We only treat ProtocolViolation as critical for connection
 }
