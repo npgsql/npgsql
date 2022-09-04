@@ -129,6 +129,67 @@ public class EnumTests : TestBase
         }
     }
 
+    [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
+    public async Task Enum_resolution_with_global_nongeneric_mapping()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            ApplicationName = nameof(Enum_resolution_with_global_mapping),  // Prevent backend type caching in TypeHandlerRegistry
+            Pooling = false
+        };
+
+        using var conn = await OpenConnectionAsync(csb);
+        await using var _ = await GetTempTypeName(conn, out var type);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+        NpgsqlConnection.GlobalTypeMapper.MapEnum(typeof(Mood), type);
+        try
+        {
+            conn.ReloadTypes();
+
+            // Resolve type by DataTypeName
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "p",
+                    DataTypeName = type,
+                    Value = DBNull.Value
+                });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{type}"));
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                }
+            }
+
+            // Resolve type by ClrType (type inference)
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = Mood.Ok });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{type}"));
+                }
+            }
+
+            // Resolve type by OID (read)
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand($"SELECT 'happy'::{type}", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{type}"));
+            }
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
+        }
+    }
+
     [Test, Description("Resolves an enum type handler via the different pathways, with late mapping")]
     public async Task Enum_resolution_with_late_mapping()
     {

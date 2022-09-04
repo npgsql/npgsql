@@ -510,10 +510,11 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
     public override INpgsqlTypeMapper MapEnum(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        var openMethod =
-            typeof(ConnectorTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
+        if (!clrType.IsEnum)
+            throw new ArgumentException("clrType must be an Enum", nameof(clrType));
 
+        var openMethod = typeof(ConnectorTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
         method.Invoke(this, new object?[] { pgName, nameTranslator });
 
         return this;

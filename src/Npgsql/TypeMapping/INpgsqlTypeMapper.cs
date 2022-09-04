@@ -47,12 +47,27 @@ public interface INpgsqlTypeMapper
         where TEnum : struct, Enum;
 
     /// <summary>
-    /// TODO
+    /// Maps a CLR enum to a PostgreSQL enum type.
     /// </summary>
-    /// <param name="clrType"></param>
-    /// <param name="pgName"></param>
-    /// <param name="nameTranslator"></param>
-    /// <returns></returns>
+    /// <remarks>
+    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
+    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="clrType">
+    /// The .NET enum type to be mapped
+    /// </param>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// </param>
     INpgsqlTypeMapper MapEnum(
     Type clrType,
     string? pgName = null,

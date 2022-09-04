@@ -1135,6 +1135,7 @@ Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsql
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.Reset() -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
