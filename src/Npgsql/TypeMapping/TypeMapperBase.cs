@@ -32,6 +32,9 @@ abstract class TypeMapperBase : INpgsqlTypeMapper
         where TEnum : struct, Enum;
 
     /// <inheritdoc />
+    public abstract bool UnmapEnum(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null);
+
+    /// <inheritdoc />
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public abstract INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null);
 

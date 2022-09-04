@@ -339,6 +339,43 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     }
 
     [Test]
+    public async Task Global_non_generic_mapping()
+    {
+        using var adminConn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConn, out var type);
+
+        using (var conn = await OpenConnectionAsync())
+        {
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+            NpgsqlConnection.GlobalTypeMapper.MapEnum(typeof(Mood), type);
+            conn.ReloadTypes();
+            const Mood expected = Mood.Ok;
+            using (var cmd = new NpgsqlCommand($"SELECT @p::{type}", conn))
+            {
+                var p = new NpgsqlParameter { ParameterName = "p", Value = expected };
+                cmd.Parameters.Add(p);
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Mood)));
+                    Assert.That(reader.GetFieldValue<Mood>(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        // Unmap
+        NpgsqlConnection.GlobalTypeMapper.UnmapEnum(typeof(Mood), type);
+
+        using (var conn = await OpenConnectionAsync())
+        {
+            // Enum should have been unmapped and so will return as text
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT 'ok'::{type}"), Is.EqualTo("ok"));
+        }
+    }
+
+    [Test]
     public async Task Global_mapping_when_type_not_found()
     {
         using var conn = await OpenConnectionAsync();
