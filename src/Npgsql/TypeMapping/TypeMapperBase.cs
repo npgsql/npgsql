@@ -25,6 +25,9 @@ abstract class TypeMapperBase : INpgsqlTypeMapper
         where TEnum : struct, Enum;
 
     /// <inheritdoc />
+    public abstract INpgsqlTypeMapper MapEnum(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null);
+
+    /// <inheritdoc />
     public abstract bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum;
 

@@ -47,6 +47,18 @@ public interface INpgsqlTypeMapper
         where TEnum : struct, Enum;
 
     /// <summary>
+    /// TODO
+    /// </summary>
+    /// <param name="clrType"></param>
+    /// <param name="pgName"></param>
+    /// <param name="nameTranslator"></param>
+    /// <returns></returns>
+    INpgsqlTypeMapper MapEnum(
+    Type clrType,
+    string? pgName = null,
+    INpgsqlNameTranslator? nameTranslator = null);
+
+    /// <summary>
     /// Removes an existing enum mapping.
     /// </summary>
     /// <param name="pgName">
