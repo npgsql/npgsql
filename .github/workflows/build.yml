@@ -133,9 +133,9 @@ jobs:
           sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
           
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
-      #- uses: actions/checkout@v3
-      #- name: Setup tmate session
-      #  uses: mxschmitt/action-tmate@v3
+      - uses: actions/checkout@v3
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
         if: startsWith(matrix.os, 'windows')
