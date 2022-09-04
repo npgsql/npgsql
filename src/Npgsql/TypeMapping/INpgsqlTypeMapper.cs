@@ -40,7 +40,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
-    /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
+    /// <typeparam name="TEnum">A CLR enum type to be mapped</typeparam>
     INpgsqlTypeMapper MapEnum<TEnum>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null)
@@ -58,7 +58,7 @@ public interface INpgsqlTypeMapper
     /// an exception will be raised.
     /// </remarks>
     /// <param name="clrType">
-    /// The .NET enum type to be mapped
+    /// A CLR enum type to be mapped
     /// </param>
     /// <param name="pgName">
     /// A PostgreSQL type name for the corresponding enum type in the database.
