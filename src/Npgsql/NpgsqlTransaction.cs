@@ -377,9 +377,10 @@ public sealed class NpgsqlTransaction : DbTransaction
                     _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
                     Rollback();
                 }
-                catch
+                catch (Exception ex)
                 {
                     Debug.Assert(_connector.IsBroken);
+                    LogMessages.ExceptionDuringTransactionDispose(_transactionLogger, _connector.Id, ex);
                 }
             }
 
@@ -476,27 +477,27 @@ public sealed class NpgsqlTransaction : DbTransaction
     #region Misc
 
     /// <summary>
-    /// Unbinds transaction from the connector.
-    /// Should be called before the connector is returned to the pool.
+    /// If this transaction is not yet disposed, this releases the internal connector to avoid concurrency issues
+    /// if we're closing the connection. See #3306.
+    /// Currently this should only be called from <see cref="NpgsqlConnector.UnbindTransaction"/>.
     /// </summary>
-    internal void UnbindIfNecessary()
+    internal void ReleaseConnector()
     {
-        // We're closing the connection, but transaction is not yet disposed
-        // We have to unbind the transaction from the connector, otherwise there could be a concurrency issues
-        // See #3306
+        Debug.Assert(_connector != null);
         if (!IsDisposed)
-        {
-            if (_connector.UnboundTransaction is { IsDisposed: true } previousTransaction)
-            {
-                previousTransaction._connector = _connector;
-                _connector.Transaction = previousTransaction;
-            }
-            else
-                _connector.Transaction = null;
-
-            _connector.UnboundTransaction = this;
             _connector = null!;
-        }
+    }
+
+    /// <summary>
+    /// Resets the internal <see cref="NpgsqlConnector"/> to <paramref name="connector"/>.
+    /// Use this on an unbound transaction that has released its connector via <see cref="ReleaseConnector"/>
+    /// and that has been disposed in the meantime, in order to recycle it.
+    /// </summary>
+    /// <param name="connector">The new <see cref="NpgsqlConnector"/> this connection should use.</param>
+    internal void ResetConnector(NpgsqlConnector connector)
+    {
+        Debug.Assert(IsDisposed || _connector == null);
+        _connector = connector;
     }
 
     #endregion

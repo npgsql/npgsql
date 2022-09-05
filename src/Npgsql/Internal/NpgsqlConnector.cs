@@ -51,6 +51,12 @@ public sealed partial class NpgsqlConnector : IDisposable
     Stream _stream = default!;
 
     /// <summary>
+    /// This may contain a reference to the latest unbound transaction, which may be reused if it has already been disposed
+    /// when we unbind a current transaction from <see cref="Transaction"/> via <see cref="UnbindTransaction"/>.
+    /// </summary>
+    NpgsqlTransaction? _unboundTransaction;
+
+    /// <summary>
     /// The parsed connection string.
     /// </summary>
     public NpgsqlConnectionStringBuilder Settings { get; }
@@ -123,9 +129,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// this instance is recycled. To check whether a transaction is currently in progress on this connector,
     /// see <see cref="TransactionStatus"/>.
     /// </summary>
-    internal NpgsqlTransaction? Transaction { get; set; }
-
-    internal NpgsqlTransaction? UnboundTransaction { get; set; }
+    internal NpgsqlTransaction? Transaction { get; private set; }
 
     /// <summary>
     /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -1589,7 +1593,50 @@ public sealed partial class NpgsqlConnector : IDisposable
         TransactionStatus = TransactionStatus.Idle;
     }
 
-    #endregion
+    /// <summary>
+    /// Starts a new transaction with the specified isolation level, resets the <see cref="Transaction"/> property and returns the newly
+    /// created transaction.
+    /// </summary>
+    /// <param name="isolationLevel">The <see cref="System.Data.IsolationLevel"/> to use when starting the transaction</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to check for cancellation.</param>
+    /// <returns>A <see cref="NpgsqlTransaction"/> representing the newly created transaction.</returns>
+    internal NpgsqlTransaction InitializeTransaction(System.Data.IsolationLevel isolationLevel, CancellationToken cancellationToken)
+    {
+        // Note that beginning a transaction doesn't actually send anything to the backend (only prepends).
+        // But we start a user action to check the cancellation token and generate exceptions
+        using var _ = StartUserAction(cancellationToken);
+        Transaction ??= new(this);
+        Transaction.Init(isolationLevel);
+        return Transaction;
+    }
+
+    /// <summary>
+    /// Unbinds <see cref="Transaction"/> from the connector. Should be called before the connector is returned to the pool.
+    /// </summary>
+    /// <remarks>
+    /// This also contains a simple cycling logic that helps saving allocations by keeping a reference to the latest unbound
+    /// transaction (in <see cref="_unboundTransaction"/>) so that it may get recycled if it has already been disposed upon
+    /// the next call of the method.
+    /// </remarks>
+    internal void UnbindTransaction()
+    {
+        var currentTransaction = Transaction;
+        if (currentTransaction == null || currentTransaction.IsDisposed)
+            return;
+
+        if (_unboundTransaction is { IsDisposed: true } unboundTransaction)
+        {
+            unboundTransaction.ResetConnector(this);
+            Transaction = unboundTransaction;
+        }
+        else
+            Transaction = null;
+
+        _unboundTransaction = currentTransaction;
+        currentTransaction.ReleaseConnector();
+    }
+
+    #endregion Transactions
 
     #region SSL
 
@@ -2132,7 +2179,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             ResetReadBuffer();
 
-            Transaction?.UnbindIfNecessary();
+            UnbindTransaction();
 
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)

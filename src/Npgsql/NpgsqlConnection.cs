@@ -649,13 +649,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         try
         {
-            // Note that beginning a transaction doesn't actually send anything to the backend (only prepends).
-            // But we start a user action to check the cancellation token and generate exceptions
-            using var _ = connector.StartUserAction(cancellationToken);
-
-            connector.Transaction ??= new NpgsqlTransaction(connector);
-            connector.Transaction.Init(level);
-            return connector.Transaction;
+            return connector.InitializeTransaction(level, cancellationToken);
         }
         catch
         {
@@ -896,7 +890,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 {
                     // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
                     // TODO: move reset logic to ConnectorSource.Return
-                    connector.Transaction?.UnbindIfNecessary();
+                    connector.UnbindTransaction();
                 }  
 
                 if (Settings.Multiplexing)
@@ -1849,7 +1843,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var connector = Connector;
         Connector = null;
         connector.Connection = null;
-        connector.Transaction?.UnbindIfNecessary();
+        connector.UnbindTransaction();
         connector.Return();
         ConnectorBindingScope = ConnectorBindingScope.None;
     }
