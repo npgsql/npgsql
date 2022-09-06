@@ -1144,31 +1144,31 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             async (slotName, tableNames, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
-                await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableNames[0]}
-                                                             (
-                                                                 id uuid NOT NULL,
-                                                                 text text NOT NULL,
-                                                                 created_at timestamp with time zone NOT NULL,
-                                                                 CONSTRAINT pk_{tableNames[0]} PRIMARY KEY (id)
-                                                             );
-                                                CREATE TABLE {tableNames[1]}
-                                                             (
-                                                                 id uuid NOT NULL,
-                                                                 message_id uuid NOT NULL,
-                                                                 created_at timestamp with time zone NOT NULL,
-                                                                 CONSTRAINT pk_{tableNames[1]} PRIMARY KEY (id),
-                                                                 CONSTRAINT fk_{tableNames[1]}_message_id FOREIGN KEY (message_id) REFERENCES {tableNames[0]} (id)
-                                                             );
-                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableNames[0]}, {tableNames[1]} WITH (PUBLISH = 'insert');
-");
+                await c.ExecuteNonQueryAsync(@$"
+CREATE TABLE {tableNames[0]}
+(
+    id uuid NOT NULL,
+    text text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[0]} PRIMARY KEY (id)
+);
+CREATE TABLE {tableNames[1]}
+(
+    id uuid NOT NULL,
+    message_id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[1]} PRIMARY KEY (id),
+    CONSTRAINT fk_{tableNames[1]}_message_id FOREIGN KEY (message_id) REFERENCES {tableNames[0]} (id)
+);
+CREATE PUBLICATION {publicationName} FOR TABLE {tableNames[0]}, {tableNames[1]} WITH (PUBLISH = 'insert');");
                 await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
-                await c.ExecuteNonQueryAsync(
-                    @$"INSERT INTO {tableNames[0]} VALUES ('B6CB5293-F65E-4F48-A74B-06D5355DAA74', 'random', now());
-                                                INSERT INTO {tableNames[1]} VALUES ('55870BEC-C42E-4AB0-83BA-225BB7777B37', 'B6CB5293-F65E-4F48-A74B-06D5355DAA74', now());
-                                                INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'another random', now());");
+                await c.ExecuteNonQueryAsync(@$"
+INSERT INTO {tableNames[0]} VALUES ('B6CB5293-F65E-4F48-A74B-06D5355DAA74', 'random', now());
+INSERT INTO {tableNames[1]} VALUES ('55870BEC-C42E-4AB0-83BA-225BB7777B37', 'B6CB5293-F65E-4F48-A74B-06D5355DAA74', now());
+INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'another random', now());");
                 await tran.CommitAsync();
 
                 using var streamingCts = new CancellationTokenSource();
@@ -1234,7 +1234,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             }, 2);
     }
 
-    #region Non-Test stuff (helper methods, initialization, ennums, ...)
+    #region Non-Test stuff (helper methods, initialization, enums, ...)
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
