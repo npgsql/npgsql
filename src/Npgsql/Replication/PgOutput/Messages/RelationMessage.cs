@@ -37,7 +37,7 @@ public sealed class RelationMessage : TransactionalMessage
     /// </summary>
     public IReadOnlyList<Column> Columns => InternalColumns;
 
-    internal ReadOnlyArrayBuffer<Column> InternalColumns { get; private set; } = ReadOnlyArrayBuffer<Column>.Empty;
+    internal ReadOnlyArrayBuffer<Column> InternalColumns { get; } = new();
 
     internal RowDescriptionMessage RowDescription { get; set; } = null!;
 
