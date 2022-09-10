@@ -1,6 +1,7 @@
 ﻿#nullable enable
 Npgsql.NpgsqlLoggingConfiguration
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
+*REMOVED*Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.Log(Npgsql.Logging.NpgsqlLogLevel level, int connectorId, string! msg, System.Exception? exception = null) -> void
 *REMOVED*const NpgsqlTypes.NpgsqlDate.MaxYear = 5874897 -> int
