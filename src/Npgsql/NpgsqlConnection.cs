@@ -59,7 +59,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// The parsed connection string. Set only after the connection is opened.
     /// </summary>
-    public NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
+    internal NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
 
     static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
