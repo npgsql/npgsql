@@ -536,8 +536,6 @@ public sealed partial class NpgsqlConnector : IDisposable
             await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt);
 
             var username = conn.GetUsername();
-            if (conn.Settings.Database == null)
-                conn.Settings.Database = username;
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -680,9 +678,11 @@ public sealed partial class NpgsqlConnector : IDisposable
             ["user"] = username,
             ["client_encoding"] = Settings.ClientEncoding ??
                                   PostgresEnvironment.ClientEncoding ??
-                                  "UTF8",
-            ["database"] = Settings.Database!
+                                  "UTF8"
         };
+
+        if (Settings.Database is not null)
+            startupParams["database"] = Settings.Database;
 
         if (Settings.ApplicationName?.Length > 0)
             startupParams["application_name"] = Settings.ApplicationName;
