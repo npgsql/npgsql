@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -17,26 +18,12 @@ class KerberosUsernameProvider
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
-    internal static string? GetUsername(bool includeRealm, ILogger connectionLogger)
-        => _performedDetection
-            ? includeRealm ? _principalWithRealm : _principalWithoutRealm
-#if NET5_0_OR_GREATER
-            : DetectUsername(includeRealm, connectionLogger, false).GetAwaiter().GetResult();
-#else
-            : DetectUsername(includeRealm, connectionLogger);
-#endif
-
-#if NET5_0_OR_GREATER
-    internal static ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger)
-        => _performedDetection
-            ? ValueTask.FromResult(includeRealm ? _principalWithRealm : _principalWithoutRealm)
-            : DetectUsername(includeRealm, connectionLogger, true);
-
-    static async ValueTask<string?> DetectUsername(bool includeRealm, ILogger connectionLogger, bool async)
-#else
-    static string? DetectUsername(bool includeRealm, ILogger connectionLogger)
-#endif
+#pragma warning disable CS1998
+    internal static async ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger, bool async, CancellationToken cancellationToken)
+#pragma warning restore CS1998
     {
+        if (_performedDetection)
+            return includeRealm ? _principalWithRealm : _principalWithoutRealm;
         var klistPath = FindInPath("klist");
         if (klistPath == null)
         {
@@ -60,7 +47,7 @@ class KerberosUsernameProvider
 
 #if NET5_0_OR_GREATER
         if (async)
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(cancellationToken);
         else
 #else
             // ReSharper disable once MethodHasAsyncOverload
@@ -76,7 +63,9 @@ class KerberosUsernameProvider
         var line = default(string);
         for (var i = 0; i < 2; i++)
             // ReSharper disable once MethodHasAsyncOverload
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
+            if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken) : process.StandardOutput.ReadLine()) == null)
+#elif NET5_0_OR_GREATER
             if ((line = async ? await process.StandardOutput.ReadLineAsync() : process.StandardOutput.ReadLine()) == null)
 #else
             if ((line = process.StandardOutput.ReadLine()) == null)
