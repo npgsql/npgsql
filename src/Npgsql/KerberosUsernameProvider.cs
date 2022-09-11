@@ -49,6 +49,8 @@ class KerberosUsernameProvider
         if (async)
             await process.WaitForExitAsync(cancellationToken);
         else
+            // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+            process.WaitForExit();
 #else
             // ReSharper disable once MethodHasAsyncOverload
             process.WaitForExit();
