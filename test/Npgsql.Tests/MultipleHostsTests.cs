@@ -829,6 +829,43 @@ public class MultipleHostsTests : TestBase
         }
     }
 
+    [Test]
+    public async Task Primary_host_failover_can_connect()
+    {
+        await using var firstPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+        await using var secondPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(firstPostmaster, secondPostmaster),
+            TargetSessionAttributes = "primary",
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            HostRecheckSeconds = 5
+        };
+
+        await using var conn = await OpenConnectionAsync(csb);
+        Assert.That(conn.Port, Is.EqualTo(firstPostmaster.Port));
+        var firstServer = await firstPostmaster.WaitForServerConnection();
+        await firstServer
+            .WriteErrorResponse(PostgresErrorCodes.AdminShutdown)
+            .FlushAsync();
+
+        var failoverEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        Assert.That(failoverEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
+
+        firstPostmaster.State = Standby;
+
+        var noHostFoundEx = Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync())!;
+        Assert.That(noHostFoundEx.Message, Is.EqualTo("No suitable host was found."));
+
+        secondPostmaster.State = Primary;
+        var secondServer = await secondPostmaster.WaitForServerConnection();
+        await secondServer.SendMockState(Primary);
+
+        await Task.Delay(TimeSpan.FromSeconds(5));
+
+        await conn.OpenAsync();
+    }
+
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
     [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)

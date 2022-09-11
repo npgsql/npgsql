@@ -40,15 +40,15 @@ namespace Npgsql.Tests.Support
             _writeBuffer = writeBuffer;
         }
 
-        internal async Task Startup(bool expectClusterStateQuery, MockState state)
+        internal async Task Startup(MockState state)
         {
             // Read and skip the startup message
             await SkipMessage();
 
             WriteAuthenticateOk();
-            WriteParameterStatuses(new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>
             {
-                { "server_version", "13" },
+                { "server_version", "14" },
                 { "server_encoding", "UTF8" },
                 { "client_encoding", "UTF8" },
                 { "application_name", "Mock" },
@@ -59,28 +59,18 @@ namespace Npgsql.Tests.Support
                 { "TimeZone", "UTC" },
                 { "integer_datetimes", "on" },
                 { "standard_conforming_strings", "on" }
-
-            });
+            };
+            // While PostgreSQL 14 always sends default_transaction_read_only and in_hot_standby, we only send them if requested
+            // To minimize potential issues for tests not requiring multiple hosts
+            if (state != MockState.MultipleHostsDisabled)
+            {
+                parameters["default_transaction_read_only"] = state == MockState.Primary ? "off" : "on";
+                parameters["in_hot_standby"] = state == MockState.Standby ? "on" : "off";
+            }
+            WriteParameterStatuses(parameters);
             WriteBackendKeyData(ProcessId, BackendSecret);
             WriteReadyForQuery();
             await FlushAsync();
-
-            if (expectClusterStateQuery)
-            {
-                // Write the response on the mock is primary/standby/read-write/read-only
-                await ExpectMessages(
-                    FrontendMessageCode.Parse,
-                    FrontendMessageCode.Bind,
-                    FrontendMessageCode.Describe,
-                    FrontendMessageCode.Execute,
-                    FrontendMessageCode.Parse,
-                    FrontendMessageCode.Bind,
-                    FrontendMessageCode.Describe,
-                    FrontendMessageCode.Execute,
-                    FrontendMessageCode.Sync);
-
-                await SendMockState(state);
-            }
         }
 
         internal async Task FailedStartup(string errorCode)
