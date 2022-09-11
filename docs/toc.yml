@@ -43,7 +43,7 @@
     - name: GeoJSON
       href: types/geojson.md
     - name: Legacy PostGIS
-      ref: types/legacy-postgis.md
+      href: types/legacy-postgis.md
 - name: Diagnostics
   items:
   - name: Overview
