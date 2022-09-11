@@ -1,5 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 
+#if NET5_0_OR_GREATER
+[module: SkipLocalsInit]
+#endif
+
 [assembly: InternalsVisibleTo("Npgsql.NodaTime.Tests, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +
 "2b3c590b2a4e3d347e6878dc0ff4d21eb056a50420250c6617044330701d35c9" +
