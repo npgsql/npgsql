@@ -277,6 +277,36 @@ public class EnumTests : TestBase
     }
 
     [Test]
+    public async Task Late_nongeneric_mapping()
+    {
+        using var conn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(conn, out var type);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+        conn.ReloadTypes();
+        conn.TypeMapper.MapEnum(typeof(Mood), type);
+        const Mood expected = Mood.Ok;
+        var cmd = new NpgsqlCommand($"SELECT @p1::{type}, @p2::{type}", conn);
+        var p1 = new NpgsqlParameter
+        {
+            ParameterName = "p1",
+            DataTypeName = type,
+            Value = expected
+        };
+        var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+        cmd.Parameters.Add(p1);
+        cmd.Parameters.Add(p2);
+        var reader = await cmd.ExecuteReaderAsync();
+        reader.Read();
+
+        for (var i = 0; i < cmd.Parameters.Count; i++)
+        {
+            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Mood)));
+            Assert.That(reader.GetFieldValue<Mood>(i), Is.EqualTo(expected));
+            Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+        }
+    }
+
+    [Test]
     public async Task Dual_enums()
     {
         using var conn = await OpenConnectionAsync();
@@ -339,7 +369,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     }
 
     [Test]
-    public async Task Global_non_generic_mapping()
+    public async Task Global_nongeneric_mapping()
     {
         using var adminConn = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(adminConn, out var type);
@@ -387,6 +417,21 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         finally
         {
             NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>("unknown_enum");
+        }
+    }
+
+    [Test]
+    public async Task Global_nongeneric_mapping_when_type_not_found()
+    {
+        using var conn = await OpenConnectionAsync();
+        NpgsqlConnection.GlobalTypeMapper.MapEnum(typeof(Mood), "unknown_enum");
+        try
+        {
+            Assert.That(conn.ReloadTypes, Throws.Nothing);
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.UnmapEnum(typeof(Mood), "unknown_enum");
         }
     }
 
