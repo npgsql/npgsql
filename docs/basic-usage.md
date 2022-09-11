@@ -196,7 +196,7 @@ using var reader = cmd.ExecuteReader();
 
 You can replace the parameter values above with regular placeholders (e.g. `@p1`), just like with a regular query.
 
-In some other databases, calling a stored procedures involves setting the command's *behavior*:
+In some other databases, calling a stored procedures involves setting the command's `CommandType`:
 
 ```c#
 using (var cmd = new NpgsqlCommand("my_func", conn))
@@ -211,7 +211,7 @@ Npgsql supports this mainly for portability, but this style of calling has no ad
 
 Note that if `CommandType.StoredProcedure` is set and your parameter instances have names, Npgsql will generate parameters with `named notation`: `SELECT my_func(p1 => 'some_value')`. This means that your NpgsqlParameter names must match your PostgreSQL function parameters, or the function call will fail. If you omit the names on your NpgsqlParameters, positional notation will be used instead. [See the PostgreSQL docs for more info](https://www.postgresql.org/docs/current/static/sql-syntax-calling-funcs.html).
 
-Be aware that `CommandType.StoredProcedure` will generate a `SELECT` command - suitable for functions - and not a `CALL` command suitable for procedures. Npgsql has behaved this way since long before stored procedures were introduced, and changing this behavior would break backwards compatibility for many applications. The only way to call a stored procedure is to write your own `CALL my_proc(...)` command, without setting `CommandBehavior.StoredProcedure`.
+Be aware that `CommandType.StoredProcedure` will generate a `SELECT` command - suitable for functions - and not a `CALL` command suitable for procedures. Npgsql has behaved this way since long before stored procedures were introduced, and changing this behavior would break backwards compatibility for many applications. The only way to call a stored procedure is to write your own `CALL my_proc(...)` command, without setting `CommandType.StoredProcedure`.
 
 ### In/out parameters
 
