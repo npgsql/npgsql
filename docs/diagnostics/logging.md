@@ -16,7 +16,7 @@ It's trivial to create a logging provider that passes log messages to whatever l
 
 ## ConsoleLoggingProvider
 
-Npgsql comes with one built-in logging provider: ConsoleLoggingProvider. It will simply dump all log messages with a given level or above to stdanrd output.
+Npgsql comes with one built-in logging provider: ConsoleLoggingProvider. It will simply dump all log messages with a given level or above to standard output.
 You can set it up by including the following line at the beginning of your application:
 
 ```c#
