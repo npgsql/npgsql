@@ -451,6 +451,10 @@ public class MultipleHostsTests : TestBase
             if (!alwaysCheckHostState)
                 return;
 
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Primary);
+
             // Update the state after a 'failover'
             await server.SendMockState(Standby);
         });
@@ -459,6 +463,10 @@ public class MultipleHostsTests : TestBase
             var server = await standbyPostmaster.WaitForServerConnection();
             if (!alwaysCheckHostState)
                 return;
+
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Standby);
 
             // As TargetSessionAttributes is 'prefer', it does another cycle for the 'unpreferred'
             await server.SendMockState(Standby);
