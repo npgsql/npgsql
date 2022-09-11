@@ -50,7 +50,7 @@ Parameter                | Description                                          
 ------------------------ | ------------------------------------------------------------ | -------
 Timeout                  | The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error. | 15
 Command Timeout          | The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity. | 30
-Internal Command Timeout | The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
+Internal Command Timeout | The time to wait (in seconds) while trying to execute an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1
 Cancellation Timeout     | The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error. -1 skips the wait, 0 means infinite wait. Introduced in 5.0. | 2000
 Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | 0 (disabled)
 Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | false
@@ -97,7 +97,7 @@ Load Table Composites    | Load table composite type definitions, and not just f
 Array Nullability Mode   | Configure the way arrays of value types are returned when requested as object instances. Possible values are: `Never` (arrays of value types are always returned as non-nullable arrays), `Always` (arrays of value types are always returned as nullable arrays) and `PerInstance` (the type of array that gets returned is determined at runtime).             | Never
 
 <sup id="misc_sup_1">1</sup>The `Options` connection string parameter is essentially the string of command line options that get passed to the [`postgres`](https://www.postgresql.org/docs/current/app-postgres.html) program when the process is started.
-It is most commonly used to set named run-time parameters via the `-c` option but other options can be used too (althoug not all of them make sense in that context).
+It is most commonly used to set named run-time parameters via the `-c` option but other options can be used too (although not all of them make sense in that context).
 Setting multiple options is possible by separating them with a space character. Space and backslash characters in option values need to be escaped by prefixing a backslash character.
 Example: `Options=-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing`
 
