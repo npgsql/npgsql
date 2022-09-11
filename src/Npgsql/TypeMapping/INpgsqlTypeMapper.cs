@@ -40,7 +40,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
-    /// <typeparam name="TEnum">A CLR enum type to be mapped</typeparam>
+    /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
     INpgsqlTypeMapper MapEnum<TEnum>(
         string? pgName = null,
         INpgsqlNameTranslator? nameTranslator = null)
@@ -58,7 +58,7 @@ public interface INpgsqlTypeMapper
     /// an exception will be raised.
     /// </remarks>
     /// <param name="clrType">
-    /// A CLR enum type to be mapped
+    /// The .NET enum type to be mapped
     /// </param>
     /// <param name="pgName">
     /// A PostgreSQL type name for the corresponding enum type in the database.
@@ -69,9 +69,9 @@ public interface INpgsqlTypeMapper
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
     INpgsqlTypeMapper MapEnum(
-    Type clrType,
-    string? pgName = null,
-    INpgsqlNameTranslator? nameTranslator = null);
+        Type clrType,
+        string? pgName = null,
+        INpgsqlNameTranslator? nameTranslator = null);
 
     /// <summary>
     /// Removes an existing enum mapping.
@@ -93,7 +93,7 @@ public interface INpgsqlTypeMapper
     /// Removes an existing enum mapping.
     /// </summary>
     /// <param name="clrType">
-    /// A CLR enum type to be unmapped
+    /// The .NET enum type to be unmapped
     /// </param>
     /// <param name="pgName">
     /// A PostgreSQL type name for the corresponding enum type in the database.
@@ -127,7 +127,7 @@ public interface INpgsqlTypeMapper
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
     /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
     /// </param>
-    /// <typeparam name="T">A CLR type to be mapped</typeparam>
+    /// <typeparam name="T">The .NET type to be mapped</typeparam>
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     INpgsqlTypeMapper MapComposite<T>(
         string? pgName = null,
@@ -159,7 +159,7 @@ public interface INpgsqlTypeMapper
     /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
     /// an exception will be raised.
     /// </remarks>
-    /// <param name="clrType">A CLR type to be mapped.</param>
+    /// <param name="clrType">The .NET type to be mapped.</param>
     /// <param name="pgName">
     /// A PostgreSQL type name for the corresponding composite type in the database.
     /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
@@ -177,7 +177,7 @@ public interface INpgsqlTypeMapper
     /// <summary>
     /// Removes an existing composite mapping.
     /// </summary>
-    /// <param name="clrType">A CLR type to be unmapped.</param>
+    /// <param name="clrType">The .NET type to be unmapped.</param>
     /// <param name="pgName">
     /// A PostgreSQL type name for the corresponding composite type in the database.
     /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
