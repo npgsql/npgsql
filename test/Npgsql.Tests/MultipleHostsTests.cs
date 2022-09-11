@@ -864,6 +864,7 @@ public class MultipleHostsTests : TestBase
         await Task.Delay(TimeSpan.FromSeconds(5));
 
         await conn.OpenAsync();
+        Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
