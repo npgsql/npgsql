@@ -169,7 +169,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Gets or sets the SQL statement or function (stored procedure) to execute at the data source.
     /// </summary>
-    /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
+    /// <value>The SQL statement or function (stored procedure) to execute. The default is an empty string.</value>
     [AllowNull, DefaultValue("")]
     [Category("Data")]
     public override string CommandText
@@ -293,7 +293,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     /// <summary>
     /// Marks all of the query's result columns as either known or unknown.
-    /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+    /// Unknown result columns are requested from PostgreSQL in text format, and Npgsql makes no
     /// attempt to parse them. They will be accessible as strings only.
     /// </summary>
     public bool AllResultTypesAreUnknown
@@ -311,7 +311,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     /// <summary>
     /// Marks the query's result columns as known or unknown, on a column-by-column basis.
-    /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+    /// Unknown result columns are requested from PostgreSQL in text format, and Npgsql makes no
     /// attempt to parse them. They will be accessible as strings only.
     /// </summary>
     /// <remarks>
@@ -1237,7 +1237,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
     /// and returns a <see cref="NpgsqlDataReader"/>.
     /// </summary>
-    /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+    /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <returns>A task representing the operation.</returns>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
         => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
@@ -1259,7 +1259,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// which executes the <see cref="CommandText"/> against the <see cref="Connection"/>
     /// and returns a <see cref="NpgsqlDataReader"/>.
     /// </summary>
-    /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+    /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>

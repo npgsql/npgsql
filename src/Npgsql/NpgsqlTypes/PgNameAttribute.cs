@@ -4,7 +4,7 @@
 namespace NpgsqlTypes;
 
 /// <summary>
-/// Indicates that this property or field correspond to a PostgreSQL field with the specified name
+/// Indicates that this property or field corresponds to a PostgreSQL field with the specified name
 /// </summary>
 [AttributeUsage(
     AttributeTargets.Enum |
@@ -21,7 +21,7 @@ public class PgNameAttribute : Attribute
     public string PgName { get; private set; }
 
     /// <summary>
-    /// Indicates that this property or field correspond to a PostgreSQL field with the specified name
+    /// Indicates that this property or field corresponds to a PostgreSQL field with the specified name
     /// </summary>
     /// <param name="pgName">The name of PostgreSQL field that corresponds to this CLR property or field</param>
     public PgNameAttribute(string pgName)
