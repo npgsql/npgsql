@@ -860,19 +860,31 @@ public class MultipleHostsTests : TestBase
         var failoverEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"))!;
         Assert.That(failoverEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
 
-        firstPostmaster.State = Standby;
-
         var noHostFoundEx = Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync())!;
         Assert.That(noHostFoundEx.Message, Is.EqualTo("No suitable host was found."));
 
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Offline));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+
+        firstPostmaster.State = Standby;
         secondPostmaster.State = Primary;
         var secondServer = await secondPostmaster.WaitForServerConnection();
         await secondServer.SendMockState(Primary);
 
         await Task.Delay(TimeSpan.FromSeconds(10));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
 
         await conn.OpenAsync();
         Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.PrimaryReadWrite));
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
