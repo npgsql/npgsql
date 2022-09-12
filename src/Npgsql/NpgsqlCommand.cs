@@ -1237,7 +1237,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
     /// and returns a <see cref="NpgsqlDataReader"/>.
     /// </summary>
-    /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+    /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <returns>A task representing the operation.</returns>
     public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
         => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
