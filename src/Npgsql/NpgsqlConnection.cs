@@ -1509,11 +1509,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Maps a CLR type to a PostgreSQL composite type for use with this connection.
     /// </summary>
     /// <remarks>
-    /// CLR fields and properties by string to PostgreSQL enum labels.
+    /// CLR fields and properties are mapped by name to PostgreSQL composite type attributes.
     /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
     /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL enum label.
-    /// If there is a discrepancy between the .NET and database labels while a composite is read or written,
+    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type attribute name.
+    /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
     /// an exception will be raised.
     ///
     /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
@@ -1521,7 +1521,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// To avoid mapping the type for each connection, use the <see cref="MapCompositeGlobally{T}"/> method.
     /// </remarks>
     /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// A PostgreSQL type name for the corresponding composite type in the database.
     /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
     /// </param>
     /// <param name="nameTranslator">
@@ -1538,17 +1538,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
     /// </summary>
     /// <remarks>
-    /// CLR fields and properties by string to PostgreSQL enum labels.
+    /// CLR fields and properties are mapped by name to PostgreSQL composite type attributes.
     /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
     /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL enum label.
-    /// If there is a discrepancy between the .NET and database labels while a composite is read or written,
+    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type attribute name.
+    /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
     /// an exception will be raised.
     ///
-    /// To map the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
+    /// To map the type for a specific connection, use the <see cref="MapComposite{T}"/> method.
     /// </remarks>
     /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// A PostgreSQL type name for the corresponding composite type in the database.
     /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
     /// </param>
     /// <param name="nameTranslator">
@@ -1562,10 +1562,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
     /// <summary>
-    /// Removes a previous global enum mapping.
+    /// Removes a previous global composite mapping.
     /// </summary>
     /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// A PostgreSQL type name for the corresponding composite type in the database.
     /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
     /// </param>
     /// <param name="nameTranslator">
