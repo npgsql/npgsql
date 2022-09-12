@@ -1509,10 +1509,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Maps a CLR type to a PostgreSQL composite type for use with this connection.
     /// </summary>
     /// <remarks>
-    /// CLR fields and properties are mapped by name to PostgreSQL composite type attributes.
+    /// CLR fields and properties are mapped by name to PostgreSQL composite type fields.
     /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
     /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type attribute name.
+    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type field name.
     /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
     /// an exception will be raised.
     ///
@@ -1538,10 +1538,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
     /// </summary>
     /// <remarks>
-    /// CLR fields and properties are mapped by name to PostgreSQL composite type attributes.
+    /// CLR fields and properties are mapped by name to PostgreSQL composite type fields.
     /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
     /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type attribute name.
+    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type field name.
     /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
     /// an exception will be raised.
     ///
