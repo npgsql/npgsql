@@ -311,7 +311,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     /// <summary>
     /// Marks the query's result columns as known or unknown, on a column-by-column basis.
-    /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
+    /// Unknown result columns are requested from PostgreSQL in text format, and Npgsql makes no
     /// attempt to parse them. They will be accessible as strings only.
     /// </summary>
     /// <remarks>
