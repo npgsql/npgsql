@@ -169,7 +169,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Gets or sets the SQL statement or function (stored procedure) to execute at the data source.
     /// </summary>
-    /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
+    /// <value>The SQL statement or function (stored procedure) to execute. The default is an empty string.</value>
     [AllowNull, DefaultValue("")]
     [Category("Data")]
     public override string CommandText
