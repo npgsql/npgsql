@@ -63,7 +63,7 @@ Npgsql detects whether a server is a primary or a standby by occasionally queryi
 
 We have seen how to select servers based on the type of workload we want to execute. However, in the above examples, Npgsql still attempts to return connections based on the host order specified in the connection string; this concentrates load on a single primary and possibly a single secondary, and doesn't balance load across multiple servers of the same type.
 
-You can specify `Load Balance Hosts=true` in the connection string to instruct Npgsql to load balance across all servers, by returning connections in round-robbin fashion:
+You can specify `Load Balance Hosts=true` in the connection string to instruct Npgsql to load balance across all servers, by returning connections in round-robin fashion:
 
 ```text
 Host=server1,server2,server3,server4,server5;Username=test;Password=test;Load Balance Hosts=true;Target Session Attributes=prefer-standby
