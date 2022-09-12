@@ -1259,7 +1259,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// which executes the <see cref="CommandText"/> against the <see cref="Connection"/>
     /// and returns a <see cref="NpgsqlDataReader"/>.
     /// </summary>
-    /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+    /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
