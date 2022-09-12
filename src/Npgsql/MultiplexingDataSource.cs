@@ -170,10 +170,11 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     // There were no idle connectors and we're at max capacity, so we can't open a new one.
                     // Enter over-capacity mode - find an unlocked connector with the least currently in-flight
                     // commands and sent on it, even though there are already pending commands.
+                    // We skip connectors that are either waiting for IO or those that are reserved by pool waiters for the purpose of exclusive use.
                     var minInFlight = int.MaxValue;
                     foreach (var c in Connectors)
                     {
-                        if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount < minInFlight)
+                        if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount < minInFlight && c.ReservedForExclusiveUse == 0)
                         {
                             minInFlight = c.CommandsInFlightCount;
                             connector = c;

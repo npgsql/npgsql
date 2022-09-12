@@ -1123,6 +1123,13 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } =
         new() { RunContinuationsAsynchronously = true };
 
+
+    // When multiplexing we may run in over-capacity mode for a long time.
+    // We need a way of introducing fairness during this time for pool waiters that require exclusive connection use.
+    // This flag allows us to remove it from the eligible connectors for multiplexing.
+    // Eventually causing it to become idle and available for exclusive use for a waiter.
+    internal volatile int ReservedForExclusiveUse;
+
     async Task MultiplexingReadLoop()
     {
         Debug.Assert(Settings.Multiplexing);

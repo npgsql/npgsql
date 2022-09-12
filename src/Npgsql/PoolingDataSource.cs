@@ -116,6 +116,43 @@ class PoolingDataSource : NpgsqlDataSource
         _logger = LoggingConfiguration.ConnectionLogger;
     }
 
+    bool ReserveConnector()
+    {
+        // TODO this is a layering issue but we can't easily add this into the right place from the derived multiplexing data source.
+        // Reservations are off outside multiplexing.
+        if (!Settings.Multiplexing) return true;
+
+        NpgsqlConnector? reservedConnector = null;
+        // Try to reserve the least busy unreserved connection at most _numConnectors times to make sure we always complete.
+        for (var attempts = 0; attempts < _numConnectors; attempts++)
+        {
+            var minInFlight = int.MaxValue;
+            NpgsqlConnector? connector = null;
+            for (var i = 0; i < _numConnectors; i++)
+            {
+                var c = Connectors[i];
+                int inFlight;
+                if (connector?.ReservedForExclusiveUse == 0 && (inFlight = connector.CommandsInFlightCount) > 0)
+                {
+                    if (minInFlight > inFlight)
+                    {
+                        minInFlight = inFlight;
+                        connector = c;
+                    }
+                }
+            }
+
+            if (connector is not null && IsConnectorValid(connector) &&
+                Interlocked.CompareExchange(ref connector.ReservedForExclusiveUse, 1, 0) == 0)
+            {
+                reservedConnector = connector;
+                break;
+            }
+        }
+
+        return reservedConnector != null;
+    }
+
     internal sealed override ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
@@ -146,8 +183,16 @@ class PoolingDataSource : NpgsqlDataSource
                 {
                     if (async)
                     {
+                        // If we couldn't reserve a connector enqueue as a blocked reader.
+                        // No sync TryRead on the channel (like multiplexing via TryGetIdleConnector) will succeed until we get a connector.
+                        // Given all connectors have been set as reserved, at some point:
+                        // 1. The last reserved connector will also become idle.
+                        // 2. Handed to a reserving waiter.
+                        // 3. Used for exlusive work and returned.
+                        // 4. Handed to the next waiter in queue (must be the one or one of the blocked reader(s) that failed to reserve).
+                        ReserveConnector();
                         connector = await _idleConnectorReader.ReadAsync(finalToken);
-                        if (CheckIdleConnector(connector))
+                        if (ClaimIdleConnector(connector))
                             return connector;
                     }
                     else
@@ -198,7 +243,7 @@ class PoolingDataSource : NpgsqlDataSource
     {
         while (_idleConnectorReader.TryRead(out var nullableConnector))
         {
-            if (CheckIdleConnector(nullableConnector))
+            if (ClaimIdleConnector(nullableConnector))
             {
                 connector = nullableConnector;
                 return true;
@@ -209,29 +254,18 @@ class PoolingDataSource : NpgsqlDataSource
         return false;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
+    bool IsConnectorValid(NpgsqlConnector connector)
     {
-        if (connector is null)
-            return false;
-
-        // Only decrement when the connector has a value.
-        Interlocked.Decrement(ref _idleCount);
-
         // An connector could be broken because of a keepalive that occurred while it was
         // idling in the pool
         // TODO: Consider removing the pool from the keepalive code. The following branch is simply irrelevant
         // if keepalive isn't turned on.
         if (connector.IsBroken)
-        {
-            CloseConnector(connector);
             return false;
-        }
 
         if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
         {
             LogMessages.ConnectionExceededMaximumLifetime(_logger, _connectionLifetime, connector.Id);
-            CloseConnector(connector);
             return false;
         }
 
@@ -241,6 +275,30 @@ class PoolingDataSource : NpgsqlDataSource
             $"Got idle connector but {nameof(connector.CommandsInFlightCount)} is {connector.CommandsInFlightCount}");
         Debug.Assert(connector.MultiplexAsyncWritingLock == 0,
             $"Got idle connector but {nameof(connector.MultiplexAsyncWritingLock)} is 1");
+
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    bool ClaimIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
+    {
+        if (connector is null)
+            return false;
+
+        // Only decrement when the connector has a value.
+        Interlocked.Decrement(ref _idleCount);
+
+        if (!IsConnectorValid(connector))
+        {
+            CloseConnector(connector);
+            return false;
+        }
+
+        // TODO this is a layering issue but we can't easily add this into the right place from the derived multiplexing data source.
+        // This branch can only hit in mulitplexing enabled pools.
+        // We're handing it out, clear the reservation before doing so.
+        if (connector.ReservedForExclusiveUse == 1)
+            Interlocked.Exchange(ref connector.ReservedForExclusiveUse, 0);
 
         return true;
     }
@@ -331,7 +389,7 @@ class PoolingDataSource : NpgsqlDataSource
             var count = _idleCount;
             while (count > 0 && _idleConnectorReader.TryRead(out var connector))
             {
-                if (CheckIdleConnector(connector))
+                if (ClaimIdleConnector(connector))
                 {
                     CloseConnector(connector);
                     count--;
@@ -435,7 +493,7 @@ class PoolingDataSource : NpgsqlDataSource
                pool._idleConnectorReader.TryRead(out var connector) &&
                connector != null)
         {
-            if (pool.CheckIdleConnector(connector))
+            if (pool.ClaimIdleConnector(connector))
             {
                 pool.CloseConnector(connector);
                 toPrune--;
