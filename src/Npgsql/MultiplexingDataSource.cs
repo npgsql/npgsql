@@ -177,19 +177,36 @@ sealed class MultiplexingDataSource : PoolingDataSource
                         if (c?.MultiplexAsyncWritingLock == 0 && c.CommandsInFlightCount < minInFlight && c.ReservedForExclusiveUse == 0)
                         {
                             minInFlight = c.CommandsInFlightCount;
-                            connector = c;
+                            // We either have multiplexing work or we're idle, if neither is the case we must be doing 'exclusive use' work (transaction/copy/etc).
+                            // Don't store these connectors, if we end up storing no connector we know all are busy with non-multiplexing work.
+                            if (minInFlight > 0 || c.Connection is null)
+                                connector = c;
                         }
                     }
 
-                    // There could be no writable connectors (all stuck in transaction or flushing).
+                    // All connectors are busy but not with multiplexing. Wait for a connection to be returned to the pool
+                    // instead of spinning as we do otherwise, given any exclusive use may take an arbitrary amount of time.
+                    if (minInFlight == 0 && connector == null)
+                    {
+                        connector = await Get(command.Connection!,
+                            new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
+                            async: true,
+                            CancellationToken.None);
+
+                        connector.Connection = null;
+
+                        // See increment under over-capacity mode below
+                        Interlocked.Increment(ref connector.CommandsInFlightCount);
+
+                        break;
+                    }
+
+                    // There could be no writable connectors even though these are doing multiplexing work.
                     if (connector == null)
                     {
-                        // TODO: This is problematic - when absolutely all connectors are both busy *and* currently
-                        // performing (async) I/O, this will spin-wait.
-                        // We could call WaitAsync, but that would wait for an idle connector, whereas we want any
-                        // writeable (non-writing) connector even if it has in-flight commands. Maybe something
-                        // with better back-off.
-                        // On the other hand, this is exactly *one* thread doing spin-wait, maybe not that bad.
+                        // When absolutely all connectors are both busy *and* currently performing (async) I/O, this will spin-wait.
+                        // In this case we want any writeable (non-writing) connector even if it has in-flight commands.
+                        // So we'll spin under the assumption that some connector will become available within a reasonable timeframe.
                         spinwait.SpinOnce();
                         continue;
                     }
