@@ -869,7 +869,7 @@ public class MultipleHostsTests : TestBase
         var secondServer = await secondPostmaster.WaitForServerConnection();
         await secondServer.SendMockState(Primary);
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(10));
 
         await conn.OpenAsync();
         Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
