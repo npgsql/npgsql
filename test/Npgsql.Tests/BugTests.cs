@@ -1418,7 +1418,7 @@ $$;");
         cmd.CommandText = "SELECT 1 FROM pg_sleep(20)";
         cmd.CommandTimeout = 5;
         Assert.ThrowsAsync(
-            Is.TypeOf<OperationCanceledException>().Or.TypeOf<TimeoutException>(),
+            Is.TypeOf<OperationCanceledException>().Or.TypeOf<NpgsqlException>().With.InnerException.TypeOf<TimeoutException>(),
             async () => await cmd.ExecuteNonQueryAsync(cts.Token));
     }
 }

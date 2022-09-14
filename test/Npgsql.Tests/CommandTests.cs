@@ -375,6 +375,7 @@ public class CommandTests : MultiplexingTestBase
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             Pooling = false,
+            Timeout = 5 // Set the opening connection timeout to 5, so we're not stuck forever waiting for the cancellation request response
         };
         await using var postmasterMock = PgPostmasterMock.Start(csb.ToString(), completeCancellationImmediately: false);
         using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
