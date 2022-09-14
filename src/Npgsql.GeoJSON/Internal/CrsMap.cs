@@ -21,7 +21,7 @@ readonly struct CrsMapEntry
     }
 }
 
-ref struct CrsMapBuilder
+struct CrsMapBuilder
 {
     CrsMapEntry[] _overrides;
     int _overridenIndex;
