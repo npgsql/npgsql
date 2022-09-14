@@ -1407,4 +1407,18 @@ $$;");
         Assert.DoesNotThrowAsync(stream.FlushAsync);
         Assert.DoesNotThrow(stream.Flush);
     }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4654")]
+    public async Task Concurrent_query_cancellation_with_timeout_deadlock()
+    {
+        await using var conn = await OpenConnectionAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 1 FROM pg_sleep(20)";
+        cmd.CommandTimeout = 5;
+        Assert.ThrowsAsync(
+            Is.TypeOf<OperationCanceledException>().Or.TypeOf<TimeoutException>(),
+            async () => await cmd.ExecuteNonQueryAsync(cts.Token));
+    }
 }
