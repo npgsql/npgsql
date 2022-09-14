@@ -233,7 +233,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                             // TODO: As an optimization, we can still attempt to send a cancellation request, but after
                             // that immediately break the connection
                             if (connector.AttemptPostgresCancellation &&
-                                !connector.PostgresCancellationPerformed &&
+                                !connector.InternalCancellationRequested &&
                                 connector.PerformPostgresCancellation())
                             {
                                 // Note that if the cancellation timeout is negative, we flow down and break the
@@ -259,7 +259,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
                         static Exception CreateException(NpgsqlConnector connector)
                             => !connector.UserCancellationRequested
                                 ? NpgsqlTimeoutException()
-                                : connector.PostgresCancellationPerformed
+                                : connector.InternalCancellationRequested
                                     ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
                                     : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
                     }

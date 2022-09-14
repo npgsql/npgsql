@@ -245,16 +245,17 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     internal int ClearCounter { get; set; }
 
-    volatile bool _postgresCancellationPerformed;
-    internal bool PostgresCancellationPerformed
+    volatile bool _internalCancellationRequested;
+    internal bool InternalCancellationRequested
     {
-        get => _postgresCancellationPerformed;
-        private set => _postgresCancellationPerformed = value;
+        get => _internalCancellationRequested;
+        private set => _internalCancellationRequested = value;
     }
 
     volatile bool _userCancellationRequested;
     CancellationTokenRegistration _cancellationTokenRegistration;
     internal bool UserCancellationRequested => _userCancellationRequested;
+    internal bool PostgresCancellationRequested => UserCancellationRequested || InternalCancellationRequested;
     internal CancellationToken UserCancellationToken { get; set; }
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
@@ -1399,11 +1400,11 @@ public sealed partial class NpgsqlConnector : IDisposable
                 if (connector.CurrentReader is null)
                     connector.EndUserAction();
 
-                if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector.PostgresCancellationPerformed)
+                if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector.PostgresCancellationRequested)
                 {
                     // The query could be canceled because of a user cancellation or a timeout - raise the proper exception.
-                    // If _postgresCancellationPerformed is false, this is an unsolicited cancellation -
-                    // just bubble up thePostgresException.
+                    // If PostgresCancellationRequested is false, this is an unsolicited cancellation -
+                    // just bubble up the PostgresException.
                     throw connector.UserCancellationRequested
                         ? new OperationCanceledException("Query was cancelled", e, connector.UserCancellationToken)
                         : new NpgsqlException("Exception while reading from stream",
@@ -1665,17 +1666,28 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal void PerformUserCancellation()
     {
         var connection = Connection;
-        if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+        if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
             return;
 
         lock (CancelLock)
         {
+            // Just in case of multiple concurrent cancellations (via NpgsqlCommand.Cancel and CancellationToken)
+            if (UserCancellationRequested)
+                return;
+            
+            // Note that before the lock we check for UserCancellationRequested and after PostgresCancellationPerformed (and only after setting _userCancellationRequested).
+            // If the cancellation request is already sent, we just set the UserCancellationRequested flag (so we return we correct exception with the correct message).
+            // ReadBuffer.Ensure should handle everything from there by setting the correct timeouts.
+            // Otherwise, we send the cancellation request.
+            // In the case when we've already performed user cancellation, we just don't enter the lock.
             _userCancellationRequested = true;
+            if (InternalCancellationRequested)
+                return;
 
             if (AttemptPostgresCancellation && SupportsPostgresCancellation)
             {
                 var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+                if (PerformPostgresCancellation(internalCancellation: false) && cancellationTimeout >= 0)
                 {
                     if (cancellationTimeout > 0)
                     {
@@ -1719,17 +1731,25 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// delivered.
     /// </para>
     /// </returns>
-    internal bool PerformPostgresCancellation()
+    internal bool PerformPostgresCancellation(bool internalCancellation = true)
     {
         Debug.Assert(BackendProcessId != 0, "PostgreSQL cancellation requested by the backend doesn't support it");
 
         lock (CancelLock)
         {
-            if (PostgresCancellationPerformed)
+            if (InternalCancellationRequested)
                 return true;
 
+            if (internalCancellation)
+            {
+                // That's an internal cancellation
+                // Set the flag and after that check whether the user cancellation was requested beforehand (since it doesn't set the InternalCancellationRequested flag)
+                InternalCancellationRequested = true;
+                if (UserCancellationRequested)
+                    return true;
+            }
+            
             LogMessages.CancellingCommand(ConnectionLogger, Id);
-            PostgresCancellationPerformed = true;
 
             try
             {
@@ -1781,7 +1801,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
-        _userCancellationRequested = PostgresCancellationPerformed = false;
+        _userCancellationRequested = InternalCancellationRequested = false;
         UserCancellationToken = cancellationToken;
         ReadBuffer.Cts.ResetCts();
 
