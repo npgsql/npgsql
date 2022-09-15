@@ -8,6 +8,10 @@ using System.Security;
 [assembly: AssemblyTrademark("")]
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 
+#if NET5_0_OR_GREATER
+[module: SkipLocalsInit]
+#endif
+
 [assembly: InternalsVisibleTo("EntityFramework6.Npgsql, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +
 "2b3c590b2a4e3d347e6878dc0ff4d21eb056a50420250c6617044330701d35c9" +

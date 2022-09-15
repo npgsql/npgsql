@@ -296,6 +296,7 @@ public partial class NumericHandler : NpgsqlTypeHandler<decimal>,
             var weight = 0;
             var groupCount = 0;
             Span<short> groups = stackalloc short[MaxGroupCount];
+            groups.Fill(0); // SkipLocalsInit
 
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
