@@ -141,7 +141,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     internal NpgsqlDataReader? CurrentReader;
 
-    internal PreparedStatementManager PreparedStatementManager;
+    internal PreparedStatementManager PreparedStatementManager { get; }
 
     internal SqlQueryParser SqlQueryParser { get; } = new();
 
@@ -154,7 +154,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// <summary>
     /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
     /// </summary>
-    internal readonly Dictionary<string, string> PostgresParameters;
+    internal Dictionary<string, string> PostgresParameters { get; }
 
     /// <summary>
     /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
@@ -634,9 +634,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         using var cmd = CreateCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only");
         cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-        // We're taking the timestamp before the query is sent, because due to issues (IO, operation ordering, etc) we can receive an
-        // 'old' state. Otherwise, execution of the query shouldn't make notable difference.
-        var timeStamp = DateTime.UtcNow;
 
         var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
         try
@@ -658,7 +655,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 
             _isTransactionReadOnly = reader.GetString(0) != "off";
 
-            var clusterState = UpdateClusterState(ignoreDatabaseVersion: false);
+            var clusterState = UpdateClusterState();
             Debug.Assert(clusterState.HasValue);
             return clusterState.Value;
         }
@@ -2592,17 +2589,17 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         case "default_transaction_read_only":
             _isTransactionReadOnly = value == "on";
-            UpdateClusterState(ignoreDatabaseVersion: true);
+            UpdateClusterState();
             return;
 
         case "in_hot_standby":
             _isHotStandBy = value == "on";
-            UpdateClusterState(ignoreDatabaseVersion: true);
+            UpdateClusterState();
             return;
         }
     }
 
-    ClusterState? UpdateClusterState(bool ignoreDatabaseVersion)
+    ClusterState? UpdateClusterState()
     {
         if (_isTransactionReadOnly.HasValue && _isHotStandBy.HasValue)
         {
@@ -2612,7 +2609,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     ? ClusterState.PrimaryReadOnly
                     : ClusterState.PrimaryReadWrite;
             return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow,
-                ignoreDatabaseVersion || DatabaseInfo.Version.Major >= 14 ? TimeSpan.Zero : Settings.HostRecheckSecondsTranslated);
+                Settings.HostRecheckSecondsTranslated);
         }
 
         return null;

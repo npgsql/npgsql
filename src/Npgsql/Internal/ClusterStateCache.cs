@@ -26,8 +26,8 @@ public static class ClusterStateCache
     internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
         => Clusters.AddOrUpdate(
             new ClusterIdentifier(host, port),
-            (_, newInfo) => newInfo,
-            (_, oldInfo, newInfo) => oldInfo.TimeStamp >= newInfo.TimeStamp ? oldInfo : newInfo,
+            static (_, newInfo) => newInfo,
+            static (_, oldInfo, newInfo) => oldInfo.TimeStamp >= newInfo.TimeStamp ? oldInfo : newInfo,
             new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #endif
 
