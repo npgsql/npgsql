@@ -2049,8 +2049,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
         using var scope = StartTemporaryBindingScope(out var connector);
-        // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
-        // Start a user action to prevent this.
         using var _ = connector.StartUserAction(ConnectorState.Executing);
         connector.LoadDatabaseInfo(
             forceReload: true,
