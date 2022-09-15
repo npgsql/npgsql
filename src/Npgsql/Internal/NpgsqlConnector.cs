@@ -863,7 +863,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                         var sslProtocols = SslProtocols.None;
                         // On .NET Framework SslProtocols.None can be disabled, see #3718
 #if NETSTANDARD2_0
-                            sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+                        sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
 #endif
 
                         if (async)
@@ -1081,28 +1081,28 @@ public sealed partial class NpgsqlConnector : IDisposable
                 : Settings.TcpKeepAliveTime;
 
 #if NETSTANDARD2_0 || NETSTANDARD2_1
-                var timeMilliseconds = timeSeconds * 1000;
-                var intervalMilliseconds = intervalSeconds * 1000;
+            var timeMilliseconds = timeSeconds * 1000;
+            var intervalMilliseconds = intervalSeconds * 1000;
 
-                // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
-                var uintSize = Marshal.SizeOf(typeof(uint));
-                var inOptionValues = new byte[uintSize * 3];
-                BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
-                BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
-                var result = 0;
-                try
-                {
-                    result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
-                }
-                catch (PlatformNotSupportedException)
-                {
-                    throw new PlatformNotSupportedException("Setting TCP Keepalive Time and TCP Keepalive Interval is supported only on Windows, Mono and .NET Core 3.1+. " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-                }
+            // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
+            var uintSize = Marshal.SizeOf(typeof(uint));
+            var inOptionValues = new byte[uintSize * 3];
+            BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
+            BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
+            BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
+            var result = 0;
+            try
+            {
+                result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+            }
+            catch (PlatformNotSupportedException)
+            {
+                throw new PlatformNotSupportedException("Setting TCP Keepalive Time and TCP Keepalive Interval is supported only on Windows, Mono and .NET Core 3.1+. " +
+                    "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
+            }
 
-                if (result != 0)
-                    throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
+            if (result != 0)
+                throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
 #else
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, timeSeconds);

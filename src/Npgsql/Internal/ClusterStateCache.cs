@@ -17,11 +17,11 @@ public static class ClusterStateCache
             : ClusterState.Unknown;
 
 #if NETSTANDARD2_0
-        internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
-            => Clusters.AddOrUpdate(
-                new ClusterIdentifier(host, port),
-                new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp),
-                (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
+    internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
+        => Clusters.AddOrUpdate(
+            new ClusterIdentifier(host, port),
+            new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp),
+            (_, oldInfo) => oldInfo.TimeStamp >= timeStamp ? oldInfo : new ClusterInfo(state, new NpgsqlTimeout(stateExpiration), timeStamp)).State;
 #else
     internal static ClusterState UpdateClusterState(string host, int port, ClusterState state, DateTime timeStamp, TimeSpan stateExpiration)
         => Clusters.AddOrUpdate(

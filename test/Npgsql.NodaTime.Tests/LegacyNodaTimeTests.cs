@@ -73,8 +73,8 @@ public class LegacyNodaTimeTests : TestBase
         NpgsqlConnection.GlobalTypeMapper.Reset();
         NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
 #else
-            Assert.Ignore(
-                "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
+        Assert.Ignore(
+            "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
 
     }

@@ -65,8 +65,8 @@ public class LegacyDateTimeTests : TestBase
 #if DEBUG
         LegacyTimestampBehavior = true;
 #else
-            Assert.Ignore(
-                "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
+        Assert.Ignore(
+            "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
     }
 

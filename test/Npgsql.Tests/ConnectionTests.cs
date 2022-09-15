@@ -158,38 +158,38 @@ public class ConnectionTests : MultiplexingTestBase
     #region Connection Errors
 
 #if IGNORE
-        [Test]
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task Connection_refused(bool pooled)
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
-            using (var conn = new NpgsqlConnection(csb)) {
-                Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<SocketException>()
-                    // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
-                    // https://github.com/dotnet/corefx/issues/8464
-                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-                );
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-            }
+    [Test]
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Connection_refused(bool pooled)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+        using (var conn = new NpgsqlConnection(csb)) {
+            Assert.That(() => conn.Open(), Throws.Exception
+                .TypeOf<SocketException>()
+                // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+                // https://github.com/dotnet/corefx/issues/8464
+                .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+            );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
         }
+    }
 
-        [Test]
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task Connection_refused_async(bool pooled)
+    [Test]
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Connection_refused_async(bool pooled)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+        using (var conn = new NpgsqlConnection(csb))
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
-            using (var conn = new NpgsqlConnection(csb))
-            {
-                Assert.That(async () => await conn.OpenAsync(), Throws.Exception
-                    .TypeOf<SocketException>()
-                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-                );
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-            }
+            Assert.That(async () => await conn.OpenAsync(), Throws.Exception
+                .TypeOf<SocketException>()
+                .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+            );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
         }
+    }
 #endif
 
     [Test]

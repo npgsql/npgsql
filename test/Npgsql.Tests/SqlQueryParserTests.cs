@@ -180,12 +180,12 @@ class SqlQueryParserTests
     }
 
 #if TODO
-        [Test]
-        public void Trim_whitespace()
-        {
-            _parser.ParseRawQuery("   SELECT 1\t", _params, _queries, standardConformingStrings: true);
-            Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
-        }
+    [Test]
+    public void Trim_whitespace()
+    {
+        _parser.ParseRawQuery("   SELECT 1\t", _params, _queries, standardConformingStrings: true);
+        Assert.That(_queries.Single().Sql, Is.EqualTo("SELECT 1"));
+    }
 #endif
 
     #region Setup / Teardown / Utils

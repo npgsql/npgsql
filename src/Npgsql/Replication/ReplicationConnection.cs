@@ -557,23 +557,23 @@ public abstract class ReplicationConnection : IAsyncDisposable
         finally
         {
 #if NETSTANDARD2_0
-                if (_sendFeedbackTimer != null)
-                {
-                    var mre = new ManualResetEvent(false);
-                    var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
-                    Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
-                    if (actuallyDisposed)
-                        await mre.WaitOneAsync(cancellationToken);
-                }
+            if (_sendFeedbackTimer != null)
+            {
+                var mre = new ManualResetEvent(false);
+                var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
+                Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
+                if (actuallyDisposed)
+                    await mre.WaitOneAsync(cancellationToken);
+            }
 
-                if (_requestFeedbackTimer != null)
-                {
-                    var mre = new ManualResetEvent(false);
-                    var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
-                    Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
-                    if (actuallyDisposed)
-                        await mre.WaitOneAsync(cancellationToken);
-                }
+            if (_requestFeedbackTimer != null)
+            {
+                var mre = new ManualResetEvent(false);
+                var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
+                Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
+                if (actuallyDisposed)
+                    await mre.WaitOneAsync(cancellationToken);
+            }
 #else
 
             if (_sendFeedbackTimer != null)

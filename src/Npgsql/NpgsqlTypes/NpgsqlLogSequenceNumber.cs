@@ -151,8 +151,8 @@ public readonly struct NpgsqlLogSequenceNumber : IEquatable<NpgsqlLogSequenceNum
             if (s[i] != '/') continue;
 
 #if NETSTANDARD2_0
-                var firstPart = s.Slice(0, i).ToString();
-                var secondPart = s.Slice(++i).ToString();
+            var firstPart = s.Slice(0, i).ToString();
+            var secondPart = s.Slice(++i).ToString();
 #else
             var firstPart = s.Slice(0, i);
             var secondPart = s.Slice(++i);
