@@ -592,11 +592,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <inheritdoc cref="DbConnection.CreateBatch"/>
     public new NpgsqlBatch CreateBatch() => new(this);
 #else
-        /// <summary>
-        /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnection"/>.
-        /// </summary>
-        /// <returns>A <see cref="NpgsqlBatch"/> object.</returns>
-        public NpgsqlBatch CreateBatch() => new(this);
+    /// <summary>
+    /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnection"/>.
+    /// </summary>
+    /// <returns>A <see cref="NpgsqlBatch"/> object.</returns>
+    public NpgsqlBatch CreateBatch() => new(this);
 #endif
 
     #endregion Command / Batch creation
@@ -942,7 +942,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
     /// </summary>
 #if NETSTANDARD2_0
-        public ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
 #else
     public override ValueTask DisposeAsync()
 #endif
@@ -1895,7 +1895,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 #if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #else
-        public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
+    public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #endif
         => GetSchemaAsync("MetaDataCollections", null, cancellationToken);
 
@@ -1910,7 +1910,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 #if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #else
-        public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
+    public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #endif
         => GetSchemaAsync(collectionName, null, cancellationToken);
 
@@ -1929,7 +1929,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 #if NET5_0_OR_GREATER
     public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #else
-        public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
+    public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
     {
         using (NoSynchronizationContextScope.Enter())

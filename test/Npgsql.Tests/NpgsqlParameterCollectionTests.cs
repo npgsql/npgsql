@@ -316,8 +316,8 @@ public class NpgsqlParameterCollectionTests
 #if DEBUG
         NpgsqlParameterCollection.TwoPassCompatMode = compatMode == CompatMode.TwoPass;
 #else
-            if (compatMode == CompatMode.TwoPass)
-                Assert.Ignore("Cannot test case-insensitive NpgsqlParameterCollection behavior in RELEASE");
+        if (compatMode == CompatMode.TwoPass)
+            Assert.Ignore("Cannot test case-insensitive NpgsqlParameterCollection behavior in RELEASE");
 #endif
     }
 

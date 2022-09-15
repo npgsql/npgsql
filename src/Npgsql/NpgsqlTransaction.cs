@@ -144,7 +144,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
 #if NETSTANDARD2_0
-        public Task CommitAsync(CancellationToken cancellationToken = default)
+    public Task CommitAsync(CancellationToken cancellationToken = default)
 #else
     public override Task CommitAsync(CancellationToken cancellationToken = default)
 #endif
@@ -183,7 +183,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
 #if NETSTANDARD2_0
-        public Task RollbackAsync(CancellationToken cancellationToken = default)
+    public Task RollbackAsync(CancellationToken cancellationToken = default)
 #else
     public override Task RollbackAsync(CancellationToken cancellationToken = default)
 #endif
@@ -207,7 +207,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override void Save(string name)
 #else
-        public void Save(string name)
+    public void Save(string name)
 #endif
     {
         if (name == null)
@@ -258,7 +258,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
-        public Task SaveAsync(string name, CancellationToken cancellationToken = default)
+    public Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #endif
     {
         Save(name);
@@ -290,7 +290,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override void Rollback(string name)
 #else
-        public void Rollback(string name)
+    public void Rollback(string name)
 #endif
         => Rollback(name, false).GetAwaiter().GetResult();
 
@@ -304,7 +304,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
-        public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
+    public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #endif
     {
         using (NoSynchronizationContextScope.Enter())
@@ -336,7 +336,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 #else
-        public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+    public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 #endif
 
     /// <summary>
@@ -349,7 +349,7 @@ public sealed class NpgsqlTransaction : DbTransaction
 #if NET5_0_OR_GREATER
     public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else
-        public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
+    public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #endif
     {
         using (NoSynchronizationContextScope.Enter())
@@ -392,7 +392,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     /// Disposes the transaction, rolling it back if it is still pending.
     /// </summary>
 #if NETSTANDARD2_0
-        public ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
 #else
     public override ValueTask DisposeAsync()
 #endif

@@ -22,7 +22,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 #if DEBUG
     internal static bool TwoPassCompatMode;
 #else
-        internal static readonly bool TwoPassCompatMode;
+    internal static readonly bool TwoPassCompatMode;
 #endif
 
     static NpgsqlParameterCollection()

@@ -270,11 +270,11 @@ public class NodaTimeInfinityTests : TestBase
         DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
         Statics.DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
 #else
-            if (disableDateTimeInfinityConversions)
-            {
-                Assert.Ignore(
-                    "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
-            }
+        if (disableDateTimeInfinityConversions)
+        {
+            Assert.Ignore(
+                "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
+        }
 #endif
     }
 

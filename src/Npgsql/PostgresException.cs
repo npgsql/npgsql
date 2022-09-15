@@ -257,7 +257,7 @@ public sealed class PostgresException : NpgsqlException
 #if NET5_0_OR_GREATER
     public override string SqlState { get; }
 #else
-        public string SqlState { get; }
+    public string SqlState { get; }
 #endif
 
     /// <summary>
