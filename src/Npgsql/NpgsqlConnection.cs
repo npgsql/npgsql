@@ -328,7 +328,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 // Note that in multiplexing execution, the pool-wide type mapper is used so no
                 // need to update the connector type mapper (this is why this is here).
                 if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                {
+                    // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
+                    // Start a user action to prevent this.
+                    using var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
                     await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+                }
 
                 ConnectorBindingScope = ConnectorBindingScope.Connection;
                 connector.Connection = this;
@@ -2046,6 +2051,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckReady();
         using var scope = StartTemporaryBindingScope(out var connector);
+        using var _ = connector.StartUserAction(ConnectorState.Executing);
         connector.LoadDatabaseInfo(
             forceReload: true,
             NpgsqlTimeout.Infinite,
