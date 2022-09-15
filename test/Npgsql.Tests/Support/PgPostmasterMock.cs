@@ -28,7 +28,6 @@ class PgPostmasterMock : IAsyncDisposable
     int _processIdCounter;
 
     readonly bool _completeCancellationImmediately;
-    readonly MockState _state;
     readonly string? _startupErrorCode;
 
     ChannelWriter<Task<ServerOrCancellationRequest>> _pendingRequestsWriter { get; }
@@ -37,6 +36,14 @@ class PgPostmasterMock : IAsyncDisposable
     internal string ConnectionString { get; }
     internal string Host { get; }
     internal int Port { get; }
+
+    volatile MockState _state;
+
+    internal MockState State
+    {
+        get => _state;
+        set => _state = value;
+    }
 
     internal static PgPostmasterMock Start(
         string? connectionString = null,
@@ -62,12 +69,12 @@ class PgPostmasterMock : IAsyncDisposable
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
 
         _completeCancellationImmediately = completeCancellationImmediately;
-        _state = state;
+        State = state;
         _startupErrorCode = startupErrorCode;
 
         _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
-        _socket.Bind(endpoint);   
+        _socket.Bind(endpoint);
 
         var localEndPoint = (IPEndPoint)_socket.LocalEndPoint!;
         Host = localEndPoint.Address.ToString();
@@ -77,7 +84,7 @@ class PgPostmasterMock : IAsyncDisposable
         connectionStringBuilder.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
         ConnectionString = connectionStringBuilder.ConnectionString;
         // In some cases we can attempt to connect to a port, which was already in use (doesn't have to be a mock).
-        // Clearing the cached state, so the previous state is not leaking.  
+        // Clearing the cached state, so the previous state is not leaking.
         ClusterStateCache.RemoveClusterState(Host, Port);
 
         _socket.Listen(5);
@@ -90,8 +97,6 @@ class PgPostmasterMock : IAsyncDisposable
 
         async Task DoAcceptClients()
         {
-            var expectClusterStateQuery = _state != MockState.MultipleHostsDisabled;
-
             while (true)
             {
                 var serverOrCancellationRequest = await Accept(_completeCancellationImmediately);
@@ -104,13 +109,11 @@ class PgPostmasterMock : IAsyncDisposable
                         // We may be accepting (and starting up) multiple connections in parallel, but some tests assume we return
                         // server connections in FIFO. As a result, we enqueue immediately into the _pendingRequestsWriter channel,
                         // but we enqueue a Task which represents the Startup completing.
-                        var closureExpectClusterStateQuery = expectClusterStateQuery;
                         await _pendingRequestsWriter.WriteAsync(Task.Run(async () =>
                         {
-                            await server.Startup(closureExpectClusterStateQuery, _state);
+                            await server.Startup(State);
                             return serverOrCancellationRequest;
                         }));
-                        expectClusterStateQuery = false;
                     }
                     else
                         _ = server.FailedStartup(_startupErrorCode);

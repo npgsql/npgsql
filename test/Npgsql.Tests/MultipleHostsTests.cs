@@ -444,6 +444,10 @@ public class MultipleHostsTests : TestBase
             if (!alwaysCheckHostState)
                 return;
 
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Primary);
+
             // Update the state after a 'failover'
             await server.SendMockState(Standby);
         });
@@ -452,6 +456,10 @@ public class MultipleHostsTests : TestBase
             var server = await standbyPostmaster.WaitForServerConnection();
             if (!alwaysCheckHostState)
                 return;
+
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Standby);
 
             // As TargetSessionAttributes is 'prefer', it does another cycle for the 'unpreferred'
             await server.SendMockState(Standby);
@@ -820,6 +828,56 @@ public class MultipleHostsTests : TestBase
             cmd.CommandText = "SELECT 1";
             await cmd.ExecuteNonQueryAsync();
         }
+    }
+
+    [Test]
+    public async Task Primary_host_failover_can_connect()
+    {
+        await using var firstPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+        await using var secondPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(firstPostmaster, secondPostmaster),
+            TargetSessionAttributes = "primary",
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            HostRecheckSeconds = 5
+        };
+
+        await using var conn = await OpenConnectionAsync(csb);
+        Assert.That(conn.Port, Is.EqualTo(firstPostmaster.Port));
+        var firstServer = await firstPostmaster.WaitForServerConnection();
+        await firstServer
+            .WriteErrorResponse(PostgresErrorCodes.AdminShutdown)
+            .FlushAsync();
+
+        var failoverEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        Assert.That(failoverEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
+
+        var noHostFoundEx = Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync())!;
+        Assert.That(noHostFoundEx.Message, Is.EqualTo("No suitable host was found."));
+
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Offline));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+
+        firstPostmaster.State = Standby;
+        secondPostmaster.State = Primary;
+        var secondServer = await secondPostmaster.WaitForServerConnection();
+        await secondServer.SendMockState(Primary);
+
+        await Task.Delay(TimeSpan.FromSeconds(10));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
+
+        await conn.OpenAsync();
+        Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.PrimaryReadWrite));
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)

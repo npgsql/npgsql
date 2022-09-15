@@ -110,7 +110,10 @@ sealed class MultiHostConnectorPool : ConnectorSource
                     {
                         if (clusterState == ClusterState.Unknown)
                         {
-                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                            // While opening a new connector we might have refreshed the cluster state, check again
+                            clusterState = GetClusterState(pool);
+                            if (clusterState == ClusterState.Unknown)
+                                clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                             Debug.Assert(clusterState != ClusterState.Unknown);
                             if (!clusterValidator(clusterState, preferredType))
                             {
