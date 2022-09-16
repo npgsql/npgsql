@@ -373,6 +373,7 @@ public class CommandTests : MultiplexingTestBase
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
     [Timeout(6000)]
+    [Ignore("https://github.com/npgsql/npgsql/issues/4668")]
     public async Task Bug3466([Values(false, true)] bool isBroken)
     {
         if (IsMultiplexing)
@@ -380,7 +381,7 @@ public class CommandTests : MultiplexingTestBase
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            Pooling = false,
+            Pooling = false
         };
         await using var postmasterMock = PgPostmasterMock.Start(csb.ToString(), completeCancellationImmediately: false);
         using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
