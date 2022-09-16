@@ -1522,7 +1522,14 @@ namespace Npgsql
         {
             Debug.Assert(BackendProcessId != 0, "PostgreSQL cancellation requested by the backend doesn't support it");
 
-            lock (CancelLock)
+            // There's a subtle race condition where cancellation may be happening just as Break is called. Break takes the connector lock, and
+            // then ends the user action; this disposes the cancellation token registration, which waits until the cancellation callback
+            // completes. But the callback needs to take the connector lock below, which led to a deadlock (#4654).
+            // As a result, Break takes CancelLock, and we abort the cancellation attempt immediately if we can't get it here.
+            if (!Monitor.TryEnter(CancelLock))
+                return true;
+
+            try
             {
                 if (PostgresCancellationPerformed)
                     return true;
@@ -1546,6 +1553,10 @@ namespace Npgsql
                 }
 
                 return true;
+            }
+            finally
+            {
+                Monitor.Exit(CancelLock);
             }
         }
 
@@ -1725,6 +1736,8 @@ namespace Npgsql
         {
             Debug.Assert(!IsClosed);
 
+            // See PerformUserCancellation on why we take CancelLock
+            lock (CancelLock)
             lock (this)
             {
                 if (State != ConnectorState.Broken)
