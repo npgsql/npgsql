@@ -1665,7 +1665,14 @@ public sealed partial class NpgsqlConnector : IDisposable
         if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
             return;
 
-        lock (CancelLock)
+        // There's a subtle race condition where cancellation may be happening just as Break is called. Break takes the connector lock, and
+        // then ends the user action; this disposes the cancellation token registration, which waits until the cancellation callback
+        // completes. But the callback needs to take the connector lock below, which led to a deadlock (#4654).
+        // As a result, Break takes CancelLock, and we abort the cancellation attempt immediately if we can't get it here.
+        if (!Monitor.TryEnter(CancelLock))
+            return;
+
+        try
         {
             _userCancellationRequested = true;
 
@@ -1698,6 +1705,10 @@ public sealed partial class NpgsqlConnector : IDisposable
                 ReadBuffer.Timeout = _cancelImmediatelyTimeout;
                 ReadBuffer.Cts.Cancel();
             }
+        }
+        finally
+        {
+            Monitor.Exit(CancelLock);
         }
     }
 
@@ -1935,6 +1946,8 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         Debug.Assert(!IsClosed);
 
+        // See PerformUserCancellation on why we take CancelLock
+        lock (CancelLock)
         lock (this)
         {
             if (State != ConnectorState.Broken)
