@@ -9,7 +9,7 @@ namespace Npgsql.TypeMapping;
 /// <remarks>
 /// Source: <see href="https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat" />
 /// </remarks>
-public static class PostgresTypeOIDs
+static class PostgresTypeOIDs
 {
     // Numeric
     public const uint Int8         = 20;

@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
+using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -1192,14 +1193,22 @@ LANGUAGE 'plpgsql'");
 
         using var _ = CreateTempPool(builder, out var connectionString);
         using var conn = await OpenConnectionAsync(connectionString);
-        // Arrays should not be supported in this mode
-        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"),
-            Throws.Exception.TypeOf<NotSupportedException>());
-        // Test that some basic types do work
+
         Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 'foo'"), Is.EqualTo("foo"));
         Assert.That(await conn.ExecuteScalarAsync("SELECT TRUE"), Is.EqualTo(true));
         Assert.That(await conn.ExecuteScalarAsync("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::int[]"), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '[1,10)'::int4range"), Is.EqualTo(new NpgsqlRange<int>(1, true, 10, false)));
+
+        if (conn.PostgreSqlVersion >= new Version(14, 0))
+        {
+            var multirangeArray = (NpgsqlRange<int>[])(await conn.ExecuteScalarAsync("SELECT '{[3,7), (8,]}'::int4multirange"))!;
+            Assert.That(multirangeArray.Length, Is.EqualTo(2));
+            Assert.That(multirangeArray[0], Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
+            Assert.That(multirangeArray[1], Is.EqualTo(new NpgsqlRange<int>(9, true, false, 0, false, true)));
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
