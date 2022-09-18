@@ -1,39 +1,38 @@
 ﻿using System.IO;
 using Npgsql.Internal;
 
-namespace Npgsql.Tests.Support
+namespace Npgsql.Tests.Support;
+
+class PgCancellationRequest
 {
-    class PgCancellationRequest
+    readonly NpgsqlReadBuffer _readBuffer;
+    readonly NpgsqlWriteBuffer _writeBuffer;
+    readonly Stream _stream;
+
+    public int ProcessId { get; }
+    public int Secret { get; }
+
+    bool completed;
+
+    public PgCancellationRequest(NpgsqlReadBuffer readBuffer, NpgsqlWriteBuffer writeBuffer, Stream stream, int processId, int secret)
     {
-        readonly NpgsqlReadBuffer _readBuffer;
-        readonly NpgsqlWriteBuffer _writeBuffer;
-        readonly Stream _stream;
+        _readBuffer = readBuffer;
+        _writeBuffer = writeBuffer;
+        _stream = stream;
 
-        public int ProcessId { get; }
-        public int Secret { get; }
+        ProcessId = processId;
+        Secret = secret;
+    }
 
-        bool completed;
+    public void Complete()
+    {
+        if (completed)
+            return;
 
-        public PgCancellationRequest(NpgsqlReadBuffer readBuffer, NpgsqlWriteBuffer writeBuffer, Stream stream, int processId, int secret)
-        {
-            _readBuffer = readBuffer;
-            _writeBuffer = writeBuffer;
-            _stream = stream;
+        _readBuffer.Dispose();
+        _writeBuffer.Dispose();
+        _stream.Dispose();
 
-            ProcessId = processId;
-            Secret = secret;
-        }
-
-        public void Complete()
-        {
-            if (completed)
-                return;
-
-            _readBuffer.Dispose();
-            _writeBuffer.Dispose();
-            _stream.Dispose();
-
-            completed = true;
-        }
+        completed = true;
     }
 }
