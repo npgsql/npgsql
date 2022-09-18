@@ -1,4 +1,8 @@
 ﻿#nullable enable
+Npgsql.NpgsqlBatch.EnableErrorBarriers.get -> bool
+Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
 Npgsql.NpgsqlLoggingConfiguration
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
 *REMOVED*Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!

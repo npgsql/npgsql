@@ -76,6 +76,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     internal static readonly bool EnableSqlRewriting;
 #endif
 
+    internal bool EnableErrorBarriers { get; set; }
+
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
     static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
@@ -1000,11 +1002,18 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 await connector.WriteExecute(0, async, cancellationToken);
 
+                if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
+                    await connector.WriteSync(async, cancellationToken);
+
                 if (pStatement != null)
                     pStatement.LastUsed = DateTime.UtcNow;
             }
 
-            await connector.WriteSync(async, cancellationToken);
+            if (InternalBatchCommands.Count == 0 ||
+                !EnableErrorBarriers && InternalBatchCommands[InternalBatchCommands.Count - 1].AppendErrorBarrier != true)
+            {
+                await connector.WriteSync(async, cancellationToken);
+            }
 
             if (flush)
                 await connector.Flush(async, cancellationToken);

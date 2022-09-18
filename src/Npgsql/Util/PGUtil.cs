@@ -27,14 +27,10 @@ static class Statics
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
-    {
-        if (msg is T asT)
-            return asT;
-
-        throw connector.Break(
-            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. " +
-                                "Please file a bug."));
-    }
+        => msg is T t
+            ? t
+            : throw connector.Break(
+                new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);

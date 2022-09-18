@@ -20,7 +20,7 @@ class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 
 class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 {
-    static PostgresType[]? TypesWithMultiranges, TypesWithoutMultiranges;
+    static PostgresType[]? _typesWithMultiranges, _typesWithoutMultiranges;
 
     static PostgresType[] CreateTypes(bool withMultiranges)
         => typeof(NpgsqlDbType).GetFields()
@@ -50,8 +50,8 @@ class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 
     protected override IEnumerable<PostgresType> GetTypes()
         => SupportsMultirangeTypes
-            ? TypesWithMultiranges ??= CreateTypes(withMultiranges: true)
-            : TypesWithoutMultiranges ??= CreateTypes(withMultiranges: false);
+            ? _typesWithMultiranges ??= CreateTypes(withMultiranges: true)
+            : _typesWithoutMultiranges ??= CreateTypes(withMultiranges: false);
 
     internal PostgresMinimalDatabaseInfo(NpgsqlConnector conn)
         : base(conn)

@@ -1,4 +1,3 @@
-using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NUnit.Framework;
 using System;
@@ -329,6 +328,240 @@ public class BatchTests : MultiplexingTestBase
     }
 
     #endregion Command behaviors
+
+    #region Error barriers
+
+    [Test]
+    public async Task Batch_with_error_at_start([Values] bool withErrorBarriers)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (8)")
+            },
+            EnableErrorBarriers = withErrorBarriers
+        };
+
+        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[0]));
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), withErrorBarriers
+            ? Is.EqualTo(1)
+            : Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task Batch_with_error_at_end([Values] bool withErrorBarriers)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new($"INSERT INTO {table} (id) VALUES (8)"),
+                new("INVALID SQL")
+            },
+            EnableErrorBarriers = withErrorBarriers
+        };
+
+        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), withErrorBarriers
+            ? Is.EqualTo(1)
+            : Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task Batch_with_multiple_errors([Values] bool withErrorBarriers)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new($"INSERT INTO {table} (id) VALUES (8)"),
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (9)"),
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (10)")
+            },
+            EnableErrorBarriers = withErrorBarriers
+        };
+
+        if (withErrorBarriers)
+        {
+            // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+            var aggregateException = (AggregateException)exception.InnerException!;
+            Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+            Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[3]));
+
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), Is.EqualTo(3));
+        }
+        else
+        {
+            // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
+            // rolled back (implicit transaction).
+            var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+            Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), Is.EqualTo(0));
+        }
+    }
+
+    [Test]
+    public async Task Batch_close_reader_with_multiple_errors([Values] bool withErrorBarriers)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new("SELECT NULL WHERE 1=0"),
+                new($"INSERT INTO {table} (id) VALUES (8)"),
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (9)"),
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (10)")
+            },
+            EnableErrorBarriers = withErrorBarriers
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+        if (withErrorBarriers)
+        {
+            // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await reader.NextResultAsync())!;
+            var aggregateException = (AggregateException)exception.InnerException!;
+            Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[2]));
+            Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[4]));
+        }
+        else
+        {
+            // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
+            // rolled back (implicit transaction).
+            var exception = Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())!;
+            Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[2]));
+        }
+    }
+
+    [Test]
+    public async Task Batch_with_result_sets_and_error([Values] bool withErrorBarriers)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new($"INSERT INTO {table} (id) VALUES (9)"),
+                new("SELECT 1"),
+                new("INVALID SQL"),
+                new($"INSERT INTO {table} (id) VALUES (9)"),
+                new("SELECT 2")
+            },
+            EnableErrorBarriers = withErrorBarriers
+        };
+
+        await using (var reader = await batch.ExecuteReaderAsync(Behavior))
+        {
+            Assert.That(await reader.ReadAsync(), Is.True);
+            Assert.That(reader[0], Is.EqualTo(1));
+            Assert.That(await reader.ReadAsync(), Is.False);
+
+            Assert.That(async () => await reader.NextResultAsync(), Throws.Exception.TypeOf<PostgresException>());
+
+            Assert.That(reader.State, Is.EqualTo(ReaderState.Consumed));
+            Assert.That(await reader.ReadAsync(), Is.False);
+            Assert.That(await reader.NextResultAsync(), Is.False);
+        }
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), withErrorBarriers
+            ? Is.EqualTo(2)
+            : Is.EqualTo(0));
+    }
+
+    [Test]
+    public async Task Error_with_AppendErrorBarrier()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new($"INSERT INTO {table} (id) VALUES (8)"),
+                new("INVALID SQL") { AppendErrorBarrier = true },
+                new($"INSERT INTO {table} (id) VALUES (9)")
+            }
+        };
+
+        // A Sync is placed after the 2nd command (INVALID SQL), so the 1st command is rolled back but not the 3rd.
+        var exception = Assert.ThrowsAsync<PostgresException>(async () => await batch.ExecuteReaderAsync(Behavior))!;
+        Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[1]));
+
+        Assert.That(await conn.ExecuteScalarAsync($"SELECT id FROM {table} ORDER BY id"), Is.EqualTo(9));
+    }
+
+    [Test]
+    public async Task Batch_with_terminating_error_barrier()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new($"INSERT INTO {table} (id) VALUES (8)"),
+                new($"INSERT INTO {table} (id) VALUES (9)") { AppendErrorBarrier = true }
+            }
+        };
+
+        Assert.That(await batch.ExecuteNonQueryAsync(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Error_barriers_with_SchemaOnly()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands =
+            {
+                new("SELECT 1"),
+                new("SELECT 'foo'")
+            },
+            EnableErrorBarriers = true
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(CommandBehavior.SchemaOnly | Behavior);
+
+        var columnSchema = await reader.GetColumnSchemaAsync();
+        Assert.That(columnSchema[0].DataType, Is.SameAs(typeof(int)));
+
+        Assert.That(await reader.NextResultAsync(), Is.True);
+        columnSchema = await reader.GetColumnSchemaAsync();
+        Assert.That(columnSchema[0].DataType, Is.SameAs(typeof(string)));
+    }
+
+    #endregion Error barriers
 
     #region Miscellaneous
 
