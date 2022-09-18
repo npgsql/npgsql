@@ -20,27 +20,38 @@ class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 
 class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 {
-    static readonly PostgresType[] Types = typeof(NpgsqlDbType).GetFields()
-        .Select(f => f.GetCustomAttribute<BuiltInPostgresType>())
-        .OfType<BuiltInPostgresType>()
-        .SelectMany(attr =>
-        {
-            var baseType = new PostgresBaseType("pg_catalog", attr.Name, attr.BaseOID);
-            var arrayType = new PostgresArrayType("pg_catalog", "_" + attr.Name, attr.ArrayOID, baseType);
+    static PostgresType[]? TypesWithMultiranges, TypesWithoutMultiranges;
 
-            if (attr.RangeName is null)
+    static PostgresType[] CreateTypes(bool withMultiranges)
+        => typeof(NpgsqlDbType).GetFields()
+            .Select(f => f.GetCustomAttribute<BuiltInPostgresType>())
+            .OfType<BuiltInPostgresType>()
+            .SelectMany(attr =>
             {
-                return new PostgresType[] { baseType, arrayType };
-            }
+                var baseType = new PostgresBaseType("pg_catalog", attr.Name, attr.BaseOID);
+                var arrayType = new PostgresArrayType("pg_catalog", "_" + attr.Name, attr.ArrayOID, baseType);
 
-            var rangeType = new PostgresRangeType("pg_catalog", attr.RangeName, attr.RangeOID, baseType);
-            var multirangeType = new PostgresMultirangeType("pg_catalog", attr.MultirangeName!, attr.MultirangeOID, rangeType);
+                if (attr.RangeName is null)
+                {
+                    return new PostgresType[] { baseType, arrayType };
+                }
 
-            return new PostgresType[] { baseType, arrayType, rangeType, multirangeType };
-        })
-        .ToArray();
+                var rangeType = new PostgresRangeType("pg_catalog", attr.RangeName, attr.RangeOID, baseType);
 
-    protected override IEnumerable<PostgresType> GetTypes() => Types;
+                return withMultiranges
+                    ? new PostgresType[]
+                    {
+                        baseType, arrayType, rangeType,
+                        new PostgresMultirangeType("pg_catalog", attr.MultirangeName!, attr.MultirangeOID, rangeType)
+                    }
+                    : new PostgresType[] { baseType, arrayType, rangeType };
+            })
+            .ToArray();
+
+    protected override IEnumerable<PostgresType> GetTypes()
+        => SupportsMultirangeTypes
+            ? TypesWithMultiranges ??= CreateTypes(withMultiranges: true)
+            : TypesWithoutMultiranges ??= CreateTypes(withMultiranges: false);
 
     internal PostgresMinimalDatabaseInfo(NpgsqlConnector conn)
         : base(conn)

@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -1208,6 +1209,17 @@ LANGUAGE 'plpgsql'");
             Assert.That(multirangeArray.Length, Is.EqualTo(2));
             Assert.That(multirangeArray[0], Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
             Assert.That(multirangeArray[1], Is.EqualTo(new NpgsqlRange<int>(9, true, false, 0, false, true)));
+        }
+        else
+        {
+            using var cmd = new NpgsqlCommand("SELECT $1", conn)
+            {
+                Parameters = { new() { Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.IntegerMultirange } }
+            };
+
+            Assert.That(async () => await cmd.ExecuteScalarAsync(),
+                Throws.Exception.TypeOf<ArgumentException>()
+                    .With.Message.EqualTo(string.Format(NpgsqlStrings.NoMultirangeTypeFound, "integer")));
         }
     }
 

@@ -30,6 +30,9 @@
     <data name="CannotUseTrustServerCertificate" xml:space="preserve">
         <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
     </data>
+    <data name="NoMultirangeTypeFound" xml:space="preserve">
+        <value>No multirange type could be found in the database for subtype {0}.</value>
+    </data>
     <data name="NotSupportedOnDataSourceCommand" xml:space="preserve">
         <value>Connection and transaction access is not supported on commands created from DbDataSource.</value>
     </data>

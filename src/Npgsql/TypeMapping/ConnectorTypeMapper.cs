@@ -14,6 +14,7 @@ using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 
@@ -169,8 +170,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
 
                 if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
-                    throw new ArgumentException(
-                        $"No multirange type could be found in the database for subtype {subtypeHandler.PostgresType}");
+                    throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
 
                 return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
             }

@@ -69,6 +69,12 @@ namespace Npgsql.Properties {
             }
         }
         
+        internal static string NoMultirangeTypeFound {
+            get {
+                return ResourceManager.GetString("NoMultirangeTypeFound", resourceCulture);
+            }
+        }
+        
         internal static string NotSupportedOnDataSourceCommand {
             get {
                 return ResourceManager.GetString("NotSupportedOnDataSourceCommand", resourceCulture);
