@@ -723,6 +723,22 @@ CREATE TABLE {table2} (foo INTEGER)");
         Assert.That(columns[2].IsAliased, Is.Null);
     }
 
+    [Test] // #4672
+    public async Task With_parameter_without_value()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+
+        using var cmd = new NpgsqlCommand($"SELECT foo FROM {table} WHERE foo > @p", conn)
+        {
+            Parameters = { new() { ParameterName = "p", NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer } }
+        };
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+        var columns = await GetColumnSchema(reader);
+        Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+    }
+
     #region Not supported
 
     [Test]
