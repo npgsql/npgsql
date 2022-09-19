@@ -109,7 +109,7 @@ public class PrepareTests: TestBase
     public Task UnprepareAsync()
         => Unprepare(true);
 
-    private async Task Unprepare(bool async)
+    async Task Unprepare(bool async)
     {
         using var conn = OpenConnectionAndUnprepare();
         AssertNumPreparedStatements(conn, 0);

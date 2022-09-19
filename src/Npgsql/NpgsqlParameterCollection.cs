@@ -679,7 +679,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ProcessParameters(ConnectorTypeMapper typeMapper, bool validate)
+    internal void ProcessParameters(ConnectorTypeMapper typeMapper, bool validateValues)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
@@ -736,7 +736,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             p.Bind(typeMapper);
 
-            if (validate)
+            if (validateValues)
             {
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
