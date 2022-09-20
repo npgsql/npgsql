@@ -53,6 +53,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
             case StatementType.Delete:
             case StatementType.Copy:
             case StatementType.Move:
+            case StatementType.Merge:
                 return Rows > int.MaxValue
                     ? throw new OverflowException($"The number of records affected exceeds int.MaxValue. Use {nameof(Rows)}.")
                     : (int)Rows;

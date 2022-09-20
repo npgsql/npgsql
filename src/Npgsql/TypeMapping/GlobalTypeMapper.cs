@@ -111,28 +111,11 @@ sealed class GlobalTypeMapper : TypeMapperBase
 
     public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+        var openMethod = typeof(GlobalTypeMapper).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
+        method.Invoke(this, new object?[] { pgName, nameTranslator });
 
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(clrType, nameTranslator);
-
-        Lock.EnterWriteLock();
-        try
-        {
-            UserTypeMappings[pgName] =
-                (IUserTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
-                    new object[] { clrType, nameTranslator }, null)!;
-
-            RecordChange();
-
-            return this;
-        }
-        finally
-        {
-            Lock.ExitWriteLock();
-        }
+        return this;
     }
 
     public override bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
@@ -219,7 +202,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
 
     #region NpgsqlDbType/DbType inference for NpgsqlParameter
 
-    [RequiresUnreferencedCodeAttribute("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
+    [RequiresUnreferencedCode("ToNpgsqlDbType uses interface-based reflection and isn't trimming-safe")]
     internal bool TryResolveMappingByValue(object value, [NotNullWhen(true)] out TypeMappingInfo? typeMapping)
     {
         Lock.EnterReadLock();

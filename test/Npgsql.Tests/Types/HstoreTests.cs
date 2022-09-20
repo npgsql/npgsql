@@ -6,6 +6,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
+[NonParallelizable]
 public class HstoreTests : MultiplexingTestBase
 {
     [Test]
@@ -43,17 +44,18 @@ public class HstoreTests : MultiplexingTestBase
     }
 
     [Test]
-    public Task Hstore_read_as_IDictionary()
-        => AssertTypeRead<IDictionary<string, string?>>(
+    public Task Hstore_as_IDictionary()
+        => AssertType<IDictionary<string, string?>>(
             new Dictionary<string, string?>
             {
-                {"a", "3"},
-                {"b", null},
-                {"cd", "hello"}
+                { "a", "3" },
+                { "b", null },
+                { "cd", "hello" }
             },
             @"""a""=>""3"", ""b""=>NULL, ""cd""=>""hello""",
             "hstore",
-            isDefault: false);
+            NpgsqlDbType.Hstore,
+            isDefaultForReading: false);
 
     [OneTimeSetUp]
     public async Task SetUp()

@@ -70,27 +70,34 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
     }
 
     private protected Task SafeReplicationTest(Func<string, string, Task> testAction, [CallerMemberName] string memberName = "")
-        => SafeReplicationTestCore((slotName, tableName, publicationName) => testAction(slotName, tableName), memberName);
+        => SafeReplicationTestCore((slotName, tableNames, publicationName) => testAction(slotName, tableNames[0]), 1, memberName);
 
     private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
-        => SafeReplicationTestCore(testAction, memberName);
+        => SafeReplicationTestCore((slotName, tableNames, publicationName) => testAction(slotName, tableNames[0], publicationName), 1, memberName);
+
+    private protected Task SafeReplicationTest(Func<string, string[], string, Task> testAction, int tableCount, [CallerMemberName] string memberName = "")
+        => SafeReplicationTestCore(testAction, tableCount, memberName);
 
     static readonly Version Pg10Version = new(10, 0);
 
-    async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
+    async Task SafeReplicationTestCore(Func<string, string[], string, Task> testAction, int tableCount, string memberName)
     {
         // if the supplied name is too long we create on from a guid.
         var baseName = $"{memberName}_{Postfix}";
         var name = (baseName.Length > _maxIdentifierLength - 4 ? Guid.NewGuid().ToString("N") : baseName).ToLowerInvariant();
         var slotName = $"s_{name}".ToLowerInvariant();
-        var tableName = $"t_{name}".ToLowerInvariant();
+        var tableNames = new string[tableCount];
+        for (var i = tableNames.Length - 1; i >= 0; i--)
+        {
+            tableNames[i] = $"t{(tableCount == 1 ? "" : i.ToString())}_{name}".ToLowerInvariant();
+        }
         var publicationName = $"p_{name}".ToLowerInvariant();
 
         await Cleanup();
 
         try
         {
-            await testAction(slotName, tableName, publicationName);
+            await testAction(slotName, tableNames, publicationName);
         }
         finally
         {
@@ -113,10 +120,15 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
                 if (pid.Success)
                 {
                     await c.ExecuteNonQueryAsync($"SELECT pg_terminate_backend ({pid.Value})");
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync($"SELECT EXISTS(SELECT * FROM pg_stat_replication where pid = {pid.Value})"))! && i < 20; i++)
+                        await Task.Delay(TimeSpan.FromSeconds(1));
                 }
-                // Old backends don't report the PID
-                for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 30; i++)
-                    await Task.Delay(TimeSpan.FromSeconds(1));
+                else
+                {
+                    // Old backends don't report the PID
+                    for (var i = 0; (bool)(await c.ExecuteScalarAsync("SELECT EXISTS(SELECT * FROM pg_stat_replication)"))! && i < 20; i++)
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                }
 
                 try
                 {
@@ -124,7 +136,7 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
                 }
                 catch (PostgresException e2) when (e2.SqlState == PostgresErrorCodes.ObjectInUse && e2.Message.Contains(slotName))
                 {
-                    // We failed to drop the slot, even after 30 seconds. Swallow the exception to avoid failing the test, we'll
+                    // We failed to drop the slot, even after 20 seconds. Swallow the exception to avoid failing the test, we'll
                     // likely drop it the next time the test is executed (Cleanup is executed before starting the test as well).
 
                     return;
@@ -134,7 +146,8 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
             if (c.PostgreSqlVersion >= Pg10Version)
                 await c.ExecuteNonQueryAsync($"DROP PUBLICATION IF EXISTS {publicationName}");
 
-            await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName}");
+            for (var i = tableNames.Length - 1; i >= 0; i--)
+                await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableNames[i]} CASCADE;");
 
             async Task DropSlot()
             {
@@ -151,10 +164,5 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         }
     }
 
-    private protected static CancellationTokenSource GetCancelledCancellationTokenSource()
-    {
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
-        return cts;
-    }
+    private protected static CancellationToken GetCancelledCancellationToken() => new(canceled: true);
 }

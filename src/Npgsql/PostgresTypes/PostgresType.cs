@@ -1,4 +1,7 @@
-﻿namespace Npgsql.PostgresTypes;
+﻿using System;
+using System.Linq;
+
+namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL data type, such as int4 or text, as discovered from pg_type.
@@ -73,7 +76,7 @@ public abstract class PostgresType
     public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
 
     /// <summary>
-    /// The data type's internal PostgreSQL name (e.g. integer[] not _int4).
+    /// The data type's internal PostgreSQL name (e.g. <c>_int4</c> not <c>integer[]</c>).
     /// See <see cref="Name"/> for a more user-friendly name.
     /// </summary>
     public string InternalName { get; }

@@ -2,6 +2,7 @@
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Properties;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -25,7 +26,7 @@ public class SecurityTests : TestBase
     [Test, Description("Default user must run with md5 password encryption")]
     public void Default_user_uses_md5_password()
     {
-        if (!TestUtil.IsOnBuildServer)
+        if (!IsOnBuildServer)
             Assert.Ignore("Only executed in CI");
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -100,7 +101,7 @@ public class SecurityTests : TestBase
         }
         catch (Exception e)
         {
-            if (TestUtil.IsOnBuildServer)
+            if (IsOnBuildServer)
                 throw;
             Console.WriteLine(e);
             Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -123,7 +124,7 @@ public class SecurityTests : TestBase
         }
         catch (Exception e)
         {
-            if (TestUtil.IsOnBuildServer)
+            if (IsOnBuildServer)
                 throw;
             Console.WriteLine(e);
             Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -147,7 +148,7 @@ public class SecurityTests : TestBase
         }
         catch (Exception e)
         {
-            if (TestUtil.IsOnBuildServer)
+            if (IsOnBuildServer)
                 throw;
             Console.WriteLine(e);
             Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
@@ -156,7 +157,6 @@ public class SecurityTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1718")]
-    [Timeout(12000)]
     public void Bug1718()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -175,7 +175,6 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    [Timeout(2000)]
     public void ScramPlus()
     {
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -195,7 +194,7 @@ public class SecurityTests : TestBase
                 Assert.That(conn.IsScramPlus, Is.True);
             }
         }
-        catch (Exception e) when (!TestUtil.IsOnBuildServer)
+        catch (Exception e) when (!IsOnBuildServer)
         {
             Console.WriteLine(e);
             Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
@@ -224,7 +223,7 @@ public class SecurityTests : TestBase
             await using var conn = await OpenConnectionAsync(csb);
             Assert.IsTrue(conn.IsSecure);
         }
-        catch (Exception e) when (!TestUtil.IsOnBuildServer)
+        catch (Exception e) when (!IsOnBuildServer)
         {
             Console.WriteLine(e);
             Assert.Ignore("Only ssl user doesn't seem to be set up");
@@ -239,10 +238,24 @@ public class SecurityTests : TestBase
             SslMode = SslMode.Require
         };
 
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await OpenConnectionAsync(csb))!;
-        Assert.That(ex.Message, Is.EqualTo("To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
-                                           "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
-                                           "See https://www.npgsql.org/doc/release-notes/6.0.html for more details."));
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await OpenConnectionAsync(csb))!;
+        Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
+    }
+
+    [Test]
+    public async Task SslMode_Require_with_callback_without_TSC()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            TrustServerCertificate = false,
+            Pooling = false
+        };
+
+        using var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+        await connection.OpenAsync();
     }
 
     [Test]
@@ -267,11 +280,170 @@ public class SecurityTests : TestBase
             await using var conn = await OpenConnectionAsync(csb);
             Assert.IsFalse(conn.IsSecure);
         }
-        catch (Exception e) when (!TestUtil.IsOnBuildServer)
+        catch (Exception e) when (!IsOnBuildServer)
         {
             Console.WriteLine(e);
             Assert.Ignore("Only nonssl user doesn't seem to be set up");
         }
+    }
+
+    [Test]
+    public void User_callback_is_invoked([Values] bool acceptCertificate)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            Pooling = false
+        };
+
+        var callbackWasInvoked = false;
+
+        using var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) =>
+        {
+            callbackWasInvoked = true;
+            return acceptCertificate;
+        };
+
+        if (acceptCertificate)
+            Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
+        else
+        {
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        }
+
+        Assert.That(callbackWasInvoked);
+    }
+
+    [Test]
+    public void Connect_with_Verify_and_callback_throws([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = sslMode
+        };
+
+        var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode)));
+    }
+
+    [Test]
+    public void Connect_with_RootCertificate_and_callback_throws()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            RootCertificate = "foo"
+        };
+
+        var connection = CreateConnection(csb.ToString());
+        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
+
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
+        Assert.That(ex.Message, Is.EqualTo(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback)));
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
+    public async Task Bug4305_Secure([Values] bool async)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Require,
+            Username = "npgsql_tests_ssl",
+            Password = "npgsql_tests_ssl",
+            MaxPoolSize = 1,
+            TrustServerCertificate = true
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        NpgsqlConnection conn = default!;
+
+        try
+        {
+            conn = await OpenConnectionAsync(connString);
+            Assert.IsTrue(conn.IsSecure);
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("Only ssl user doesn't seem to be set up");
+        }
+
+        await using var __ = conn;
+        var originalConnector = conn.Connector;
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "select pg_sleep(30)";
+        cmd.CommandTimeout = 3;
+        var ex = async
+            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
+        if (async)
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+        else
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
+    public async Task Bug4305_not_Secure([Values] bool async)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SslMode = SslMode.Disable,
+            Username = "npgsql_tests_nossl",
+            Password = "npgsql_tests_nossl",
+            MaxPoolSize = 1
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        NpgsqlConnection conn = default!;
+
+        try
+        {
+            conn = await OpenConnectionAsync(connString);
+            Assert.IsFalse(conn.IsSecure);
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("Only nossl user doesn't seem to be set up");
+        }
+
+        await using var __ = conn;
+        var originalConnector = conn.Connector;
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "select pg_sleep(30)";
+        cmd.CommandTimeout = 3;
+        var ex = async
+            ? Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteNonQueryAsync())!
+            : Assert.Throws<NpgsqlException>(() => cmd.ExecuteNonQuery())!;
+        Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
+
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        Assert.AreSame(originalConnector, conn.Connector);
+
+        cmd.CommandText = "SELECT 1";
+        if (async)
+            Assert.DoesNotThrowAsync(async () => await cmd.ExecuteNonQueryAsync());
+        else
+            Assert.DoesNotThrow(() => cmd.ExecuteNonQuery());
     }
 
     #region Setup / Teardown / Utils
@@ -282,7 +454,7 @@ public class SecurityTests : TestBase
         using var conn = OpenConnection();
         var sslSupport = (string)conn.ExecuteScalar("SHOW ssl")!;
         if (sslSupport == "off")
-            TestUtil.IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
+            IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
     }
 
     #endregion

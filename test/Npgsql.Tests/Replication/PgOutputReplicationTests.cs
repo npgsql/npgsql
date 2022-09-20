@@ -18,6 +18,8 @@ namespace Npgsql.Tests.Replication;
 [TestFixture(ProtocolVersion.V1, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 [TestFixture(ProtocolVersion.V1, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 [TestFixture(ProtocolVersion.V2, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+[TestFixture(ProtocolVersion.V3, ReplicationDataMode.DefaultReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 // We currently don't execute all possible combinations of settings for efficiency reasons because they don't
 // interact in the current implementation.
 // Feel free to uncomment some or all of the following lines if the implementation changed or you suspect a
@@ -27,7 +29,11 @@ namespace Npgsql.Tests.Replication;
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
 // [TestFixture(ProtocolVersion.V2, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.TextReplicationDataMode, TransactionMode.NonStreamingTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.DefaultTransactionMode)]
+// [TestFixture(ProtocolVersion.V3, ReplicationDataMode.BinaryReplicationDataMode, TransactionMode.StreamingTransactionMode)]
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable] // These tests aren't designed to be parallelizable
 public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
     readonly ulong _protocolVersion;
@@ -36,6 +42,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 
     bool IsBinary => _binary ?? false;
     bool IsStreaming => _streaming ?? false;
+    ulong Version => _protocolVersion;
 
     public PgOutputReplicationTests(ProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
     {
@@ -54,12 +61,14 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 
     [Test]
     public Task CreatePgOutputReplicationSlot()
-        => SafeReplicationTest(
+    {
+        // There's nothing special here for binary data or when streaming so only execute once
+        if (IsBinary || IsStreaming)
+            return Task.CompletedTask;
+
+        return SafeReplicationTest(
             async (slotName, _) =>
             {
-                // There's nothing special here when streaming so only execute once
-                if (IsStreaming)
-                    return;
 
                 await using var c = await OpenConnectionAsync();
                 await using var rc = await OpenReplicationConnectionAsync();
@@ -75,6 +84,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 Assert.That(reader.GetFieldValue<string>(reader.GetOrdinal("plugin")), Is.EqualTo("pgoutput"));
                 Assert.That(reader.Read, Is.False);
             });
+    }
 
     [Test(Description = "Tests whether INSERT commands get replicated as Logical Replication Protocol Messages")]
     public Task Insert()
@@ -84,7 +94,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -169,7 +179,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -233,7 +243,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -302,7 +312,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY FULL;
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -372,7 +382,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -435,7 +445,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -493,7 +503,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                                                     ALTER TABLE {tableName} REPLICA IDENTITY FULL;
                                                     INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -559,9 +569,9 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
                                                     INSERT INTO {tableName} (name) VALUES ('val1');
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
-                StringBuilder sb = new StringBuilder("TRUNCATE TABLE ").Append(tableName);
+                var sb = new StringBuilder("TRUNCATE TABLE ").Append(tableName);
                 if (truncateOptionFlags.HasFlag(TruncateOptions.RestartIdentity))
                     sb.Append(" RESTART IDENTITY");
                 if (truncateOptionFlags.HasFlag(TruncateOptions.Cascade))
@@ -619,7 +629,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
                 await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('value 1'), ('value 2');");
 
@@ -628,8 +638,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     .GetAsyncEnumerator();
 
                 await NextMessage<BeginMessage>(messages);
-
-                await rc.DisposeAsync();
             }, nameof(Dispose_while_replicating));
 
     [TestCase(true)]
@@ -646,7 +654,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 TestUtil.MinimumPgVersion(c, "14.0", "Replication of logical decoding messages was introduced in PostgreSQL 14");
                 await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (id INT PRIMARY KEY, name TEXT NOT NULL);
                                                     CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 await using var tran = await c.BeginTransactionAsync();
@@ -777,7 +785,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     [Test]
     public Task Stream()
     {
-        if (!IsBinary)
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
             return Task.CompletedTask;
 
         return SafePgOutputReplicationTest(
@@ -814,9 +823,21 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 Assert.That(() => columnEnumerator.Current.Get(), Throws.Exception.TypeOf<InvalidOperationException>());
                 Assert.That(() => columnEnumerator.Current.Get<byte[]>(), Throws.Exception.TypeOf<InvalidOperationException>());
 
-                var someBytes = new byte[10];
-                Assert.That(await stream.ReadAsync(someBytes, 0, 10), Is.EqualTo(10));
-                Assert.That(someBytes, Is.EquivalentTo(bytes[..10]));
+                if (IsBinary)
+                {
+                    var someBytes = new byte[10];
+                    Assert.That(await stream.ReadAsync(someBytes, 0, 10), Is.EqualTo(10));
+                    Assert.That(someBytes, Is.EquivalentTo(bytes[..10]));
+                }
+                else
+                {
+                    // We assume bytea hex format here
+                    var hexString = "\\x" + BitConverter.ToString(bytes[..10]).Replace("-", string.Empty);
+                    var expected = Encoding.ASCII.GetBytes(hexString);
+                    var someBytes = new byte[expected.Length];
+                    Assert.That(await stream.ReadAsync(someBytes, 0, someBytes.Length), Is.EqualTo(someBytes.Length));
+                    Assert.That(someBytes, Is.EquivalentTo(expected));
+                }
 
                 await AssertTransactionCommit(messages);
 
@@ -828,7 +849,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
     [Test]
     public Task TextReader()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -837,7 +863,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreatePgOutputReplicationSlot(slotName);
 
-                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, 'val1')");
+                var expectedText = "val1";
+                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES (1, '{expectedText}')");
 
                 using var streamingCts = new CancellationTokenSource();
                 var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
@@ -847,12 +874,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await NextMessage<RelationMessage>(messages);
                 var insertMsg = await NextMessage<InsertMessage>(messages);
                 var columnEnumerator = insertMsg.NewRow.GetAsyncEnumerator();
+                await columnEnumerator.MoveNextAsync(); // We are not interested in the id field
                 await columnEnumerator.MoveNextAsync();
-
-                Assert.That(columnEnumerator.Current.GetFieldType(), Is.SameAs(IsBinary ? typeof(int) : typeof(string)));
-                Assert.That(columnEnumerator.Current.GetPostgresType().Name, Is.EqualTo("integer"));
-                Assert.That(columnEnumerator.Current.GetDataTypeName(), Is.EqualTo("integer"));
-                Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                using var reader = columnEnumerator.Current.GetTextReader();
+                Assert.That(await reader.ReadToEndAsync(), Is.EqualTo(expectedText));
 
                 await AssertTransactionCommit(messages);
 
@@ -860,10 +885,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
 
     [Test]
     public Task ValueMetadata()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -895,10 +926,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
 
     [Test]
     public Task Null()
-        => SafePgOutputReplicationTest(
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
                 await using var c = await OpenConnectionAsync();
@@ -946,6 +983,258 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 await AssertReplicationCancellation(messages);
                 await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
             });
+    }
+
+    [NpgsqlTypes.PgName("descriptor")]
+    public class Descriptor
+    {
+        [NpgsqlTypes.PgName("id")]
+        public long Id { get; set; }
+
+        [NpgsqlTypes.PgName("name")]
+        public string Name { get; set; } = string.Empty;
+    }
+
+    [Test, Parallelizable(ParallelScope.None)]
+    public Task CompositeType()
+    {
+        // We don't test transaction streaming here because there's nothing special in that case
+        if (IsStreaming)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                await using (var tmpConn = await OpenConnectionAsync())
+                    await tmpConn.ExecuteNonQueryAsync(@$"DROP TYPE IF EXISTS descriptor CASCADE;
+                                                CREATE TYPE descriptor AS (id bigint, name text);
+                                                CREATE TABLE {tableName} (descriptor_field descriptor);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                Internal.NpgsqlDatabaseInfo.Cache.Clear();
+                NpgsqlConnection.GlobalTypeMapper.MapComposite<Descriptor>("descriptor");
+                var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+                var expected = new Descriptor{Id = 1248, Name = "My Descriptor"};
+                var stringValue = $"({expected.Id},\"{expected.Name}\")";
+
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES ('{stringValue}')");
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                await AssertTransactionStart(messages);
+                await NextMessage<TypeMessage>(messages);
+                await NextMessage<RelationMessage>(messages);
+
+                // non-null
+                var columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
+                await columnEnumerator.MoveNextAsync();
+                Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                if (IsBinary)
+                {
+                    var result = await columnEnumerator.Current.Get<Descriptor>();
+                    Assert.That(result.Id, Is.EqualTo(expected.Id));
+                    Assert.That(result.Name, Is.EqualTo(expected.Name));
+                }
+                else
+                    Assert.That(await columnEnumerator.Current.Get(), Is.EqualTo(stringValue));
+                await columnEnumerator.MoveNextAsync();
+
+                await AssertTransactionCommit(messages);
+
+                streamingCts.Cancel();
+                await AssertReplicationCancellation(messages);
+                await c.ExecuteNonQueryAsync("DROP TYPE IF EXISTS descriptor CASCADE;");
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            });
+    }
+
+    [Test]
+    public Task TwoPhase([Values]bool commit)
+    {
+        // Streaming of prepared transaction is only supported for
+        // logical streaming replication protocol >= 3
+        if (_protocolVersion < 3UL)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableName, publicationName) =>
+            {
+                var gid = Guid.NewGuid().ToString();
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync(@$"CREATE TABLE {tableName} (a int primary key, b varchar);
+                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName, twoPhase: true);
+
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync(@$"INSERT INTO {tableName} SELECT i, 'val' || i::text FROM generate_series(1, 15000) s(i);
+	                                            PREPARE TRANSACTION '{gid}';");
+                try
+                {
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    // Begin Transaction
+                    var transactionXid = await AssertTransactionStart(messages);
+
+                    // Relation
+                    await NextMessage<RelationMessage>(messages);
+
+                    // Remaining inserts
+                    for (var insertCount = 0; insertCount < 15000; insertCount++)
+                    {
+                        await NextMessage<InsertMessage>(messages);
+                    }
+
+                    var prepareMessageBase = await AssertPrepare(messages);
+                    Assert.That(prepareMessageBase.TransactionXid, Is.EqualTo(transactionXid));
+                    Assert.That(prepareMessageBase.TransactionGid, Is.EqualTo(gid));
+
+                    if (commit)
+                    {
+                        await c.ExecuteNonQueryAsync(@$"COMMIT PREPARED '{gid}';");
+
+                        var commitPreparedMessage = await NextMessage<CommitPreparedMessage>(messages);
+                        Assert.That(commitPreparedMessage.TransactionXid, Is.EqualTo(transactionXid));
+                        Assert.That(commitPreparedMessage.TransactionGid, Is.EqualTo(gid));
+                    }
+                    else
+                    {
+                        await c.ExecuteNonQueryAsync(@$"ROLLBACK PREPARED '{gid}';");
+
+                        var rollbackPreparedMessage = await NextMessage<RollbackPreparedMessage>(messages);
+                        Assert.That(rollbackPreparedMessage.TransactionXid, Is.EqualTo(transactionXid));
+                        Assert.That(rollbackPreparedMessage.TransactionGid, Is.EqualTo(gid));
+                    }
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                }
+                finally
+                {
+                    try
+                    {
+                        await using var cx = await OpenConnectionAsync();
+                        await cx.ExecuteNonQueryAsync(@$"ROLLBACK PREPARED '{gid}';");
+                    }
+                    catch
+                    {
+                        // Give up
+                    }
+                }
+            }, $"{GetObjectName(nameof(TwoPhase))}_{(commit ? "commit" : "rollback")}");
+    }
+
+
+    [Test(Description = "Tests whether columns of internally cached RelationMessage instances are accidentally overwritten.")]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4633")]
+    public Task Bug4633()
+    {
+        // We don't need all the various test cases here since the bug gets triggered in any case
+        if (IsStreaming || IsBinary || Version > 1)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableNames, publicationName) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync(@$"
+CREATE TABLE {tableNames[0]}
+(
+    id uuid NOT NULL,
+    text text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[0]} PRIMARY KEY (id)
+);
+CREATE TABLE {tableNames[1]}
+(
+    id uuid NOT NULL,
+    message_id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[1]} PRIMARY KEY (id),
+    CONSTRAINT fk_{tableNames[1]}_message_id FOREIGN KEY (message_id) REFERENCES {tableNames[0]} (id)
+);
+CREATE PUBLICATION {publicationName} FOR TABLE {tableNames[0]}, {tableNames[1]} WITH (PUBLISH = 'insert');");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync(@$"
+INSERT INTO {tableNames[0]} VALUES ('B6CB5293-F65E-4F48-A74B-06D5355DAA74', 'random', now());
+INSERT INTO {tableNames[1]} VALUES ('55870BEC-C42E-4AB0-83BA-225BB7777B37', 'B6CB5293-F65E-4F48-A74B-06D5355DAA74', now());
+INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'another random', now());");
+                await tran.CommitAsync();
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                // Begin Transaction
+                var transactionXid = await AssertTransactionStart(messages);
+
+                // First Relation
+                var relationMsg = await NextMessage<RelationMessage>(messages);
+                var relation1Name = relationMsg.RelationName;
+                var relation1Id = relationMsg.RelationId;
+                Assert.That(relation1Name, Is.EqualTo(tableNames[0]));
+                Assert.That(relationMsg.Columns.Count, Is.EqualTo(3));
+                Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(relationMsg.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert first value
+                var insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation1Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation1Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Second Relation
+                relationMsg = await NextMessage<RelationMessage>(messages);
+                var relation2Name = relationMsg.RelationName;
+                var relation2Id = relationMsg.RelationId;
+                Assert.That(relation2Name, Is.EqualTo(tableNames[1]));
+                Assert.That(relationMsg.Columns.Count, Is.EqualTo(3));
+                Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("message_id"));
+                Assert.That(relationMsg.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert second value
+                insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation2Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation2Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("message_id"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert third value
+                insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation1Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation1Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Commit Transaction
+                await AssertTransactionCommit(messages);
+
+                streamingCts.Cancel();
+                await AssertReplicationCancellation(messages);
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            }, 2);
+    }
+
+    #region Non-Test stuff (helper methods, initialization, enums, ...)
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
@@ -957,7 +1246,11 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             Assert.That(IsStreaming);
             return streamStartMessage.TransactionXid;
         case BeginMessage beginMessage:
+            Assert.That(!IsStreaming);
             return beginMessage.TransactionXid;
+        case BeginPrepareMessage beginPrepareMessage:
+            Assert.That(!IsStreaming);
+            return beginPrepareMessage.TransactionXid;
         default:
             Assert.Fail("Expected transaction start message but got: " + messages.Current);
             throw new Exception();
@@ -981,6 +1274,20 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
             Assert.Fail("Expected transaction end message but got: " + messages.Current);
             throw new Exception();
         }
+    }
+
+    async Task<PrepareMessageBase> AssertPrepare(IAsyncEnumerator<PgOutputReplicationMessage> enumerator)
+    {
+        Assert.True(await enumerator.MoveNextAsync());
+        if (IsStreaming && enumerator.Current is StreamStopMessage)
+        {
+            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(enumerator.Current, Is.TypeOf<StreamPrepareMessage>());
+            return (PrepareMessageBase)enumerator.Current!;
+        }
+
+        Assert.That(enumerator.Current, Is.TypeOf<PrepareMessage>());
+        return (PrepareMessageBase)enumerator.Current!;
     }
 
     async ValueTask<TExpected> NextMessage<TExpected>(IAsyncEnumerator<PgOutputReplicationMessage> enumerator, bool expectRelationMessage = false)
@@ -1040,6 +1347,9 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     Task SafePgOutputReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
         => SafeReplicationTest(testAction, GetObjectName(memberName));
 
+    Task SafePgOutputReplicationTest(Func<string, string[], string, Task> testAction, int tableCount, [CallerMemberName] string memberName = "")
+        => SafeReplicationTest(testAction, tableCount, GetObjectName(memberName));
+
     string GetObjectName(string memberName)
     {
         var sb = new StringBuilder(memberName)
@@ -1062,6 +1372,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     {
         await using var c = await OpenConnectionAsync();
         TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
+        if (_protocolVersion > 2)
+            TestUtil.MinimumPgVersion(c, "15.0", "Logical Streaming Replication Protocol version 3 was introduced in PostgreSQL 15");
         if (_protocolVersion > 1)
             TestUtil.MinimumPgVersion(c, "14.0", "Logical Streaming Replication Protocol version 2 was introduced in PostgreSQL 14");
         if (IsBinary)
@@ -1083,6 +1395,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     {
         V1 = 1UL,
         V2 = 2UL,
+        V3 = 3UL,
     }
     public enum ReplicationDataMode
     {
@@ -1096,4 +1409,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         NonStreamingTransactionMode,
         StreamingTransactionMode,
     }
+
+    #endregion Non-Test stuff (helper methods, initialization, ennums, ...)
 }

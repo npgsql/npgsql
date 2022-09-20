@@ -1,8 +1,9 @@
-﻿using System;
+﻿using NUnit.Framework;
+using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
@@ -11,22 +12,26 @@ public class NotificationTests : TestBase
     [Test, Description("Simple LISTEN/NOTIFY scenario")]
     public void Notification()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         using var conn = OpenConnection();
         var receivedNotification = false;
-        conn.ExecuteNonQuery("LISTEN notifytest");
+        conn.ExecuteNonQuery($"LISTEN {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
-        conn.ExecuteNonQuery("NOTIFY notifytest");
+        conn.ExecuteNonQuery($"NOTIFY {notify}");
         Assert.IsTrue(receivedNotification);
     }
 
-    //[Test, Description("Generates a notification that arrives after reader data that is already being read")]
+    [Test, Description("Generates a notification that arrives after reader data that is already being read")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/252")]
-    public void Notification_after_data()
+    public async Task Notification_after_data()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         var receivedNotification = false;
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "LISTEN notifytest1";
+        cmd.CommandText = $"LISTEN {notify}";
         cmd.ExecuteNonQuery();
         conn.Notification += (o, e) => receivedNotification = true;
 
@@ -40,13 +45,13 @@ public class NotificationTests : TestBase
                 conn2.Open();
                 using (var command = conn2.CreateCommand())
                 {
-                    command.CommandText = "NOTIFY notifytest1";
+                    command.CommandText = $"NOTIFY {notify}";
                     command.ExecuteNonQuery();
                 }
             }
 
             // Allow some time for the notification to get delivered
-            Thread.Sleep(2000);
+            await Task.Delay(2000);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(1, reader.GetValue(0));
@@ -57,14 +62,15 @@ public class NotificationTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    [Timeout(10000)]
     public void Wait()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         using var conn = OpenConnection();
         using var notifyingConn = OpenConnection();
         var receivedNotification = false;
-        conn.ExecuteNonQuery("LISTEN notifytest");
-        notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+        conn.ExecuteNonQuery($"LISTEN {notify}");
+        notifyingConn.ExecuteNonQuery($"NOTIFY {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
         Assert.That(conn.Wait(0), Is.EqualTo(true));
         Assert.IsTrue(receivedNotification);
@@ -72,7 +78,6 @@ public class NotificationTests : TestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    //[Timeout(10000)]
     public void Wait_with_timeout()
     {
         using var conn = OpenConnection();
@@ -83,24 +88,26 @@ public class NotificationTests : TestBase
     [Test]
     public void Wait_with_prepended_message()
     {
-        using (OpenConnection()) {}  // A DISCARD ALL is now prepended in the connection's write buffer
-        using (var conn = OpenConnection())
-            Assert.That(conn.Wait(100), Is.EqualTo(false));
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using (OpenConnection(connString)) {}  // A DISCARD ALL is now prepended in the connection's write buffer
+        using var conn = OpenConnection(connString);
+        Assert.That(conn.Wait(100), Is.EqualTo(false));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1024")]
-    [Timeout(10000)]
     public async Task WaitAsync()
     {
-        using var conn = OpenConnection();
-        using var notifyingConn = OpenConnection();
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
+        await using var conn = await OpenConnectionAsync();
+        await using var notifyingConn = await OpenConnectionAsync();
         var receivedNotification = false;
-        conn.ExecuteNonQuery("LISTEN notifytest");
-        notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+        await conn.ExecuteNonQueryAsync($"LISTEN {notify}");
+        await notifyingConn.ExecuteNonQueryAsync($"NOTIFY {notify}");
         conn.Notification += (o, e) => receivedNotification = true;
         await conn.WaitAsync(0);
         Assert.IsTrue(receivedNotification);
-        Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
     [Test]
@@ -114,6 +121,8 @@ public class NotificationTests : TestBase
     [Test]
     public async Task Wait_with_keepalive()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             KeepAlive = 1,
@@ -121,8 +130,8 @@ public class NotificationTests : TestBase
         };
         using var conn = OpenConnection(csb);
         using var notifyingConn = OpenConnection();
-        conn.ExecuteNonQuery("LISTEN notifytest");
-        var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+        conn.ExecuteNonQuery($"LISTEN {notify}");
+        var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery($"NOTIFY {notify}"));
         conn.Wait();
         Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         // A safeguard against closing an active connection
@@ -133,6 +142,8 @@ public class NotificationTests : TestBase
     [Test]
     public async Task WaitAsync_with_keepalive()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             KeepAlive = 1,
@@ -140,8 +151,8 @@ public class NotificationTests : TestBase
         };
         using var conn = OpenConnection(csb);
         using var notifyingConn = OpenConnection();
-        conn.ExecuteNonQuery("LISTEN notifytest");
-        var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+        conn.ExecuteNonQuery($"LISTEN {notify}");
+        var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery($"NOTIFY {notify}"));
         await conn.WaitAsync();
         //Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
         Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -152,19 +163,19 @@ public class NotificationTests : TestBase
     [Test]
     public void WaitAsync_cancellation()
     {
+        var notify = GetUniqueIdentifier(nameof(NotificationTests));
+
         using (var conn = OpenConnection())
         {
-            Assert.That(async () => await conn.WaitAsync(new CancellationToken(true)),
-                Throws.Exception.TypeOf<OperationCanceledException>());
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(new CancellationToken(true)));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         using (var conn = OpenConnection())
         {
-            conn.ExecuteNonQuery("LISTEN notifytest");
+            conn.ExecuteNonQuery($"LISTEN {notify}");
             var cts = new CancellationTokenSource(1000);
-            Assert.That(async () => await conn.WaitAsync(cts.Token),
-                Throws.Exception.TypeOf<OperationCanceledException>());
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await conn.WaitAsync(cts.Token));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
     }
@@ -172,28 +183,32 @@ public class NotificationTests : TestBase
     [Test]
     public void Wait_breaks_connection()
     {
-        using var conn = OpenConnection();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn = OpenConnection(connString);
         Task.Delay(1000).ContinueWith(t =>
         {
             using var conn2 = OpenConnection();
             conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
         });
 
-        Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<PostgresException>());
+        var pgEx = Assert.Throws<PostgresException>(conn.Wait)!;
+        Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
     [Test]
     public void WaitAsync_breaks_connection()
     {
-        using var conn = OpenConnection();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn = OpenConnection(ConnectionString);
         Task.Delay(1000).ContinueWith(t =>
         {
             using var conn2 = OpenConnection();
             conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
         });
 
-        Assert.That(async () => await conn.WaitAsync(), Throws.Exception.TypeOf<PostgresException>());
+        var pgEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.WaitAsync())!;
+        Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 }

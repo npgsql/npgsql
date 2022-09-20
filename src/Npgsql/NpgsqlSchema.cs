@@ -232,24 +232,34 @@ WHERE
     {
         var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
 
-        columns.Columns.AddRange(new[] {
-            new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-            new DataColumn("column_name"), new DataColumn("ordinal_position", typeof(int)), new DataColumn("column_default"),
-            new DataColumn("is_nullable"), new DataColumn("data_type"),
-            new DataColumn("character_maximum_length", typeof(int)), new DataColumn("character_octet_length", typeof(int)),
-            new DataColumn("numeric_precision", typeof(int)), new DataColumn("numeric_precision_radix", typeof(int)),
-            new DataColumn("numeric_scale", typeof(int)), new DataColumn("datetime_precision", typeof(int)),
-            new DataColumn("character_set_catalog"), new DataColumn("character_set_schema"),
-            new DataColumn("character_set_name"), new DataColumn("collation_catalog")
+        columns.Columns.AddRange(new DataColumn[] {
+            new("table_catalog"), new("table_schema"), new("table_name"), new("column_name"),
+            new("ordinal_position", typeof(int)),
+            new("column_default"),
+            new("is_nullable"),
+            new("data_type"),
+            new("character_maximum_length", typeof(int)), new("character_octet_length", typeof(int)),
+            new("numeric_precision", typeof(int)), new("numeric_precision_radix", typeof(int)), new("numeric_scale", typeof(int)),
+            new("datetime_precision", typeof(int)),
+            new("character_set_catalog"), new("character_set_schema"), new("character_set_name"),
+            new("collation_catalog")
         });
 
         var getColumns = new StringBuilder(@"
 SELECT
-    table_catalog, table_schema, table_name, column_name, ordinal_position, column_default, is_nullable,
-    udt_name::regtype::text AS data_type, character_maximum_length, character_octet_length, numeric_precision,
-    numeric_precision_radix, numeric_scale, datetime_precision, character_set_catalog, character_set_schema,
-    character_set_name, collation_catalog
-FROM information_schema.columns");
+    table_catalog, table_schema, table_name, column_name,
+    ordinal_position,
+    column_default,
+    is_nullable,
+    CASE WHEN udt_schema is NULL THEN udt_name ELSE format_type(typ.oid, NULL) END AS data_type,
+    character_maximum_length, character_octet_length,
+    numeric_precision, numeric_precision_radix, numeric_scale,
+    datetime_precision,
+    character_set_catalog, character_set_schema, character_set_name,
+    collation_catalog
+FROM information_schema.columns
+JOIN pg_namespace AS ns ON ns.nspname = udt_schema
+JOIN pg_type AS typ ON typnamespace = ns.oid AND typname = udt_name");
 
         using var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name");
         using var adapter = new NpgsqlDataAdapter(command);

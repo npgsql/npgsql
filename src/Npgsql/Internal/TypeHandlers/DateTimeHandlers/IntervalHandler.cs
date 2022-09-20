@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers;
@@ -31,7 +32,7 @@ public partial class IntervalHandler : NpgsqlSimpleTypeHandler<TimeSpan>, INpgsq
         var months = buf.ReadInt32();
 
         if (months > 0)
-            throw new InvalidCastException("Cannot convert interval value with non-zero months to TimeSpan");
+            throw new InvalidCastException(NpgsqlStrings.CannotReadIntervalWithMonthsAsTimeSpan);
 
         return new(microseconds * 10 + days * TimeSpan.TicksPerDay);
     }

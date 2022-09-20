@@ -4,6 +4,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
+[NonParallelizable]
 public class LTreeTests : MultiplexingTestBase
 {
     [Test]

@@ -685,115 +685,115 @@ public class NpgsqlParameterTest : TestBase
     }
 
 #if NeedsPorting
-        [Test]
-        [Category ("NotWorking")]
-        public void InferType_Char()
-        {
-            Char value = 'X';
+    [Test]
+    [Category ("NotWorking")]
+    public void InferType_Char()
+    {
+        Char value = 'X';
 
-            String string_value = "X";
+        String string_value = "X";
 
-            NpgsqlParameter p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
-            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
-            Assert.AreEqual (string_value, p.Value, "#A:Value");
+        NpgsqlParameter p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+        Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
+        Assert.AreEqual (string_value, p.Value, "#A:Value");
 
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#B:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#B:Value2");
+        p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#B:Value1");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#B:Value2");
 
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#C:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
-            Assert.AreEqual (string_value, p.Value, "#C:Value2");
+        p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#C:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
+        Assert.AreEqual (string_value, p.Value, "#C:Value2");
 
-            p = new NpgsqlParameter ("name", value);
-            Assert.AreEqual (value, p.Value, "#D:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#D:Value2");
+        p = new NpgsqlParameter ("name", value);
+        Assert.AreEqual (value, p.Value, "#D:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#D:Value2");
 
-            p = new NpgsqlParameter ("name", 5);
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#E:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#E:Value2");
+        p = new NpgsqlParameter ("name", 5);
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#E:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#E:Value2");
 
-            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
-            Assert.AreEqual (value, p.Value, "#F:Value");
-        }
+        p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
+        p.Value = value;
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
+        Assert.AreEqual (value, p.Value, "#F:Value");
+    }
 
-        [Test]
-        [Category ("NotWorking")]
-        public void InferType_CharArray()
-        {
-            Char[] value = new Char[] { 'A', 'X' };
+    [Test]
+    [Category ("NotWorking")]
+    public void InferType_CharArray()
+    {
+        Char[] value = new Char[] { 'A', 'X' };
 
-            String string_value = "AX";
+        String string_value = "AX";
 
-            NpgsqlParameter p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#A:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
-            Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
-            Assert.AreEqual (string_value, p.Value, "#A:Value2");
+        NpgsqlParameter p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#A:Value1");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#A:NpgsqlDbType");
+        Assert.AreEqual (DbType.String, p.DbType, "#A:DbType");
+        Assert.AreEqual (string_value, p.Value, "#A:Value2");
 
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#B:Value1");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#B:Value2");
+        p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#B:Value1");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#B:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#B:Value2");
 
-            p = new NpgsqlParameter ();
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#C:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
-            Assert.AreEqual (string_value, p.Value, "#C:Value2");
+        p = new NpgsqlParameter ();
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#C:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#C:DbType");
+        Assert.AreEqual (string_value, p.Value, "#C:Value2");
 
-            p = new NpgsqlParameter ("name", value);
-            Assert.AreEqual (value, p.Value, "#D:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#D:Value2");
+        p = new NpgsqlParameter ("name", value);
+        Assert.AreEqual (value, p.Value, "#D:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#D:DbType");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#D:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#D:Value2");
 
-            p = new NpgsqlParameter ("name", 5);
-            p.Value = value;
-            Assert.AreEqual (value, p.Value, "#E:Value1");
-            Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
-            Assert.AreEqual (string_value, p.Value, "#E:Value2");
+        p = new NpgsqlParameter ("name", 5);
+        p.Value = value;
+        Assert.AreEqual (value, p.Value, "#E:Value1");
+        Assert.AreEqual (DbType.String, p.DbType, "#E:DbType");
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#E:NpgsqlDbType");
+        Assert.AreEqual (string_value, p.Value, "#E:Value2");
 
-            p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
-            p.Value = value;
-            Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
-            Assert.AreEqual (value, p.Value, "#F:Value");
-        }
+        p = new NpgsqlParameter ("name", NpgsqlDbType.Text);
+        p.Value = value;
+        Assert.AreEqual (NpgsqlDbType.Text, p.NpgsqlDbType, "#F:NpgsqlDbType");
+        Assert.AreEqual (value, p.Value, "#F:Value");
+    }
 
-        [Test]
-        public void InferType_Object()
-        {
-            Object value = new Object();
+    [Test]
+    public void InferType_Object()
+    {
+        Object value = new Object();
 
-            NpgsqlParameter param = new NpgsqlParameter();
-            param.Value = value;
-            Assert.AreEqual(NpgsqlDbType.Variant, param.NpgsqlDbType, "#1");
-            Assert.AreEqual(DbType.Object, param.DbType, "#2");
-        }
+        NpgsqlParameter param = new NpgsqlParameter();
+        param.Value = value;
+        Assert.AreEqual(NpgsqlDbType.Variant, param.NpgsqlDbType, "#1");
+        Assert.AreEqual(DbType.Object, param.DbType, "#2");
+    }
 
-        [Test]
-        public void LocaleId ()
-        {
-            NpgsqlParameter parameter = new NpgsqlParameter ();
-            Assert.AreEqual (0, parameter.LocaleId, "#1");
-            parameter.LocaleId = 15;
-            Assert.AreEqual(15, parameter.LocaleId, "#2");
-        }
+    [Test]
+    public void LocaleId ()
+    {
+        NpgsqlParameter parameter = new NpgsqlParameter ();
+        Assert.AreEqual (0, parameter.LocaleId, "#1");
+        parameter.LocaleId = 15;
+        Assert.AreEqual(15, parameter.LocaleId, "#2");
+    }
 #endif
 }

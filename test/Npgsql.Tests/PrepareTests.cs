@@ -59,9 +59,7 @@ public class PrepareTests: TestBase
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
         Assert.That(cmd.IsPrepared, Is.False);
 
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-        Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(cts.Token));
+        Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(new(canceled: true)));
         AssertNumPreparedStatements(conn, 0);
         Assert.That(cmd.IsPrepared, Is.False);
 
@@ -72,6 +70,37 @@ public class PrepareTests: TestBase
         Assert.That(cmd2.IsPrepared, Is.True);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4209")]
+    public async Task Async_cancel_NullReferenceException()
+    {
+        for (var i = 0; i < 10; i++)
+        {
+            using var conn = OpenConnectionAndUnprepare();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            using var cts = new CancellationTokenSource();
+            using var mre = new ManualResetEventSlim();
+            var cancelTask = Task.Run(() =>
+            {
+                mre.Wait();
+                cts.Cancel();
+            });
+            try
+            {
+                mre.Set();
+                await cmd.PrepareAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // There is a race between us checking the cancellation token and the cancellation itself.
+                // If the cancellation happens first, we get OperationCancelledException.
+                // In other case, PrepareAsync will not be cancelled and shouldn't throw any exceptions.
+            }
+            await cancelTask;
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+        }
+    }
+
     [Test]
     public void Unprepare()
         => Unprepare(false).GetAwaiter().GetResult();
@@ -80,7 +109,7 @@ public class PrepareTests: TestBase
     public Task UnprepareAsync()
         => Unprepare(true);
 
-    private async Task Unprepare(bool async)
+    async Task Unprepare(bool async)
     {
         using var conn = OpenConnectionAndUnprepare();
         AssertNumPreparedStatements(conn, 0);

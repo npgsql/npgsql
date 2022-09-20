@@ -130,13 +130,11 @@ class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
 
 class AuthenticationSCRAMServerFirstMessage
 {
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-
     internal string Nonce { get; }
     internal string Salt { get; }
     internal int Iteration { get; }
 
-    internal static AuthenticationSCRAMServerFirstMessage Load(byte[] bytes)
+    internal static AuthenticationSCRAMServerFirstMessage Load(byte[] bytes, ILogger connectionLogger)
     {
         var data = PGUtil.UTF8Encoding.GetString(bytes);
         string? nonce = null, salt = null;
@@ -151,7 +149,7 @@ class AuthenticationSCRAMServerFirstMessage
             else if (part.StartsWith("i=", StringComparison.Ordinal))
                 iteration = int.Parse(part.Substring(2));
             else
-                Logger.LogDebug("Unknown part in SCRAM server-first message:" + part);
+                connectionLogger.LogDebug("Unknown part in SCRAM server-first message:" + part);
         }
 
         if (nonce == null)
@@ -186,11 +184,9 @@ class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
 
 class AuthenticationSCRAMServerFinalMessage
 {
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
-
     internal string ServerSignature { get; }
 
-    internal static AuthenticationSCRAMServerFinalMessage Load(byte[] bytes)
+    internal static AuthenticationSCRAMServerFinalMessage Load(byte[] bytes, ILogger connectionLogger)
     {
         var data = PGUtil.UTF8Encoding.GetString(bytes);
         string? serverSignature = null;
@@ -200,7 +196,7 @@ class AuthenticationSCRAMServerFinalMessage
             if (part.StartsWith("v=", StringComparison.Ordinal))
                 serverSignature = part.Substring(2);
             else
-                Logger.LogDebug("Unknown part in SCRAM server-first message:" + part);
+                connectionLogger.LogDebug("Unknown part in SCRAM server-first message:" + part);
         }
 
         if (serverSignature == null)

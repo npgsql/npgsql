@@ -64,19 +64,14 @@ public class LegacyDateTimeTests : TestBase
     {
 #if DEBUG
         LegacyTimestampBehavior = true;
-        BuiltInTypeHandlerResolver.ResetMappings();
 #else
-            Assert.Ignore(
-                "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
+        Assert.Ignore(
+            "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
     }
 
-    [OneTimeTearDown]
-    public void Teardown()
-    {
 #if DEBUG
-        LegacyTimestampBehavior = false;
-        BuiltInTypeHandlerResolver.ResetMappings();
+    [OneTimeTearDown]
+    public void Teardown() => LegacyTimestampBehavior = false;
 #endif
-    }
 }

@@ -6,6 +6,7 @@ using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using BclTimestampTzHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
+using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal;
 
@@ -32,12 +33,12 @@ sealed partial class LegacyTimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>
     {
         try
         {
-            var zonedDateTime = ((INpgsqlSimpleTypeHandler<ZonedDateTime>)_wrappedHandler).Read(buf, len, fieldDescription);
+            var instant = Read(buf, len, fieldDescription);
 
-            var value = buf.ReadInt64();
-            if (value == long.MaxValue || value == long.MinValue)
-                throw new NotSupportedException("Infinity values not supported for timestamp with time zone");
-            return zonedDateTime.WithZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
+            if (!DisableDateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+                throw new InvalidCastException("Infinity values not supported for timestamp with time zone");
+
+            return instant.InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
         }
         catch (Exception e) when (
             string.Equals(buf.Connection.Timezone, "localtime", StringComparison.OrdinalIgnoreCase) &&
@@ -79,10 +80,24 @@ sealed partial class LegacyTimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>
         => _wrappedHandler.Write(value, buf, parameter);
 
     void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        => _wrappedHandler.Write(value.ToInstant(), buf, parameter);
+    {
+        var instant = value.ToInstant();
+
+        if (!DisableDateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new InvalidCastException("Infinity values not supported for timestamp with time zone");
+
+        _wrappedHandler.Write(instant, buf, parameter);
+    }
 
     public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        => _wrappedHandler.Write(value.ToInstant(), buf, parameter);
+    {
+        var instant = value.ToInstant();
+
+        if (!DisableDateTimeInfinityConversions && (instant == Instant.MaxValue || instant == Instant.MinValue))
+            throw new InvalidCastException("Infinity values not supported for timestamp with time zone");
+
+        _wrappedHandler.Write(instant, buf, parameter);
+    }
 
     int INpgsqlSimpleTypeHandler<DateTimeOffset>.ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
         => ((INpgsqlSimpleTypeHandler<DateTimeOffset>)_wrappedHandler).ValidateAndGetLength(value, parameter);

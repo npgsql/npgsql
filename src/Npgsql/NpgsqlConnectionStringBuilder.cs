@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Npgsql.Internal;
 using Npgsql.Netstandard20;
+using Npgsql.Properties;
 using Npgsql.Replication;
 
 namespace Npgsql;
@@ -33,10 +34,9 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                 ? socketPath
                 : $"tcp://{_host}:{_port}";
 
-    TimeSpan? _hostRecheckSecondsTranslated;
-
+    // Note that we can't cache the result due to nullable's assignment not being thread safe
     internal TimeSpan HostRecheckSecondsTranslated
-        => _hostRecheckSecondsTranslated ??= TimeSpan.FromSeconds(HostRecheckSeconds == 0 ? -1 : HostRecheckSeconds);
+        => TimeSpan.FromSeconds(HostRecheckSeconds == 0 ? -1 : HostRecheckSeconds);
 
     #endregion
 
@@ -938,7 +938,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
 
-    internal TargetSessionAttributes? TargetSessionAttributesParsed { get; private set; }
+    internal TargetSessionAttributes? TargetSessionAttributesParsed { get; set; }
 
     internal static TargetSessionAttributes ParseTargetSessionAttributes(string s)
         => s switch
@@ -989,7 +989,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
                 throw new ArgumentException($"{HostRecheckSeconds} cannot be negative", nameof(HostRecheckSeconds));
             _hostRecheckSeconds = value;
             SetValue(nameof(HostRecheckSeconds), value);
-            _hostRecheckSecondsTranslated = null;
         }
     }
     int _hostRecheckSeconds;
@@ -1562,19 +1561,31 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     #region Misc
 
-    internal void Validate()
+    internal void PostProcessAndValidate()
     {
         if (string.IsNullOrWhiteSpace(Host))
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
-        if (SslMode == SslMode.Require && !TrustServerCertificate)
-            throw new NpgsqlException(
-                "To validate server certificates, please use VerifyFull or VerifyCA instead of Require. " +
-                "To disable validation, explicitly set 'Trust Server Certificate' to true. " +
-                "See https://www.npgsql.org/doc/release-notes/6.0.html for more details.");
-        if (TrustServerCertificate && (SslMode == SslMode.Allow || SslMode == SslMode.VerifyCA || SslMode == SslMode.VerifyFull))
-            throw new NpgsqlException($"TrustServerCertificate=true is not supported with SslMode={SslMode}");
+        if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
+            throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
+
+        if (!Host.Contains(','))
+        {
+            if (TargetSessionAttributesParsed is not null &&
+                TargetSessionAttributesParsed != Npgsql.TargetSessionAttributes.Any)
+            {
+                throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
+            }
+
+            // Support single host:port format in Host
+            if (!IsUnixSocket(Host, Port, out _) &&
+                TrySplitHostPort(Host.AsSpan(), out var newHost, out var newPort))
+            {
+                Host = newHost;
+                Port = newPort;
+            }
+        }
     }
 
     internal string ToStringWithoutPassword()
@@ -1715,8 +1726,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     }
 
     #endregion
-
-    internal static readonly string[] EmptyStringArray = new string[0];
 }
 
 #region Attributes
@@ -1726,7 +1735,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 /// string. Optionally holds a set of synonyms for the property.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-public class NpgsqlConnectionStringPropertyAttribute : Attribute
+class NpgsqlConnectionStringPropertyAttribute : Attribute
 {
     /// <summary>
     /// Holds a list of synonyms for the property.
@@ -1737,17 +1746,13 @@ public class NpgsqlConnectionStringPropertyAttribute : Attribute
     /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
     /// </summary>
     public NpgsqlConnectionStringPropertyAttribute()
-    {
-        Synonyms = NpgsqlConnectionStringBuilder.EmptyStringArray;
-    }
+        => Synonyms = Array.Empty<string>();
 
     /// <summary>
     /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
     /// </summary>
     public NpgsqlConnectionStringPropertyAttribute(params string[] synonyms)
-    {
-        Synonyms = synonyms;
-    }
+        => Synonyms = synonyms;
 }
 
 #endregion
@@ -1858,48 +1863,6 @@ enum ReplicationMode
     /// Logical replication enabled
     /// </summary>
     Logical
-}
-
-/// <summary>
-/// Specifies server type preference.
-/// </summary>
-enum TargetSessionAttributes : byte
-{
-    /// <summary>
-    /// Any successful connection is acceptable.
-    /// </summary>
-    Any = 0,
-
-    /// <summary>
-    /// Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the
-    /// <c>default_transaction_read_only</c> parameter must be off).
-    /// </summary>
-    ReadWrite = 1,
-
-    /// <summary>
-    /// Session must not accept read-write transactions by default (the converse).
-    /// </summary>
-    ReadOnly = 2,
-
-    /// <summary>
-    /// Server must not be in hot standby mode.
-    /// </summary>
-    Primary = 3,
-
-    /// <summary>
-    /// Server must be in hot standby mode.
-    /// </summary>
-    Standby = 4,
-
-    /// <summary>
-    /// First try to find a primary server, but if none of the listed hosts is a primary server, try again in <see cref="Any"/> mode.
-    /// </summary>
-    PreferPrimary = 5,
-
-    /// <summary>
-    /// First try to find a standby server, but if none of the listed hosts is a standby server, try again in <see cref="Any"/> mode.
-    /// </summary>
-    PreferStandby = 6,
 }
 
 #endregion

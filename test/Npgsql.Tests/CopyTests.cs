@@ -146,7 +146,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
         Assert.That(() => inStream.Dispose(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("22P04")
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.BadCopyFileFormat)
         );
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
@@ -553,14 +553,15 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: connection-specific mapping");
 
-        using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(conn, out var typeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>();
+        conn.TypeMapper.MapEnum<Mood>(typeName);
 
-        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (mymood mood, mymoodarr mood[])");
+        await using var __ = await CreateTempTable(conn, $"mymood {typeName}, mymoodarr {typeName}[]", out var tableName);
 
-        using (var writer = conn.BeginBinaryImport("COPY data (mymood, mymoodarr) FROM STDIN BINARY"))
+        using (var writer = conn.BeginBinaryImport($"COPY {tableName} (mymood, mymoodarr) FROM STDIN BINARY"))
         {
             writer.StartRow();
             writer.Write(Mood.Happy);
@@ -569,7 +570,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
             Assert.That(rowsWritten, Is.EqualTo(1));
         }
 
-        using (var reader = conn.BeginBinaryExport("COPY data (mymood, mymoodarr) TO STDIN BINARY"))
+        using (var reader = conn.BeginBinaryExport($"COPY {tableName} (mymood, mymoodarr) TO STDIN BINARY"))
         {
             reader.StartRow();
             Assert.That(reader.Read<Mood>(), Is.EqualTo(Mood.Happy));
@@ -605,7 +606,8 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Error_during_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT, CONSTRAINT uq UNIQUE(foo)", out var table);
+        var constraintName = GetUniqueIdentifier("uq");
+        await using var _ = await CreateTempTable(conn, $"foo INT, CONSTRAINT {constraintName} UNIQUE(foo)", out var table);
 
         var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY");
         writer.StartRow();
@@ -614,7 +616,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         writer.Write(8);
         Assert.That(() => writer.Complete(), Throws.Exception
             .TypeOf<PostgresException>()
-            .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
+            .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UniqueViolation));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
@@ -734,6 +736,19 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         exporter.Cancel();
         Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4417")]
+    public async Task Binary_copy_throws_for_nullable()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "house_number integer", out var tableName);
+
+        await using var writer = await conn.BeginBinaryImportAsync($"COPY {tableName}(house_number) FROM STDIN BINARY");
+        int? value = 1;
+        await writer.StartRowAsync();
+        Assert.ThrowsAsync<InvalidCastException>(async () => await writer.WriteAsync(value, NpgsqlDbType.Integer));
     }
 
     #endregion
@@ -908,8 +923,9 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     {
         using var conn = await OpenConnectionAsync();
         Assert.That(() => conn.BeginBinaryImport("COPY undefined_table (field_text, field_int2) FROM STDIN BINARY"),
-            Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+            Throws.Exception
+                .TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable)
         );
     }
 
@@ -1044,15 +1060,13 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4199")]
     public async Task Copy_is_not_supported_in_regular_command_execution()
     {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+        // Run in a separate pool to protect other queries in multiplexing
+        // because we're going to break the connection on CopyInResponse
+        using var _ = CreateTempPool(ConnectionString, out var connectionString);
+        using var conn = await OpenConnectionAsync(connectionString);
+        await using var __ = await CreateTempTable(conn, "foo INT", out var table);
 
-        Assert.That(() => conn.ExecuteNonQueryAsync($@"
-COPY {table} (foo) FROM stdin;
-1
-2
-\.
-"), Throws.Exception.TypeOf<NotSupportedException>());
+        Assert.That(() => conn.ExecuteNonQuery($@"COPY {table} (foo) FROM stdin"), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
     #endregion

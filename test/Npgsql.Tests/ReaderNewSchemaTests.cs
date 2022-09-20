@@ -418,28 +418,28 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         Assert.That(columns[0].DataType, Is.SameAs(typeof(int)));
     }
 
-    [Test, NonParallelizable]
+    [Test]
     public async Task DataType_with_composite()
     {
         if (IsRedshift)
             Assert.Ignore("Composite types not support on Redshift");
-        // if (IsMultiplexing)
-        //     Assert.Ignore("Multiplexing: ReloadTypes");
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(DataType_with_composite),  // Prevent backend type caching in TypeHandlerRegistry
             Pooling = false
         };
 
-        using var conn = await OpenConnectionAsync(csb);
-        await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.some_composite AS (foo int)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>();
-        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (comp pg_temp.some_composite)");
+        using var _ = CreateTempPool(csb, out var connString);
 
-        using var cmd = new NpgsqlCommand("SELECT comp,'(4)'::some_composite FROM data", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+        await using var conn = await OpenConnectionAsync(connString);
+        await using var __ = await GetTempTypeName(conn, out var typeName);
+        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS (foo int)");
+        conn.ReloadTypes();
+        conn.TypeMapper.MapComposite<SomeComposite>(typeName);
+        await using var ___ = await CreateTempTable(conn, $"comp {typeName}", out var tableName);
+
+        using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{typeName} FROM {tableName}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         var columns = await GetColumnSchema(reader);
         Assert.That(columns[0].DataType, Is.SameAs(typeof(SomeComposite)));
         Assert.That(columns[0].UdtAssemblyQualifiedName, Is.EqualTo(typeof(SomeComposite).AssemblyQualifiedName));
@@ -572,6 +572,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [TestCase("character varying(10)[]", 10)]
     [TestCase("character(10)", 10)]
     [TestCase("character", 1)]
+    [TestCase("character(1)", 1)]
     [TestCase("numeric(1000, 2)", null, 1000, 2)]
     [TestCase("numeric(1000)", null, 1000, null)]
     [TestCase("numeric")]
@@ -656,9 +657,10 @@ CREATE TABLE {table2} (foo INTEGER)");
         // if (IsMultiplexing)
         //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.mydomain AS varchar(2)");
+        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
-        await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (domain mydomain)");
+        await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");
         using var cmd = new NpgsqlCommand("SELECT domain FROM data", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
@@ -683,6 +685,7 @@ CREATE TABLE {table2} (foo INTEGER)");
     }
 
     [Test]
+    [NonParallelizable]
     public async Task NpgsqlDbType_extension()
     {
         using var conn = await OpenConnectionAsync();
@@ -718,6 +721,22 @@ CREATE TABLE {table2} (foo INTEGER)");
         Assert.That(columns[0].IsAliased, Is.False);
         Assert.That(columns[1].IsAliased, Is.True);
         Assert.That(columns[2].IsAliased, Is.Null);
+    }
+
+    [Test] // #4672
+    public async Task With_parameter_without_value()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+
+        using var cmd = new NpgsqlCommand($"SELECT foo FROM {table} WHERE foo > @p", conn)
+        {
+            Parameters = { new() { ParameterName = "p", NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer } }
+        };
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+        var columns = await GetColumnSchema(reader);
+        Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
     }
 
     #region Not supported

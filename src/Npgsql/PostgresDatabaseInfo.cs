@@ -38,7 +38,7 @@ class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 /// </summary>
 class PostgresDatabaseInfo : NpgsqlDatabaseInfo
 {
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.ConnectionLogger;
+    readonly ILogger _connectionLogger;
 
     /// <summary>
     /// The PostgreSQL types detected in the database.
@@ -77,8 +77,7 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
 
     internal PostgresDatabaseInfo(NpgsqlConnector conn)
         : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
-    {
-    }
+        => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
 
     /// <summary>
     /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
@@ -193,20 +192,110 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
     /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
     internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
     {
-        var commandTimeout = 0;  // Default to infinity
-        if (timeout.IsSet)
-            commandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
-
-        var batchQuery = new StringBuilder()
-            .AppendLine("SELECT version();")
-            .AppendLine(GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites))
-            .AppendLine(GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites));
-
-        if (SupportsEnumTypes)
-            batchQuery.AppendLine(GenerateLoadEnumFieldsQuery(HasEnumSortOrder));
+        var versionQuery = "SELECT version();";
+        var loadTypesQuery = GenerateLoadTypesQuery(SupportsRangeTypes, SupportsMultirangeTypes, conn.Settings.LoadTableComposites);
+        var loadCompositeTypesQuery = GenerateLoadCompositeTypesQuery(conn.Settings.LoadTableComposites);
+        var loadEnumFieldsQuery = SupportsEnumTypes
+            ? GenerateLoadEnumFieldsQuery(HasEnumSortOrder)
+            : string.Empty;
 
         timeout.CheckAndApply(conn);
-        await conn.WriteQuery(batchQuery.ToString(), async);
+        // The Lexer (https://github.com/postgres/postgres/blob/master/src/backend/replication/repl_scanner.l)
+        // and Parser (https://github.com/postgres/postgres/blob/master/src/backend/replication/repl_gram.y)
+        // for replication connections are pretty picky and somewhat flawed.
+        // Currently (2022-01-22) they do not support
+        // - SQL batches containing multiple commands
+        // - The <CR> ('\r') in Windows or Mac newlines
+        // - Comments
+        // For this reason we need clean up our type loading queries for replication connections and execute
+        // them individually instead of batched.
+        // Theoretically we cold even use the extended protocol + batching for regular (non-replication)
+        // connections but that would branch our code even more for very little gain.
+        var isReplicationConnection = conn.Settings.ReplicationMode != ReplicationMode.Off;
+        if (isReplicationConnection)
+        {
+            await conn.WriteQuery(versionQuery, async);
+            await conn.WriteQuery(SanitizeForReplicationConnection(loadTypesQuery), async);
+            await conn.WriteQuery(SanitizeForReplicationConnection(loadCompositeTypesQuery), async);
+            if (SupportsEnumTypes)
+                await conn.WriteQuery(SanitizeForReplicationConnection(loadEnumFieldsQuery), async);
+
+            static string SanitizeForReplicationConnection(string str)
+            {
+                var sb = new StringBuilder(str.Length);
+                using var c = str.GetEnumerator();
+                while (c.MoveNext())
+                {
+                    switch (c.Current)
+                    {
+                    case '\r':
+                        sb.Append('\n');
+                        // Check for a \n after the \r
+                        // and swallow it if it exists
+                        if (c.MoveNext())
+                        {
+                            if (c.Current == '-')
+                                goto case '-';
+                            if (c.Current != '\n')
+                                sb.Append(c.Current);
+                        }
+                        break;
+                    case '-':
+                        // Check if there is a second dash
+                        if (c.MoveNext())
+                        {
+                            if (c.Current == '\r')
+                            {
+                                sb.Append('-');
+                                goto case '\r';
+                            }
+                            if (c.Current != '-')
+                            {
+                                sb.Append('-');
+                                sb.Append(c.Current);
+                                break;
+                            }
+
+                            // Comment mode
+                            // Swallow everything until we find a newline
+                            while (c.MoveNext())
+                            {
+                                if (c.Current == '\r')
+                                    goto case '\r';
+                                if (c.Current == '\n')
+                                {
+                                    sb.Append('\n');
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    default:
+                        sb.Append(c.Current);
+                        break;
+                    }
+                }
+
+                return sb.ToString();
+            }
+        }
+        else
+        {
+            var batchQuery = new StringBuilder(
+                    versionQuery.Length +
+                    loadTypesQuery.Length +
+                    loadCompositeTypesQuery.Length +
+                    (SupportsEnumTypes
+                        ? loadEnumFieldsQuery.Length
+                        : 0))
+                .AppendLine(versionQuery)
+                .AppendLine(loadTypesQuery)
+                .AppendLine(loadCompositeTypesQuery);
+
+            if (SupportsEnumTypes)
+                batchQuery.AppendLine(loadEnumFieldsQuery);
+            await conn.WriteQuery(batchQuery.ToString(), async);
+        }
         await conn.Flush(async);
         var byOID = new Dictionary<uint, PostgresType>();
         var buf = conn.ReadBuffer;
@@ -220,6 +309,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         buf.Skip(2); // Column count
         LongVersion = ReadNonNullableString(buf);
         Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+        if (isReplicationConnection)
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the types
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -252,7 +343,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var elementPostgresType))
                 {
-                    Logger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
+                    _connectionLogger.LogTrace("Array type '{ArrayTypeName}' refers to unknown element with OID {ElementTypeOID}, skipping",
                         typname, elemtypoid);
                     continue;
                 }
@@ -267,7 +358,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var subtypePostgresType))
                 {
-                    Logger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
+                    _connectionLogger.LogTrace("Range type '{RangeTypeName}' refers to unknown subtype with OID {ElementTypeOID}, skipping",
                         typname, elemtypoid);
                     continue;
                 }
@@ -281,14 +372,14 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var type))
                 {
-                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
+                    _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to unknown range with OID {ElementTypeOID}, skipping",
                         typname, elemtypoid);
                     continue;
                 }
 
                 if (type is not PostgresRangeType rangePostgresType)
                 {
-                    Logger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
+                    _connectionLogger.LogTrace("Multirange type '{MultirangeTypeName}' refers to non-range type '{TypeName}', skipping",
                         typname, type.Name);
                     continue;
                 }
@@ -311,7 +402,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 Debug.Assert(elemtypoid > 0);
                 if (!byOID.TryGetValue(elemtypoid, out var basePostgresType))
                 {
-                    Logger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
+                    _connectionLogger.LogTrace("Domain type '{DomainTypeName}' refers to unknown base type with OID {ElementTypeOID}, skipping",
                         typname, elemtypoid);
                     continue;
                 }
@@ -328,6 +419,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             }
         }
         Expect<CommandCompleteMessage>(msg, conn);
+        if (isReplicationConnection)
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the composite type fields
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -353,7 +446,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                 if (!byOID.TryGetValue(oid, out var type))  // See #2020
                 {
-                    Logger.LogWarning("Skipping composite type with OID {CompositeTypeOID} which was not found in pg_type", oid);
+                    _connectionLogger.LogWarning("Skipping composite type with OID {CompositeTypeOID} which was not found in pg_type", oid);
                     byOID.Remove(oid);
                     skipCurrent = true;
                     continue;
@@ -362,7 +455,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 currentComposite = type as PostgresCompositeType;
                 if (currentComposite == null)
                 {
-                    Logger.LogWarning("Type {TypeName} was referenced as a composite type but is a {type}", type.Name, type.GetType());
+                    _connectionLogger.LogWarning("Type {TypeName} was referenced as a composite type but is a {type}", type.Name, type.GetType());
                     byOID.Remove(oid);
                     skipCurrent = true;
                     continue;
@@ -376,7 +469,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             if (!byOID.TryGetValue(atttypid, out var fieldType))  // See #2020
             {
-                Logger.LogWarning("Skipping composite type '{CompositeTypeName}' with field '{fieldName}' with type OID '{FieldTypeOID}', which could not be resolved to a PostgreSQL type.",
+                _connectionLogger.LogWarning("Skipping composite type '{CompositeTypeName}' with field '{fieldName}' with type OID '{FieldTypeOID}', which could not be resolved to a PostgreSQL type.",
                     currentComposite!.DisplayName, attname, atttypid);
                 byOID.Remove(oid);
                 skipCurrent = true;
@@ -386,6 +479,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
         }
         Expect<CommandCompleteMessage>(msg, conn);
+        if (isReplicationConnection)
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         if (SupportsEnumTypes)
         {
@@ -411,7 +506,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                     if (!byOID.TryGetValue(oid, out var type))  // See #2020
                     {
-                        Logger.LogWarning("Skipping enum type with OID {OID} which was not found in pg_type", oid);
+                        _connectionLogger.LogWarning("Skipping enum type with OID {OID} which was not found in pg_type", oid);
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;
@@ -420,7 +515,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                     currentEnum = type as PostgresEnumType;
                     if (currentEnum == null)
                     {
-                        Logger.LogWarning("Type type '{TypeName}' was referenced as an enum type but is a {Type}", type.Name, type.GetType());
+                        _connectionLogger.LogWarning("Type type '{TypeName}' was referenced as an enum type but is a {Type}", type.Name, type.GetType());
                         byOID.Remove(oid);
                         skipCurrent = true;
                         continue;
@@ -435,9 +530,12 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 currentEnum!.MutableLabels.Add(enumlabel);
             }
             Expect<CommandCompleteMessage>(msg, conn);
+            if (isReplicationConnection)
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         }
 
-        Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+        if (!isReplicationConnection)
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         return byOID.Values.ToList();
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)

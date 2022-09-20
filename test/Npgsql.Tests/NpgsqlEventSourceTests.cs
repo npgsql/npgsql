@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-[NonParallelizable]
+[NonParallelizable] // Events
 public class NpgsqlEventSourceTests : TestBase
 {
     [Test]

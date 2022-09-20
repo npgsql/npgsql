@@ -79,24 +79,47 @@ public static class LogicalReplicationConnectionExtensions
             if (isTemporary)
                 builder.Append(" TEMPORARY");
             builder.Append(" LOGICAL ").Append(outputPlugin);
-            builder.Append(slotSnapshotInitMode switch
+            if (connection.PostgreSqlVersion.Major >= 15 && (slotSnapshotInitMode.HasValue || twoPhase))
             {
-                // EXPORT_SNAPSHOT is the default since it has been introduced.
-                // We don't set it unless it is explicitly requested so that older backends can digest the query too.
-                null => string.Empty,
-                LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
-                LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
-                LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
-                _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
-                    slotSnapshotInitMode,
-                    $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
-            });
-            if (twoPhase)
-                builder.Append(" TWO_PHASE");
-
+                builder.Append('(');
+                if (slotSnapshotInitMode.HasValue)
+                {
+                    builder.Append(slotSnapshotInitMode switch
+                    {
+                        LogicalSlotSnapshotInitMode.Export => "SNAPSHOT 'export'",
+                        LogicalSlotSnapshotInitMode.Use => "SNAPSHOT 'use'",
+                        LogicalSlotSnapshotInitMode.NoExport => "SNAPSHOT 'nothing'",
+                        _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
+                            slotSnapshotInitMode,
+                            $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
+                    });
+                    if (twoPhase)
+                        builder.Append(",TWO_PHASE");
+                }
+                else
+                    builder.Append("TWO_PHASE");
+                builder.Append(')');
+            }
+            else
+            {
+                builder.Append(slotSnapshotInitMode switch
+                {
+                    // EXPORT_SNAPSHOT is the default since it has been introduced.
+                    // We don't set it unless it is explicitly requested so that older backends can digest the query too.
+                    null => string.Empty,
+                    LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
+                    LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
+                    LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
+                    _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
+                        slotSnapshotInitMode,
+                        $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
+                });
+                if (twoPhase)
+                    builder.Append(" TWO_PHASE");
+            }
             var command = builder.ToString();
 
-            LogMessages.CreatingReplicationSlot(ReplicationConnection.Logger, slotName, command, connection.Connector.Id);
+            LogMessages.CreatingReplicationSlot(connection.ReplicationLogger, slotName, command, connection.Connector.Id);
 
             return connection.CreateReplicationSlot(command, cancellationToken);
         }
@@ -153,7 +176,7 @@ public static class LogicalReplicationConnectionExtensions
 
             var command = builder.ToString();
 
-            LogMessages.StartingLogicalReplication(ReplicationConnection.Logger, slot.Name, command, connection.Connector.Id);
+            LogMessages.StartingLogicalReplication(connection.ReplicationLogger, slot.Name, command, connection.Connector.Id);
 
             var enumerator = connection.StartReplicationInternalWrapper(command, bypassingStream, cancellationToken);
             while (await enumerator.MoveNextAsync())

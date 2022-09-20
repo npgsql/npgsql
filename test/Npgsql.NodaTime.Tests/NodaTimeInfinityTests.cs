@@ -74,7 +74,8 @@ public class NodaTimeInfinityTests : TestBase
         {
             // NodaTime Instant.MinValue is outside the PG timestamp range.
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
-                Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DatetimeFieldOverflow));
         }
         else
         {
@@ -127,7 +128,8 @@ public class NodaTimeInfinityTests : TestBase
         {
             // NodaTime LocalDateTime.MinValue is outside the PG timestamp range.
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
-                Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DatetimeFieldOverflow));
         }
         else
         {
@@ -180,7 +182,8 @@ public class NodaTimeInfinityTests : TestBase
         // LocalDate.MinIsoValue is outside of the PostgreSQL date range
         if (DisableDateTimeInfinityConversions)
             Assert.That(async () => await cmd.ExecuteScalarAsync(),
-                Throws.Exception.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("22008"));
+                Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.DatetimeFieldOverflow));
         else
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
 
@@ -267,11 +270,11 @@ public class NodaTimeInfinityTests : TestBase
         DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
         Statics.DisableDateTimeInfinityConversions = disableDateTimeInfinityConversions;
 #else
-            if (disableDateTimeInfinityConversions)
-            {
-                Assert.Ignore(
-                    "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
-            }
+        if (disableDateTimeInfinityConversions)
+        {
+            Assert.Ignore(
+                "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
+        }
 #endif
     }
 

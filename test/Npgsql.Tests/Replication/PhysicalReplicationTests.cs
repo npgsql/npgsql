@@ -11,14 +11,19 @@ namespace Npgsql.Tests.Replication;
 public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicationConnection>
 {
     [Test]
-    public Task CreateReplicationSlot()
+    public Task CreateReplicationSlot([Values]bool temporary, [Values]bool reserveWal)
         => SafeReplicationTest(
             async (slotName, _) =>
             {
-                await using var rc = await OpenReplicationConnectionAsync();
-                var slot = await rc.CreateReplicationSlot(slotName);
-
                 await using var c = await OpenConnectionAsync();
+                if (reserveWal)
+                    TestUtil.MinimumPgVersion(c, "10.0", "The RESERVE_WAL syntax was introduced in PostgreSQL 10");
+                if (temporary)
+                    TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreateReplicationSlot(slotName, temporary, reserveWal);
+
                 using var cmd =
                     new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.Name}'",
                         c);
@@ -28,7 +33,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 Assert.That(reader.GetFieldValue<string>(reader.GetOrdinal("slot_type")), Is.EqualTo("physical"));
                 Assert.That(reader.Read, Is.False);
                 await rc.DropReplicationSlot(slotName);
-            });
+            }, nameof(CreateReplicationSlot) + (temporary ? "_t" : "") + (reserveWal ? "_r" : ""));
 
     [TestCase(true, true)]
     [TestCase(true, false)]
@@ -67,7 +72,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
             async (slotName, tableName) =>
             {
                 // var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateReplicationSlot(slotName);
                 var info = await rc.IdentifySystem();
 
@@ -104,7 +109,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
     [Test]
     public async Task Replication_without_slot()
     {
-        var rc = await OpenReplicationConnectionAsync();
+        await using var rc = await OpenReplicationConnectionAsync();
         var info = await rc.IdentifySystem();
 
         using var streamingCts = new CancellationTokenSource();

@@ -2,7 +2,6 @@ using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
-using NodaTime.TimeZones;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -42,6 +41,14 @@ public class LegacyNodaTimeTests : TestBase
             DbType.DateTimeOffset,
             isDefault: false);
 
+    [Test]
+    public Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()
+        => AssertTypeUnsupported(Instant.MaxValue.InZone(DateTimeZone.Utc), "infinity", "timestamptz");
+
+    [Test]
+    public Task Timestamptz_OffsetDateTime_infinite_values_are_not_supported()
+        => AssertTypeUnsupported(Instant.MaxValue.WithOffset(Offset.Zero), "infinity", "timestamptz");
+
     #region Support
 
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
@@ -66,8 +73,8 @@ public class LegacyNodaTimeTests : TestBase
         NpgsqlConnection.GlobalTypeMapper.Reset();
         NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
 #else
-            Assert.Ignore(
-                "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
+        Assert.Ignore(
+            "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
 
     }

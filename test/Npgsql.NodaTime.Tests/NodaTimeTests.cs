@@ -215,6 +215,31 @@ public class NodaTimeTests : TestBase
             "tstzrange",
             NpgsqlDbType.TimestampTzRange);
 
+    [Test]
+    public Task Tstzrange_with_no_end_as_Interval()
+        => AssertType(
+            new Interval(
+                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(), null),
+            @"[""1998-04-12 15:26:38+02"",)",
+            "tstzrange",
+            NpgsqlDbType.TimestampTzRange);
+
+    [Test]
+    public Task Tstzrange_with_no_start_as_Interval()
+        => AssertType(
+            new Interval( null,
+                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant()),
+            @"(,""1998-04-12 15:26:38+02"")",
+            "tstzrange",
+            NpgsqlDbType.TimestampTzRange);
+
+    [Test]
+    public Task Tstzrange_with_no_start_or_end_as_Interval()
+        => AssertType(
+            new Interval(null, null),
+            @"(,)",
+            "tstzrange",
+            NpgsqlDbType.TimestampTzRange);
 
     [Test]
     public Task Tstzrange_as_NpgsqlRange_of_Instant()
@@ -350,8 +375,17 @@ public class NodaTimeTests : TestBase
                 new Interval(
                     new LocalDateTime(1998, 4, 13, 13, 26, 38).InUtc().ToInstant(),
                     new LocalDateTime(1998, 4, 13, 15, 26, 38).InUtc().ToInstant()),
+                new Interval(
+                    new LocalDateTime(1998, 4, 13, 13, 26, 38).InUtc().ToInstant(),
+                    null),
+                new Interval(
+                    null,
+                    new LocalDateTime(1998, 4, 13, 13, 26, 38).InUtc().ToInstant()),
+                new Interval(
+                    null,
+                    null)
             },
-            @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\"")""}",
+            @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",)"",""(,\""1998-04-13 15:26:38+02\"")"",""(,)""}",
             "tstzrange[]",
             NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
             isDefaultForWriting: false);

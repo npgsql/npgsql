@@ -11,7 +11,7 @@ namespace Npgsql.SourceGenerators;
 [Generator]
 public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
 {
-    static readonly DiagnosticDescriptor InternalError = new(
+    static readonly DiagnosticDescriptor InternalError = new DiagnosticDescriptor(
         id: "PGXXXX",
         title: "Internal issue when source-generating NpgsqlConnectionStringBuilder",
         messageFormat: "{0}",

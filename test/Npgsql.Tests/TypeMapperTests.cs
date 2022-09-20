@@ -1,15 +1,14 @@
-﻿using System;
-using System.Data;
-using System.Threading.Tasks;
-using Npgsql.BackendMessages;
+﻿using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using NUnit.Framework;
+using System;
+using System.Data;
+using System.Threading.Tasks;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -123,6 +122,32 @@ public class TypeMapperTests : TestBase
                 cmd.Parameters.AddWithValue("p", "HeLLo");
                 Assert.That(cmd.ExecuteScalar(), Is.True);
             }
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
+    [NonParallelizable] // Drops extension
+    public async Task Type_in_non_default_schema()
+    {
+        await using var conn = await OpenConnectionAsync();
+        try
+        {
+            await using var _ = await CreateTempSchema(conn, out var schemaName);
+
+            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
+            conn.ReloadTypes();
+
+            await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
+
+            const string expected = "SomeValue";
+            await conn.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" VALUES('{expected}')");
+
+            var value = (string?)await conn.ExecuteScalarAsync($"SELECT created_by FROM \"{tableName}\" LIMIT 1");
+            Assert.That(value, Is.EqualTo(expected));
+        }
+        finally
+        {
+            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext");
         }
     }
 

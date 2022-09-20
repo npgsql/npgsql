@@ -43,7 +43,7 @@ namespace Npgsql
             {{ if p.is_enum }}
             {
                 {{ p.name }} = value is string s
-                    ? ({{ p.type_name }})Enum.Parse(typeof({{ p.type_name }}), s)
+                    ? ({{ p.type_name }})Enum.Parse(typeof({{ p.type_name }}), s, ignoreCase: true)
                     : ({{ p.type_name }})Convert.ChangeType(value, typeof({{ p.type_name }}));
             }
             {{ else }}

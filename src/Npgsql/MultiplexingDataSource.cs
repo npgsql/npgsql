@@ -11,10 +11,10 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
-sealed class MultiplexingConnectorPool : ConnectorPool
+sealed class MultiplexingDataSource : PoolingDataSource
 {
-    static readonly ILogger ConnectionLogger = NpgsqlLoggingConfiguration.ConnectionLogger;
-    static readonly ILogger CommandLogger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _connectionLogger;
+    readonly ILogger _commandLogger;
 
     readonly bool _autoPrepare;
 
@@ -47,9 +47,11 @@ sealed class MultiplexingConnectorPool : ConnectorPool
     // TODO: Make this configurable
     const int MultiplexingCommandChannelBound = 4096;
 
-    internal MultiplexingConnectorPool(
-        NpgsqlConnectionStringBuilder settings, string connString, MultiHostConnectorPool? parentPool = null)
-        : base(settings, connString, parentPool)
+    internal MultiplexingDataSource(
+        NpgsqlConnectionStringBuilder settings,
+        NpgsqlDataSourceConfiguration dataSourceConfig,
+        NpgsqlMultiHostDataSource? parentPool = null)
+        : base(settings, dataSourceConfig, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
 
@@ -69,6 +71,9 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             });
         _multiplexCommandReader = multiplexCommandChannel.Reader;
         MultiplexCommandWriter = multiplexCommandChannel.Writer;
+
+        _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
+        _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
     }
 
     /// <summary>
@@ -80,8 +85,8 @@ sealed class MultiplexingConnectorPool : ConnectorPool
     internal async Task BootstrapMultiplexing(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
     {
         var hasSemaphore = async
-            ? await _bootstrapSemaphore!.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
-            : _bootstrapSemaphore!.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
+            ? await _bootstrapSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            : _bootstrapSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
 
         // We've timed out - calling Check, to throw the correct exception
         if (!hasSemaphore)
@@ -95,12 +100,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
             using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
 
-            // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
-            // and have the connector rebind to ensure it has a different instance.
-            // The latter isn't strictly necessary (type mappers should always be usable
-            // concurrently) but just in case.
             MultiplexingTypeMapper = connector.TypeMapper;
-            await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
             // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
             // pool clearing
@@ -108,7 +108,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
                 .ContinueWith(t =>
                 {
                     // Note that we *must* observe the exception if the task is faulted.
-                    ConnectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
                 }, TaskContinuationOptions.OnlyOnFaulted);
 
             IsBootstrapped = true;
@@ -211,7 +211,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             }
             catch (Exception exception)
             {
-                LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(ConnectionLogger, exception);
+                LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(_connectionLogger, exception);
 
                 // Fail the first command in the channel as a way of bubbling the exception up to the user
                 command.ExecutionCompletion.SetException(exception);
@@ -264,10 +264,8 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             if (_autoPrepare)
             {
                 // TODO: Need to log based on numPrepared like in non-multiplexing mode...
-                var numPrepared = 0;
                 for (var i = 0; i < command.InternalBatchCommands.Count; i++)
-                    if (command.InternalBatchCommands[i].TryAutoPrepare(connector))
-                        numPrepared++;
+                    command.InternalBatchCommands[i].TryAutoPrepare(connector);
             }
 
             var written = connector.CommandsInFlightWriter!.TryWrite(command);
@@ -388,7 +386,7 @@ sealed class MultiplexingConnectorPool : ConnectorPool
             // if one connector was broken, chances are that all are (networking).
             Debug.Assert(connector.IsBroken);
 
-            LogMessages.ExceptionWhenWritingMultiplexedCommands(CommandLogger, connector.Id, exception);
+            LogMessages.ExceptionWhenWritingMultiplexedCommands(_commandLogger, connector.Id, exception);
         }
 
         static void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)
@@ -404,10 +402,14 @@ sealed class MultiplexingConnectorPool : ConnectorPool
         // ReSharper disable once FunctionNeverReturns
     }
 
-    public override void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        _bootstrapSemaphore.Dispose();
-        base.Dispose();
+        base.Dispose(disposing);
+
+        if (disposing)
+        {
+            _bootstrapSemaphore.Dispose();
+        }
     }
 
     struct MultiplexingStats

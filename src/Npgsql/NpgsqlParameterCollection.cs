@@ -22,7 +22,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 #if DEBUG
     internal static bool TwoPassCompatMode;
 #else
-        internal static readonly bool TwoPassCompatMode;
+    internal static readonly bool TwoPassCompatMode;
 #endif
 
     static NpgsqlParameterCollection()
@@ -51,11 +51,10 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         if (_caseInsensitiveLookup is null)
             return;
 
-        if (TwoPassCompatMode && !_caseSensitiveLookup!.ContainsKey(name))
-            _caseSensitiveLookup[name] = index;
+        if (TwoPassCompatMode)
+            _caseSensitiveLookup!.TryAdd(name, index);
 
-        if (!_caseInsensitiveLookup.ContainsKey(name))
-            _caseInsensitiveLookup[name] = index;
+        _caseInsensitiveLookup.TryAdd(name, index);
     }
 
     void LookupInsert(string name, int index)
@@ -387,7 +386,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             for (var i = 0; i < InternalList.Count; i++)
             {
                 var name = InternalList[i].TrimmedName;
-                if (string.Equals(parameterName, InternalList[i].TrimmedName))
+                if (string.Equals(parameterName, name))
                     return i;
             }
         }
@@ -680,7 +679,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ValidateAndBind(ConnectorTypeMapper typeMapper)
+    internal void ProcessParameters(ConnectorTypeMapper typeMapper, bool validateValues)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
@@ -689,7 +688,25 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         {
             var p = InternalList[i];
 
-            CalculatePlaceholderType(p);
+            switch (PlaceholderType)
+            {
+            case PlaceholderType.NoParameters:
+                PlaceholderType = p.IsPositional ? PlaceholderType.Positional : PlaceholderType.Named;
+                break;
+            case PlaceholderType.Named:
+                if (p.IsPositional)
+                    PlaceholderType = PlaceholderType.Mixed;
+                break;
+            case PlaceholderType.Positional:
+                if (!p.IsPositional)
+                    PlaceholderType = PlaceholderType.Mixed;
+                break;
+            case PlaceholderType.Mixed:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+            }
 
             switch (p.Direction)
             {
@@ -718,53 +735,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             }
 
             p.Bind(typeMapper);
-            p.LengthCache?.Clear();
-            p.ValidateAndGetLength();
-        }
-    }
 
-    internal void CalculatePlaceholderType(NpgsqlParameter p)
-    {
-        if (p.IsPositional)
-        {
-            switch (PlaceholderType)
+            if (validateValues)
             {
-            case PlaceholderType.NoParameters:
-                PlaceholderType = PlaceholderType.Positional;
-                break;
-
-            case PlaceholderType.Named:
-                PlaceholderType = PlaceholderType.Mixed;
-                break;
-
-            case PlaceholderType.Positional:
-            case PlaceholderType.Mixed:
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
-            }
-        }
-        else
-        {
-            switch (PlaceholderType)
-            {
-            case PlaceholderType.NoParameters:
-                PlaceholderType = PlaceholderType.Named;
-                break;
-
-            case PlaceholderType.Positional:
-                PlaceholderType = PlaceholderType.Mixed;
-                break;
-
-            case PlaceholderType.Named:
-            case PlaceholderType.Mixed:
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                p.LengthCache?.Clear();
+                p.ValidateAndGetLength();
             }
         }
     }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Data;
+using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -163,12 +164,6 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
         // Special types
         { "unknown",  new(NpgsqlDbType.Unknown, "unknown") },
     };
-
-    internal static void ResetMappings()
-    {
-        foreach (var mapping in Mappings)
-            mapping.Value.Reset();
-    }
 
     #region Cached handlers
 
@@ -368,9 +363,17 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) && ResolveByDataTypeName(dataTypeName) is { } handler
-            ? handler
-            : null;
+    {
+        if (!ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName))
+        {
+            if (!type.IsSubclassOf(typeof(Stream)))
+                return null;
+
+            dataTypeName = "bytea";
+        }
+
+        return ResolveByDataTypeName(dataTypeName);
+    }
 
     static readonly Dictionary<Type, string> ClrTypeToDataTypeNameTable;
 

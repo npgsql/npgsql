@@ -37,7 +37,10 @@ public class TransactionTests : MultiplexingTestBase
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
         }
 
-        Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        // With multiplexing we can't assume that disposed NpgsqlTransaction will throw ObjectDisposedException
+        // Because disposed NpgsqlTransaction might be reused by another thread
+        if (!IsMultiplexing)
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
     }
 
     [Test, Description("Basic insert within a commited transaction")]
@@ -188,7 +191,7 @@ public class TransactionTests : MultiplexingTestBase
             // Make sure the pending BEGIN TRANSACTION didn't leak from the previous open
             Assert.That(async () => await conn.ExecuteNonQueryAsync("SAVEPOINT foo"),
                 Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("25P01"));
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.NoActiveSqlTransaction));
         }
     }
 

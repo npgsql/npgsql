@@ -35,9 +35,10 @@ public class TextTests : MultiplexingTestBase
 
     [Test]
     public Task Char_as_char()
-        => AssertType('f', "f", "character(1)", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
+        => AssertType('f', "f", "character", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
 
     [Test]
+    [NonParallelizable]
     public async Task Citext_as_string()
     {
         await using var conn = await OpenConnectionAsync();
@@ -87,7 +88,7 @@ public class TextTests : MultiplexingTestBase
     public async Task Null_character()
     {
         var exception = await AssertTypeUnsupportedWrite<string, PostgresException>("string with \0\0\0 null \0bytes");
-        Assert.That(exception.SqlState, Is.EqualTo("22021"));
+        Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.CharacterNotInRepertoire));
     }
 
     [Test, Description("Tests some types which are aliased to strings")]

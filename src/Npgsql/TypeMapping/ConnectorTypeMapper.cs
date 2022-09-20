@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -13,6 +14,8 @@ using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
@@ -29,12 +32,18 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         get => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
         set
         {
+            // We're attempting to set the same NpgsqlDatabaseInfo as we already have.
+            // If so, there is no reason to reset type mappings since NpgsqlDatabaseInfo is immutable.
+            // This might happen with multiplexing due to sharing the same ConnectorTypeMapper between multiple connections.
+            if (ReferenceEquals(_databaseInfo, value))
+                return;
+
             _databaseInfo = value;
             Reset();
         }
     }
 
-    volatile List<TypeHandlerResolver> _resolvers;
+    volatile TypeHandlerResolver[] _resolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
     readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -51,7 +60,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     /// </summary>
     internal int ChangeCounter { get; private set; }
 
-    static readonly ILogger Logger = NpgsqlLoggingConfiguration.CommandLogger;
+    readonly ILogger _commandLogger;
 
     #region Construction
 
@@ -59,7 +68,8 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     {
         Connector = connector;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
-        _resolvers = new List<TypeHandlerResolver>();
+        _resolvers = Array.Empty<TypeHandlerResolver>();
+        _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }
 
     #endregion Constructors
@@ -84,7 +94,19 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         lock (_writeLock)
         {
-            if ((handler = ResolveByDataTypeName(pgType.Name, throwOnError: false)) is not null)
+            if ((handler = ResolveByDataTypeNameCore(pgType.FullName)) is not null)
+            {
+                _handlersByOID[oid] = handler;
+                return true;
+            }
+            
+            if ((handler = ResolveByDataTypeNameCore(pgType.Name)) is not null)
+            {
+                _handlersByOID[oid] = handler;
+                return true;
+            }
+            
+            if ((handler = ResolveComplexTypeByDataTypeName(pgType.FullName, throwOnError: false)) is not null)
             {
                 _handlersByOID[oid] = handler;
                 return true;
@@ -102,13 +124,27 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         lock (_writeLock)
         {
-            if (TryResolve(npgsqlDbType, out handler))
-                return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+            // First, try to resolve as a base type; translate the NpgsqlDbType to a PG data type name and look that up.
+            if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
+            {
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
+                            return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        _commandLogger.LogError(e,
+                            $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
+                    }
+                }
+            }
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Array, out var elementHandler))
-                    throw new ArgumentException($"Array type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
 
                 if (elementHandler.PostgresType.Array is not { } pgArrayType)
                     throw new ArgumentException(
@@ -120,8 +156,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Range, out var subtypeHandler))
-                    throw new ArgumentException($"Range type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
 
                 if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
                     throw new ArgumentException(
@@ -132,47 +167,23 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
             {
-                if (!TryResolve(npgsqlDbType & ~NpgsqlDbType.Multirange, out var subtypeHandler))
-                    throw new ArgumentException($"Multirange type over NpgsqlDbType {npgsqlDbType} isn't supported by Npgsql");
+                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
 
                 if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
-                    throw new ArgumentException(
-                        $"No multirange type could be found in the database for subtype {subtypeHandler.PostgresType}");
+                    throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
 
                 return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
             }
 
             throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                       "You may need to install an extension or upgrade to a newer version.");
-
-            bool TryResolve(NpgsqlDbType npgsqlDbType, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
-            {
-                if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
-                {
-                    foreach (var resolver in _resolvers)
-                    {
-                        try
-                        {
-                            if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
-                                return true;
-                        }
-                        catch (Exception e)
-                        {
-                            Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
-                        }
-                    }
-                }
-
-                handler = null;
-                return false;
-            }
         }
     }
 
     internal NpgsqlTypeHandler ResolveByDataTypeName(string typeName)
-        => ResolveByDataTypeName(typeName, throwOnError: true)!;
+        => ResolveByDataTypeNameCore(typeName) ?? ResolveComplexTypeByDataTypeName(typeName, throwOnError: true)!;
 
-    NpgsqlTypeHandler? ResolveByDataTypeName(string typeName, bool throwOnError)
+    NpgsqlTypeHandler? ResolveByDataTypeNameCore(string typeName)
     {
         if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
             return handler;
@@ -188,10 +199,18 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
                 }
             }
 
+            return null;
+        }
+    }
+
+    NpgsqlTypeHandler? ResolveComplexTypeByDataTypeName(string typeName, bool throwOnError)
+    {
+        lock (_writeLock)
+        {
             if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
                 throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
 
@@ -265,7 +284,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {typeof(T)}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {typeof(T)}");
                 }
             }
 
@@ -299,7 +318,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             }
             catch (Exception e)
             {
-                Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
             }
         }
 
@@ -325,7 +344,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
                 }
             }
 
@@ -333,8 +352,10 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             var arrayElementType = GetArrayListElementType(type);
             if (arrayElementType is not null)
             {
-                // Arrays over range types are multiranges, not regular arrays.
-                if (arrayElementType.IsGenericType && arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
+                if (arrayElementType.IsGenericType &&
+                    arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
+                    DatabaseInfo.Version.IsGreaterOrEqual(14))
                 {
                     var subtypeType = arrayElementType.GetGenericArguments()[0];
 
@@ -407,6 +428,10 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
     internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
     {
+        foreach (var resolver in _resolvers)
+            if ((mapping = resolver.GetMappingByDataTypeName(pgType.FullName)) is not null)
+                return true;
+        
         foreach (var resolver in _resolvers)
             if ((mapping = resolver.GetMappingByDataTypeName(pgType.Name)) is not null)
                 return true;
@@ -525,26 +550,11 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
     public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+        var openMethod =
+            typeof(ConnectorTypeMapper).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
 
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(clrType, nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresCompositeType pgCompositeType)
-        {
-            throw new InvalidCastException(
-                $"Cannot map composite type {clrType.Name} to PostgreSQL type {pgName} which isn't a composite");
-        }
-
-        var userCompositeMapping =
-            (IUserTypeMapping)Activator.CreateInstance(typeof(UserCompositeTypeMapping<>).MakeGenericType(clrType),
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null,
-                new object[] { clrType, nameTranslator }, null)!;
-
-        var handler = userCompositeMapping.CreateHandler(pgCompositeType, Connector);
-
-        ApplyUserMapping(pgCompositeType, clrType, handler);
+        method.Invoke(this, new object?[] { pgName, nameTranslator });
 
         return this;
     }
@@ -589,15 +599,38 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             var newResolver = resolverFactory.Create(Connector);
             var newResolverType = newResolver.GetType();
 
-            if (_resolvers[0].GetType() == newResolverType)
-                _resolvers[0] = newResolver;
+            var currentResolvers = _resolvers;
+            Debug.Assert(currentResolvers.Length > 0);
+            Debug.Assert(currentResolvers[0] is not null);
+
+            if (currentResolvers[0].GetType() == newResolverType)
+                currentResolvers[0] = newResolver;
             else
             {
-                for (var i = 0; i < _resolvers.Count; i++)
-                    if (_resolvers[i].GetType() == newResolverType)
-                        _resolvers.RemoveAt(i);
+                // The TypeHandlerResolver we're attempting to add isn't the first resolver,
+                // but it still might be at some other position.
+                // We assume that that specific TypeHandlerResolver is already there
+                // and create a new TypeHandlerResolver array with the same length as the original one.
+                // It's going to be enough if we're just shuffling TypeHandlerResolver's around.
+                // In the worst case scenario (that's an entirely new TypeHandlerResolver), we would have to resize the array.
+                var resolvers = new TypeHandlerResolver[currentResolvers.Length];
+                resolvers[0] = newResolver;
 
-                _resolvers.Insert(0, newResolver);
+                var resolverIndex = 1;
+                for (var i = 0; i < currentResolvers.Length; i++)
+                {
+                    if (currentResolvers[i].GetType() != newResolverType)
+                    {
+                        // Worst case scenario: we're attempting to add an entirely new TypeHandlerResolver.
+                        // We have to resize the resolvers array to not get out of bounds.
+                        if (i == currentResolvers.Length - 1 && resolverIndex == currentResolvers.Length)
+                            Array.Resize(ref resolvers, currentResolvers.Length + 1);
+
+                        resolvers[resolverIndex++] = currentResolvers[i];
+                    }
+                }
+
+                _resolvers = resolvers;
             }
 
             _handlersByOID.Clear();
@@ -617,14 +650,15 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             globalMapper.Lock.EnterReadLock();
             try
             {
+                var resolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
+                for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
+                    resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
+                _resolvers = resolvers;
+
                 _handlersByOID.Clear();
                 _handlersByNpgsqlDbType.Clear();
                 _handlersByClrType.Clear();
                 _handlersByDataTypeName.Clear();
-
-                _resolvers.Clear();
-                for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
-                    _resolvers.Add(globalMapper.ResolverFactories[i].Create(Connector));
 
                 _userTypeMappings.Clear();
 
@@ -636,7 +670,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
                     }
                 }
 
-                ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
+                ChangeCounter = globalMapper.ChangeCounter;
             }
             finally
             {
@@ -652,6 +686,10 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
             throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
+        foreach (var resolver in _resolvers)
+            if (resolver.GetMappingByDataTypeName(pgType.FullName) is { } mapping)
+                return (mapping.NpgsqlDbType, pgType);
+        
         foreach (var resolver in _resolvers)
             if (resolver.GetMappingByDataTypeName(pgType.Name) is { } mapping)
                 return (mapping.NpgsqlDbType, pgType);

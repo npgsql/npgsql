@@ -11,9 +11,6 @@ namespace Npgsql.Tests;
 
 class CommandBuilderTests : TestBase
 {
-    // TODO: REMOVE ME
-    bool IsMultiplexing = false;
-
     [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
     public async Task DeriveParameters_function_various()
     {
@@ -144,7 +141,7 @@ class CommandBuilderTests : TestBase
         var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
@@ -156,7 +153,7 @@ class CommandBuilderTests : TestBase
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
-                    CREATE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
+                    CREATE OR REPLACE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
                       'SELECT in1,in1+1' LANGUAGE 'sql';
                 ");
 
@@ -216,9 +213,6 @@ class CommandBuilderTests : TestBase
     [Test, Description("Tests if the right function according to search_path is used in function parameter derivation")]
     public async Task DeriveParameters_function_correct_schema_resolution()
     {
-        if (IsMultiplexing)
-            return;  // Uses search_path
-
         using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schema1);
         await using var __ = await CreateTempSchema(conn, out var schema2);
@@ -273,15 +267,12 @@ RESET search_path;
         var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
 
     [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
     public async Task DeriveParameters_throws_for_multiple_function_name_hits_in_search_path()
     {
-        if (IsMultiplexing)
-            return;  // Uses search_path
-
         using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schema1);
         await using var __ = await CreateTempSchema(conn, out var schema2);
@@ -309,7 +300,7 @@ SET search_path TO {schema1}, {schema2};
         var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("42725"));
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.AmbiguousFunction));
     }
 
     #region Set returning functions
@@ -332,7 +323,7 @@ INSERT INTO {table} VALUES
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
+CREATE OR REPLACE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
     SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
@@ -402,7 +393,7 @@ INSERT INTO {table} VALUES
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
+CREATE OR REPLACE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
     SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
@@ -517,7 +508,8 @@ $$ LANGUAGE SQL;
     {
         const string query = "SELECT @p::integer";
         const int answer = 42;
-        using var conn = await OpenConnectionAsync();
+        using var _ = CreateTempPool(ConnectionString, out var connString);
+        using var conn = await OpenConnectionAsync(connString);
         using var cmd = new NpgsqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
         cmd.Prepare();
@@ -795,13 +787,14 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
     {
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
+        var constraint = GetUniqueIdentifier("temp_constraint");
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TEMP TABLE {table} (
     Cod varchar(5) NOT NULL,
     Descr varchar(40),
     Data date,
-    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+    CONSTRAINT {constraint} PRIMARY KEY (Cod)
 )");
 
         using var cmd = new NpgsqlCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM {table}", conn);
@@ -817,11 +810,12 @@ CREATE TEMP TABLE {table} (
     {
         using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTableName(conn, out var table);
+        var constraint = GetUniqueIdentifier("temp_constraint");
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (
 Cod varchar(5) NOT NULL,
 Vettore character varying(20)[],
-CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+CONSTRAINT {constraint} PRIMARY KEY (Cod)
 )");
         using var daDataAdapter = new NpgsqlDataAdapter($"SELECT cod, vettore FROM {table} ORDER By cod", conn);
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);

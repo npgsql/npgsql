@@ -12,12 +12,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.Properties;
 using static Npgsql.Tests.Support.MockState;
 using static Npgsql.Tests.TestUtil;
+using IsolationLevel = System.Transactions.IsolationLevel;
+using TransactionStatus = Npgsql.Internal.TransactionStatus;
 
 namespace Npgsql.Tests;
 
-[Timeout(60000)]
+[NonParallelizable]
 public class MultipleHostsTests : TestBase
 {
     static readonly object[] MyCases =
@@ -159,84 +162,6 @@ public class MultipleHostsTests : TestBase
             _ = await postmasters[i].WaitForServerConnection();
     }
 
-    [Test]
-    [Description("Test that enlist returns a new connector if a previous connector is for an incompatible server type")]
-    public async Task Enlist_depends_on_session_attributes()
-    {
-        await using var primaryPostmaster = PgPostmasterMock.Start(state: Primary);
-        await using var standbyPostmaster = PgPostmasterMock.Start(state: Standby);
-
-        var defaultCsb = new NpgsqlConnectionStringBuilder
-        {
-            Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
-            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
-            Enlist = true,
-        };
-
-        using var _ = CreateTempPool(defaultCsb.ConnectionString, out var defaultConnectionString);
-
-        var primaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
-        {
-            TargetSessionAttributes = "primary",
-        };
-
-        var standbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
-        {
-            TargetSessionAttributes = "standby",
-        };
-
-        var preferPrimaryCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
-        {
-            TargetSessionAttributes = "prefer-primary",
-        };
-
-        var preferStandbyCsb = new NpgsqlConnectionStringBuilder(defaultConnectionString)
-        {
-            TargetSessionAttributes = "prefer-standby",
-        };
-
-        // Note that the transaction scope is not disposed due to a rollback (which isn't something a mock expects)
-        var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-
-        NpgsqlConnector primaryConnector;
-        NpgsqlConnector standbyConnector;
-
-        using (var primaryConnection = await OpenConnectionAsync(primaryCsb.ConnectionString))
-        {
-            primaryConnector = primaryConnection.Connector!;
-        }
-
-        using (var preferPrimaryConnection = await OpenConnectionAsync(preferPrimaryCsb.ConnectionString))
-        {
-            Assert.AreSame(primaryConnector, preferPrimaryConnection.Connector);
-        }
-
-        using (var preferStandbyConnection = await OpenConnectionAsync(preferStandbyCsb.ConnectionString))
-        {
-            Assert.AreSame(primaryConnector, preferStandbyConnection.Connector);
-        }
-
-        using (var standbyConnection = await OpenConnectionAsync(standbyCsb.ConnectionString))
-        {
-            standbyConnector = standbyConnection.Connector!;
-        }
-
-        using (var preferPrimaryConnection = await OpenConnectionAsync(preferPrimaryCsb.ConnectionString))
-        {
-            Assert.AreSame(standbyConnector, preferPrimaryConnection.Connector);
-        }
-
-        using (var preferStandbyConnection = await OpenConnectionAsync(preferStandbyCsb.ConnectionString))
-        {
-            Assert.AreSame(standbyConnector, preferStandbyConnection.Connector);
-        }
-
-        Assert.AreNotSame(primaryConnector, standbyConnector);
-
-        await primaryPostmaster.WaitForServerConnection();
-        await standbyPostmaster.WaitForServerConnection();
-    }
-
     [Test, Platform(Exclude = "MacOsX", Reason = "#3786")]
     public void All_hosts_are_down()
     {
@@ -296,6 +221,7 @@ public class MultipleHostsTests : TestBase
     }
 
     [Test]
+    [Platform(Exclude = "MacOsX", Reason = "Flaky in CI on Mac")]
     public async Task First_host_is_down()
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -348,7 +274,8 @@ public class MultipleHostsTests : TestBase
     public void TargetSessionAttributes_default_is_null()
         => Assert.That(new NpgsqlConnectionStringBuilder().TargetSessionAttributes, Is.Null);
 
-    [Test, NonParallelizable]
+    [Test]
+    [NonParallelizable] // Sets environment variable
     public async Task TargetSessionAttributes_uses_environment_variable()
     {
         using var envVarResetter = SetEnvironmentVariable("PGTARGETSESSIONATTRS", "prefer-standby");
@@ -524,6 +451,10 @@ public class MultipleHostsTests : TestBase
             if (!alwaysCheckHostState)
                 return;
 
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Primary);
+
             // Update the state after a 'failover'
             await server.SendMockState(Standby);
         });
@@ -532,6 +463,10 @@ public class MultipleHostsTests : TestBase
             var server = await standbyPostmaster.WaitForServerConnection();
             if (!alwaysCheckHostState)
                 return;
+
+            // If we always check the host, we will send the request for the state
+            // even though we got one while opening the connection
+            await server.SendMockState(Standby);
 
             // As TargetSessionAttributes is 'prefer', it does another cycle for the 'unpreferred'
             await server.SendMockState(Standby);
@@ -616,7 +551,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var server = await postmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.CrashShutdown).FlushAsync();
@@ -627,7 +562,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test, NonParallelizable]
@@ -646,7 +581,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(expectedState));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
 
         var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT abc"))!;
         Assert.That(ex.SqlState, Is.EqualTo(PostgresErrorCodes.UndefinedColumn));
@@ -654,7 +589,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(expectedState));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -668,7 +603,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var server = await postmaster.WaitForServerConnection();
         server.Close();
@@ -679,7 +614,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
@@ -697,7 +632,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
@@ -705,7 +640,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Offline));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(0));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(0));
     }
 
     [Test]
@@ -723,7 +658,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         var ex = Assert.ThrowsAsync<NpgsqlException>(() => conn.ExecuteNonQueryAsync("SELECT 1"))!;
         Assert.That(ex.InnerException, Is.TypeOf<TimeoutException>());
@@ -731,7 +666,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -749,7 +684,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(2));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(2));
 
         using var cts = new CancellationTokenSource();
 
@@ -761,7 +696,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -777,7 +712,7 @@ public class MultipleHostsTests : TestBase
 
         var state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
 
         var server = await postmaster.WaitForServerConnection();
 
@@ -792,7 +727,7 @@ public class MultipleHostsTests : TestBase
 
         state = ClusterStateCache.GetClusterState(csb.Host!, csb.Port, ignoreExpiration: false);
         Assert.That(state, Is.EqualTo(ClusterState.Unknown));
-        Assert.That(conn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(conn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
     }
 
     [Test]
@@ -817,7 +752,7 @@ public class MultipleHostsTests : TestBase
             Is.EqualTo(ClusterState.PrimaryReadWrite));
         Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
             Is.EqualTo(ClusterState.Standby));
-        Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(3));
+        Assert.That(primaryConn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(3));
 
         var server = await primaryPostmaster.WaitForServerConnection();
         await server.WriteErrorResponse(PostgresErrorCodes.AdminShutdown).FlushAsync();
@@ -830,11 +765,130 @@ public class MultipleHostsTests : TestBase
             Is.EqualTo(ClusterState.Offline));
         Assert.That(ClusterStateCache.GetClusterState(standbyPostmaster.Host, standbyPostmaster.Port, ignoreExpiration: false),
             Is.EqualTo(ClusterState.Standby));
-        Assert.That(primaryConn.Pool.Statistics.Total, Is.EqualTo(1));
+        Assert.That(primaryConn.NpgsqlDataSource.Statistics.Total, Is.EqualTo(1));
+    }
+
+    [Test]
+    [TestCase("any", true)]
+    [TestCase("primary", true)]
+    [TestCase("standby", false)]
+    [TestCase("prefer-primary", true)]
+    [TestCase("prefer-standby", false)]
+    [TestCase("read-write", true)]
+    [TestCase("read-only", false)]
+    public async Task Transaction_enlist_reuses_connection(string targetSessionAttributes, bool primary)
+    {
+        await using var primaryPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+        await using var standbyPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(primaryPostmaster, standbyPostmaster),
+            TargetSessionAttributes = targetSessionAttributes,
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            MaxPoolSize = 10,
+        };
+
+        using var _ = CreateTempPool(csb, out var connString);
+
+        using var scope = new TransactionScope(TransactionScopeOption.Required,
+            new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted }, TransactionScopeAsyncFlowOption.Enabled);
+
+        var query1Task = Query(connString);
+
+        var server = primary
+            ? await primaryPostmaster.WaitForServerConnection()
+            : await standbyPostmaster.WaitForServerConnection();
+
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteNoData()
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .FlushAsync();
+        await query1Task;
+
+        var query2Task = Query(connString);
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteNoData()
+            .WriteCommandComplete()
+            .WriteReadyForQuery(TransactionStatus.InTransactionBlock)
+            .FlushAsync();
+        await query2Task;
+
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+        scope.Complete();
+
+        async Task Query(string connectionString)
+        {
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+
+    [Test]
+    public async Task Primary_host_failover_can_connect()
+    {
+        await using var firstPostmaster = PgPostmasterMock.Start(ConnectionString, state: Primary);
+        await using var secondPostmaster = PgPostmasterMock.Start(ConnectionString, state: Standby);
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = MultipleHosts(firstPostmaster, secondPostmaster),
+            TargetSessionAttributes = "primary",
+            ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            HostRecheckSeconds = 5
+        };
+
+        await using var conn = await OpenConnectionAsync(csb);
+        Assert.That(conn.Port, Is.EqualTo(firstPostmaster.Port));
+        var firstServer = await firstPostmaster.WaitForServerConnection();
+        await firstServer
+            .WriteErrorResponse(PostgresErrorCodes.AdminShutdown)
+            .FlushAsync();
+
+        var failoverEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("SELECT 1"))!;
+        Assert.That(failoverEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
+
+        var noHostFoundEx = Assert.ThrowsAsync<NpgsqlException>(async () => await conn.OpenAsync())!;
+        Assert.That(noHostFoundEx.Message, Is.EqualTo("No suitable host was found."));
+
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Offline));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+
+        firstPostmaster.State = Standby;
+        secondPostmaster.State = Primary;
+        var secondServer = await secondPostmaster.WaitForServerConnection();
+        await secondServer.SendMockState(Primary);
+
+        await Task.Delay(TimeSpan.FromSeconds(10));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Unknown));
+
+        await conn.OpenAsync();
+        Assert.That(conn.Port, Is.EqualTo(secondPostmaster.Port));
+        Assert.That(ClusterStateCache.GetClusterState(firstPostmaster.Host, firstPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.Standby));
+        Assert.That(ClusterStateCache.GetClusterState(secondPostmaster.Host, secondPostmaster.Port, ignoreExpiration: false),
+            Is.EqualTo(ClusterState.PrimaryReadWrite));
     }
 
     // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
-    [Test, Timeout(10000), NonParallelizable]
+    [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
         PoolManager.Reset();
@@ -897,6 +951,74 @@ public class MultipleHostsTests : TestBase
                 Interlocked.Increment(ref queriesDone);
             }
         }
+    }
+
+    [Test]
+    public async Task DataSource_with_wrappers()
+    {
+        await using var primaryPostmasterMock = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmasterMock = PgPostmasterMock.Start(state: Standby);
+
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(primaryPostmasterMock, standbyPostmasterMock),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            }
+        };
+
+        await using var dataSource = builder.BuildMultiHost();
+        await using var primaryDataSource = dataSource.For(TargetSessionAttributes.Primary);
+        await using var standbyDataSource = dataSource.For(TargetSessionAttributes.Standby);
+
+        await using var primaryConnection = await primaryDataSource.OpenConnectionAsync();
+        Assert.That(primaryConnection.Port, Is.EqualTo(primaryPostmasterMock.Port));
+
+        await using var standbyConnection = await standbyDataSource.OpenConnectionAsync();
+        Assert.That(standbyConnection.Port, Is.EqualTo(standbyPostmasterMock.Port));
+    }
+
+    [Test]
+    public async Task DataSource_without_wrappers()
+    {
+        await using var primaryPostmasterMock = PgPostmasterMock.Start(state: Primary);
+        await using var standbyPostmasterMock = PgPostmasterMock.Start(state: Standby);
+
+        var builder = new NpgsqlDataSourceBuilder
+        {
+            ConnectionStringBuilder =
+            {
+                Host = MultipleHosts(primaryPostmasterMock, standbyPostmasterMock),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+            }
+        };
+
+        await using var dataSource = builder.BuildMultiHost();
+
+        await using var primaryConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
+        Assert.That(primaryConnection.Port, Is.EqualTo(primaryPostmasterMock.Port));
+
+        await using var standbyConnection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Standby);
+        Assert.That(standbyConnection.Port, Is.EqualTo(standbyPostmasterMock.Port));
+    }
+
+    [Test]
+    public void DataSource_with_TargetSessionAttributes_is_not_supported()
+    {
+        var builder = new NpgsqlDataSourceBuilder("Host=foo,bar;Target Session Attributes=primary");
+
+        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
+            .With.Message.EqualTo(NpgsqlStrings.CannotSpecifyTargetSessionAttributes));
+    }
+
+    [Test]
+    public void DataSource_with_single_host_is_not_supported()
+    {
+        var builder = new NpgsqlDataSourceBuilder("Host=foo");
+
+        Assert.That(() => builder.BuildMultiHost(), Throws.Exception.TypeOf<InvalidOperationException>()
+            .With.Message.EqualTo(NpgsqlStrings.MultipleHostsMustBeSpecified));
     }
 
     static string MultipleHosts(params PgPostmasterMock[] postmasters)

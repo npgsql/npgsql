@@ -17,6 +17,7 @@ namespace Npgsql.Tests.Replication;
 /// the methods they test are extension points for plugin developers.
 /// </remarks>
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable]
 public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
     // We use the test_decoding logical decoding plugin for the common
@@ -55,19 +56,24 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                     Assert.That(reader.GetFieldValue<NpgsqlLogSequenceNumber>(reader.GetOrdinal("confirmed_flush_lsn")),
                         Is.EqualTo(options.ConsistentPoint));
                 Assert.That(reader.Read, Is.False);
-            }, nameof(CreateLogicalReplicationSlot) + temporary);
+            }, nameof(CreateLogicalReplicationSlot) + (temporary ? "_tmp" : "") + (twoPhase ? "_tp" : ""));
 
     [Test]
-    public Task CreateLogicalReplicationSlot_with_SnapshotInitMode_NoExport()
+    public Task CreateLogicalReplicationSlot_NoExport([Values]bool temporary, [Values]bool twoPhase)
         => SafeReplicationTest(
             async (slotName, _) =>
             {
                 await using var c = await OpenConnectionAsync();
+                if (temporary)
+                    TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+                if (twoPhase)
+                    TestUtil.MinimumPgVersion(c, "15.0", "Replication slots with two phase commit support were introduced in PostgreSQL 15");
+
                 TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
                 await using var rc = await OpenReplicationConnectionAsync();
-                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.NoExport);
+                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary, LogicalSlotSnapshotInitMode.NoExport, twoPhase);
                 Assert.That(options.SnapshotName, Is.Null);
-            });
+            }, nameof(CreateLogicalReplicationSlot_NoExport) + (temporary ? "_tmp" : "") + (twoPhase ? "_tp" : ""));
 
     [Test(Description = "Tests whether we throw a helpful exception about the unsupported *_SNAPSHOT syntax on old servers.")]
     [TestCase(LogicalSlotSnapshotInitMode.Export)]
@@ -125,12 +131,17 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
             });
 
     [Test(Description = "We can use the exported snapshot to query the database in the very moment the replication slot was created.")]
-    public Task CreateLogicalReplicationSlot_with_SnapshotInitMode_Export()
+    public Task CreateLogicalReplicationSlot_Export([Values]bool temporary, [Values]bool twoPhase, [Values]bool implicitInitMode)
         => SafeReplicationTest(
             async (slotName, tableName) =>
             {
                 await using var c = await OpenConnectionAsync();
-                TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
+                if (temporary)
+                    TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+                if (twoPhase)
+                    TestUtil.MinimumPgVersion(c, "15.0", "Replication slots with two phase commit support were introduced in PostgreSQL 15");
+                if (!implicitInitMode)
+                    TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
                 await using (var transaction = c.BeginTransaction())
                 {
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (value text)");
@@ -138,7 +149,7 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                     transaction.Commit();
                 }
                 await using var rc = await OpenReplicationConnectionAsync();
-                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.Export);
+                var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary, implicitInitMode ? null : LogicalSlotSnapshotInitMode.Export, twoPhase);
                 await using (var transaction = c.BeginTransaction())
                 {
                     await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES('After snapshot')");
@@ -153,26 +164,35 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                     Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo("Before snapshot"));
                     Assert.That(reader.Read, Is.False);
                 }
-            });
+            }, nameof(CreateLogicalReplicationSlot_Export) + (temporary ? "_tmp" : "") + (twoPhase ? "_tp" : "") + (implicitInitMode ? "_i" : ""));
 
     [Test(Description = "Since we currently don't provide an API to start a transaction on a logical replication connection, " +
                         "USE_SNAPSHOT currently doesn't work and always leads to an exception. On the other hand, starting" +
                         "a transaction would only be useful if we'd also provide an API to issue commands.")]
-    public Task CreateLogicalReplicationSlot_with_SnapshotInitMode_Use()
+    public Task CreateLogicalReplicationSlot_Use([Values]bool temporary, [Values]bool twoPhase)
         => SafeReplicationTest(
             async (slotName, _) =>
             {
                 await using var c = await OpenConnectionAsync();
+                if (temporary)
+                    TestUtil.MinimumPgVersion(c, "10.0", "Temporary replication slots were introduced in PostgreSQL 10");
+                if (twoPhase)
+                    TestUtil.MinimumPgVersion(c, "15.0", "Replication slots with two phase commit support were introduced in PostgreSQL 15");
+
                 TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
                 Assert.That(async () =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
-                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.Use);
+                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary, LogicalSlotSnapshotInitMode.Use, twoPhase);
                 }, Throws.InstanceOf<PostgresException>()
                     .With.Property("SqlState")
                     .EqualTo("XX000")
-                    .And.Message.Contains("USE_SNAPSHOT"));
-            });
+                    .And.Message.Contains(
+                        c.PostgreSqlVersion.Major < 15
+                            ? "USE_SNAPSHOT"
+                            : "(SNAPSHOT 'use')"
+                        ));
+            }, nameof(CreateLogicalReplicationSlot_Use) + (temporary ? "_tmp" : "") + (twoPhase ? "_tp" : ""));
 
     [Test]
     public void CreateLogicalReplicationSlot_with_null_slot_throws()
@@ -207,8 +227,8 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                 Assert.That(async () =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
-                    using var cts = GetCancelledCancellationTokenSource();
-                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, cancellationToken: cts.Token);
+                    var token = GetCancelledCancellationToken();
+                    await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, cancellationToken: token);
                 }, Throws.Exception.AssignableTo<OperationCanceledException>());
                 return Task.CompletedTask;
             });

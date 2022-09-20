@@ -7,8 +7,8 @@ namespace Npgsql.Internal.TypeHandling;
 /// An array of cached lengths for the parameters sending process.
 ///
 /// When sending parameters, lengths need to be calculated more than once (once for Bind, once for
-/// an array, once for the string within that array). This cache optimized that. Lengths are added
-/// to the cache, and then retrieved at the same order.
+/// an array, once for the string within that array). This cache optimizes that. Lengths are added
+/// to the cache, and then retrieved in the same order.
 /// </summary>
 public sealed class NpgsqlLengthCache
 {

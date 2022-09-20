@@ -14,6 +14,7 @@ namespace Npgsql.Tests.Replication;
 /// Please don't change them without confirming that they still work on those old versions.
 /// </summary>
 [Platform(Exclude = "MacOsX", Reason = "Replication tests are flaky in CI on Mac")]
+[NonParallelizable] // These tests aren't designed to be parallelizable
 public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
 {
     [Test]
@@ -43,7 +44,7 @@ public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalRepli
             {
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL)");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('val1'), ('val2')");
@@ -81,7 +82,7 @@ public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalRepli
                 await using var c = await OpenConnectionAsync();
                 await c.ExecuteNonQueryAsync($@"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
@@ -119,7 +120,7 @@ CREATE UNIQUE INDEX {indexName} ON {tableName} (name);
 ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
@@ -155,7 +156,7 @@ CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 ALTER TABLE {tableName} REPLICA IDENTITY FULL;
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
@@ -190,7 +191,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
@@ -228,7 +229,7 @@ CREATE UNIQUE INDEX {indexName} ON {tableName} (name);
 ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
@@ -264,7 +265,7 @@ CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 ALTER TABLE {tableName} REPLICA IDENTITY FULL;
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
@@ -300,7 +301,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
-                var rc = await OpenReplicationConnectionAsync();
+                await using var rc = await OpenReplicationConnectionAsync();
                 var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                 await c.ExecuteNonQueryAsync($"TRUNCATE TABLE {tableName} RESTART IDENTITY CASCADE");
