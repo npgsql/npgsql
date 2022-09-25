@@ -1,6 +1,7 @@
 using Npgsql.Internal;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -27,10 +28,18 @@ static class Statics
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
-        => msg is T t
-            ? t
-            : throw connector.Break(
+    {
+        if (msg is T t)
+            return t;
+
+        Throw(msg, connector);
+        return default;
+
+        [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+        static void Throw(IBackendMessage msg, NpgsqlConnector connector)
+            => throw connector.Break(
                 new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
+    }
 
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
