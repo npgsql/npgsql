@@ -76,6 +76,8 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     internal static readonly bool EnableSqlRewriting;
 #endif
 
+    internal bool EnableErrorBarriers { get; set; }
+
     static readonly List<NpgsqlParameter> EmptyParameters = new();
 
     static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
@@ -961,12 +963,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task WriteExecute(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
+            NpgsqlBatchCommand? batchCommand = null;
+
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
                 // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
                 ForceAsyncIfNecessary(ref async, i);
 
-                var batchCommand = InternalBatchCommands[i];
+                batchCommand = InternalBatchCommands[i];
                 var pStatement = batchCommand.PreparedStatement;
 
                 Debug.Assert(batchCommand.FinalCommandText is not null);
@@ -1000,11 +1004,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 await connector.WriteExecute(0, async, cancellationToken);
 
+                if (batchCommand.AppendErrorBarrier ?? EnableErrorBarriers)
+                    await connector.WriteSync(async, cancellationToken);
+
                 if (pStatement != null)
                     pStatement.LastUsed = DateTime.UtcNow;
             }
 
-            await connector.WriteSync(async, cancellationToken);
+            if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
+            {
+                await connector.WriteSync(async, cancellationToken);
+            }
 
             if (flush)
                 await connector.Flush(async, cancellationToken);

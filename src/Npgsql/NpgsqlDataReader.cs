@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -283,9 +284,24 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 throw new ArgumentOutOfRangeException();
             }
 
-            var msg2 = await ReadMessage(async);
-            ProcessMessage(msg2);
-            return msg2.Code == BackendMessageCode.DataRow;
+            var msg = await ReadMessage(async);
+
+            switch (msg.Code)
+            {
+            case BackendMessageCode.DataRow:
+                ProcessMessage(msg);
+                return true;
+
+            case BackendMessageCode.CommandComplete:
+            case BackendMessageCode.EmptyQueryResponse:
+                ProcessMessage(msg);
+                if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                    Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                return false;
+
+            default:
+                throw Connector.UnexpectedMessageReceived(msg.Code);
+            }
         }
         catch
         {
@@ -335,10 +351,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>A task representing the asynchronous operation.</returns>
     public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
     {
-        using (NoSynchronizationContextScope.Enter())
-            return _isSchemaOnly
-                ? NextResultSchemaOnly(async: true, cancellationToken: cancellationToken)
-                : NextResult(async: true, cancellationToken: cancellationToken);
+        using var _ = NoSynchronizationContextScope.Enter();
+
+        return _isSchemaOnly
+            ? NextResultSchemaOnly(async: true, cancellationToken: cancellationToken)
+            : NextResult(async: true, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -370,7 +387,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     case BackendMessageCode.CommandComplete:
                     case BackendMessageCode.EmptyQueryResponse:
                         ProcessMessage(completedMsg);
+
+                        if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+
                         break;
+
                     default:
                         continue;
                     }
@@ -472,6 +494,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     }
 
                     ProcessMessage(msg);
+
+                    if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+
                     continue;
                 }
 
@@ -494,30 +520,32 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 switch (msg.Code)
                 {
                 case BackendMessageCode.DataRow:
+                    return true;
                 case BackendMessageCode.CommandComplete:
-                    break;
+                    if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
+                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                    return true;
                 default:
                     throw Connector.UnexpectedMessageReceived(msg.Code);
                 }
-
-                return true;
             }
 
             // There are no more queries, we're done. Read the RFQ.
-            ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector));
+            if (_statements.Count == 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
+                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+
+            State = ReaderState.Consumed;
             RowDescription = null;
             return false;
         }
         catch (Exception e)
         {
-            State = ReaderState.Consumed;
-
             // Reference the triggering statement from the exception
             if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
             {
                 postgresException.BatchCommand = _statements[StatementIndex];
 
-                // Prevent the command or batch from by recycled (by the connection) when it's disposed. This is important since
+                // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
                 // already be using the recycled instance.
                 if (!Command.IsWrappedByBatch)
@@ -526,9 +554,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
             }
 
-            // An error means all subsequent statements were skipped by PostgreSQL.
-            // If any of them were being prepared, we need to update our bookkeeping to put
-            // them back in unprepared state.
+            // For the statement that errored, if it was being prepared we need to update our bookkeeping to put them back in unprepared
+            // state.
             for (; StatementIndex < _statements.Count; StatementIndex++)
             {
                 var statement = _statements[StatementIndex];
@@ -537,8 +564,33 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     statement.IsPreparing = false;
                     statement.PreparedStatement!.AbortPrepare();
                 }
+
+                // In normal, non-isolated batching, we've consumed the result set and are done.
+                // However, if the command has error barrier, we now have to consume results from the commands after it (unless it's the
+                // last one).
+                // Note that Consume calls NextResult (this method) recursively, the isConsuming flag tells us we're in this mode.
+                if ((statement.AppendErrorBarrier ?? Command.EnableErrorBarriers) && StatementIndex < _statements.Count - 1)
+                {
+                    if (isConsuming)
+                        throw;
+                    switch (State)
+                    {
+                    case ReaderState.Consumed:
+                    case ReaderState.Closed:
+                    case ReaderState.Disposed:
+                        // The exception may have caused the connector to break (e.g. I/O), and so the reader is already closed.
+                        break;
+                    default:
+                        // We provide Consume with the first exception which we've just caught.
+                        // If it encounters other exceptions while consuming the rest of the result set, it will raise an AggregateException,
+                        // otherwise it will rethrow this first exception.
+                        await Consume(async, firstException: e);
+                        break; // Never reached, Consume always throws above
+                    }
+                }
             }
 
+            State = ReaderState.Consumed;
             throw;
         }
     }
@@ -672,8 +724,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // There are no more queries, we're done. Read to the RFQ.
             if (!_statements.All(s => s.IsPrepared))
             {
-                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector));
+                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
                 RowDescription = null;
+                State = ReaderState.Consumed;
             }
 
             return false;
@@ -746,10 +799,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         case BackendMessageCode.EmptyQueryResponse:
             State = ReaderState.BetweenResults;
-            return;
-
-        case BackendMessageCode.ReadyForQuery:
-            State = ReaderState.Consumed;
             return;
 
         default:
@@ -901,14 +950,44 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Consumes all result sets for this reader, leaving the connector ready for sending and processing further
     /// queries
     /// </summary>
-    async Task Consume(bool async)
+    async Task Consume(bool async, Exception? firstException = null)
     {
-        // Skip over the other result sets. Note that this does tally records affected
-        // from CommandComplete messages, and properly sets state for auto-prepared statements
-        if (_isSchemaOnly)
-            while (await NextResultSchemaOnly(async, isConsuming: true)) {}
-        else
-            while (await NextResult(async, isConsuming: true)) {}
+        var exceptions = firstException is null ? null : new List<Exception> { firstException };
+
+        // Skip over the other result sets. Note that this does tally records affected from CommandComplete messages, and properly sets
+        // state for auto-prepared statements
+        while (true)
+        {
+            try
+            {
+                if (!(_isSchemaOnly
+                        ? await NextResultSchemaOnly(async, isConsuming: true)
+                        : await NextResult(async, isConsuming: true)))
+                {
+                    break;
+                }
+            }
+            catch (Exception e)
+            {
+                exceptions ??= new();
+                exceptions.Add(e);
+            }
+        }
+
+        Debug.Assert(exceptions?.Count != 0);
+
+        switch (exceptions?.Count)
+        {
+        case null:
+            return;
+        case 1:
+            ExceptionDispatchInfo.Capture(exceptions[0]).Throw();
+            return;
+        default:
+            throw new NpgsqlException(
+                "Multiple exceptions occurred when consuming the result set",
+                new AggregateException(exceptions));
+        }
     }
 
     /// <summary>
