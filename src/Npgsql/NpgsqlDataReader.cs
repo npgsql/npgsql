@@ -1002,7 +1002,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         catch (Exception ex)
         {
             // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
-            // to Disposed in Close above; otherwise, we need to set it here.
+            // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
+            // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
             if (!(ex is PostgresException ||
                   ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
                   aggregateException.InnerExceptions.All(e => e is PostgresException)))
@@ -1040,7 +1041,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             catch (Exception ex)
             {
                 // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
-                // to Disposed in Close above; otherwise, we need to set it here.
+                // to Disposed in Close above; in multiplexing, we also unbind the connector (with its reader), and at that point it can be used
+                // by other consumers. Therefore, we only set the state fo Disposed if the exception *wasn't* a PostgresException.
                 if (!(ex is PostgresException ||
                       ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
                       aggregateException.InnerExceptions.All(e => e is PostgresException)))
