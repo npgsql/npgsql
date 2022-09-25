@@ -296,7 +296,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case BackendMessageCode.EmptyQueryResponse:
                 ProcessMessage(msg);
                 if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                    Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
                 return false;
 
             default:
@@ -389,7 +389,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         ProcessMessage(completedMsg);
 
                         if (_statements[StatementIndex].AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                            ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
 
                         break;
 
@@ -496,7 +496,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     ProcessMessage(msg);
 
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                        ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
 
                     continue;
                 }
@@ -523,7 +523,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return true;
                 case BackendMessageCode.CommandComplete:
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                        ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
                     return true;
                 default:
                     throw Connector.UnexpectedMessageReceived(msg.Code);

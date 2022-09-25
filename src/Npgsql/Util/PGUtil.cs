@@ -32,13 +32,8 @@ static class Statics
         if (msg is T t)
             return t;
 
-        Throw(msg, connector);
+        ThrowIfMsgWrongType<T>(msg, connector);
         return default;
-
-        [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
-        static void Throw(IBackendMessage msg, NpgsqlConnector connector)
-            => throw connector.Break(
-                new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
     }
 
     internal static T ExpectExact<T>(IBackendMessage msg, NpgsqlConnector connector)
@@ -49,11 +44,10 @@ static class Statics
         return (T)msg;
     }
     
-    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
     static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
         => throw connector.Break(
-            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. " +
-                                "Please file a bug."));
+            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
