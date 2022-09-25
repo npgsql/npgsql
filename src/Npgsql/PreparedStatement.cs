@@ -10,7 +10,7 @@ namespace Npgsql;
 /// candidate for preparation (i.e. awaiting further usages).
 /// </summary>
 [DebuggerDisplay("{Name} ({State}): {Sql}")]
-class PreparedStatement
+sealed class PreparedStatement
 {
     readonly PreparedStatementManager _manager;
 

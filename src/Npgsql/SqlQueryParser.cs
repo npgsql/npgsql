@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Npgsql;
 
-class SqlQueryParser
+sealed class SqlQueryParser
 {
     readonly Dictionary<string, int> _paramIndexMap = new();
     readonly StringBuilder _rewrittenSql = new();

@@ -14,7 +14,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers;
 
-class UnmappedEnumHandler : TextHandler
+sealed class UnmappedEnumHandler : TextHandler
 {
     readonly INpgsqlNameTranslator _nameTranslator;
 

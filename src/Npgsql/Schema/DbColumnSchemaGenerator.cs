@@ -14,7 +14,7 @@ using Npgsql.Util;
 
 namespace Npgsql.Schema;
 
-class DbColumnSchemaGenerator
+sealed class DbColumnSchemaGenerator
 {
     readonly RowDescriptionMessage _rowDescription;
     readonly NpgsqlConnection _connection;

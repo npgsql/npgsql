@@ -40,7 +40,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.CompositeHandlers;
 
-partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
+sealed partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
 {
     readonly ConnectorTypeMapper _typeMapper;
     readonly INpgsqlNameTranslator _nameTranslator;

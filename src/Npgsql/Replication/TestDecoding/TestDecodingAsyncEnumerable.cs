@@ -9,7 +9,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Replication.TestDecoding;
 
-class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
+sealed class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
 {
     readonly LogicalReplicationConnection _connection;
     readonly TestDecodingReplicationSlot _slot;

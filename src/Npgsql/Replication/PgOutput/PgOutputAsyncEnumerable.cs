@@ -13,7 +13,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput;
 
-class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
+sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
 {
     readonly LogicalReplicationConnection _connection;
     readonly PgOutputReplicationSlot _slot;

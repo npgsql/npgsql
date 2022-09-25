@@ -11,7 +11,7 @@ using Scriban;
 namespace Npgsql.SourceGenerators;
 
 [Generator]
-class TypeHandlerSourceGenerator : ISourceGenerator
+sealed class TypeHandlerSourceGenerator : ISourceGenerator
 {
     public void Initialize(GeneratorInitializationContext context)
         => context.RegisterForSyntaxNotifications(() => new MySyntaxReceiver());
@@ -112,7 +112,7 @@ class TypeHandlerSourceGenerator : ISourceGenerator
         }
     }
 
-    class MySyntaxReceiver : ISyntaxReceiver
+    sealed class MySyntaxReceiver : ISyntaxReceiver
     {
         public List<ClassDeclarationSyntax> TypeHandlerCandidates { get; } = new();
 

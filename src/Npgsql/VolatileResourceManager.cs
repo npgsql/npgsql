@@ -14,7 +14,7 @@ namespace Npgsql;
 /// Note that a connection may be closed before its TransactionScope completes. In this case we close the NpgsqlConnection
 /// as usual but the connector in a special list in the pool; it will be closed only when the scope completes.
 /// </remarks>
-class VolatileResourceManager : ISinglePhaseNotification
+sealed class VolatileResourceManager : ISinglePhaseNotification
 {
     NpgsqlConnector _connector;
     Transaction _transaction;

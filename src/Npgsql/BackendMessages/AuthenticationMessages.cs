@@ -12,7 +12,7 @@ abstract class AuthenticationRequestMessage : IBackendMessage
     internal abstract AuthenticationRequestType AuthRequestType { get; }
 }
 
-class AuthenticationOkMessage : AuthenticationRequestMessage
+sealed class AuthenticationOkMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationOk;
 
@@ -20,7 +20,7 @@ class AuthenticationOkMessage : AuthenticationRequestMessage
     AuthenticationOkMessage() { }
 }
 
-class AuthenticationKerberosV5Message : AuthenticationRequestMessage
+sealed class AuthenticationKerberosV5Message : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationKerberosV5;
 
@@ -28,7 +28,7 @@ class AuthenticationKerberosV5Message : AuthenticationRequestMessage
     AuthenticationKerberosV5Message() { }
 }
 
-class AuthenticationCleartextPasswordMessage  : AuthenticationRequestMessage
+sealed class AuthenticationCleartextPasswordMessage  : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationCleartextPassword;
 
@@ -36,7 +36,7 @@ class AuthenticationCleartextPasswordMessage  : AuthenticationRequestMessage
     AuthenticationCleartextPasswordMessage() { }
 }
 
-class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
+sealed class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationMD5Password;
 
@@ -55,7 +55,7 @@ class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
     }
 }
 
-class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
+sealed class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSCMCredential;
 
@@ -63,7 +63,7 @@ class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
     AuthenticationSCMCredentialMessage() { }
 }
 
-class AuthenticationGSSMessage : AuthenticationRequestMessage
+sealed class AuthenticationGSSMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationGSS;
 
@@ -71,7 +71,7 @@ class AuthenticationGSSMessage : AuthenticationRequestMessage
     AuthenticationGSSMessage() { }
 }
 
-class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
+sealed class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationGSSContinue;
 
@@ -91,7 +91,7 @@ class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
     }
 }
 
-class AuthenticationSSPIMessage : AuthenticationRequestMessage
+sealed class AuthenticationSSPIMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSSPI;
 
@@ -101,7 +101,7 @@ class AuthenticationSSPIMessage : AuthenticationRequestMessage
 
 #region SASL
 
-class AuthenticationSASLMessage : AuthenticationRequestMessage
+sealed class AuthenticationSASLMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASL;
     internal List<string> Mechanisms { get; } = new();
@@ -116,7 +116,7 @@ class AuthenticationSASLMessage : AuthenticationRequestMessage
     }
 }
 
-class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
+sealed class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLContinue;
     internal byte[] Payload { get; }
@@ -128,7 +128,7 @@ class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
     }
 }
 
-class AuthenticationSCRAMServerFirstMessage
+sealed class AuthenticationSCRAMServerFirstMessage
 {
     internal string Nonce { get; }
     internal string Salt { get; }
@@ -170,7 +170,7 @@ class AuthenticationSCRAMServerFirstMessage
     }
 }
 
-class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
+sealed class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLFinal;
     internal byte[] Payload { get; }
@@ -182,7 +182,7 @@ class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
     }
 }
 
-class AuthenticationSCRAMServerFinalMessage
+sealed class AuthenticationSCRAMServerFinalMessage
 {
     internal string ServerSignature { get; }
 

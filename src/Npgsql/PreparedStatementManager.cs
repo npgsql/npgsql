@@ -6,7 +6,7 @@ using Npgsql.Internal;
 
 namespace Npgsql;
 
-class PreparedStatementManager
+sealed class PreparedStatementManager
 {
     internal int MaxAutoPrepared { get; }
     internal int UsagesBeforePrepare { get; }

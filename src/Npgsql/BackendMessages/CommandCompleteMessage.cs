@@ -3,7 +3,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.BackendMessages;
 
-class CommandCompleteMessage : IBackendMessage
+sealed class CommandCompleteMessage : IBackendMessage
 {
     internal StatementType StatementType { get; private set; }
     internal uint OID { get; private set; }

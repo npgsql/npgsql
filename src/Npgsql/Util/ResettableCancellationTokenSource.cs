@@ -13,7 +13,7 @@ namespace Npgsql.Util;
 /// we need to make sure that an existing cancellation token source hasn't been cancelled,
 /// every time we start it (see https://github.com/dotnet/runtime/issues/4694).
 /// </remarks>
-class ResettableCancellationTokenSource : IDisposable
+sealed class ResettableCancellationTokenSource : IDisposable
 {
     bool isDisposed;
 
