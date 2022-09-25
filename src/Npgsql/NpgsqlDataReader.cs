@@ -999,11 +999,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             Close(connectionClosing: false, async: false, isDisposing: true).GetAwaiter().GetResult();
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            _commandLogger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
-            if (e is not PostgresException)
+            // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
+            // to Disposed in Close above; otherwise, we need to set it here.
+            if (!(ex is PostgresException ||
+                  ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
+                  aggregateException.InnerExceptions.All(e => e is PostgresException)))
+            {
                 State = ReaderState.Disposed;
+            }
+
+            throw;
         }
         finally
         {
@@ -1030,11 +1037,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
                 await Close(connectionClosing: false, async: true, isDisposing: true);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _commandLogger.LogError(e, "Exception caught while disposing a reader", Connector.Id);
-                if (e is not PostgresException)
+                // In the case of a PostgresException (or multiple ones, if we have error barriers), the reader's state has already been set
+                // to Disposed in Close above; otherwise, we need to set it here.
+                if (!(ex is PostgresException ||
+                      ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
+                      aggregateException.InnerExceptions.All(e => e is PostgresException)))
+                {
                     State = ReaderState.Disposed;
+                }
+
+                throw;
             }
             finally
             {
@@ -1063,7 +1077,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal async Task Close(bool connectionClosing, bool async, bool isDisposing)
     {
-        if (State == ReaderState.Closed || State == ReaderState.Disposed)
+        if (State is ReaderState.Closed or ReaderState.Disposed)
         {
             if (isDisposing)
                 State = ReaderState.Disposed;
@@ -1085,16 +1099,17 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 {
                     await Consume(async);
                 }
-                catch (Exception ex) when (
-                    ex is OperationCanceledException ||
-                    ex is NpgsqlException && ex.InnerException is TimeoutException)
+                catch (Exception ex) when (ex is OperationCanceledException or NpgsqlException { InnerException : TimeoutException })
                 {
                     // Timeout/cancellation - completely normal, consume has basically completed.
                 }
-                catch (PostgresException)
+                catch (Exception ex) when (
+                    ex is PostgresException ||
+                    ex is NpgsqlException { InnerException: AggregateException aggregateException } &&
+                    aggregateException.InnerExceptions.All(e => e is PostgresException))
                 {
-                    // In the case of a PostgresException, the connection is fine and consume has basically completed.
-                    // Defer throwing the exception until Cleanup is complete.
+                    // In the case of a PostgresException (or multiple ones, if we have error barriers), the connection is fine and consume
+                    // has basically completed. Defer throwing the exception until Cleanup is complete.
                     await Cleanup(async, connectionClosing, isDisposing);
                     throw;
                 }

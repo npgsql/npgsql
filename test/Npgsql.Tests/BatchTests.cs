@@ -417,10 +417,12 @@ public class BatchTests : MultiplexingTestBase
 
             Assert.That(await conn.ExecuteScalarAsync($"SELECT count(*) FROM {table}"), Is.EqualTo(0));
         }
+
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
     [Test]
-    public async Task Batch_close_reader_with_multiple_errors([Values] bool withErrorBarriers)
+    public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempTable(conn, "id INT", out var table);
@@ -439,23 +441,41 @@ public class BatchTests : MultiplexingTestBase
             EnableErrorBarriers = withErrorBarriers
         };
 
-        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+        await using (var reader = await batch.ExecuteReaderAsync(Behavior))
+        {
+            if (withErrorBarriers)
+            {
+                // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
+                var exception = Assert.ThrowsAsync<NpgsqlException>(async () =>
+                {
+                    if (dispose)
+                        await reader.DisposeAsync();
+                    else
+                        await reader.CloseAsync();
+                })!;
+                var aggregateException = (AggregateException)exception.InnerException!;
+                Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[2]));
+                Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[4]));
+            }
+            else
+            {
+                // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
+                // rolled back (implicit transaction).
+                var exception = Assert.ThrowsAsync<PostgresException>(async () =>
+                {
+                    if (dispose)
+                        await reader.DisposeAsync();
+                    else
+                        await reader.CloseAsync();
+                })!;
 
-        if (withErrorBarriers)
-        {
-            // A Sync is inserted after each command, so all commands are executed and all exceptions are thrown as an AggregateException
-            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await reader.NextResultAsync())!;
-            var aggregateException = (AggregateException)exception.InnerException!;
-            Assert.That(((PostgresException)aggregateException.InnerExceptions[0]).BatchCommand, Is.SameAs(batch.BatchCommands[2]));
-            Assert.That(((PostgresException)aggregateException.InnerExceptions[1]).BatchCommand, Is.SameAs(batch.BatchCommands[4]));
+                Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[2]));
+            }
+
+            Assert.That(reader.State, Is.EqualTo(dispose ? ReaderState.Disposed : ReaderState.Closed));
         }
-        else
-        {
-            // PG skips all commands after the first error; an exception is only raised for the first one, and the entire batch is
-            // rolled back (implicit transaction).
-            var exception = Assert.ThrowsAsync<PostgresException>(async () => await reader.NextResultAsync())!;
-            Assert.That(exception.BatchCommand, Is.SameAs(batch.BatchCommands[2]));
-        }
+
+        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
     [Test]
