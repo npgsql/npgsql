@@ -1222,8 +1222,8 @@ LANGUAGE plpgsql VOLATILE";
         Assert.DoesNotThrowAsync(reader.ReadAsync);
     }
 
-    [Test]
-    public async Task Dispose_swallows_exceptions([Values(true, false)] bool async)
+    [Test] // #4377
+    public async Task Dispose_does_not_swallow_exceptions([Values(true, false)] bool async)
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
         using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -1245,9 +1245,9 @@ LANGUAGE plpgsql VOLATILE";
         pgMock.Close();
 
         if (async)
-            Assert.DoesNotThrow(() => reader.Dispose());
+            Assert.Throws<NpgsqlException>(() => reader.Dispose());
         else
-            Assert.DoesNotThrowAsync(async () => await reader.DisposeAsync());
+            Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
     }
 
     #region GetBytes / GetStream
