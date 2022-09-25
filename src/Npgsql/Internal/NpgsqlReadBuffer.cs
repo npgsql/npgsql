@@ -658,7 +658,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     public ReadOnlySpan<byte> GetNullTerminatedBytes()
     {
         var i = Buffer.AsSpan(ReadPosition).IndexOf((byte)0);
-        Debug.Assert(i >= ReadPosition);
+        Debug.Assert(i >= 0);
         var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i);
         ReadPosition += i + 1;
         return result;
