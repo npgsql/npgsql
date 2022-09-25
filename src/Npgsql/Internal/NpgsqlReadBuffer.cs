@@ -660,7 +660,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         var i = Buffer.AsSpan(ReadPosition).IndexOf((byte)0);
         Debug.Assert(i >= ReadPosition);
         var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i);
-        ReadPosition = i + 1;
+        ReadPosition += i + 1;
         return result;
     }
 
