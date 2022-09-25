@@ -309,8 +309,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                 break;
             case BackendMessageCode.CopyDone:
-                ExpectExact<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                ExpectExact<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 _isConsumed = true;
                 return 0;
             default:
@@ -414,8 +414,8 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
                 _writeBuf.EndCopyMode();
                 await _connector.WriteCopyDone(async);
                 await _connector.Flush(async);
-                ExpectExact<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                ExpectExact<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             }
             else
             {

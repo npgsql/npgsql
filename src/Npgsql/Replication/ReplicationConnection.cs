@@ -483,7 +483,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             while (true)
             {
                 msg = await Connector.ReadMessage(async: true);
-                ExpectExact<CopyDataMessage>(msg, Connector);
+                Expect<CopyDataMessage>(msg, Connector);
 
                 // We received some message so there's no need to forcibly request feedback
                 // Reset the timer to request feedback.
@@ -776,13 +776,13 @@ public abstract class ReplicationConnection : IAsyncDisposable
             await Connector.WriteQuery(command, true, CancellationToken.None);
             await Connector.Flush(true, CancellationToken.None);
 
-            ExpectExact<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
+            Expect<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
 
             // Two CommandComplete messages are returned
             if (PostgreSqlVersion < FirstVersionWithoutDropSlotDoubleCommandCompleteMessage)
-                ExpectExact<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
+                Expect<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
 
-            ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
+            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
         }
     }
 
@@ -799,8 +799,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
         await Connector.WriteQuery(command, true, cancellationToken);
         await Connector.Flush(true, cancellationToken);
 
-        var rowDescription = ExpectExact<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
-        ExpectExact<DataRowMessage>(await Connector.ReadMessage(true), Connector);
+        var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true), Connector);
+        Expect<DataRowMessage>(await Connector.ReadMessage(true), Connector);
         var buf = Connector.ReadBuffer;
         await buf.EnsureAsync(2);
         var results = new object[buf.ReadInt16()];
@@ -867,8 +867,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
             }
         }
 
-        ExpectExact<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
-        ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
+        Expect<CommandCompleteMessage>(await Connector.ReadMessage(true), Connector);
+        Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true), Connector);
         return results;
 
         static byte[] ParseBytea(ReadOnlySpan<byte> bytes)

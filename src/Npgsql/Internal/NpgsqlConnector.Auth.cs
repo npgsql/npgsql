@@ -20,7 +20,7 @@ partial class NpgsqlConnector
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
         timeout.CheckAndApply(this);
-        var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+        var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
         switch (msg.AuthRequestType)
         {
         case AuthenticationRequestType.AuthenticationOk:
@@ -62,7 +62,7 @@ partial class NpgsqlConnector
 
         await WritePassword(encoded, async, cancellationToken);
         await Flush(async, cancellationToken);
-        Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+        ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
     }
 
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
@@ -163,7 +163,7 @@ partial class NpgsqlConnector
         await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
         await Flush(async, cancellationToken);
 
-        var saslContinueMsg = ExpectExact<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
+        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
         if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
         var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
@@ -196,7 +196,7 @@ partial class NpgsqlConnector
         await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken);
         await Flush(async, cancellationToken);
 
-        var saslFinalServerMsg = ExpectExact<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
+        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
         if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
@@ -204,7 +204,7 @@ partial class NpgsqlConnector
         if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
             throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
-        var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+        var okMsg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
         if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
             throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
 
@@ -281,7 +281,7 @@ partial class NpgsqlConnector
 
         await WritePassword(result, async, cancellationToken);
         await Flush(async, cancellationToken);
-        Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+        ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
     }
 
 #if NET7_0_OR_GREATER
@@ -299,7 +299,7 @@ partial class NpgsqlConnector
         await Flush(async, UserCancellationToken);
         while (true)
         {
-            var response = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
             if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                 break;
             var gssMsg = response as AuthenticationGSSContinueMessage;

@@ -301,19 +301,19 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var buf = conn.ReadBuffer;
 
         // First read the PostgreSQL version
-        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
         // We read the message in non-sequential mode which buffers the whole message.
         // There is no need to ensure data within the message boundaries
-        ExpectExact<DataRowMessage>(await conn.ReadMessage(async), conn);
+        Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
         buf.Skip(2); // Column count
         LongVersion = ReadNonNullableString(buf);
-        ExpectExact<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+        Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
         if (isReplicationConnection)
-            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the types
-        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
         IBackendMessage msg;
         while (true)
         {
@@ -418,12 +418,12 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 throw new ArgumentOutOfRangeException($"Unknown typtype for type '{typname}' in pg_type: {typtype}");
             }
         }
-        ExpectExact<CommandCompleteMessage>(msg, conn);
+        Expect<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the composite type fields
-        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
         var currentOID = uint.MaxValue;
         PostgresCompositeType? currentComposite = null;
@@ -478,14 +478,14 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
         }
-        ExpectExact<CommandCompleteMessage>(msg, conn);
+        Expect<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         if (SupportsEnumTypes)
         {
             // Then load the enum fields
-            ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
             currentOID = uint.MaxValue;
             PostgresEnumType? currentEnum = null;
@@ -529,13 +529,13 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                 currentEnum!.MutableLabels.Add(enumlabel);
             }
-            ExpectExact<CommandCompleteMessage>(msg, conn);
+            Expect<CommandCompleteMessage>(msg, conn);
             if (isReplicationConnection)
-                ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         }
 
         if (!isReplicationConnection)
-            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         return byOID.Values.ToList();
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)

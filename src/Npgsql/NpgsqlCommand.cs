@@ -541,9 +541,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             foreach (var batchCommand in InternalBatchCommands)
             {
-                ExpectExact<ParseCompleteMessage>(
+                Expect<ParseCompleteMessage>(
                     connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
-                var paramTypeOIDs = ExpectExact<ParameterDescriptionMessage>(
+                var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
                     connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
                 if (batchCommand.PositionalParameters.Count != paramTypeOIDs.Count)
@@ -589,7 +589,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            ExpectExact<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+            Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
             sendTask.GetAwaiter().GetResult();
         }
     }
@@ -686,13 +686,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            ExpectExact<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
 
-                        ExpectExact<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
-                        ExpectExact<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
+                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
+                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
                         var msg = await connector.ReadMessage(async);
                         switch (msg.Code)
                         {
@@ -716,7 +716,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         isFirst = false;
                     }
 
-                    ExpectExact<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
 
                     if (async)
                         await sendTask;
@@ -788,7 +788,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (batchCommand.PreparedStatement?.State == PreparedState.BeingUnprepared)
                 {
-                    ExpectExact<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                    Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
 
                     var pStatement = batchCommand.PreparedStatement;
                     pStatement.CompleteUnprepare();
@@ -800,7 +800,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            ExpectExact<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+            Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
 
             if (async)
                 await sendTask;

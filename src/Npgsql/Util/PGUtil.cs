@@ -25,9 +25,17 @@ static class Statics
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
+    
+    internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
+    {
+        if (msg.GetType() != typeof(T))
+            ThrowIfMsgWrongType<T>(msg, connector);
+
+        return (T)msg;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
+    internal static T ExpectAny<T>(IBackendMessage msg, NpgsqlConnector connector)
     {
         if (msg is T t)
             return t;
@@ -36,14 +44,6 @@ static class Statics
         return default;
     }
 
-    internal static T ExpectExact<T>(IBackendMessage msg, NpgsqlConnector connector)
-    {
-        if (msg.GetType() != typeof(T))
-            ThrowIfMsgWrongType<T>(msg, connector);
-
-        return (T)msg;
-    }
-    
     [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
     static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
         => throw connector.Break(

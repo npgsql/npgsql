@@ -2533,8 +2533,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         await WriteQuery(query, async, cancellationToken);
         await Flush(async, cancellationToken);
-        ExpectExact<CommandCompleteMessage>(await ReadMessage(async), this);
-        ExpectExact<ReadyForQueryMessage>(await ReadMessage(async), this);
+        Expect<CommandCompleteMessage>(await ReadMessage(async), this);
+        Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
     }
 
     internal async Task ExecuteInternalCommand(byte[] data, bool async, CancellationToken cancellationToken = default)
@@ -2543,8 +2543,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         await WritePregenerated(data, async, cancellationToken);
         await Flush(async, cancellationToken);
-        ExpectExact<CommandCompleteMessage>(await ReadMessage(async), this);
-        ExpectExact<ReadyForQueryMessage>(await ReadMessage(async), this);
+        Expect<CommandCompleteMessage>(await ReadMessage(async), this);
+        Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
     }
 
     #endregion
