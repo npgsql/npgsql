@@ -963,12 +963,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         async Task WriteExecute(NpgsqlConnector connector, bool async, bool flush, CancellationToken cancellationToken)
         {
+            NpgsqlBatchCommand? batchCommand = null;
+
             for (var i = 0; i < InternalBatchCommands.Count; i++)
             {
                 // The following is only for deadlock avoidance when doing sync I/O (so never in multiplexing)
                 ForceAsyncIfNecessary(ref async, i);
 
-                var batchCommand = InternalBatchCommands[i];
+                batchCommand = InternalBatchCommands[i];
                 var pStatement = batchCommand.PreparedStatement;
 
                 Debug.Assert(batchCommand.FinalCommandText is not null);
@@ -1009,8 +1011,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     pStatement.LastUsed = DateTime.UtcNow;
             }
 
-            if (InternalBatchCommands.Count == 0 ||
-                !EnableErrorBarriers && InternalBatchCommands[InternalBatchCommands.Count - 1].AppendErrorBarrier != true)
+            if (batchCommand is null || !(batchCommand.AppendErrorBarrier ?? EnableErrorBarriers))
             {
                 await connector.WriteSync(async, cancellationToken);
             }

@@ -531,11 +531,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             }
 
             // There are no more queries, we're done. Read the RFQ.
-            if (_statements.Count == 0 ||
-                !Command.EnableErrorBarriers && _statements[_statements.Count - 1].AppendErrorBarrier != true)
-            {
+            if (_statements.Count == 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
                 Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
-            }
+
             State = ReaderState.Consumed;
             RowDescription = null;
             return false;
@@ -567,35 +565,32 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     statement.PreparedStatement!.AbortPrepare();
                 }
 
-                if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
-                    break;
-            }
-
-            // In normal, non-isolated batching, we've consumed the result set and are done.
-            // However, if an isolated command was present after the error, we now have to consume the rest of the result set.
-            // Note that Consume calls NextResult (this method) recursively, the isConsuming flag tells us we're in this mode.
-            if (StatementIndex == _statements.Count)
-            {
-                State = ReaderState.Consumed;
-            }
-            else if (!isConsuming)
-            {
-                switch (State)
+                // In normal, non-isolated batching, we've consumed the result set and are done.
+                // However, if the command has error barrier, we now have to consume results from the commands after it (unless it's the
+                // last one).
+                // Note that Consume calls NextResult (this method) recursively, the isConsuming flag tells us we're in this mode.
+                if ((statement.AppendErrorBarrier ?? Command.EnableErrorBarriers) && StatementIndex < _statements.Count - 1)
                 {
-                case ReaderState.Consumed:
-                case ReaderState.Closed:
-                case ReaderState.Disposed:
-                    // The exception may have caused the connector to break (e.g. I/O), and so the reader is already closed.
-                    break;
-                default:
-                    // We provide Consume with the first exception which we've just caught.
-                    // If it encounters other exceptions while consuming the rest of the result set, it will raise an AggregateException,
-                    // otherwise it will rethrow this first exception.
-                    await Consume(async, firstException: e);
-                    break;
+                    if (isConsuming)
+                        throw;
+                    switch (State)
+                    {
+                    case ReaderState.Consumed:
+                    case ReaderState.Closed:
+                    case ReaderState.Disposed:
+                        // The exception may have caused the connector to break (e.g. I/O), and so the reader is already closed.
+                        break;
+                    default:
+                        // We provide Consume with the first exception which we've just caught.
+                        // If it encounters other exceptions while consuming the rest of the result set, it will raise an AggregateException,
+                        // otherwise it will rethrow this first exception.
+                        await Consume(async, firstException: e);
+                        break; // Never reached, Consume always throws above
+                    }
                 }
             }
 
+            State = ReaderState.Consumed;
             throw;
         }
     }

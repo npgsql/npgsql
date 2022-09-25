@@ -519,7 +519,7 @@ public class BatchTests : MultiplexingTestBase
     }
 
     [Test]
-    public async Task Batch_with_terminating_error_barrier()
+    public async Task AppendErrorBarrier_on_last_command([Values] bool enabled)
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempTable(conn, "id INT", out var table);
@@ -529,8 +529,9 @@ public class BatchTests : MultiplexingTestBase
             BatchCommands =
             {
                 new($"INSERT INTO {table} (id) VALUES (8)"),
-                new($"INSERT INTO {table} (id) VALUES (9)") { AppendErrorBarrier = true }
-            }
+                new($"INSERT INTO {table} (id) VALUES (9)") { AppendErrorBarrier = enabled }
+            },
+            EnableErrorBarriers = true
         };
 
         Assert.That(await batch.ExecuteNonQueryAsync(), Is.EqualTo(2));
