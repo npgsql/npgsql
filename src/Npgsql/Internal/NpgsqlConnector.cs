@@ -535,7 +535,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt);
 
-            var username = conn.GetUsername();
+            var username = await conn.GetUsernameAsync(async, cancellationToken);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -708,7 +708,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         WriteStartup(startupParams);
     }
 
-    string GetUsername()
+    async ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
     {
         var username = Settings.Username;
         if (username?.Length > 0)
@@ -720,7 +720,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm, ConnectionLogger);
+            username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async, cancellationToken);
+
             if (username?.Length > 0)
                 return username;
         }
