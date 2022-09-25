@@ -1,6 +1,6 @@
 ﻿namespace Npgsql.BackendMessages;
 
-class BindCompleteMessage : IBackendMessage
+sealed class BindCompleteMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.BindComplete;
     internal static readonly BindCompleteMessage Instance = new();

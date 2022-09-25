@@ -9,7 +9,7 @@ using NpgsqlTypes;
 
 namespace Npgsql;
 
-class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+sealed class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
         => Task.FromResult(
@@ -18,7 +18,7 @@ class PostgresMinimalDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
                 : null);
 }
 
-class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
+sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 {
     static PostgresType[]? _typesWithMultiranges, _typesWithoutMultiranges;
 

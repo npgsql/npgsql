@@ -41,6 +41,20 @@ static class Statics
                 new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
     }
 
+    internal static T ExpectExact<T>(IBackendMessage msg, NpgsqlConnector connector)
+    {
+        if (msg.GetType() != typeof(T))
+            ThrowIfMsgWrongType<T>(msg, connector);
+
+        return (T)msg;
+    }
+    
+    [DoesNotReturn]
+    static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
+        => throw connector.Break(
+            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. " +
+                                "Please file a bug."));
+
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
     internal static DeferDisposable<T1, T2> Defer<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2) => new(action, arg1, arg2);

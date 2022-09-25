@@ -16,7 +16,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// (chicken and egg problem).
 /// Also used for sending parameters with unknown types (OID=0)
 /// </summary>
-class UnknownTypeHandler : TextHandler
+sealed class UnknownTypeHandler : TextHandler
 {
     readonly NpgsqlConnector _connector;
 

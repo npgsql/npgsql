@@ -431,7 +431,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 if (statement.TryGetPrepared(out var preparedStatement))
                 {
-                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                     RowDescription = preparedStatement.Description;
                 }
                 else // Non-prepared/preparing flow
@@ -442,13 +442,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Debug.Assert(!pStatement.IsPrepared);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
+                            ExpectExact<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
 
                     if (statement.IsPreparing)
                     {
@@ -457,7 +457,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         statement.IsPreparing = false;
                     }
 
-                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                     msg = await Connector.ReadMessage(async);
 
                     RowDescription = statement.Description = msg.Code switch
@@ -532,7 +532,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
             // There are no more queries, we're done. Read the RFQ.
             if (_statements.Count == 0 || !(_statements[_statements.Count - 1].AppendErrorBarrier ?? Command.EnableErrorBarriers))
-                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
 
             State = ReaderState.Consumed;
             RowDescription = null;
@@ -684,13 +684,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         Debug.Assert(!pStatement.IsPrepared);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
+                            ExpectExact<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<ParseCompleteMessage>(await Connector.ReadMessage(async), Connector);
 
                     if (statement.IsPreparing)
                     {
@@ -699,7 +699,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                         statement.IsPreparing = false;
                     }
 
-                    Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async), Connector);
+                    ExpectExact<ParameterDescriptionMessage>(await Connector.ReadMessage(async), Connector);
                     var msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -724,7 +724,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // There are no more queries, we're done. Read to the RFQ.
             if (!_statements.All(s => s.IsPrepared))
             {
-                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
+                ExpectExact<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector);
                 RowDescription = null;
                 State = ReaderState.Consumed;
             }

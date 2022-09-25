@@ -6,7 +6,7 @@ using System.Text;
 namespace System.Net
 {
     // Copied and adapted from https://github.com/mono/mono/blob/master/mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
-    class UnixDomainSocketEndPoint : EndPoint
+    sealed class UnixDomainSocketEndPoint : EndPoint
     {
         string _filename;
 

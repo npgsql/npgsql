@@ -172,7 +172,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
     }
 
-    class Enumerator : IEnumerator<FieldDescription>
+    sealed class Enumerator : IEnumerator<FieldDescription>
     {
         readonly RowDescriptionMessage _rowDescription;
         int _pos = -1;

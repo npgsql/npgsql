@@ -9,7 +9,7 @@ namespace Npgsql;
 /// <summary>
 /// Represents a .pgpass file, which contains passwords for noninteractive connections
 /// </summary>
-class PgPassFile
+sealed class PgPassFile
 {
     #region Properties
 
@@ -54,7 +54,7 @@ class PgPassFile
     /// <summary>
     /// Represents a hostname, port, database, username, and password combination that has been retrieved from a .pgpass file
     /// </summary>
-    internal class Entry
+    internal sealed class Entry
     {
         const string PgPassWildcard = "*";
 

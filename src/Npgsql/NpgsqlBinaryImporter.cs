@@ -443,8 +443,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             _buf.EndCopyMode();
             await _connector.WriteCopyDone(async, cancellationToken);
             await _connector.Flush(async, cancellationToken);
-            var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+            var cmdComplete = ExpectExact<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+            ExpectExact<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             _state = ImporterState.Committed;
             return cmdComplete.Rows;
         }

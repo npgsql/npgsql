@@ -163,7 +163,7 @@ partial class NpgsqlConnector
         await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
         await Flush(async, cancellationToken);
 
-        var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
+        var saslContinueMsg = ExpectExact<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
         if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
             throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
         var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload, ConnectionLogger);
@@ -196,7 +196,7 @@ partial class NpgsqlConnector
         await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken);
         await Flush(async, cancellationToken);
 
-        var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
+        var saslFinalServerMsg = ExpectExact<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
         if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
             throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 

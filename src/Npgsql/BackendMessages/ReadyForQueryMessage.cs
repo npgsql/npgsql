@@ -2,7 +2,7 @@
 
 namespace Npgsql.BackendMessages;
 
-class ReadyForQueryMessage : IBackendMessage
+sealed class ReadyForQueryMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.ReadyForQuery;
 

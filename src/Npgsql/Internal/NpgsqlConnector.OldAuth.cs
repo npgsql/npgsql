@@ -79,7 +79,7 @@ partial class NpgsqlConnector
     /// <remarks>
     /// See https://referencesource.microsoft.com/#System/net/System/Net/_StreamFramer.cs,16417e735f0e9530,references
     /// </remarks>
-    class GSSPasswordMessageStream : Stream
+    sealed class GSSPasswordMessageStream : Stream
     {
         readonly NpgsqlConnector _connector;
         int _leftToWrite;
@@ -174,6 +174,6 @@ partial class NpgsqlConnector
         }
     }
 
-    class AuthenticationCompleteException : Exception { }
+    sealed class AuthenticationCompleteException : Exception { }
 #endif
 }

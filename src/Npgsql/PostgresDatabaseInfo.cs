@@ -21,7 +21,7 @@ namespace Npgsql;
 /// <summary>
 /// The default implementation of <see cref="INpgsqlDatabaseInfoFactory"/>, for standard PostgreSQL databases..
 /// </summary>
-class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+sealed class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     /// <inheritdoc />
     public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
@@ -301,19 +301,19 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         var buf = conn.ReadBuffer;
 
         // First read the PostgreSQL version
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
         // We read the message in non-sequential mode which buffers the whole message.
         // There is no need to ensure data within the message boundaries
-        Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
+        ExpectExact<DataRowMessage>(await conn.ReadMessage(async), conn);
         buf.Skip(2); // Column count
         LongVersion = ReadNonNullableString(buf);
-        Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
+        ExpectExact<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the types
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
         IBackendMessage msg;
         while (true)
         {
@@ -418,12 +418,12 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 throw new ArgumentOutOfRangeException($"Unknown typtype for type '{typname}' in pg_type: {typtype}");
             }
         }
-        Expect<CommandCompleteMessage>(msg, conn);
+        ExpectExact<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         // Then load the composite type fields
-        Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+        ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
         var currentOID = uint.MaxValue;
         PostgresCompositeType? currentComposite = null;
@@ -478,14 +478,14 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
             currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(attname, fieldType));
         }
-        Expect<CommandCompleteMessage>(msg, conn);
+        ExpectExact<CommandCompleteMessage>(msg, conn);
         if (isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
 
         if (SupportsEnumTypes)
         {
             // Then load the enum fields
-            Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
+            ExpectExact<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
 
             currentOID = uint.MaxValue;
             PostgresEnumType? currentEnum = null;
@@ -529,13 +529,13 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
 
                 currentEnum!.MutableLabels.Add(enumlabel);
             }
-            Expect<CommandCompleteMessage>(msg, conn);
+            ExpectExact<CommandCompleteMessage>(msg, conn);
             if (isReplicationConnection)
-                Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+                ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         }
 
         if (!isReplicationConnection)
-            Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
+            ExpectExact<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
         return byOID.Values.ToList();
 
         static string ReadNonNullableString(NpgsqlReadBuffer buffer)

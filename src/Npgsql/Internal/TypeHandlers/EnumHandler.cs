@@ -22,7 +22,7 @@ interface IEnumHandler
     Type EnumType { get; }
 }
 
-partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct, Enum
+sealed partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct, Enum
 {
     readonly Dictionary<TEnum, string> _enumToLabel;
     readonly Dictionary<string, TEnum> _labelToEnum;

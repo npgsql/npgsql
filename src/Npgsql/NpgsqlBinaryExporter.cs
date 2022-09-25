@@ -104,7 +104,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async Task ReadHeader(bool async)
     {
-        _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
+        _leftToReadInDataMsg = ExpectExact<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
         var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
         await _buf.Ensure(headerLen, async);
 
@@ -157,7 +157,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
         // message per row).
         if (_column == NumColumns)
-            _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
+            _leftToReadInDataMsg = ExpectExact<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
         else if (_column != -1)
             throw new InvalidOperationException("Already in the middle of a row");
 
@@ -168,9 +168,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (numColumns == -1)
         {
             Debug.Assert(_leftToReadInDataMsg == 0);
-            Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
-            Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+            ExpectExact<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
+            ExpectExact<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+            ExpectExact<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             _column = -1;
             _isConsumed = true;
             return -1;
@@ -427,8 +427,8 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                ExpectExact<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                ExpectExact<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             }
             catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
             {

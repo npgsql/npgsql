@@ -25,7 +25,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping;
 
-class BuiltInTypeHandlerResolver : TypeHandlerResolver
+sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
 {
     readonly NpgsqlConnector _connector;
     readonly NpgsqlDatabaseInfo _databaseInfo;

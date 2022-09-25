@@ -8,7 +8,7 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput;
 
-class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
+sealed class TupleEnumerator : IAsyncEnumerator<ReplicationValue>
 {
     readonly ReplicationTuple _tupleEnumerable;
     readonly NpgsqlReadBuffer _readBuffer;

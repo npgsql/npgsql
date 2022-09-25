@@ -1,6 +1,6 @@
 ﻿namespace Npgsql.BackendMessages;
 
-class EmptyQueryMessage : IBackendMessage
+sealed class EmptyQueryMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.EmptyQueryResponse;
     internal static readonly EmptyQueryMessage Instance = new();
