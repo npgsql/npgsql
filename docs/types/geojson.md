@@ -14,10 +14,10 @@ To use the GeoJSON plugin, simply add a dependency on [Npgsql.GeoJSON](https://w
 using Npgsql;
 
 // Place this at the beginning of your program to use NetTopologySuite everywhere (recommended)
-NpgsqlConnection.GlobalTypeMapper.UseGeoJSON();
+NpgsqlConnection.GlobalTypeMapper.UseGeoJson();
 
 // Or to temporarily use GeoJSON on a single connection only:
-conn.TypeMapper.UseGeoJSON();
+conn.TypeMapper.UseGeoJson();
 ```
 
 ## Reading and Writing Geometry Values
