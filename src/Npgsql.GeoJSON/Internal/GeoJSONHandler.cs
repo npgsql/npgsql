@@ -23,8 +23,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
 {
     readonly GeoJSONOptions _options;
     readonly CrsMap _crsMap;
-    NamedCRS? _lastCrs;
-    int _lastSrid;
+    readonly ConcurrentDictionary<int, NamedCRS> _cachedCrs = new();
 
     internal GeoJsonHandler(PostgresType postgresType, GeoJSONOptions options, CrsMap crsMap)
         : base(postgresType)
@@ -642,17 +641,29 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
         if (crsType == GeoJSONOptions.None)
             return null;
 
-        if (_lastSrid == srid && _lastCrs != null)
-            return _lastCrs;
+#if NETSTANDARD2_0
+        return _cachedCrs.GetOrAdd(srid, srid =>
+        {
+            var authority = _crsMap.GetAuthority(srid);
 
-        var authority = _crsMap.GetAuthority(srid);
-        if (authority == null)
-            throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table");
+            return authority is null
+                ? throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table")
+                : new NamedCRS(crsType == GeoJSONOptions.LongCRS
+                    ? "urn:ogc:def:crs:" + authority + "::" + srid
+                    : authority + ":" + srid);
+        });
+#else
+        return _cachedCrs.GetOrAdd(srid, static (srid, me) =>
+        {
+            var authority = me._crsMap.GetAuthority(srid);
 
-        _lastCrs = new NamedCRS(crsType == GeoJSONOptions.LongCRS
-            ? "urn:ogc:def:crs:" + authority + "::" + srid : authority + ":" + srid);
-        _lastSrid = srid;
-        return _lastCrs;
+            return authority is null
+                ? throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table")
+                : new NamedCRS(me.CrsType == GeoJSONOptions.LongCRS
+                    ? "urn:ogc:def:crs:" + authority + "::" + srid
+                    : authority + ":" + srid);
+        }, this);
+#endif
     }
 
     static int GetSrid(ICRSObject crs)
