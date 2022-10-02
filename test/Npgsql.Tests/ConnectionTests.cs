@@ -1083,34 +1083,6 @@ LANGUAGE 'plpgsql'");
         }
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
-    [NonParallelizable]
-    public async Task ReloadTypes()
-    {
-        if (IsMultiplexing)
-            return;
-
-        using (CreateTempPool(ConnectionString, out var connectionString))
-        using (var conn = await OpenConnectionAsync(connectionString))
-        using (var conn2 = await OpenConnectionAsync(connectionString))
-        {
-            Assert.That(await conn.ExecuteScalarAsync("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"),
-                Is.False);
-            await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-            Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
-            conn.ReloadTypes();
-            conn.TypeMapper.MapEnum<ReloadTypesEnum>();
-
-            // Make sure conn2 picks up the new type after a pooled close
-            var connId = conn2.ProcessID;
-            conn2.Close();
-            conn2.Open();
-            Assert.That(conn2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
-            conn2.TypeMapper.MapEnum<ReloadTypesEnum>();
-        }
-    }
-    enum ReloadTypesEnum { First, Second };
-
     [Test]
     [NonParallelizable] // Anyone can reload DatabaseInfo between us opening a connection
     public async Task DatabaseInfo_is_shared()
@@ -1628,7 +1600,7 @@ CREATE TABLE record ()");
         try
         {
             // Test the first time we load the database info
-            Assert.ThrowsAsync<NotImplementedException>(firstConn.OpenAsync);
+            Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
         }
         finally
         {
@@ -1638,13 +1610,13 @@ CREATE TABLE record ()");
         await firstConn.OpenAsync();
         await using var secondConn = await OpenConnectionAsync(connString);
         await secondConn.CloseAsync();
-        firstConn.ReloadTypes();
+        await firstConn.ReloadTypesAsync();
 
         NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
         try
         {
-            // Test the case of loading the database info after type reloading
-            Assert.ThrowsAsync<NotImplementedException>(secondConn.OpenAsync);
+            // Make sure that the database info is now cached and won't be reloaded
+            Assert.DoesNotThrowAsync(secondConn.OpenAsync);
         }
         finally
         {
@@ -1655,7 +1627,7 @@ CREATE TABLE record ()");
     class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
         public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
-            => throw conn.Break(new NotImplementedException());
+            => throw conn.Break(new IOException());
     }
 
     #region Logging tests

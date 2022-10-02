@@ -18,13 +18,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     readonly bool _autoPrepare;
 
-    public bool IsBootstrapped
-    {
-        get => _isBootstrapped;
-        set => _isBootstrapped = value;
-    }
-
-    volatile bool _isBootstrapped;
+    internal volatile bool StartupCheckPerformed;
 
     readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
@@ -34,7 +28,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
     /// to their type handlers happens *before* the command is enqueued for execution, so there's no
     /// connector yet at that stage.
     /// </summary>
-    internal ConnectorTypeMapper? MultiplexingTypeMapper { get; private set; }
+    internal TypeMapper? MultiplexingTypeMapper { get; private set; }
 
     /// <summary>
     /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
@@ -74,49 +68,15 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
         _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
         _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
-    }
 
-    /// <summary>
-    /// Called exactly once per multiplexing pool, when the first connection is opened, with three goals:
-    /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
-    /// 2. Cause any connection exceptions (e.g. bad username) to be thrown from NpgsqlConnection.Open
-    /// 3. Start the multiplexing write loop after we've made sure that's the exact pool we're going to use
-    /// </summary>
-    internal async Task BootstrapMultiplexing(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
-    {
-        var hasSemaphore = async
-            ? await _bootstrapSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
-            : _bootstrapSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
-
-        // We've timed out - calling Check, to throw the correct exception
-        if (!hasSemaphore)
-            timeout.Check();
-
-        try
-        {
-            if (IsBootstrapped)
-                return;
-
-            var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
-            using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
-
-            MultiplexingTypeMapper = connector.TypeMapper;
-
-            // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
-            // pool clearing
-            var __ = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
-                .ContinueWith(t =>
-                {
-                    // Note that we *must* observe the exception if the task is faulted.
-                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
-                }, TaskContinuationOptions.OnlyOnFaulted);
-
-            IsBootstrapped = true;
-        }
-        finally
-        {
-            _bootstrapSemaphore!.Release();
-        }
+        // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
+        // pool clearing
+        _ = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
+            .ContinueWith(t =>
+            {
+                // Note that we *must* observe the exception if the task is faulted.
+                _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+            }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
     async Task MultiplexingWriteLoop()

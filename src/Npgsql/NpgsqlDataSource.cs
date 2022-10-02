@@ -9,7 +9,10 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -29,6 +32,17 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
+    readonly List<TypeHandlerResolverFactory> _resolverFactories;
+    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings;
+    readonly INpgsqlNameTranslator _defaultNameTranslator;
+
+    internal TypeMapper TypeMapper { get; private set; } = null!; // Initialized at bootstrapping
+
+    /// <summary>
+    /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
+    /// </summary>
+    internal NpgsqlDatabaseInfo DatabaseInfo { get; set; } = null!; // Initialized at bootstrapping
+
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -40,6 +54,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly Task _passwordRefreshTask = null!;
     string? _password;
 
+    internal bool IsBootstrapped { get; private set; }
+
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
     private protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
@@ -50,6 +66,11 @@ public abstract class NpgsqlDataSource : DbDataSource
     volatile bool _isDisposed;
 
     readonly ILogger _connectionLogger;
+
+    /// <summary>
+    /// Semaphore to ensure we don't perform type loading and mapping setup concurrently for this data source.
+    /// </summary>
+    readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
@@ -66,6 +87,9 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
+                _resolverFactories,
+                _userTypeMappings,
+                _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
@@ -171,6 +195,54 @@ public abstract class NpgsqlDataSource : DbDataSource
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
 
+    internal async Task Bootstrap(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    {
+        await SetupMappings(connector, forceReload: false, timeout, async, cancellationToken);
+
+        IsBootstrapped = true;
+    }
+
+    internal async Task SetupMappings(
+        NpgsqlConnector connector,
+        bool forceReload,
+        NpgsqlTimeout timeout,
+        bool async,
+        CancellationToken cancellationToken = default)
+    {
+        var hasSemaphore = async
+            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
+
+        if (!hasSemaphore)
+            throw new TimeoutException();
+
+        try
+        {
+            // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
+            // empty). So we set up here, and then later inject the DatabaseInfo.
+            var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
+            connector.TypeMapper = typeMapper;
+
+            var key = new NpgsqlDatabaseInfoCacheKey(Settings);
+            if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
+            {
+                using var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
+                NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
+            }
+
+            DatabaseInfo = database;
+            connector.DatabaseInfo = database;
+            typeMapper.Initialize(database, _resolverFactories, _userTypeMappings);
+            TypeMapper = typeMapper;
+        }
+        finally
+        {
+            _setupMappingsSemaphore.Release();
+        }
+    }
+
+    #region Password management
+
     /// <summary>
     /// Manually sets the password to be used the next time a physical connection is opened.
     /// Consider using <see cref="NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider" /> instead.
@@ -220,6 +292,8 @@ public abstract class NpgsqlDataSource : DbDataSource
             throw new NpgsqlException("An exception was thrown from the periodic password provider", e);
         }
     }
+
+    #endregion Password management
 
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);

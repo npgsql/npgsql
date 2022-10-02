@@ -23,7 +23,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
-    ConnectorTypeMapper _typeMapper;
+    TypeMapper _typeMapper;
     bool _isConsumed, _isDisposed;
     int _leftToReadInDataMsg, _columnLen;
 

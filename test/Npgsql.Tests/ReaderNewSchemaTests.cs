@@ -433,23 +433,19 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [Test]
     public async Task DataType_with_composite()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
+        await using var adminConnection = await OpenConnectionAsync();
+        IgnoreOnRedshift(adminConnection, "Composite types not support on Redshift");
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo int)");
+        await using var ___ = await CreateTempTable(adminConnection, $"comp {type}", out var tableName);
 
-        using var _ = CreateTempPool(csb, out var connString);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
-        await using var conn = await OpenConnectionAsync(connString);
-        IgnoreOnRedshift(conn, "Composite types not support on Redshift");
-
-        await using var __ = await GetTempTypeName(conn, out var typeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS (foo int)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>(typeName);
-        await using var ___ = await CreateTempTable(conn, $"comp {typeName}", out var tableName);
-
-        using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{typeName} FROM {tableName}", conn);
+        await using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{type} FROM {tableName}", connection);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         var columns = await GetColumnSchema(reader);
         Assert.That(columns[0].DataType, Is.SameAs(typeof(SomeComposite)));

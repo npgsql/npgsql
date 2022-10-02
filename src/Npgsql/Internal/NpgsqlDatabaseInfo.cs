@@ -185,7 +185,7 @@ public abstract class NpgsqlDatabaseInfo
     public PostgresType GetPostgresTypeByName(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
             ? pgType
-            : throw new ArgumentException($"A PostgreSQL type with the name {pgName} was not found in the database");
+            : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the database");
 
     public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
     {

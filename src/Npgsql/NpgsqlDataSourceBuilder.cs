@@ -1,21 +1,34 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql;
 
 /// <summary>
 /// Provides a simple API for configuring and creating an <see cref="NpgsqlDataSource" />, from which database connections can be obtained.
 /// </summary>
-public class NpgsqlDataSourceBuilder
+public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
+
+    readonly List<TypeHandlerResolverFactory> _resolverFactories = new();
+    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings = new();
+
+    /// <inheritdoc />
+    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
 
     Action<NpgsqlConnection>? _syncConnectionInitializer;
     Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
@@ -34,7 +47,11 @@ public class NpgsqlDataSourceBuilder
     /// Constructs a new <see cref="NpgsqlDataSourceBuilder" />, optionally starting out from the given <paramref name="connectionString"/>.
     /// </summary>
     public NpgsqlDataSourceBuilder(string? connectionString = null)
-        => ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+    {
+        ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+
+        ResetTypeMappings();
+    }
 
     /// <summary>
     /// Sets the <see cref="ILoggerFactory" /> that will be used for logging.
@@ -99,6 +116,111 @@ public class NpgsqlDataSourceBuilder
         return this;
     }
 
+    #region Type mapping
+
+    /// <inheritdoc />
+    public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
+        => _resolverFactories.Insert(0, resolverFactory);
+
+    /// <inheritdoc />
+    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
+    {
+        if (pgName != null && pgName.Trim() == "")
+            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+        nameTranslator ??= DefaultNameTranslator;
+        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
+
+        _userTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
+    {
+        if (pgName != null && pgName.Trim() == "")
+            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+        nameTranslator ??= DefaultNameTranslator;
+        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
+
+        return _userTypeMappings.Remove(pgName);
+    }
+
+    /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        if (pgName != null && pgName.Trim() == "")
+            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+        nameTranslator ??= DefaultNameTranslator;
+        pgName ??= GetPgName(typeof(T), nameTranslator);
+
+        _userTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        var openMethod = typeof(NpgsqlDataSourceBuilder).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var method = openMethod.MakeGenericMethod(clrType);
+        method.Invoke(this, new object?[] { pgName, nameTranslator });
+
+        return this;
+    }
+
+    /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        => UnmapComposite(typeof(T), pgName, nameTranslator);
+
+    /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        if (pgName != null && pgName.Trim() == "")
+            throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+        nameTranslator ??= DefaultNameTranslator;
+        pgName ??= GetPgName(clrType, nameTranslator);
+
+        return _userTypeMappings.Remove(pgName);
+    }
+
+    void INpgsqlTypeMapper.Reset()
+        => ResetTypeMappings();
+
+    void ResetTypeMappings()
+    {
+        var globalMapper = GlobalTypeMapper.Instance;
+        globalMapper.Lock.EnterReadLock();
+        try
+        {
+            _resolverFactories.Clear();
+            foreach (var resolverFactory in globalMapper.ResolverFactories)
+                _resolverFactories.Add(resolverFactory);
+
+            _userTypeMappings.Clear();
+            foreach (var kv in globalMapper.UserTypeMappings)
+                _userTypeMappings[kv.Key] = kv.Value;
+        }
+        finally
+        {
+            globalMapper.Lock.ExitReadLock();
+        }
+    }
+
+    static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
+        => clrType.GetCustomAttribute<PgNameAttribute>()?.PgName
+           ?? nameTranslator.TranslateTypeName(clrType.Name);
+
+    #endregion Type mapping
+
     /// <summary>
     /// Register a connection initializer, which allows executing arbitrary commands when a physical database connection is first opened.
     /// </summary>
@@ -155,6 +277,9 @@ public class NpgsqlDataSourceBuilder
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
+            _resolverFactories,
+            _userTypeMappings,
+            DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);
 

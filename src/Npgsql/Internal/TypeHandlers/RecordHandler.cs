@@ -24,9 +24,9 @@ namespace Npgsql.Internal.TypeHandlers;
 /// </remarks>
 sealed partial class RecordHandler : NpgsqlTypeHandler<object[]>
 {
-    readonly ConnectorTypeMapper _typeMapper;
+    readonly TypeMapper _typeMapper;
 
-    public RecordHandler(PostgresType postgresType, ConnectorTypeMapper typeMapper)
+    public RecordHandler(PostgresType postgresType, TypeMapper typeMapper)
         : base(postgresType)
         => _typeMapper = typeMapper;
 

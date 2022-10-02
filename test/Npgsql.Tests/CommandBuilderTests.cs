@@ -190,15 +190,19 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     [Test, Description("Tests parameter derivation for mapped enum parameters in parameterized queries (CommandType.Text)")]
     public async Task DeriveParameters_text_mapped_enum()
     {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
-        await conn.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('apple', 'cherry', 'plum')");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Fruit>(type);
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await adminConnection.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('apple', 'cherry', 'plum')");
+        adminConnection.ReloadTypes();
 
-        var cmd = new NpgsqlCommand($"SELECT :x::{type}, :y::{type}[]", conn);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Fruit>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        var cmd = new NpgsqlCommand($"SELECT :x::{type}, :y::{type}[]", connection);
         const Fruit val1 = Fruit.Apple;
-        var val2 = new Fruit[] { Fruit.Cherry, Fruit.Plum };
+        var val2 = new[] { Fruit.Cherry, Fruit.Plum };
 
         NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
@@ -229,19 +233,21 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     [Test]
     public async Task DeriveParameters_text_mapped_composite()
     {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>(type);
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
         var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
-        var expected2 = new[] {
-            expected1,
-            new SomeComposite {X = 9, SomeText = "bar"}
-        };
+        var expected2 = new[] { expected1, new SomeComposite {X = 9, SomeText = "bar"} };
 
-        using var cmd = new NpgsqlCommand($"SELECT @p1::{type}, @p2::{type}[]", conn);
+        await using var cmd = new NpgsqlCommand($"SELECT @p1::{type}, @p2::{type}[]", connection);
         NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
         Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));

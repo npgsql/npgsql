@@ -114,10 +114,8 @@ public class DateTimeTests : TestBase
     [Test]
     public async Task TimeTz_as_DateTimeOffset()
     {
-        await AssertTypeRead(
-            new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)),
-            "13:03:45.51+02",
-            "time with time zone");
+        await AssertTypeRead("13:03:45.51+02",
+            "time with time zone", new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)));
 
         await AssertTypeWrite(
             new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
@@ -129,10 +127,8 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task TimeTz_before_utc_zero()
-        => AssertTypeRead(
-            new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0)),
-            "01:00:00+02",
-            "time with time zone");
+        => AssertTypeRead("01:00:00+02",
+            "time with time zone", new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0)));
 
     #endregion
 

@@ -577,29 +577,30 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     [Test]
     public async Task Enum()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: connection-specific mapping");
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
 
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>(typeName);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-        await using var __ = await CreateTempTable(conn, $"mymood {typeName}, mymoodarr {typeName}[]", out var tableName);
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+        await connection.ReloadTypesAsync();
+        await using var __ = await CreateTempTable(connection, $"mymood {type}, mymoodarr {type}[]", out var table);
 
-        using (var writer = conn.BeginBinaryImport($"COPY {tableName} (mymood, mymoodarr) FROM STDIN BINARY"))
+        await using (var writer = await connection.BeginBinaryImportAsync($"COPY {table} (mymood, mymoodarr) FROM STDIN BINARY"))
         {
-            writer.StartRow();
-            writer.Write(Mood.Happy);
-            writer.Write(new[] { Mood.Happy });
-            var rowsWritten = writer.Complete();
+            await writer.StartRowAsync();
+            await writer.WriteAsync(Mood.Happy);
+            await writer.WriteAsync(new[] { Mood.Happy });
+            var rowsWritten = await writer.CompleteAsync();
             Assert.That(rowsWritten, Is.EqualTo(1));
         }
 
-        using (var reader = conn.BeginBinaryExport($"COPY {tableName} (mymood, mymoodarr) TO STDIN BINARY"))
+        await using (var reader = await connection.BeginBinaryExportAsync($"COPY {table} (mymood, mymoodarr) TO STDIN BINARY"))
         {
-            reader.StartRow();
+            await reader.StartRowAsync();
             Assert.That(reader.Read<Mood>(), Is.EqualTo(Mood.Happy));
             Assert.That(reader.Read<Mood[]>(), Is.EqualTo(new[] { Mood.Happy }));
         }

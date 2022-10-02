@@ -48,7 +48,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     }
 
     NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
-    ConnectorTypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
+    TypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
 
     internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
         ulong uniqueOutermostReaderRowId, int depth, PostgresCompositeType? compositeType)

@@ -59,20 +59,20 @@ public class DomainTests : MultiplexingTestBase
     [Test]
     public async Task Domain_in_composite()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing, ReloadTypes");
-
-        using var conn = await OpenConnectionAsync();
-        await using var t1 = await GetTempTypeName(conn, out var domainType);
-        await using var t2 = await GetTempTypeName(conn, out var compositeType);
-        await conn.ExecuteNonQueryAsync($@"
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var domainType);
+        await using var __ = await GetTempTypeName(adminConnection, out var compositeType);
+        await adminConnection.ExecuteNonQueryAsync($@"
 CREATE DOMAIN {domainType} AS text;
 CREATE TYPE {compositeType} AS (value {domainType});");
 
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>(compositeType);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
-        var result = (SomeComposite)(await conn.ExecuteScalarAsync($"SELECT ROW('foo')::{compositeType}"))!;
+        var result = (SomeComposite)(await connection.ExecuteScalarAsync($"SELECT ROW('foo')::{compositeType}"))!;
         Assert.That(result.Value, Is.EqualTo("foo"));
     }
 

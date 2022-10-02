@@ -239,21 +239,19 @@ public class BugTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
     public async Task Bug1987()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2,
-            Pooling = false
-        };
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
-        await using var conn = await OpenConnectionAsync(csb);
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>(typeName);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
         for (var i = 0; i < 2; i++)
         {
-            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            await using var cmd = new NpgsqlCommand("SELECT @p", connection);
             cmd.Parameters.AddWithValue("p", Mood.Happy);
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(Mood.Happy));
         }
@@ -345,21 +343,24 @@ public class BugTests : TestBase
     [Test]
     public async Task Bug2278()
     {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var enumTypeName);
-        await using var __ = await GetTempTypeName(conn, out var domainTypeName);
-        await using var ___ = await GetTempTypeName(conn, out var compositeTypeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {enumTypeName} AS ENUM ('left', 'right')");
-        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS {enumTypeName} NOT NULL");
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {compositeTypeName} AS (value {domainTypeName})");
-        await using var ____ = await CreateTempTable(conn, $"value {compositeTypeName}", out var tableName);
-        await conn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES (ROW('left'))");
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var enumType);
+        await using var __ = await GetTempTypeName(adminConnection, out var domainType);
+        await using var ___ = await GetTempTypeName(adminConnection, out var compositeType);
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {enumType} AS ENUM ('left', 'right');
+CREATE DOMAIN {domainType} AS {enumType} NOT NULL;
+CREATE TYPE {compositeType} AS (value {domainType})");
+        await using var ____ = await CreateTempTable(adminConnection, $"value {compositeType}", out var table);
 
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<Bug2278CompositeType>(compositeTypeName);
-        conn.TypeMapper.MapEnum<Bug2278EnumType>(enumTypeName);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<Bug2278CompositeType>(compositeType);
+        dataSourceBuilder.MapEnum<Bug2278EnumType>(enumType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
-        await conn.ExecuteScalarAsync($"SELECT * FROM {tableName} AS d");
+        await connection.ExecuteScalarAsync($"SELECT * FROM {table} AS d");
     }
 
     class Bug2278CompositeType
@@ -1187,24 +1188,28 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     [Test]
     public async Task CompositePostgresType()
     {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-        await using var __ = GetTempFunctionName(conn, out var funcName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} as (x int, some_text text, test int)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>(typeName);
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await using var __ = GetTempFunctionName(adminConnection, out var func);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (x int, some_text text, test int)");
 
-        await conn.ExecuteNonQueryAsync(@$"
-CREATE OR REPLACE FUNCTION {funcName}(id int, out comp1 {typeName}, OUT comp2 {typeName}[])
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await connection.ExecuteNonQueryAsync(@$"
+CREATE OR REPLACE FUNCTION {func}(id int, out comp1 {type}, OUT comp2 {type}[])
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    comp1 = ROW(9, 'bar', 1)::{typeName};
-    comp2 = ARRAY[ROW(9, 'bar', 1)::{typeName}];
+    comp1 = ROW(9, 'bar', 1)::{type};
+    comp2 = ARRAY[ROW(9, 'bar', 1)::{type}];
 END;
 $$;");
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await conn.ExecuteScalarAsync($"SELECT {funcName}(0)"));
+        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
     }
 
     [Test]

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
@@ -9,491 +8,411 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
-[NonParallelizable]
-public class CompositeTests : TestBase
+public class CompositeTests : MultiplexingTestBase
 {
-    #region Test Types
-
-#pragma warning disable CS8618
-    record SomeComposite
+    [Test]
+    public async Task Basic()
     {
-        public int X { get; set; }
-        public string SomeText { get; set; }
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            type,
+            npgsqlDbType: null);
     }
 
-    class SomeCompositeContainer
+#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
+    [Test, NonParallelizable]
+    public async Task Global_mapping()
     {
-        public int A { get; set; }
-        public SomeComposite Contained { get; set; }
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+        NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>(type);
+
+        try
+        {
+            var dataSourceBuilder = CreateDataSourceBuilder();
+            dataSourceBuilder.MapComposite<SomeComposite>(type);
+            await using var dataSource = dataSourceBuilder.Build();
+            await using var connection = await dataSource.OpenConnectionAsync();
+            await connection.ReloadTypesAsync();
+
+            await AssertType(
+                connection,
+                new SomeComposite { SomeText = "foo", X = 8 },
+                "(8,foo)",
+                type,
+                npgsqlDbType: null);
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+        }
+    }
+#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
+
+    [Test]
+    public async Task Nested()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var containerType);
+        await using var __ = await GetTempTypeName(adminConnection, out var containeeType);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {containeeType} AS (x int, some_text text);
+CREATE TYPE {containerType} AS (a int, containee {containeeType});");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        // Registration in inverse dependency order should work
+        dataSourceBuilder
+            .MapComposite<SomeCompositeContainer>(containerType)
+            .MapComposite<SomeComposite>(containeeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
+            @"(8,""(9,foo)"")",
+            containerType,
+            npgsqlDbType: null);
     }
 
-    struct CompositeStruct
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
+    public async Task With_schema()
     {
-        public int X { get; set; }
-        public string SomeText { get; set; }
-    }
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await CreateTempSchema(adminConnection, out var schema);
 
-    class ParentComposite
-    {
-        public int ID { get; set; }
-        public ChildComposite? Child { get; set; }
-    }
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {schema}.some_composite AS (x int, some_text text)");
 
-    class ChildComposite
-    {
-        public string? Name { get; set; }
-    }
-#pragma warning restore CS8618
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>($"{schema}.some_composite");
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
-    #endregion
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            $"{schema}.some_composite",
+            npgsqlDbType: null);
+    }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4365")]
-    public async Task In_different_schemas_same_type_with_child()
+    public async Task In_different_schemas_same_type_with_nested()
     {
-	    var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-	    {
-		    ApplicationName = nameof(In_different_schemas_same_type_with_child),  // Prevent backend type caching in TypeHandlerRegistry
-		    Pooling = false
-	    };
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await CreateTempSchema(adminConnection, out var firstSchemaName);
+        await using var __ = await CreateTempSchema(adminConnection, out var secondSchemaName);
 
-	    await using var conn = await OpenConnectionAsync(csb);
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {firstSchemaName}.containee AS (x int, some_text text);
+CREATE TYPE {firstSchemaName}.container AS (a int, containee {firstSchemaName}.containee);
+CREATE TYPE {secondSchemaName}.containee AS (x int, some_text text);
+CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}.containee);");
 
-	    await using var _ = await CreateTempSchema(conn, out var firstSchemaName);
-	    await using var __ = await CreateTempSchema(conn, out var secondSchemaName);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder
+            .MapComposite<SomeComposite>($"{firstSchemaName}.containee")
+            .MapComposite<SomeCompositeContainer>($"{firstSchemaName}.container")
+            .MapComposite<SomeComposite>($"{secondSchemaName}.containee")
+            .MapComposite<SomeCompositeContainer>($"{secondSchemaName}.container");
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 
-	    await conn.ExecuteNonQueryAsync($"CREATE TYPE {firstSchemaName}.child_composite AS (name text)");
-	    await conn.ExecuteNonQueryAsync($"CREATE TYPE {firstSchemaName}.composite AS (id int, child {firstSchemaName}.child_composite)");
-	    await conn.ExecuteNonQueryAsync($"CREATE TYPE {secondSchemaName}.child_composite AS (name text)");
-	    await conn.ExecuteNonQueryAsync($"CREATE TYPE {secondSchemaName}.composite AS (id int, child {secondSchemaName}.child_composite)");
+        await AssertType(
+            connection,
+            new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
+            @"(8,""(9,foo)"")",
+            $"{secondSchemaName}.container",
+            npgsqlDbType: null);
 
-	    await conn.ExecuteNonQueryAsync(
-		    @$"
-                CREATE TABLE {firstSchemaName}.composite_table (mycomposite {firstSchemaName}.composite);
-                INSERT INTO {firstSchemaName}.composite_table VALUES(ROW(1, ROW('1')));
-
-                CREATE TABLE {secondSchemaName}.composite_table (mycomposite {secondSchemaName}.composite);
-                INSERT INTO {secondSchemaName}.composite_table VALUES(ROW(2, ROW('2')));
-		    ");
-
-	    conn.ReloadTypes();
-	    conn.TypeMapper
-		    .MapComposite<ChildComposite>($"{firstSchemaName}.child_composite")
-		    .MapComposite<ParentComposite>($"{firstSchemaName}.composite")
-		    .MapComposite<ChildComposite>($"{secondSchemaName}.child_composite")
-		    .MapComposite<ParentComposite>($"{secondSchemaName}.composite");
-	    await using var cmd = conn.CreateCommand();
-	    cmd.CommandText = $"SELECT * FROM {firstSchemaName}.composite_table; SELECT * FROM {secondSchemaName}.composite_table";
-	    await using var reader = await cmd.ExecuteReaderAsync();
-	    Assert.IsTrue(await reader.ReadAsync());
-	    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"{firstSchemaName}.composite"));
-	    var firstParentComposite = reader.GetFieldValue<ParentComposite>(0);
-	    Assert.That(firstParentComposite.ID, Is.EqualTo(1));
-	    Assert.NotNull(firstParentComposite.Child);
-	    Assert.That(firstParentComposite.Child!.Name, Is.EqualTo("1"));
-	    Assert.IsTrue(await reader.NextResultAsync());
-	    Assert.IsTrue(await reader.ReadAsync());
-	    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"{secondSchemaName}.composite"));
-	    var secondParentComposite = reader.GetFieldValue<ParentComposite>(0);
-	    Assert.That(secondParentComposite.ID, Is.EqualTo(2));
-	    Assert.NotNull(secondParentComposite.Child);
-	    Assert.That(secondParentComposite.Child!.Name, Is.EqualTo("2"));
+        await AssertType(
+            connection,
+            new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
+            @"(8,""(9,foo)"")",
+            $"{firstSchemaName}.container",
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
-    public void Composite()
+    [Test]
+    public async Task Struct()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(PostgresType),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.comp1 AS (x int, some_text text)");
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.comp2 AS (comp comp1, comps comp1[])");
-        conn.ReloadTypes();
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
 
-        using var cmd = new NpgsqlCommand("SELECT ROW(ROW(8, 'foo')::comp1, ARRAY[ROW(9, 'bar')::comp1, ROW(10, 'baz')::comp1])::comp2", conn);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeCompositeStruct>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new SomeCompositeStruct { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task Array()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite[] { new() { SomeText = "foo", X = 8 }, new() { SomeText = "bar", X = 9 }},
+            @"{""(8,foo)"",""(9,bar)""}",
+            type + "[]",
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
+    public async Task Name_translation()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync(@$"
+CREATE TYPE {type} AS (simple int, two_words int, some_database_name int)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<NameTranslationComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new NameTranslationComposite { Simple = 2, TwoWords = 3, SomeClrName = 4 },
+            "(2,3,4)",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/856")]
+    public async Task Composite_containing_domain_type()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var domainType);
+        await using var __ = await GetTempTypeName(adminConnection, out var compositeType);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE DOMAIN {domainType} AS TEXT;
+CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<Address>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new Address { PostalCode = "12345", Street = "Main St." },
+            @"(""Main St."",12345)",
+            compositeType,
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
+    public async Task Table_as_composite([Values] bool enabled)
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(adminConnection, "x int, some_text text", out var table);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(table);
+        if (enabled)
+            dataSourceBuilder.ConnectionStringBuilder.LoadTableComposites = true;
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        if (enabled)
+            await DoAssertion();
+        else
+        {
+            Assert.ThrowsAsync<ArgumentException>(DoAssertion);
+            Assert.Null(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)));
+            Assert.Null(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)));
+
+        }
+
+        Task DoAssertion()
+            => AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            table,
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1267")]
+    public async Task Table_as_composite_with_deleted_columns()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(adminConnection, "x int, some_text text, bar int", out var table);
+        await adminConnection.ExecuteNonQueryAsync($"ALTER TABLE {table} DROP COLUMN bar;");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.LoadTableComposites = true;
+        dataSourceBuilder.MapComposite<SomeComposite>(table);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new SomeComposite { SomeText = "foo", X = 8 },
+            "(8,foo)",
+            table,
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
+    public async Task Nullable_property_in_class_composite()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo INT)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<ClassWithNullableProperty>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new ClassWithNullableProperty { Foo = 8 },
+            "(8)",
+            type,
+            npgsqlDbType: null);
+
+        await AssertType(
+            connection,
+            new ClassWithNullableProperty { Foo = null },
+            "()",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
+    public async Task Nullable_property_in_struct_composite()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo INT)");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<StructWithNullableProperty>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
+
+        await AssertType(
+            connection,
+            new StructWithNullableProperty { Foo = 8 },
+            "(8)",
+            type,
+            npgsqlDbType: null);
+
+        await AssertType(
+            connection,
+            new StructWithNullableProperty { Foo = null },
+            "()",
+            type,
+            npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task PostgresType()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(connection, out var type1);
+        await using var __ = await GetTempTypeName(connection, out var type2);
+
+        await connection.ExecuteNonQueryAsync(@$"
+CREATE TYPE {type1} AS (x int, some_text text);
+CREATE TYPE {type2} AS (comp {type1}, comps {type1}[]);");
+        await connection.ReloadTypesAsync();
+
+        await using var cmd = new NpgsqlCommand(
+            $"SELECT ROW(ROW(8, 'foo')::{type1}, ARRAY[ROW(9, 'bar')::{type1}, ROW(10, 'baz')::{type1}])::{type2}",
+            connection);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
         var comp2Type = (PostgresCompositeType)reader.GetPostgresType(0);
-        Assert.That(comp2Type.Name, Is.EqualTo("comp2"));
-        Assert.That(comp2Type.FullName, Does.StartWith("pg_temp_") & Does.EndWith(".comp2"));
+        Assert.That(comp2Type.Name, Is.EqualTo(type2));
+        Assert.That(comp2Type.FullName, Is.EqualTo($"public.{type2}"));
         Assert.That(comp2Type.Fields, Has.Count.EqualTo(2));
         var field1 = comp2Type.Fields[0];
         var field2 = comp2Type.Fields[1];
         Assert.That(field1.Name, Is.EqualTo("comp"));
         Assert.That(field2.Name, Is.EqualTo("comps"));
         var comp1Type = (PostgresCompositeType)field1.Type;
-        Assert.That(comp1Type.Name, Is.EqualTo("comp1"));
+        Assert.That(comp1Type.Name, Is.EqualTo(type1));
         var arrType = (PostgresArrayType)field2.Type;
-        Assert.That(arrType.Name, Is.EqualTo("comp1[]"));
+        Assert.That(arrType.Name, Is.EqualTo(type1 + "[]"));
         var elemType = arrType.Element;
         Assert.That(elemType, Is.SameAs(comp1Type));
     }
 
-    [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
-    public void Composite_type_resolution_with_global_mapping()
+    #region Test Types
+
+    record SomeComposite
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Composite_type_resolution_with_global_mapping),  // Prevent backend type caching in TypeHandlerRegistry
-            Pooling = false
-        };
-
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite1 AS (x int, some_text text)");
-        NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>("composite1");
-        try
-        {
-            conn.ReloadTypes();
-
-            // Resolve type by DataTypeName
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter
-                {
-                    ParameterName = "p",
-                    DataTypeName = "composite1",
-                    Value = DBNull.Value
-                });
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
-                    Assert.That(reader.IsDBNull(0), Is.True);
-                }
-            }
-
-            // Resolve type by ClrType (type inference)
-            conn.ReloadTypes();
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" }});
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
-                }
-            }
-
-            // Resolve type by OID (read)
-            conn.ReloadTypes();
-            using (var cmd = new NpgsqlCommand("SELECT ROW(1, 'foo')::COMPOSITE1", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite1"));
-                Assert.That(reader.GetFieldValue<SomeComposite>(0), Is.EqualTo(new SomeComposite { X = 1, SomeText = "foo" }));
-            }
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>("composite1");
-        }
+        public int X { get; set; }
+        public string SomeText { get; set; } = null!;
     }
 
-    [Test, Description("Resolves a composite type handler via the different pathways, with late mapping")]
-    public void Composite_type_resolution_with_late_mapping()
+    record SomeCompositeContainer
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Composite_type_resolution_with_late_mapping),  // Prevent backend type caching in TypeHandlerRegistry
-            Pooling = false
-        };
-
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite2 AS (x int, some_text text)");
-        // Resolve type by NpgsqlDbType
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("composite2");
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            cmd.Parameters.Add(new NpgsqlParameter
-            {
-                ParameterName = "p",
-                DataTypeName = "composite2",
-                Value = DBNull.Value
-            });
-
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
-                Assert.That(reader.IsDBNull(0), Is.True);
-            }
-        }
-
-        // Resolve type by ClrType (type inference)
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("composite2");
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" } });
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
-            }
-        }
-
-        // Resolve type by OID (read)
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("composite2");
-        using (var cmd = new NpgsqlCommand("SELECT ROW(1, 'foo')::COMPOSITE2", conn))
-        using (var reader = cmd.ExecuteReader())
-        {
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".composite2"));
-        }
+        public int A { get; set; }
+        public SomeComposite Containee { get; set; }  = null!;
     }
 
-    [Test, Parallelizable(ParallelScope.None)]
-    public void Late_mapping()
+    struct SomeCompositeStruct
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Late_mapping),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite3 AS (x int, some_text text)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("composite3");
-
-        var expected = new SomeComposite {X = 8, SomeText = "foo"};
-        using var cmd = new NpgsqlCommand("SELECT @p1::composite3, @p2::composite3", conn);
-        cmd.Parameters.Add(new NpgsqlParameter
-        {
-            ParameterName = "p1",
-            DataTypeName = "composite3",
-            Value = expected
-        });
-        cmd.Parameters.AddWithValue("p2", expected);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        for (var i = 0; i < cmd.Parameters.Count; i++)
-        {
-            var actual = reader.GetFieldValue<SomeComposite>(i);
-            Assert.That(actual.X, Is.EqualTo(8));
-            Assert.That(actual.SomeText, Is.EqualTo("foo"));
-        }
+        public int X { get; set; }
+        public string SomeText { get; set; }
     }
 
-    [Test]
-    public void Global_mapping()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Global_mapping),
-            Pooling = false
-        };
-        try
-        {
-            using (var conn = OpenConnection(csb))
-            {
-                conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
-                conn.ExecuteNonQuery("CREATE TYPE composite4 AS (x int, some_text text)");
-                NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>("composite4");
-                conn.ReloadTypes();
-
-                var expected = new SomeComposite { X = 8, SomeText = "foo" };
-                using (var cmd = new NpgsqlCommand($"SELECT @p::composite4", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", expected);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        reader.Read();
-                        var actual = reader.GetFieldValue<SomeComposite>(0);
-                        Assert.That(actual.X, Is.EqualTo(8));
-                        Assert.That(actual.SomeText, Is.EqualTo("foo"));
-                    }
-                }
-            }
-
-            // Unmap
-            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>("composite4");
-
-            using (var conn = OpenConnection(csb))
-            {
-                Assert.That(() => conn.ExecuteScalar("SELECT '(8, \"foo\")'::composite4"), Throws.TypeOf<NotSupportedException>());
-            }
-        }
-        finally
-        {
-            using var conn = OpenConnection(csb);
-            conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite4");
-        }
-    }
-
-    [Test]
-    public async Task Global_mapping_non_generic()
-    {
-        using var conn = OpenConnection();
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-
-        conn.ExecuteNonQuery($"CREATE TYPE {typeName} AS (x int, some_text text)");
-        NpgsqlConnection.GlobalTypeMapper.MapComposite(typeof(SomeComposite), typeName);
-        conn.ReloadTypes();
-        try
-        {
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" }});
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{typeName}"));
-                }
-            }
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>(typeName);
-        }
-    }
-
-    [Test]
-    public async Task Late_mapping_non_generic()
-    {
-        using var conn = OpenConnection();
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-
-        conn.ExecuteNonQuery($"CREATE TYPE {typeName} AS (x int, some_text text)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite(typeof(SomeComposite), typeName);
-        try
-        {
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new SomeComposite { X = 8, SomeText = "foo" }});
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{typeName}"));
-                }
-            }
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<SomeComposite>(typeName);
-        }
-    }
-
-    [Test, Description("Tests a composite within another composite")]
-    public void Recursive()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Recursive),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_contained AS (x int, some_text text)");
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_container AS (a int, contained composite_contained)");
-        conn.ReloadTypes();
-        // Registration in inverse dependency order should work
-        conn.TypeMapper.MapComposite<SomeCompositeContainer>("composite_container");
-        conn.TypeMapper.MapComposite<SomeComposite>("composite_contained");
-
-        var expected = new SomeCompositeContainer {
-            A = 4,
-            Contained = new SomeComposite {X = 8, SomeText = "foo"}
-        };
-
-        using var cmd = new NpgsqlCommand("SELECT @p::composite_container", conn);
-        cmd.Parameters.AddWithValue("p", expected);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        var actual = reader.GetFieldValue<SomeCompositeContainer>(0);
-        Assert.That(actual.A, Is.EqualTo(4));
-        Assert.That(actual.Contained.X, Is.EqualTo(8));
-        Assert.That(actual.Contained.SomeText, Is.EqualTo("foo"));
-    }
-
-    [Test]
-    public void Struct()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Struct),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_struct AS (x int, some_text text)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<CompositeStruct>("composite_struct");
-
-        var expected = new CompositeStruct {X = 8, SomeText = "foo"};
-        using var cmd = new NpgsqlCommand("SELECT @p::composite_struct", conn);
-        cmd.Parameters.AddWithValue("p", expected);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        var actual = reader.GetFieldValue<CompositeStruct>(0);
-        Assert.That(actual.X, Is.EqualTo(8));
-        Assert.That(actual.SomeText, Is.EqualTo("foo"));
-    }
-
-    [Test]
-    public void Array()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Array),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite5 AS (x int, some_text text)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>("composite5");
-
-        var expected = new[] {
-            new SomeComposite {X = 8, SomeText = "foo"},
-            new SomeComposite {X = 9, SomeText = "bar"}
-        };
-
-        using var cmd = new NpgsqlCommand("SELECT @p1::composite5[], @p2::composite5[]", conn);
-        cmd.Parameters.Add(new NpgsqlParameter
-        {
-            ParameterName = "p1",
-            DataTypeName = "composite5[]",
-            Value = expected
-        });
-        cmd.Parameters.AddWithValue("p2", expected); // Infer
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        for (var i = 0; i < cmd.Parameters.Count; i++)
-        {
-            var actual = reader.GetFieldValue<SomeComposite[]>(i);
-            Assert.That(actual[0].X, Is.EqualTo(expected[0].X));
-            Assert.That(actual[0].SomeText, Is.EqualTo(expected[0].SomeText));
-            Assert.That(actual[1].X, Is.EqualTo(expected[1].X));
-            Assert.That(actual[1].SomeText, Is.EqualTo(expected[1].SomeText));
-        }
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
-    public void Name_translation()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Late_mapping),
-            Pooling = false
-        };
-        var expected = new NameTranslationComposite { Simple = 2, TwoWords = 3, SomeClrName = 4 };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.name_translation_composite AS (simple int, two_words int, some_database_name int)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<NameTranslationComposite>();
-
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        cmd.Parameters.AddWithValue("p", expected);
-        var actual = (NameTranslationComposite)cmd.ExecuteScalar()!;
-        Assert.That(actual.Simple, Is.EqualTo(expected.Simple));
-        Assert.That(actual.TwoWords, Is.EqualTo(expected.TwoWords));
-        Assert.That(actual.SomeClrName, Is.EqualTo(expected.SomeClrName));
-    }
-
-    class NameTranslationComposite
+    record NameTranslationComposite
     {
         public int Simple { get; set; }
         public int TwoWords { get; set; }
@@ -501,176 +420,13 @@ public class CompositeTests : TestBase
         public int SomeClrName { get; set; }
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/856")]
-    public void Domain()
-    {
-        var setupSql = @"SET search_path=pg_temp;
-
-CREATE DOMAIN us_postal_code AS TEXT
-CHECK
-(
-    VALUE ~ '^\d{5}$'
-    OR VALUE ~ '^\d{5}-\d{4}$'
-);
-
-CREATE TYPE address AS
-(
-    street TEXT,
-    postal_code us_postal_code
-)";
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Domain),
-            Pooling = false
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery(setupSql);
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<Address>();
-
-        var expected = new Address { PostalCode = "12345", Street = "Main St."};
-        using var cmd = new NpgsqlCommand(@"SELECT @p", conn);
-        cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value=expected });
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        var actual = reader.GetFieldValue<Address>(0);
-        Assert.That(actual.Street, Is.EqualTo(expected.Street));
-        Assert.That(actual.PostalCode, Is.EqualTo(expected.PostalCode));
-    }
-
-    public class Address
+    record Address
     {
         public string Street { get; set; } = default!;
         public string PostalCode { get; set; } = default!;
     }
 
-    class TableAsCompositeType
-    {
-        public int Foo { get; set; }
-    }
-
-    #region Table as Composite
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
-    public void Table_as_composite_not_supported_by_default()
-    {
-        using var conn = OpenConnection();
-        conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite (foo int); INSERT INTO table_as_composite (foo) VALUES (8)");
-        conn.ReloadTypes();
-        Assert.That(() => conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite"), Throws.Exception.TypeOf<ArgumentException>());
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/990")]
-    public void Table_as_composite()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Table_as_composite),
-            LoadTableComposites = true
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery(
-            "CREATE TEMP TABLE table_as_composite (foo int);" +
-            "INSERT INTO table_as_composite (foo) VALUES (8)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite");
-        var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t")!;
-        Assert.That(value.Foo, Is.EqualTo(8));
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1267")]
-    public void Table_as_composite_with_delete_columns()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Table_as_composite_with_delete_columns),
-            LoadTableComposites = true
-        };
-
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery(@"
-                    CREATE TEMP TABLE table_as_composite2 (foo int, bar int);
-                    ALTER TABLE table_as_composite2 DROP COLUMN bar;
-                    INSERT INTO table_as_composite2 (foo) VALUES (8)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite2");
-        var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite2 FROM table_as_composite2 AS t")!;
-        Assert.That(value.Foo, Is.EqualTo(8));
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2668")]
-    public void Table_composites_not_loaded_if_not_requested()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Table_composites_not_loaded_if_not_requested)
-        };
-
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite3 (foo int, bar int)");
-        conn.ReloadTypes();
-
-        Assert.Throws<ArgumentException>(() => conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite3"));
-        Assert.Null(conn.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains("table_as_composite3")));
-        Assert.Null(conn.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains("table_as_composite3")));
-    }
-
-    #endregion Table as Composite
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-    public void Nullable_property_in_class_composite()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Nullable_property_in_class_composite)
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<ClassWithNullableProperty>("nullable_property_type");
-
-        var expected1 = new ClassWithNullableProperty { Foo = 8 };
-        var expected2 = new ClassWithNullableProperty { Foo = null };
-        using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn);
-        cmd.Parameters.AddWithValue("p1", expected1);
-        cmd.Parameters.AddWithValue("p2", expected2);
-
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(0).Foo, Is.EqualTo(8));
-        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(1).Foo, Is.Null);
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-    public void Nullable_property_in_struct_composite()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Nullable_property_in_struct_composite)
-        };
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<StructWithNullableProperty>("nullable_property_type");
-
-        var expected1 = new StructWithNullableProperty { Foo = 8 };
-        var expected2 = new StructWithNullableProperty { Foo = null };
-        using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn);
-        cmd.Parameters.AddWithValue("p1", expected1);
-        cmd.Parameters.AddWithValue("p2", expected2);
-
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(0).Foo, Is.EqualTo(8));
-        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(1).Foo, Is.Null);
-    }
-
-    class ClassWithNullableProperty
+    record ClassWithNullableProperty
     {
         public int? Foo { get; set; }
     }
@@ -680,113 +436,7 @@ CREATE TYPE address AS
         public int? Foo { get; set; }
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
-    public void With_schema()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(With_schema),  // Prevent backend type caching in TypeHandlerRegistry
-            Pooling = false
-        };
+    public CompositeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema CASCADE; CREATE SCHEMA composite_schema");
-        try
-        {
-            conn.ExecuteNonQuery("CREATE TYPE composite_schema.composite AS (foo int)");
-            conn.ReloadTypes();
-            conn.TypeMapper.MapComposite<Composite1>("composite_schema.composite");
-            using var cmd = new NpgsqlCommand("SELECT @p", conn);
-            cmd.Parameters.AddWithValue("p", new Composite1 { Foo = 8 });
-            using var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite_schema.composite"));
-            Assert.That(reader.GetFieldValue<Composite1>(0).Foo, Is.EqualTo(8));
-        }
-        finally
-        {
-            if (conn.State == ConnectionState.Open)
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema CASCADE");
-        }
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1168")]
-    public void In_different_schemas()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(In_different_schemas),  // Prevent backend type caching in TypeHandlerRegistry
-            Pooling = false
-        };
-
-        using var conn = OpenConnection(csb);
-        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema1 CASCADE; CREATE SCHEMA composite_schema1");
-        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema2 CASCADE; CREATE SCHEMA composite_schema2");
-        try
-        {
-            conn.ExecuteNonQuery("CREATE TYPE composite_schema1.composite AS (foo int)");
-            conn.ExecuteNonQuery("CREATE TYPE composite_schema2.composite AS (bar int)");
-            conn.ReloadTypes();
-            // Attempting to map without a fully-qualified name should fail
-            Assert.That(() => conn.TypeMapper.MapComposite<Composite1>("composite"),
-                Throws.Exception.TypeOf<ArgumentException>()
-            );
-            conn.TypeMapper
-                .MapComposite<Composite1>("composite_schema1.composite")
-                .MapComposite<Composite2>("composite_schema2.composite");
-            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
-            cmd.Parameters.AddWithValue("p1", new Composite1 { Foo = 8 });
-            cmd.Parameters.AddWithValue("p2", new Composite2 { Bar = 9 });
-            using var reader = cmd.ExecuteReader();
-            reader.Read();
-            Assert.That(reader.GetDataTypeName(0), Is.EqualTo("composite_schema1.composite"));
-            Assert.That(reader.GetFieldValue<Composite1>(0).Foo, Is.EqualTo(8));
-            Assert.That(reader.GetDataTypeName(1), Is.EqualTo("composite_schema2.composite"));
-            Assert.That(reader.GetFieldValue<Composite2>(1).Bar, Is.EqualTo(9));
-        }
-        finally
-        {
-            if (conn.State == ConnectionState.Open)
-            {
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema1 CASCADE");
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS composite_schema2 CASCADE");
-                conn.ReloadTypes();
-            }
-        }
-    }
-
-    class Composite1 { public int Foo { get; set; } }
-    class Composite2 { public int Bar { get; set; } }
-    class Composite3 { public int Bar { get; set; } }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1612")]
-    public void Local_mapping_do_not_leak()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            ApplicationName = nameof(Local_mapping_do_not_leak)
-        };
-        NpgsqlConnection.GlobalTypeMapper.MapComposite<Composite2>("composite");
-        try
-        {
-            using (var conn = OpenConnection(csb))
-            {
-                conn.ExecuteNonQuery("CREATE TYPE composite AS (bar int)");
-                conn.ReloadTypes();
-                Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite2>());
-                conn.TypeMapper.MapComposite<Composite3>("composite");
-                Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite3>());
-            }
-            using (var conn = OpenConnection(csb))
-                Assert.That(conn.ExecuteScalar("SELECT '(8)'::composite"), Is.TypeOf<Composite2>());
-        }
-        finally
-        {
-            NpgsqlConnection.GlobalTypeMapper.UnmapComposite<Composite2>("composite");
-            using var conn = OpenConnection(csb);
-            conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite");
-            NpgsqlConnection.ClearPool(conn);
-        }
-    }
+    #endregion
 }

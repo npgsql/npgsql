@@ -679,7 +679,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ProcessParameters(ConnectorTypeMapper typeMapper, bool validateValues, CommandType commandType)
+    internal void ProcessParameters(TypeMapper typeMapper, bool validateValues, CommandType commandType)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;

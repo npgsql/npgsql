@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
+using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -146,18 +148,18 @@ public class NetTopologySuiteTests : TestBase
     }
 
     [Test, TestCaseSource(nameof(TestCases))]
-    public void Read(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
+    public async Task Read(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
     {
-        using var conn = OpenConnection();
+        using var conn = await OpenConnectionAsync();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT {sqlRepresentation}";
         Assert.That(Equals(cmd.ExecuteScalar(), geometry));
     }
 
     [Test, TestCaseSource(nameof(TestCases))]
-    public void Write(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
+    public async Task Write(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
     {
-        using var conn = OpenConnection(handleOrdinates: ordinates);
+        using var conn = await OpenConnectionAsync(handleOrdinates: ordinates);
         using var cmd = conn.CreateCommand();
         cmd.Parameters.AddWithValue("p1", geometry);
         cmd.CommandText = $"SELECT st_asewkb(@p1) = st_asewkb({sqlRepresentation})";
@@ -165,30 +167,23 @@ public class NetTopologySuiteTests : TestBase
     }
 
     [Test]
-    public void Read_array()
+    public async Task Array()
     {
-        using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
-        var result = cmd.ExecuteScalar();
-        Assert.That(result, Is.InstanceOf<Geometry[]>());
-        Assert.That(result, Is.EquivalentTo(new[] { new Point(new Coordinate(1d, 1d)) }));
+        var point = new Point(new Coordinate(1d, 1d));
+
+        await AssertType(
+            NtsDataSource,
+            new Geometry[] { point },
+            '{' + GetSqlLiteral(point) + '}',
+            "geometry[]",
+            NpgsqlDbType.Geometry | NpgsqlDbType.Array,
+            isNpgsqlDbTypeInferredFromClrType: false);
     }
 
     [Test]
-    public void Write_array()
+    public async Task Read_as_concrete_type()
     {
-        using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
-        using var cmd = conn.CreateCommand();
-        cmd.Parameters.AddWithValue("@p1", new[] { new Point(new Coordinate(1d, 1d)) });
-        cmd.CommandText = "SELECT @p1 = array(select st_makepoint(1,1))";
-        Assert.That(cmd.ExecuteScalar(), Is.True);
-    }
-
-    [Test]
-    public void Read_as_concrete_type()
-    {
-        using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+        using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn);
         using var reader = cmd.ExecuteReader();
         reader.Read();
@@ -197,10 +192,10 @@ public class NetTopologySuiteTests : TestBase
     }
 
     [Test]
-    public void Roundtrip_geometry_geography()
+    public async Task Roundtrip_geometry_geography()
     {
         var point = new Point(new Coordinate(1d, 1d));
-        using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+        using var conn = await OpenConnectionAsync();
         conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
         using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
         {
@@ -315,25 +310,40 @@ public class NetTopologySuiteTests : TestBase
         })));
     }
 
-    protected override NpgsqlConnection OpenConnection(string? connectionString = null)
-        => OpenConnection(connectionString);
-
-    protected NpgsqlConnection OpenConnection(string? connectionString = null, Ordinates handleOrdinates = Ordinates.None)
+    protected ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null, Ordinates handleOrdinates = Ordinates.None)
     {
         if (handleOrdinates == Ordinates.None)
             handleOrdinates = Ordinates.XY;
 
-        var conn = base.OpenConnection(connectionString);
-        conn.TypeMapper.UseNetTopologySuite(
-            new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
-            handleOrdinates: handleOrdinates);
-        return conn;
+        var dataSource = NtsDataSources.GetOrAdd(handleOrdinates, o =>
+        {
+            var dataSourceBuilder = CreateDataSourceBuilder();
+            dataSourceBuilder.UseNetTopologySuite(
+                new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
+                handleOrdinates: o);
+            return dataSourceBuilder.Build();
+        });
+
+        if (handleOrdinates == Ordinates.XY)
+            NtsDataSource = dataSource;
+
+        return dataSource.OpenConnectionAsync();
     }
+
+    static string GetSqlLiteral(Geometry geometry)
+        => string.Join("", geometry.ToBinary().Select(b => $"{b:X2}"));
 
     [OneTimeSetUp]
     public async Task SetUp()
     {
-        using var conn = await base.OpenConnectionAsync();
-        await TestUtil.EnsurePostgis(conn);
+        var connection = await OpenConnectionAsync(handleOrdinates: Ordinates.XY);
+        await EnsurePostgis(connection);
     }
+
+    [OneTimeTearDown]
+    public async Task Teardown()
+        => await Task.WhenAll(NtsDataSources.Values.Select(async ds => await ds.DisposeAsync()));
+
+    NpgsqlDataSource NtsDataSource = default!;
+    ConcurrentDictionary<Ordinates, NpgsqlDataSource> NtsDataSources = new();
 }

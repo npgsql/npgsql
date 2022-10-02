@@ -131,28 +131,31 @@ public class SchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task DataTypes()
     {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var enumTypeName);
-        await using var __ = await GetTempTypeName(conn, out var compositeTypeName);
-        await using var ___ = await GetTempTypeName(conn, out var domainName);
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var enumType);
+        await using var __ = await GetTempTypeName(adminConnection, out var compositeType);
+        await using var ___ = await GetTempTypeName(adminConnection, out var domainType);
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {enumType} AS ENUM ('a', 'b');
+CREATE TYPE {compositeType} AS (a INTEGER);
+CREATE DOMAIN {domainType} AS TEXT");
 
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TYPE {enumTypeName} AS ENUM ('a', 'b');
-CREATE TYPE {compositeTypeName} AS (a INTEGER);
-CREATE DOMAIN {domainName} AS TEXT");
-        conn.ReloadTypes();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<TestEnum>(enumType);
+        dataSourceBuilder.MapComposite<TestComposite>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-        conn.TypeMapper.MapEnum<TestEnum>(enumTypeName);
-        conn.TypeMapper.MapComposite<TestComposite>(compositeTypeName);
+        await connection.ReloadTypesAsync();
 
-        var dataTable = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
+        var dataTable = await GetSchema(connection, DbMetaDataCollectionNames.MetaDataCollections);
         var metadata = dataTable.Rows
             .Cast<DataRow>()
             .Single(r => r["CollectionName"].Equals("DataTypes"));
         Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
         Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
 
-        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+        var dataTypes = await GetSchema(connection, DbMetaDataCollectionNames.DataTypes);
 
         var intRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("integer"));
         Assert.That(intRow["DataType"], Is.EqualTo("System.Int32"));
@@ -189,15 +192,15 @@ CREATE DOMAIN {domainName} AS TEXT");
         Assert.That(intRangeRow["ProviderDbType"], Is.EqualTo((int)(NpgsqlDbType.Integer | NpgsqlDbType.Range)));
         Assert.That(intRangeRow["OID"], Is.EqualTo(3904));
 
-        var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + enumTypeName));
+        var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + enumType));
         Assert.That(enumRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestEnum"));
         Assert.That(enumRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
-        var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + compositeTypeName));
+        var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + compositeType));
         Assert.That(compositeRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestComposite"));
         Assert.That(compositeRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
-        var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + domainName));
+        var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + domainType));
         Assert.That(domainRow["DataType"], Is.EqualTo("System.String"));
         Assert.That(domainRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Text));
         Assert.That(domainRow["IsBestMatch"], Is.False);

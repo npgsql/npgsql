@@ -2,8 +2,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -20,7 +18,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
-sealed class ConnectorTypeMapper : TypeMapperBase
+sealed class TypeMapper
 {
     internal NpgsqlConnector Connector { get; }
     readonly object _writeLock = new();
@@ -28,20 +26,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     NpgsqlDatabaseInfo? _databaseInfo;
 
     internal NpgsqlDatabaseInfo DatabaseInfo
-    {
-        get => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
-        set
-        {
-            // We're attempting to set the same NpgsqlDatabaseInfo as we already have.
-            // If so, there is no reason to reset type mappings since NpgsqlDatabaseInfo is immutable.
-            // This might happen with multiplexing due to sharing the same ConnectorTypeMapper between multiple connections.
-            if (ReferenceEquals(_databaseInfo, value))
-                return;
-
-            _databaseInfo = value;
-            Reset();
-        }
-    }
+        => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
 
     volatile TypeHandlerResolver[] _resolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
@@ -52,27 +37,48 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByDataTypeName = new();
 
     readonly Dictionary<uint, TypeMappingInfo> _userTypeMappings = new();
-
-    /// <summary>
-    /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
-    /// mapper was created, to detect mapping changes. If changes are made to this connection's
-    /// mapper, the change counter is set to -1.
-    /// </summary>
-    internal int ChangeCounter { get; private set; }
+    readonly INpgsqlNameTranslator _defaultNameTranslator;
 
     readonly ILogger _commandLogger;
 
     #region Construction
 
-    internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
+    internal TypeMapper(NpgsqlConnector connector, INpgsqlNameTranslator defaultNameTranslator)
     {
         Connector = connector;
+        _defaultNameTranslator = defaultNameTranslator;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector.TextEncoding);
         _resolvers = Array.Empty<TypeHandlerResolver>();
         _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }
 
     #endregion Constructors
+
+    internal void Initialize(
+        NpgsqlDatabaseInfo databaseInfo,
+        List<TypeHandlerResolverFactory> resolverFactories,
+        Dictionary<string, IUserTypeMapping> userTypeMappings)
+    {
+        _databaseInfo = databaseInfo;
+
+        var resolvers = new TypeHandlerResolver[resolverFactories.Count];
+        for (var i = 0; i < resolverFactories.Count; i++)
+            resolvers[i] = resolverFactories[i].Create(Connector);
+        _resolvers = resolvers;
+
+        foreach (var userTypeMapping in userTypeMappings.Values)
+        {
+            if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType))
+            {
+                _handlersByOID[pgType.OID] =
+                    _handlersByDataTypeName[pgType.FullName] =
+                        _handlersByDataTypeName[pgType.Name] =
+                            _handlersByClrType[userTypeMapping.ClrType] = userTypeMapping.CreateHandler(pgType, Connector);
+
+                _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, pgType.Name, userTypeMapping.ClrType);
+            }
+        }
+    }
 
     #region Type handler lookup
 
@@ -239,7 +245,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
                 return _handlersByDataTypeName[typeName] =
-                    new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding);
+                    new UnmappedEnumHandler(pgEnumType, _defaultNameTranslator, Connector.TextEncoding);
             }
 
             case PostgresDomainType pgDomainType:
@@ -381,8 +387,8 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
             if (type.IsEnum)
             {
-                return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, DefaultNameTranslator)) is PostgresEnumType pgEnumType
-                    ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, DefaultNameTranslator, Connector.TextEncoding)
+                return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, _defaultNameTranslator)) is PostgresEnumType pgEnumType
+                    ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, _defaultNameTranslator, Connector.TextEncoding)
                     : throw new NotSupportedException(
                         $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
                         "Consider mapping the enum before usage, refer to the documentation for more details.");
@@ -488,199 +494,6 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
     #endregion Type handler lookup
 
-    #region Mapping management
-
-    public override INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresEnumType pgEnumType)
-            throw new InvalidCastException($"Cannot map enum type {typeof(TEnum).Name} to PostgreSQL type {pgName} which isn't an enum");
-
-        var handler = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator).CreateHandler(pgEnumType, Connector);
-
-        ApplyUserMapping(pgEnumType, typeof(TEnum), handler);
-
-        return this;
-    }
-
-    public override bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
-
-        var userEnumMapping = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresEnumType pgEnumType)
-            throw new InvalidCastException($"Could not find {pgName}");
-
-        var found = _handlersByOID.TryRemove(pgEnumType.OID, out _);
-        found |= _handlersByClrType.TryRemove(userEnumMapping.ClrType, out _);
-        found |= _handlersByDataTypeName.TryRemove(userEnumMapping.PgTypeName, out _);
-        return found;
-    }
-
-    public override INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(T), nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresCompositeType pgCompositeType)
-        {
-            throw new InvalidCastException(
-                $"Cannot map composite type {typeof(T).Name} to PostgreSQL type {pgName} which isn't a composite");
-        }
-
-        var handler = new UserCompositeTypeMapping<T>(pgName, nameTranslator).CreateHandler(pgCompositeType, Connector);
-
-        ApplyUserMapping(pgCompositeType, typeof(T), handler);
-
-        return this;
-    }
-
-    public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        var openMethod =
-            typeof(ConnectorTypeMapper).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
-
-        method.Invoke(this, new object?[] { pgName, nameTranslator });
-
-        return this;
-    }
-
-    public override bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        => UnmapComposite(typeof(T), pgName, nameTranslator);
-
-    public override bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(clrType, nameTranslator);
-
-        if (DatabaseInfo.GetPostgresTypeByName(pgName) is not PostgresCompositeType pgCompositeType)
-            throw new InvalidCastException($"Could not find {pgName}");
-
-        var found = _handlersByOID.TryRemove(pgCompositeType.OID, out _);
-        found |= _handlersByClrType.TryRemove(clrType, out _);
-        found |= _handlersByDataTypeName.TryRemove(pgName, out _);
-        return found;
-    }
-
-    void ApplyUserMapping(PostgresType pgType, Type clrType, NpgsqlTypeHandler handler)
-    {
-        _handlersByOID[pgType.OID] =
-            _handlersByDataTypeName[pgType.FullName] =
-                _handlersByDataTypeName[pgType.Name] =
-                    _handlersByClrType[clrType] = handler;
-
-        _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, pgType.Name, clrType);
-    }
-
-    public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
-    {
-        lock (this)
-        {
-            // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapped.UseNodaTime,
-            // we replace an existing resolver of the same CLR type.
-
-            var newResolver = resolverFactory.Create(Connector);
-            var newResolverType = newResolver.GetType();
-
-            var currentResolvers = _resolvers;
-            Debug.Assert(currentResolvers.Length > 0);
-            Debug.Assert(currentResolvers[0] is not null);
-
-            if (currentResolvers[0].GetType() == newResolverType)
-                currentResolvers[0] = newResolver;
-            else
-            {
-                // The TypeHandlerResolver we're attempting to add isn't the first resolver,
-                // but it still might be at some other position.
-                // We assume that that specific TypeHandlerResolver is already there
-                // and create a new TypeHandlerResolver array with the same length as the original one.
-                // It's going to be enough if we're just shuffling TypeHandlerResolver's around.
-                // In the worst case scenario (that's an entirely new TypeHandlerResolver), we would have to resize the array.
-                var resolvers = new TypeHandlerResolver[currentResolvers.Length];
-                resolvers[0] = newResolver;
-
-                var resolverIndex = 1;
-                for (var i = 0; i < currentResolvers.Length; i++)
-                {
-                    if (currentResolvers[i].GetType() != newResolverType)
-                    {
-                        // Worst case scenario: we're attempting to add an entirely new TypeHandlerResolver.
-                        // We have to resize the resolvers array to not get out of bounds.
-                        if (i == currentResolvers.Length - 1 && resolverIndex == currentResolvers.Length)
-                            Array.Resize(ref resolvers, currentResolvers.Length + 1);
-
-                        resolvers[resolverIndex++] = currentResolvers[i];
-                    }
-                }
-
-                _resolvers = resolvers;
-            }
-
-            _handlersByOID.Clear();
-            _handlersByNpgsqlDbType.Clear();
-            _handlersByClrType.Clear();
-            _handlersByDataTypeName.Clear();
-
-            ChangeCounter = -1;
-        }
-    }
-
-    public override void Reset()
-    {
-        lock (this)
-        {
-            var globalMapper = GlobalTypeMapper.Instance;
-            globalMapper.Lock.EnterReadLock();
-            try
-            {
-                var resolvers = new TypeHandlerResolver[globalMapper.ResolverFactories.Count];
-                for (var i = 0; i < globalMapper.ResolverFactories.Count; i++)
-                    resolvers[i] = globalMapper.ResolverFactories[i].Create(Connector);
-                _resolvers = resolvers;
-
-                _handlersByOID.Clear();
-                _handlersByNpgsqlDbType.Clear();
-                _handlersByClrType.Clear();
-                _handlersByDataTypeName.Clear();
-
-                _userTypeMappings.Clear();
-
-                foreach (var userTypeMapping in globalMapper.UserTypeMappings.Values)
-                {
-                    if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType))
-                    {
-                        ApplyUserMapping(pgType, userTypeMapping.ClrType, userTypeMapping.CreateHandler(pgType, Connector));
-                    }
-                }
-
-                ChangeCounter = globalMapper.ChangeCounter;
-            }
-            finally
-            {
-                globalMapper.Lock.ExitReadLock();
-            }
-        }
-    }
-
-    #endregion Mapping management
-
     internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfoByOid(uint oid)
     {
         if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
@@ -709,4 +522,8 @@ sealed class ConnectorTypeMapper : TypeMapperBase
 
         return (null, pgType);
     }
+
+    static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
+        => clrType.GetCustomAttribute<PgNameAttribute>()?.PgName
+           ?? nameTranslator.TranslateTypeName(clrType.Name);
 }

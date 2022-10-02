@@ -505,7 +505,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     #region Internals
 
-    internal virtual void ResolveHandler(ConnectorTypeMapper typeMapper)
+    internal virtual void ResolveHandler(TypeMapper typeMapper)
     {
         if (Handler is not null)
             return;
@@ -523,7 +523,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    internal void Bind(ConnectorTypeMapper typeMapper)
+    internal void Bind(TypeMapper typeMapper)
     {
         ResolveHandler(typeMapper);
         FormatCode = Handler!.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
