@@ -67,7 +67,7 @@ sealed class ConnectorTypeMapper : TypeMapperBase
     internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
     {
         Connector = connector;
-        UnrecognizedTypeHandler = new UnknownTypeHandler(Connector);
+        UnrecognizedTypeHandler = new UnknownTypeHandler(Connector.TextEncoding);
         _resolvers = Array.Empty<TypeHandlerResolver>();
         _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }

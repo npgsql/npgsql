@@ -29,14 +29,11 @@ public class LTreeHandler : TextHandler
     public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
         base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
 
-
     public override int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
         base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
 
-
     public override int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
         base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
-
 
     public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
+using System.Linq;
 using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.PluginTests;
 
@@ -215,6 +215,104 @@ public class NetTopologySuiteTests : TestBase
             Assert.That(reader[0], Is.EqualTo(point));
             Assert.That(reader[1], Is.EqualTo(point));
         }
+    }
+
+    [Test, Explicit]
+    public async Task Concurrency_test()
+    {
+        await using var adminConnection = OpenConnection();
+        await using var tempTableHandle = await CreateTempTable(
+            adminConnection,
+            "point GEOMETRY, linestring GEOMETRY, polygon GEOMETRY, " +
+            "multipoint GEOMETRY, multilinestring GEOMETRY, multipolygon GEOMETRY, " +
+            "collection GEOMETRY",
+            out var table);
+        await adminConnection.ExecuteNonQueryAsync($"INSERT INTO {table} DEFAULT VALUES");
+
+        var point = new Point(new Coordinate(1d, 1d));
+        var lineString = new LineString(new[] { new Coordinate(1d, 1d), new Coordinate(1d, 2500d) });
+        var polygon = new Polygon(
+            new LinearRing(new[]
+            {
+                new Coordinate(1d, 1d),
+                new Coordinate(2d, 2d),
+                new Coordinate(3d, 3d),
+                new Coordinate(1d, 1d)
+            })
+        );
+        var multiPoint = new MultiPoint(new[] { new Point(new Coordinate(1d, 1d)) });
+        var multiLineString = new MultiLineString(new[]
+        {
+            new LineString(new[]
+            {
+                new Coordinate(1d, 1d),
+                new Coordinate(1d, 2500d)
+            })
+        });
+        var multiPolygon = new MultiPolygon(new[]
+        {
+            new Polygon(
+                new LinearRing(new[]
+                {
+                    new Coordinate(1d, 1d),
+                    new Coordinate(2d, 2d),
+                    new Coordinate(3d, 3d),
+                    new Coordinate(1d, 1d)
+                })
+            )
+        });
+        var collection = new GeometryCollection(new Geometry[]
+        {
+            new Point(new Coordinate(1d, 1d)),
+            new MultiPolygon(new[]
+            {
+                new Polygon(
+                    new LinearRing(new[]
+                    {
+                        new Coordinate(1d, 1d),
+                        new Coordinate(2d, 2d),
+                        new Coordinate(3d, 3d),
+                        new Coordinate(1d, 1d)
+                    })
+                )
+            })
+        });
+
+        await Task.WhenAll(Enumerable.Range(0, 30).Select(i => Task.Run(async () =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                await using var connection = OpenConnection();
+
+                await using (var cmd = new NpgsqlCommand())
+                {
+                    cmd.Connection = connection;
+                    cmd.CommandText =
+                        $"UPDATE {table} SET point=$1, linestring=$2, polygon=$3, multipoint=$4, multilinestring=$5, multipolygon=$6, collection=$7";
+                    cmd.Parameters.Add(new() { Value = point });
+                    cmd.Parameters.Add(new() { Value = lineString });
+                    cmd.Parameters.Add(new() { Value = polygon });
+                    cmd.Parameters.Add(new() { Value = multiPoint });
+                    cmd.Parameters.Add(new() { Value = multiLineString });
+                    cmd.Parameters.Add(new() { Value = multiPolygon });
+                    cmd.Parameters.Add(new() { Value = collection });
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                await using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", connection))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    await reader.ReadAsync();
+                    Assert.That(reader.GetFieldValue<Geometry>(0), Is.EqualTo(point));
+                    Assert.That(reader.GetFieldValue<Geometry>(1), Is.EqualTo(lineString));
+                    Assert.That(reader.GetFieldValue<Geometry>(2), Is.EqualTo(polygon));
+                    Assert.That(reader.GetFieldValue<Geometry>(3), Is.EqualTo(multiPoint));
+                    Assert.That(reader.GetFieldValue<Geometry>(4), Is.EqualTo(multiLineString));
+                    Assert.That(reader.GetFieldValue<Geometry>(5), Is.EqualTo(multiPolygon));
+                    Assert.That(reader.GetFieldValue<Geometry>(6), Is.EqualTo(collection));
+                }
+            }
+        })));
     }
 
     protected override NpgsqlConnection OpenConnection(string? connectionString = null)
