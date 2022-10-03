@@ -423,7 +423,5 @@ public abstract class TestBase
     protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
         => new($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
-    protected bool IsRedshift => new NpgsqlConnectionStringBuilder(ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
-
     #endregion
 }

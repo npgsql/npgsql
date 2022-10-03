@@ -4,6 +4,8 @@ Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
 Npgsql.NpgsqlLoggingConfiguration
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
 *REMOVED*Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool

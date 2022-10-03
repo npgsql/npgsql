@@ -77,6 +77,17 @@ public static class TestUtil
 
     static readonly Version MinCreateExtensionVersion = new(9, 1);
 
+    public static void IgnoreOnRedshift(NpgsqlConnection conn, string? ignoreText = null)
+    {
+        if (new NpgsqlConnectionStringBuilder(conn.ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift)
+        {
+            var msg = "Test ignored on Redshift";
+            if (ignoreText != null)
+                msg += ": " + ignoreText;
+            Assert.Ignore(msg);
+        }
+    }
+
     public static bool IsPgPrerelease(NpgsqlConnection conn)
         => ((string)conn.ExecuteScalar("SELECT version()")!).Contains("beta");
 
