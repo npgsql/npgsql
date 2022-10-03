@@ -113,6 +113,13 @@ public class NpgsqlDbColumn : DbColumn
         protected internal set => base.IsAutoIncrement = value;
     }
 
+    /// <inheritdoc cref="DbColumn.IsIdentity" />
+    public new bool? IsIdentity
+    {
+        get => base.IsIdentity;
+        protected internal set => base.IsIdentity = value;
+    }
+
     /// <inheritdoc cref="DbColumn.IsKey" />
     public new bool? IsKey
     {

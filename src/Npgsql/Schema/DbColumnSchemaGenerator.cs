@@ -216,8 +216,11 @@ ORDER BY attnum";
         var defaultValueOrdinal = reader.GetOrdinal("default");
         column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
 
+        column.IsIdentity = !oldQueryMode && reader.GetBoolean(reader.GetOrdinal("isidentity"));
+
+        // Use a heuristic to discover old SERIAL columns
         column.IsAutoIncrement =
-            !oldQueryMode && reader.GetBoolean(reader.GetOrdinal("isidentity")) ||
+            column.IsIdentity == true ||
             column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(", StringComparison.Ordinal);
 
         ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("typmod")));
