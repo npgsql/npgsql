@@ -17,9 +17,6 @@ public abstract class NpgsqlDatabaseInfo
 {
     #region Fields
 
-    internal static readonly ConcurrentDictionary<NpgsqlDatabaseInfoCacheKey, NpgsqlDatabaseInfo> Cache
-        = new();
-
     static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
     {
         new PostgresMinimalDatabaseInfoFactory(),
@@ -302,8 +299,6 @@ public abstract class NpgsqlDatabaseInfo
         factories[0] = factory;
         Array.Copy(Factories, 0, factories, 1, Factories.Length);
         Factories = factories;
-
-        Cache.Clear();
     }
 
     internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
@@ -324,14 +319,11 @@ public abstract class NpgsqlDatabaseInfo
 
     // For tests
     internal static void ResetFactories()
-    {
-        Factories = new INpgsqlDatabaseInfoFactory[]
+        => Factories = new INpgsqlDatabaseInfoFactory[]
         {
             new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
         };
-        Cache.Clear();
-    }
 
     #endregion Factory management
 }

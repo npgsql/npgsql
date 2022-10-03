@@ -197,18 +197,6 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal async Task Bootstrap(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        await SetupMappings(connector, forceReload: false, timeout, async, cancellationToken);
-
-        IsBootstrapped = true;
-    }
-
-    internal async Task SetupMappings(
-        NpgsqlConnector connector,
-        bool forceReload,
-        NpgsqlTimeout timeout,
-        bool async,
-        CancellationToken cancellationToken = default)
-    {
         var hasSemaphore = async
             ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
             : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
@@ -223,17 +211,17 @@ public abstract class NpgsqlDataSource : DbDataSource
             var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
             connector.TypeMapper = typeMapper;
 
-            var key = new NpgsqlDatabaseInfoCacheKey(Settings);
-            if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
-            {
-                using var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
-                NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
-            }
+            NpgsqlDatabaseInfo databaseInfo;
 
-            DatabaseInfo = database;
-            connector.DatabaseInfo = database;
-            typeMapper.Initialize(database, _resolverFactories, _userTypeMappings);
+            using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
+                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
+
+            DatabaseInfo = databaseInfo;
+            connector.DatabaseInfo = databaseInfo;
+            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
             TypeMapper = typeMapper;
+
+            IsBootstrapped = true;
         }
         finally
         {

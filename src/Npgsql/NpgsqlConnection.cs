@@ -87,6 +87,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// The global type mapper, which contains defaults used by all new connections.
     /// Modify mappings on this mapper to affect your entire application.
     /// </summary>
+    [Obsolete("Global-level type mapping has been replaced with data source mapping, see the 7.0 release notes.")]
     public static INpgsqlTypeMapper GlobalTypeMapper => TypeMapping.GlobalTypeMapper.Instance;
 
     /// <summary>
@@ -1880,9 +1881,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         using var scope = StartTemporaryBindingScope(out var connector);
 
-        _dataSource!.SetupMappings(
+        _dataSource!.Bootstrap(
             connector,
-            forceReload: true,
             NpgsqlTimeout.Infinite,
             async: false,
             CancellationToken.None)
@@ -1899,9 +1899,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         using var scope = StartTemporaryBindingScope(out var connector);
 
-        await _dataSource!.SetupMappings(
+        await _dataSource!.Bootstrap(
                 connector,
-                forceReload: true,
                 NpgsqlTimeout.Infinite,
                 async: true,
                 CancellationToken.None);

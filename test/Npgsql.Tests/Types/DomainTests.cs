@@ -70,7 +70,6 @@ CREATE TYPE {compositeType} AS (value {domainType});");
         dataSourceBuilder.MapComposite<SomeComposite>(compositeType);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         var result = (SomeComposite)(await connection.ExecuteScalarAsync($"SELECT ROW('foo')::{compositeType}"))!;
         Assert.That(result.Value, Is.EqualTo("foo"));

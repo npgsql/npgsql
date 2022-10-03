@@ -247,7 +247,6 @@ public class BugTests : TestBase
         dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         for (var i = 0; i < 2; i++)
         {
@@ -358,7 +357,6 @@ CREATE TYPE {compositeType} AS (value {domainType})");
         dataSourceBuilder.MapEnum<Bug2278EnumType>(enumType);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await connection.ExecuteScalarAsync($"SELECT * FROM {table} AS d");
     }
@@ -1197,7 +1195,6 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await connection.ExecuteNonQueryAsync(@$"
 CREATE OR REPLACE FUNCTION {func}(id int, out comp1 {type}, OUT comp2 {type}[])

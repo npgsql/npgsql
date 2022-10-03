@@ -443,7 +443,6 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{type} FROM {tableName}", connection);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);

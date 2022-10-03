@@ -579,14 +579,13 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     {
         await using var adminConnection = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-        await connection.ReloadTypesAsync();
         await using var __ = await CreateTempTable(connection, $"mymood {type}, mymoodarr {type}[]", out var table);
 
         await using (var writer = await connection.BeginBinaryImportAsync($"COPY {table} (mymood, mymoodarr) FROM STDIN BINARY"))

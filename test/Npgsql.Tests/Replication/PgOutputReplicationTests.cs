@@ -1023,7 +1023,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
                     // In regular tests we'd use a data source, but replication doesn't work with data sources (yet).
                     // In addition, clear the DatabaseInfo cache.
                     using var _ = CreateTempPool(ConnectionString, out var connString);
-                    Internal.NpgsqlDatabaseInfo.Cache.Clear();
                     var rc = await OpenReplicationConnectionAsync(connString);
                     var slot = await rc.CreatePgOutputReplicationSlot(slotName);
                     var expected = new Descriptor { Id = 1248, Name = "My Descriptor" };

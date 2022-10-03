@@ -33,7 +33,6 @@ public partial class CompositeHandlerTests : TestBase
             dataSourceBuilder.MapComposite<T>(nameQualified, nameTranslator);
             var dataSource = dataSourceBuilder.Build();
             await using var connection = await dataSource.OpenConnectionAsync();
-            await connection.ReloadTypesAsync();
 
             return dataSource;
         }

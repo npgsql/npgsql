@@ -22,7 +22,6 @@ public class CompositeTests : MultiplexingTestBase
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -82,7 +81,6 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
             .MapComposite<SomeComposite>(containeeType);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -104,7 +102,6 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
         dataSourceBuilder.MapComposite<SomeComposite>($"{schema}.some_composite");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -135,7 +132,6 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             .MapComposite<SomeCompositeContainer>($"{secondSchemaName}.container");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -165,7 +161,6 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
         dataSourceBuilder.MapComposite<SomeCompositeStruct>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -187,7 +182,6 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -210,7 +204,6 @@ CREATE TYPE {type} AS (simple int, two_words int, some_database_name int)");
         dataSourceBuilder.MapComposite<NameTranslationComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -235,7 +228,6 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
         dataSourceBuilder.MapComposite<Address>(compositeType);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -257,7 +249,6 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
             dataSourceBuilder.ConnectionStringBuilder.LoadTableComposites = true;
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         if (enabled)
             await DoAssertion();
@@ -290,7 +281,6 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
         dataSourceBuilder.MapComposite<SomeComposite>(table);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -312,7 +302,6 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
         dataSourceBuilder.MapComposite<ClassWithNullableProperty>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,
@@ -341,7 +330,6 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
         dataSourceBuilder.MapComposite<StructWithNullableProperty>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         await AssertType(
             connection,

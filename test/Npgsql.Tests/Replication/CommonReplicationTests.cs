@@ -22,12 +22,9 @@ public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConn
 {
     #region Open
 
-    [Test, Parallelizable(ParallelScope.None)]
+    [Test, NonParallelizable]
     public async Task Open()
     {
-        // Force type reloading from the replication connection if it is a logical replication connection
-        if (typeof(TConnection) == typeof(LogicalReplicationConnection))
-            Internal.NpgsqlDatabaseInfo.Cache.Clear();
         await using var rc = await OpenReplicationConnectionAsync();
     }
 

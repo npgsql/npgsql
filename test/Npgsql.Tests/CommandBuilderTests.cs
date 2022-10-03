@@ -193,7 +193,6 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         await using var adminConnection = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(adminConnection, out var type);
         await adminConnection.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('apple', 'cherry', 'plum')");
-        adminConnection.ReloadTypes();
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapEnum<Fruit>(type);
@@ -242,7 +241,6 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
         dataSourceBuilder.MapComposite<SomeComposite>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 
         var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
         var expected2 = new[] { expected1, new SomeComposite {X = 9, SomeText = "bar"} };

@@ -146,8 +146,6 @@ CREATE DOMAIN {domainType} AS TEXT");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        await connection.ReloadTypesAsync();
-
         var dataTable = await GetSchema(connection, DbMetaDataCollectionNames.MetaDataCollections);
         var metadata = dataTable.Rows
             .Cast<DataRow>()

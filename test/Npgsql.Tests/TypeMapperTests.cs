@@ -116,7 +116,6 @@ public class TypeMapperTests : TestBase
     {
         await using var adminConnection = await OpenConnectionAsync();
         await EnsureExtensionAsync(adminConnection, "citext");
-        await adminConnection.ReloadTypesAsync();
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
