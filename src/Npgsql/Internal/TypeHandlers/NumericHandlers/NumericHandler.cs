@@ -408,13 +408,9 @@ public partial class NumericHandler : NpgsqlTypeHandler<decimal>,
         if (lengthCache.IsPopulated)
             return lengthCache.Get();
 
-        var result = (ushort[]?)parameter?.ConvertedValue;
-        if (result == null)
-        {
-            result = FromBigInteger(value)!;
-            if (parameter != null)
-                parameter.ConvertedValue = result;
-        }
+        var result = FromBigInteger(value);
+        if (parameter != null)
+            parameter.ConvertedValue = result;
 
         return lengthCache.Set((4 + result[0]) * sizeof(ushort));
     }
