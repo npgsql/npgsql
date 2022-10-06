@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -333,6 +334,32 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         }
 
         Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(data));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4693")]
+    public async Task Import_numeric()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "field NUMERIC(1000)", out var table);
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync(new BigInteger(1234), NpgsqlDbType.Numeric);
+            await writer.StartRowAsync();
+            await writer.WriteAsync(new BigInteger(5678), NpgsqlDbType.Numeric);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(2));
+        }
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT field FROM {table}";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(reader.GetValue(0), Is.EqualTo(1234m));
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(reader.GetValue(0), Is.EqualTo(5678m));
     }
 
     [Test]
