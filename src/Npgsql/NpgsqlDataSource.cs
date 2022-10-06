@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Security;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -42,6 +44,9 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; set; } = null!; // Initialized at bootstrapping
+
+    internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
+    internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
@@ -84,6 +89,8 @@ public abstract class NpgsqlDataSource : DbDataSource
         Configuration = dataSourceConfig;
 
         (LoggingConfiguration,
+                UserCertificateValidationCallback,
+                ClientCertificatesCallback,
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,

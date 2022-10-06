@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1052,6 +1053,32 @@ LANGUAGE 'plpgsql'");
         using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null }, out var tempConnectionString);
         await using var clonedConnection = connection.CloneWith(tempConnectionString);
         await clonedConnection.OpenAsync();
+    }
+
+    [Test]
+    public async Task CloneWith_and_data_source_with_auth_callbacks()
+    {
+        var (userCertificateValidationCallbackCalled, clientCertificatesCallbackCalled) = (false, false);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseUserCertificateValidationCallback(UserCertificateValidationCallback);
+        dataSourceBuilder.UseClientCertificatesCallback(ClientCertificatesCallback);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = dataSource.CreateConnection();
+
+        using var _ = CreateTempPool(ConnectionString, out var tempConnectionString);
+        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+
+        clonedConnection.UserCertificateValidationCallback!(null!, null, null, SslPolicyErrors.None);
+        Assert.True(userCertificateValidationCallbackCalled);
+        clonedConnection.ProvideClientCertificatesCallback!(null!);
+        Assert.True(clientCertificatesCallbackCalled);
+
+        bool UserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors)
+            => userCertificateValidationCallbackCalled = true;
+
+        void ClientCertificatesCallback(X509CertificateCollection certs)
+            => clientCertificatesCallbackCalled = true;
     }
 
     #endregion PersistSecurityInfo

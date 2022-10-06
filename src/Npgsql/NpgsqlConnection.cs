@@ -404,7 +404,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// that was previously opened from the pool.
     /// </p>
     /// </remarks>
-    [Obsolete("Use NpgsqlDataSource.UsePeriodicPasswordProvider or UseInlinePasswordProvider")]
+    [Obsolete("Use NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider or inject passwords directly into NpgsqlDataSource.Password")]
     public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
     #endregion Connection string management
@@ -1029,16 +1029,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
 
     /// <summary>
-    /// <para>
-    /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
-    /// </para>
+    /// When using SSL/TLS, this is a callback that allows customizing how the PostgreSQL-provided certificate is verified. This is an
+    /// advanced API, consider using <see cref="SslMode.VerifyFull" /> or <see cref="SslMode.VerifyCA" /> instead.
+    /// </summary>
+    /// <remarks>
     /// <para>
     /// Cannot be used in conjunction with <see cref="SslMode.Disable" />, <see cref="SslMode.VerifyCA" /> and
     /// <see cref="SslMode.VerifyFull" />.
     /// </para>
-    /// </summary>
-    /// <remarks>
-    /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
+    /// <para>
+    /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>.
+    /// </para>
     /// </remarks>
     public RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; set; }
 
@@ -1806,9 +1807,12 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
             csb.PersistSecurityInfo = false;
 
-        return new NpgsqlConnection(csb.ToString()) {
-            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-            UserCertificateValidationCallback = UserCertificateValidationCallback,
+        return new NpgsqlConnection(csb.ToString())
+        {
+            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback ?? (_dataSource?.ClientCertificatesCallback is null
+                ? null
+                : (ProvideClientCertificatesCallback)(certs => _dataSource?.ClientCertificatesCallback(certs))),
+            UserCertificateValidationCallback = UserCertificateValidationCallback ?? _dataSource?.UserCertificateValidationCallback,
 #pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
 #pragma warning restore CS0618
@@ -2002,6 +2006,7 @@ public delegate void ProvideClientCertificatesCallback(X509CertificateCollection
 /// <param name="database">Database Name</param>
 /// <param name="username">User</param>
 /// <returns>A valid password for connecting to the database</returns>
+[Obsolete("Use NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider or inject passwords directly into NpgsqlDataSource.Password")]
 public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
 
 #endregion

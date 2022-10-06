@@ -55,9 +55,11 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// </summary>
     public NpgsqlConnectionStringBuilder Settings { get; }
 
-    ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; }
+    Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
     RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
+#pragma warning disable CS0618 // ProvidePasswordCallback is obsolete
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
+#pragma warning restore CS0618
 
     public Encoding TextEncoding { get; private set; } = default!;
 
@@ -302,8 +304,11 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal NpgsqlConnector(NpgsqlDataSource dataSource, NpgsqlConnection conn)
         : this(dataSource)
     {
-        ProvideClientCertificatesCallback = conn.ProvideClientCertificatesCallback;
-        UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+        if (conn.ProvideClientCertificatesCallback is not null)
+            ClientCertificatesCallback = certs => conn.ProvideClientCertificatesCallback(certs);
+        if (conn.UserCertificateValidationCallback is not null)
+            UserCertificateValidationCallback = conn.UserCertificateValidationCallback;
+
 #pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
@@ -312,7 +317,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     NpgsqlConnector(NpgsqlConnector connector)
         : this(connector.DataSource)
     {
-        ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
+        ClientCertificatesCallback = connector.ClientCertificatesCallback;
         UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
@@ -328,6 +333,9 @@ public sealed partial class NpgsqlConnector : IDisposable
         CommandLogger = LoggingConfiguration.CommandLogger;
         TransactionLogger = LoggingConfiguration.TransactionLogger;
         CopyLogger = LoggingConfiguration.CopyLogger;
+
+        ClientCertificatesCallback = dataSource.ClientCertificatesCallback;
+        UserCertificateValidationCallback = dataSource.UserCertificateValidationCallback;
 
         State = ConnectorState.Closed;
         TransactionStatus = TransactionStatus.Idle;
@@ -771,15 +779,15 @@ public sealed partial class NpgsqlConnector : IDisposable
                                 cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
                             }
 #else
-                                throw new NotSupportedException("PEM certificates are only supported with .NET 5 and higher");
+                            throw new NotSupportedException("PEM certificates are only supported with .NET 5 and higher");
 #endif
                         }
-                        if (cert is null)
-                            cert = new X509Certificate2(certPath, password);
+
+                        cert ??= new X509Certificate2(certPath, password);
                         clientCertificates.Add(cert);
                     }
 
-                    ProvideClientCertificatesCallback?.Invoke(clientCertificates);
+                    ClientCertificatesCallback?.Invoke(clientCertificates);
 
                     var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
@@ -831,11 +839,9 @@ public sealed partial class NpgsqlConnector : IDisposable
 #endif
 
                         if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
-                                sslProtocols, checkCertificateRevocation);
+                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
                         else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates,
-                                sslProtocols, checkCertificateRevocation);
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
 
                         _stream = sslStream;
                     }
