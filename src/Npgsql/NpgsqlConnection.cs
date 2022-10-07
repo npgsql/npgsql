@@ -482,8 +482,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </summary>
     public string? UserName => Settings.Username;
 
-    internal string? Password => Settings.Password;
-
     // The following two lines are here for backwards compatibility with the EF6 provider
     // ReSharper disable UnusedMember.Global
     internal string? EntityTemplateDatabase => Settings.EntityTemplateDatabase;
@@ -1972,10 +1970,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckDisposed();
         var csb = new NpgsqlConnectionStringBuilder(connectionString);
-        if (csb.Password == null && Password != null)
-            csb.Password = Password;
+        csb.Password ??= _dataSource?.GetPassword(async: false).GetAwaiter().GetResult();
         if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
             csb.PersistSecurityInfo = false;
+
         return new NpgsqlConnection(csb.ToString()) {
             ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
             UserCertificateValidationCallback = UserCertificateValidationCallback,

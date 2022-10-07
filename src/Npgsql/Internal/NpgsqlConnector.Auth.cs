@@ -335,8 +335,7 @@ partial class NpgsqlConnector
             }
         }
 
-        if (password is null)
-            password = PostgresEnvironment.Password;
+        password ??= PostgresEnvironment.Password;
 
         if (password != null)
             return password;

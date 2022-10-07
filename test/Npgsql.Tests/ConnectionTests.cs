@@ -1036,6 +1036,24 @@ LANGUAGE 'plpgsql'");
         Assert.That(clonedConn.ConnectionString, Does.Not.Contain("Password="));
     }
 
+    [Test]
+    public async Task CloneWith_and_data_source_with_password()
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
+        // Set the password via the data source property later to make sure that's picked up by CloneWith
+        var password = dataSourceBuilder.ConnectionStringBuilder.Password!;
+        dataSourceBuilder.ConnectionStringBuilder.Password = null;
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var connection = dataSource.CreateConnection();
+        dataSource.Password = password;
+
+        // Test that the up-to-date password gets copied to the clone, as if we opened the original connection instead of cloning it
+        using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null }, out var tempConnectionString);
+        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+        await clonedConnection.OpenAsync();
+    }
+
     #endregion PersistSecurityInfo
 
     [Test]
