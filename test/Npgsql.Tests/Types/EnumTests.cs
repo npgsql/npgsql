@@ -4,7 +4,6 @@ using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.Util.Statics;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
@@ -12,20 +11,7 @@ namespace Npgsql.Tests.Types;
 public class EnumTests : MultiplexingTestBase
 {
     enum Mood { Sad, Ok, Happy }
-
-    [PgName("explicitly_named_mood")]
-    enum MoodUnmapped { Sad, Ok, Happy };
-
-    [Test]
-    public async Task Unmapped_enum()
-    {
-        await using var connection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(connection, out var type);
-        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-        await connection.ReloadTypesAsync();
-
-        await AssertType(connection, Mood.Happy, "happy", type, npgsqlDbType: null, isDefault: false);
-    }
+    enum AnotherEnum { Value1, Value2 }
 
     [Test]
     public async Task Data_source_mapping()
@@ -73,78 +59,6 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
         await AssertType(dataSource, new[] { Mood.Ok, Mood.Happy }, "{ok,happy}", type + "[]", npgsqlDbType: null);
     }
 
-    [Test]
-    public async Task Read_unmapped_enum_as_string()
-    {
-        using var conn = new NpgsqlConnection(ConnectionString);
-        conn.Open();
-        await using var _ = await GetTempTypeName(conn, out var type);
-
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('Sad', 'Ok', 'Happy')");
-        conn.ReloadTypes();
-        using var cmd = new NpgsqlCommand($"SELECT 'Sad'::{type}, ARRAY['Ok', 'Happy']::{type}[]", conn);
-        using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader[0], Is.EqualTo("Sad"));
-        Assert.That(reader.GetDataTypeName(0), Is.EqualTo($"public.{type}"));
-        Assert.That(reader[1], Is.EqualTo(new[] { "Ok", "Happy" }));
-    }
-
-    [Test, Description("Test that a c# string can be written to a backend enum when DbType is unknown")]
-    public async Task Write_string_to_backend_enum()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
-        await using var __ = await GetTempTableName(conn, out var table);
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TYPE {type} AS ENUM ('Banana', 'Apple', 'Orange');
-CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
-        await conn.ReloadTypesAsync();
-        const string expected = "Banana";
-        using var cmd = new NpgsqlCommand($"INSERT INTO {table} (id, value1, value2) VALUES (default, @p1, @p2);", conn);
-        cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Unknown, expected);
-        var p2 = new NpgsqlParameter("p1", NpgsqlDbType.Unknown) {Value = expected};
-        cmd.Parameters.Add(p2);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
-    [Test, NonParallelizable]
-    public async Task Write_unmapped_enum()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync(@"
-DROP TYPE IF EXISTS explicitly_named_mood;
-CREATE TYPE explicitly_named_mood AS ENUM ('sad', 'ok', 'happy')");
-
-        await conn.ReloadTypesAsync();
-
-        await using var cmd = new NpgsqlCommand($"SELECT @p::text", conn)
-        {
-            Parameters = { new("p", MoodUnmapped.Happy) }
-        };
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        await reader.ReadAsync();
-
-        Assert.AreEqual("happy", reader.GetFieldValue<string>(0));
-    }
-
-    [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
-    public async Task Write_enum_as_NpgsqlDbType_Unknown()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
-        await using var __ = await GetTempTableName(conn, out var table);
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TYPE {type} AS ENUM ('Sad', 'Ok', 'Happy');
-CREATE TABLE {table} (value1 {type})");
-        await conn.ReloadTypesAsync();
-        var expected = Mood.Happy;
-        using var cmd = new NpgsqlCommand($"INSERT INTO {table} (value1) VALUES (@p1);", conn);
-        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Unknown, expected);
-        await cmd.ExecuteNonQueryAsync();
-    }
-
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
     public async Task Name_translation_default_snake_case()
     {
@@ -175,6 +89,32 @@ CREATE TABLE {table} (value1 {type})");
         await AssertType(dataSource, NameTranslationEnum.Simple, "Simple", type, npgsqlDbType: null);
         await AssertType(dataSource, NameTranslationEnum.TwoWords, "TwoWords", type, npgsqlDbType: null);
         await AssertType(dataSource, NameTranslationEnum.SomeClrName, "some_database_name", type, npgsqlDbType: null);
+    }
+
+    [Test]
+    public async Task Unmapped_enum_as_clr_enum()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(connection, out var type1);
+        await using var __ = await GetTempTypeName(connection, out var type2);
+        await connection.ExecuteNonQueryAsync(@$"
+CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
+CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
+        await connection.ReloadTypesAsync();
+
+        await AssertType(connection, Mood.Happy, "happy", type1, npgsqlDbType: null, isDefault: false);
+        await AssertType(connection, AnotherEnum.Value2, "value2", type2, npgsqlDbType: null, isDefault: false);
+    }
+
+    [Test]
+    public async Task Unmapped_enum_as_string()
+    {
+        await using var connection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(connection, out var type);
+        await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+        await connection.ReloadTypesAsync();
+
+        await AssertType(connection, "happy", "happy", type, npgsqlDbType: null, isDefaultForWriting: false);
     }
 
     enum NameTranslationEnum
