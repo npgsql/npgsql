@@ -292,14 +292,14 @@ public static class TestUtil
                 TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 
-    static volatile int _tempTableCounter;
+    internal static volatile int _tempTableCounter;
     static volatile int _tempViewCounter;
     static volatile int _tempFunctionCounter;
     static volatile int _tempSchemaCounter;
     static volatile int _tempTypeCounter;
     static volatile int _tempDomainCounter;
 
-    sealed class DatabaseObjectDropper : IAsyncDisposable
+    internal sealed class DatabaseObjectDropper : IDisposable, IAsyncDisposable
     {
         readonly NpgsqlConnection _conn;
         readonly string _type;
@@ -313,6 +313,18 @@ public static class TestUtil
             try
             {
                 await _conn.ExecuteNonQueryAsync($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
+            }
+            catch
+            {
+                // Swallow to allow triggering exceptions to surface
+            }
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                _conn.ExecuteNonQuery($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
             }
             catch
             {

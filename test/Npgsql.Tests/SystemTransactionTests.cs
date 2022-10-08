@@ -125,8 +125,7 @@ public class SystemTransactionTests : TestBase
                 Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
             }
 
-            // Consecutive connections used in same scope should not promote the
-            // transaction to distributed.
+            // Consecutive connections used in same scope should not promote the transaction to distributed.
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             scope.Complete();
@@ -358,6 +357,25 @@ public class SystemTransactionTests : TestBase
 
             var ex = Assert.Throws<TransactionException>(() => OpenConnection(csb))!;
             Assert.That(ex.Message, Is.EqualTo("The operation is not valid for the state of the transaction."));
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1594")]
+    public void Bug1594()
+    {
+        using var outerScope = new TransactionScope();
+
+        using (var conn = OpenConnection(ConnectionStringEnlistOn))
+        using (var innerScope1 = new TransactionScope())
+        {
+            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+            innerScope1.Complete();
+        }
+
+        using (OpenConnection(ConnectionStringEnlistOn))
+        using (new TransactionScope())
+        {
+            // Don't complete, triggering rollback
         }
     }
 
