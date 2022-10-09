@@ -199,7 +199,7 @@ public class AutoPrepareTests : TestBase
 
         // The candidate list is now full with single-use statements.
 
-        cmd.CommandText = $"SELECT 'double_use'";
+        cmd.CommandText = "SELECT 'double_use'";
         cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery();
         // We now have a single statement that has been used twice.
 
@@ -559,6 +559,32 @@ SELECT COUNT(*) FROM pg_prepared_statements
         {
             await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         }
+    }
+
+    [Test]
+    public async Task Auto_prepared_statement_invalidation()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            MaxAutoPrepare = 10,
+            AutoPrepareMinUsages = 2
+        };
+
+        await using var connection = await OpenConnectionAsync(csb);
+        await using var _ = await CreateTempTable(connection, "foo int", out var table);
+
+        await using var command = new NpgsqlCommand($"SELECT * FROM {table}", connection);
+        for (var i = 0; i < 2; i++)
+            await command.ExecuteNonQueryAsync();
+
+        await connection.ExecuteNonQueryAsync($"ALTER TABLE {table} RENAME COLUMN foo TO bar");
+
+        // Since we've changed the table schema, the next execution of the prepared statement will error with 0A000
+        var exception = Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync())!;
+        Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.FeatureNotSupported)); // cached plan must not change result type
+
+        // However, Npgsql should invalidate the prepared statement in this case, so the next execution should work
+        Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
     }
 
     void DumpPreparedStatements(NpgsqlConnection conn)

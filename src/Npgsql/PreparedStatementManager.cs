@@ -134,6 +134,7 @@ sealed class PreparedStatementManager
         switch (pStatement.State)
         {
         case PreparedState.NotPrepared:
+        case PreparedState.Invalidated:
             break;
 
         case PreparedState.Prepared:
@@ -175,9 +176,9 @@ sealed class PreparedStatementManager
         {
             var slot = AutoPrepared[i];
 
-            if (slot is null)
+            if (slot is null or { State: PreparedState.Invalidated })
             {
-                // We found a free slot, exit the loop immediately
+                // We found a free or invalidated slot, exit the loop immediately
                 selectedIndex = i;
                 break;
             }
@@ -209,6 +210,9 @@ sealed class PreparedStatementManager
             return null;
         }
 
+        if (pStatement.State != PreparedState.Invalidated)
+            RemoveCandidate(pStatement);
+
         var oldPreparedStatement = AutoPrepared[selectedIndex];
 
         if (oldPreparedStatement is null)
@@ -217,7 +221,18 @@ sealed class PreparedStatementManager
         }
         else
         {
+            // When executing an invalidated prepared statement, the old and the new statements are the same instance.
+            // Create a copy so that we have two distinct instances with their own states.
+            if (oldPreparedStatement == pStatement)
+            {
+                oldPreparedStatement = new PreparedStatement(this, oldPreparedStatement.Sql, isExplicit: false)
+                {
+                    Name = oldPreparedStatement.Name
+                };
+            }
+
             pStatement.Name = oldPreparedStatement.Name;
+            pStatement.State = PreparedState.NotPrepared;
             pStatement.StatementBeingReplaced = oldPreparedStatement;
             oldPreparedStatement.State = PreparedState.BeingUnprepared;
         }
@@ -225,7 +240,6 @@ sealed class PreparedStatementManager
         pStatement.AutoPreparedSlotIndex = selectedIndex;
         AutoPrepared[selectedIndex] = pStatement;
 
-        RemoveCandidate(pStatement);
 
         // Make sure this statement isn't replaced by a later statement in the same batch.
         pStatement.LastUsed = DateTime.MaxValue;
