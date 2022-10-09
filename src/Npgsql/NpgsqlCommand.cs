@@ -185,7 +185,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
                 ? value ?? string.Empty
                 : throw new InvalidOperationException("An open data reader exists for this command.");
 
-            ResetExplicitPreparation();
+            ResetPreparation();
             // TODO: Technically should do this also if the parameter list (or type) changes
         }
     }
@@ -369,7 +369,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         }
     }
 
-    void ResetExplicitPreparation() => _connectorPreparedOn = null;
+    internal void ResetPreparation() => _connectorPreparedOn = null;
 
     #endregion State management
 
@@ -1330,7 +1330,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             // The command was prepared, but since then the connector has changed. Detach all prepared statements.
                             foreach (var s in InternalBatchCommands)
                                 s.PreparedStatement = null;
-                            ResetExplicitPreparation();
+                            ResetPreparation();
                             goto case false;
                         }
 

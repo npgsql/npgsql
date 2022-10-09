@@ -178,8 +178,13 @@ public static class TestUtil
     internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlConnection conn, string columns, out string tableName)
     {
         tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-        return conn.ExecuteNonQueryAsync(@$"START TRANSACTION; SELECT pg_advisory_xact_lock(0);
-                    DROP TABLE IF EXISTS {tableName} CASCADE; COMMIT; CREATE TABLE {tableName} ({columns})")
+
+        return conn.ExecuteNonQueryAsync(@$"
+START TRANSACTION;
+SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT;
+CREATE TABLE {tableName} ({columns});")
             .ContinueWith(
                 (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
                 tableName,

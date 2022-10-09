@@ -540,10 +540,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
         catch (Exception e)
         {
-            // Reference the triggering statement from the exception
             if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
             {
-                postgresException.BatchCommand = _statements[StatementIndex];
+                var statement = _statements[StatementIndex];
+
+                // Reference the triggering statement from the exception
+                postgresException.BatchCommand = statement;
 
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
@@ -551,6 +553,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 if (!Command.IsWrappedByBatch)
                 {
                     Command.IsCached = false;
+                }
+
+                // If the schema of a table changes after a statement is prepared on that table, PostgreSQL errors with
+                // 0A000: cached plan must not change result type. 0A000 seems like a non-specific code, but it's very unlikely the
+                // statement would successfully execute anyway, so invalidate the prepared statement.
+                if (postgresException.SqlState == PostgresErrorCodes.FeatureNotSupported &&
+                    statement.PreparedStatement is { } preparedStatement)
+                {
+                    preparedStatement.State = PreparedState.Invalidated;
+                    Command.ResetPreparation();
                 }
             }
 
