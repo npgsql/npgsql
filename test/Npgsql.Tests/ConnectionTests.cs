@@ -411,13 +411,13 @@ public class ConnectionTests : MultiplexingTestBase
 
     #region ConnectionString - Host
 
-    [TestCase("127.0.0.1", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
-    [TestCase("127.0.0.1:5432", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
-    [TestCase("::1", ExpectedResult = new []{"tcp://::1:5432"})]
-    [TestCase("[::1]", ExpectedResult = new []{"tcp://[::1]:5432"})]
-    [TestCase("[::1]:5432", ExpectedResult = new []{"tcp://[::1]:5432"})]
-    [TestCase("localhost", ExpectedResult = new []{"tcp://localhost:5432"})]
-    [TestCase("localhost:5432", ExpectedResult = new []{"tcp://localhost:5432"})]
+    [TestCase("127.0.0.1", ExpectedResult = new [] { "tcp://127.0.0.1:5432" })]
+    [TestCase("127.0.0.1:5432", ExpectedResult = new [] { "tcp://127.0.0.1:5432" })]
+    [TestCase("::1", ExpectedResult = new [] { "tcp://::1:5432" })]
+    [TestCase("[::1]", ExpectedResult = new [] { "tcp://[::1]:5432" })]
+    [TestCase("[::1]:5432", ExpectedResult = new [] { "tcp://[::1]:5432" })]
+    [TestCase("localhost", ExpectedResult = new [] { "tcp://localhost:5432" })]
+    [TestCase("localhost:5432", ExpectedResult = new [] { "tcp://localhost:5432" })]
     [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1],[::1]:5432,localhost,localhost:5432",
         ExpectedResult = new []
         {
@@ -429,7 +429,7 @@ public class ConnectionTests : MultiplexingTestBase
             "tcp://localhost:5432",
             "tcp://localhost:5432"
         })]
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable, Ignore("Fails locally")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
     public async Task<string[]> ConnectionString_Host(string host)
     {
         var numberOfHosts = host.Split(',').Length;
