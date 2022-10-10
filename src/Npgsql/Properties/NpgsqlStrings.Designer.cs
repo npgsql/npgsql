@@ -122,5 +122,11 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotReadIntervalWithMonthsAsTimeSpan", resourceCulture);
             }
         }
+        
+        internal static string PositionalParameterAfterNamed {
+            get {
+                return ResourceManager.GetString("PositionalParameterAfterNamed", resourceCulture);
+            }
+        }
     }
 }

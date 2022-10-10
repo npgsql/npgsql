@@ -1,6 +1,7 @@
 ﻿using Npgsql.Util;
 using System;
 using System.Data;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,14 +37,19 @@ public class NpgsqlLargeObjectManager
     /// </summary>
     internal async Task<T> ExecuteFunction<T>(string function, bool async, CancellationToken cancellationToken, params object[] arguments)
     {
-        using var command = new NpgsqlCommand(function, Connection)
-        {
-            CommandType = CommandType.StoredProcedure,
-            CommandText = function
-        };
+        using var command = Connection.CreateCommand();
+        var stringBuilder = new StringBuilder("SELECT * FROM ").Append(function).Append('(');
 
-        foreach (var argument in arguments)
-            command.Parameters.Add(new NpgsqlParameter { Value = argument });
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            if (i > 0)
+                stringBuilder.Append(", ");
+            stringBuilder.Append('$').Append(i + 1);
+            command.Parameters.Add(new NpgsqlParameter { Value = arguments[i] });
+        }
+
+        stringBuilder.Append(')');
+        command.CommandText = stringBuilder.ToString();
 
         return (T)(async ? await command.ExecuteScalarAsync(cancellationToken) : command.ExecuteScalar())!;
     }
@@ -55,13 +61,19 @@ public class NpgsqlLargeObjectManager
     internal async Task<int> ExecuteFunctionGetBytes(
         string function, byte[] buffer, int offset, int len, bool async, CancellationToken cancellationToken, params object[] arguments)
     {
-        using var command = new NpgsqlCommand(function, Connection)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+        using var command = Connection.CreateCommand();
+        var stringBuilder = new StringBuilder("SELECT * FROM ").Append(function).Append('(');
 
-        foreach (var argument in arguments)
-            command.Parameters.Add(new NpgsqlParameter { Value = argument });
+        for (var i = 0; i < arguments.Length; i++)
+        {
+            if (i > 0)
+                stringBuilder.Append(", ");
+            stringBuilder.Append('$').Append(i + 1);
+            command.Parameters.Add(new NpgsqlParameter { Value = arguments[i] });
+        }
+
+        stringBuilder.Append(')');
+        command.CommandText = stringBuilder.ToString();
 
         var reader = async
             ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken)
@@ -241,34 +253,4 @@ public class NpgsqlLargeObjectManager
     /// This property returns true whether the PostgreSQL version is >= 9.3.
     /// </summary>
     public bool Has64BitSupport => Connection.PostgreSqlVersion.IsGreaterOrEqual(9, 3);
-
-    /*
-    internal enum Function : uint
-    {
-        lo_open = 952,
-        lo_close = 953,
-        loread = 954,
-        lowrite = 955,
-        lo_lseek = 956,
-        lo_lseek64 = 3170, // Since PostgreSQL 9.3
-        lo_creat = 957,
-        lo_create = 715,
-        lo_tell = 958,
-        lo_tell64 = 3171, // Since PostgreSQL 9.3
-        lo_truncate = 1004,
-        lo_truncate64 = 3172, // Since PostgreSQL 9.3
-
-        // These four are available since PostgreSQL 9.4
-        lo_from_bytea = 3457,
-        lo_get = 3458,
-        lo_get_fragment = 3459,
-        lo_put = 3460,
-
-        lo_unlink = 964,
-
-        lo_import = 764,
-        lo_import_with_oid = 767,
-        lo_export = 765,
-    }
-    */
 }

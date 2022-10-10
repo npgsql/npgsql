@@ -16,6 +16,7 @@ using static Npgsql.Util.Statics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Properties;
 
 namespace Npgsql;
 
@@ -72,8 +73,10 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
 #if DEBUG
     internal static bool EnableSqlRewriting;
+    internal static bool EnableStoredProcedureCompatMode;
 #else
     internal static readonly bool EnableSqlRewriting;
+    internal static readonly bool EnableStoredProcedureCompatMode;
 #endif
 
     internal bool EnableErrorBarriers { get; set; }
@@ -93,7 +96,10 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     #region Constructors
 
     static NpgsqlCommand()
-        => EnableSqlRewriting = !AppContext.TryGetSwitch("Npgsql.EnableSqlRewriting", out var enabled) || enabled;
+    {
+        EnableSqlRewriting = !AppContext.TryGetSwitch("Npgsql.EnableSqlRewriting", out var enabled) || enabled;
+        EnableStoredProcedureCompatMode = AppContext.TryGetSwitch("Npgsql.EnableStoredProcedureCompatMode", out enabled) && enabled;
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class.
@@ -636,7 +642,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateValues: false);
+                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -647,7 +653,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
-            Parameters.ProcessParameters(connector.TypeMapper, validateValues: false);
+            Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -851,8 +857,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // like queries with named parameters, since they may contain a semicolon (legacy batching).
                 if (EnableSqlRewriting)
                     goto case PlaceholderType.Named;
-                else
-                    goto case PlaceholderType.Positional;
+                goto case PlaceholderType.Positional;
 
             case PlaceholderType.Named:
                 if (!EnableSqlRewriting)
@@ -895,45 +900,60 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             break;
 
         case CommandType.StoredProcedure:
-            var inputList = parameters.Where(p => p.IsInputDirection).ToList();
-            var numInput = inputList.Count;
-            var sb = new StringBuilder();
-            sb.Append("SELECT * FROM ");
-            sb.Append(CommandText);
-            sb.Append('(');
-            var hasWrittenFirst = false;
-            for (var i = 1; i <= numInput; i++) {
-                var param = inputList[i - 1];
-                if (param.IsPositional)
-                {
-                    if (hasWrittenFirst)
-                        sb.Append(',');
-                    sb.Append('$');
-                    sb.Append(i);
-                    hasWrittenFirst = true;
-                }
-            }
-            for (var i = 1; i <= numInput; i++)
+            var sqlBuilder = new StringBuilder()
+                .Append(EnableStoredProcedureCompatMode ? "SELECT * FROM " : "CALL ")
+                .Append(CommandText)
+                .Append('(');
+
+            var isFirstParam = true;
+            var seenNamedParam = false;
+            var inputParameters = new List<NpgsqlParameter>(parameters.Count);
+
+            for (var i = 0; i < parameters.Count; i++)
             {
-                var param = inputList[i - 1];
-                if (!param.IsPositional)
+                var parameter = parameters[i];
+
+                // With functions, output parameters are never present when calling the function (they only define the schema of the
+                // returned table). With stored procedures they must be specified in the CALL argument list (see below).
+                if (EnableStoredProcedureCompatMode && parameter.Direction == ParameterDirection.Output)
+                    continue;
+
+                if (isFirstParam)
+                    isFirstParam = false;
+                else
+                    sqlBuilder.Append(", ");
+
+                if (parameter.IsPositional)
                 {
-                    if (hasWrittenFirst)
-                        sb.Append(',');
-                    sb.Append('"');
-                    sb.Append(param.TrimmedName.Replace("\"", "\"\""));
-                    sb.Append("\" := ");
-                    sb.Append('$');
-                    sb.Append(i);
-                    hasWrittenFirst = true;
+                    if (seenNamedParam)
+                        throw new ArgumentException(NpgsqlStrings.PositionalParameterAfterNamed);
+                }
+                else
+                {
+                    seenNamedParam = true;
+
+                    sqlBuilder
+                        .Append('"')
+                        .Append(parameter.TrimmedName.Replace("\"", "\"\""))
+                        .Append("\" := ");
+                }
+
+                if (parameter.Direction == ParameterDirection.Output)
+                    sqlBuilder.Append("NULL");
+                else
+                {
+                    inputParameters.Add(parameter);
+                    sqlBuilder.Append('$').Append(inputParameters.Count);
                 }
             }
-            sb.Append(')');
+
+            sqlBuilder.Append(')');
 
             batchCommand ??= TruncateStatementsToOne();
-            batchCommand.FinalCommandText = sb.ToString();
-            batchCommand.PositionalParameters.AddRange(inputList);
+            batchCommand.FinalCommandText = sqlBuilder.ToString();
+            batchCommand.PositionalParameters.AddRange(inputParameters);
             ValidateParameterCount(batchCommand);
+
             break;
 
         default:
@@ -1336,9 +1356,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (IsWrappedByBatch)
                             foreach (var batchCommand in InternalBatchCommands)
-                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues);
+                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
                         else
-                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues);
+                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         break;
@@ -1352,7 +1372,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues);
+                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1361,7 +1381,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues);
+                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1453,13 +1473,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand.Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true);
+                        batchCommand.Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true, CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true);
+                    Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true, CommandType);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 

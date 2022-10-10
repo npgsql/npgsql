@@ -675,21 +675,6 @@ LANGUAGE 'plpgsql'");
         Assert.That(reader.Read(), Is.False);
     }
 
-    [Test]
-    public async Task SchemaOnly_support_function_call()
-    {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
-
-        await conn.ExecuteNonQueryAsync($"CREATE OR REPLACE FUNCTION {function}() RETURNS SETOF integer as 'SELECT 1;' LANGUAGE 'sql';");
-        var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
-        using var dr = await command.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
-        var i = 0;
-        while (dr.Read())
-            i++;
-        Assert.AreEqual(0, i);
-    }
-
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2827")]
     public async Task SchemaOnly_next_result_beyond_end()
     {
