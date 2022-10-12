@@ -517,7 +517,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         else if (_value is not null)
             Handler = typeMapper.ResolveByValue(_value);
         else
-            throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
+        {
+            var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
+            throw new InvalidOperationException($"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
+        }
     }
 
     internal void Bind(ConnectorTypeMapper typeMapper)
