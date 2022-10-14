@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
+using Npgsql.Properties;
 using static Npgsql.Util.Statics;
 
 namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers;
@@ -9,7 +10,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 static class DateTimeUtils
 {
     const long PostgresTimestampOffsetTicks = 630822816000000000L;
-    const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static DateTime DecodeTimestamp(long value, DateTimeKind kind)
@@ -27,8 +27,12 @@ static class DateTimeUtils
         {
             return buf.ReadInt64() switch
             {
-                long.MaxValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : DateTime.MaxValue,
-                long.MinValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : DateTime.MinValue,
+                long.MaxValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
+                    : DateTime.MaxValue,
+                long.MinValue => DisableDateTimeInfinityConversions
+                    ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
+                    : DateTime.MinValue,
                 var value => DecodeTimestamp(value, kind)
             };
         }

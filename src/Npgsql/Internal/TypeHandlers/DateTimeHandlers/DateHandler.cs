@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -25,6 +26,8 @@ public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, Npgs
     , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
 {
+    static readonly DateTime BaseValueDateTime = new(2000, 1, 1, 0, 0, 0);
+
     /// <summary>
     /// Constructs a <see cref="DateHandler"/>
     /// </summary>
@@ -123,7 +126,7 @@ public partial class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, Npgs
         if (npgsqlDate.IsFinite)
             return (DateOnly)npgsqlDate;
         if (DisableDateTimeInfinityConversions)
-            throw new InvalidCastException("Can't convert infinite date values to DateOnly");
+            throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue);
         if (npgsqlDate.IsInfinity)
             return DateOnly.MaxValue;
         return DateOnly.MinValue;

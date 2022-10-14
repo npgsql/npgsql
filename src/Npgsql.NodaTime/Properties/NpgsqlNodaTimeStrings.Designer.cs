@@ -7,28 +7,28 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Npgsql.Properties {
+namespace Npgsql.NodaTime.Properties {
     using System;
     
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
     [System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class NpgsqlStrings {
+    internal class NpgsqlNodaTimeStrings {
         
         private static System.Resources.ResourceManager resourceMan;
         
         private static System.Globalization.CultureInfo resourceCulture;
         
         [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
-        internal NpgsqlStrings() {
+        internal NpgsqlNodaTimeStrings() {
         }
         
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
         internal static System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.Equals(null, resourceMan)) {
-                    System.Resources.ResourceManager temp = new System.Resources.ResourceManager("Npgsql.Properties.NpgsqlStrings", typeof(NpgsqlStrings).Assembly);
+                    System.Resources.ResourceManager temp = new System.Resources.ResourceManager("Npgsql.NodaTime.Properties.NpgsqlNodaTimeStrings", typeof(NpgsqlNodaTimeStrings).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -42,30 +42,6 @@ namespace Npgsql.Properties {
             }
             set {
                 resourceCulture = value;
-            }
-        }
-        
-        internal static string CannotUseSslVerifyWithUserCallback {
-            get {
-                return ResourceManager.GetString("CannotUseSslVerifyWithUserCallback", resourceCulture);
-            }
-        }
-        
-        internal static string CannotUseSslRootCertificateWithUserCallback {
-            get {
-                return ResourceManager.GetString("CannotUseSslRootCertificateWithUserCallback", resourceCulture);
-            }
-        }
-        
-        internal static string CannotUseSslModeRequireWithoutTrustServerCertificate {
-            get {
-                return ResourceManager.GetString("CannotUseSslModeRequireWithoutTrustServerCertificate", resourceCulture);
-            }
-        }
-        
-        internal static string CannotUseTrustServerCertificate {
-            get {
-                return ResourceManager.GetString("CannotUseTrustServerCertificate", resourceCulture);
             }
         }
         

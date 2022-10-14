@@ -30,4 +30,7 @@
     <data name="CannotUseTrustServerCertificate" xml:space="preserve">
         <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
     </data>
+    <data name="CannotReadInfinityValue" xml:space="preserve">
+        <value>Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
+    </data>
 </root>

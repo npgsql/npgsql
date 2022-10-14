@@ -9,13 +9,34 @@ using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Tests;
 
-[TestFixture(true)]
-#if DEBUG
 [TestFixture(false)]
+#if DEBUG
+[TestFixture(true)]
 #endif
 [NonParallelizable]
 public class NodaTimeInfinityTests : TestBase
 {
+    [Test] // #4715
+    public async Task DateRange_with_upper_bound_infinity()
+    {
+        if (DisableDateTimeInfinityConversions)
+            return;
+
+        var dateInterval = new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue);
+
+        await using var conn = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p1", conn);
+        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.DateRange, dateInterval);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(reader.GetValue(0), Is.EqualTo("[-infinity,infinity]"));
+        Assert.That(reader.GetValue(1), Is.EqualTo(dateInterval),
+            "expected {0}, actual {1}", dateInterval, reader.GetValue(1));
+        Assert.That(reader.GetFieldValue<DateInterval>(1), Is.EqualTo(dateInterval),
+            "expected {0}, actual {1}", dateInterval, reader.GetFieldValue<DateInterval>(1));
+    }
+
     [Test]
     public async Task Timestamptz_read_values()
     {
