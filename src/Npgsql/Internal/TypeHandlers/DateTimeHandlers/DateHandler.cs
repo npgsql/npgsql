@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -22,8 +23,6 @@ public partial class DateHandler : NpgsqlSimpleTypeHandler<DateTime>, INpgsqlSim
     , INpgsqlSimpleTypeHandler<DateOnly>
 #endif
 {
-    const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
-
     static readonly DateTime BaseValueDateTime = new(2000, 1, 1, 0, 0, 0);
 
     /// <summary>
@@ -38,10 +37,10 @@ public partial class DateHandler : NpgsqlSimpleTypeHandler<DateTime>, INpgsqlSim
         => buf.ReadInt32() switch
         {
             int.MaxValue => DisableDateTimeInfinityConversions
-                ? throw new InvalidCastException(InfinityExceptionMessage)
+                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                 : DateTime.MaxValue,
             int.MinValue => DisableDateTimeInfinityConversions
-                ? throw new InvalidCastException(InfinityExceptionMessage)
+                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                 : DateTime.MinValue,
             var value => BaseValueDateTime + TimeSpan.FromDays(value)
         };
@@ -93,10 +92,10 @@ public partial class DateHandler : NpgsqlSimpleTypeHandler<DateTime>, INpgsqlSim
         => buf.ReadInt32() switch
         {
             int.MaxValue => DisableDateTimeInfinityConversions
-                ? throw new InvalidCastException(InfinityExceptionMessage)
+                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                 : DateOnly.MaxValue,
             int.MinValue => DisableDateTimeInfinityConversions
-                ? throw new InvalidCastException(InfinityExceptionMessage)
+                ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                 : DateOnly.MinValue,
             var value => BaseValueDateOnly.AddDays(value)
         };

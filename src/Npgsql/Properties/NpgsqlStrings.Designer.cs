@@ -128,5 +128,11 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("PositionalParameterAfterNamed", resourceCulture);
             }
         }
+        
+        internal static string CannotReadInfinityValue {
+            get {
+                return ResourceManager.GetString("CannotReadInfinityValue", resourceCulture);
+            }
+        }
     }
 }

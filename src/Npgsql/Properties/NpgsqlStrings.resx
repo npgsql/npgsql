@@ -60,4 +60,7 @@
     <data name="PositionalParameterAfterNamed" xml:space="preserve">
         <value>When using CommandType.StoredProcedure, all positional parameters must come before named parameters.</value>
     </data>
+    <data name="CannotReadInfinityValue" xml:space="preserve">
+        <value>Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
+    </data>
 </root>
