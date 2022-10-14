@@ -194,26 +194,34 @@ using var cmd = new NpgsqlCommand("CALL my_proc(1, 2)", conn);
 using var reader = cmd.ExecuteReader();
 ```
 
-You can replace the parameter values above with regular placeholders (e.g. `@p1`), just like with a regular query.
+You can replace the parameter values above with regular placeholders (e.g. `$1`), just like with a regular query.
+
+### CommandType.StoredProcedure
+
+> [!WARNING]
+> Starting with Npgsql 7.0, [`CommandType.StoredProcedure`](https://learn.microsoft.com/dotnet/api/system.data.commandtype#system-data-commandtype-storedprocedure) now invokes stored procedures, and not function as before. See the [release notes](release-notes/7.0.md#commandtype_storedprocedure) for more information and how to opt out of this change.
 
 In some other databases, calling a stored procedures involves setting the command's `CommandType`:
 
 ```c#
-using (var cmd = new NpgsqlCommand("my_func", conn))
+using var command1 = new NpgsqlCommand("my_procedure", connection)
 {
-    cmd.CommandType = CommandType.StoredProcedure;
-    cmd.Parameters.AddWithValue("p1", "some_value");
-    using (var reader = cmd.ExecuteReader()) { ... }
-}
+    CommandType = CommandType.StoredProcedure,
+    Parameters =
+    {
+        new() { Value = 8 }
+    }
+};
+await using var reader = await command1.ExecuteReaderAsync();
 ```
 
-Npgsql supports this mainly for portability, but this style of calling has no advantage over the regular command shown above. When `CommandType.StoredProcedure` is set, Npgsql will simply generate the appropriate `SELECT my_func()` for you, nothing more. Unless you have specific portability requirements, it is recommended you simply avoid `CommandType.StoredProcedure` and construct the SQL yourself.
+Npgsql supports this mainly for portability, but this style of calling has no advantage over the regular command shown above. When `CommandType.StoredProcedure` is set, Npgsql will simply generate the appropriate `CALL my_procedure($1)` for you, nothing more. Unless you have specific portability requirements, it is recommended you simply avoid `CommandType.StoredProcedure` and construct the SQL yourself.
 
-Note that if `CommandType.StoredProcedure` is set and your parameter instances have names, Npgsql will generate parameters with `named notation`: `SELECT my_func(p1 => 'some_value')`. This means that your NpgsqlParameter names must match your PostgreSQL function parameters, or the function call will fail. If you omit the names on your NpgsqlParameters, positional notation will be used instead. [See the PostgreSQL docs for more info](https://www.postgresql.org/docs/current/static/sql-syntax-calling-funcs.html).
+Be aware that `CommandType.StoredProcedure` will generate a `CALL` command, which is suitable for invoking stored procedures and not functions. Version of Npgsql prior to 7.0 generated a `SELECT` command suitable for functions, and this legacy behavior can be enabled; see the [7.0 release notes](release-notes/7.0.md#commandtype_storedprocedure)
 
-Be aware that `CommandType.StoredProcedure` will generate a `SELECT` command - suitable for functions - and not a `CALL` command suitable for procedures. Npgsql has behaved this way since long before stored procedures were introduced, and changing this behavior would break backwards compatibility for many applications. The only way to call a stored procedure is to write your own `CALL my_proc(...)` command, without setting `CommandType.StoredProcedure`.
+Note that if `CommandType.StoredProcedure` is set and your parameter instances have names, Npgsql will generate parameters with `named notation`: `SELECT my_func(p1 => 'some_value')`. This means that your NpgsqlParameter names must match your PostgreSQL function parameters, or the function call will fail. If you omit the names on your NpgsqlParameters, positional notation will be used instead. Note that positional parameters must always come before named ones. [See the PostgreSQL docs for more info](https://www.postgresql.org/docs/current/static/sql-syntax-calling-funcs.html).
 
-### In/out parameters
+### Function in/out parameters
 
 In SQL Server (and possibly other databases), functions can have output parameters, input/output parameters, and a return value, which can be either a scalar or a table (TVF). To call functions with special parameter types, the `Direction` property must be set on the appropriate `DbParameter`. PostgreSQL functions, on the hand, always return a single table - they can all be considered TVFs. Somewhat confusingly, PostgreSQL does allow your functions to be defined with input/and output parameters:
 
