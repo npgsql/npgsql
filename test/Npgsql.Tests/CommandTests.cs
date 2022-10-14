@@ -879,34 +879,33 @@ public class CommandTests : MultiplexingTestBase
     [Test]
     public async Task Bug1006158_output_parameters()
     {
-        using var conn = await OpenConnectionAsync();
-        await using (GetTempFunctionName(conn, out var function))
-        {
-            var createFunction = $@"
-CREATE OR REPLACE FUNCTION {function}(OUT a integer, OUT b boolean) AS
-$BODY$DECLARE
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "14.0", "Stored procedure OUT parameters are only support starting with version 14");
+        var sproc = await GetTempProcedureName(conn);
+
+        var createFunction = $@"
+CREATE PROCEDURE {sproc}(OUT a integer, OUT b boolean) AS $$
 BEGIN
     a := 3;
     b := true;
-END;$BODY$
-LANGUAGE 'plpgsql' VOLATILE;";
+END
+$$ LANGUAGE plpgsql;";
 
-            var command = new NpgsqlCommand(createFunction, conn);
-            await command.ExecuteNonQueryAsync();
+        var command = new NpgsqlCommand(createFunction, conn);
+        await command.ExecuteNonQueryAsync();
 
-            command = new NpgsqlCommand(function, conn);
-            command.CommandType = CommandType.StoredProcedure;
+        command = new NpgsqlCommand(sproc, conn);
+        command.CommandType = CommandType.StoredProcedure;
 
-            command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-            command.Parameters[0].Direction = ParameterDirection.Output;
-            command.Parameters.Add(new NpgsqlParameter("b", DbType.Boolean));
-            command.Parameters[1].Direction = ParameterDirection.Output;
+        command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
+        command.Parameters[0].Direction = ParameterDirection.Output;
+        command.Parameters.Add(new NpgsqlParameter("b", DbType.Boolean));
+        command.Parameters[1].Direction = ParameterDirection.Output;
 
-            var result = await command.ExecuteScalarAsync();
+        _ = await command.ExecuteScalarAsync();
 
-            Assert.AreEqual(3, command.Parameters[0].Value);
-            Assert.AreEqual(true, command.Parameters[1].Value);
-        }
+        Assert.AreEqual(3, command.Parameters[0].Value);
+        Assert.AreEqual(true, command.Parameters[1].Value);
     }
 
     [Test]
