@@ -162,34 +162,36 @@ public class BatchTests : MultiplexingTestBase
         await reader.CloseAsync();
 
         var command = batch.BatchCommands[0];
+        Assert.That(command.StatementType, Is.EqualTo(StatementType.Insert));
         Assert.That(command.RecordsAffected, Is.EqualTo(2));
         Assert.That(command.Rows, Is.EqualTo(2));
 
         command = batch.BatchCommands[1];
+        Assert.That(command.StatementType, Is.EqualTo(StatementType.Merge));
         Assert.That(command.RecordsAffected, Is.EqualTo(1));
         Assert.That(command.Rows, Is.EqualTo(1));
 
         command = batch.BatchCommands[2];
+        Assert.That(command.StatementType, Is.EqualTo(StatementType.Merge));
         Assert.That(command.RecordsAffected, Is.EqualTo(1));
         Assert.That(command.Rows, Is.EqualTo(1));
 
         command = batch.BatchCommands[3];
+        Assert.That(command.StatementType, Is.EqualTo(StatementType.Merge));
         Assert.That(command.RecordsAffected, Is.EqualTo(1));
         Assert.That(command.Rows, Is.EqualTo(1));
 
         command = batch.BatchCommands[4];
+        Assert.That(command.StatementType, Is.EqualTo(StatementType.Merge));
         Assert.That(command.RecordsAffected, Is.EqualTo(0));
         Assert.That(command.Rows, Is.EqualTo(0));
     }
 
     [Test]
-    public async Task NpgsqlBatchCommand_StatementType()
+    public async Task StatementTypes()
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
-        var sproc = await GetTempProcedureName(conn);
-
-        await conn.ExecuteNonQueryAsync(@$"CREATE PROCEDURE {sproc}() LANGUAGE sql AS ''");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -201,13 +203,9 @@ public class BatchTests : MultiplexingTestBase
                 new("BEGIN"),
                 new($"SELECT name FROM {table}"),
                 new($"DELETE FROM {table}"),
-                new($"CALL {sproc}()"),
                 new("COMMIT")
             }
         };
-
-        if (conn.PostgreSqlVersion.IsGreaterOrEqual(15))
-            batch.BatchCommands.Add(new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN NOT MATCHED THEN DO NOTHING"));
 
         await using var reader = await batch.ExecuteReaderAsync(Behavior);
 
@@ -220,11 +218,50 @@ public class BatchTests : MultiplexingTestBase
         Assert.That(batch.BatchCommands[3].StatementType, Is.EqualTo(StatementType.Other));
         Assert.That(batch.BatchCommands[4].StatementType, Is.EqualTo(StatementType.Select));
         Assert.That(batch.BatchCommands[5].StatementType, Is.EqualTo(StatementType.Delete));
-        Assert.That(batch.BatchCommands[6].StatementType, Is.EqualTo(StatementType.Call));
-        Assert.That(batch.BatchCommands[7].StatementType, Is.EqualTo(StatementType.Other));
+        Assert.That(batch.BatchCommands[6].StatementType, Is.EqualTo(StatementType.Other));
+    }
 
-        if (conn.PostgreSqlVersion.IsGreaterOrEqual(15))
-            Assert.That(batch.BatchCommands[8].StatementType, Is.EqualTo(StatementType.Merge));
+    [Test]
+    public async Task StatementType_Call()
+    {
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "11.0", "Stored procedures are supported starting with PG 11");
+
+        var sproc = await GetTempProcedureName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE PROCEDURE {sproc}() LANGUAGE sql AS ''");
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new($"CALL {sproc}()") }
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+        // Consume SELECT result set to parse the CommandComplete
+        await reader.CloseAsync();
+
+        Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Call));
+    }
+
+    [Test]
+    public async Task StatementType_Merge()
+    {
+        await using var conn = await OpenConnectionAsync();
+        MinimumPgVersion(conn, "15.0", "Stored procedures are supported starting with PG 11");
+
+        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+        await using var batch = new NpgsqlBatch(conn)
+        {
+            BatchCommands = { new($"MERGE INTO {table} S USING (SELECT 'b' as name) T ON T.name = S.name WHEN NOT MATCHED THEN DO NOTHING") }
+        };
+
+        await using var reader = await batch.ExecuteReaderAsync(Behavior);
+
+        // Consume SELECT result set to parse the CommandComplete
+        await reader.CloseAsync();
+
+        Assert.That(batch.BatchCommands[0].StatementType, Is.EqualTo(StatementType.Merge));
     }
 
     [Test]
