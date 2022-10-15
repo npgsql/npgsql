@@ -27,6 +27,16 @@ public class NpgsqlException : DbException
     /// Initializes a new instance of the <see cref="NpgsqlException"/> class with a specified error message and a reference to the inner exception that is the cause of this exception.
     /// </summary>
     /// <param name="message">The error message that explains the reason for the exception.</param>
+    /// <param name="code">An error code providing detail about the specific error which occurred.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception, or a null reference (<string>Nothing</string> in Visual Basic) if no inner exception is specified.</param>
+    public NpgsqlException(string? message, NpgsqlErrorCode code, Exception? innerException)
+        : base(message, innerException)
+        => Code = code;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NpgsqlException"/> class with a specified error message and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The error message that explains the reason for the exception.</param>
     /// <param name="innerException">The exception that is the cause of the current exception, or a null reference (<string>Nothing</string> in Visual Basic) if no inner exception is specified.</param>
     public NpgsqlException(string? message, Exception? innerException)
         : base(message, innerException) {}
@@ -37,6 +47,11 @@ public class NpgsqlException : DbException
     /// <param name="message">The message that describes the error.</param>
     public NpgsqlException(string? message)
         : base(message) { }
+
+    /// <summary>
+    /// An error code providing detail about the specific error which occurred.
+    /// </summary>
+    public virtual NpgsqlErrorCode Code { get; }
 
     /// <summary>
     /// Specifies whether the exception is considered transient, that is, whether retrying the operation could

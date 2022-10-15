@@ -137,7 +137,7 @@ $$ LANGUAGE 'plpgsql';");
     public void Exception_fields_are_populated()
     {
         using var conn = OpenConnection();
-        TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
+        MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
         conn.ExecuteNonQuery("CREATE TEMP TABLE uniqueviolation (id INT NOT NULL, CONSTRAINT uniqueviolation_pkey PRIMARY KEY (id))");
         conn.ExecuteNonQuery("INSERT INTO uniqueviolation (id) VALUES(1)");
         try
@@ -158,7 +158,7 @@ $$ LANGUAGE 'plpgsql';");
     public void Column_name_exception_field_is_populated()
     {
         using var conn = OpenConnection();
-        TestUtil.MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
+        MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
         conn.ExecuteNonQuery("CREATE TEMP TABLE notnullviolation (id INT NOT NULL)");
         try
         {
@@ -210,6 +210,15 @@ $$ LANGUAGE 'plpgsql';");
         Assert.True(new NpgsqlException("", new TimeoutException()).IsTransient);
         Assert.False(new NpgsqlException().IsTransient);
         Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
+    }
+
+
+    [Test]
+    public void NpgsqlException_Code_for_PostgresException()
+    {
+        using var conn = OpenConnection();
+        var exception = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync("MALFORMED"))!;
+        Assert.That(exception.Code, Is.EqualTo(NpgsqlErrorCode.PostgresError));
     }
 
     [Test]

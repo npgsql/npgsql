@@ -172,6 +172,7 @@ class PoolingDataSource : NpgsqlDataSource
                     throw new NpgsqlException(
                         $"The connection pool has been exhausted, either raise 'Max Pool Size' (currently {_max}) " +
                         $"or 'Timeout' (currently {Settings.Timeout} seconds) in your connection string.",
+                        NpgsqlErrorCode.ConnectionPoolExhausted,
                         new TimeoutException());
                 }
                 catch (ChannelClosedException)

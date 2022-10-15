@@ -111,6 +111,7 @@ class PoolTests : TestBase
                 ? Assert.ThrowsAsync<NpgsqlException>(async () => await conn2.OpenAsync())!
                 : Assert.Throws<NpgsqlException>(() => conn2.Open())!;
 
+            Assert.That(e.Code, Is.EqualTo(NpgsqlErrorCode.ConnectionPoolExhausted));
             Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
         }
 
