@@ -21,6 +21,11 @@ public abstract class ReplicationMessage
     /// <summary>
     /// The server's system clock at the time this message was transmitted, as microseconds since midnight on 2000-01-01.
     /// </summary>
+    /// <remarks>
+    /// Since the client using Npgsql and the server may be located in different time zones,
+    /// as of Npgsql 7.0 this value is no longer converted to local time but keeps its original value in UTC.
+    /// You can check <see cref="DateTime.Kind"/> if you don't want to introduce behavior depending on Npgsql versions.
+    /// </remarks>
     public DateTime ServerClock { get; private set; }
 
     private protected void Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock)

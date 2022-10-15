@@ -501,7 +501,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     await buf.EnsureAsync(24);
                     var startLsn = buf.ReadUInt64();
                     var endLsn = buf.ReadUInt64();
-                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified).ToLocalTime();
+                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
 
                     if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
