@@ -134,5 +134,11 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotReadInfinityValue", resourceCulture);
             }
         }
+        
+        internal static string SyncAndAsyncConnectionInitializersRequired {
+            get {
+                return ResourceManager.GetString("SyncAndAsyncConnectionInitializersRequired", resourceCulture);
+            }
+        }
     }
 }

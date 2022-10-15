@@ -146,6 +146,18 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public NpgsqlConnection(string? connectionString) : this()
         => ConnectionString = connectionString;
 
+    internal NpgsqlConnection(NpgsqlDataSource dataSource, NpgsqlConnector connector) : this()
+    {
+        _dataSource = dataSource;
+        Settings = dataSource.Settings;
+        _userFacingConnectionString = dataSource.ConnectionString;
+
+        Connector = connector;
+        connector.Connection = this;
+        ConnectorBindingScope = ConnectorBindingScope.Connection;
+        FullState = ConnectionState.Open;
+    }
+
     internal static NpgsqlConnection FromDataSource(NpgsqlDataSource dataSource)
         => new()
         {
@@ -413,18 +425,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </remarks>
     [Obsolete("Use NpgsqlDataSource.UsePeriodicPasswordProvider or UseInlinePasswordProvider")]
     public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
-
-    /// <summary>
-    /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened synchronously.
-    /// </summary>
-    [RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
-    public PhysicalOpenCallback? PhysicalOpenCallback { get; set; }
-
-    /// <summary>
-    /// Gets or sets the delegate used to setup a connection whenever a physical connection is opened asynchronously.
-    /// </summary>
-    [RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
-    public PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; set; }
 
     #endregion Connection string management
 
@@ -963,6 +963,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             _disposed = true;
         }
     }
+
+    internal void MakeDisposed()
+        => _disposed = true;
 
     #endregion
 
@@ -2166,19 +2169,5 @@ public delegate void ProvideClientCertificatesCallback(X509CertificateCollection
 /// <param name="username">User</param>
 /// <returns>A valid password for connecting to the database</returns>
 public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
-
-/// <summary>
-/// Represents a method that allows the application to setup a connection with custom commands.
-/// </summary>
-/// <param name="connection">Physical connection to the database</param>
-[RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
-public delegate void PhysicalOpenCallback(NpgsqlConnector connection);
-
-/// <summary>
-/// Represents an asynchronous method that allows the application to setup a connection with custom commands.
-/// </summary>
-/// <param name="connection">Physical connection to the database</param>
-[RequiresPreviewFeatures("Physical open callback is an experimental API, and its exact shape may change in the future")]
-public delegate Task PhysicalOpenAsyncCallback(NpgsqlConnector connection);
 
 #endregion

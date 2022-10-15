@@ -1,7 +1,6 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 using NUnit.Framework;
 
 // ReSharper disable MethodHasAsyncOverload

@@ -32,6 +32,9 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
+    internal Action<NpgsqlConnection>? ConnectionInitializer { get; }
+    internal Func<NpgsqlConnection, Task>? ConnectionInitializerAsync { get; }
+
     readonly Timer? _passwordProviderTimer;
     readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
     readonly Task _passwordRefreshTask = null!;
@@ -59,7 +62,12 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
-        (LoggingConfiguration, _periodicPasswordProvider, _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval)
+        (LoggingConfiguration,
+                _periodicPasswordProvider,
+                _periodicPasswordSuccessRefreshInterval,
+                _periodicPasswordFailureRefreshInterval,
+                ConnectionInitializer,
+                ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 

@@ -8,4 +8,6 @@ sealed record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
     TimeSpan PeriodicPasswordSuccessRefreshInterval,
-    TimeSpan PeriodicPasswordFailureRefreshInterval);
+    TimeSpan PeriodicPasswordFailureRefreshInterval,
+    Action<NpgsqlConnection>? ConnectionInitializer,
+    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

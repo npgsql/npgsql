@@ -17,6 +17,9 @@ public class NpgsqlDataSourceBuilder
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
+    Action<NpgsqlConnection>? _syncConnectionInitializer;
+    Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
+
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
     /// </summary>
@@ -97,6 +100,40 @@ public class NpgsqlDataSourceBuilder
     }
 
     /// <summary>
+    /// Register a connection initializer, which allows executing arbitrary commands when a physical database connection is first opened.
+    /// </summary>
+    /// <param name="connectionInitializer">
+    /// A synchronous connection initialization lambda, which will be called from <see cref="NpgsqlConnection.Open()" /> when a new physical
+    /// connection is opened.
+    /// </param>
+    /// <param name="connectionInitializerAsync">
+    /// An asynchronous connection initialization lambda, which will be called from
+    /// <see cref="NpgsqlConnection.OpenAsync(CancellationToken)" /> when a new physical connection is opened.
+    /// </param>
+    /// <remarks>
+    /// If an initializer is registered, both sync and async versions must be provided. If you do not use sync APIs in your code, simply
+    /// throw <see cref="NotSupportedException" />, which would also catch accidental cases of sync opening.
+    /// </remarks>
+    /// <remarks>
+    /// Take care that the setting you apply in the initializer does not get reverted when the connection is returned to the pool, since
+    /// Npgsql sends <c>DISCARD ALL</c> by default. The <see cref="NpgsqlConnectionStringBuilder.NoResetOnClose" /> option can be used to
+    /// turn this off.
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UsePhysicalConnectionInitializer(
+        Action<NpgsqlConnection>? connectionInitializer,
+        Func<NpgsqlConnection, Task>? connectionInitializerAsync)
+    {
+        if (connectionInitializer is null != connectionInitializerAsync is null)
+            throw new ArgumentException(NpgsqlStrings.SyncAndAsyncConnectionInitializersRequired);
+
+        _syncConnectionInitializer = connectionInitializer;
+        _asyncConnectionInitializer = connectionInitializerAsync;
+
+        return this;
+    }
+
+    /// <summary>
     /// Builds and returns an <see cref="NpgsqlDataSource" /> which is ready for use.
     /// </summary>
     public NpgsqlDataSource Build()
@@ -117,7 +154,9 @@ public class NpgsqlDataSourceBuilder
             loggingConfiguration,
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
-            _periodicPasswordFailureRefreshInterval);
+            _periodicPasswordFailureRefreshInterval,
+            _syncConnectionInitializer,
+            _asyncConnectionInitializer);
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
