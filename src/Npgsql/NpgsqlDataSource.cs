@@ -35,6 +35,12 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
     /// <summary>
+    /// <see langword="true"/> if the connection was created by setting the <see cref="NpgsqlConnection.ConnectionString"/>
+    /// property in a <see cref="NpgsqlConnection"/>; otherwise false.
+    /// </summary>
+    internal bool IsLegacyDataSource { get; }
+
+    /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
@@ -111,7 +117,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _hackyEnumTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync)
+                ConnectionInitializerAsync,
+                IsLegacyDataSource)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
@@ -228,6 +235,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         bool async,
         CancellationToken cancellationToken)
     {
+        CheckDisposed();
         if (IsBootstrapped && !forceReload)
             return;
 
@@ -466,6 +474,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <inheritdoc cref="Dispose" />
     protected virtual void DisposeBase()
     {
+        IsBootstrapped = false;
         var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
         if (cancellationTokenSource is not null)
         {
@@ -492,6 +501,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <inheritdoc cref="DisposeAsyncCore" />
     protected virtual async ValueTask DisposeAsyncBase()
     {
+        IsBootstrapped = false;
         var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
         if (cancellationTokenSource is not null)
         {
