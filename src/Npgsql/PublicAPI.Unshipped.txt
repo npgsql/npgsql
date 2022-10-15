@@ -3,6 +3,7 @@ Npgsql.NpgsqlBatch.EnableErrorBarriers.get -> bool
 Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
+Npgsql.NpgsqlDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlLoggingConfiguration
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
@@ -23,6 +24,10 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.get -> Npgsql.PhysicalOpenAsyncCallback?
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenCallback.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute() -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute(params string![]! synonyms) -> void
@@ -46,6 +51,8 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*Npgsql.PhysicalOpenAsyncCallback
+*REMOVED*Npgsql.PhysicalOpenCallback
 *REMOVED*NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate

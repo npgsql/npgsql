@@ -59,11 +59,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 
-#pragma warning disable CA2252 // Experimental API
-    PhysicalOpenCallback? PhysicalOpenCallback { get; }
-    PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; }
-#pragma warning restore CA2252
-
     public Encoding TextEncoding { get; private set; } = default!;
 
     /// <summary>
@@ -317,11 +312,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 #pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
-
-#pragma warning disable CA2252 // Experimental API
-        PhysicalOpenCallback = conn.PhysicalOpenCallback;
-        PhysicalOpenAsyncCallback = conn.PhysicalOpenAsyncCallback;
-#pragma warning restore CA2252
     }
 
     NpgsqlConnector(NpgsqlConnector connector)
@@ -484,13 +474,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             OpenTimestamp = DateTime.UtcNow;
 
-#pragma warning disable CA2252 // Experimental API
-            if (async && PhysicalOpenAsyncCallback is not null)
-                await PhysicalOpenAsyncCallback(this);
-            else if (!async && PhysicalOpenCallback is not null)
-                PhysicalOpenCallback(this);
-#pragma warning restore CA2252
-
             if (Settings.Multiplexing)
             {
                 // Start an infinite async loop, which processes incoming multiplexing traffic.
@@ -517,7 +500,31 @@ public sealed partial class NpgsqlConnector : IDisposable
                 }
             }
 
-            LogMessages.OpenedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
+            if (_dataSource.ConnectionInitializerAsync is not null)
+            {
+                Debug.Assert(_dataSource.ConnectionInitializer is not null);
+
+                var tempConnection = new NpgsqlConnection(_dataSource, this);
+
+                try
+                {
+                    if (async)
+                        await _dataSource.ConnectionInitializerAsync(tempConnection);
+                    else if (!async)
+                        _dataSource.ConnectionInitializer(tempConnection);
+                }
+                finally
+                {
+                    // Note that we can't just close/dispose the NpgsqlConnection, since that puts the connector back in the pool.
+                    // But we transition it to disposed immediately, in case the user decides to capture the NpgsqlConnection and use it
+                    // later.
+                    Connection?.MakeDisposed();
+                    Connection = null;
+                }
+            }
+
+            LogMessages.OpenedPhysicalConnection(
+                ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
         }
         catch (Exception e)
         {
@@ -1952,47 +1959,52 @@ public sealed partial class NpgsqlConnector : IDisposable
         lock (CancelLock)
         lock (this)
         {
-            if (State != ConnectorState.Broken)
+            if (State == ConnectorState.Broken)
+                return reason;
+
+            // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
+            // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
+            // but does not include e.g. authentication failure or timeouts with disabled cancellation.
+            if (reason is NpgsqlException { IsTransient: true } ne &&
+                (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
+                reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
             {
-                // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
-                // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
-                // but does not include e.g. authentication failure or timeouts with disabled cancellation.
-                if (reason is NpgsqlException { IsTransient: true } ne &&
-                    (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
-                    reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
+                ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
+                    Settings.HostRecheckSecondsTranslated);
+                _dataSource.Clear();
+            }
+
+            LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
+
+            // Note that we may be reading and writing from the same connector concurrently, so safely set
+            // the original reason for the break before actually closing the socket etc.
+            Interlocked.CompareExchange(ref _breakReason, reason, null);
+            State = ConnectorState.Broken;
+
+            var connection = Connection;
+
+            FullCleanup();
+
+            if (connection is not null)
+            {
+                var closeLockTaken = connection.TakeCloseLock();
+                Debug.Assert(closeLockTaken);
+                if (Settings.ReplicationMode == ReplicationMode.Off)
                 {
-                    ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                        Settings.HostRecheckSecondsTranslated);
-                    _dataSource.Clear();
+                    // When a connector is broken, we immediately "return" it to the pool (i.e. update the pool state so reflect the
+                    // connector no longer being open). Upper layers such as EF may check DbConnection.ConnectionState, and only close if
+                    // it's closed; so we can't set the state to Closed and expect the user to still close (in order to return to the pool).
+                    // On the other hand leaving the state Open could indicate to the user that the connection is functional.
+                    // (see https://github.com/npgsql/npgsql/issues/3705#issuecomment-839908772)
+                    Connection = null;
+                    if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
+                        Return();
+                    connection.EnlistedTransaction = null;
+                    connection.Connector = null;
+                    connection.ConnectorBindingScope = ConnectorBindingScope.None;
                 }
-
-                LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
-
-                // Note that we may be reading and writing from the same connector concurrently, so safely set
-                // the original reason for the break before actually closing the socket etc.
-                Interlocked.CompareExchange(ref _breakReason, reason, null);
-                State = ConnectorState.Broken;
-
-                var connection = Connection;
-
-                FullCleanup();
-
-                if (connection is not null)
-                {
-                    var closeLockTaken = connection.TakeCloseLock();
-                    Debug.Assert(closeLockTaken);
-                    if (Settings.ReplicationMode == ReplicationMode.Off)
-                    {
-                        Connection = null;
-                        if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
-                            Return();
-                        connection.EnlistedTransaction = null;
-                        connection.Connector = null;
-                        connection.ConnectorBindingScope = ConnectorBindingScope.None;
-                    }
-                    connection.FullState = ConnectionState.Broken;
-                    connection.ReleaseCloseLock();
-                }
+                connection.FullState = ConnectionState.Broken;
+                connection.ReleaseCloseLock();
             }
 
             return reason;

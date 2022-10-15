@@ -360,9 +360,11 @@ class PoolingDataSource : NpgsqlDataSource
             if (Interlocked.CompareExchange(ref Connectors[i], null, connector) == connector)
                 break;
 
-        Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when closing.");
+        // If CloseConnector is being called from within OpenNewConnector (e.g. an error happened during a connection initializer which
+        // causes the connector to Break, and therefore return the connector), then we haven't yet added the connector to Connectors.
+        // In this case, there's no state to revert here (that's all taken care of in OpenNewConnector), skip it.
         if (i == _max)
-            throw new NpgsqlException($"Could not find free slot in {Connectors} when closing. Please report a bug.");
+            return;
 
         var numConnectors = Interlocked.Decrement(ref _numConnectors);
         Debug.Assert(numConnectors >= 0);

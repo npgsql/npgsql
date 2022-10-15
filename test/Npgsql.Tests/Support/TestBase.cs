@@ -301,6 +301,9 @@ public abstract class TestBase
 
     protected static readonly NpgsqlDataSource DataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
 
+    protected virtual NpgsqlDataSourceBuilder CreateDataSourceBuilder()
+        => new(TestUtil.ConnectionString);
+
     protected virtual NpgsqlDataSource CreateLoggingDataSource(
         out ListLoggerProvider listLoggerProvider,
         string? connectionString = null,
