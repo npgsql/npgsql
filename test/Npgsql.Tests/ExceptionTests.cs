@@ -182,7 +182,7 @@ $$ LANGUAGE 'plpgsql';");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
 
-        await using var _ = await GetTempTypeName(conn, out var domainName);
+        await using var _ = await GetTempDomainName(conn, out var domainName);
 
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainName} AS INT NOT NULL");
         var pgEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync($"SELECT CAST(NULL AS {domainName})"))!;

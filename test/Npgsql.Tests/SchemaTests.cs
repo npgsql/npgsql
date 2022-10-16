@@ -510,7 +510,7 @@ CREATE TABLE {table} (color {enumName});");
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await CreateTempSchema(conn, out var schema);
-        await using var __ = await GetTempTypeName(conn, out var enumName);
+        await using var __ = await GetTempTypeName(conn, out var enumName, schema);
         await using var ___ = await GetTempTableName(conn, out var table);
 
         await conn.ExecuteNonQueryAsync($@"

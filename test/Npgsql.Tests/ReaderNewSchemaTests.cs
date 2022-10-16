@@ -668,7 +668,7 @@ CREATE TABLE {table2} (foo INTEGER)");
         using var conn = await OpenConnectionAsync();
         IgnoreOnRedshift(conn, "Domain types not support on Redshift");
 
-        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
+        await using var _ = await GetTempDomainName(conn, out var domainTypeName, "pg_temp");
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
         await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");
