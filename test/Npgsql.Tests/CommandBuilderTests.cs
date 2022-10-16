@@ -128,8 +128,8 @@ class CommandBuilderTests : TestBase
     {
         using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
-        await using var _ = await GetTempDomainName(conn, out var domainType);
-        await using var __ = await GetTempDomainName(conn, out var domainArrayType);
+        await using var _ = await GetTempTypeName(conn, out var domainType);
+        await using var __ = await GetTempTypeName(conn, out var domainArrayType);
         await conn.ExecuteNonQueryAsync($@"
 CREATE DOMAIN {domainType} AS integer CHECK (VALUE > 0);
 CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");

@@ -347,7 +347,7 @@ public class BugTests : TestBase
     {
         await using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(conn, out var enumTypeName);
-        await using var __ = await GetTempDomainName(conn, out var domainTypeName);
+        await using var __ = await GetTempTypeName(conn, out var domainTypeName);
         await using var ___ = await GetTempTypeName(conn, out var compositeTypeName);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {enumTypeName} AS ENUM ('left', 'right')");
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainTypeName} AS {enumTypeName} NOT NULL");

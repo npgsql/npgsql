@@ -134,7 +134,7 @@ public class SchemaTests : SyncOrAsyncTestBase
         await using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(conn, out var enumTypeName);
         await using var __ = await GetTempTypeName(conn, out var compositeTypeName);
-        await using var ___ = await GetTempDomainName(conn, out var domainName);
+        await using var ___ = await GetTempTypeName(conn, out var domainName);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TYPE {enumTypeName} AS ENUM ('a', 'b');

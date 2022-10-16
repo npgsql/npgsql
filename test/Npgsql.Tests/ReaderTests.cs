@@ -388,7 +388,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             MaxPoolSize = 1
         };
         await using var conn = await OpenConnectionAsync(csb);
-        await using var _ = await GetTempDomainName(conn, out var typeName);
+        await using var _ = await GetTempTypeName(conn, out var typeName);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
