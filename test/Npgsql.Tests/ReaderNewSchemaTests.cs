@@ -668,11 +668,13 @@ CREATE TABLE {table2} (foo INTEGER)");
         using var conn = await OpenConnectionAsync();
         IgnoreOnRedshift(conn, "Domain types not support on Redshift");
 
-        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
-        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
+        const string domainTypeName = "my_domain";
+        await using var _ = await CreateTempSchema(conn, out var schema);
+        await using var __ = await GetTempTableName(conn, out var tableName);
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {schema}.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
-        await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");
-        using var cmd = new NpgsqlCommand("SELECT domain FROM data", conn);
+        await conn.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (domain {schema}.{domainTypeName})");
+        using var cmd = new NpgsqlCommand($"SELECT domain FROM {tableName}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
         var domainSchema = columns.Single(c => c.ColumnName == "domain");

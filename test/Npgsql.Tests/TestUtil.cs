@@ -334,30 +334,12 @@ CREATE TABLE {tableName} ({columns});")
                 typeName,
                 TaskContinuationOptions.OnlyOnRanToCompletion);
 
-    /// <summary>
-    /// Generates a unique domain name, usable for a single test.
-    /// Actual creation of the domain is the responsibility of the caller.
-    /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the type at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> GetTempDomainName(NpgsqlConnection conn, out string domainName)
-    {
-        domainName = "temp_domain" + Interlocked.Increment(ref _tempDomainCounter);
-        return conn.ExecuteNonQueryAsync($"DROP DOMAIN IF EXISTS {domainName} CASCADE")
-            .ContinueWith(
-                (_, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "DOMAIN"),
-                domainName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
-    }
-
     internal static volatile int _tempTableCounter;
     static volatile int _tempViewCounter;
     static volatile int _tempFunctionCounter;
     static volatile int _tempProcedureCounter;
     static volatile int _tempSchemaCounter;
     static volatile int _tempTypeCounter;
-    static volatile int _tempDomainCounter;
 
     internal sealed class DatabaseObjectDropper : IDisposable, IAsyncDisposable
     {

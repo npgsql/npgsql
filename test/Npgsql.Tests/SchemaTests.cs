@@ -134,7 +134,7 @@ public class SchemaTests : SyncOrAsyncTestBase
         await using var conn = await OpenConnectionAsync();
         await using var _ = await GetTempTypeName(conn, out var enumTypeName);
         await using var __ = await GetTempTypeName(conn, out var compositeTypeName);
-        await using var ___ = await GetTempDomainName(conn, out var domainName);
+        await using var ___ = await GetTempTypeName(conn, out var domainName);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TYPE {enumTypeName} AS ENUM ('a', 'b');
@@ -509,9 +509,9 @@ CREATE TABLE {table} (color {enumName});");
     public async Task Enum_in_non_public_schema()
     {
         await using var conn = await OpenConnectionAsync();
+        const string enumName = "my_enum";
         await using var _ = await CreateTempSchema(conn, out var schema);
-        await using var __ = await GetTempTypeName(conn, out var enumName);
-        await using var ___ = await GetTempTableName(conn, out var table);
+        await using var __ = await GetTempTableName(conn, out var table);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TYPE {schema}.{enumName} AS ENUM ('red', 'yellow', 'blue');
