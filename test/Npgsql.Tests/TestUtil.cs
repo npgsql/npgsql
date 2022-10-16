@@ -314,7 +314,7 @@ CREATE TABLE {tableName} ({columns});")
     /// <returns>
     /// An <see cref="IDisposable"/> to drop the type at the end of the test.
     /// </returns>
-    internal static Task<IAsyncDisposable> GetTempTypeName(NpgsqlConnection conn, out string typeName, string schemaName = "")
+    internal static Task<IAsyncDisposable> GetTempTypeName(NpgsqlConnection conn, out string typeName)
     {
         typeName = "temp_type" + Interlocked.Increment(ref _tempTypeCounter);
         return EnsureTypeDoesNotExist(conn, typeName);
@@ -327,8 +327,8 @@ CREATE TABLE {tableName} ({columns});")
     /// <returns>
     /// An <see cref="IDisposable"/> to drop the type at the end of the test.
     /// </returns>
-    internal static Task<IAsyncDisposable> EnsureTypeDoesNotExist(NpgsqlConnection conn, string typeName, string schemaName = "")
-        => conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {(string.IsNullOrWhiteSpace(schemaName) ? "" : $"{schemaName}.")}{typeName} CASCADE")
+    internal static Task<IAsyncDisposable> EnsureTypeDoesNotExist(NpgsqlConnection conn, string typeName)
+        => conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {typeName} CASCADE")
             .ContinueWith(
                 (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TYPE"),
                 typeName,
