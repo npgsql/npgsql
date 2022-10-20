@@ -5,9 +5,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
@@ -24,19 +22,10 @@ sealed class MultiplexingDataSource : PoolingDataSource
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
 
     /// <summary>
-    /// A pool-wide type mapper used when multiplexing. This is necessary because binding parameters
-    /// to their type handlers happens *before* the command is enqueued for execution, so there's no
-    /// connector yet at that stage.
-    /// </summary>
-    internal TypeMapper? MultiplexingTypeMapper { get; private set; }
-
-    /// <summary>
     /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
     /// flushing to the network.
     /// </summary>
     readonly int _writeCoalescingBufferThresholdBytes;
-
-    readonly SemaphoreSlim _bootstrapSemaphore;
 
     // TODO: Make this configurable
     const int MultiplexingCommandChannelBound = 4096;
@@ -52,8 +41,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
         // TODO: Validate multiplexing options are set only when Multiplexing is on
 
         _autoPrepare = settings.MaxAutoPrepare > 0;
-
-        _bootstrapSemaphore = new SemaphoreSlim(1);
 
         _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
@@ -360,16 +347,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
         }
 
         // ReSharper disable once FunctionNeverReturns
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-
-        if (disposing)
-        {
-            _bootstrapSemaphore.Dispose();
-        }
     }
 
     struct MultiplexingStats

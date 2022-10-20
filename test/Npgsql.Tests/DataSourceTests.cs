@@ -142,6 +142,9 @@ public class DataSourceTests : TestBase
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 2, Idle: 1, Busy: 1)));
 
         dataSource.Dispose();
+
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
+
         Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<ObjectDisposedException>());
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
 

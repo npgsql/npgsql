@@ -459,8 +459,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken);
 
-            if (!DataSource.IsBootstrapped)
-                await DataSource.Bootstrap(this, timeout, async, cancellationToken);
+            await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken);
 
             Debug.Assert(DataSource.TypeMapper is not null);
             Debug.Assert(DataSource.DatabaseInfo is not null);
@@ -1951,18 +1950,19 @@ public sealed partial class NpgsqlConnector : IDisposable
                 Debug.Assert(closeLockTaken);
                 if (Settings.ReplicationMode == ReplicationMode.Off)
                 {
-                     // When a connector is broken, we immediately "return" it to the pool (i.e. update the pool state so reflect the
-                     // connector no longer being open). Upper layers such as EF may check DbConnection.ConnectionState, and only close if
-                     // it's closed; so we can't set the state to Closed and expect the user to still close (in order to return to the pool).
-                     // On the other hand leaving the state Open could indicate to the user that the connection is functional.
-                     // (see https://github.com/npgsql/npgsql/issues/3705#issuecomment-839908772)
-                     Connection = null;
-                     if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
-                         Return();
-                     connection.EnlistedTransaction = null;
-                     connection.Connector = null;
-                     connection.ConnectorBindingScope = ConnectorBindingScope.None;
+                    // When a connector is broken, we immediately "return" it to the pool (i.e. update the pool state so reflect the
+                    // connector no longer being open). Upper layers such as EF may check DbConnection.ConnectionState, and only close if
+                    // it's closed; so we can't set the state to Closed and expect the user to still close (in order to return to the pool).
+                    // On the other hand leaving the state Open could indicate to the user that the connection is functional.
+                    // (see https://github.com/npgsql/npgsql/issues/3705#issuecomment-839908772)
+                    Connection = null;
+                    if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
+                        Return();
+                    connection.EnlistedTransaction = null;
+                    connection.Connector = null;
+                    connection.ConnectorBindingScope = ConnectorBindingScope.None;
                 }
+
                 connection.FullState = ConnectionState.Broken;
                 connection.ReleaseCloseLock();
             }

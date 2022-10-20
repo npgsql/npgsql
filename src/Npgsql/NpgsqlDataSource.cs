@@ -54,7 +54,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     readonly Task _passwordRefreshTask = null!;
     string? _password;
 
-    internal bool IsBootstrapped { get; private set; }
+    bool _isBootstrapped;
 
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
@@ -63,7 +63,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal abstract (int Total, int Idle, int Busy) Statistics { get; }
 
-    volatile bool _isDisposed;
+    volatile int _isDisposed;
 
     readonly ILogger _connectionLogger;
 
@@ -195,8 +195,16 @@ public abstract class NpgsqlDataSource : DbDataSource
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
 
-    internal async Task Bootstrap(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    internal async Task Bootstrap(
+        NpgsqlConnector connector,
+        NpgsqlTimeout timeout,
+        bool forceReload,
+        bool async,
+        CancellationToken cancellationToken)
     {
+        if (_isBootstrapped && !forceReload)
+            return;
+
         var hasSemaphore = async
             ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
             : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
@@ -206,6 +214,9 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         try
         {
+            if (_isBootstrapped && !forceReload)
+                return;
+
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
             // empty). So we set up here, and then later inject the DatabaseInfo.
             var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
@@ -221,7 +232,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
             TypeMapper = typeMapper;
 
-            IsBootstrapped = true;
+            _isBootstrapped = true;
         }
         finally
         {
@@ -347,7 +358,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
         {
             var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
             if (cancellationTokenSource is not null)
@@ -358,7 +369,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             _passwordProviderTimer?.Dispose();
 
-            _isDisposed = true;
+            _setupMappingsSemaphore.Dispose();
 
             Clear();
         }
@@ -376,7 +387,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private protected void CheckDisposed()
     {
-        if (_isDisposed)
+        if (_isDisposed == 1)
             throw new ObjectDisposedException(GetType().FullName);
     }
 

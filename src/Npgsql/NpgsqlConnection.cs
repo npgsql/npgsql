@@ -1884,6 +1884,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         _dataSource!.Bootstrap(
             connector,
             NpgsqlTimeout.Infinite,
+            forceReload: true,
             async: false,
             CancellationToken.None)
             .GetAwaiter().GetResult();
@@ -1902,6 +1903,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         await _dataSource!.Bootstrap(
                 connector,
                 NpgsqlTimeout.Infinite,
+                forceReload: true,
                 async: true,
                 CancellationToken.None);
     }
