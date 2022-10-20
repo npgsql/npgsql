@@ -196,16 +196,10 @@ class PoolingDataSource : NpgsqlDataSource
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal sealed override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
     {
-        while (_idleConnectorReader.TryRead(out var nullableConnector))
-        {
-            if (CheckIdleConnector(nullableConnector))
-            {
-                connector = nullableConnector;
+        while (_idleConnectorReader.TryRead(out connector))
+            if (CheckIdleConnector(connector))
                 return true;
-            }
-        }
 
-        connector = null;
         return false;
     }
 
@@ -234,6 +228,13 @@ class PoolingDataSource : NpgsqlDataSource
             CloseConnector(connector);
             return false;
         }
+
+        // The connector directly references the data source type mapper into the connector, to protect it against changes by a concurrent
+        // ReloadTypes. We update them here before returning the connector from the pool.
+        Debug.Assert(TypeMapper is not null);
+        Debug.Assert(DatabaseInfo is not null);
+        connector.TypeMapper = TypeMapper;
+        connector.DatabaseInfo = DatabaseInfo;
 
         Debug.Assert(connector.State == ConnectorState.Ready,
             $"Got idle connector but {nameof(connector.State)} is {connector.State}");

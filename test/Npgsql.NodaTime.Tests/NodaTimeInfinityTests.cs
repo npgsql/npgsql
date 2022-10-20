@@ -269,7 +269,6 @@ public class NodaTimeInfinityTests : TestBase
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
     {
         var conn = await base.OpenConnectionAsync(connectionString);
-        conn.TypeMapper.UseNodaTime();
         await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
         return conn;
     }

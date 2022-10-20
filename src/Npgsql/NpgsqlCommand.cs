@@ -1327,6 +1327,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (connector is not null)
             {
+                var dataSource = connector.DataSource;
                 var logger = connector.CommandLogger;
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1356,9 +1357,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (IsWrappedByBatch)
                             foreach (var batchCommand in InternalBatchCommands)
-                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
+                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
                         else
-                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         break;
@@ -1372,7 +1373,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
+                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1381,7 +1382,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            Parameters.ProcessParameters(connector.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1458,8 +1459,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 Debug.Assert(conn is not null);
                 Debug.Assert(conn.Settings.Multiplexing);
+
                 // The connection isn't bound to a connector - it's multiplexing time.
-                var pool = (MultiplexingDataSource)conn.NpgsqlDataSource;
+                var dataSource = (MultiplexingDataSource)conn.NpgsqlDataSource;
 
                 if (!async)
                 {
@@ -1473,13 +1475,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand.Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true, CommandType);
+                        batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    Parameters.ProcessParameters(pool.MultiplexingTypeMapper!, validateValues: true, CommandType);
+                    Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 
@@ -1489,7 +1491,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
                 // the first read). But waiting on writing would allow us to do sync writing and async reading.
                 ExecutionCompletion.Reset();
-                await pool.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
+                await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
                 connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
                 // TODO: Overload of StartBindingScope?
                 conn.Connector = connector;

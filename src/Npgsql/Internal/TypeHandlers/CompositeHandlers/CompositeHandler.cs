@@ -42,7 +42,7 @@ namespace Npgsql.Internal.TypeHandlers.CompositeHandlers;
 
 sealed partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
 {
-    readonly ConnectorTypeMapper _typeMapper;
+    readonly TypeMapper _typeMapper;
     readonly INpgsqlNameTranslator _nameTranslator;
 
     Func<T>? _constructor;
@@ -51,7 +51,7 @@ sealed partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandl
 
     public Type CompositeType => typeof(T);
 
-    public CompositeHandler(PostgresCompositeType postgresType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
+    public CompositeHandler(PostgresCompositeType postgresType, TypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
         : base(postgresType)
     {
         _typeMapper = typeMapper;
@@ -146,7 +146,7 @@ sealed partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandl
         }
     }
 
-    static CompositeConstructorHandler<T>? CreateConstructorHandler(PostgresCompositeType pgType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
+    static CompositeConstructorHandler<T>? CreateConstructorHandler(PostgresCompositeType pgType, TypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
     {
         var pgFields = pgType.Fields;
         var clrType = typeof(T);
@@ -222,7 +222,7 @@ sealed partial class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandl
         return null;
     }
 
-    static CompositeMemberHandler<T>[] CreateMemberHandlers(PostgresCompositeType pgType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
+    static CompositeMemberHandler<T>[] CreateMemberHandlers(PostgresCompositeType pgType, TypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
     {
         var pgFields = pgType.Fields;
 

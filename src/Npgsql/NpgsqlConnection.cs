@@ -6,11 +6,9 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Runtime.Versioning;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,7 +16,6 @@ using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.NameTranslation;
-using Npgsql.Netstandard20;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -90,23 +87,15 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// The global type mapper, which contains defaults used by all new connections.
     /// Modify mappings on this mapper to affect your entire application.
     /// </summary>
+    [Obsolete("Global-level type mapping has been replaced with data source mapping, see the 7.0 release notes.")]
     public static INpgsqlTypeMapper GlobalTypeMapper => TypeMapping.GlobalTypeMapper.Instance;
 
     /// <summary>
-    /// The connection-specific type mapper - all modifications affect this connection only,
-    /// and are lost when it is closed.
+    /// Connection-level type mapping is no longer supported. See the 7.0 release notes for configuring type mapping on NpgsqlDataSource.
     /// </summary>
+    [Obsolete("Connection-level type mapping is no longer supported. See the 7.0 release notes for configuring type mapping on NpgsqlDataSource.", true)]
     public INpgsqlTypeMapper TypeMapper
-    {
-        get
-        {
-            if (Settings.Multiplexing)
-                throw new NotSupportedException("Connection-specific type mapping is unsupported when multiplexing is enabled.");
-
-            CheckReady();
-            return Connector!.TypeMapper!;
-        }
-    }
+        => throw new NotSupportedException();
 
     /// <summary>
     /// The default TCP/IP port for PostgreSQL.
@@ -287,8 +276,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
             // If we've never connected with this connection string, open a physical connector in order to generate
             // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
-            if (!((MultiplexingDataSource)_dataSource).IsBootstrapped)
-                return BootstrapMultiplexing(async, cancellationToken);
+            if (!((MultiplexingDataSource)_dataSource).StartupCheckPerformed)
+                return PerformMultiplexingStartupCheck(async, cancellationToken);
 
             LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
             FullState = ConnectionState.Open;
@@ -325,19 +314,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 Debug.Assert(connector.Connection is null,
                     $"Connection for opened connector '{Connector?.Id.ToString() ?? "???"}' is bound to another connection");
 
-                // Since this connector was last used, PostgreSQL types (e.g. enums) may have been added
-                // (and ReloadTypes() called), or global mappings may have changed by the user.
-                // Bring this up to date if needed.
-                // Note that in multiplexing execution, the pool-wide type mapper is used so no
-                // need to update the connector type mapper (this is why this is here).
-                if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                {
-                    // LoadDatabaseInfo might attempt to execute a query over a connector, which might run in parallel to KeepAlive.
-                    // Start a user action to prevent this.
-                    using var _ = connector.StartUserAction(ConnectorState.Executing, cancellationToken);
-                    await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
-                }
-
                 ConnectorBindingScope = ConnectorBindingScope.Connection;
                 connector.Connection = this;
                 Connector = connector;
@@ -365,13 +341,18 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             }
         }
 
-        async Task BootstrapMultiplexing(bool async, CancellationToken cancellationToken)
+        async Task PerformMultiplexingStartupCheck(bool async, CancellationToken cancellationToken)
         {
             try
             {
                 var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                await ((MultiplexingDataSource)NpgsqlDataSource).BootstrapMultiplexing(this, timeout, async, cancellationToken);
+
+                _ = await StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
+                EndBindingScope(ConnectorBindingScope.Connection);
+
                 LogMessages.OpenedMultiplexingConnection(_connectionLogger, Settings.Host!, Settings.Port, Settings.Database!, _userFacingConnectionString);
+                ((MultiplexingDataSource)NpgsqlDataSource).StartupCheckPerformed = true;
+
                 FullState = ConnectionState.Open;
             }
             catch
@@ -1433,158 +1414,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     #endregion
 
-    #region Enum mapping
-
-    /// <summary>
-    /// Maps a CLR enum to a PostgreSQL enum type for use with this connection.
-    /// </summary>
-    /// <remarks>
-    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
-    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
-    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
-    /// an exception will be raised.
-    ///
-    /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
-    ///
-    /// To avoid mapping the type for each connection, use the <see cref="MapEnumGlobally{T}"/> method.
-    /// </remarks>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-    [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
-    public void MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        where TEnum : struct, Enum
-        => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
-
-    /// <summary>
-    /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
-    /// </summary>
-    /// <remarks>
-    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
-    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
-    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
-    /// an exception will be raised.
-    ///
-    /// To map the type for a specific connection, use the <see cref="MapEnum{T}"/> method.
-    /// </remarks>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-    [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
-    public static void MapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        where TEnum : struct, Enum
-        => GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
-
-    /// <summary>
-    /// Removes a previous global enum mapping.
-    /// </summary>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding enum type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
-    public static void UnmapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        where TEnum : struct, Enum
-        => GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
-
-    #endregion
-
-    #region Composite registration
-
-    /// <summary>
-    /// Maps a CLR type to a PostgreSQL composite type for use with this connection.
-    /// </summary>
-    /// <remarks>
-    /// CLR fields and properties are mapped by name to PostgreSQL composite type fields.
-    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type field name.
-    /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
-    /// an exception will be raised.
-    ///
-    /// Can only be invoked on an open connection; if the connection is closed the mapping is lost.
-    ///
-    /// To avoid mapping the type for each connection, use the <see cref="MapCompositeGlobally{T}"/> method.
-    /// </remarks>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding composite type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    /// <typeparam name="T">The .NET type to be mapped</typeparam>
-    [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public void MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
-        => TypeMapper.MapComposite<T>(pgName, nameTranslator);
-
-    /// <summary>
-    /// Maps a CLR type to a PostgreSQL composite type for use with all connections created from now on. Existing connections aren't affected.
-    /// </summary>
-    /// <remarks>
-    /// CLR fields and properties are mapped by name to PostgreSQL composite type fields.
-    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-    /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL composite type field name.
-    /// If there is a discrepancy between the .NET names and the database names while a composite is read or written,
-    /// an exception will be raised.
-    ///
-    /// To map the type for a specific connection, use the <see cref="MapComposite{T}"/> method.
-    /// </remarks>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding composite type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    /// <typeparam name="T">The .NET type to be mapped</typeparam>
-    [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public static void MapCompositeGlobally<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
-        => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
-
-    /// <summary>
-    /// Removes a previous global composite mapping.
-    /// </summary>
-    /// <param name="pgName">
-    /// A PostgreSQL type name for the corresponding composite type in the database.
-    /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
-    /// </param>
-    /// <param name="nameTranslator">
-    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-    /// </param>
-    [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator? nameTranslator = null) where T : new()
-        => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
-
-    #endregion
-
     #region Wait
 
     /// <summary>
@@ -2049,29 +1878,34 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public void ReloadTypes()
     {
         CheckReady();
+
         using var scope = StartTemporaryBindingScope(out var connector);
-        using var _ = connector.StartUserAction(ConnectorState.Executing);
-        connector.LoadDatabaseInfo(
-            forceReload: true,
+
+        _dataSource!.Bootstrap(
+            connector,
             NpgsqlTimeout.Infinite,
+            forceReload: true,
             async: false,
-            CancellationToken.None).GetAwaiter().GetResult();
+            CancellationToken.None)
+            .GetAwaiter().GetResult();
+    }
 
-        // Increment the change counter on the global type mapper. This will make conn.Open() pick up the
-        // new DatabaseInfo and set up a new connection type mapper
-        TypeMapping.GlobalTypeMapper.Instance.RecordChange();
+    /// <summary>
+    /// Flushes the type cache for this connection's connection string and reloads the types for this connection only.
+    /// Type changes will appear for other connections only after they are re-opened from the pool.
+    /// </summary>
+    public async Task ReloadTypesAsync()
+    {
+        CheckReady();
 
-        if (Settings.Multiplexing)
-        {
-            var multiplexingTypeMapper = ((MultiplexingDataSource)NpgsqlDataSource).MultiplexingTypeMapper!;
-            Debug.Assert(multiplexingTypeMapper == connector.TypeMapper,
-                "A connector must reference the exact same TypeMapper the MultiplexingConnectorPool does");
-            // It's very probable that we've called ReloadTypes on the different connection than
-            // the MultiplexingConnectorPool references.
-            // Which means, we have to explicitly call Reset after we change the connector's DatabaseInfo to reload type mappings.
-            multiplexingTypeMapper.Connector.DatabaseInfo = connector.TypeMapper.DatabaseInfo;
-            multiplexingTypeMapper.Reset();
-        }
+        using var scope = StartTemporaryBindingScope(out var connector);
+
+        await _dataSource!.Bootstrap(
+                connector,
+                NpgsqlTimeout.Infinite,
+                forceReload: true,
+                async: true,
+                CancellationToken.None);
     }
 
     /// <summary>

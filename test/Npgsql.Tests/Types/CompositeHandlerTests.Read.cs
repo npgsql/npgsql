@@ -1,47 +1,49 @@
 using System;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
 public partial class CompositeHandlerTests
 {
-    void Read<T>(Action<Func<T>, T> assert, string? schema = null)
+    async Task Read<T>(Action<Func<T>, T> assert, string? schema = null)
         where T : IComposite, IInitializable, new()
     {
         var composite = new T();
         composite.Initialize();
-        Read(composite, assert, schema);
+        await Read(composite, assert, schema);
     }
 
-    void Read<T>(T composite, Action<Func<T>, T> assert, string? schema = null)
+    async Task Read<T>(T composite, Action<Func<T>, T> assert, string? schema = null)
         where T : IComposite
     {
-        using var connection = OpenAndMapComposite(composite, schema, nameof(Read), out var name);
-        using var command = new NpgsqlCommand($"SELECT ROW({composite.GetValues()})::{name}", connection);
-        using var reader = command.ExecuteReader();
+        await using var dataSource = await OpenAndMapComposite(composite, schema, nameof(Read), out var name);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await using var command = new NpgsqlCommand($"SELECT ROW({composite.GetValues()})::{name}", connection);
+        await using var reader = command.ExecuteReader();
 
-        reader.Read();
+        await reader.ReadAsync();
         assert(() => reader.GetFieldValue<T>(0), composite);
     }
 
     [Test]
-    public void Read_class_with_property() =>
+    public Task Read_class_with_property() =>
         Read<ClassWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
     [Test]
-    public void Read_class_with_field() =>
+    public Task Read_class_with_field() =>
         Read<ClassWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
     [Test]
-    public void Read_struct_with_property() =>
+    public Task Read_struct_with_property() =>
         Read<StructWithProperty>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
     [Test]
-    public void Read_struct_with_field() =>
+    public Task Read_struct_with_field() =>
         Read<StructWithField>((execute, expected) => Assert.AreEqual(expected.Value, execute().Value));
 
     [Test]
-    public void Read_type_with_two_properties() =>
+    public Task Read_type_with_two_properties() =>
         Read<TypeWithTwoProperties>((execute, expected) =>
         {
             var actual = execute();
@@ -50,7 +52,7 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Read_type_with_two_properties_inverted() =>
+    public Task Read_type_with_two_properties_inverted() =>
         Read<TypeWithTwoPropertiesReversed>((execute, expected) =>
         {
             var actual = execute();
@@ -59,35 +61,35 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Read_type_with_private_property_throws() =>
+    public Task Read_type_with_private_property_throws() =>
         Read(new TypeWithPrivateProperty(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_with_private_getter() =>
+    public Task Read_type_with_private_getter() =>
         Read(new TypeWithPrivateGetter(), (execute, expected) => execute());
 
     [Test]
-    public void Read_type_with_private_setter_throws() =>
+    public Task Read_type_with_private_setter_throws() =>
         Read(new TypeWithPrivateSetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_without_getter() =>
+    public Task Read_type_without_getter() =>
         Read(new TypeWithoutGetter(), (execute, expected) => execute());
 
     [Test]
-    public void Read_type_without_setter_throws() =>
+    public Task Read_type_without_setter_throws() =>
         Read(new TypeWithoutSetter(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_with_explicit_property_name() =>
+    public Task Read_type_with_explicit_property_name() =>
         Read(new TypeWithExplicitPropertyName { MyValue = HelloSlonik }, (execute, expected) => Assert.That(execute().MyValue, Is.EqualTo(expected.MyValue)));
 
     [Test]
-    public void Read_type_with_explicit_parameter_name() =>
+    public Task Read_type_with_explicit_parameter_name() =>
         Read(new TypeWithExplicitParameterName(HelloSlonik), (execute, expected) => Assert.That(execute().Value, Is.EqualTo(expected.Value)));
 
     [Test]
-    public void Read_type_with_more_properties_than_attributes() =>
+    public Task Read_type_with_more_properties_than_attributes() =>
         Read(new TypeWithMorePropertiesThanAttributes(), (execute, expected) =>
         {
             var actual = execute();
@@ -96,23 +98,23 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Read_type_with_less_properties_than_attributes_throws() =>
+    public Task Read_type_with_less_properties_than_attributes_throws() =>
         Read(new TypeWithLessPropertiesThanAttributes(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_with_less_parameters_than_attributes_throws() =>
+    public Task Read_type_with_less_parameters_than_attributes_throws() =>
         Read(new TypeWithLessParametersThanAttributes(TheAnswer), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_with_more_parameters_than_attributes_throws() =>
+    public Task Read_type_with_more_parameters_than_attributes_throws() =>
         Read(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
 
     [Test]
-    public void Read_type_with_one_parameter() =>
+    public Task Read_type_with_one_parameter() =>
         Read(new TypeWithOneParameter(1), (execute, expected) => Assert.That(execute().Value1, Is.EqualTo(expected.Value1)));
 
     [Test]
-    public void Read_type_with_two_parameters() =>
+    public Task Read_type_with_two_parameters() =>
         Read(new TypeWithTwoParameters(TheAnswer, HelloSlonik), (execute, expected) =>
         {
             var actual = execute();
@@ -121,7 +123,7 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Read_type_with_two_parameters_reversed() =>
+    public Task Read_type_with_two_parameters_reversed() =>
         Read(new TypeWithTwoParametersReversed(HelloSlonik, TheAnswer), (execute, expected) =>
         {
             var actual = execute();
@@ -130,7 +132,7 @@ public partial class CompositeHandlerTests
         });
 
     [Test]
-    public void Read_type_with_nine_parameters() =>
+    public Task Read_type_with_nine_parameters() =>
         Read(new TypeWithNineParameters(1, 2, 3, 4, 5, 6, 7, 8, 9), (execute, expected) =>
         {
             var actual = execute();

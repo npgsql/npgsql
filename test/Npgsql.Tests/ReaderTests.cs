@@ -1665,19 +1665,18 @@ LANGUAGE plpgsql VOLATILE";
 
     #endregion GetChars / GetTextReader
 
-#if DEBUG
     [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
     public async Task SafeReadException()
     {
-        if (IsMultiplexing)
-            return;
-
-        using var conn = await OpenConnectionAsync();
+        var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
-        conn.TypeMapper.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: true));
-        using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        reader.Read();
+        dataSourceBuilder.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: true));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", connection);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
         Assert.That(() => reader.GetInt32(0),
             Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
         Assert.That(reader.GetString(1), Is.EqualTo("hello"));
@@ -1686,20 +1685,19 @@ LANGUAGE plpgsql VOLATILE";
     [Test, Description("Tests that when a type handler generates an exception that isn't a NpgsqlSafeReadException, the connection is properly broken")]
     public async Task Non_SafeReadException()
     {
-        if (IsMultiplexing)
-            return;
-
-        using var conn = await OpenConnectionAsync();
+        var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates some exception
-        conn.TypeMapper.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: false));
-        using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        reader.Read();
+        dataSourceBuilder.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: false));
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", connection);
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        await reader.ReadAsync();
         Assert.That(() => reader.GetInt32(0), Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
-        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-        Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+        Assert.That(connection.FullState, Is.EqualTo(ConnectionState.Broken));
+        Assert.That(connection.State, Is.EqualTo(ConnectionState.Closed));
     }
-#endif
 
     #region Cancellation
 

@@ -575,10 +575,9 @@ public class NodaTimeTests : TestBase
     public async Task TimeTz_as_DateTimeOffset()
     {
         await AssertTypeRead(
-            new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)),
             "13:03:45.51+02",
             "time with time zone",
-            isDefault: false);
+            new DateTimeOffset(1, 1, 2, 13, 3, 45, 510, TimeSpan.FromHours(2)), isDefault: false);
 
         await AssertTypeWrite(
             new DateTimeOffset(1, 1, 1, 13, 3, 45, 510, TimeSpan.FromHours(2)),
