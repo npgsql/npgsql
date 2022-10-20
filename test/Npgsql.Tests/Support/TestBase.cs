@@ -28,7 +28,7 @@ public abstract class TestBase
         T value,
         string sqlLiteral,
         string pgTypeName,
-        NpgsqlDbType npgsqlDbType,
+        NpgsqlDbType? npgsqlDbType,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefaultForReading = true,
@@ -44,11 +44,31 @@ public abstract class TestBase
     }
 
     public async Task<T> AssertType<T>(
+        NpgsqlDataSource dataSource,
+        T value,
+        string sqlLiteral,
+        string pgTypeName,
+        NpgsqlDbType? npgsqlDbType,
+        DbType? dbType = null,
+        DbType? inferredDbType = null,
+        bool isDefaultForReading = true,
+        bool isDefaultForWriting = true,
+        bool? isDefault = null,
+        bool isNpgsqlDbTypeInferredFromClrType = true,
+        Func<T, T, bool>? comparer = null)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        return await AssertType(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForReading,
+            isDefaultForWriting, isDefault, isNpgsqlDbTypeInferredFromClrType);
+    }
+
+    public async Task<T> AssertType<T>(
         NpgsqlConnection connection,
         T value,
         string sqlLiteral,
         string pgTypeName,
-        NpgsqlDbType npgsqlDbType,
+        NpgsqlDbType? npgsqlDbType,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefaultForReading = true,
@@ -64,8 +84,7 @@ public abstract class TestBase
         return await AssertTypeRead(connection, sqlLiteral, pgTypeName, value, isDefaultForReading, comparer);
     }
 
-
-    public async Task<T> AssertTypeRead<T>(T expected, string sqlLiteral, string pgTypeName, bool isDefault = true)
+    public async Task<T> AssertTypeRead<T>(string sqlLiteral, string pgTypeName, T expected, bool isDefault = true)
     {
         await using var connection = await OpenConnectionAsync();
         return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault);
@@ -116,7 +135,7 @@ public abstract class TestBase
 
         var dataTypeName = reader.GetDataTypeName(0);
         var dotIndex = dataTypeName.IndexOf('.');
-        if (dotIndex > -1)
+        if (dotIndex > -1 && dataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
             dataTypeName = dataTypeName.Substring(dotIndex + 1);
 
         Assert.That(dataTypeName, Is.EqualTo(pgTypeName),
@@ -142,12 +161,15 @@ public abstract class TestBase
         Func<T> valueFactory,
         string expectedSqlLiteral,
         string pgTypeName,
-        NpgsqlDbType npgsqlDbType,
+        NpgsqlDbType? npgsqlDbType,
         DbType? dbType = null,
         DbType? inferredDbType = null,
         bool isDefault = true,
         bool isNpgsqlDbTypeInferredFromClrType = true)
     {
+        if (npgsqlDbType is null)
+            isNpgsqlDbTypeInferredFromClrType = false;
+
         // TODO: Interferes with both multiplexing and connection-specific mapping (used e.g. in NodaTime)
         // Reset the type mapper to make sure we're resolving this type with a clean slate (for isolation, just in case)
         // connection.TypeMapper.Reset();
@@ -167,12 +189,15 @@ public abstract class TestBase
         var errorIdentifier = new Dictionary<int, string>();
 
         await using var cmd = new NpgsqlCommand { Connection = connection };
-
+        NpgsqlParameter p;
         // With NpgsqlDbType
-        var p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType };
-        cmd.Parameters.Add(p);
-        errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
-        CheckInference();
+        if (npgsqlDbType is not null)
+        {
+            p = new NpgsqlParameter { Value = valueFactory(), NpgsqlDbType = npgsqlDbType.Value };
+            cmd.Parameters.Add(p);
+            errorIdentifier[++errorIdentifierIndex] = $"NpgsqlDbType={npgsqlDbType}";
+            CheckInference();
+        }
 
         // With data type name
         p = new NpgsqlParameter { Value = valueFactory(), DataTypeName = pgTypeNameWithoutFacets };
@@ -222,8 +247,12 @@ public abstract class TestBase
 
         void CheckInference()
         {
-            Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
-                () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+            if (npgsqlDbType is not null)
+            {
+                Assert.That(p.NpgsqlDbType, Is.EqualTo(npgsqlDbType),
+                    () => $"Got wrong inferred NpgsqlDbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
+            }
+
             Assert.That(p.DbType, Is.EqualTo(inferredDbType ?? dbType ?? DbType.Object),
                 () => $"Got wrong inferred DbType when inferring with {errorIdentifier[errorIdentifierIndex]}");
 
@@ -299,7 +328,13 @@ public abstract class TestBase
 
     #region Utilities for use by tests
 
-    protected static readonly NpgsqlDataSource DataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
+    protected static readonly NpgsqlDataSource SharedDataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
+
+    protected virtual NpgsqlDataSourceBuilder CreateDataSourceBuilder()
+        => new(TestUtil.ConnectionString);
+
+    protected virtual NpgsqlDataSource CreateDataSource()
+        => NpgsqlDataSource.Create(TestUtil.ConnectionString);
 
     protected virtual NpgsqlDataSource CreateLoggingDataSource(
         out ListLoggerProvider listLoggerProvider,
@@ -422,8 +457,6 @@ public abstract class TestBase
     // how to transfer that. So cast to text server-side.
     protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
         => new($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
-
-    protected bool IsRedshift => new NpgsqlConnectionStringBuilder(ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
     #endregion
 }

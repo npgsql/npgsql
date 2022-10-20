@@ -51,6 +51,12 @@ public static class TestUtil
     public static void IgnoreExceptOnBuildServer(string message, params object[] args)
         => IgnoreExceptOnBuildServer(string.Format(message, args));
 
+    public static void MinimumPgVersion(NpgsqlDataSource dataSource, string minVersion, string? ignoreText = null)
+    {
+        using var connection = dataSource.OpenConnection();
+        MinimumPgVersion(connection, minVersion, ignoreText);
+    }
+
     public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string? ignoreText = null)
     {
         var min = new Version(minVersion);
@@ -76,6 +82,17 @@ public static class TestUtil
     }
 
     static readonly Version MinCreateExtensionVersion = new(9, 1);
+
+    public static void IgnoreOnRedshift(NpgsqlConnection conn, string? ignoreText = null)
+    {
+        if (new NpgsqlConnectionStringBuilder(conn.ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift)
+        {
+            var msg = "Test ignored on Redshift";
+            if (ignoreText != null)
+                msg += ": " + ignoreText;
+            Assert.Ignore(msg);
+        }
+    }
 
     public static bool IsPgPrerelease(NpgsqlConnection conn)
         => ((string)conn.ExecuteScalar("SELECT version()")!).Contains("beta");
@@ -167,10 +184,35 @@ public static class TestUtil
     internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlConnection conn, string columns, out string tableName)
     {
         tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-        return conn.ExecuteNonQueryAsync(@$"START TRANSACTION; SELECT pg_advisory_xact_lock(0);
-                    DROP TABLE IF EXISTS {tableName} CASCADE; COMMIT; CREATE TABLE {tableName} ({columns})")
+
+        return conn.ExecuteNonQueryAsync(@$"
+START TRANSACTION;
+SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT;
+CREATE TABLE {tableName} ({columns});")
             .ContinueWith(
                 (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
+                tableName,
+                TaskContinuationOptions.OnlyOnRanToCompletion);
+    }
+
+    /// <summary>
+    /// Creates a table with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
+    /// drop it at the end of the test.
+    /// </summary>
+    internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlDataSource dataSource, string columns, out string tableName)
+    {
+        tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+
+        return dataSource.ExecuteNonQueryAsync(@$"
+START TRANSACTION;
+SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT;
+CREATE TABLE {tableName} ({columns});")
+            .ContinueWith(
+                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(dataSource, (string)name!, "TABLE"),
                 tableName,
                 TaskContinuationOptions.OnlyOnRanToCompletion);
     }
@@ -238,6 +280,34 @@ public static class TestUtil
     }
 
     /// <summary>
+    /// Generates a unique function name, usable for a single test.
+    /// Actual creation of the function is the responsibility of the caller.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IDisposable"/> to drop the function at the end of the test.
+    /// </returns>
+    internal static async Task<string> GetTempProcedureName(NpgsqlDataSource dataSource)
+    {
+        var procedureName = "temp_procedure" + Interlocked.Increment(ref _tempProcedureCounter);
+        await dataSource.ExecuteNonQueryAsync($"DROP PROCEDURE IF EXISTS {procedureName} CASCADE");
+        return procedureName;
+    }
+
+    /// <summary>
+    /// Generates a unique function name, usable for a single test.
+    /// Actual creation of the function is the responsibility of the caller.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IDisposable"/> to drop the function at the end of the test.
+    /// </returns>
+    internal static async Task<string> GetTempProcedureName(NpgsqlConnection connection)
+    {
+        var procedureName = "temp_procedure" + Interlocked.Increment(ref _tempProcedureCounter);
+        await connection.ExecuteNonQueryAsync($"DROP PROCEDURE IF EXISTS {procedureName} CASCADE");
+        return procedureName;
+    }
+
+    /// <summary>
     /// Generates a unique type name, usable for a single test.
     /// Actual creation of the type is the responsibility of the caller.
     /// </summary>
@@ -264,44 +334,51 @@ public static class TestUtil
                 typeName,
                 TaskContinuationOptions.OnlyOnRanToCompletion);
 
-    /// <summary>
-    /// Generates a unique domain name, usable for a single test.
-    /// Actual creation of the domain is the responsibility of the caller.
-    /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the type at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> GetTempDomainName(NpgsqlConnection conn, out string domainName)
-    {
-        domainName = "temp_domain" + Interlocked.Increment(ref _tempDomainCounter);
-        return conn.ExecuteNonQueryAsync($"DROP DOMAIN IF EXISTS {domainName} CASCADE")
-            .ContinueWith(
-                (_, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "DOMAIN"),
-                domainName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
-    }
-
-    static volatile int _tempTableCounter;
+    internal static volatile int _tempTableCounter;
     static volatile int _tempViewCounter;
     static volatile int _tempFunctionCounter;
+    static volatile int _tempProcedureCounter;
     static volatile int _tempSchemaCounter;
     static volatile int _tempTypeCounter;
-    static volatile int _tempDomainCounter;
 
-    sealed class DatabaseObjectDropper : IAsyncDisposable
+    internal sealed class DatabaseObjectDropper : IDisposable, IAsyncDisposable
     {
-        readonly NpgsqlConnection _conn;
+        readonly NpgsqlDataSource? _dataSource;
+        readonly NpgsqlConnection? _conn;
         readonly string _type;
         readonly string _name;
 
         internal DatabaseObjectDropper(NpgsqlConnection conn, string name, string type)
             => (_conn, _name, _type) = (conn, name, type);
 
+        internal DatabaseObjectDropper(NpgsqlDataSource dataSource, string name, string type)
+            => (_dataSource, _name, _type) = (dataSource, name, type);
+
         public async ValueTask DisposeAsync()
         {
             try
             {
-                await _conn.ExecuteNonQueryAsync($"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT");
+                var sql = $"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT";
+                if (_dataSource is null)
+                    await _conn!.ExecuteNonQueryAsync(sql);
+                else
+                    await _dataSource.ExecuteNonQueryAsync(sql);
+            }
+            catch
+            {
+                // Swallow to allow triggering exceptions to surface
+            }
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                var sql = $"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT";
+                if (_dataSource is null)
+                    _conn!.ExecuteNonQuery(sql);
+                else
+                    _dataSource.ExecuteNonQuery(sql);
             }
             catch
             {
@@ -428,28 +505,57 @@ public static class NpgsqlConnectionExtensions
 {
     public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
     {
-        using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-        return cmd.ExecuteNonQuery();
+        using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        return command.ExecuteNonQuery();
     }
 
     public static object? ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
     {
-        using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-        return cmd.ExecuteScalar();
+        using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        return command.ExecuteScalar();
     }
 
-    public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null,
-        CancellationToken cancellationToken = default)
+    public static async Task<int> ExecuteNonQueryAsync(
+        this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null, CancellationToken cancellationToken = default)
     {
-        using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-        return await cmd.ExecuteNonQueryAsync(cancellationToken);
+        await using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    public static async Task<object?> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null,
-        CancellationToken cancellationToken = default)
+    public static async Task<object?> ExecuteScalarAsync(
+        this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null, CancellationToken cancellationToken = default)
     {
-        using var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
-        return await cmd.ExecuteScalarAsync(cancellationToken);
+        await using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        return await command.ExecuteScalarAsync(cancellationToken);
+    }
+}
+
+public static class NpgsqlDataSourceExtensions
+{
+    public static int ExecuteNonQuery(this NpgsqlDataSource dataSource, string sql)
+    {
+        using var command = dataSource.CreateCommand(sql);
+        return command.ExecuteNonQuery();
+    }
+
+    public static object? ExecuteScalar(this NpgsqlDataSource dataSource, string sql)
+    {
+        using var command = dataSource.CreateCommand(sql);
+        return command.ExecuteScalar();
+    }
+
+    public static async Task<int> ExecuteNonQueryAsync(
+        this NpgsqlDataSource dataSource, string sql, CancellationToken cancellationToken = default)
+    {
+        await using var command = dataSource.CreateCommand(sql);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task<object?> ExecuteScalarAsync(
+        this NpgsqlDataSource dataSource, string sql, CancellationToken cancellationToken = default)
+    {
+        await using var command = dataSource.CreateCommand(sql);
+        return await command.ExecuteScalarAsync(cancellationToken);
     }
 }
 

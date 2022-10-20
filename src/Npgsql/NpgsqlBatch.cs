@@ -55,6 +55,32 @@ public class NpgsqlBatch : DbBatch
     }
 
     /// <summary>
+    /// Controls whether to place error barriers between all batch commands within this batch. Default to <see langword="false" />.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    ///     By default, any exception in a command causes later commands in the batch to be skipped, and earlier commands to be rolled back.
+    ///     Enabling error barriers ensures that errors do not affect other commands in the batch.
+    /// </para>
+    /// <para>
+    ///     Note that if the batch is executed within an explicit transaction, the first error places the transaction in a failed state,
+    ///     causing all later commands to fail in any case. As a result, this option is useful mainly when there is no explicit transaction.
+    /// </para>
+    /// <para>
+    ///     At the PostgreSQL wire protocol level, this corresponds to inserting a Sync message between each command, rather than grouping
+    ///     all the batch's commands behind a single terminating Sync.
+    /// </para>
+    /// <para>
+    ///     To control error barriers on a command-by-command basis, see <see cref="NpgsqlBatchCommand.AppendErrorBarrier" />.
+    /// </para>
+    /// </remarks>
+    public bool EnableErrorBarriers
+    {
+        get => Command.EnableErrorBarriers;
+        set => Command.EnableErrorBarriers = value;
+    }
+
+    /// <summary>
     /// Marks all of the batch's result columns as either known or unknown.
     /// Unknown results column are requested them from PostgreSQL in text format, and Npgsql makes no
     /// attempt to parse them. They will be accessible as strings only.

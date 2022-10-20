@@ -639,7 +639,7 @@ public enum NpgsqlDbType
 /// Represents a built-in PostgreSQL type as it appears in pg_type, including its name and OID.
 /// Extension types with variable OIDs are not represented.
 /// </summary>
-class BuiltInPostgresType : Attribute
+sealed class BuiltInPostgresType : Attribute
 {
     internal string Name { get; }
     internal uint BaseOID { get; }

@@ -70,6 +70,6 @@ public class PostgresTypeTests : TestBase
     async Task<NpgsqlDatabaseInfo> GetDatabaseInfo()
     {
         await using var conn = await OpenConnectionAsync();
-        return ((ConnectorTypeMapper)conn.TypeMapper).DatabaseInfo;
+        return conn.NpgsqlDataSource.TypeMapper.DatabaseInfo;
     }
 }

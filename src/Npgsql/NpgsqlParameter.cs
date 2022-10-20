@@ -347,7 +347,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     [DbProviderSpecificTypeProperty(true)]
     public NpgsqlDbType NpgsqlDbType
     {
-        [RequiresUnreferencedCodeAttribute("The NpgsqlDbType getter isn't trimming-safe")]
+        [RequiresUnreferencedCode("The NpgsqlDbType getter isn't trimming-safe")]
         get
         {
             if (_npgsqlDbType.HasValue)
@@ -505,7 +505,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     #region Internals
 
-    internal virtual void ResolveHandler(ConnectorTypeMapper typeMapper)
+    internal virtual void ResolveHandler(TypeMapper typeMapper)
     {
         if (Handler is not null)
             return;
@@ -517,10 +517,13 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         else if (_value is not null)
             Handler = typeMapper.ResolveByValue(_value);
         else
-            throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
+        {
+            var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
+            throw new InvalidOperationException($"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
+        }
     }
 
-    internal void Bind(ConnectorTypeMapper typeMapper)
+    internal void Bind(TypeMapper typeMapper)
     {
         ResolveHandler(typeMapper);
         FormatCode = Handler!.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;

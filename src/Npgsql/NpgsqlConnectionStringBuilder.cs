@@ -1735,7 +1735,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 /// string. Optionally holds a set of synonyms for the property.
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
-class NpgsqlConnectionStringPropertyAttribute : Attribute
+sealed class NpgsqlConnectionStringPropertyAttribute : Attribute
 {
     /// <summary>
     /// Holds a list of synonyms for the property.

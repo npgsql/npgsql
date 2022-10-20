@@ -1,7 +1,26 @@
 ﻿#nullable enable
+Npgsql.NpgsqlBatch.EnableErrorBarriers.get -> bool
+Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
+Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
+Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.set -> void
+Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlLoggingConfiguration
 Npgsql.NpgsqlTracingOptions.EnrichCommandExecution.get -> System.Action<System.Diagnostics.Activity!, string!, object!>?
 Npgsql.NpgsqlTracingOptions.EnrichCommandExecution.set -> void
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
+Npgsql.StatementType.Call = 11 -> Npgsql.StatementType
+Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
 *REMOVED*Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
@@ -18,6 +37,12 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
 *REMOVED*const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
+*REMOVED*Npgsql.NpgsqlConnection.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*Npgsql.NpgsqlConnection.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.get -> Npgsql.PhysicalOpenAsyncCallback?
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
+*REMOVED*Npgsql.NpgsqlConnection.PhysicalOpenCallback.set -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute() -> void
 *REMOVED*Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute(params string![]! synonyms) -> void
@@ -41,6 +66,8 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
+*REMOVED*Npgsql.PhysicalOpenAsyncCallback
+*REMOVED*Npgsql.PhysicalOpenCallback
 *REMOVED*NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
@@ -166,6 +193,10 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*static Npgsql.Logging.NpgsqlLogManager.IsParameterLoggingEnabled.set -> void
 *REMOVED*static Npgsql.Logging.NpgsqlLogManager.Provider.get -> Npgsql.Logging.INpgsqlLoggingProvider!
 *REMOVED*static Npgsql.Logging.NpgsqlLogManager.Provider.set -> void
+*REMOVED*static Npgsql.NpgsqlConnection.MapCompositeGlobally<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*static Npgsql.NpgsqlConnection.MapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*static Npgsql.NpgsqlConnection.UnmapCompositeGlobally<T>(string! pgName, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*static Npgsql.NpgsqlConnection.UnmapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly

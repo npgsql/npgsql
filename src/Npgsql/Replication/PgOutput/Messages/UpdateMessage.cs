@@ -42,7 +42,7 @@ public abstract class UpdateMessage : TransactionalMessage
         return this;
     }
 
-    private protected class SecondRowTupleEnumerable : ReplicationTuple
+    private protected sealed class SecondRowTupleEnumerable : ReplicationTuple
     {
         readonly ReplicationTuple _oldRowTupleEnumerable;
 

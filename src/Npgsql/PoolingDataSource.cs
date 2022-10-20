@@ -196,16 +196,10 @@ class PoolingDataSource : NpgsqlDataSource
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal sealed override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
     {
-        while (_idleConnectorReader.TryRead(out var nullableConnector))
-        {
-            if (CheckIdleConnector(nullableConnector))
-            {
-                connector = nullableConnector;
+        while (_idleConnectorReader.TryRead(out connector))
+            if (CheckIdleConnector(connector))
                 return true;
-            }
-        }
 
-        connector = null;
         return false;
     }
 
@@ -234,6 +228,13 @@ class PoolingDataSource : NpgsqlDataSource
             CloseConnector(connector);
             return false;
         }
+
+        // The connector directly references the data source type mapper into the connector, to protect it against changes by a concurrent
+        // ReloadTypes. We update them here before returning the connector from the pool.
+        Debug.Assert(TypeMapper is not null);
+        Debug.Assert(DatabaseInfo is not null);
+        connector.TypeMapper = TypeMapper;
+        connector.DatabaseInfo = DatabaseInfo;
 
         Debug.Assert(connector.State == ConnectorState.Ready,
             $"Got idle connector but {nameof(connector.State)} is {connector.State}");
@@ -360,9 +361,11 @@ class PoolingDataSource : NpgsqlDataSource
             if (Interlocked.CompareExchange(ref Connectors[i], null, connector) == connector)
                 break;
 
-        Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when closing.");
+        // If CloseConnector is being called from within OpenNewConnector (e.g. an error happened during a connection initializer which
+        // causes the connector to Break, and therefore return the connector), then we haven't yet added the connector to Connectors.
+        // In this case, there's no state to revert here (that's all taken care of in OpenNewConnector), skip it.
         if (i == _max)
-            throw new NpgsqlException($"Could not find free slot in {Connectors} when closing. Please report a bug.");
+            return;
 
         var numConnectors = Interlocked.Decrement(ref _numConnectors);
         Debug.Assert(numConnectors >= 0);

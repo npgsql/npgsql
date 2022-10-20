@@ -33,6 +33,31 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     public new NpgsqlParameterCollection Parameters { get; } = new();
 
     /// <summary>
+    /// Appends an error barrier after this batch command. Defaults to the value of <see cref="NpgsqlBatch.EnableErrorBarriers" /> on the
+    /// batch.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    ///     By default, any exception in a command causes later commands in the batch to be skipped, and earlier commands to be rolled back.
+    ///     Appending an error barrier ensures that errors from this command (or previous ones) won't cause later commands to be skipped,
+    ///     and that errors from later commands won't cause this command (or previous ones) to be rolled back).
+    /// </para>
+    /// <para>
+    ///     Note that if the batch is executed within an explicit transaction, the first error places the transaction in a failed state,
+    ///     causing all later commands to fail in any case. As a result, this option is useful mainly when there is no explicit transaction.
+    /// </para>
+    /// <para>
+    ///     At the PostgreSQL wire protocol level, this corresponds to inserting a Sync message after this command, rather than grouping
+    ///     all the batch's commands behind a single terminating Sync.
+    /// </para>
+    /// <para>
+    ///     Controlling error barriers on a command-by-command basis is an advanced feature, consider enabling error barriers for the entire
+    ///     batch via <see cref="NpgsqlBatch.EnableErrorBarriers" />.
+    /// </para>
+    /// </remarks>
+    public bool? AppendErrorBarrier { get; set; }
+
+    /// <summary>
     /// The number of rows affected or retrieved.
     /// </summary>
     /// <remarks>

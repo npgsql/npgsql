@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -16,13 +17,12 @@ namespace Npgsql.Internal.TypeHandlers;
 /// (chicken and egg problem).
 /// Also used for sending parameters with unknown types (OID=0)
 /// </summary>
-class UnknownTypeHandler : TextHandler
+sealed class UnknownTypeHandler : TextHandler
 {
-    readonly NpgsqlConnector _connector;
-
-    internal UnknownTypeHandler(NpgsqlConnector connector)
-        : base(UnknownBackendType.Instance, connector.TextEncoding)
-        => _connector = connector;
+    internal UnknownTypeHandler(Encoding encoding)
+        : base(UnknownBackendType.Instance, encoding)
+    {
+    }
 
     #region Read
 
@@ -35,7 +35,7 @@ class UnknownTypeHandler : TextHandler
         {
             // At least get the name of the PostgreSQL type for the exception
             throw new NotSupportedException(
-                _connector.TypeMapper.DatabaseInfo.ByOID.TryGetValue(fieldDescription.TypeOID, out var pgType)
+                buf.Connector.TypeMapper.DatabaseInfo.ByOID.TryGetValue(fieldDescription.TypeOID, out var pgType)
                     ? $"The field '{fieldDescription.Name}' has type '{pgType.DisplayName}', which is currently unknown to Npgsql. You can retrieve it as a string by marking it as unknown, please see the FAQ."
                     : $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."
             );
@@ -57,7 +57,7 @@ class UnknownTypeHandler : TextHandler
     public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
         if (value is string asString)
-            return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
+            return ValidateAndGetLength(asString, ref lengthCache, parameter);
 
         if (parameter == null)
             throw CreateConversionButNoParamException(value.GetType());
@@ -65,7 +65,7 @@ class UnknownTypeHandler : TextHandler
         var converted = Convert.ToString(value)!;
         parameter.ConvertedValue = converted;
 
-        return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
+        return ValidateAndGetLength(converted, ref lengthCache, parameter);
     }
 
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -81,13 +81,13 @@ class UnknownTypeHandler : TextHandler
             return WriteWithLengthLong(value, convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
         buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
-        return base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
+        return Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
         async Task WriteWithLengthLong(object value, string convertedValue, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
         {
             await buf.Flush(async, cancellationToken);
             buf.WriteInt32(ValidateObjectAndGetLength(value!, ref lengthCache, parameter));
-            await base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
+            await Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
         }
     }
 

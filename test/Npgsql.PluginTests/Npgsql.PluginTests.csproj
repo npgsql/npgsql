@@ -1,7 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
-  <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
-  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NUnit" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

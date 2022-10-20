@@ -1,4 +1,4 @@
-using System;
+using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -6,7 +6,7 @@ namespace Npgsql.Tests.Types;
 
 public partial class CompositeHandlerTests : TestBase
 {
-    NpgsqlConnection OpenAndMapComposite<T>(T composite, string? schema, string nameSuffix, out string nameQualified)
+    Task<NpgsqlDataSource> OpenAndMapComposite<T>(T composite, string? schema, string nameSuffix, out string nameQualified)
         where T : IComposite
     {
         var nameTranslator = new NpgsqlSnakeCaseNameTranslator();
@@ -20,22 +20,21 @@ public partial class CompositeHandlerTests : TestBase
             nameQualified = schema + "." + name;
         }
 
-        var connection = OpenConnection();
+        return OpenAndMapCompositeCore(nameQualified);
 
-        try
+        async Task<NpgsqlDataSource> OpenAndMapCompositeCore(string nameQualified)
         {
-            connection.ExecuteNonQuery(schema is null ? $"DROP TYPE IF EXISTS {name}" : $"DROP SCHEMA IF EXISTS {schema} CASCADE; CREATE SCHEMA {schema}");
-            connection.ExecuteNonQuery($"CREATE TYPE {nameQualified} AS ({composite.GetAttributes()})");
+            await using var adminConnection = await OpenConnectionAsync();
 
-            connection.ReloadTypes();
-            connection.TypeMapper.MapComposite<T>(nameQualified, nameTranslator);
+            await adminConnection.ExecuteNonQueryAsync(schema is null ? $"DROP TYPE IF EXISTS {name}" : $"DROP SCHEMA IF EXISTS {schema} CASCADE; CREATE SCHEMA {schema}");
+            await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {nameQualified} AS ({composite.GetAttributes()})");
 
-            return connection;
-        }
-        catch
-        {
-            connection.Dispose();
-            throw;
+            var dataSourceBuilder = CreateDataSourceBuilder();
+            dataSourceBuilder.MapComposite<T>(nameQualified, nameTranslator);
+            var dataSource = dataSourceBuilder.Build();
+            await using var connection = await dataSource.OpenConnectionAsync();
+
+            return dataSource;
         }
     }
 

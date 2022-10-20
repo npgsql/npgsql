@@ -2,7 +2,7 @@
 
 namespace Npgsql.BackendMessages;
 
-class BackendKeyDataMessage : IBackendMessage
+sealed class BackendKeyDataMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.BackendKeyData;
 

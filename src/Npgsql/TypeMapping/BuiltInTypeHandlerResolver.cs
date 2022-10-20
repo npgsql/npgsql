@@ -25,7 +25,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping;
 
-class BuiltInTypeHandlerResolver : TypeHandlerResolver
+sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
 {
     readonly NpgsqlConnector _connector;
     readonly NpgsqlDatabaseInfo _databaseInfo;
@@ -749,7 +749,7 @@ class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler RecordHandler()       => _recordHandler ??= new RecordHandler(PgType("record"), _connector.TypeMapper);
     NpgsqlTypeHandler VoidHandler()         => _voidHandler ??= new VoidHandler(PgType("void"));
 
-    NpgsqlTypeHandler UnknownHandler() => _unknownHandler ??= new UnknownTypeHandler(_connector);
+    NpgsqlTypeHandler UnknownHandler() => _unknownHandler ??= new UnknownTypeHandler(_connector.TextEncoding);
 
     #endregion Handler accessors
 }

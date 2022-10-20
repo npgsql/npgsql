@@ -10,7 +10,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-boolean.html
 /// </remarks>
-class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>
+sealed class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>
 {
     public VoidHandler(PostgresType pgType) : base(pgType) {}
 

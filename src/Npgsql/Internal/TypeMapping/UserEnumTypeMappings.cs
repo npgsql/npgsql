@@ -14,7 +14,7 @@ public interface IUserEnumTypeMapping : IUserTypeMapping
     INpgsqlNameTranslator NameTranslator { get; }
 }
 
-class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
+sealed class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
     where TEnum : struct, Enum
 {
     public string PgTypeName { get; }

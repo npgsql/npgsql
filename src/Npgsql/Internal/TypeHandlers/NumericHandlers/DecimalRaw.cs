@@ -11,7 +11,7 @@ struct DecimalRaw
     const int ScaleShift = 16;
 
     // Fast access for 10^n where n is 0-9
-    internal static readonly uint[] Powers10 = new uint[]
+    internal static readonly uint[] Powers10 =
     {
         1,
         10,

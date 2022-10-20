@@ -6,7 +6,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
 
-partial class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
+sealed partial class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
 {
     public TidHandler(PostgresType pgType) : base(pgType) {}
 

@@ -36,7 +36,7 @@ abstract class CopyResponseMessageBase : IBackendMessage
     }
 }
 
-class CopyInResponseMessage : CopyResponseMessageBase
+sealed class CopyInResponseMessage : CopyResponseMessageBase
 {
     public override BackendMessageCode Code => BackendMessageCode.CopyInResponse;
 
@@ -47,7 +47,7 @@ class CopyInResponseMessage : CopyResponseMessageBase
     }
 }
 
-class CopyOutResponseMessage : CopyResponseMessageBase
+sealed class CopyOutResponseMessage : CopyResponseMessageBase
 {
     public override BackendMessageCode Code => BackendMessageCode.CopyOutResponse;
 
@@ -58,7 +58,7 @@ class CopyOutResponseMessage : CopyResponseMessageBase
     }
 }
 
-class CopyBothResponseMessage : CopyResponseMessageBase
+sealed class CopyBothResponseMessage : CopyResponseMessageBase
 {
     public override BackendMessageCode Code => BackendMessageCode.CopyBothResponse;
 
@@ -73,7 +73,7 @@ class CopyBothResponseMessage : CopyResponseMessageBase
 /// Note that this message doesn't actually contain the data, but only the length. Data is processed
 /// directly from the connector's buffer.
 /// </summary>
-class CopyDataMessage : IBackendMessage
+sealed class CopyDataMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.CopyData;
 
@@ -86,7 +86,7 @@ class CopyDataMessage : IBackendMessage
     }
 }
 
-class CopyDoneMessage : IBackendMessage
+sealed class CopyDoneMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.CopyDone;
     internal static readonly CopyDoneMessage Instance = new();

@@ -9,17 +9,17 @@ namespace Npgsql.TypeMapping;
 
 /// <summary>
 /// A type mapper, managing how to read and write CLR values to PostgreSQL data types.
-/// A type mapper exists for each connection, as well as a single global type mapper
-/// (accessible via <see cref="P:NpgsqlConnection.GlobalTypeMapper"/>).
 /// </summary>
 /// <remarks>
+/// The preferred way to manage type mappings is on <see cref="NpgsqlDataSourceBuilder" />. An alternative, but discouraged, method, is to
+/// manage them globally via <see cref="NpgsqlConnection.GlobalTypeMapper"/>).
 /// </remarks>
 public interface INpgsqlTypeMapper
 {
     /// <summary>
-    /// The default name translator to convert CLR type names and member names.
+    /// The default name translator to convert CLR type names and member names. Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
     /// </summary>
-    INpgsqlNameTranslator DefaultNameTranslator { get; }
+    INpgsqlNameTranslator DefaultNameTranslator { get; set; }
 
     /// <summary>
     /// Maps a CLR enum to a PostgreSQL enum type.
@@ -38,7 +38,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     /// <param name="nameTranslator">
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
     INpgsqlTypeMapper MapEnum<TEnum>(
@@ -55,7 +55,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     /// <param name="nameTranslator">
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     bool UnmapEnum<TEnum>(
         string? pgName = null,
@@ -79,7 +79,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     /// <param name="nameTranslator">
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     /// <typeparam name="T">The .NET type to be mapped</typeparam>
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
@@ -109,7 +109,7 @@ public interface INpgsqlTypeMapper
     /// <remarks>
     /// Maps CLR fields and properties by string to PostgreSQL names.
     /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// which defaults to <see cref="DefaultNameTranslator" />.
     /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
     /// an exception will be raised.
     /// </remarks>
@@ -120,7 +120,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     /// <param name="nameTranslator">
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     INpgsqlTypeMapper MapComposite(
@@ -138,7 +138,7 @@ public interface INpgsqlTypeMapper
     /// </param>
     /// <param name="nameTranslator">
     /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-    /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+    /// Defaults to <see cref="DefaultNameTranslator" />.
     /// </param>
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     bool UnmapComposite(

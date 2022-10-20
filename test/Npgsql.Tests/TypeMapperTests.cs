@@ -1,128 +1,130 @@
-﻿using Npgsql.BackendMessages;
-using Npgsql.Internal;
+﻿using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using NpgsqlTypes;
 using NUnit.Framework;
 using System;
-using System.Data;
 using System.Threading.Tasks;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
-[NonParallelizable]
 public class TypeMapperTests : TestBase
 {
-    [Test]
-    public void Global_mapping()
+#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
+    [Test, NonParallelizable]
+    public async Task Global_mapping()
     {
-        var myFactory = new MyInt32TypeHandlerResolverFactory();
-        NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
 
-        using var pool = CreateTempPool(ConnectionString, out var connectionString);
-        using var conn = OpenConnection(connectionString);
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        var range = new NpgsqlRange<int>(8, true, false, 0, false, true);
-        var parameters = new[]
+        try
         {
-            // Base
-            new NpgsqlParameter("p", NpgsqlDbType.Integer) { Value = 8 },
-            new NpgsqlParameter("p", DbType.Int32) { Value = 8 },
-            new NpgsqlParameter { ParameterName = "p", Value = 8 },
-            // Array
-            new NpgsqlParameter { ParameterName = "p", Value = new[] { 8 } },
-            new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = new[] { 8 } },
-            // Range
-            new NpgsqlParameter { ParameterName = "p", Value = range },
-            new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = range },
-        };
+            await using var dataSource1 = CreateDataSource();
 
-        for (var i = 0; i < parameters.Length; i++)
-        {
-            cmd.Parameters.Add(parameters[i]);
-            cmd.ExecuteScalar();
-            Assert.That(myFactory.Reads, Is.EqualTo(i+1));
-            Assert.That(myFactory.Writes, Is.EqualTo(i+1));
-            cmd.Parameters.Clear();
-        }
-    }
-
-    [Test]
-    public void Local_mapping()
-    {
-        var myFactory = new MyInt32TypeHandlerResolverFactory();
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-
-        using (var conn = OpenConnection(connectionString))
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            conn.TypeMapper.AddTypeResolverFactory(myFactory);
-            cmd.Parameters.AddWithValue("p", 8);
-            cmd.ExecuteScalar();
-            Assert.That(myFactory.Reads, Is.EqualTo(1));
-            Assert.That(myFactory.Writes, Is.EqualTo(1));
-        }
-
-        // Make sure reopening (same physical connection) reverts the mapping
-        using (var conn = OpenConnection(connectionString))
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-        {
-            cmd.Parameters.AddWithValue("p", 8);
-            cmd.ExecuteScalar();
-            Assert.That(myFactory.Reads, Is.EqualTo(1));
-            Assert.That(myFactory.Writes, Is.EqualTo(1));
-        }
-    }
-
-    [Test]
-    public void Global_reset()
-    {
-        var myFactory = new MyInt32TypeHandlerResolverFactory();
-        NpgsqlConnection.GlobalTypeMapper.AddTypeResolverFactory(myFactory);
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-
-        using (OpenConnection(connectionString))
-        {
-        }
-        // We now have a connector in the pool with our custom mapping
-
-        NpgsqlConnection.GlobalTypeMapper.Reset();
-        using (var conn = OpenConnection(connectionString))
-        {
-            // Should be the pooled connector from before, but it should have picked up the reset
-            conn.ExecuteScalar("SELECT 1");
-            Assert.That(myFactory.Reads, Is.Zero);
-
-            // Now create a second *physical* connection to make sure it picks up the new mapping as well
-            using (var conn2 = OpenConnection(connectionString))
+            await using (var connection = await dataSource1.OpenConnectionAsync())
             {
-                conn2.ExecuteScalar("SELECT 1");
-                Assert.That(myFactory.Reads, Is.Zero);
+                await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+                await connection.ReloadTypesAsync();
+
+                await AssertType(connection, Mood.Happy, "happy", type, npgsqlDbType: null);
             }
 
-            NpgsqlConnection.ClearPool(conn);
+            NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
+
+            // Global mapping changes have no effect on already-built data sources
+            await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
+
+            // But they do affect on new data sources
+            await using var dataSource2 = CreateDataSource();
+            Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
         }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>(type);
+        }
+    }
+
+    [Test, NonParallelizable]
+    public async Task Global_mapping_reset()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
+
+        try
+        {
+            await using var dataSource1 = CreateDataSource();
+
+            await using (var connection = await dataSource1.OpenConnectionAsync())
+            {
+                await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+                await connection.ReloadTypesAsync();
+            }
+
+            // A global mapping change has no effects on data sources which have already been built
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+
+            // Global mapping changes have no effect on already-built data sources
+            await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
+
+            // But they do affect on new data sources
+            await using var dataSource2 = CreateDataSource();
+            Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+        }
+        finally
+        {
+            NpgsqlConnection.GlobalTypeMapper.Reset();
+        }
+    }
+#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
+
+    [Test]
+    public async Task ReloadTypes_across_connections_in_data_source()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        // Note that we don't actually create the type in the database at this point; we want to exercise the type being created later,
+        // via the data source.
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection1 = await dataSource.OpenConnectionAsync();
+        await using var connection2 = await dataSource.OpenConnectionAsync();
+
+        await connection1.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+        await connection1.ReloadTypesAsync();
+
+        // The data source type mapper has been replaced and connection1 should have the new mapper, but connection2 should retain the older
+        // type mapper - where there's no mapping - as long as it's still open
+        Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        Assert.ThrowsAsync<NotSupportedException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+
+        // Close connection2 and reopen to make sure it picks up the new type and mapping from the data source
+        var connId = connection2.ProcessID;
+        await connection2.CloseAsync();
+        await connection2.OpenAsync();
+        Assert.That(connection2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
+
+        Assert.DoesNotThrowAsync(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
     }
 
     [Test]
     public async Task String_to_citext()
     {
-        using (CreateTempPool(ConnectionString, out var connectionString))
-        using (var conn = OpenConnection(connectionString))
-        {
-            await EnsureExtensionAsync(conn, "citext");
+        await using var adminConnection = await OpenConnectionAsync();
+        await EnsureExtensionAsync(adminConnection, "citext");
 
-            conn.TypeMapper.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-            using (var cmd = new NpgsqlCommand("SELECT @p = 'hello'::citext", conn))
-            {
-                cmd.Parameters.AddWithValue("p", "HeLLo");
-                Assert.That(cmd.ExecuteScalar(), Is.True);
-            }
-        }
+        await using var command = new NpgsqlCommand("SELECT @p = 'hello'::citext", connection);
+        command.Parameters.AddWithValue("p", "HeLLo");
+        Assert.That(command.ExecuteScalar(), Is.True);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4582")]
@@ -135,7 +137,7 @@ public class TypeMapperTests : TestBase
             await using var _ = await CreateTempSchema(conn, out var schemaName);
 
             await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
-            conn.ReloadTypes();
+            await conn.ReloadTypesAsync();
 
             await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
 
@@ -147,69 +149,20 @@ public class TypeMapperTests : TestBase
         }
         finally
         {
-            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext");
+            await conn.ExecuteNonQueryAsync("DROP EXTENSION IF EXISTS citext");
         }
     }
 
     #region Support
-
-    class MyInt32TypeHandlerResolverFactory : TypeHandlerResolverFactory
-    {
-        internal int Reads, Writes;
-
-        public override TypeHandlerResolver Create(NpgsqlConnector connector)
-            => new MyInt32TypeHandlerResolver(connector, this);
-
-        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-        public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
-        public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
-    }
-
-    class MyInt32TypeHandlerResolver : TypeHandlerResolver
-    {
-        readonly NpgsqlTypeHandler _handler;
-
-        public MyInt32TypeHandlerResolver(NpgsqlConnector connector, MyInt32TypeHandlerResolverFactory factory)
-            => _handler = new MyInt32Handler(connector.DatabaseInfo.GetPostgresTypeByName("integer"), factory);
-
-        public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-            => type == typeof(int) ? _handler : null;
-        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
-            => typeName == "integer" ? _handler : null;
-
-        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-
-    }
-
-    class MyInt32Handler : Int32Handler
-    {
-        readonly MyInt32TypeHandlerResolverFactory _factory;
-
-        public MyInt32Handler(PostgresType postgresType, MyInt32TypeHandlerResolverFactory factory)
-            : base(postgresType)
-            => _factory = factory;
-
-        public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            _factory.Reads++;
-            return base.Read(buf, len, fieldDescription);
-        }
-
-        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            _factory.Writes++;
-            base.Write(value, buf, parameter);
-        }
-    }
 
     class CitextToStringTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
         public override TypeHandlerResolver Create(NpgsqlConnector connector)
             => new CitextToStringTypeHandlerResolver(connector);
 
-        public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-        public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
-        public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
+        public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+        public override string GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
+        public override string GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
 
         class CitextToStringTypeHandlerResolver : TypeHandlerResolver
         {
@@ -230,8 +183,7 @@ public class TypeMapperTests : TestBase
         }
     }
 
-    #endregion Support
+    enum Mood { Sad, Ok, Happy }
 
-    [TearDown]
-    public void TearDown() => NpgsqlConnection.GlobalTypeMapper.Reset();
+    #endregion Support
 }

@@ -59,11 +59,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     ProvidePasswordCallback? ProvidePasswordCallback { get; }
 
-#pragma warning disable CA2252 // Experimental API
-    PhysicalOpenCallback? PhysicalOpenCallback { get; }
-    PhysicalOpenAsyncCallback? PhysicalOpenAsyncCallback { get; }
-#pragma warning restore CA2252
-
     public Encoding TextEncoding { get; private set; } = default!;
 
     /// <summary>
@@ -111,7 +106,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// </summary>
     public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
 
-    internal ConnectorTypeMapper TypeMapper { get; set; } = default!;
+    internal TypeMapper TypeMapper { get; set; } = default!;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -165,11 +160,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// If this connector was broken, this contains the exception that caused the break.
     /// </summary>
     volatile Exception? _breakReason;
-
-    /// <summary>
-    /// Semaphore, used to synchronize DatabaseInfo between multiple connections, so it wouldn't be loaded in parallel.
-    /// </summary>
-    static readonly SemaphoreSlim DatabaseInfoSemaphore = new(1);
 
     /// <summary>
     /// <para>
@@ -233,9 +223,9 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
     /// <see cref="NpgsqlMultiHostDataSource"/>.
     /// </summary>
-    readonly NpgsqlDataSource _dataSource;
+    internal NpgsqlDataSource DataSource { get; }
 
-    internal string UserFacingConnectionString => _dataSource.ConnectionString;
+    internal string UserFacingConnectionString => DataSource.ConnectionString;
 
     /// <summary>
     /// Contains the UTC timestamp when this connector was opened, used to implement
@@ -317,15 +307,10 @@ public sealed partial class NpgsqlConnector : IDisposable
 #pragma warning disable CS0618 // Obsolete
         ProvidePasswordCallback = conn.ProvidePasswordCallback;
 #pragma warning restore CS0618
-
-#pragma warning disable CA2252 // Experimental API
-        PhysicalOpenCallback = conn.PhysicalOpenCallback;
-        PhysicalOpenAsyncCallback = conn.PhysicalOpenAsyncCallback;
-#pragma warning restore CA2252
     }
 
     NpgsqlConnector(NpgsqlConnector connector)
-        : this(connector._dataSource)
+        : this(connector.DataSource)
     {
         ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
         UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
@@ -336,7 +321,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         Debug.Assert(dataSource.OwnsConnectors);
 
-        _dataSource = dataSource;
+        DataSource = dataSource;
 
         LoggingConfiguration = dataSource.LoggingConfiguration;
         ConnectionLogger = LoggingConfiguration.ConnectionLogger;
@@ -474,7 +459,12 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             await OpenCore(this, Settings.SslMode, timeout, async, cancellationToken);
 
-            await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
+            await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken);
+
+            Debug.Assert(DataSource.TypeMapper is not null);
+            Debug.Assert(DataSource.DatabaseInfo is not null);
+            TypeMapper = DataSource.TypeMapper;
+            DatabaseInfo = DataSource.DatabaseInfo;
 
             if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
             {
@@ -483,13 +473,6 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
 
             OpenTimestamp = DateTime.UtcNow;
-
-#pragma warning disable CA2252 // Experimental API
-            if (async && PhysicalOpenAsyncCallback is not null)
-                await PhysicalOpenAsyncCallback(this);
-            else if (!async && PhysicalOpenCallback is not null)
-                PhysicalOpenCallback(this);
-#pragma warning restore CA2252
 
             if (Settings.Multiplexing)
             {
@@ -517,7 +500,31 @@ public sealed partial class NpgsqlConnector : IDisposable
                 }
             }
 
-            LogMessages.OpenedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
+            if (DataSource.ConnectionInitializerAsync is not null)
+            {
+                Debug.Assert(DataSource.ConnectionInitializer is not null);
+
+                var tempConnection = new NpgsqlConnection(DataSource, this);
+
+                try
+                {
+                    if (async)
+                        await DataSource.ConnectionInitializerAsync(tempConnection);
+                    else if (!async)
+                        DataSource.ConnectionInitializer(tempConnection);
+                }
+                finally
+                {
+                    // Note that we can't just close/dispose the NpgsqlConnection, since that puts the connector back in the pool.
+                    // But we transition it to disposed immediately, in case the user decides to capture the NpgsqlConnection and use it
+                    // later.
+                    Connection?.MakeDisposed();
+                    Connection = null;
+                }
+            }
+
+            LogMessages.OpenedPhysicalConnection(
+                ConnectionLogger, Host, Port, Database, UserFacingConnectionString, stopwatch.ElapsedMilliseconds, Id);
         }
         catch (Exception e)
         {
@@ -535,7 +542,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         {
             await conn.RawOpen(sslMode, timeout, async, cancellationToken, isFirstAttempt);
 
-            var username = conn.GetUsername();
+            var username = await conn.GetUsernameAsync(async, cancellationToken);
 
             timeout.CheckAndApply(conn);
             conn.WriteStartupMessage(username);
@@ -586,47 +593,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             conn.State = ConnectorState.Ready;
         }
-    }
-
-    internal async ValueTask LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
-        CancellationToken cancellationToken = default)
-    {
-        // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
-        // empty). So we set up here, and then later inject the DatabaseInfo.
-        // For multiplexing connectors, the type mapper is the shared pool-wide one (since when validating/binding parameters on
-        // multiplexing there's no connector yet). However, in the very first multiplexing connection (bootstrap phase) we create
-        // a connector-specific mapper, which will later become shared pool-wide one.
-        TypeMapper =
-            Settings.Multiplexing && ((MultiplexingDataSource)_dataSource).MultiplexingTypeMapper is { } multiplexingTypeMapper
-                ? multiplexingTypeMapper
-                : new ConnectorTypeMapper(this);
-
-        var key = new NpgsqlDatabaseInfoCacheKey(Settings);
-        if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
-        {
-            var hasSemaphore = async
-                ? await DatabaseInfoSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
-                : DatabaseInfoSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
-
-            // We've timed out - calling Check, to throw the correct exception
-            if (!hasSemaphore)
-                timeout.Check();
-
-            try
-            {
-                if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out database))
-                {
-                    NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(this, timeout, async);
-                }
-            }
-            finally
-            {
-                DatabaseInfoSemaphore.Release();
-            }
-        }
-
-        DatabaseInfo = database;
-        TypeMapper.DatabaseInfo = database;
     }
 
     internal async ValueTask<ClusterState> QueryClusterState(
@@ -708,7 +674,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         WriteStartup(startupParams);
     }
 
-    string GetUsername()
+    async ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
     {
         var username = Settings.Username;
         if (username?.Length > 0)
@@ -720,7 +686,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm, ConnectionLogger);
+            username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async, cancellationToken);
+
             if (username?.Length > 0)
                 return username;
         }
@@ -1169,7 +1136,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0 || IsBroken);
 
                     ResetReadBuffer();
-                    _dataSource.Return(this);
+                    DataSource.Return(this);
                 }
             }
 
@@ -1206,7 +1173,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
 
             // "Return" the connector to the pool to for cleanup (e.g. update total connector count)
-            _dataSource.Return(this);
+            DataSource.Return(this);
 
             ConnectionLogger.LogError(e, "Exception in multiplexing read loop", Id);
         }
@@ -1358,7 +1325,8 @@ public sealed partial class NpgsqlConnector : IDisposable
                             // an RFQ. Instead, the server closes the connection immediately
                             throw error;
                         }
-                        else if (PostgresErrorCodes.IsCriticalFailure(error, clusterError: false))
+
+                        if (PostgresErrorCodes.IsCriticalFailure(error, clusterError: false))
                         {
                             // Consider the connection dead
                             throw connector.Break(error);
@@ -1921,9 +1889,9 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
-        => _dataSource.TryRemovePendingEnlistedConnector(this, transaction);
+        => DataSource.TryRemovePendingEnlistedConnector(this, transaction);
 
-    internal void Return() => _dataSource.Return(this);
+    internal void Return() => DataSource.Return(this);
 
     /// <inheritdoc />
     public void Dispose() => Close();
@@ -1950,47 +1918,53 @@ public sealed partial class NpgsqlConnector : IDisposable
         lock (CancelLock)
         lock (this)
         {
-            if (State != ConnectorState.Broken)
+            if (State == ConnectorState.Broken)
+                return reason;
+
+            // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
+            // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
+            // but does not include e.g. authentication failure or timeouts with disabled cancellation.
+            if (reason is NpgsqlException { IsTransient: true } ne &&
+                (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
+                reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
             {
-                // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
-                // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
-                // but does not include e.g. authentication failure or timeouts with disabled cancellation.
-                if (reason is NpgsqlException { IsTransient: true } ne &&
-                    (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
-                    reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
+                ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
+                    Settings.HostRecheckSecondsTranslated);
+                DataSource.Clear();
+            }
+
+            LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
+
+            // Note that we may be reading and writing from the same connector concurrently, so safely set
+            // the original reason for the break before actually closing the socket etc.
+            Interlocked.CompareExchange(ref _breakReason, reason, null);
+            State = ConnectorState.Broken;
+
+            var connection = Connection;
+
+            FullCleanup();
+
+            if (connection is not null)
+            {
+                var closeLockTaken = connection.TakeCloseLock();
+                Debug.Assert(closeLockTaken);
+                if (Settings.ReplicationMode == ReplicationMode.Off)
                 {
-                    ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                        Settings.HostRecheckSecondsTranslated);
-                    _dataSource.Clear();
+                    // When a connector is broken, we immediately "return" it to the pool (i.e. update the pool state so reflect the
+                    // connector no longer being open). Upper layers such as EF may check DbConnection.ConnectionState, and only close if
+                    // it's closed; so we can't set the state to Closed and expect the user to still close (in order to return to the pool).
+                    // On the other hand leaving the state Open could indicate to the user that the connection is functional.
+                    // (see https://github.com/npgsql/npgsql/issues/3705#issuecomment-839908772)
+                    Connection = null;
+                    if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
+                        Return();
+                    connection.EnlistedTransaction = null;
+                    connection.Connector = null;
+                    connection.ConnectorBindingScope = ConnectorBindingScope.None;
                 }
 
-                LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
-
-                // Note that we may be reading and writing from the same connector concurrently, so safely set
-                // the original reason for the break before actually closing the socket etc.
-                Interlocked.CompareExchange(ref _breakReason, reason, null);
-                State = ConnectorState.Broken;
-
-                var connection = Connection;
-
-                FullCleanup();
-
-                if (connection is not null)
-                {
-                    var closeLockTaken = connection.TakeCloseLock();
-                    Debug.Assert(closeLockTaken);
-                    if (Settings.ReplicationMode == ReplicationMode.Off)
-                    {
-                        Connection = null;
-                        if (connection.ConnectorBindingScope != ConnectorBindingScope.None)
-                            Return();
-                        connection.EnlistedTransaction = null;
-                        connection.Connector = null;
-                        connection.ConnectorBindingScope = ConnectorBindingScope.None;
-                    }
-                    connection.FullState = ConnectionState.Broken;
-                    connection.ReleaseCloseLock();
-                }
+                connection.FullState = ConnectionState.Broken;
+                connection.ReleaseCloseLock();
             }
 
             return reason;

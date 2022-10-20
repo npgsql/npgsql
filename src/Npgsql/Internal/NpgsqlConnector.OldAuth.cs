@@ -79,7 +79,7 @@ partial class NpgsqlConnector
     /// <remarks>
     /// See https://referencesource.microsoft.com/#System/net/System/Net/_StreamFramer.cs,16417e735f0e9530,references
     /// </remarks>
-    class GSSPasswordMessageStream : Stream
+    sealed class GSSPasswordMessageStream : Stream
     {
         readonly NpgsqlConnector _connector;
         int _leftToWrite;
@@ -132,7 +132,7 @@ partial class NpgsqlConnector
         {
             if (_leftToRead == 0)
             {
-                var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
+                var response = ExpectAny<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
                 if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                     throw new AuthenticationCompleteException();
                 var gssMsg = response as AuthenticationGSSContinueMessage;
@@ -174,6 +174,6 @@ partial class NpgsqlConnector
         }
     }
 
-    class AuthenticationCompleteException : Exception { }
+    sealed class AuthenticationCompleteException : Exception { }
 #endif
 }

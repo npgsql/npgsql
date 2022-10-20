@@ -41,9 +41,16 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         }
     }
 
-    private protected async Task<TConnection> OpenReplicationConnectionAsync(NpgsqlConnectionStringBuilder? csb = null, CancellationToken cancellationToken = default)
+    private protected Task<TConnection> OpenReplicationConnectionAsync(
+        NpgsqlConnectionStringBuilder csb,
+        CancellationToken cancellationToken = default)
+        => OpenReplicationConnectionAsync(csb.ToString(), cancellationToken);
+
+    private protected async Task<TConnection> OpenReplicationConnectionAsync(
+        string? connectionString = null,
+        CancellationToken cancellationToken = default)
     {
-        var c = new TConnection { ConnectionString = csb?.ToString() ?? ConnectionString };
+        var c = new TConnection { ConnectionString = connectionString ?? ConnectionString };
         await c.Open(cancellationToken);
         return c;
     }

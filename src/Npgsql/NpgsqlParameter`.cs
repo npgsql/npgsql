@@ -66,7 +66,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    internal override void ResolveHandler(ConnectorTypeMapper typeMapper)
+    internal override void ResolveHandler(TypeMapper typeMapper)
     {
         if (Handler is not null)
             return;

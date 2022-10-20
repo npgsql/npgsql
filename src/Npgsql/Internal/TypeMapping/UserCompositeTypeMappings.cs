@@ -10,7 +10,7 @@ public interface IUserCompositeTypeMapping : IUserTypeMapping
     INpgsqlNameTranslator NameTranslator { get; }
 }
 
-class UserCompositeTypeMapping<T> : IUserCompositeTypeMapping
+sealed class UserCompositeTypeMapping<T> : IUserCompositeTypeMapping
 {
     public string PgTypeName { get; }
     public Type ClrType => typeof(T);

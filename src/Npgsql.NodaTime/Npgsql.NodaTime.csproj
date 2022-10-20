@@ -22,6 +22,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\NpgsqlNodaTimeStrings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>NpgsqlNodaTimeStrings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\NpgsqlNodaTimeStrings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>NpgsqlNodaTimeStrings.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

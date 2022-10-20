@@ -490,7 +490,7 @@ public class ArrayHandler<TElement> : ArrayHandler
 /// </remarks>
 /// <typeparam name="TElement">The .NET type contained as an element within this array</typeparam>
 /// <typeparam name="TElementPsv">The .NET provider-specific type contained as an element within this array</typeparam>
-class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
+sealed class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
 {
     public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
         : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }

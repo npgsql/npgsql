@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
@@ -21,7 +22,7 @@ namespace Npgsql;
 /// <summary>
 /// The default implementation of <see cref="INpgsqlDatabaseInfoFactory"/>, for standard PostgreSQL databases..
 /// </summary>
-class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+sealed class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
 {
     /// <inheritdoc />
     public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)

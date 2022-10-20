@@ -9,13 +9,26 @@ using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Tests;
 
-[TestFixture(true)]
-#if DEBUG
 [TestFixture(false)]
+#if DEBUG
+[TestFixture(true)]
 #endif
 [NonParallelizable]
 public class NodaTimeInfinityTests : TestBase
 {
+    [Test] // #4715
+    public async Task DateRange_with_upper_bound_infinity()
+    {
+        if (DisableDateTimeInfinityConversions)
+            return;
+
+        await AssertType(
+            new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue),
+            "[-infinity,infinity]",
+            "daterange",
+            NpgsqlDbType.DateRange);
+    }
+
     [Test]
     public async Task Timestamptz_read_values()
     {
@@ -256,7 +269,6 @@ public class NodaTimeInfinityTests : TestBase
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
     {
         var conn = await base.OpenConnectionAsync(connectionString);
-        conn.TypeMapper.UseNodaTime();
         await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
         return conn;
     }

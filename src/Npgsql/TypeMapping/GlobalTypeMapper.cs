@@ -14,35 +14,30 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping;
 
-sealed class GlobalTypeMapper : TypeMapperBase
+sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
     public static GlobalTypeMapper Instance { get; }
+
+    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = new NpgsqlSnakeCaseNameTranslator();
 
     internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
     public ConcurrentDictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
     readonly ConcurrentDictionary<Type, TypeMappingInfo> _mappingsByClrType = new();
 
-    /// <summary>
-    /// A counter that is incremented whenever a global mapping change occurs.
-    /// Used to invalidate bound type mappers.
-    /// </summary>
-    internal int ChangeCounter => _changeCounter;
-
     internal ReaderWriterLockSlim Lock { get; }
         = new(LockRecursionPolicy.SupportsRecursion);
-
-    int _changeCounter;
 
     static GlobalTypeMapper()
         => Instance = new GlobalTypeMapper();
 
-    GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+    GlobalTypeMapper()
         => Reset();
 
     #region Mapping management
 
-    public override INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
     {
         if (pgName != null && pgName.Trim() == "")
             throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -63,7 +58,8 @@ sealed class GlobalTypeMapper : TypeMapperBase
         }
     }
 
-    public override bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
     {
         if (pgName != null && pgName.Trim() == "")
             throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -88,7 +84,8 @@ sealed class GlobalTypeMapper : TypeMapperBase
         }
     }
 
-    public override INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         if (pgName != null && pgName.Trim() == "")
             throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -109,7 +106,8 @@ sealed class GlobalTypeMapper : TypeMapperBase
         }
     }
 
-    public override INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         var openMethod = typeof(GlobalTypeMapper).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
         var method = openMethod.MakeGenericMethod(clrType);
@@ -118,10 +116,12 @@ sealed class GlobalTypeMapper : TypeMapperBase
         return this;
     }
 
-    public override bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => UnmapComposite(typeof(T), pgName, nameTranslator);
 
-    public override bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         if (pgName != null && pgName.Trim() == "")
             throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -146,7 +146,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
         }
     }
 
-    public override void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
+    public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
     {
         Lock.EnterWriteLock();
         try
@@ -174,7 +174,7 @@ sealed class GlobalTypeMapper : TypeMapperBase
         }
     }
 
-    public override void Reset()
+    public void Reset()
     {
         Lock.EnterWriteLock();
         try
@@ -193,10 +193,11 @@ sealed class GlobalTypeMapper : TypeMapperBase
     }
 
     internal void RecordChange()
-    {
-        _mappingsByClrType.Clear();
-        Interlocked.Increment(ref _changeCounter);
-    }
+        => _mappingsByClrType.Clear();
+
+    static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
+        => clrType.GetCustomAttribute<PgNameAttribute>()?.PgName
+           ?? nameTranslator.TranslateTypeName(clrType.Name);
 
     #endregion Mapping management
 

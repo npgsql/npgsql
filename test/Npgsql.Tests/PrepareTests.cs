@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
@@ -746,6 +747,34 @@ public class PrepareTests: TestBase
 
         Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => conn.UnprepareAll(), Throws.Exception.TypeOf<NotSupportedException>());
+    }
+
+    [Test]
+    public async Task Explicitly_prepared_statement_invalidation()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            MaxAutoPrepare = 10,
+            AutoPrepareMinUsages = 2
+        };
+
+        await using var connection = await OpenConnectionAsync(csb);
+        await using var _ = await CreateTempTable(connection, "foo int", out var table);
+
+        await using var command = new NpgsqlCommand($"SELECT * FROM {table}", connection);
+        await command.PrepareAsync();
+
+        await connection.ExecuteNonQueryAsync($"ALTER TABLE {table} RENAME COLUMN foo TO bar");
+
+        // Since we've changed the table schema, the next execution of the prepared statement will error with 0A000
+        var exception = Assert.ThrowsAsync<PostgresException>(() => command.ExecuteNonQueryAsync())!;
+        Assert.That(exception.SqlState, Is.EqualTo(PostgresErrorCodes.FeatureNotSupported)); // cached plan must not change result type
+
+        // However, Npgsql should invalidate the prepared statement in this case, so the next execution should work
+        Assert.DoesNotThrowAsync(() => command.ExecuteNonQueryAsync());
+
+        // The command is unprepared, though. It's the user's responsibility to re-prepare if they wish.
+        Assert.False(command.IsPrepared);
     }
 
     NpgsqlConnection OpenConnectionAndUnprepare(string? connectionString = null)

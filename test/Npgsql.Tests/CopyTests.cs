@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -335,6 +336,32 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT field FROM {table}"), Is.EqualTo(data));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4693")]
+    public async Task Import_numeric()
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var _ = await CreateTempTable(conn, "field NUMERIC(1000)", out var table);
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync(new BigInteger(1234), NpgsqlDbType.Numeric);
+            await writer.StartRowAsync();
+            await writer.WriteAsync(new BigInteger(5678), NpgsqlDbType.Numeric);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(2));
+        }
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT field FROM {table}";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(reader.GetValue(0), Is.EqualTo(1234m));
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(reader.GetValue(0), Is.EqualTo(5678m));
+    }
+
     [Test]
     public async Task Import_string_array()
     {
@@ -550,29 +577,29 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     [Test]
     public async Task Enum()
     {
-        if (IsMultiplexing)
-            Assert.Ignore("Multiplexing: connection-specific mapping");
+        await using var adminConnection = await OpenConnectionAsync();
+        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var typeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('sad', 'ok', 'happy')");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapEnum<Mood>(typeName);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-        await using var __ = await CreateTempTable(conn, $"mymood {typeName}, mymoodarr {typeName}[]", out var tableName);
+        await using var __ = await CreateTempTable(connection, $"mymood {type}, mymoodarr {type}[]", out var table);
 
-        using (var writer = conn.BeginBinaryImport($"COPY {tableName} (mymood, mymoodarr) FROM STDIN BINARY"))
+        await using (var writer = await connection.BeginBinaryImportAsync($"COPY {table} (mymood, mymoodarr) FROM STDIN BINARY"))
         {
-            writer.StartRow();
-            writer.Write(Mood.Happy);
-            writer.Write(new[] { Mood.Happy });
-            var rowsWritten = writer.Complete();
+            await writer.StartRowAsync();
+            await writer.WriteAsync(Mood.Happy);
+            await writer.WriteAsync(new[] { Mood.Happy });
+            var rowsWritten = await writer.CompleteAsync();
             Assert.That(rowsWritten, Is.EqualTo(1));
         }
 
-        using (var reader = conn.BeginBinaryExport($"COPY {tableName} (mymood, mymoodarr) TO STDIN BINARY"))
+        await using (var reader = await connection.BeginBinaryExportAsync($"COPY {table} (mymood, mymoodarr) TO STDIN BINARY"))
         {
-            reader.StartRow();
+            await reader.StartRowAsync();
             Assert.That(reader.Read<Mood>(), Is.EqualTo(Mood.Happy));
             Assert.That(reader.Read<Mood[]>(), Is.EqualTo(new[] { Mood.Happy }));
         }

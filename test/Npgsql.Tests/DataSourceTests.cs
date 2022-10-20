@@ -1,7 +1,6 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 using NUnit.Framework;
 
 // ReSharper disable MethodHasAsyncOverload
@@ -143,6 +142,9 @@ public class DataSourceTests : TestBase
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 2, Idle: 1, Busy: 1)));
 
         dataSource.Dispose();
+
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
+
         Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<ObjectDisposedException>());
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
 
@@ -182,7 +184,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_command()
     {
-        await using var command = DataSource.CreateCommand();
+        await using var command = SharedDataSource.CreateCommand();
 
         Assert.That(() => command.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => command.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());
@@ -196,7 +198,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_batch()
     {
-        await using var batch = DataSource.CreateBatch();
+        await using var batch = SharedDataSource.CreateBatch();
 
         Assert.That(() => batch.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => batch.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());

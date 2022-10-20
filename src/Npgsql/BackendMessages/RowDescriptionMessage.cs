@@ -42,7 +42,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
     }
 
-    internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
+    internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, TypeMapper typeMapper)
     {
         _nameIndex.Clear();
         _insensitiveIndex?.Clear();
@@ -77,7 +77,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     }
 
     internal static RowDescriptionMessage CreateForReplication(
-        ConnectorTypeMapper typeMapper, uint tableOID, FormatCode formatCode, IReadOnlyList<RelationMessage.Column> columns)
+        TypeMapper typeMapper, uint tableOID, FormatCode formatCode, IReadOnlyList<RelationMessage.Column> columns)
     {
         var msg = new RowDescriptionMessage(columns.Count);
         var numFields = msg.Count = columns.Count;
@@ -172,7 +172,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
     }
 
-    class Enumerator : IEnumerator<FieldDescription>
+    sealed class Enumerator : IEnumerator<FieldDescription>
     {
         readonly RowDescriptionMessage _rowDescription;
         int _pos = -1;
@@ -238,7 +238,7 @@ public sealed class FieldDescription
     }
 
     internal void Populate(
-        ConnectorTypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
+        TypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
         uint oid, short typeSize, int typeModifier, FormatCode formatCode
     )
     {
@@ -309,7 +309,7 @@ public sealed class FieldDescription
     internal void ResolveHandler()
         => Handler = IsBinaryFormat ? _typeMapper.ResolveByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
 
-    ConnectorTypeMapper _typeMapper;
+    TypeMapper _typeMapper;
 
     internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
     internal bool IsTextFormat => FormatCode == FormatCode.Text;
