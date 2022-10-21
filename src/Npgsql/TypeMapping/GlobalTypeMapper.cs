@@ -76,12 +76,18 @@ sealed class GlobalTypeMapper : TypeMapperBase
     }
 
     public override bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        => UnmapEnum(typeof(TEnum), pgName, nameTranslator);
+
+    public override bool UnmapEnum(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
+        if (!clrType.IsEnum)
+            throw new ArgumentException("clrType must be an Enum", nameof(clrType));
+
         if (pgName != null && pgName.Trim() == "")
             throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
         nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
+        pgName ??= GetPgName(clrType, nameTranslator);
 
         Lock.EnterWriteLock();
         try
@@ -98,18 +104,6 @@ sealed class GlobalTypeMapper : TypeMapperBase
         {
             Lock.ExitWriteLock();
         }
-    }
-
-    public override bool UnmapEnum(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (!clrType.IsEnum)
-            throw new ArgumentException("clrType must be an Enum", nameof(clrType));
-
-        var openMethod = typeof(GlobalTypeMapper).GetMethod(nameof(UnmapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
-        var unmapResult = method.Invoke(this, new object?[] { pgName, nameTranslator });
-
-        return unmapResult == null ? false : (bool) unmapResult;
     }
 
     public override INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
