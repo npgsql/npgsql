@@ -68,9 +68,9 @@ sealed class GlobalTypeMapper : TypeMapperBase
         if (!clrType.IsEnum)
             throw new ArgumentException("clrType must be an Enum", nameof(clrType));
 
-        var openMethod = typeof(GlobalTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
-        method.Invoke(this, new object?[] { pgName, nameTranslator });
+        var mapEnumMethod = typeof(GlobalTypeMapper).GetMethod(nameof(MapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var genericMapEnumMethod = mapEnumMethod.MakeGenericMethod(clrType);
+        genericMapEnumMethod.Invoke(this, new object?[] { pgName, nameTranslator });
 
         return this;
     }

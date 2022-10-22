@@ -544,11 +544,11 @@ sealed class ConnectorTypeMapper : TypeMapperBase
         if (!clrType.IsEnum)
             throw new ArgumentException("clrType must be an Enum", nameof(clrType));
 
-        var openMethod = typeof(ConnectorTypeMapper).GetMethod(nameof(UnmapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
-        var unmapResult = method.Invoke(this, new object?[] { pgName, nameTranslator });
+        var unmapEnumMethod = typeof(ConnectorTypeMapper).GetMethod(nameof(UnmapEnum), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
+        var genericUnmapEnumMethod = unmapEnumMethod.MakeGenericMethod(clrType);
+        var unmapReturnValue = genericUnmapEnumMethod.Invoke(this, new object?[] { pgName, nameTranslator });
 
-        return unmapResult == null ? false : (bool)unmapResult;
+        return unmapReturnValue == null ? false : (bool)unmapReturnValue;
     }
 
     public override INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
