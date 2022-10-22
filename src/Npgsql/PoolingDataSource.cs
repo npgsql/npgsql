@@ -246,8 +246,25 @@ class PoolingDataSource : NpgsqlDataSource
         return true;
     }
 
-    internal sealed override async ValueTask<NpgsqlConnector?> OpenNewConnector(
+    internal sealed override ValueTask<NpgsqlConnector?> OpenNewConnector(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    {
+        var numConnectors = GetNewConnectorNumber();
+        return numConnectors.HasValue 
+            ? OpenNewConnector(conn, timeout, async, numConnectors.Value, cancellationToken) 
+            : new ValueTask<NpgsqlConnector?>((NpgsqlConnector?)null);
+    }
+
+    internal ValueTask<NpgsqlConnector?> OpenNewConnector(
+        NpgsqlConnection conn, TimeSpan timeout, bool async, CancellationToken cancellationToken)
+    {
+        var numConnectors = GetNewConnectorNumber();
+        return numConnectors.HasValue 
+            ? OpenNewConnector(conn, new NpgsqlTimeout(timeout), async, numConnectors.Value, cancellationToken) 
+            : new ValueTask<NpgsqlConnector?>((NpgsqlConnector?)null);
+    }
+
+    int? GetNewConnectorNumber()
     {
         // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
         for (var numConnectors = _numConnectors; numConnectors < _max; numConnectors = _numConnectors)
@@ -256,47 +273,53 @@ class PoolingDataSource : NpgsqlDataSource
             if (Interlocked.CompareExchange(ref _numConnectors, numConnectors + 1, numConnectors) != numConnectors)
                 continue;
 
-            try
-            {
-                // We've managed to increase the open counter, open a physical connections.
-                var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
-                await connector.Open(timeout, async, cancellationToken);
-
-                var i = 0;
-                for (; i < _max; i++)
-                    if (Interlocked.CompareExchange(ref Connectors[i], connector, null) == null)
-                        break;
-
-                Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when opening.");
-                if (i == _max)
-                    throw new NpgsqlException($"Could not find free slot in {Connectors} when opening. Please report a bug.");
-
-                // Only start pruning if we've incremented open count past _min.
-                // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
-                // on NpgsqlConnector.Open due to timeout, CancellationToken or other reasons.
-                if (numConnectors >= _min)
-                    UpdatePruningTimer();
-
-                return connector;
-            }
-            catch
-            {
-                // Physical open failed, decrement the open and busy counter back down.
-                Interlocked.Decrement(ref _numConnectors);
-
-                // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
-                // to wake it up, so it will try opening (and probably throw immediately)
-                // Statement order is important since we have synchronous completions on the channel.
-                IdleConnectorWriter.TryWrite(null);
-
-                // Just in case we always call UpdatePruningTimer for failed physical open
-                UpdatePruningTimer();
-
-                throw;
-            }
+            return numConnectors;
         }
 
         return null;
+    }
+
+    async ValueTask<NpgsqlConnector?> OpenNewConnector(
+        NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, int numConnectors, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // We've managed to increase the open counter, open a physical connections.
+            var connector = new NpgsqlConnector(this, conn) { ClearCounter = _clearCounter };
+            await connector.Open(timeout, async, cancellationToken);
+
+            var i = 0;
+            for (; i < _max; i++)
+                if (Interlocked.CompareExchange(ref Connectors[i], connector, null) == null)
+                    break;
+
+            Debug.Assert(i < _max, $"Could not find free slot in {Connectors} when opening.");
+            if (i == _max)
+                throw new NpgsqlException($"Could not find free slot in {Connectors} when opening. Please report a bug.");
+
+            // Only start pruning if we've incremented open count past _min.
+            // Note that we don't do it only once, on equality, because the thread which incremented open count past _min might get exception
+            // on NpgsqlConnector.Open due to timeout, CancellationToken or other reasons.
+            if (numConnectors >= _min)
+                UpdatePruningTimer();
+
+            return connector;
+        }
+        catch
+        {
+            // Physical open failed, decrement the open and busy counter back down.
+            Interlocked.Decrement(ref _numConnectors);
+
+            // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
+            // to wake it up, so it will try opening (and probably throw immediately)
+            // Statement order is important since we have synchronous completions on the channel.
+            IdleConnectorWriter.TryWrite(null);
+
+            // Just in case we always call UpdatePruningTimer for failed physical open
+            UpdatePruningTimer();
+
+            throw;
+        }
     }
 
     internal sealed override void Return(NpgsqlConnector connector)
