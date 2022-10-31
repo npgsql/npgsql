@@ -29,7 +29,7 @@ public class CommandTests : MultiplexingTestBase
     public async Task Multiple_statements(bool[] queries)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         var sb = new StringBuilder();
         foreach (var query in queries)
             sb.Append(query ? "SELECT 1;" : $"UPDATE {table} SET name='yo' WHERE 1=0;");
@@ -99,7 +99,7 @@ public class CommandTests : MultiplexingTestBase
     public async Task Multiple_statements_with_dependencies()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "a INT", out var table);
+        var table = await CreateTempTable(conn, "a INT");
 
         await conn.ExecuteNonQueryAsync($"ALTER TABLE {table} ADD COLUMN b INT; INSERT INTO {table} (b) VALUES (8)");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT b FROM {table}"), Is.EqualTo(8));
@@ -447,7 +447,7 @@ public class CommandTests : MultiplexingTestBase
     public async Task Cursor_statement()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         using var t = conn.BeginTransaction();
 
         for (var x = 0; x < 5; x++)
@@ -755,7 +755,7 @@ public class CommandTests : MultiplexingTestBase
     public async Task ExecuteScalar()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         using var command = new NpgsqlCommand($"SELECT name FROM {table}", conn);
         Assert.That(command.ExecuteScalarAsync, Is.Null);
 
@@ -773,7 +773,7 @@ public class CommandTests : MultiplexingTestBase
     {
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand { Connection = conn };
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         cmd.CommandText = $"INSERT INTO {table} (name) VALUES ('John')";
         Assert.That(cmd.ExecuteNonQueryAsync, Is.EqualTo(1));
@@ -915,7 +915,7 @@ $$ LANGUAGE plpgsql;";
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, name TEXT", out var table);
+        var table = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, name TEXT");
 
         var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
@@ -934,7 +934,7 @@ $$ LANGUAGE plpgsql;";
     public async Task TableDirect()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('foo')");
         using var cmd = new NpgsqlCommand(table, conn) { CommandType = CommandType.TableDirect };
@@ -1039,9 +1039,8 @@ $$ LANGUAGE plpgsql;";
 
         await using var conn = await OpenConnectionAsync();
 
-        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
-        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
-            out var table2);
+        var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
+        var table2 = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED");
 
         var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
 
@@ -1059,9 +1058,8 @@ $$ LANGUAGE plpgsql;";
 
         await using var conn = await OpenConnectionAsync();
 
-        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
-        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
-            out var table2);
+        var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
+        var table2 = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED");
 
         var sql = $"insert into {table2} ({table1}_id) values (1) returning id";
 
@@ -1079,9 +1077,8 @@ $$ LANGUAGE plpgsql;";
 
         await using var conn = await OpenConnectionAsync();
 
-        await using var _ = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)", out var table1);
-        await using var __ = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED",
-            out var table2);
+        var table1 = await CreateTempTable(conn, "id integer PRIMARY key, t varchar(40)");
+        var table2 = await CreateTempTable(conn, $"id SERIAL primary key, {table1}_id integer references {table1}(id) INITIALLY DEFERRED");
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"insert into {table2} ({table1}_id) values (1) returning id";
@@ -1143,7 +1140,7 @@ $$ LANGUAGE plpgsql;";
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "some_column INT", out var table);
+        var table = await CreateTempTable(conn, "some_column INT");
         using var cmd = new NpgsqlCommand { Connection = conn };
         var sb = new StringBuilder($"INSERT INTO {table} (some_column) VALUES ");
         for (var i = 0; i < ushort.MaxValue; i++)

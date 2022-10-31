@@ -16,7 +16,7 @@ class CommandBuilderTests : TestBase
     public async Task DeriveParameters_text_one_parameter_with_same_type()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+        var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
             $@"INSERT INTO {table} VALUES(:x, 'some value');
@@ -37,7 +37,7 @@ class CommandBuilderTests : TestBase
     public async Task DeriveParameters_text_one_parameter_with_different_types()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+        var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
             $@"INSERT INTO {table} VALUES(:x, 'some value');
@@ -52,7 +52,7 @@ class CommandBuilderTests : TestBase
     public async Task DeriveParameters_multiple_parameters()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+        var table = await CreateTempTable(conn, "id int, val text");
 
         var cmd = new NpgsqlCommand(
             $@"INSERT INTO {table} VALUES(:x, 'some value');
@@ -128,8 +128,8 @@ class CommandBuilderTests : TestBase
     {
         using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
-        await using var _ = await GetTempTypeName(conn, out var domainType);
-        await using var __ = await GetTempTypeName(conn, out var domainArrayType);
+        var domainType = await GetTempTypeName(conn);
+        var domainArrayType = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($@"
 CREATE DOMAIN {domainType} AS integer CHECK (VALUE > 0);
 CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
@@ -164,7 +164,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     public async Task DeriveParameters_text_unmapped_enum()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
+        var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('Apple', 'Cherry', 'Plum')");
         conn.ReloadTypes();
 
@@ -191,7 +191,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     public async Task DeriveParameters_text_mapped_enum()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($@"CREATE TYPE {type} AS ENUM ('apple', 'cherry', 'plum')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -233,7 +233,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     public async Task DeriveParameters_text_mapped_composite()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
 
@@ -284,7 +284,7 @@ CREATE DOMAIN {domainArrayType} AS int[] CHECK(array_length(VALUE, 1) = 2);");
     public async Task Get_update_command_infers_parameters_with_NpgsqDbType()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (
     Cod varchar(5) NOT NULL,
@@ -360,17 +360,7 @@ INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:0
     public async Task Get_update_command_with_column_aliases()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
-        var constraint = GetUniqueIdentifier("temp_constraint");
-
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TEMP TABLE {table} (
-    Cod varchar(5) NOT NULL,
-    Descr varchar(40),
-    Data date,
-    CONSTRAINT {constraint} PRIMARY KEY (Cod)
-)");
-
+        var table = await CreateTempTable(conn, "Cod varchar(5) PRIMARY KEY, Descr varchar(40), Data date");
         using var cmd = new NpgsqlCommand($"SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM {table}", conn);
         using var daDataAdapter = new NpgsqlDataAdapter(cmd);
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
@@ -383,14 +373,7 @@ CREATE TEMP TABLE {table} (
     public async Task Get_update_command_with_array_column_type()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
-        var constraint = GetUniqueIdentifier("temp_constraint");
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TABLE {table} (
-Cod varchar(5) NOT NULL,
-Vettore character varying(20)[],
-CONSTRAINT {constraint} PRIMARY KEY (Cod)
-)");
+        var table = await CreateTempTable(conn, "Cod varchar(5) PRIMARY KEY, Vettore character varying(20)[]");
         using var daDataAdapter = new NpgsqlDataAdapter($"SELECT cod, vettore FROM {table} ORDER By cod", conn);
         using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
         var dtTable = new DataTable();

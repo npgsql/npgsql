@@ -178,105 +178,83 @@ public static class TestUtil
     static int _counter;
 
     /// <summary>
-    /// Creates a table with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
-    /// drop it at the end of the test.
+    /// Creates a table with a unique name, usable for a single test.
     /// </summary>
-    internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlConnection conn, string columns, out string tableName)
+    internal static async Task<string> CreateTempTable(NpgsqlConnection conn, string columns)
     {
-        tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
 
-        return conn.ExecuteNonQueryAsync(@$"
+        await conn.ExecuteNonQueryAsync(@$"
 START TRANSACTION;
 SELECT pg_advisory_xact_lock(0);
 DROP TABLE IF EXISTS {tableName} CASCADE;
 COMMIT;
-CREATE TABLE {tableName} ({columns});")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
-                tableName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
-    }
+CREATE TABLE {tableName} ({columns});");
 
-    /// <summary>
-    /// Creates a table with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
-    /// drop it at the end of the test.
-    /// </summary>
-    internal static Task<IAsyncDisposable> CreateTempTable(NpgsqlDataSource dataSource, string columns, out string tableName)
-    {
-        tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-
-        return dataSource.ExecuteNonQueryAsync(@$"
-START TRANSACTION;
-SELECT pg_advisory_xact_lock(0);
-DROP TABLE IF EXISTS {tableName} CASCADE;
-COMMIT;
-CREATE TABLE {tableName} ({columns});")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(dataSource, (string)name!, "TABLE"),
-                tableName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
-    }
-
-    /// <summary>
-    /// Creates a schema with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
-    /// drop it at the end of the test.
-    /// </summary>
-    internal static Task<IAsyncDisposable> CreateTempSchema(NpgsqlConnection conn, out string schemaName)
-    {
-        schemaName = "temp_schema" + Interlocked.Increment(ref _tempSchemaCounter);
-        return conn.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {schemaName} CASCADE; CREATE SCHEMA {schemaName}")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "SCHEMA"),
-                schemaName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
+        return tableName;
     }
 
     /// <summary>
     /// Generates a unique table name, usable for a single test, and drops it if it already exists.
     /// Actual creation of the table is the responsibility of the caller.
     /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the table at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> GetTempTableName(NpgsqlConnection conn, out string tableName)
+    internal static async Task<string> GetTempTableName(NpgsqlConnection conn)
     {
-        tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
-        return conn.ExecuteNonQueryAsync(@$"START TRANSACTION; SELECT pg_advisory_xact_lock(0);
-                    DROP TABLE IF EXISTS {tableName} CASCADE; COMMIT")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TABLE"),
-                tableName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
+        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        await conn.ExecuteNonQueryAsync(@$"
+START TRANSACTION;
+SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT");
+        return tableName;
+    }
+
+    /// <summary>
+    /// Creates a table with a unique name, usable for a single test, and returns an <see cref="IDisposable"/> to
+    /// drop it at the end of the test.
+    /// </summary>
+    internal static async Task<string> CreateTempTable(NpgsqlDataSource dataSource, string columns)
+    {
+        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        await dataSource.ExecuteNonQueryAsync(@$"
+START TRANSACTION;
+SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT;
+CREATE TABLE {tableName} ({columns});");
+        return tableName;
+    }
+
+    /// <summary>
+    /// Creates a schema with a unique name, usable for a single test.
+    /// </summary>
+    internal static async Task<string> CreateTempSchema(NpgsqlConnection conn)
+    {
+        var schemaName = "temp_schema" + Interlocked.Increment(ref _tempSchemaCounter);
+        await conn.ExecuteNonQueryAsync($"DROP SCHEMA IF EXISTS {schemaName} CASCADE; CREATE SCHEMA {schemaName}");
+        return schemaName;
     }
 
     /// <summary>
     /// Generates a unique view name, usable for a single test, and drops it if it already exists.
     /// Actual creation of the view is the responsibility of the caller.
     /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the view at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> GetTempViewName(NpgsqlConnection conn, out string viewName)
+    internal static async Task<string> GetTempViewName(NpgsqlConnection conn)
     {
-        viewName = "temp_view" + Interlocked.Increment(ref _tempViewCounter);
-        return conn.ExecuteNonQueryAsync($"DROP VIEW IF EXISTS {viewName} CASCADE")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "VIEW"),
-                viewName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
+        var viewName = "temp_view" + Interlocked.Increment(ref _tempViewCounter);
+        await conn.ExecuteNonQueryAsync($"DROP VIEW IF EXISTS {viewName} CASCADE");
+        return viewName;
     }
 
     /// <summary>
     /// Generates a unique function name, usable for a single test.
     /// Actual creation of the function is the responsibility of the caller.
     /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the function at the end of the test.
-    /// </returns>
-    internal static IAsyncDisposable GetTempFunctionName(NpgsqlConnection conn, out string functionName)
+    internal static async Task<string> GetTempFunctionName(NpgsqlConnection conn)
     {
-        functionName = "temp_func" + Interlocked.Increment(ref _tempFunctionCounter);
-        return new DatabaseObjectDropper(conn, functionName, "FUNCTION");
+        var functionName = "temp_func" + Interlocked.Increment(ref _tempFunctionCounter);
+        await conn.ExecuteNonQueryAsync($"DROP FUNCTION IF EXISTS {functionName} CASCADE");
+        return functionName;
     }
 
     /// <summary>
@@ -311,28 +289,12 @@ CREATE TABLE {tableName} ({columns});")
     /// Generates a unique type name, usable for a single test.
     /// Actual creation of the type is the responsibility of the caller.
     /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the type at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> GetTempTypeName(NpgsqlConnection conn, out string typeName)
+    internal static async Task<string> GetTempTypeName(NpgsqlConnection conn)
     {
-        typeName = "temp_type" + Interlocked.Increment(ref _tempTypeCounter);
-        return EnsureTypeDoesNotExist(conn, typeName);
+        var typeName = "temp_type" + Interlocked.Increment(ref _tempTypeCounter);
+        await conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {typeName} CASCADE");
+        return typeName;
     }
-
-    /// <summary>
-    /// Ensure the type does not exist, usable for a single test.
-    /// Actual creation of the type is the responsibility of the caller.
-    /// </summary>
-    /// <returns>
-    /// An <see cref="IDisposable"/> to drop the type at the end of the test.
-    /// </returns>
-    internal static Task<IAsyncDisposable> EnsureTypeDoesNotExist(NpgsqlConnection conn, string typeName)
-        => conn.ExecuteNonQueryAsync($"DROP TYPE IF EXISTS {typeName} CASCADE")
-            .ContinueWith(
-                (t, name) => (IAsyncDisposable)new DatabaseObjectDropper(conn, (string)name!, "TYPE"),
-                typeName,
-                TaskContinuationOptions.OnlyOnRanToCompletion);
 
     internal static volatile int _tempTableCounter;
     static volatile int _tempViewCounter;
@@ -340,52 +302,6 @@ CREATE TABLE {tableName} ({columns});")
     static volatile int _tempProcedureCounter;
     static volatile int _tempSchemaCounter;
     static volatile int _tempTypeCounter;
-
-    internal sealed class DatabaseObjectDropper : IDisposable, IAsyncDisposable
-    {
-        readonly NpgsqlDataSource? _dataSource;
-        readonly NpgsqlConnection? _conn;
-        readonly string _type;
-        readonly string _name;
-
-        internal DatabaseObjectDropper(NpgsqlConnection conn, string name, string type)
-            => (_conn, _name, _type) = (conn, name, type);
-
-        internal DatabaseObjectDropper(NpgsqlDataSource dataSource, string name, string type)
-            => (_dataSource, _name, _type) = (dataSource, name, type);
-
-        public async ValueTask DisposeAsync()
-        {
-            try
-            {
-                var sql = $"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT";
-                if (_dataSource is null)
-                    await _conn!.ExecuteNonQueryAsync(sql);
-                else
-                    await _dataSource.ExecuteNonQueryAsync(sql);
-            }
-            catch
-            {
-                // Swallow to allow triggering exceptions to surface
-            }
-        }
-
-        public void Dispose()
-        {
-            try
-            {
-                var sql = $"START TRANSACTION; SELECT pg_advisory_xact_lock(0); DROP {_type} {_name} CASCADE; COMMIT";
-                if (_dataSource is null)
-                    _conn!.ExecuteNonQuery(sql);
-                else
-                    _dataSource.ExecuteNonQuery(sql);
-            }
-            catch
-            {
-                // Swallow to allow triggering exceptions to surface
-            }
-        }
-    }
 
     /// <summary>
     /// Creates a pool with a unique application name, usable for a single test, and returns an

@@ -20,7 +20,7 @@ public class DistributedTransactionTests : TestBase
     public void Two_connections_rollback_implicit_enlistment()
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         using (new TransactionScope())
         using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
@@ -42,7 +42,7 @@ public class DistributedTransactionTests : TestBase
     public void Two_connections_rollback_explicit_enlistment()
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
         using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
@@ -67,7 +67,7 @@ public class DistributedTransactionTests : TestBase
     public void Two_connections_commit()
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         using (var scope = new TransactionScope())
         using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
@@ -93,7 +93,7 @@ public class DistributedTransactionTests : TestBase
         try
         {
             using var adminConn = OpenConnection();
-            using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+            var table = CreateTempTable(adminConn, "name TEXT");
 
             using var scope = new TransactionScope();
             using var conn1 = OpenConnection(ConnectionStringEnlistOn);
@@ -154,7 +154,7 @@ public class DistributedTransactionTests : TestBase
     public void Transaction_race([Values(false, true)] bool distributed)
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         for (var i = 1; i <= 100; i++)
         {
@@ -226,7 +226,7 @@ Exception {2}",
     public void Connection_reuse_race_after_transaction([Values(false, true)] bool distributed)
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         for (var i = 1; i <= 100; i++)
         {
@@ -278,7 +278,7 @@ Exception {2}",
     public void Connection_reuse_race_after_rollback([Values(false, true)] bool distributed)
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         for (var i = 1; i <= 100; i++)
         {
@@ -331,7 +331,7 @@ Exception {2}",
     public void Connection_reuse_race_chaining_transaction([Values(false, true)] bool distributed)
     {
         using var adminConn = OpenConnection();
-        using var _ = CreateTempTable(adminConn, "name TEXT", out var table);
+        var table = CreateTempTable(adminConn, "name TEXT");
 
         for (var i = 1; i <= 100; i++)
         {
@@ -619,16 +619,15 @@ Start formatting event queue, going to sleep a bit for late events
     public void SetUp()
         => EnlistResource.Counter = 0;
 
-    internal static IDisposable CreateTempTable(NpgsqlConnection conn, string columns, out string tableName)
+    internal static string CreateTempTable(NpgsqlConnection conn, string columns)
     {
-        tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
         conn.ExecuteNonQuery(@$"
 START TRANSACTION; SELECT pg_advisory_xact_lock(0);
 DROP TABLE IF EXISTS {tableName} CASCADE;
 COMMIT;
 CREATE TABLE {tableName} ({columns})");
-
-        return new DatabaseObjectDropper(conn, tableName, "TABLE");
+        return tableName;
     }
 
     #endregion

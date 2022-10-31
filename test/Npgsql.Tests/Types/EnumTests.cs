@@ -17,7 +17,7 @@ public class EnumTests : MultiplexingTestBase
     public async Task Data_source_mapping()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -31,8 +31,8 @@ public class EnumTests : MultiplexingTestBase
     public async Task Dual_enums()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type1);
-        await using var __ = await GetTempTypeName(adminConnection, out var type2);
+        var type1 = await GetTempTypeName(adminConnection);
+        var type2 = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
 CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
@@ -49,7 +49,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     public async Task Array()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -63,7 +63,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     public async Task Name_translation_default_snake_case()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var enumName1);
+        var enumName1 = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {enumName1} AS ENUM ('simple', 'two_words', 'some_database_name')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -79,7 +79,7 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     public async Task Name_translation_null()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('Simple', 'TwoWords', 'some_database_name')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -95,8 +95,8 @@ CREATE TYPE {type2} AS ENUM ('label1', 'label2', 'label3')");
     public async Task Unmapped_enum_as_clr_enum()
     {
         await using var connection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(connection, out var type1);
-        await using var __ = await GetTempTypeName(connection, out var type2);
+        var type1 = await GetTempTypeName(connection);
+        var type2 = await GetTempTypeName(connection);
         await connection.ExecuteNonQueryAsync(@$"
 CREATE TYPE {type1} AS ENUM ('sad', 'ok', 'happy');
 CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
@@ -110,7 +110,7 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
     public async Task Unmapped_enum_as_string()
     {
         await using var connection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(connection, out var type);
+        var type = await GetTempTypeName(connection);
         await connection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         await connection.ReloadTypesAsync();
 
@@ -129,8 +129,8 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
     public async Task Same_name_in_different_schemas()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(adminConnection, out var schema1);
-        await using var __ = await CreateTempSchema(adminConnection, out var schema2);
+        var schema1 = await CreateTempSchema(adminConnection);
+        var schema2 = await CreateTempSchema(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE TYPE {schema1}.my_enum AS ENUM ('one');
 CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
@@ -152,7 +152,7 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
     {
         using var _ = CreateTempPool(ConnectionString, out var connectionString);
         using var conn = await OpenConnectionAsync(connectionString);
-        await using var __ = await GetTempTypeName(conn, out var type);
+        var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
 

@@ -918,34 +918,32 @@ public class ConnectionTests : MultiplexingTestBase
             // Make sure messages are in English
             Options = "-c lc_messages=en_US.UTF-8"
         });
-        await using (GetTempFunctionName(conn, out var function))
-        {
-            await conn.ExecuteNonQueryAsync($@"
+        var function = await GetTempFunctionName(conn);
+        await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
 'BEGIN RAISE NOTICE ''testnotice''; END;'
 LANGUAGE 'plpgsql'");
 
-            var mre = new ManualResetEvent(false);
-            PostgresNotice? notice = null;
-            NoticeEventHandler action = (sender, args) =>
-            {
-                notice = args.Notice;
-                mre.Set();
-            };
-            conn.Notice += action;
-            try
-            {
-                // See docs for CreateSleepCommand
-                await conn.ExecuteNonQueryAsync($"SELECT {function}()::TEXT");
-                mre.WaitOne(5000);
-                Assert.That(notice, Is.Not.Null, "No notice was emitted");
-                Assert.That(notice!.MessageText, Is.EqualTo("testnotice"));
-                Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
-            }
-            finally
-            {
-                conn.Notice -= action;
-            }
+        var mre = new ManualResetEvent(false);
+        PostgresNotice? notice = null;
+        NoticeEventHandler action = (sender, args) =>
+        {
+            notice = args.Notice;
+            mre.Set();
+        };
+        conn.Notice += action;
+        try
+        {
+            // See docs for CreateSleepCommand
+            await conn.ExecuteNonQueryAsync($"SELECT {function}()::TEXT");
+            mre.WaitOne(5000);
+            Assert.That(notice, Is.Not.Null, "No notice was emitted");
+            Assert.That(notice!.MessageText, Is.EqualTo("testnotice"));
+            Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
+        }
+        finally
+        {
+            conn.Notice -= action;
         }
     }
 
@@ -1444,7 +1442,7 @@ CREATE TABLE record ()");
     public async Task PhysicalConnectionInitializer_sync()
     {
         await using var adminConn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(adminConn, "ID INTEGER", out var table);
+        var table = await CreateTempTable(adminConn, "ID INTEGER");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
@@ -1468,7 +1466,7 @@ CREATE TABLE record ()");
     public async Task PhysicalConnectionInitializer_async()
     {
         await using var adminConn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(adminConn, "ID INTEGER", out var table);
+        var table = await CreateTempTable(adminConn, "ID INTEGER");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(

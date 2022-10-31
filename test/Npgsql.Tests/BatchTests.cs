@@ -97,7 +97,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task RecordsAffected_and_Rows()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -143,7 +143,7 @@ public class BatchTests : MultiplexingTestBase
 
         MinimumPgVersion(conn, "15.0", "MERGE statement was introduced in PostgreSQL 15");
 
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -191,7 +191,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task StatementTypes()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -249,7 +249,7 @@ public class BatchTests : MultiplexingTestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "15.0", "Stored procedures are supported starting with PG 11");
 
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -272,7 +272,7 @@ public class BatchTests : MultiplexingTestBase
         MaximumPgVersionExclusive(conn, "12.0",
             "Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
 
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TABLE {table} (name TEXT) WITH OIDS");
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -377,7 +377,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_with_error_at_start([Values] bool withErrorBarriers)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -401,7 +401,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_with_error_at_end([Values] bool withErrorBarriers)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -425,7 +425,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_with_multiple_errors([Values] bool withErrorBarriers)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -467,7 +467,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -524,7 +524,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_with_result_sets_and_error([Values] bool withErrorBarriers)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -561,7 +561,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task Error_with_AppendErrorBarrier()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -584,7 +584,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task AppendErrorBarrier_on_last_command([Values] bool enabled)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
         {
@@ -672,7 +672,7 @@ public class BatchTests : MultiplexingTestBase
     public async Task NpgsqlException_references_BatchCommand_with_single_command()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
@@ -697,7 +697,7 @@ LANGUAGE 'plpgsql'");
     public async Task NpgsqlException_references_BatchCommand_with_multiple_commands()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS

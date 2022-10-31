@@ -444,7 +444,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
         };
         await using var conn = await OpenConnectionAsync(csb);
 
-        await using var __ = await GetTempTableName(conn, out var tableName);
+        var tableName = await GetTempTableName(conn);
         conn.UnprepareAll();
         await conn.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id integer)");
 
@@ -507,7 +507,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
         };
 
         await using var conn = await OpenConnectionAsync(csb);
-        await using var __ = GetTempFunctionName(conn, out var funcName);
+        var funcName = await GetTempFunctionName(conn);
 
         // Create a function we can use to raise an error with a single statement
         conn.ExecuteNonQuery(@$"
@@ -571,7 +571,7 @@ SELECT COUNT(*) FROM pg_prepared_statements
         };
 
         await using var connection = await OpenConnectionAsync(csb);
-        await using var _ = await CreateTempTable(connection, "foo int", out var table);
+        var table = await CreateTempTable(connection, "foo int");
 
         await using var command = new NpgsqlCommand($"SELECT * FROM {table}", connection);
         for (var i = 0; i < 2; i++)
