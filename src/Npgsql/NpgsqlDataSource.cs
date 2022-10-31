@@ -61,6 +61,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     bool _isBootstrapped;
 
+    volatile DatabaseStateInfo _databaseStateInfo = new();
+
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
     private protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
@@ -315,6 +317,39 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal abstract bool OwnsConnectors { get; }
 
+    #region Database state management
+
+    internal DatabaseState GetDatabaseState(bool ignoreExpiration = false)
+    {
+        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+
+        var databaseStateInfo = _databaseStateInfo;
+
+        return ignoreExpiration || !databaseStateInfo.Timeout.HasExpired
+            ? databaseStateInfo.State
+            : DatabaseState.Unknown;
+    }
+
+    internal DatabaseState UpdateDatabaseState(
+        DatabaseState newState,
+        DateTime timeStamp,
+        TimeSpan stateExpiration,
+        bool ignoreTimeStamp = false)
+    {
+        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+
+        var databaseStateInfo = _databaseStateInfo;
+        
+        if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
+            return _databaseStateInfo.State;
+
+        _databaseStateInfo = new(newState, new NpgsqlTimeout(stateExpiration), timeStamp);
+
+        return newState;
+    }
+
+    #endregion Database state management
+
     #region Pending Enlisted Connections
 
     internal virtual void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
@@ -399,4 +434,17 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion
+    
+    class DatabaseStateInfo
+    {
+        internal readonly DatabaseState State;
+        internal readonly NpgsqlTimeout Timeout;
+        // While the TimeStamp is not strictly required, it does lower the risk of overwriting the current state with an old value
+        internal readonly DateTime TimeStamp;
+
+        public DatabaseStateInfo() : this(default, default, default) {}
+        
+        public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
+            => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
+    }
 }

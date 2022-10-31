@@ -19,6 +19,7 @@ Npgsql.NpgsqlDataSourceBuilder.UseClientCertificatesCallback(System.Action<Syste
 Npgsql.NpgsqlDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlLoggingConfiguration
+Npgsql.NpgsqlMultiHostDataSource.ClearDatabaseStates() -> void
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
 Npgsql.StatementType.Call = 11 -> Npgsql.StatementType
