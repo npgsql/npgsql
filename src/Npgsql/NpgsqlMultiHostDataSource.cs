@@ -11,9 +11,13 @@ using System.Transactions;
 
 namespace Npgsql;
 
-#pragma warning disable CS1591
-#pragma warning disable RS0016
-
+/// <summary>
+/// An <see cref="NpgsqlDataSource" /> which manages connections for multiple hosts, is aware of their states (primary, secondary,
+/// offline...) and can perform failover and load balancing across them.
+/// </summary>
+/// <remarks>
+/// See <see href="https://www.npgsql.org/doc/failover-and-load-balancing.html" />.
+/// </remarks>
 public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
