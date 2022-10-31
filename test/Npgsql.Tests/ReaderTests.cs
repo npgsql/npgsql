@@ -50,7 +50,7 @@ public class ReaderTests : MultiplexingTestBase
     public async Task No_resultset()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         using (var cmd = new NpgsqlCommand($"INSERT INTO {table} VALUES (8)", conn))
         using (var reader = await cmd.ExecuteReaderAsync(Behavior))
@@ -90,7 +90,7 @@ public class ReaderTests : MultiplexingTestBase
     public async Task FieldCount()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "int INT", out var table);
+        var table = await CreateTempTable(conn, "int INT");
 
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2,3", conn);
         using (var reader = await cmd.ExecuteReaderAsync(Behavior))
@@ -120,7 +120,7 @@ public class ReaderTests : MultiplexingTestBase
     public async Task RecordsAffected()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "int INT", out var table);
+        var table = await CreateTempTable(conn, "int INT");
 
         var sb = new StringBuilder();
         for (var i = 0; i < 10; i++)
@@ -171,7 +171,7 @@ public class ReaderTests : MultiplexingTestBase
         MaximumPgVersionExclusive(conn, "12.0",
             "Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
 
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
 
         var query = $@"
 CREATE TABLE {table} (name TEXT) WITH OIDS;
@@ -202,7 +202,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
     public async Task Get_string_with_parameter()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         const string text = "Random text";
         await conn.ExecuteNonQueryAsync($@"INSERT INTO {table} (name) VALUES ('{text}')");
 
@@ -227,7 +227,7 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
     public async Task Get_string_with_quote_with_parameter()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (name TEXT);
 INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
@@ -370,7 +370,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             MaxPoolSize = 1
         };
         await using var conn = await OpenConnectionAsync(csb);
-        await using var _ = await GetTempTypeName(conn, out var typeName);
+        var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('one')");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
@@ -388,7 +388,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             MaxPoolSize = 1
         };
         await using var conn = await OpenConnectionAsync(csb);
-        await using var _ = await GetTempTypeName(conn, out var typeName);
+        var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();
@@ -479,7 +479,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     public async Task ExecuteReader_getting_empty_resultset_with_output_parameter()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         var command = new NpgsqlCommand($"SELECT * FROM {table} WHERE name = NULL;", conn);
         var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
         param.Direction = ParameterDirection.Output;
@@ -492,7 +492,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     public async Task Get_value_from_empty_resultset()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         using var command = new NpgsqlCommand($"SELECT * FROM {table} WHERE name = :value;", conn);
         const string test = "Text single quote";
         var param = new NpgsqlParameter();
@@ -575,7 +575,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
@@ -596,7 +596,7 @@ LANGUAGE 'plpgsql';
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
@@ -615,7 +615,7 @@ LANGUAGE 'plpgsql';
     public async Task NpgsqlException_references_BatchCommand_with_single_command()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
@@ -640,7 +640,7 @@ LANGUAGE 'plpgsql'");
     public async Task NpgsqlException_references_BatchCommand_with_multiple_commands()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
@@ -679,7 +679,7 @@ LANGUAGE 'plpgsql'");
     public async Task SchemaOnly_next_result_beyond_end()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT", out var table);
+        var table = await CreateTempTable(conn, "id INT");
 
         using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -812,7 +812,7 @@ LANGUAGE 'plpgsql'");
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         var command = new NpgsqlCommand($"SELECT 1; SELECT * FROM {table} WHERE name='does_not_exist'", conn);
         if (prepare == PrepareOrNot.Prepared)
@@ -865,7 +865,7 @@ LANGUAGE 'plpgsql'");
     public async Task HasRows_without_resultset()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         using var command = new NpgsqlCommand($"DELETE FROM {table} WHERE name = 'unknown'", conn);
         using var reader = await command.ExecuteReaderAsync(Behavior);
         Assert.IsFalse(reader.HasRows);
@@ -897,15 +897,14 @@ LANGUAGE 'plpgsql'");
     public async Task Reader_next_result_exception_handling()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table1);
-        await using var __ = await GetTempTableName(conn, out var table2);
-        await using var ___ = GetTempFunctionName(conn, out var function);
-        var constraint = GetUniqueIdentifier("temp_constraint");
+        var table1 = await GetTempTableName(conn);
+        var table2 = await GetTempTableName(conn);
+        var function = await GetTempFunctionName(conn);
 
         var initializeTablesSql = $@"
 CREATE TABLE {table1} (value int NOT NULL);
 CREATE TABLE {table2} (value int UNIQUE);
-ALTER TABLE ONLY {table1} ADD CONSTRAINT {constraint} FOREIGN KEY (value) REFERENCES {table2}(value) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY {table1} ADD CONSTRAINT {table1}_{table2}_fk FOREIGN KEY (value) REFERENCES {table2}(value) DEFERRABLE INITIALLY DEFERRED;
 CREATE OR REPLACE FUNCTION {function}(_value int) RETURNS int AS $BODY$
 BEGIN
     INSERT INTO {table1}(value) VALUES(_value);
@@ -1241,7 +1240,7 @@ LANGUAGE plpgsql VOLATILE";
     public async Task GetBytes()
     {
         using var conn = await OpenConnectionAsync();
-        await using var __ = await CreateTempTable(conn, "bytes BYTEA", out var table);
+        var table = await CreateTempTable(conn, "bytes BYTEA");
 
         // TODO: This is too small to actually test any interesting sequential behavior
         byte[] expected = { 1, 2, 3, 4, 5 };
@@ -1398,7 +1397,7 @@ LANGUAGE plpgsql VOLATILE";
         var streamGetter = BuildStreamGetter(isAsync);
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "bytes BYTEA", out var table);
+        var table = await CreateTempTable(conn, "bytes BYTEA");
 
         var buf = new byte[8];
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (bytes) VALUES (NULL)");

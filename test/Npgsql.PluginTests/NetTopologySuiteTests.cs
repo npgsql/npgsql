@@ -216,12 +216,11 @@ public class NetTopologySuiteTests : TestBase
     public async Task Concurrency_test()
     {
         await using var adminConnection = OpenConnection();
-        await using var tempTableHandle = await CreateTempTable(
+        var table = await CreateTempTable(
             adminConnection,
             "point GEOMETRY, linestring GEOMETRY, polygon GEOMETRY, " +
             "multipoint GEOMETRY, multilinestring GEOMETRY, multipolygon GEOMETRY, " +
-            "collection GEOMETRY",
-            out var table);
+            "collection GEOMETRY");
         await adminConnection.ExecuteNonQueryAsync($"INSERT INTO {table} DEFAULT VALUES");
 
         var point = new Point(new Coordinate(1d, 1d));

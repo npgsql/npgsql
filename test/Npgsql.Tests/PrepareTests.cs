@@ -759,7 +759,7 @@ public class PrepareTests: TestBase
         };
 
         await using var connection = await OpenConnectionAsync(csb);
-        await using var _ = await CreateTempTable(connection, "foo int", out var table);
+        var table = await CreateTempTable(connection, "foo int");
 
         await using var command = new NpgsqlCommand($"SELECT * FROM {table}", connection);
         await command.PrepareAsync();

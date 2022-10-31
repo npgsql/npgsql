@@ -109,7 +109,7 @@ class RangeTests : MultiplexingTestBase
         };
         await using var conn = await OpenConnectionAsync(csb);
 
-        await using var _ = await GetTempTypeName(conn, out var typeName);
+        var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
         conn.ReloadTypes();

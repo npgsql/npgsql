@@ -22,8 +22,8 @@ public class CopyTests : MultiplexingTestBase
     public async Task Issue2257()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table1);
-        await using var __ = await GetTempTableName(conn, out var table2);
+        var table1 = await GetTempTableName(conn);
+        var table2 = await GetTempTableName(conn);
 
         const int rowCount = 1000000;
         using (var cmd = conn.CreateCommand())
@@ -63,7 +63,7 @@ public class CopyTests : MultiplexingTestBase
         //var iterations = Conn.BufferSize / 10 - 100;
         const int iterations = 500;
 
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
 
         using (var tx = conn.BeginTransaction())
         {
@@ -121,7 +121,7 @@ public class CopyTests : MultiplexingTestBase
     public async Task Dispose_in_middle_of_raw_binary_export()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER);
 INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
@@ -140,7 +140,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Dispose_in_middle_of_raw_binary_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
 
         var inStream = conn.BeginRawBinaryCopy($"COPY {table} (field_text, field_int4) FROM STDIN BINARY");
@@ -156,7 +156,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Cancel_raw_binary_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
         await conn.ExecuteNonQueryAsync($@"CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
 
         var garbage = new byte[] {1, 2, 3, 4};
@@ -173,7 +173,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_large_value_raw()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
 
         var data = new byte[conn.Settings.WriteBufferSize + 10];
         var dump = new byte[conn.Settings.WriteBufferSize + 200];
@@ -228,14 +228,14 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             Assert.Ignore("Multiplexing: fails");
         using (var conn = await OpenConnectionAsync())
         {
-            await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+            var table = await CreateTempTable(conn, "blob BYTEA");
             Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy($"COPY {table} (blob) TO STDOUT"));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
         using (var conn = await OpenConnectionAsync())
         {
-            await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+            var table = await CreateTempTable(conn, "blob BYTEA");
             Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy($"COPY {table} (blob) FROM STDIN"));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
@@ -249,7 +249,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Binary_roundtrip([Values(false, true)] bool async)
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT");
 
         var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
 
@@ -305,7 +305,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Cancel_binary_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
 
         using (var writer = conn.BeginBinaryImport($"COPY {table} (field_text, field_int4) FROM STDIN BINARY"))
         {
@@ -321,7 +321,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_bytea()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field BYTEA", out var table);
+        var table = await CreateTempTable(conn, "field BYTEA");
 
         var data = new byte[] {1, 5, 8};
 
@@ -340,7 +340,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_numeric()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field NUMERIC(1000)", out var table);
+        var table = await CreateTempTable(conn, "field NUMERIC(1000)");
 
         await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (field) FROM STDIN BINARY"))
         {
@@ -366,7 +366,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_string_array()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field TEXT[]", out var table);
+        var table = await CreateTempTable(conn, "field TEXT[]");
 
         var data = new[] {"foo", "a", "bar"};
         using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
@@ -384,7 +384,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_string_with_buffer_length()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field TEXT", out var table);
+        var table = await CreateTempTable(conn, "field TEXT");
 
         var data = new string('a', conn.Settings.WriteBufferSize);
         using (var writer = conn.BeginBinaryImport($"COPY {table} (field) FROM STDIN BINARY"))
@@ -401,7 +401,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_direct_buffer()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
 
         using var writer = conn.BeginBinaryImport($"COPY {table} (blob) FROM STDIN BINARY");
         // Big value - triggers use of the direct write optimization
@@ -429,7 +429,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<ArgumentException>(() => conn.BeginBinaryImport($"COPY {table} (blob) FROM STDIN"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -450,7 +450,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<ArgumentException>(() => conn.BeginBinaryExport($"COPY {table} (blob) TO STDOUT"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -463,7 +463,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
 
         var data = new byte[conn.Settings.WriteBufferSize + 10];
 
@@ -487,7 +487,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Import_bytea_massive()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field BYTEA", out var table);
+        var table = await CreateTempTable(conn, "field BYTEA");
 
         const int iterations = 10000;
         var data = new byte[1024*1024];
@@ -512,7 +512,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         const int iterations = 100;
         using var conn = await OpenConnectionAsync();
         var len = conn.Settings.WriteBufferSize;
-        await using var _ = await CreateTempTable(conn, "foo1 TEXT, foo2 TEXT, foo3 TEXT, foo4 TEXT, foo5 TEXT", out var table);
+        var table = await CreateTempTable(conn, "foo1 TEXT, foo2 TEXT, foo3 TEXT, foo4 TEXT, foo5 TEXT");
         using (var cmd = new NpgsqlCommand($"INSERT INTO {table} VALUES (@p, @p, @p, @p, @p)", conn))
         {
             cmd.Parameters.AddWithValue("p", new string('x', len));
@@ -535,7 +535,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
     public async Task Read_bit_string()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (bits BIT(3), bitarray BIT(3)[]);
@@ -557,7 +557,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         var expected = new[] { 8 };
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "arr INTEGER[]", out var table);
+        var table = await CreateTempTable(conn, "arr INTEGER[]");
 
         using (var writer = conn.BeginBinaryImport($"COPY {table} (arr) FROM STDIN BINARY"))
         {
@@ -578,7 +578,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Enum()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -586,7 +586,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        await using var __ = await CreateTempTable(connection, $"mymood {type}, mymoodarr {type}[]", out var table);
+        var table = await CreateTempTable(connection, $"mymood {type}, mymoodarr {type}[]");
 
         await using (var writer = await connection.BeginBinaryImportAsync($"COPY {table} (mymood, mymoodarr) FROM STDIN BINARY"))
         {
@@ -633,9 +633,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Error_during_import()
     {
         using var conn = await OpenConnectionAsync();
-        var constraintName = GetUniqueIdentifier("uq");
-        await using var _ = await CreateTempTable(conn, $"foo INT, CONSTRAINT {constraintName} UNIQUE(foo)", out var table);
-
+        var table = await CreateTempTable(conn, "foo INT UNIQUE");
         var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY");
         writer.StartRow();
         writer.Write(8);
@@ -651,7 +649,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Import_cannot_write_after_commit()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+        var table = await CreateTempTable(conn, "foo INT");
         try
         {
             using var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY");
@@ -672,7 +670,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Import_commit_in_middle_of_row()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT, bar TEXT", out var table);
+        var table = await CreateTempTable(conn, "foo INT, bar TEXT");
 
         try
         {
@@ -695,7 +693,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Import_exception_does_not_commit()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+        var table = await CreateTempTable(conn, "foo INT");
 
         try
         {
@@ -714,7 +712,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Write_column_out_of_bounds_throws()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 INTEGER", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 INTEGER");
 
         using var writer = conn.BeginBinaryImport($"COPY {table} (field_text, field_int2) FROM STDIN BINARY");
         StateAssertions(conn);
@@ -770,7 +768,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Binary_copy_throws_for_nullable()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "house_number integer", out var tableName);
+        var tableName = await CreateTempTable(conn, "house_number integer");
 
         await using var writer = await conn.BeginBinaryImportAsync($"COPY {tableName}(house_number) FROM STDIN BINARY");
         int? value = 1;
@@ -786,7 +784,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Text_import([Values(false, true)] bool async)
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
         const string line = "HELLO\t1\n";
 
         // Short write
@@ -815,7 +813,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Cancel_text_import()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
 
         var writer = (NpgsqlCopyTextWriter)conn.BeginTextImport($"COPY {table} (field_text, field_int4) FROM STDIN");
         writer.Write("HELLO\t1\n");
@@ -827,7 +825,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Text_import_empty()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+        var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
 
         using (conn.BeginTextImport($"COPY {table} (field_text, field_int4) FROM STDIN"))
         {
@@ -839,7 +837,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Text_export([Values(false, true)] bool async)
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE  TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER);
@@ -865,7 +863,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Dispose_in_middle_of_text_export()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER);
@@ -893,7 +891,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<Exception>(() => conn.BeginTextImport($"COPY {table} (blob) FROM STDIN BINARY"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -915,7 +913,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing: fails");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "blob BYTEA", out var table);
+        var table = await CreateTempTable(conn, "blob BYTEA");
         Assert.Throws<Exception>(() => conn.BeginTextExport($"COPY {table} (blob) TO STDOUT BINARY"));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
@@ -961,32 +959,32 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     {
         // TODO: Check no broken connections were returned to the pool
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginBinaryImport($"COPY {table} (field_text, field_int4) FROM STDIN BINARY");
         }
 
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginBinaryExport($"COPY {table} (field_text, field_int2) TO STDIN BINARY");
         }
 
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginRawBinaryCopy($"COPY {table} (field_text, field_int4) FROM STDIN BINARY");
         }
 
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginRawBinaryCopy($"COPY {table} (field_text, field_int4) TO STDIN BINARY");
         }
 
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginTextImport($"COPY {table} (field_text, field_int4) FROM STDIN");
         }
 
         using (var conn = await OpenConnectionAsync()) {
-            await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var table);
+            var table = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
             conn.BeginTextExport($"COPY {table} (field_text, field_int4) TO STDIN");
         }
     }
@@ -995,7 +993,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Non_ascii_column_name()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "non_ascii_éè TEXT", out var table);
+        var table = await CreateTempTable(conn, "non_ascii_éè TEXT");
         using (conn.BeginBinaryImport($"COPY {table} (non_ascii_éè) FROM STDIN BINARY")) { }
     }
 
@@ -1003,7 +1001,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Write_null_values()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo1 INT, foo2 UUID, foo3 INT, foo4 UUID", out var table);
+        var table = await CreateTempTable(conn, "foo1 INT, foo2 UUID, foo3 INT, foo4 UUID");
 
         using (var writer = conn.BeginBinaryImport($"COPY {table} (foo1, foo2, foo3, foo4) FROM STDIN BINARY"))
         {
@@ -1028,7 +1026,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Write_different_types()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT, bar INT[]", out var table);
+        var table = await CreateTempTable(conn, "foo INT, bar INT[]");
 
         using (var writer = conn.BeginBinaryImport($"COPY {table} (foo, bar) FROM STDIN BINARY"))
         {
@@ -1048,7 +1046,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     public async Task Within_transaction()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INT", out var table);
+        var table = await CreateTempTable(conn, "foo INT");
 
         using (var tx = conn.BeginTransaction())
         using (var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY"))
@@ -1091,7 +1089,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         // because we're going to break the connection on CopyInResponse
         using var _ = CreateTempPool(ConnectionString, out var connectionString);
         using var conn = await OpenConnectionAsync(connectionString);
-        await using var __ = await CreateTempTable(conn, "foo INT", out var table);
+        var table = await CreateTempTable(conn, "foo INT");
 
         Assert.That(() => conn.ExecuteNonQuery($@"COPY {table} (foo) FROM stdin"), Throws.Exception.TypeOf<NotSupportedException>());
     }

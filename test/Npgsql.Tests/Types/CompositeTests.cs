@@ -14,7 +14,7 @@ public class CompositeTests : MultiplexingTestBase
     public async Task Basic()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
 
@@ -36,7 +36,7 @@ public class CompositeTests : MultiplexingTestBase
     public async Task Global_mapping()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
         NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeComposite>(type);
@@ -67,8 +67,8 @@ public class CompositeTests : MultiplexingTestBase
     public async Task Nested()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var containerType);
-        await using var __ = await GetTempTypeName(adminConnection, out var containeeType);
+        var containerType = await GetTempTypeName(adminConnection);
+        var containeeType = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE TYPE {containeeType} AS (x int, some_text text);
@@ -94,7 +94,7 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
     public async Task With_schema()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(adminConnection, out var schema);
+        var schema = await CreateTempSchema(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {schema}.some_composite AS (x int, some_text text)");
 
@@ -115,8 +115,8 @@ CREATE TYPE {containerType} AS (a int, containee {containeeType});");
     public async Task In_different_schemas_same_type_with_nested()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(adminConnection, out var firstSchemaName);
-        await using var __ = await CreateTempSchema(adminConnection, out var secondSchemaName);
+        var firstSchemaName = await CreateTempSchema(adminConnection);
+        var secondSchemaName = await CreateTempSchema(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE TYPE {firstSchemaName}.containee AS (x int, some_text text);
@@ -153,7 +153,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
     public async Task Struct()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
 
@@ -174,7 +174,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
     public async Task Array()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (x int, some_text text)");
 
@@ -195,7 +195,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
     public async Task Name_translation()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync(@$"
 CREATE TYPE {type} AS (simple int, two_words int, some_database_name int)");
@@ -217,8 +217,8 @@ CREATE TYPE {type} AS (simple int, two_words int, some_database_name int)");
     public async Task Composite_containing_domain_type()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var domainType);
-        await using var __ = await GetTempTypeName(adminConnection, out var compositeType);
+        var domainType = await GetTempTypeName(adminConnection);
+        var compositeType = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE DOMAIN {domainType} AS TEXT;
@@ -241,7 +241,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
     public async Task Table_as_composite([Values] bool enabled)
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(adminConnection, "x int, some_text text", out var table);
+        var table = await CreateTempTable(adminConnection, "x int, some_text text");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<SomeComposite>(table);
@@ -273,7 +273,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
     public async Task Table_as_composite_with_deleted_columns()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(adminConnection, "x int, some_text text, bar int", out var table);
+        var table = await CreateTempTable(adminConnection, "x int, some_text text, bar int");
         await adminConnection.ExecuteNonQueryAsync($"ALTER TABLE {table} DROP COLUMN bar;");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -294,7 +294,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
     public async Task Nullable_property_in_class_composite()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo INT)");
 
@@ -322,7 +322,7 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
     public async Task Nullable_property_in_struct_composite()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
 
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo INT)");
 
@@ -350,8 +350,8 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
     public async Task PostgresType()
     {
         await using var connection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(connection, out var type1);
-        await using var __ = await GetTempTypeName(connection, out var type2);
+        var type1 = await GetTempTypeName(connection);
+        var type2 = await GetTempTypeName(connection);
 
         await connection.ExecuteNonQueryAsync(@$"
 CREATE TYPE {type1} AS (x int, some_text text);

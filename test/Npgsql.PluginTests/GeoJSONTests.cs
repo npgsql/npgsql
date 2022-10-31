@@ -267,7 +267,7 @@ public class GeoJSONTests : TestBase
     public async Task Roundtrip_geometry_geography()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "geom GEOMETRY, geog GEOGRAPHY", out var table);
+        var table = await CreateTempTable(conn, "geom GEOMETRY, geog GEOGRAPHY");
 
         var point = new Point(new Position(0d, 0d));
         await using (var cmd = new NpgsqlCommand($"INSERT INTO {table} (geom, geog) VALUES (@p, @p)", conn))

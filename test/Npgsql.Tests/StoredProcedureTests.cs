@@ -15,7 +15,7 @@ public class StoredProcedureTests : TestBase
     [TestCase(true, true)]
     public async Task With_input_parameters(bool withPositional, bool withNamed)
     {
-        await using var _ = await CreateTempTable(SharedDataSource, "foo int, bar int", out var table);
+        var table = await CreateTempTable(SharedDataSource, "foo int, bar int");
         var sproc = await GetTempProcedureName(SharedDataSource);
 
         await SharedDataSource.ExecuteNonQueryAsync(@$"
@@ -291,8 +291,8 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_procedure_correct_schema_resolution()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema1);
-        await using var __ = await CreateTempSchema(conn, out var schema2);
+        var schema1 = await CreateTempSchema(conn);
+        var schema2 = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE PROCEDURE {schema1}.redundantsproc() AS 'SELECT 1' LANGUAGE sql;
@@ -309,7 +309,7 @@ SET search_path TO {schema2};");
     public async Task DeriveParameters_throws_for_existing_procedure_that_is_not_in_search_path()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema);
+        var schema = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE PROCEDURE {schema}.schema1sproc() AS 'SELECT 1' LANGUAGE sql;
@@ -324,8 +324,8 @@ RESET search_path;");
     public async Task DeriveParameters_throws_for_multiple_procedures_name_hits_in_search_path()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema1);
-        await using var __ = await CreateTempSchema(conn, out var schema2);
+        var schema1 = await CreateTempSchema(conn);
+        var schema2 = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync(
             $@"

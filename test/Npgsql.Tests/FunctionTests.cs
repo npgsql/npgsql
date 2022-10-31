@@ -21,7 +21,7 @@ public class FunctionTests : TestBase
     public async Task Resultset()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE FUNCTION {function}() RETURNS integer AS 'SELECT 8' LANGUAGE sql");
         await using var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(8));
@@ -31,7 +31,7 @@ public class FunctionTests : TestBase
     public async Task Param_Input()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE FUNCTION {function}(IN param text) RETURNS text AS 'SELECT param' LANGUAGE sql");
         await using var cmd = new NpgsqlCommand(function, conn);
         cmd.CommandType = CommandType.StoredProcedure;
@@ -43,7 +43,7 @@ public class FunctionTests : TestBase
     public async Task Param_Output()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
         await conn.ExecuteNonQueryAsync(@$"
 CREATE FUNCTION {function} (IN param_in text, OUT param_out text) AS $$
 BEGIN
@@ -63,7 +63,7 @@ $$ LANGUAGE plpgsql");
     public async Task Param_InputOutput()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
         await conn.ExecuteNonQueryAsync($@"
 CREATE FUNCTION {function} (INOUT param integer) AS $$
 BEGIN
@@ -148,7 +148,7 @@ $$ LANGUAGE plpgsql");
     public async Task CommandBehavior_SchemaOnly_support_function_call()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($"CREATE OR REPLACE FUNCTION {function}() RETURNS SETOF integer as 'SELECT 1;' LANGUAGE 'sql';");
         var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
@@ -165,7 +165,7 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_function_various()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
@@ -206,7 +206,7 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_function_in_only()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync(
@@ -226,7 +226,7 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_function_no_params()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"CREATE FUNCTION {function}() RETURNS int AS 'SELECT 4' LANGUAGE sql");
 
@@ -299,7 +299,7 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_parameter_name_from_function()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync(
             $"CREATE FUNCTION {function}(x int, y int, out sum int, out product int) AS 'SELECT $1 + $2, $1 * $2' LANGUAGE sql");
@@ -324,7 +324,7 @@ $$ LANGUAGE plpgsql");
     {
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.2.0");
-        await using var _ = GetTempFunctionName(conn, out var function);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync(
@@ -346,8 +346,8 @@ $$ LANGUAGE plpgsql");
     public async Task DeriveParameters_function_correct_schema_resolution()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema1);
-        await using var __ = await CreateTempSchema(conn, out var schema2);
+        var schema1 = await CreateTempSchema(conn);
+        var schema2 = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE FUNCTION {schema1}.redundantfunc() RETURNS int AS 'SELECT 1' LANGUAGE sql;
@@ -367,7 +367,7 @@ SET search_path TO {schema2};");
     public async Task DeriveParameters_throws_for_existing_function_that_is_not_in_search_path()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema);
+        var schema = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE FUNCTION {schema}.schema1func() RETURNS int AS 'SELECT 1' LANGUAGE sql;
@@ -382,8 +382,8 @@ RESET search_path;");
     public async Task DeriveParameters_throws_for_multiple_function_name_hits_in_search_path()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema1);
-        await using var __ = await CreateTempSchema(conn, out var schema2);
+        var schema1 = await CreateTempSchema(conn);
+        var schema2 = await CreateTempSchema(conn);
 
         await conn.ExecuteNonQueryAsync(
             $@"
@@ -404,8 +404,8 @@ SET search_path TO {schema1}, {schema2};");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.2.0");
 
-        await using var _ = await GetTempTableName(conn, out var table);
-        await using var __ = GetTempFunctionName(conn, out var function);
+        var table = await GetTempTableName(conn);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
@@ -433,8 +433,8 @@ $$ LANGUAGE sql");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.2.0");
 
-        await using var _ = await GetTempTableName(conn, out var table);
-        await using var __ = GetTempFunctionName(conn, out var function);
+        var table = await GetTempTableName(conn);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
@@ -462,8 +462,8 @@ $$ LANGUAGE sql");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.2.0");
 
-        await using var _ = await GetTempTableName(conn, out var table);
-        await using var __ = GetTempFunctionName(conn, out var function);
+        var table = await GetTempTableName(conn);
+        var function = await GetTempFunctionName(conn);
 
         // This function returns record because of the two Out (InOut & Out) parameters
         await conn.ExecuteNonQueryAsync($@"
@@ -491,8 +491,8 @@ $$ LANGUAGE sql");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.2.0");
 
-        await using var _ = await GetTempTableName(conn, out var table);
-        await using var __ = GetTempFunctionName(conn, out var function);
+        var table = await GetTempTableName(conn);
+        var function = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (id serial PRIMARY KEY, t1 text, t2 text);

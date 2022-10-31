@@ -100,7 +100,7 @@ public class BugTests : TestBase
     public async Task Bug1645()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER", out var tableName);
+        var tableName = await CreateTempTable(conn, "field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER");
         Assert.That(() =>
             {
                 using var writer = conn.BeginBinaryImport($"COPY {tableName} (field_text, field_int4) FROM STDIN BINARY");
@@ -141,7 +141,7 @@ public class BugTests : TestBase
     public async Task Bug1497()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT4", out var tableName);
+        var tableName = await CreateTempTable(conn, "id INT4");
         conn.ExecuteNonQuery($"INSERT INTO {tableName} (id) VALUES (NULL)");
         await using var cmd = new NpgsqlCommand($"SELECT * FROM {tableName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -240,7 +240,7 @@ public class BugTests : TestBase
     public async Task Bug1987()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -343,14 +343,14 @@ public class BugTests : TestBase
     public async Task Bug2278()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var enumType);
-        await using var __ = await GetTempTypeName(adminConnection, out var domainType);
-        await using var ___ = await GetTempTypeName(adminConnection, out var compositeType);
+        var enumType = await GetTempTypeName(adminConnection);
+        var domainType = await GetTempTypeName(adminConnection);
+        var compositeType = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE TYPE {enumType} AS ENUM ('left', 'right');
 CREATE DOMAIN {domainType} AS {enumType} NOT NULL;
 CREATE TYPE {compositeType} AS (value {domainType})");
-        await using var ____ = await CreateTempTable(adminConnection, $"value {compositeType}", out var table);
+        var table = await CreateTempTable(adminConnection, $"value {compositeType}");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.MapComposite<Bug2278CompositeType>(compositeType);
@@ -409,10 +409,10 @@ CREATE TYPE {compositeType} AS (value {domainType})");
     {
         await using var conn = await OpenConnectionAsync();
         // Note that the type has to be named boolean
-        await using var _ = await EnsureTypeDoesNotExist(conn, "\"boolean\"");
+        await conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS \"boolean\" CASCADE");
         await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.\"boolean\" AS bool");
         conn.ReloadTypes();
-        await using var __ = await CreateTempTable(conn, $"mybool \"boolean\"", out var tableName);
+        var tableName = await CreateTempTable(conn, $"mybool \"boolean\"");
         await conn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (mybool) VALUES (TRUE)");
 
         await conn.ExecuteScalarAsync($"SELECT mybool FROM {tableName}");
@@ -1106,7 +1106,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         builder.WriteBufferSize = 8192;
         await using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
-        await using var _ = await CreateTempTable(conn, "col1 text, col2 text", out var tableName);
+        var tableName = await CreateTempTable(conn, "col1 text, col2 text");
 
         await using var binaryImporter = await conn.BeginBinaryImportAsync($"COPY {tableName} FROM STDIN (FORMAT BINARY);");
         // 8163 writespace left
@@ -1134,7 +1134,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         builder.WriteBufferSize = 8192;
         await using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
-        await using var _ = await CreateTempTable(conn, "col1 text, col2 text", out var tableName);
+        var tableName = await CreateTempTable(conn, "col1 text, col2 text");
 
         await using var binaryImporter = await conn.BeginBinaryImportAsync($"COPY {tableName} FROM STDIN (FORMAT BINARY);");
         // 8163 writespace left
@@ -1157,7 +1157,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     public async Task NRE_in_BeginTextExport()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var funcName);
+        var funcName = await GetTempFunctionName(conn);
         await using var transaction = await conn.BeginTransactionAsync();
         await conn.ExecuteNonQueryAsync($"CREATE OR REPLACE FUNCTION {funcName}() RETURNS TABLE (i INT) AS $$ BEGIN RETURN QUERY SELECT s.a FROM pg_stat_activity p; end; $$ LANGUAGE plpgsql;");
         using var reader = await conn.BeginTextExportAsync($"copy (select * FROM {funcName}())  TO STDOUT WITH (format csv)");
@@ -1187,8 +1187,8 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     public async Task CompositePostgresType()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
-        await using var __ = GetTempFunctionName(adminConnection, out var func);
+        var type = await GetTempTypeName(adminConnection);
+        var func = await GetTempFunctionName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} as (x int, some_text text, test int)");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
@@ -1264,7 +1264,7 @@ $$;");
     public async Task Bug3649()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "value integer", out var table);
+        var table = await CreateTempTable(conn, "value integer");
 
         using (var importer = await conn.BeginBinaryImportAsync($"COPY {table} (value) FROM STDIN (FORMAT binary)"))
         {

@@ -20,7 +20,7 @@ public class DomainTests : MultiplexingTestBase
         };
 
         using var conn = await OpenConnectionAsync(csb);
-        await using var _ = await GetTempTypeName(conn, out var type);
+        var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {type} AS text");
 
         // Resolve type by DataTypeName
@@ -51,7 +51,7 @@ public class DomainTests : MultiplexingTestBase
     public async Task Domain()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var type);
+        var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {type} AS text");
         Assert.That(await conn.ExecuteScalarAsync($"SELECT 'foo'::{type}"), Is.EqualTo("foo"));
     }
@@ -60,8 +60,8 @@ public class DomainTests : MultiplexingTestBase
     public async Task Domain_in_composite()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var domainType);
-        await using var __ = await GetTempTypeName(adminConnection, out var compositeType);
+        var domainType = await GetTempTypeName(adminConnection);
+        var compositeType = await GetTempTypeName(adminConnection);
         await adminConnection.ExecuteNonQueryAsync($@"
 CREATE DOMAIN {domainType} AS text;
 CREATE TYPE {compositeType} AS (value {domainType});");

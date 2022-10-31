@@ -16,7 +16,7 @@ public class TypeMapperTests : TestBase
     public async Task Global_mapping()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
 
         try
@@ -50,7 +50,7 @@ public class TypeMapperTests : TestBase
     public async Task Global_mapping_reset()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         NpgsqlConnection.GlobalTypeMapper.MapEnum<Mood>(type);
 
         try
@@ -84,7 +84,7 @@ public class TypeMapperTests : TestBase
     public async Task ReloadTypes_across_connections_in_data_source()
     {
         await using var adminConnection = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(adminConnection, out var type);
+        var type = await GetTempTypeName(adminConnection);
         // Note that we don't actually create the type in the database at this point; we want to exercise the type being created later,
         // via the data source.
 
@@ -112,6 +112,7 @@ public class TypeMapperTests : TestBase
     }
 
     [Test]
+    [NonParallelizable] // Depends on citext which could be dropped concurrently
     public async Task String_to_citext()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -132,14 +133,18 @@ public class TypeMapperTests : TestBase
     public async Task Type_in_non_default_schema()
     {
         await using var conn = await OpenConnectionAsync();
+
+        var schemaName = await CreateTempSchema(conn);
+
+        await conn.ExecuteNonQueryAsync(@$"
+DROP EXTENSION IF EXISTS citext;
+CREATE EXTENSION citext SCHEMA ""{schemaName}""");
+
         try
         {
-            await using var _ = await CreateTempSchema(conn, out var schemaName);
-
-            await conn.ExecuteNonQueryAsync($"DROP EXTENSION IF EXISTS citext; CREATE EXTENSION citext SCHEMA \"{schemaName}\"");
             await conn.ReloadTypesAsync();
 
-            await using var __ = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL", out var tableName);
+            var tableName = await CreateTempTable(conn, $"created_by {schemaName}.citext NOT NULL");
 
             const string expected = "SomeValue";
             await conn.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" VALUES('{expected}')");
@@ -149,7 +154,7 @@ public class TypeMapperTests : TestBase
         }
         finally
         {
-            await conn.ExecuteNonQueryAsync("DROP EXTENSION IF EXISTS citext");
+            await conn.ExecuteNonQueryAsync(@"DROP EXTENSION citext CASCADE");
         }
     }
 
