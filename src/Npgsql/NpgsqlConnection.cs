@@ -1809,9 +1809,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         return new NpgsqlConnection(csb.ToString())
         {
-            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback ?? (_dataSource?.ClientCertificatesCallback is null
-                ? null
-                : (ProvideClientCertificatesCallback)(certs => _dataSource?.ClientCertificatesCallback(certs))),
+            ProvideClientCertificatesCallback =
+                ProvideClientCertificatesCallback ??
+                (_dataSource?.ClientCertificatesCallback is { } clientCertificatesCallback
+                    ? (ProvideClientCertificatesCallback)(certs => clientCertificatesCallback(certs))
+                    : null),
             UserCertificateValidationCallback = UserCertificateValidationCallback ?? _dataSource?.UserCertificateValidationCallback,
 #pragma warning disable CS0618 // Obsolete
             ProvidePasswordCallback = ProvidePasswordCallback,
