@@ -603,7 +603,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
     }
 
-    internal async ValueTask<ClusterState> QueryClusterState(
+    internal async ValueTask<DatabaseState> QueryDatabaseState(
         NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
     {
         using var cmd = CreateCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only");
@@ -629,9 +629,9 @@ public sealed partial class NpgsqlConnector : IDisposable
                 
             _isTransactionReadOnly = reader.GetString(0) != "off";
 
-            var clusterState = UpdateClusterState();
-            Debug.Assert(clusterState.HasValue);
-            return clusterState.Value;
+            var databaseState = UpdateDatabaseState();
+            Debug.Assert(databaseState.HasValue);
+            return databaseState.Value;
         }
         finally
         {
@@ -1934,8 +1934,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 (ne.InnerException is not TimeoutException || Settings.CancellationTimeout != -1) ||
                 reason is PostgresException pe && PostgresErrorCodes.IsCriticalFailure(pe))
             {
-                ClusterStateCache.UpdateClusterState(Host, Port, ClusterState.Offline, DateTime.UtcNow,
-                    Settings.HostRecheckSecondsTranslated);
+                DataSource.UpdateDatabaseState(DatabaseState.Offline, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
                 DataSource.Clear();
             }
 
@@ -2582,27 +2581,26 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         case "default_transaction_read_only":
             _isTransactionReadOnly = value == "on";
-            UpdateClusterState();
+            UpdateDatabaseState();
             return;
 
         case "in_hot_standby":
             _isHotStandBy = value == "on";
-            UpdateClusterState();
+            UpdateDatabaseState();
             return;
         }
     }
 
-    ClusterState? UpdateClusterState()
+    DatabaseState? UpdateDatabaseState()
     {
         if (_isTransactionReadOnly.HasValue && _isHotStandBy.HasValue)
         {
             var state = _isHotStandBy.Value
-                ? ClusterState.Standby
+                ? DatabaseState.Standby
                 : _isTransactionReadOnly.Value
-                    ? ClusterState.PrimaryReadOnly
-                    : ClusterState.PrimaryReadWrite;
-            return ClusterStateCache.UpdateClusterState(Settings.Host!, Settings.Port, state, DateTime.UtcNow,
-                Settings.HostRecheckSecondsTranslated);
+                    ? DatabaseState.PrimaryReadOnly
+                    : DatabaseState.PrimaryReadWrite;
+            return DataSource.UpdateDatabaseState(state, DateTime.UtcNow, Settings.HostRecheckSecondsTranslated);
         }
 
         return null;

@@ -434,14 +434,8 @@ public class ConnectionTests : MultiplexingTestBase
     public async Task<string[]> ConnectionString_Host(string host)
     {
         var numberOfHosts = host.Split(',').Length;
-        if (numberOfHosts > 1)
-        {
-            if (IsMultiplexing)
-                throw new SuccessException("Multiple hosts in connection string is ignored for Multiplexing");
-            // We reset the cluster's state for multiple hosts
-            // Because other tests might have marked some of the hosts as disabled
-            ClusterStateCache.Clear();
-        }
+        if (numberOfHosts > 1 && IsMultiplexing)
+            Assert.Ignore("Multiple hosts in connection string is ignored for Multiplexing");
 
         var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
@@ -464,7 +458,7 @@ public class ConnectionTests : MultiplexingTestBase
             // When multiplexing NpgsqlConnection.DataSource is not set so we succeed
             // if we successfully connected and reached this point
             if (IsMultiplexing)
-                throw new SuccessException("DataSource is ignored for Multiplexing");
+                Assert.Ignore("DataSource is ignored for Multiplexing");
 
             return returnValues;
         }
@@ -1617,7 +1611,7 @@ CREATE TABLE record ()");
     #endregion Physical connection initialization
 
     [Test]
-    [NonParallelizable]
+    [NonParallelizable] // Modifies global database info factories
     [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
     public async Task Breaking_connection_while_loading_database_info()
     {

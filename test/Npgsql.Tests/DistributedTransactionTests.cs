@@ -90,32 +90,25 @@ public class DistributedTransactionTests : TestBase
     [Test]
     public void Two_connections_with_failure()
     {
-        try
-        {
-            using var adminConn = OpenConnection();
-            var table = CreateTempTable(adminConn, "name TEXT");
+        // Use our own data source since this test breaks the connection with a critical failure, affecting database state tracking.
+        using var dataSource = NpgsqlDataSource.Create(ConnectionStringEnlistOn);
+        using var adminConn = dataSource.OpenConnection();
+        var table = CreateTempTable(adminConn, "name TEXT");
 
-            using var scope = new TransactionScope();
-            using var conn1 = OpenConnection(ConnectionStringEnlistOn);
-            using var conn2 = OpenConnection(ConnectionStringEnlistOn);
+        using var scope = new TransactionScope();
+        using var conn1 = dataSource.OpenConnection();
+        using var conn2 = dataSource.OpenConnection();
 
-            conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
-            conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
+        conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
+        conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
 
-            conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
-            scope.Complete();
-            Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
+        conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
+        scope.Complete();
+        Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
 
-            AssertNoDistributedIdentifier();
-            AssertNoPreparedTransactions();
-            AssertNumberOfRows(adminConn, table, 0);
-        }
-        finally
-        {
-            // Since this breaks the connection with a critical failure, clear the cluster state cache to prevent multihost tests from
-            // failing.
-            ClusterStateCache.Clear();
-        }
+        AssertNoDistributedIdentifier();
+        AssertNoPreparedTransactions();
+        AssertNumberOfRows(adminConn, table, 0);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]

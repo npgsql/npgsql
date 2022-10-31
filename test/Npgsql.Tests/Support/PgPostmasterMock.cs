@@ -83,12 +83,15 @@ class PgPostmasterMock : IAsyncDisposable
         connectionStringBuilder.Port = Port;
         connectionStringBuilder.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading;
         ConnectionString = connectionStringBuilder.ConnectionString;
-        // In some cases we can attempt to connect to a port, which was already in use (doesn't have to be a mock).
-        // Clearing the cached state, so the previous state is not leaking.
-        ClusterStateCache.RemoveClusterState(Host, Port);
 
         _socket.Listen(5);
     }
+
+    public NpgsqlDataSourceBuilder GetDataSourceBuilder()
+        => new(ConnectionString);
+
+    public NpgsqlDataSource CreateDataSource()
+        => NpgsqlDataSource.Create(ConnectionString);
 
     void AcceptClients()
     {
@@ -211,9 +214,6 @@ class PgPostmasterMock : IAsyncDisposable
     {
         var endpoint = _socket.LocalEndPoint as IPEndPoint;
         Debug.Assert(endpoint is not null);
-        var host = endpoint.Address.ToString();
-        var port = endpoint.Port;
-        ClusterStateCache.RemoveClusterState(host, port);
 
         // Stop accepting new connections
         _socket.Dispose();
