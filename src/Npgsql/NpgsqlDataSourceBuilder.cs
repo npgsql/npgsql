@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Security;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,9 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
+
+    RemoteCertificateValidationCallback? _userCertificateValidationCallback;
+    Action<X509CertificateCollection>? _clientCertificatesCallback;
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
@@ -77,6 +82,77 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return this;
     }
 
+    #region Authentication
+
+    /// <summary>
+    /// When using SSL/TLS, this is a callback that allows customizing how the PostgreSQL-provided certificate is verified. This is an
+    /// advanced API, consider using <see cref="SslMode.VerifyFull" /> or <see cref="SslMode.VerifyCA" /> instead.
+    /// </summary>
+    /// <param name="userCertificateValidationCallback">The callback containing custom callback verification logic.</param>
+    /// <remarks>
+    /// <para>
+    /// Cannot be used in conjunction with <see cref="SslMode.Disable" />, <see cref="SslMode.VerifyCA" /> or
+    /// <see cref="SslMode.VerifyFull" />.
+    /// </para>
+    /// <para>
+    /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseUserCertificateValidationCallback(
+        RemoteCertificateValidationCallback userCertificateValidationCallback)
+    {
+        _userCertificateValidationCallback = userCertificateValidationCallback;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Specifies an SSL/TLS certificate which Npgsql will send to PostgreSQL for certificate-based authentication.
+    /// </summary>
+    /// <param name="clientCertificate">The client certificate to be sent to PostgreSQL when opening a connection.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseClientCertificate(X509Certificate? clientCertificate)
+    {
+        if (clientCertificate is null)
+            return UseClientCertificatesCallback(null);
+
+        var clientCertificates = new X509CertificateCollection { clientCertificate };
+        return UseClientCertificates(clientCertificates);
+    }
+
+    /// <summary>
+    /// Specifies a collection of SSL/TLS certificates which Npgsql will send to PostgreSQL for certificate-based authentication.
+    /// </summary>
+    /// <param name="clientCertificates">The client certificate collection to be sent to PostgreSQL when opening a connection.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseClientCertificates(X509CertificateCollection? clientCertificates)
+        => UseClientCertificatesCallback(clientCertificates is null ? null : certs => certs.AddRange(clientCertificates));
+
+    /// <summary>
+    /// Specifies a callback to modify the collection of SSL/TLS client certificates which Npgsql will send to PostgreSQL for
+    /// certificate-based authentication. This is an advanced API, consider using <see cref="UseClientCertificate" /> or
+    /// <see cref="UseClientCertificates" /> instead.
+    /// </summary>
+    /// <param name="clientCertificatesCallback">The callback to modify the client certificate collection.</param>
+    /// <remarks>
+    /// <para>
+    /// The callback is invoked every time a physical connection is opened, and is therefore suitable for rotating short-lived client
+    /// certificates. Simply make sure the certificate collection argument has the up-to-date certificate(s).
+    /// </para>
+    /// <para>
+    /// The callback's collection argument already includes any client certificates specified via the connection string or environment
+    /// variables.
+    /// </para>
+    /// </remarks>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseClientCertificatesCallback(Action<X509CertificateCollection>? clientCertificatesCallback)
+    {
+        _clientCertificatesCallback = clientCertificatesCallback;
+
+        return this;
+    }
+
     /// <summary>
     /// Configures a periodic password provider, which is automatically called by the data source at some regular interval. This is the
     /// recommended way to fetch a rotating access token.
@@ -115,6 +191,8 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 
         return this;
     }
+
+    #endregion Authentication
 
     #region Type mapping
 
@@ -274,6 +352,8 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 
         var config = new NpgsqlDataSourceConfiguration(
             loggingConfiguration,
+            _userCertificateValidationCallback,
+            _clientCertificatesCallback,
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
