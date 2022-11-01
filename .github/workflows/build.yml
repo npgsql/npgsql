@@ -106,6 +106,7 @@ jobs:
             sudo sed -i "s|unix_socket_directories = '/var/run/postgresql'|unix_socket_directories = '/var/run/postgresql, @/npgsql_unix'|" $PGDATA/postgresql.conf
           fi
 
+          sudo sed -i 's/max_connections = 100/max_connections = 500/' $PGDATA/postgresql.conf
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
           sudo sed -i "s|ssl_cert_file =|ssl_cert_file = '$PGDATA/server.crt' #|" $PGDATA/postgresql.conf
           sudo sed -i "s|ssl_key_file =|ssl_key_file = '$PGDATA/server.key' #|" $PGDATA/postgresql.conf
@@ -117,6 +118,7 @@ jobs:
           sudo sed -i "s/#synchronous_standby_names =/synchronous_standby_names = 'npgsql_test_sync_standby' #/" $PGDATA/postgresql.conf
           sudo sed -i "s/#synchronous_commit =/synchronous_commit = local #/" $PGDATA/postgresql.conf
           sudo sed -i "s/#max_prepared_transactions = 0/max_prepared_transactions = 100/" $PGDATA/postgresql.conf
+
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
@@ -183,6 +185,7 @@ jobs:
           # Start PostgreSQL
           pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
           SOCKET_DIR=$(echo "$LOCALAPPDATA\Temp" | sed 's|\\|/|g')
+          sed -i "s|max_connections = 100|max_connections = 500|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#unix_socket_directories = ''|unix_socket_directories = '$SOCKET_DIR'|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#wal_level =|wal_level = logical #|" pgsql/PGDATA/postgresql.conf
           sed -i "s|#max_wal_senders =|max_wal_senders = 50 #|" pgsql/PGDATA/postgresql.conf
@@ -258,6 +261,7 @@ jobs:
             psql -c "CREATE USER npgsql_tests_ssl SUPERUSER PASSWORD 'npgsql_tests_ssl'" postgres
             psql -c "CREATE USER npgsql_tests_nossl SUPERUSER PASSWORD 'npgsql_tests_nossl'" postgres
 
+            sudo sed -i '' 's/max_connections = 100/max_connections = 500/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#wal_level =/wal_level = logical #/' $PGDATA/postgresql.conf
             sudo sed -i '' 's/#max_wal_senders =/max_wal_senders = 50 #/' $PGDATA/postgresql.conf
