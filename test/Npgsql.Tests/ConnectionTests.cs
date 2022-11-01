@@ -409,64 +409,33 @@ public class ConnectionTests : MultiplexingTestBase
 
     #region ConnectionString - Host
 
-    [TestCase("127.0.0.1", ExpectedResult = new [] { "tcp://127.0.0.1:5432" })]
-    [TestCase("127.0.0.1:5432", ExpectedResult = new [] { "tcp://127.0.0.1:5432" })]
-    [TestCase("::1", ExpectedResult = new [] { "tcp://::1:5432" })]
-    [TestCase("[::1]", ExpectedResult = new [] { "tcp://[::1]:5432" })]
-    [TestCase("[::1]:5432", ExpectedResult = new [] { "tcp://[::1]:5432" })]
-    [TestCase("localhost", ExpectedResult = new [] { "tcp://localhost:5432" })]
-    [TestCase("localhost:5432", ExpectedResult = new [] { "tcp://localhost:5432" })]
+    [TestCase("127.0.0.1", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("127.0.0.1:5432", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("::1", ExpectedResult = new [] { "::1:5432" })]
+    [TestCase("[::1]", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("[::1]:5432", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("localhost", ExpectedResult = new [] { "localhost:5432" })]
+    [TestCase("localhost:5432", ExpectedResult = new [] { "localhost:5432" })]
     [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1],[::1]:5432,localhost,localhost:5432",
         ExpectedResult = new []
         {
-            "tcp://127.0.0.1:5432",
-            "tcp://127.0.0.1:5432",
-            "tcp://::1:5432",
-            "tcp://[::1]:5432",
-            "tcp://[::1]:5432",
-            "tcp://localhost:5432",
-            "tcp://localhost:5432"
+            "127.0.0.1:5432",
+            "127.0.0.1:5432",
+            "::1:5432",
+            "[::1]:5432",
+            "[::1]:5432",
+            "localhost:5432",
+            "localhost:5432"
         })]
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
-    public async Task<string[]> ConnectionString_Host(string host)
+    public string[] ConnectionString_Host(string host)
     {
-        var numberOfHosts = host.Split(',').Length;
-        if (numberOfHosts > 1 && IsMultiplexing)
-            Assert.Ignore("Multiple hosts in connection string is ignored for Multiplexing");
-
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder
         {
-            Host = host,
-            MaxPoolSize = 1
-        }.ConnectionString;
-
-        var connections = new NpgsqlConnection?[numberOfHosts];
-        var returnValues = new string[numberOfHosts];
-        try
-        {
-            for (var i = 0; i < connections.Length; i++)
-            {
-                var c = new NpgsqlConnection(connectionString);
-                await c.OpenAsync();
-                returnValues[i] = c.DataSource;
-                connections[i] = c;
-            }
-
-            // When multiplexing NpgsqlConnection.DataSource is not set so we succeed
-            // if we successfully connected and reached this point
-            if (IsMultiplexing)
-                Assert.Ignore("DataSource is ignored for Multiplexing");
-
-            return returnValues;
-        }
-        finally
-        {
-            foreach (var connection in connections)
-            {
-                if (connection != null)
-                    await connection.DisposeAsync();
-            }
-        }
+            ConnectionStringBuilder = { Host = host }
+        };
+        using var dataSource = dataSourceBuilder.BuildMultiHost();
+        return dataSource.Pools.Select(ds => $"{ds.Settings.Host}:{ds.Settings.Port}").ToArray()!;
     }
 
     #endregion ConnectionString - Host
