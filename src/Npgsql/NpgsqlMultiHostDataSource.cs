@@ -125,9 +125,25 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         {
             DatabaseState.Offline => false,
             DatabaseState.Unknown => true, // We will check compatibility again after refreshing the database state
-            DatabaseState.PrimaryReadWrite when preferredType is TargetSessionAttributes.Primary or TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.ReadWrite  => true,
-            DatabaseState.PrimaryReadOnly when preferredType is TargetSessionAttributes.Primary or TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.ReadOnly => true,
-            DatabaseState.Standby when preferredType is TargetSessionAttributes.Standby or TargetSessionAttributes.PreferStandby or TargetSessionAttributes.ReadOnly => true,
+
+            DatabaseState.PrimaryReadWrite when preferredType is
+                TargetSessionAttributes.Primary or
+                TargetSessionAttributes.PreferPrimary or
+                TargetSessionAttributes.ReadWrite
+                => true,
+
+            DatabaseState.PrimaryReadOnly when preferredType is
+                TargetSessionAttributes.Primary or
+                TargetSessionAttributes.PreferPrimary or
+                TargetSessionAttributes.ReadOnly
+                => true,
+
+            DatabaseState.Standby when preferredType is
+                TargetSessionAttributes.Standby or
+                TargetSessionAttributes.PreferStandby or
+                TargetSessionAttributes.ReadOnly
+                => true,
+
             _ => preferredType == TargetSessionAttributes.Any
         };
 
@@ -280,9 +296,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
         var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
         var preferredType = GetTargetSessionAttributes(conn);
-        var checkUnpreferred =
-            preferredType == TargetSessionAttributes.PreferPrimary ||
-            preferredType == TargetSessionAttributes.PreferStandby;
+        var checkUnpreferred = preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby;
 
         var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                         (checkUnpreferred ?
@@ -293,10 +307,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                             await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
                             : null);
 
-        if (connector is not null)
-            return connector;
-
-        throw NoSuitableHostsException(exceptions);
+        return connector ?? throw NoSuitableHostsException(exceptions);
     }
 
     static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)

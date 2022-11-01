@@ -455,14 +455,16 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
+    [Test, NonParallelizable, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
     [Ignore("Unreliable")]
     public async Task Unexpected_exception_binary_import()
     {
         if (IsMultiplexing)
             return;
 
-        using var conn = await OpenConnectionAsync();
+        // Use a private data source since we terminate the connection below (affects database state)
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "blob BYTEA");
 
         var data = new byte[conn.Settings.WriteBufferSize + 10];

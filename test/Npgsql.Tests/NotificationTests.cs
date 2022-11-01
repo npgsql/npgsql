@@ -3,6 +3,7 @@ using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -183,8 +184,8 @@ public class NotificationTests : TestBase
     [Test]
     public void Wait_breaks_connection()
     {
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        using var conn = OpenConnection(connString);
+        using var dataSource = CreateDataSource();
+        using var conn = dataSource.OpenConnection();
         Task.Delay(1000).ContinueWith(t =>
         {
             using var conn2 = OpenConnection();
@@ -199,8 +200,8 @@ public class NotificationTests : TestBase
     [Test]
     public void WaitAsync_breaks_connection()
     {
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        using var conn = OpenConnection(ConnectionString);
+        using var dataSource = CreateDataSource();
+        using var conn = dataSource.OpenConnection();
         Task.Delay(1000).ContinueWith(t =>
         {
             using var conn2 = OpenConnection();

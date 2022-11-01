@@ -71,14 +71,13 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-    [NonParallelizable] // Killing conn is using the default pool
     public async Task Broken_lifecycle([Values] bool openFromClose)
     {
         if (IsMultiplexing)
             return;
 
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        await using var conn = new NpgsqlConnection(connString);
+        await using var dataSource = CreateDataSource();
+        await using var conn = dataSource.CreateConnection();
 
         var eventOpen = false;
         var eventClosed = false;
@@ -141,9 +140,8 @@ public class ConnectionTests : MultiplexingTestBase
         if (IsMultiplexing)
             return;
 
-        using var conn = new NpgsqlConnection(ConnectionString);
-
-        conn.Open();
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         using (var conn2 = await OpenConnectionAsync())
             conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
@@ -151,8 +149,7 @@ public class ConnectionTests : MultiplexingTestBase
         // Allow some time for the pg_terminate to kill our connection
         using (var cmd = CreateSleepCommand(conn, 10))
             Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                .AssignableTo<NpgsqlException>()
-            );
+                .AssignableTo<NpgsqlException>());
 
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -719,11 +716,12 @@ public class ConnectionTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, hanging");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 1;
         if (keepAlive)
-            csb.KeepAlive = 1;
-        using var _ = CreateTempPool(csb, out var connString);
-        await using var conn = await OpenConnectionAsync(connString);
+            dataSourceBuilder.ConnectionStringBuilder.KeepAlive = 1;
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
         var connector = conn.Connector;
         Assert.That(connector, Is.Not.Null);
         await conn.CloseAsync();
@@ -1189,8 +1187,10 @@ LANGUAGE 'plpgsql'");
     [Ignore("Flaky")]
     public async Task Exception_during_close()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
-        using var conn = await OpenConnectionAsync(csb);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.Pooling = false;
+        await using var dataSource = dataSourceBuilder.Build();
+        using var conn = await dataSource.OpenConnectionAsync();
         var connectorId = conn.ProcessID;
 
         using (var conn2 = await OpenConnectionAsync())
