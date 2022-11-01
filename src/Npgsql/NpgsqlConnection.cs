@@ -1782,14 +1782,18 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     object ICloneable.Clone()
     {
         CheckDisposed();
-        var conn = new NpgsqlConnection(_connectionString) {
-            ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-            UserCertificateValidationCallback = UserCertificateValidationCallback,
+
+        var conn = _dataSource is null
+            ? new NpgsqlConnection(_connectionString)
+            : _dataSource.CreateConnection();
+
+        conn.ProvideClientCertificatesCallback = ProvideClientCertificatesCallback;
+        conn.UserCertificateValidationCallback = UserCertificateValidationCallback;
 #pragma warning disable CS0618 // Obsolete
-            ProvidePasswordCallback = ProvidePasswordCallback,
+        conn.ProvidePasswordCallback = ProvidePasswordCallback;
 #pragma warning restore CS0618
-            _userFacingConnectionString = _userFacingConnectionString
-        };
+        conn._userFacingConnectionString = _userFacingConnectionString;
+
         return conn;
     }
 

@@ -1086,26 +1086,32 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
     public void Clone()
     {
-        using (CreateTempPool(ConnectionString, out var connectionString))
-        using (var conn = new NpgsqlConnection(connectionString))
-        {
-            ProvideClientCertificatesCallback callback1 = certificates => { };
-            conn.ProvideClientCertificatesCallback = callback1;
-            RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
-            conn.UserCertificateValidationCallback = callback2;
+        using var pool = CreateTempPool(ConnectionString, out var connectionString);
+        using var conn = new NpgsqlConnection(connectionString);
+        ProvideClientCertificatesCallback callback1 = certificates => { };
+        conn.ProvideClientCertificatesCallback = callback1;
+        RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
+        conn.UserCertificateValidationCallback = callback2;
 
-            conn.Open();
-            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        conn.Open();
+        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
-            using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
-            {
-                Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
-                Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
-                Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
-                conn2.Open();
-                Assert.That(async () => await conn2.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
-            }
-        }
+        using var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone();
+        Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
+        Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
+        Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
+        conn2.Open();
+        Assert.That(async () => await conn2.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Clone_with_data_source()
+    {
+        await using var connection = await SharedDataSource.OpenConnectionAsync();
+        await using var clonedConnection = (NpgsqlConnection)((ICloneable)connection).Clone();
+
+        Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(SharedDataSource));
+        Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
     }
 
     [Test]
