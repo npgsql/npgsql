@@ -117,7 +117,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     /// Returns an <see cref="NpgsqlDataSource" /> that wraps this multi-host one with the given server type.
     /// </summary>
     /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
-    public NpgsqlDataSource For(TargetSessionAttributes targetSessionAttributes)
+    public NpgsqlDataSource WithTargetSession(TargetSessionAttributes targetSessionAttributes)
         => _wrappers[(int)targetSessionAttributes];
 
     static bool IsPreferred(DatabaseState state, TargetSessionAttributes preferredType)

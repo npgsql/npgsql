@@ -22,9 +22,9 @@ Npgsql.NpgsqlLoggingConfiguration
 Npgsql.NpgsqlMultiHostDataSource
 Npgsql.NpgsqlMultiHostDataSource.ClearDatabaseStates() -> void
 Npgsql.NpgsqlMultiHostDataSource.CreateConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
-Npgsql.NpgsqlMultiHostDataSource.For(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlMultiHostDataSource.OpenConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlMultiHostDataSource.OpenConnectionAsync(Npgsql.TargetSessionAttributes targetSessionAttributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlMultiHostDataSource.WithTargetSession(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
 Npgsql.StatementType.Call = 11 -> Npgsql.StatementType

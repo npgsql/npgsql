@@ -743,7 +743,7 @@ public class MultipleHostsTests : TestBase
             }
         };
         await using var multiHostDataSource = dataSourceBuilder.BuildMultiHost();
-        await using var preferPrimaryDataSource = multiHostDataSource.For(TargetSessionAttributes.PreferPrimary);
+        await using var preferPrimaryDataSource = multiHostDataSource.WithTargetSession(TargetSessionAttributes.PreferPrimary);
 
         await using var primaryConn = await preferPrimaryDataSource.OpenConnectionAsync();
         await using var anotherPrimaryConn = await preferPrimaryDataSource.OpenConnectionAsync();
@@ -858,7 +858,7 @@ public class MultipleHostsTests : TestBase
         };
         await using var multiHostDataSource = dataSourceBuilder.BuildMultiHost();
         var (firstDataSource, secondDataSource) = (multiHostDataSource.Pools[0], multiHostDataSource.Pools[1]);
-        await using var primaryDataSource = multiHostDataSource.For(TargetSessionAttributes.Primary);
+        await using var primaryDataSource = multiHostDataSource.WithTargetSession(TargetSessionAttributes.Primary);
 
         await using var conn = await primaryDataSource.OpenConnectionAsync();
         Assert.That(conn.Port, Is.EqualTo(firstPostmaster.Port));
@@ -929,7 +929,7 @@ public class MultipleHostsTests : TestBase
 
         Task Client(NpgsqlMultiHostDataSource multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
         {
-            var dataSource = multiHostDataSource.For(targetSessionAttributes);
+            var dataSource = multiHostDataSource.WithTargetSession(targetSessionAttributes);
             var tasks = new List<Task>(5);
 
             for (var i = 0; i < 5; i++)
@@ -969,8 +969,8 @@ public class MultipleHostsTests : TestBase
         };
 
         await using var dataSource = builder.BuildMultiHost();
-        await using var primaryDataSource = dataSource.For(TargetSessionAttributes.Primary);
-        await using var standbyDataSource = dataSource.For(TargetSessionAttributes.Standby);
+        await using var primaryDataSource = dataSource.WithTargetSession(TargetSessionAttributes.Primary);
+        await using var standbyDataSource = dataSource.WithTargetSession(TargetSessionAttributes.Standby);
 
         await using var primaryConnection = await primaryDataSource.OpenConnectionAsync();
         Assert.That(primaryConnection.Port, Is.EqualTo(primaryPostmasterMock.Port));
