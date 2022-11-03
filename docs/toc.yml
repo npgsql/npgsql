@@ -44,8 +44,6 @@
       href: types/nts.md
     - name: GeoJSON
       href: types/geojson.md
-    - name: Legacy PostGIS
-      href: types/legacy-postgis.md
 - name: Diagnostics
   items:
   - name: Overview

@@ -14,17 +14,42 @@ Beyond NodaTime's general advantages, some specific advantages NodaTime for Post
 
 ## Setup
 
-To use the NodaTime plugin, simply add a dependency on [Npgsql.NodaTime](https://www.nuget.org/packages/Npgsql.NodaTime) and set it up:
+To avoid forcing a dependency on the NetTopologySuite library for users not using spatial, NodaTime support is delivered as a separate plugin. To use the plugin, simply add a dependency on [Npgsql.NodaTime](https://www.nuget.org/packages/Npgsql.NodaTime) and set it up in one of the following ways:
+
+### [NpgsqlDataSource](#tab/datasource)
+
+> [!NOTE]
+> `NpgsqlDataSource` was introduced in Npgsql 7.0, and is the recommended way to manage type mapping. If you're using an older version, see the other methods.
 
 ```c#
-using Npgsql;
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
+dataSourceBuilder.UseNodaTime();
+await using var dataSource = dataSourceBuilder.Build();
+```
 
-// Place this at the beginning of your program to use NodaTime everywhere (recommended)
+### [Global mapping](#tab/global)
+
+If you're using an older version of Npgsql which doesn't yet support `NpgsqlDataSource`, you can configure mappings globally for all connections in your application:
+
+```c#
 NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
+```
 
-// Or to temporarily use NodaTime on a single connection only:
+For this to work, you must place this code at the beginning of your application, before any other Npgsql API is called. Note that in Npgsql 7.0, global type mappings are obsolete (but still supported) - `NpgsqlDataSource` is the recommended way to manage type mappings.
+
+### [Connection mapping](#tab/connection)
+
+> [!NOTE]
+> This mapping method has been removed in Npgsql 7.0.
+
+Older versions of Npgsql supported configuring a type mapping on an individual connection, as follows:
+
+```c#
+var conn = new NpgsqlConnection(...);
 conn.TypeMapper.UseNodaTime();
 ```
+
+***
 
 ## Reading and Writing Values
 
@@ -32,17 +57,17 @@ Once the plugin is set up, you can transparently read and write NodaTime objects
 
 ```c#
 // Write NodaTime Instant to PostgreSQL "timestamp with time zone" (UTC)
-using (var cmd = new NpgsqlCommand(@"INSERT INTO mytable (my_timestamptz) VALUES (@p)", conn))
+await using (var cmd = new NpgsqlCommand(@"INSERT INTO mytable (my_timestamptz) VALUES ($1)", conn))
 {
-    cmd.Parameters.Add(new NpgsqlParameter("p", Instant.FromUtc(2011, 1, 1, 10, 30)));
-    cmd.ExecuteNonQuery();
+    cmd.Parameters.Add(new() { Value = Instant.FromUtc(2011, 1, 1, 10, 30) });
+    await cmd.ExecuteNonQueryAsync();
 }
 
 // Read timestamp back from the database as an Instant
-using (var cmd = new NpgsqlCommand(@"SELECT my_timestamptz FROM mytable", conn))
-using (var reader = cmd.ExecuteReader())
+await using (var cmd = new NpgsqlCommand(@"SELECT my_timestamptz FROM mytable", conn))
+await using (var reader = await cmd.ExecuteReaderAsync())
 {
-    reader.Read();
+    await reader.ReadAsync();
     var instant = reader.GetFieldValue<Instant>(0);
 }
 ```

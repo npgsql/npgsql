@@ -1,34 +1,41 @@
 # Npgsql Basic Usage
 
-## Connections
+## Data source
 
-The starting point for any database operation is acquiring an <xref:Npgsql.NpgsqlConnection>; this represents a connection to the database on which commands can be executed. Connections can be instantiated directly, and must then be opened before they can be used:
+> [!NOTE]
+> The data source concept was introduced in Npgsql 7.0. If you're using an older version, see [Connections without a data source](#connections-without-a-data-source) below.
 
-```c#
+Starting with Npgsql 7.0, the starting point for any database operation is <xref:Npgsql.NpgsqlDataSource>. The data source represents your PostgreSQL database, and can hand out connections to it, or support direct execution of SQL against it. The data source encapsulates the various Npgsql configuration needed to connect to PostgreSQL, as well the connection pooling which makes Npgsql efficient.
+
+The simplest way to create a data source is the following:
+
+```csharp
 var connectionString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
-
-await using var conn = new NpgsqlConnection(connectionString);
-await conn.OpenAsync();
+await using var dataSource = NpgsqlDataSource.Create(connectionString);
 ```
 
-In .NET, the connection string is used to define which database to connect to, the authentication information to use, and various other connection-related parameters; it consists of key/value pairs, separated with semicolons. Npgsql supports many options, these are documented on the [connection string page](connection-string-parameters.md).
+In this code, a data source is created given a *connection string*, which is used to define which database to connect to, the authentication information to use, and various other connection-related parameters. The connection string consists of key/value pairs, separated with semicolons; many options are supported in Npgsql, these are documented on the [connection string page](connection-string-parameters.md).
 
-Connections must be disposed when they are no longer needed - not doing so will result in a connection leak, which can crash your program. In the above code sample, this is done via the `await using` C# construct, which ensures the connection is disposed even if an exception is later thrown. It's a good idea to keep connections open for as little time a possible: database connections are scarce resources, and keeping them open for unnecessarily long times can create unnecessary load in your application and in PostgreSQL.
+Npgsql's data source supports additional configuration beyond the connection string, such as logging, advanced authentication options, type mapping management, and more. To further configure a data source, use <xref:Npgsql.NpgsqlDataSourceBuilder> as follows:
 
-### Pooling
+```csharp
+var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=localhost;Username=test;Password=test");
+dataSourceBuilder
+    .UseLoggerFactory(loggerFactory) // Configure logging
+    .UseNodaTime() // Use NodaTime for date/time types
+    .UsePeriodicPasswordProvider(); // Automatically rotate the password periodically
+await using var dataSource = dataSourceBuilder.Build();
+```
 
-Opening and closing physical connections to PostgreSQL is an expensive and long process. Therefore, Npgsql connections are *pooled* by default: closing or disposing a connection doesn't close the underlying physical connection, but rather returns it to an internal pool managed by Npgsql. The next time a connection is opened, that pooled connection is returned again. This makes open and close extremely fast operations; do not hesitate to perform them a lot if needed, rather than holding a connection needlessly open for a long time.
+For more information on data source configuration, consult the relevant documentation pages.
 
-For information on tweaking the pooling behavior (or turning it off), see the [pooling section](connection-string-parameters.html#pooling) in the connection string page.
+## Basic SQL Execution
 
-## Commands
+Once you have a data source, an <xref:Npgsql.NpgsqlCommand> can be used to execute SQL against it:
 
-Once you have an open connection, a command can be used to execute SQL on it:
-
-```c#
-// Retrieve all rows
-await using var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn);
-await using var reader = await cmd.ExecuteReaderAsync();
+```csharp
+await using var command = dataSource.CreateCommand("SELECT some_field FROM some_table");
+await using var reader = await command.ExecuteReaderAsync();
 
 while (await reader.ReadAsync())
 {
@@ -36,13 +43,61 @@ while (await reader.ReadAsync())
 }
 ```
 
-The command contains the SQL to be executed, as well as any parameters (see the [parameters section](#parameters) below). Commands can be executed in the following three ways:
+More information on executing commands is provided below.
+
+## Connections
+
+In the example above, we didn't deal with a database *connection*; we just executed a command directly against a data source representing the database. Npgsql internally arranges for a connection on which to execute your command, but you don't need to concern yourself with that.
+
+However, in some situations it's necessary to interact with a connection, typically when some sort of state needs to persist across multiple command executions. The common example for this is a database transaction, where multiple commands need to be executed within the same transaction, on the same transaction. A data source also acts as a factory for connections, so you can do the following:
+
+```csharp
+await using var connection = await dataSource.OpenConnectionAsync();
+```
+
+At this point you have an open connection, and can execute commands against it much like we did against the data source above:
+
+```csharp
+await using var command = new NpgsqlCommand("SELECT '8'", connection);
+await using var reader = await command.ExecuteReaderAsync();
+// Consume the results
+```
+
+Connections must be disposed when they are no longer needed - not doing so will result in a connection leak, which can crash your program. In the above code sample, this is done via the `await using` C# construct, which ensures the connection is disposed even if an exception is later thrown. It's a good idea to keep connections open for as little time a possible: database connections are scarce resources, and keeping them open for unnecessarily long times can create unnecessary load in your application and in PostgreSQL.
+
+### Pooling
+
+Opening and closing physical connections to PostgreSQL is an expensive and long process. Therefore, Npgsql connections are *pooled* by default: closing or disposing a connection doesn't close the underlying physical connection, but rather returns it to an internal pool managed by Npgsql. The next time a connection is needed, that pooled connection is returned again. This makes open and close extremely fast operations; do not hesitate to perform them a lot if needed, rather than holding a connection needlessly open for a long time.
+
+For information on tweaking the pooling behavior (or turning it off), see the [pooling section](connection-string-parameters.html#pooling) in the connection string page.
+
+### Connections without a data source
+
+The data source concept is new in Npgsql 7.0, and is the recommended way to use Npgsql. When using older versions, connections where instantiated directly, rather than obtaining them from a data source:
+
+```csharp
+await using var conn = new NpgsqlConnection(connectionString);
+await conn.OpenAsync();
+```
+
+Direct instantiation of connection is still supported, but is discouraged for various reasons when using Npgsql 7.0.
+
+## Other execution methods
+
+Above, we executed SQL via [ExecuteReaderAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executereaderasync). There are other ways to execute a command, based on what results you expect from it:
 
 1. [ExecuteNonQueryAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executenonqueryasync): executes SQL which doesn't return any results, typically `INSERT`, `UPDATE` or `DELETE` statements. Returns the number of rows affected.
 2. [ExecuteScalarAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executescalarasync): executes SQL which returns a single, scalar value.
 3. [ExecuteReaderAsync](https://docs.microsoft.com/dotnet/api/system.data.common.dbcommand.executereaderasync): execute SQL which returns a full resultset. Returns an <xref:Npgsql.NpgsqlDataReader> which can be used to access the resultset (as in the above example).
 
-To execute multiple SQL statements in a single roundtrip, see [batching below](#batching).
+For example, to execute a simple SQL `INSERT` which does not return anything, you can use `ExecuteNonQueryAsync` as follows:
+
+```csharp
+await using var command = dataSource.CreateCommand("INSERT INTO some_table (some_field) VALUES (8)");
+await command.ExecuteNonQueryAsync();
+```
+
+Note that each execute method involves a database roundtrip. To execute multiple SQL statements in a single roundtrip, see the [batching section](#batching) below.
 
 ## Parameters
 
@@ -114,9 +169,22 @@ As an alternative, you can use `NpgsqlParameter<T>`. This generic class has a `T
 
 ### Basic transactions
 
-Transactions can be started by calling the standard ADO.NET method [`NpgsqlConnection.BeginTransaction()`](https://docs.microsoft.com/en-us/dotnet/api/system.data.common.dbconnection.begintransaction?view=net-6.0#system-data-common-dbconnection-begintransaction).
+Transactions can be started by calling the standard ADO.NET method [`NpgsqlConnection.BeginTransaction()`](https://learn.microsoft.com/dotnet/api/system.data.common.dbconnection.begintransactionasync?view=net-6.0):
 
-PostgreSQL doesn't support nested or concurrent transactions - only one transaction may be in progress at any given moment. Starting a transaction while another transaction is already in progress will throw an exception. Because of this, it isn't necessary to pass the NpgsqlTransaction object returned from `BeginTransaction()` to commands you execute - starting a transaction means that all subsequent commands will automatically participate in the transaction, until either a commit or rollback is performed. However, for maximum portability it's recommended to set the transaction on your commands.
+```csharp
+await using var connection = await dataSource.OpenConnectionAsync();
+await using var transaction = await connection.BeginTransactionAsync();
+
+await using var command1 = new NpgsqlCommand("...", connection, transaction);
+await command1.ExecuteNonQueryAsync();
+
+await using var command2 = new NpgsqlCommand("...", connection, transaction);
+await command2.ExecuteNonQueryAsync();
+
+await transaction.CommitAsync();
+```
+
+PostgreSQL doesn't support nested or concurrent transactions - only one transaction may be in progress at any given moment (starting a transaction while another transaction is already in progress throws an exception). Because of this, it isn't necessary to pass the NpgsqlTransaction object returned from `BeginTransaction()` to commands you execute - starting a transaction means that all subsequent commands will automatically participate in the transaction, until either a commit or rollback is performed. However, for maximum portability it's recommended to set the transaction on your commands.
 
 Although concurrent transactions aren't supported, PostgreSQL supports the concept of *savepoints* - you may set named savepoints in a transaction and roll back to them later without rolling back the entire transaction. Savepoints can be created, rolled back to, and released via [`NpgsqlTransaction.SaveAsync()`](https://docs.microsoft.com/dotnet/api/system.data.common.dbtransaction.saveasync), [`RollbackAsync()`](https://docs.microsoft.com/dotnet/api/system.data.common.dbtransaction.rollbackasync) and [`Release(name)`](https://docs.microsoft.com/dotnet/api/system.data.common.dbtransaction.releaseasync) respectively. [See the PostgreSQL documentation for more details.](https://www.postgresql.org/docs/current/static/tutorial-transactions.html).
 
@@ -124,14 +192,11 @@ When starting a transaction, you may optionally set the *isolation level*. [See 
 
 ### System.Transactions and distributed transactions
 
-In addition to `BeginTransaction()`, .NET includes System.Transactions, an alternative API for managing transactions - [read the MSDN docs to understand the concepts involved](https://msdn.microsoft.com/en-us/library/ee818746.aspx). Npgsql fully supports this API, and starting with version 3.3 will automatically enlist to ambient TransactionScopes (you can disable enlistment by specifying `Enlist=false` in your connection string).
+In addition to `BeginTransactionAsync()`, .NET includes System.Transactions, an alternative API for managing transactions - [read the MSDN docs to understand the concepts involved](https://msdn.microsoft.com/library/ee818746.aspx). Npgsql fully supports this API, and automatically enlists if a connection is opened within an ambient TransactionScopes.
 
-When more than one connection (or resource) enlists in the same transaction, the transaction is said to be *distributed*. While .NET Framework supports distributed transaction and Npgsql had limited support for them, .NET Core and .NET 5.0+ do not. It is therefore currently not possible to make use of distributed transactions in modern versions of .NET
+When a transaction includes more than one database (or even more than one concurrent connections to the same database), the transaction is said to be *distributed*. .NET 7.0 brings the same distributed transaction support that .NET Framework supported, for Windows only. While Npgsql partially supports this mechanism, it does not implement the recovery parts of the distributed transaction, because of some design issues with .NET's support. While distributed transactions may work for you, it is discouraged to fully rely on them with Npgsql.
 
 Note that if you open and close connections to the same database inside an ambient transaction, without ever having two connections open *at the same time*, Npgsql internally reuses the same connection, avoiding the need for a distributed transaction.
-
-<!-- Distributed transactions allow you to perform changes atomically across more than one database (or resource) via a two-phase commit protocol - [here is the MSDN documentation](https://msdn.microsoft.com/en-us/library/windows/desktop/ms681205(v=vs.85).aspx). Npgsql supports distributed transactions - support has been rewritten for version 3.2, fixing many previous issues. However, at this time Npgsql enlists as a *volatile resource manager*, meaning that if your application crashes while performing, recovery will not be managed properly. For more information about this, [see this page and the related ones](https://msdn.microsoft.com/en-us/library/ee818750.aspx). If you would like to see better distributed transaction recovery (i.e. durable resource manager enlistment), please say so [on this issue](https://github.com/npgsql/npgsql/issues/1378) and subscribe to it for updates.
--->
 
 ## Batching
 
@@ -217,9 +282,9 @@ await using var reader = await command1.ExecuteReaderAsync();
 
 Npgsql supports this mainly for portability, but this style of calling has no advantage over the regular command shown above. When `CommandType.StoredProcedure` is set, Npgsql will simply generate the appropriate `CALL my_procedure($1)` for you, nothing more. Unless you have specific portability requirements, it is recommended you simply avoid `CommandType.StoredProcedure` and construct the SQL yourself.
 
-Be aware that `CommandType.StoredProcedure` will generate a `CALL` command, which is suitable for invoking stored procedures and not functions. Version of Npgsql prior to 7.0 generated a `SELECT` command suitable for functions, and this legacy behavior can be enabled; see the [7.0 release notes](release-notes/7.0.md#commandtype_storedprocedure)
+Be aware that `CommandType.StoredProcedure` generates a `CALL` command, which is suitable for invoking stored procedures and not functions. Versions of Npgsql prior to 7.0 generated a `SELECT` command suitable for functions, and this legacy behavior can be enabled; see the [7.0 release notes](release-notes/7.0.md#commandtype_storedprocedure)
 
-Note that if `CommandType.StoredProcedure` is set and your parameter instances have names, Npgsql will generate parameters with `named notation`: `SELECT my_func(p1 => 'some_value')`. This means that your NpgsqlParameter names must match your PostgreSQL function parameters, or the function call will fail. If you omit the names on your NpgsqlParameters, positional notation will be used instead. Note that positional parameters must always come before named ones. [See the PostgreSQL docs for more info](https://www.postgresql.org/docs/current/static/sql-syntax-calling-funcs.html).
+Note that if `CommandType.StoredProcedure` is set and your parameter instances have names, Npgsql generates parameters with `named notation`: `SELECT my_func(p1 => 'some_value')`. This means that your NpgsqlParameter names must match your PostgreSQL procedure or function parameters, or the call will fail. If you omit the names on your NpgsqlParameters, positional notation will be used instead. Note that positional parameters must always come before named ones. [See the PostgreSQL docs for more info](https://www.postgresql.org/docs/current/static/sql-syntax-calling-funcs.html).
 
 ### Function in/out parameters
 

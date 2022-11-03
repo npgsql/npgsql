@@ -15,23 +15,21 @@ The best way to use Npgsql is to install its [nuget package](https://www.nuget.o
 
 Npgsql aims to be fully ADO.NET-compatible, its API should feel almost identical to other .NET database drivers.
 
-Here's a basic code snippet to get you started.
+Here's a basic code snippet to get you started:
 
 ```csharp
-var connString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
-
-await using var conn = new NpgsqlConnection(connString);
-await conn.OpenAsync();
+var connectionString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
+await using var dataSource = NpgsqlDataSource.Create(connectionString);
 
 // Insert some data
-await using (var cmd = new NpgsqlCommand("INSERT INTO data (some_field) VALUES ($1)", conn))
+await using (var cmd = dataSource.CreateCommand("INSERT INTO data (some_field) VALUES ($1)"))
 {
     cmd.Parameters.AddWithValue("Hello world");
     await cmd.ExecuteNonQueryAsync();
 }
 
 // Retrieve all rows
-await using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
+await using (var cmd = dataSource.CreateCommand("SELECT some_field FROM data"))
 await using (var reader = await cmd.ExecuteReaderAsync())
 {
     while (await reader.ReadAsync())

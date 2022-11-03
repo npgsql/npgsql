@@ -1,14 +1,33 @@
 # Security and Encryption
 
-## Logging in
+## Password management
 
 The simplest way to log into PostgreSQL is by specifying a `Username` and a `Password` in your connection string. Depending on how your PostgreSQL is configured (in the `pg_hba.conf` file), Npgsql will send the password in MD5 or in cleartext (not recommended).
 
-If a `Password` is not specified and your PostgreSQL is configured to request a password (plain or MD5), Npgsql will look for a [standard PostgreSQL password file](https://www.postgresql.org/docs/current/static/libpq-pgpass.html). If you specify the `Passfile` connection string parameter, the file it specifies will be used. If that parameter isn't defined, Npgsql will look under the path taken from `PGPASSFILE` environment variable. If the environment variable isn't defined, Npgsql will fall back to the system-dependent default directory which is `$HOME/.pgpass` for Unix and `%APPDATA%\postgresql\pgpass.conf` for Windows.
+If a `Password` is not specified and your PostgreSQL is configured to request a password, Npgsql will look for a [standard PostgreSQL password file](https://www.postgresql.org/docs/current/static/libpq-pgpass.html). If you specify the `Passfile` connection string parameter, the file it specifies will be used. If that parameter isn't defined, Npgsql will look under the path taken from `PGPASSFILE` environment variable. If the environment variable isn't defined, Npgsql will fall back to the system-dependent default directory which is `$HOME/.pgpass` for Unix and `%APPDATA%\postgresql\pgpass.conf` for Windows.
 
-`NpgsqlConnection` can also be configured with a `ProvidePasswordCallback`. This will be executed when new database connections are opened to generate a password in code. This can be useful if you are using Amazon Web Services RDS for Postgres which can be configured to use short lived tokens generated based on access credentials. The `ProvidePasswordCallback` delegate is executed when both password and `Passfile` connection string parameters are not specified.
+### Auth token rotation and dynamic password
 
-For documentation about all auth methods supported by PostgreSQL, [see this page](http://www.postgresql.org/docs/current/static/auth-methods.html). Note that Npgsql supports Unix-domain sockets (auth method `local`), simply set your `Host` parameter to the absolute path of your PostgreSQL socket directory, as configured in your `postgresql.conf`.
+In some cloud scenarios, logging into PostgreSQL is done with an auth token that is rotated every time interval (e.g. one hour). Starting with version 7.0, Npgsql has a built-in periodic password provider mechanism, which allows refreshing the password with zero effort:
+
+```csharp
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(...);
+dataSourceBuilder.UsePeriodicPasswordProvider(
+    (settings, cancellationToken) =>  /* async code to fetch the new access token */,
+    TimeSpan.FromMinutes(55), // Interval for refreshing the token
+    TimeSpan.FromSeconds(5)); // Interval for retrying after a refresh failure
+await using var dataSource = NpgsqlDataSource.Create(connectionString);
+```
+
+This API allows you to provide a minimal async code fragment for fetching the latest auth token, and have Npgsql take care of running it for you as needed.
+
+If, instead, you prefer to manage this yourself, you can simply inject a new password at any time into a working data source:
+
+```csharp
+dataSource.Password = <new password>;
+```
+
+Any physical connection that's opened after this point will use the newly-injected password.
 
 ## Encryption (SSL/TLS)
 
@@ -53,7 +72,7 @@ If the root CA of the server certificate isn't installed in your machine's CA st
 
 Note that Npgsql does not perform certificate revocation validation by default, since this is an optional extension not implemented by all providers and CAs. To turn on certificate revocation validation, specify `Check Certificate Revocation=true` on the connection string.
 
-Finally, if the above options aren't sufficient for your scenario, you can set <xref:NpgsqlNpgsqlConnection.UserCertificateValidationCallback?displayProperty=nameWithType> and define your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
+Finally, if the above options aren't sufficient for your scenario, you can call <xref:NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback?displayProperty=nameWithType> to provide your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
 ### Client certificates
 
@@ -65,7 +84,7 @@ PostgreSQL may be configured to require valid certificates from connecting clien
 
 To provide a password for a client certificate, set either the `SSL Password` (6.0 and higher) or `Client Certificate Key` (5.0 and lower) connection string parameter.
 
-Finally, you can set `ProvideClientCertificatesCallback` on `NpgsqlConnection` to further customize how client certificates are provided (this works like on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
+Finally, you can call <xref:NpgsqlDataSourceBuilder.UseClientCertificate?displayProperty=nameWithType>, <xref:NpgsqlDataSourceBuilder.UseClientCertificates> or <xref:NpgsqlDataSourceBuilder.UseClientCertificatesUseClientCertificatesCallback> to programmatically provide a certificate, multiple certificates or a callback which returns certificates (this works like on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
 > [!NOTE]
 > Npgsql supports .PFX and .PEM certificates starting with 6.0. Previously, only .PFX certificates were supported.
