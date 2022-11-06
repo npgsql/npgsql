@@ -4,18 +4,34 @@ Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
 Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
 Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlDataSource
+Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
+Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
+Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlDataSource.Password.set -> void
+Npgsql.NpgsqlDataSourceBuilder
 Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
+Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
+Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
+Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConnectionStringBuilder!
 Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
 Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.set -> void
+Npgsql.NpgsqlDataSourceBuilder.EnableParameterLogging(bool parameterLoggingEnabled = true) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.NpgsqlDataSourceBuilder(string? connectionString = null) -> void
 Npgsql.NpgsqlDataSourceBuilder.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlDataSourceBuilder.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlDataSourceBuilder.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.NpgsqlDataSourceBuilder.UseClientCertificate(System.Security.Cryptography.X509Certificates.X509Certificate? clientCertificate) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseClientCertificates(System.Security.Cryptography.X509Certificates.X509CertificateCollection? clientCertificates) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseClientCertificatesCallback(System.Action<System.Security.Cryptography.X509Certificates.X509CertificateCollection!>? clientCertificatesCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider(System.Func<Npgsql.NpgsqlConnectionStringBuilder!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<string!>>? passwordProvider, System.TimeSpan successRefreshInterval, System.TimeSpan failureRefreshInterval) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlLoggingConfiguration
@@ -25,11 +41,69 @@ Npgsql.NpgsqlMultiHostDataSource.CreateConnection(Npgsql.TargetSessionAttributes
 Npgsql.NpgsqlMultiHostDataSource.OpenConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlMultiHostDataSource.OpenConnectionAsync(Npgsql.TargetSessionAttributes targetSessionAttributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
 Npgsql.NpgsqlMultiHostDataSource.WithTargetSession(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
+Npgsql.Replication.PgOutput.Messages.BeginPrepareMessage
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.TransactionCommitTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage.TransactionGid.get -> string!
+Npgsql.Replication.PgOutput.Messages.PrepareMessage
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.TransactionPrepareTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.PreparedTransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionPrepareTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionRollbackTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.TwoPhase.get -> bool?
+Npgsql.Replication.PhysicalReplicationConnection.ReadReplicationSlot(string! slotName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PhysicalReplicationSlot?>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot! slot, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
+Npgsql.Replication.PhysicalReplicationSlot.RestartLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber?
+Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
 Npgsql.StatementType.Call = 11 -> Npgsql.StatementType
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
+override Npgsql.NpgsqlCommand.CreateDbParameter() -> System.Data.Common.DbParameter!
+override Npgsql.NpgsqlCommand.DbConnection.get -> System.Data.Common.DbConnection?
+override Npgsql.NpgsqlCommand.DbConnection.set -> void
+override Npgsql.NpgsqlCommand.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
+override Npgsql.NpgsqlCommand.DbTransaction.get -> System.Data.Common.DbTransaction?
+override Npgsql.NpgsqlCommand.DbTransaction.set -> void
+override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
+override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
+override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
+override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
+override Npgsql.NpgsqlFactory.CreateDataSource(string! connectionString) -> System.Data.Common.DbDataSource!
+static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
+static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
+static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
+static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
+static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
+virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
+
 *REMOVED*Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
 *REMOVED*abstract Npgsql.Logging.NpgsqlLogger.Log(Npgsql.Logging.NpgsqlLogLevel level, int connectorId, string! msg, System.Exception? exception = null) -> void
@@ -76,6 +150,11 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
 *REMOVED*Npgsql.PhysicalOpenAsyncCallback
 *REMOVED*Npgsql.PhysicalOpenCallback
+*REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName) -> void
+*REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+*REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
+*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
 *REMOVED*NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
@@ -205,6 +284,8 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*static Npgsql.NpgsqlConnection.MapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
 *REMOVED*static Npgsql.NpgsqlConnection.UnmapCompositeGlobally<T>(string! pgName, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
 *REMOVED*static Npgsql.NpgsqlConnection.UnmapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
+*REMOVED*static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
+*REMOVED*static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
 *REMOVED*static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
@@ -284,83 +365,3 @@ static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.
 *REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.MinValue -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*static readonly NpgsqlTypes.NpgsqlTimeSpan.Zero -> NpgsqlTypes.NpgsqlTimeSpan
 *REMOVED*static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
-Npgsql.NpgsqlDataSource
-Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
-Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
-Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
-Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
-Npgsql.NpgsqlDataSource.Password.set -> void
-Npgsql.NpgsqlDataSourceBuilder
-Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
-Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConnectionStringBuilder!
-Npgsql.NpgsqlDataSourceBuilder.EnableParameterLogging(bool parameterLoggingEnabled = true) -> Npgsql.NpgsqlDataSourceBuilder!
-Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
-Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
-Npgsql.NpgsqlDataSourceBuilder.NpgsqlDataSourceBuilder(string? connectionString = null) -> void
-Npgsql.NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider(System.Func<Npgsql.NpgsqlConnectionStringBuilder!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<string!>>? passwordProvider, System.TimeSpan successRefreshInterval, System.TimeSpan failureRefreshInterval) -> Npgsql.NpgsqlDataSourceBuilder!
-Npgsql.NpgsqlDataSourceBuilder.UseLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory) -> Npgsql.NpgsqlDataSourceBuilder!
-Npgsql.Replication.PhysicalReplicationConnection.ReadReplicationSlot(string! slotName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PhysicalReplicationSlot?>!
-Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot! slot, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-*REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName) -> void
-Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
-Npgsql.Replication.PhysicalReplicationSlot.RestartLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber?
-Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
-static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
-*REMOVED*static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
-static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
-*REMOVED*static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
-static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
-*REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-*REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-Npgsql.Replication.PgOutput.Messages.BeginPrepareMessage
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
-Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.TransactionCommitTimestamp.get -> System.DateTime
-Npgsql.Replication.PgOutput.Messages.PrepareMessage
-Npgsql.Replication.PgOutput.Messages.PrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
-Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
-Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
-Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage
-Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage.TransactionGid.get -> string!
-*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
-Npgsql.Replication.PgOutput.Messages.PrepareMessageBase
-Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.TransactionPrepareTimestamp.get -> System.DateTime
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.PreparedTransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionPrepareTimestamp.get -> System.DateTime
-Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionRollbackTimestamp.get -> System.DateTime
-Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage
-Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
-Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
-Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
-Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
-*REMOVED*Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
-Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
-Npgsql.Replication.PgOutput.PgOutputReplicationOptions.TwoPhase.get -> bool?
-override Npgsql.NpgsqlCommand.CreateDbParameter() -> System.Data.Common.DbParameter!
-override Npgsql.NpgsqlCommand.DbConnection.get -> System.Data.Common.DbConnection?
-override Npgsql.NpgsqlCommand.DbConnection.set -> void
-override Npgsql.NpgsqlCommand.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
-override Npgsql.NpgsqlCommand.DbTransaction.get -> System.Data.Common.DbTransaction?
-override Npgsql.NpgsqlCommand.DbTransaction.set -> void
-override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
-override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
-override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
-override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
-override Npgsql.NpgsqlFactory.CreateDataSource(string! connectionString) -> System.Data.Common.DbDataSource!
-static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
-static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
-virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
