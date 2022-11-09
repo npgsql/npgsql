@@ -68,7 +68,7 @@ public class ListLoggerProvider : ILoggerProvider
 
         public bool IsEnabled(LogLevel logLevel) => _provider._recording;
 
-        public IDisposable BeginScope<TState>(TState state)
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull
             => new Scope();
 
         class Scope : IDisposable
