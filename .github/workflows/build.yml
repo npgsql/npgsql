@@ -10,11 +10,9 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '7.0.100-rc.2.22477.23'
+  dotnet_sdk_version: '7.0.100'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
-  # Hack to support latest prerelease dotnet SDK, https://github.com/dotnet/installer/issues/12230#issuecomment-936348246
-  MSBuildEnableWorkloadResolver: false
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
   # with some of our tests
   PGPASSWORD: ""
