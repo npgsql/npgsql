@@ -13,7 +13,7 @@ public static class NpgsqlNodaTimeExtensions
     /// Sets up NodaTime mappings for the PostgreSQL date/time types.
     /// </summary>
     /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
-    public static INpgsqlTypeMapper UseNodaTime(this INpgsqlTypeMapper mapper)
+    public static T UseNodaTime<T>(this T mapper) where T : INpgsqlTypeMapper
     {
         mapper.AddTypeResolverFactory(new NodaTimeTypeHandlerResolverFactory());
         return mapper;
