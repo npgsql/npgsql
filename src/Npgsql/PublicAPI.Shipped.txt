@@ -1,6 +1,4 @@
 ﻿#nullable enable
-abstract Npgsql.Logging.NpgsqlLogger.IsEnabled(Npgsql.Logging.NpgsqlLogLevel level) -> bool
-abstract Npgsql.Logging.NpgsqlLogger.Log(Npgsql.Logging.NpgsqlLogLevel level, int connectorId, string! msg, System.Exception? exception = null) -> void
 abstract Npgsql.Replication.PgOutput.Messages.UpdateMessage.NewRow.get -> Npgsql.Replication.PgOutput.ReplicationTuple!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 const Npgsql.NpgsqlConnection.DefaultPort = 5432 -> int
@@ -241,18 +239,6 @@ const Npgsql.PostgresErrorCodes.WindowingError = "42P20" -> string!
 const Npgsql.PostgresErrorCodes.WithCheckOptionViolation = "44000" -> string!
 const Npgsql.PostgresErrorCodes.WrongObjectType = "42809" -> string!
 const Npgsql.PostgresErrorCodes.ZeroLengthCharacterString = "2200F" -> string!
-const NpgsqlTypes.NpgsqlDate.MaxYear = 5874897 -> int
-const NpgsqlTypes.NpgsqlDate.MinYear = -4714 -> int
-const NpgsqlTypes.NpgsqlTimeSpan.DaysPerMonth = 30 -> int
-const NpgsqlTypes.NpgsqlTimeSpan.HoursPerDay = 24 -> int
-const NpgsqlTypes.NpgsqlTimeSpan.MonthsPerYear = 12 -> int
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerDay = 864000000000 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerHour = 36000000000 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMicrosecond = 10 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMillsecond = 10000 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMinute = 600000000 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerMonth = 25920000000000 -> long
-const NpgsqlTypes.NpgsqlTimeSpan.TicksPerSecond = 10000000 -> long
 Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Never = 0 -> Npgsql.ArrayNullabilityMode
@@ -265,21 +251,6 @@ Npgsql.BackendMessages.FieldDescription.TypeSize.set -> void
 Npgsql.INpgsqlNameTranslator
 Npgsql.INpgsqlNameTranslator.TranslateMemberName(string! clrName) -> string!
 Npgsql.INpgsqlNameTranslator.TranslateTypeName(string! clrName) -> string!
-Npgsql.Logging.ConsoleLoggingProvider
-Npgsql.Logging.ConsoleLoggingProvider.ConsoleLoggingProvider(Npgsql.Logging.NpgsqlLogLevel minLevel = Npgsql.Logging.NpgsqlLogLevel.Info, bool printLevel = false, bool printConnectorId = false) -> void
-Npgsql.Logging.ConsoleLoggingProvider.CreateLogger(string! name) -> Npgsql.Logging.NpgsqlLogger!
-Npgsql.Logging.INpgsqlLoggingProvider
-Npgsql.Logging.INpgsqlLoggingProvider.CreateLogger(string! name) -> Npgsql.Logging.NpgsqlLogger!
-Npgsql.Logging.NpgsqlLogger
-Npgsql.Logging.NpgsqlLogger.NpgsqlLogger() -> void
-Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Debug = 2 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Error = 5 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Fatal = 6 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Info = 3 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Trace = 1 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogLevel.Warn = 4 -> Npgsql.Logging.NpgsqlLogLevel
-Npgsql.Logging.NpgsqlLogManager
 Npgsql.NameTranslation.NpgsqlNullNameTranslator
 Npgsql.NameTranslation.NpgsqlNullNameTranslator.NpgsqlNullNameTranslator() -> void
 Npgsql.NameTranslation.NpgsqlNullNameTranslator.TranslateMemberName(string! clrName) -> string!
@@ -295,6 +266,8 @@ Npgsql.NpgsqlBatch
 Npgsql.NpgsqlBatch.BatchCommands.get -> Npgsql.NpgsqlBatchCommandCollection!
 Npgsql.NpgsqlBatch.Connection.get -> Npgsql.NpgsqlConnection?
 Npgsql.NpgsqlBatch.Connection.set -> void
+Npgsql.NpgsqlBatch.EnableErrorBarriers.get -> bool
+Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
 Npgsql.NpgsqlBatch.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReader!
 Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
 Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
@@ -302,6 +275,8 @@ Npgsql.NpgsqlBatch.NpgsqlBatch(Npgsql.NpgsqlConnection? connection = null, Npgsq
 Npgsql.NpgsqlBatch.Transaction.get -> Npgsql.NpgsqlTransaction?
 Npgsql.NpgsqlBatch.Transaction.set -> void
 Npgsql.NpgsqlBatchCommand
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.get -> bool?
+Npgsql.NpgsqlBatchCommand.AppendErrorBarrier.set -> void
 Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand() -> void
 Npgsql.NpgsqlBatchCommand.NpgsqlBatchCommand(string! commandText) -> void
 Npgsql.NpgsqlBatchCommand.OID.get -> uint
@@ -355,7 +330,6 @@ Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken can
 Npgsql.NpgsqlCommand
 Npgsql.NpgsqlCommand.AllResultTypesAreUnknown.get -> bool
 Npgsql.NpgsqlCommand.AllResultTypesAreUnknown.set -> void
-Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
 Npgsql.NpgsqlCommand.Connection.get -> Npgsql.NpgsqlConnection?
 Npgsql.NpgsqlCommand.Connection.set -> void
 Npgsql.NpgsqlCommand.CreateParameter() -> Npgsql.NpgsqlParameter!
@@ -409,16 +383,10 @@ Npgsql.NpgsqlConnection.FullState.get -> System.Data.ConnectionState
 Npgsql.NpgsqlConnection.HasIntegerDateTimes.get -> bool
 Npgsql.NpgsqlConnection.Host.get -> string?
 Npgsql.NpgsqlConnection.IntegratedSecurity.get -> bool
-Npgsql.NpgsqlConnection.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
-Npgsql.NpgsqlConnection.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
 Npgsql.NpgsqlConnection.Notice -> Npgsql.NoticeEventHandler?
 Npgsql.NpgsqlConnection.Notification -> Npgsql.NotificationEventHandler?
 Npgsql.NpgsqlConnection.NpgsqlConnection() -> void
 Npgsql.NpgsqlConnection.NpgsqlConnection(string? connectionString) -> void
-Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.get -> Npgsql.PhysicalOpenAsyncCallback?
-Npgsql.NpgsqlConnection.PhysicalOpenAsyncCallback.set -> void
-Npgsql.NpgsqlConnection.PhysicalOpenCallback.get -> Npgsql.PhysicalOpenCallback?
-Npgsql.NpgsqlConnection.PhysicalOpenCallback.set -> void
 Npgsql.NpgsqlConnection.Port.get -> int
 Npgsql.NpgsqlConnection.PostgresParameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 Npgsql.NpgsqlConnection.PostgreSqlVersion.get -> System.Version!
@@ -428,7 +396,7 @@ Npgsql.NpgsqlConnection.ProvideClientCertificatesCallback.set -> void
 Npgsql.NpgsqlConnection.ProvidePasswordCallback.get -> Npgsql.ProvidePasswordCallback?
 Npgsql.NpgsqlConnection.ProvidePasswordCallback.set -> void
 Npgsql.NpgsqlConnection.ReloadTypes() -> void
-Npgsql.NpgsqlConnection.Settings.get -> Npgsql.NpgsqlConnectionStringBuilder!
+Npgsql.NpgsqlConnection.ReloadTypesAsync() -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlConnection.Timezone.get -> string!
 Npgsql.NpgsqlConnection.TypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.NpgsqlConnection.UnprepareAll() -> void
@@ -586,10 +554,6 @@ Npgsql.NpgsqlConnectionStringBuilder.WriteBufferSize.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.WriteBufferSize.set -> void
 Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.get -> int
 Npgsql.NpgsqlConnectionStringBuilder.WriteCoalescingBufferThresholdBytes.set -> void
-Npgsql.NpgsqlConnectionStringPropertyAttribute
-Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute() -> void
-Npgsql.NpgsqlConnectionStringPropertyAttribute.NpgsqlConnectionStringPropertyAttribute(params string![]! synonyms) -> void
-Npgsql.NpgsqlConnectionStringPropertyAttribute.Synonyms.get -> string![]!
 Npgsql.NpgsqlCopyTextReader
 Npgsql.NpgsqlCopyTextReader.Cancel() -> void
 Npgsql.NpgsqlCopyTextReader.CancelAsync() -> System.Threading.Tasks.Task!
@@ -617,17 +581,44 @@ Npgsql.NpgsqlDataReader.GetColumnSchema() -> System.Collections.ObjectModel.Read
 Npgsql.NpgsqlDataReader.GetColumnSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.ObjectModel.ReadOnlyCollection<Npgsql.Schema.NpgsqlDbColumn!>!>!
 Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 Npgsql.NpgsqlDataReader.GetDataTypeOID(int ordinal) -> uint
-Npgsql.NpgsqlDataReader.GetDate(int ordinal) -> NpgsqlTypes.NpgsqlDate
-Npgsql.NpgsqlDataReader.GetInterval(int ordinal) -> NpgsqlTypes.NpgsqlTimeSpan
 Npgsql.NpgsqlDataReader.GetPostgresType(int ordinal) -> Npgsql.PostgresTypes.PostgresType!
 Npgsql.NpgsqlDataReader.GetStreamAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.Stream!>!
 Npgsql.NpgsqlDataReader.GetTextReaderAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
 Npgsql.NpgsqlDataReader.GetTimeSpan(int ordinal) -> System.TimeSpan
-Npgsql.NpgsqlDataReader.GetTimeStamp(int ordinal) -> NpgsqlTypes.NpgsqlDateTime
 Npgsql.NpgsqlDataReader.IsOnRow.get -> bool
 Npgsql.NpgsqlDataReader.ReaderClosed -> System.EventHandler?
 Npgsql.NpgsqlDataReader.Rows.get -> ulong
 Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
+Npgsql.NpgsqlDataSource
+Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
+Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
+Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlDataSource.Password.set -> void
+Npgsql.NpgsqlDataSourceBuilder
+Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
+Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
+Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
+Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
+Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConnectionStringBuilder!
+Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
+Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.set -> void
+Npgsql.NpgsqlDataSourceBuilder.EnableParameterLogging(bool parameterLoggingEnabled = true) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.NpgsqlDataSourceBuilder.NpgsqlDataSourceBuilder(string? connectionString = null) -> void
+Npgsql.NpgsqlDataSourceBuilder.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.NpgsqlDataSourceBuilder.UseClientCertificate(System.Security.Cryptography.X509Certificates.X509Certificate? clientCertificate) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseClientCertificates(System.Security.Cryptography.X509Certificates.X509CertificateCollection? clientCertificates) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseClientCertificatesCallback(System.Action<System.Security.Cryptography.X509Certificates.X509CertificateCollection!>? clientCertificatesCallback) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UsePeriodicPasswordProvider(System.Func<Npgsql.NpgsqlConnectionStringBuilder!, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<string!>>? passwordProvider, System.TimeSpan successRefreshInterval, System.TimeSpan failureRefreshInterval) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UsePhysicalConnectionInitializer(System.Action<Npgsql.NpgsqlConnection!>? connectionInitializer, System.Func<Npgsql.NpgsqlConnection!, System.Threading.Tasks.Task!>? connectionInitializerAsync) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlException
 Npgsql.NpgsqlException.BatchCommand.get -> Npgsql.NpgsqlBatchCommand?
 Npgsql.NpgsqlException.BatchCommand.set -> void
@@ -659,6 +650,13 @@ Npgsql.NpgsqlLargeObjectStream.GetLengthAsync(System.Threading.CancellationToken
 Npgsql.NpgsqlLargeObjectStream.Has64BitSupport.get -> bool
 Npgsql.NpgsqlLargeObjectStream.SeekAsync(long offset, System.IO.SeekOrigin origin, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 Npgsql.NpgsqlLargeObjectStream.SetLength(long value, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlLoggingConfiguration
+Npgsql.NpgsqlMultiHostDataSource
+Npgsql.NpgsqlMultiHostDataSource.ClearDatabaseStates() -> void
+Npgsql.NpgsqlMultiHostDataSource.CreateConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlMultiHostDataSource.OpenConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlMultiHostDataSource.OpenConnectionAsync(Npgsql.TargetSessionAttributes targetSessionAttributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlMultiHostDataSource.WithTargetSession(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlNestedDataReader
 Npgsql.NpgsqlNestedDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 Npgsql.NpgsqlNoticeEventArgs
@@ -742,8 +740,6 @@ Npgsql.NpgsqlTracingOptions
 Npgsql.NpgsqlTracingOptions.NpgsqlTracingOptions() -> void
 Npgsql.NpgsqlTransaction
 Npgsql.NpgsqlTransaction.Connection.get -> Npgsql.NpgsqlConnection?
-Npgsql.PhysicalOpenAsyncCallback
-Npgsql.PhysicalOpenCallback
 Npgsql.PostgresErrorCodes
 Npgsql.PostgresException
 Npgsql.PostgresException.Code.get -> string!
@@ -859,6 +855,7 @@ Npgsql.Replication.LogicalSlotSnapshotInitMode.Use = 1 -> Npgsql.Replication.Log
 Npgsql.Replication.PgOutput.Messages.BeginMessage
 Npgsql.Replication.PgOutput.Messages.BeginMessage.TransactionCommitTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.BeginMessage.TransactionFinalLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.BeginPrepareMessage
 Npgsql.Replication.PgOutput.Messages.CommitMessage
 Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
 Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
@@ -866,6 +863,13 @@ Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitLsn.get -> NpgsqlTypes.
 Npgsql.Replication.PgOutput.Messages.CommitMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.CommitMessage.CommitFlags
 Npgsql.Replication.PgOutput.Messages.CommitMessage.TransactionCommitTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.CommitMessage.TransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.CommitPreparedFlags
+Npgsql.Replication.PgOutput.Messages.CommitPreparedMessage.TransactionCommitTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.DefaultUpdateMessage
 Npgsql.Replication.PgOutput.Messages.DeleteMessage
 Npgsql.Replication.PgOutput.Messages.DeleteMessage.Relation.get -> Npgsql.Replication.PgOutput.Messages.RelationMessage!
@@ -892,6 +896,16 @@ Npgsql.Replication.PgOutput.Messages.OriginMessage.OriginCommitLsn.get -> Npgsql
 Npgsql.Replication.PgOutput.Messages.OriginMessage.OriginName.get -> string!
 Npgsql.Replication.PgOutput.Messages.PgOutputReplicationMessage
 Npgsql.Replication.PgOutput.Messages.PgOutputReplicationMessage.PgOutputReplicationMessage() -> void
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage
+Npgsql.Replication.PgOutput.Messages.PreparedTransactionControlMessage.TransactionGid.get -> string!
+Npgsql.Replication.PgOutput.Messages.PrepareMessage
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.PrepareMessage.PrepareFlags
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.PrepareLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.PrepareMessageBase.TransactionPrepareTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.RelationMessage
 Npgsql.Replication.PgOutput.Messages.RelationMessage.Column
 Npgsql.Replication.PgOutput.Messages.RelationMessage.Column.Column() -> void
@@ -918,6 +932,14 @@ Npgsql.Replication.PgOutput.Messages.RelationMessageColumn.DataTypeId.get -> uin
 Npgsql.Replication.PgOutput.Messages.RelationMessageColumn.Flags.get -> byte
 Npgsql.Replication.PgOutput.Messages.RelationMessageColumn.RelationMessageColumn() -> void
 Npgsql.Replication.PgOutput.Messages.RelationMessageColumn.TypeModifier.get -> int
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.PreparedTransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.RollbackPreparedFlags
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionPrepareTimestamp.get -> System.DateTime
+Npgsql.Replication.PgOutput.Messages.RollbackPreparedMessage.TransactionRollbackTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.StreamAbortMessage
 Npgsql.Replication.PgOutput.Messages.StreamAbortMessage.SubtransactionXid.get -> uint
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage
@@ -925,6 +947,10 @@ Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.CommitLsn.get -> Npgsql
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.Flags.get -> byte
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionCommitTimestamp.get -> System.DateTime
 Npgsql.Replication.PgOutput.Messages.StreamCommitMessage.TransactionEndLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.Flags.get -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
+Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags.None = 0 -> Npgsql.Replication.PgOutput.Messages.StreamPrepareMessage.StreamPrepareFlags
 Npgsql.Replication.PgOutput.Messages.StreamStartMessage
 Npgsql.Replication.PgOutput.Messages.StreamStartMessage.StreamSegmentIndicator.get -> byte
 Npgsql.Replication.PgOutput.Messages.StreamStopMessage
@@ -952,11 +978,12 @@ Npgsql.Replication.PgOutput.PgOutputReplicationOptions
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Binary.get -> bool?
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Equals(Npgsql.Replication.PgOutput.PgOutputReplicationOptions? other) -> bool
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Messages.get -> bool?
-Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
-Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(string! publicationName, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PgOutputReplicationOptions(System.Collections.Generic.IEnumerable<string!>! publicationNames, ulong protocolVersion, bool? binary = null, bool? streaming = null, bool? messages = null, bool? twoPhase = null) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.ProtocolVersion.get -> ulong
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.PublicationNames.get -> System.Collections.Generic.List<string!>!
 Npgsql.Replication.PgOutput.PgOutputReplicationOptions.Streaming.get -> bool?
+Npgsql.Replication.PgOutput.PgOutputReplicationOptions.TwoPhase.get -> bool?
 Npgsql.Replication.PgOutput.PgOutputReplicationSlot
 Npgsql.Replication.PgOutput.PgOutputReplicationSlot.PgOutputReplicationSlot(Npgsql.Replication.PgOutput.PgOutputReplicationSlot! slot) -> void
 Npgsql.Replication.PgOutput.PgOutputReplicationSlot.PgOutputReplicationSlot(Npgsql.Replication.ReplicationSlotOptions options) -> void
@@ -985,10 +1012,14 @@ Npgsql.Replication.PhysicalReplicationConnection
 Npgsql.Replication.PhysicalReplicationConnection.CreateReplicationSlot(string! slotName, bool isTemporary = false, bool reserveWal = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PhysicalReplicationSlot!>!
 Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection() -> void
 Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection(string? connectionString) -> void
-Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationConnection.ReadReplicationSlot(string! slotName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PhysicalReplicationSlot?>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot! slot, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
+Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationSlot
-Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName) -> void
+Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
+Npgsql.Replication.PhysicalReplicationSlot.RestartLsn.get -> NpgsqlTypes.NpgsqlLogSequenceNumber?
+Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
 Npgsql.Replication.ReplicationConnection
 Npgsql.Replication.ReplicationConnection.CommandTimeout.get -> System.TimeSpan
 Npgsql.Replication.ReplicationConnection.CommandTimeout.set -> void
@@ -1087,6 +1118,8 @@ Npgsql.Schema.NpgsqlDbColumn.IsAliased.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsAliased.set -> void
 Npgsql.Schema.NpgsqlDbColumn.IsAutoIncrement.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsAutoIncrement.set -> void
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.get -> bool?
+Npgsql.Schema.NpgsqlDbColumn.IsIdentity.set -> void
 Npgsql.Schema.NpgsqlDbColumn.IsKey.get -> bool?
 Npgsql.Schema.NpgsqlDbColumn.IsKey.set -> void
 Npgsql.Schema.NpgsqlDbColumn.IsLong.get -> bool?
@@ -1118,6 +1151,7 @@ Npgsql.SslMode.Require = 3 -> Npgsql.SslMode
 Npgsql.SslMode.VerifyCA = 4 -> Npgsql.SslMode
 Npgsql.SslMode.VerifyFull = 5 -> Npgsql.SslMode
 Npgsql.StatementType
+Npgsql.StatementType.Call = 11 -> Npgsql.StatementType
 Npgsql.StatementType.Copy = 8 -> Npgsql.StatementType
 Npgsql.StatementType.CreateTableAs = 5 -> Npgsql.StatementType
 Npgsql.StatementType.Delete = 3 -> Npgsql.StatementType
@@ -1132,6 +1166,7 @@ Npgsql.StatementType.Update = 4 -> Npgsql.StatementType
 Npgsql.TypeMapping.INpgsqlTypeMapper
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
+Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
@@ -1170,78 +1205,6 @@ NpgsqlTypes.NpgsqlCircle.X.get -> double
 NpgsqlTypes.NpgsqlCircle.X.set -> void
 NpgsqlTypes.NpgsqlCircle.Y.get -> double
 NpgsqlTypes.NpgsqlCircle.Y.set -> void
-NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.AddDays(int days) -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.AddMonths(int months) -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.AddYears(int years) -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.Compare(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> int
-NpgsqlTypes.NpgsqlDate.Compare(object? x, object? y) -> int
-NpgsqlTypes.NpgsqlDate.CompareTo(NpgsqlTypes.NpgsqlDate other) -> int
-NpgsqlTypes.NpgsqlDate.CompareTo(object? o) -> int
-NpgsqlTypes.NpgsqlDate.Day.get -> int
-NpgsqlTypes.NpgsqlDate.DayOfWeek.get -> System.DayOfWeek
-NpgsqlTypes.NpgsqlDate.DayOfYear.get -> int
-NpgsqlTypes.NpgsqlDate.Equals(NpgsqlTypes.NpgsqlDate other) -> bool
-NpgsqlTypes.NpgsqlDate.IsFinite.get -> bool
-NpgsqlTypes.NpgsqlDate.IsInfinity.get -> bool
-NpgsqlTypes.NpgsqlDate.IsLeapYear.get -> bool
-NpgsqlTypes.NpgsqlDate.IsNegativeInfinity.get -> bool
-NpgsqlTypes.NpgsqlDate.Month.get -> int
-NpgsqlTypes.NpgsqlDate.NpgsqlDate() -> void
-NpgsqlTypes.NpgsqlDate.NpgsqlDate(int year, int month, int day) -> void
-NpgsqlTypes.NpgsqlDate.NpgsqlDate(NpgsqlTypes.NpgsqlDate copyFrom) -> void
-NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateOnly date) -> void
-NpgsqlTypes.NpgsqlDate.NpgsqlDate(System.DateTime dateTime) -> void
-NpgsqlTypes.NpgsqlDate.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDate.Year.get -> int
-NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.Add(in NpgsqlTypes.NpgsqlTimeSpan value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.Add(System.TimeSpan value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddDays(double value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddHours(double value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddMilliseconds(double value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddMinutes(double value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddMonths(int value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddSeconds(double value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddTicks(long value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.AddYears(int value) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.Compare(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> int
-NpgsqlTypes.NpgsqlDateTime.Compare(object? x, object? y) -> int
-NpgsqlTypes.NpgsqlDateTime.CompareTo(NpgsqlTypes.NpgsqlDateTime other) -> int
-NpgsqlTypes.NpgsqlDateTime.CompareTo(object? o) -> int
-NpgsqlTypes.NpgsqlDateTime.Date.get -> NpgsqlTypes.NpgsqlDate
-NpgsqlTypes.NpgsqlDateTime.Day.get -> int
-NpgsqlTypes.NpgsqlDateTime.DayOfWeek.get -> System.DayOfWeek
-NpgsqlTypes.NpgsqlDateTime.DayOfYear.get -> int
-NpgsqlTypes.NpgsqlDateTime.Equals(NpgsqlTypes.NpgsqlDateTime other) -> bool
-NpgsqlTypes.NpgsqlDateTime.Hour.get -> int
-NpgsqlTypes.NpgsqlDateTime.IsFinite.get -> bool
-NpgsqlTypes.NpgsqlDateTime.IsInfinity.get -> bool
-NpgsqlTypes.NpgsqlDateTime.IsLeapYear.get -> bool
-NpgsqlTypes.NpgsqlDateTime.IsNegativeInfinity.get -> bool
-NpgsqlTypes.NpgsqlDateTime.Kind.get -> System.DateTimeKind
-NpgsqlTypes.NpgsqlDateTime.Millisecond.get -> int
-NpgsqlTypes.NpgsqlDateTime.Minute.get -> int
-NpgsqlTypes.NpgsqlDateTime.Month.get -> int
-NpgsqlTypes.NpgsqlDateTime.Normalize() -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime() -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(int year, int month, int day, int hours, int minutes, int seconds, int milliseconds, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(int year, int month, int day, int hours, int minutes, int seconds, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(long ticks) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(long ticks, System.DateTimeKind kind) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(NpgsqlTypes.NpgsqlDate date) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(NpgsqlTypes.NpgsqlDate date, System.TimeSpan time, System.DateTimeKind kind = System.DateTimeKind.Unspecified) -> void
-NpgsqlTypes.NpgsqlDateTime.NpgsqlDateTime(System.DateTime dateTime) -> void
-NpgsqlTypes.NpgsqlDateTime.Second.get -> int
-NpgsqlTypes.NpgsqlDateTime.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.Subtract(NpgsqlTypes.NpgsqlDateTime timestamp) -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlDateTime.Ticks.get -> long
-NpgsqlTypes.NpgsqlDateTime.Time.get -> System.TimeSpan
-NpgsqlTypes.NpgsqlDateTime.ToDateTime() -> System.DateTime
-NpgsqlTypes.NpgsqlDateTime.ToLocalTime() -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.ToUniversalTime() -> NpgsqlTypes.NpgsqlDateTime
-NpgsqlTypes.NpgsqlDateTime.Year.get -> int
 NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Abstime = 33 -> NpgsqlTypes.NpgsqlDbType
 NpgsqlTypes.NpgsqlDbType.Array = -2147483648 -> NpgsqlTypes.NpgsqlDbType
@@ -1436,46 +1399,6 @@ NpgsqlTypes.NpgsqlTid.Equals(NpgsqlTypes.NpgsqlTid other) -> bool
 NpgsqlTypes.NpgsqlTid.NpgsqlTid() -> void
 NpgsqlTypes.NpgsqlTid.NpgsqlTid(uint blockNumber, ushort offsetNumber) -> void
 NpgsqlTypes.NpgsqlTid.OffsetNumber.get -> ushort
-NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.Add(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.Canonicalize() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.CompareTo(NpgsqlTypes.NpgsqlTimeSpan other) -> int
-NpgsqlTypes.NpgsqlTimeSpan.CompareTo(object? other) -> int
-NpgsqlTypes.NpgsqlTimeSpan.Days.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Duration() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.Equals(NpgsqlTypes.NpgsqlTimeSpan other) -> bool
-NpgsqlTypes.NpgsqlTimeSpan.Hours.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.JustifyDays() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.JustifyInterval() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.JustifyMonths() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.Microseconds.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Milliseconds.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Minutes.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Months.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Negate() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan() -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int days, int hours, int minutes, int seconds) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int days, int hours, int minutes, int seconds, int milliseconds) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int months, int days, int hours, int minutes, int seconds, int milliseconds) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int months, int days, long ticks) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(long ticks) -> void
-NpgsqlTypes.NpgsqlTimeSpan.NpgsqlTimeSpan(System.TimeSpan timespan) -> void
-NpgsqlTypes.NpgsqlTimeSpan.Seconds.get -> int
-NpgsqlTypes.NpgsqlTimeSpan.Subtract(in NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.Ticks.get -> long
-NpgsqlTypes.NpgsqlTimeSpan.Time.get -> System.TimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.TotalDays.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalHours.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalMicroseconds.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalMilliseconds.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalMinutes.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalMonths.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalSeconds.get -> double
-NpgsqlTypes.NpgsqlTimeSpan.TotalTicks.get -> long
-NpgsqlTypes.NpgsqlTimeSpan.UnjustifyDays() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.UnjustifyInterval() -> NpgsqlTypes.NpgsqlTimeSpan
-NpgsqlTypes.NpgsqlTimeSpan.UnjustifyMonths() -> NpgsqlTypes.NpgsqlTimeSpan
 NpgsqlTypes.NpgsqlTsQuery
 NpgsqlTypes.NpgsqlTsQuery.Kind.get -> NpgsqlTypes.NpgsqlTsQuery.NodeKind
 NpgsqlTypes.NpgsqlTsQuery.NodeKind
@@ -1593,8 +1516,17 @@ override Npgsql.NpgsqlCommand.CommandTimeout.get -> int
 override Npgsql.NpgsqlCommand.CommandTimeout.set -> void
 override Npgsql.NpgsqlCommand.CommandType.get -> System.Data.CommandType
 override Npgsql.NpgsqlCommand.CommandType.set -> void
+override Npgsql.NpgsqlCommand.CreateDbParameter() -> System.Data.Common.DbParameter!
+override Npgsql.NpgsqlCommand.DbConnection.get -> System.Data.Common.DbConnection?
+override Npgsql.NpgsqlCommand.DbConnection.set -> void
+override Npgsql.NpgsqlCommand.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
+override Npgsql.NpgsqlCommand.DbTransaction.get -> System.Data.Common.DbTransaction?
+override Npgsql.NpgsqlCommand.DbTransaction.set -> void
 override Npgsql.NpgsqlCommand.DesignTimeVisible.get -> bool
 override Npgsql.NpgsqlCommand.DesignTimeVisible.set -> void
+override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
+override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
+override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
 override Npgsql.NpgsqlCommand.ExecuteNonQuery() -> int
 override Npgsql.NpgsqlCommand.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
 override Npgsql.NpgsqlCommand.ExecuteScalar() -> object?
@@ -1684,6 +1616,7 @@ override Npgsql.NpgsqlDataReader.ReadAsync(System.Threading.CancellationToken ca
 override Npgsql.NpgsqlDataReader.RecordsAffected.get -> int
 override Npgsql.NpgsqlDataReader.this[int ordinal].get -> object!
 override Npgsql.NpgsqlDataReader.this[string! name].get -> object!
+override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
 override Npgsql.NpgsqlException.DbBatchCommand.get -> System.Data.Common.DbBatchCommand?
 override Npgsql.NpgsqlException.IsTransient.get -> bool
 override Npgsql.NpgsqlFactory.CanCreateBatch.get -> bool
@@ -1696,6 +1629,7 @@ override Npgsql.NpgsqlFactory.CreateCommandBuilder() -> System.Data.Common.DbCom
 override Npgsql.NpgsqlFactory.CreateConnection() -> System.Data.Common.DbConnection!
 override Npgsql.NpgsqlFactory.CreateConnectionStringBuilder() -> System.Data.Common.DbConnectionStringBuilder!
 override Npgsql.NpgsqlFactory.CreateDataAdapter() -> System.Data.Common.DbDataAdapter!
+override Npgsql.NpgsqlFactory.CreateDataSource(string! connectionString) -> System.Data.Common.DbDataSource!
 override Npgsql.NpgsqlFactory.CreateParameter() -> System.Data.Common.DbParameter!
 override Npgsql.NpgsqlLargeObjectStream.CanRead.get -> bool
 override Npgsql.NpgsqlLargeObjectStream.CanSeek.get -> bool
@@ -1829,12 +1763,6 @@ override NpgsqlTypes.NpgsqlBox.ToString() -> string!
 override NpgsqlTypes.NpgsqlCircle.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlCircle.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlCircle.ToString() -> string!
-override NpgsqlTypes.NpgsqlDate.Equals(object? obj) -> bool
-override NpgsqlTypes.NpgsqlDate.GetHashCode() -> int
-override NpgsqlTypes.NpgsqlDate.ToString() -> string!
-override NpgsqlTypes.NpgsqlDateTime.Equals(object? obj) -> bool
-override NpgsqlTypes.NpgsqlDateTime.GetHashCode() -> int
-override NpgsqlTypes.NpgsqlDateTime.ToString() -> string!
 override NpgsqlTypes.NpgsqlInet.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlInet.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlInet.ToString() -> string!
@@ -1868,9 +1796,6 @@ override NpgsqlTypes.NpgsqlRange<T>.ToString() -> string!
 override NpgsqlTypes.NpgsqlTid.Equals(object? o) -> bool
 override NpgsqlTypes.NpgsqlTid.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTid.ToString() -> string!
-override NpgsqlTypes.NpgsqlTimeSpan.Equals(object? obj) -> bool
-override NpgsqlTypes.NpgsqlTimeSpan.GetHashCode() -> int
-override NpgsqlTypes.NpgsqlTimeSpan.ToString() -> string!
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTsQuery.ToString() -> string!
@@ -1911,24 +1836,19 @@ override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.get -> bool
 override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.set -> void
 override sealed Npgsql.NpgsqlParameter.SourceVersion.get -> System.Data.DataRowVersion
 override sealed Npgsql.NpgsqlParameter.SourceVersion.set -> void
-static Npgsql.Logging.NpgsqlLogManager.IsParameterLoggingEnabled.get -> bool
-static Npgsql.Logging.NpgsqlLogManager.IsParameterLoggingEnabled.set -> void
-static Npgsql.Logging.NpgsqlLogManager.Provider.get -> Npgsql.Logging.INpgsqlLoggingProvider!
-static Npgsql.Logging.NpgsqlLogManager.Provider.set -> void
 static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name) -> string!
 static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommand! command) -> void
 static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-static Npgsql.NpgsqlConnection.MapCompositeGlobally<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
-static Npgsql.NpgsqlConnection.MapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
-static Npgsql.NpgsqlConnection.UnmapCompositeGlobally<T>(string! pgName, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
-static Npgsql.NpgsqlConnection.UnmapEnumGlobally<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void
-static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
+static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
+static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
+static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void
+static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.CreateLogicalReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, string! outputPlugin, bool isTemporary = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.ReplicationSlotOptions>!
 static Npgsql.Replication.Internal.LogicalReplicationConnectionExtensions.StartLogicalReplication(this Npgsql.Replication.LogicalReplicationConnection! connection, Npgsql.Replication.Internal.LogicalReplicationSlot! slot, System.Threading.CancellationToken cancellationToken, NpgsqlTypes.NpgsqlLogSequenceNumber? walLocation = null, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string?>>? options = null, bool bypassingStream = false) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
-static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
+static Npgsql.Replication.PgOutputConnectionExtensions.CreatePgOutputReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.PgOutput.PgOutputReplicationSlot!>!
 static Npgsql.Replication.PgOutputConnectionExtensions.StartReplication(this Npgsql.Replication.LogicalReplicationConnection! connection, Npgsql.Replication.PgOutput.PgOutputReplicationSlot! slot, Npgsql.Replication.PgOutput.PgOutputReplicationOptions! options, System.Threading.CancellationToken cancellationToken, NpgsqlTypes.NpgsqlLogSequenceNumber? walLocation = null) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.PgOutput.Messages.PgOutputReplicationMessage!>!
-static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
+static Npgsql.Replication.TestDecodingConnectionExtensions.CreateTestDecodingReplicationSlot(this Npgsql.Replication.LogicalReplicationConnection! connection, string! slotName, bool temporarySlot = false, Npgsql.Replication.LogicalSlotSnapshotInitMode? slotSnapshotInitMode = null, bool twoPhase = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot!>!
 static Npgsql.Replication.TestDecodingConnectionExtensions.StartReplication(this Npgsql.Replication.LogicalReplicationConnection! connection, Npgsql.Replication.TestDecoding.TestDecodingReplicationSlot! slot, System.Threading.CancellationToken cancellationToken, Npgsql.Replication.TestDecoding.TestDecodingOptions? options = null, NpgsqlTypes.NpgsqlLogSequenceNumber? walLocation = null) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.TestDecoding.TestDecodingData!>!
 static NpgsqlTypes.NpgsqlBox.operator !=(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.NpgsqlBox y) -> bool
 static NpgsqlTypes.NpgsqlBox.operator ==(NpgsqlTypes.NpgsqlBox x, NpgsqlTypes.NpgsqlBox y) -> bool
@@ -1936,45 +1856,6 @@ static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
 static NpgsqlTypes.NpgsqlCircle.operator !=(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlCircle.operator ==(NpgsqlTypes.NpgsqlCircle x, NpgsqlTypes.NpgsqlCircle y) -> bool
 static NpgsqlTypes.NpgsqlCircle.Parse(string! s) -> NpgsqlTypes.NpgsqlCircle
-static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.explicit operator NpgsqlTypes.NpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.explicit operator System.DateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
-static NpgsqlTypes.NpgsqlDate.explicit operator System.DateTime(NpgsqlTypes.NpgsqlDate date) -> System.DateTime
-static NpgsqlTypes.NpgsqlDate.Now.get -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.operator !=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.operator +(NpgsqlTypes.NpgsqlDate date, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.operator +(NpgsqlTypes.NpgsqlTimeSpan interval, NpgsqlTypes.NpgsqlDate date) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.operator -(NpgsqlTypes.NpgsqlDate date, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.operator -(NpgsqlTypes.NpgsqlDate dateX, NpgsqlTypes.NpgsqlDate dateY) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlDate.operator <(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.operator <=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.operator ==(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.operator >(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.operator >=(NpgsqlTypes.NpgsqlDate x, NpgsqlTypes.NpgsqlDate y) -> bool
-static NpgsqlTypes.NpgsqlDate.Parse(string! str) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.ToDateOnly(NpgsqlTypes.NpgsqlDate date) -> System.DateOnly
-static NpgsqlTypes.NpgsqlDate.ToDateTime(NpgsqlTypes.NpgsqlDate date) -> System.DateTime
-static NpgsqlTypes.NpgsqlDate.Today.get -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.Tomorrow.get -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateOnly date) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.ToNpgsqlDate(System.DateTime date) -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDate.TryParse(string! str, out NpgsqlTypes.NpgsqlDate date) -> bool
-static NpgsqlTypes.NpgsqlDate.Yesterday.get -> NpgsqlTypes.NpgsqlDate
-static NpgsqlTypes.NpgsqlDateTime.explicit operator System.DateTime(NpgsqlTypes.NpgsqlDateTime npgsqlDateTime) -> System.DateTime
-static NpgsqlTypes.NpgsqlDateTime.implicit operator NpgsqlTypes.NpgsqlDateTime(System.DateTime dateTime) -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.Now.get -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.operator !=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.operator +(NpgsqlTypes.NpgsqlDateTime timestamp, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.operator +(NpgsqlTypes.NpgsqlTimeSpan interval, NpgsqlTypes.NpgsqlDateTime timestamp) -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.operator -(NpgsqlTypes.NpgsqlDateTime timestamp, NpgsqlTypes.NpgsqlTimeSpan interval) -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.operator -(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlDateTime.operator <(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.operator <=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.operator ==(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.operator >(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.operator >=(NpgsqlTypes.NpgsqlDateTime x, NpgsqlTypes.NpgsqlDateTime y) -> bool
-static NpgsqlTypes.NpgsqlDateTime.Parse(string! str) -> NpgsqlTypes.NpgsqlDateTime
-static NpgsqlTypes.NpgsqlDateTime.ToNpgsqlDateTime(System.DateTime dateTime) -> NpgsqlTypes.NpgsqlDateTime
 static NpgsqlTypes.NpgsqlInet.explicit operator System.Net.IPAddress!(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
 static NpgsqlTypes.NpgsqlInet.implicit operator NpgsqlTypes.NpgsqlInet(System.Net.IPAddress! ip) -> NpgsqlTypes.NpgsqlInet
 static NpgsqlTypes.NpgsqlInet.operator !=(NpgsqlTypes.NpgsqlInet x, NpgsqlTypes.NpgsqlInet y) -> bool
@@ -2019,32 +1900,6 @@ static NpgsqlTypes.NpgsqlRange<T>.Parse(string! value) -> NpgsqlTypes.NpgsqlRang
 static NpgsqlTypes.NpgsqlRange<T>.RangeTypeConverter.Register() -> void
 static NpgsqlTypes.NpgsqlTid.operator !=(NpgsqlTypes.NpgsqlTid left, NpgsqlTypes.NpgsqlTid right) -> bool
 static NpgsqlTypes.NpgsqlTid.operator ==(NpgsqlTypes.NpgsqlTid left, NpgsqlTypes.NpgsqlTid right) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.Compare(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> int
-static NpgsqlTypes.NpgsqlTimeSpan.explicit operator System.TimeSpan(NpgsqlTypes.NpgsqlTimeSpan interval) -> System.TimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromDays(double days) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromHours(double hours) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromMicroseconds(double micro) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromMilliseconds(double milli) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromMinutes(double minutes) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromMonths(double months) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromSeconds(double seconds) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.FromTicks(long ticks) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.implicit operator NpgsqlTypes.NpgsqlTimeSpan(System.TimeSpan timespan) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.operator !=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.operator +(NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.operator +(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.operator -(NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.operator -(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.operator <(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.operator <=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.operator ==(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.operator >(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.operator >=(NpgsqlTypes.NpgsqlTimeSpan x, NpgsqlTypes.NpgsqlTimeSpan y) -> bool
-static NpgsqlTypes.NpgsqlTimeSpan.Parse(string! str) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.Plus(in NpgsqlTypes.NpgsqlTimeSpan x) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.ToNpgsqlTimeSpan(System.TimeSpan timespan) -> NpgsqlTypes.NpgsqlTimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.ToTimeSpan(in NpgsqlTypes.NpgsqlTimeSpan interval) -> System.TimeSpan
-static NpgsqlTypes.NpgsqlTimeSpan.TryParse(string! str, out NpgsqlTypes.NpgsqlTimeSpan result) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
 static NpgsqlTypes.NpgsqlTsQuery.Parse(string! value) -> NpgsqlTypes.NpgsqlTsQuery!
@@ -2054,19 +1909,7 @@ static NpgsqlTypes.NpgsqlTsVector.Lexeme.WordEntryPos.operator !=(NpgsqlTypes.Np
 static NpgsqlTypes.NpgsqlTsVector.Lexeme.WordEntryPos.operator ==(NpgsqlTypes.NpgsqlTsVector.Lexeme.WordEntryPos left, NpgsqlTypes.NpgsqlTsVector.Lexeme.WordEntryPos right) -> bool
 static NpgsqlTypes.NpgsqlTsVector.Parse(string! value) -> NpgsqlTypes.NpgsqlTsVector!
 static readonly Npgsql.NpgsqlFactory.Instance -> Npgsql.NpgsqlFactory!
-static readonly NpgsqlTypes.NpgsqlDate.Epoch -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDate.Era -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDate.Infinity -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDate.MaxCalculableValue -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDate.MinCalculableValue -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDate.NegativeInfinity -> NpgsqlTypes.NpgsqlDate
-static readonly NpgsqlTypes.NpgsqlDateTime.Epoch -> NpgsqlTypes.NpgsqlDateTime
-static readonly NpgsqlTypes.NpgsqlDateTime.Era -> NpgsqlTypes.NpgsqlDateTime
-static readonly NpgsqlTypes.NpgsqlDateTime.Infinity -> NpgsqlTypes.NpgsqlDateTime
-static readonly NpgsqlTypes.NpgsqlDateTime.NegativeInfinity -> NpgsqlTypes.NpgsqlDateTime
 static readonly NpgsqlTypes.NpgsqlLogSequenceNumber.Invalid -> NpgsqlTypes.NpgsqlLogSequenceNumber
 static readonly NpgsqlTypes.NpgsqlRange<T>.Empty -> NpgsqlTypes.NpgsqlRange<T>
-static readonly NpgsqlTypes.NpgsqlTimeSpan.MaxValue -> NpgsqlTypes.NpgsqlTimeSpan
-static readonly NpgsqlTypes.NpgsqlTimeSpan.MinValue -> NpgsqlTypes.NpgsqlTimeSpan
-static readonly NpgsqlTypes.NpgsqlTimeSpan.Zero -> NpgsqlTypes.NpgsqlTimeSpan
+virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
 virtual Npgsql.Replication.PgOutput.ReplicationTuple.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerator<Npgsql.Replication.PgOutput.ReplicationValue!>!
