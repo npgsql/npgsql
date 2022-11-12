@@ -120,15 +120,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    /// <summary>
-    /// Returns a new, unopened connection from this data source.
-    /// </summary>
+    /// <inheritdoc />
     public new NpgsqlConnection CreateConnection()
         => NpgsqlConnection.FromDataSource(this);
 
-    /// <summary>
-    /// Returns a new, opened connection from this data source.
-    /// </summary>
+    /// <inheritdoc />
     public new NpgsqlConnection OpenConnection()
     {
         var connection = CreateConnection();
@@ -145,12 +141,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    /// <summary>
-    /// Returns a new, opened connection from this data source.
-    /// </summary>
-    /// <param name="cancellationToken">
-    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
-    /// </param>
+    /// <inheritdoc />
+    protected override DbConnection OpenDbConnection()
+        => OpenConnection();
+
+    /// <inheritdoc />
     public new async ValueTask<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = CreateConnection();
@@ -168,12 +163,16 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     /// <inheritdoc />
+    protected override async ValueTask<DbConnection> OpenDbConnectionAsync(CancellationToken cancellationToken = default)
+        => await OpenConnectionAsync(cancellationToken);
+
+    /// <inheritdoc />
     protected override DbConnection CreateDbConnection()
         => CreateConnection();
 
     /// <inheritdoc />
     protected override DbCommand CreateDbCommand(string? commandText = null)
-        => CreateCommand();
+        => CreateCommand(commandText);
 
     /// <inheritdoc />
     protected override DbBatch CreateDbBatch()
