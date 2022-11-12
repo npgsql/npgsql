@@ -40,7 +40,7 @@ public abstract class DbDataSource : IDisposable, IAsyncDisposable
         => OpenDbConnectionAsync(cancellationToken);
 
     public DbCommand CreateCommand(string? commandText = null)
-        => CreateDbCommand();
+        => CreateDbCommand(commandText);
 
     public DbBatch CreateBatch()
         => CreateDbBatch();

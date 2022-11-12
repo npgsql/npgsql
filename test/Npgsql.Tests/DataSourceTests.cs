@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -242,5 +243,21 @@ public class DataSourceTests : TestBase
             dataSource.Dispose();
             Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
+    }
+
+    [Test] // #4752
+    public async Task As_DbDataSource([Values] bool async)
+    {
+        await using DbDataSource dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var connection = async
+            ? await dataSource.OpenConnectionAsync()
+            : dataSource.OpenConnection();
+        Assert.That(connection.State, Is.EqualTo(ConnectionState.Open));
+
+        await using var command = dataSource.CreateCommand("SELECT 1");
+
+        Assert.That(async
+            ? await command.ExecuteScalarAsync()
+            : command.ExecuteScalar(), Is.EqualTo(1));
     }
 }
