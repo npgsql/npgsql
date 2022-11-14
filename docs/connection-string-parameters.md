@@ -63,7 +63,6 @@ Parameter                  | Description                                        
 -------------------------- | ------------------------------------------------------------ | -------
 Max Auto Prepare           | The maximum number SQL statements that can be automatically prepared at any given point. Beyond this number the least-recently-used statement will be recycled. Zero disables automatic preparation. | 0
 Auto Prepare Min Usages    | The minimum number of usages an SQL statement is used before it's automatically prepared. | 5
-Use Perf Counters          | Makes Npgsql write performance information about connection use to Windows Performance Counters. [Read the docs](performance.md#performance-counters) for more info. Removed in 5.0. | false
 Read Buffer Size           | Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database. | 8192
 Write Buffer Size          | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192
 Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent
@@ -109,10 +108,11 @@ Server Compatibility Mode | A compatibility mode for special PostgreSQL server t
 
 ## Obsolete
 
-Parameter                 | Description                                                                                       | Default
-------------------------- | ------------------------------------------------------------------------------------------------- | -------
-Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                     | PGSSLCERT
-Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.    | PGSSLKEY
+Parameter                 | Description                                                                                                      | Default
+------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------
+Client Certificate        | Location of a client certificate to be sent to the server. Deprecated in 6.0.                                    | PGSSLCERT
+Client Certificate Key    | Location of a client key for a client certificate to be sent to the server. Deprecated in 6.0.                   | PGSSLKEY
+Use Perf Counters         | Makes Npgsql write performance information about connection use to Windows Performance Counters. Removed in 5.0. | false
 
 ## Environment variables
 
