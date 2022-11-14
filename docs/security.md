@@ -72,7 +72,7 @@ If the root CA of the server certificate isn't installed in your machine's CA st
 
 Note that Npgsql does not perform certificate revocation validation by default, since this is an optional extension not implemented by all providers and CAs. To turn on certificate revocation validation, specify `Check Certificate Revocation=true` on the connection string.
 
-Finally, if the above options aren't sufficient for your scenario, you can call <xref:NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback?displayProperty=nameWithType> to provide your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
+Finally, if the above options aren't sufficient for your scenario, you can call <xref:Npgsql.NpgsqlDataSourceBuilder.UseUserCertificateValidationCallback?displayProperty=nameWithType> to provide your custom server certificate validation logic (this gets set on the underlying .NET [`SslStream`](https://docs.microsoft.com/dotnet/api/system.net.security.sslstream.-ctor#System_Net_Security_SslStream__ctor_System_IO_Stream_System_Boolean_System_Net_Security_RemoteCertificateValidationCallback_System_Net_Security_LocalCertificateSelectionCallback_)).
 
 ### Client certificates
 

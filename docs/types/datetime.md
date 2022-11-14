@@ -1,7 +1,7 @@
 # Date and Time Handling
 
 > [!WARNING]
-> Npgsql 6.0 introduced some important changes to how timestamps are mapped, [see the release notes for more information](../release-notes/6.0.html).
+> Npgsql 6.0 introduced some important changes to how timestamps are mapped, [see the release notes for more information](../release-notes/6.0.md).
 
 > [!NOTE]
 > The recommended way of working with date/time types is [the NodaTime plugin](nodatime.md): the NodaTime types are much better-designed, avoid the flaws in the built-in BCL types, and are fully supported by Npgsql.
@@ -28,7 +28,7 @@ For almost all applications, the range of the .NET native types (or the NodaTime
 > [!Warning]
 > A common mistake is for users to think that the PostgreSQL `timestamp with time zone` type stores the timezone in the database. This is not the case: only a UTC timestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx). To store a timezone in the database, add a separate text column containing the timezone ID.
 
-In PostgreSQL, `timestamp with time zone` represents a UTC timestamp, while `timestamp without time zone` represents a local or unspecified time zone. Starting with 6.0, Npgsql maps UTC DateTime to `timestamp with time zone`, and Local/Unspecified DateTime to `timestamp without time zone`; trying to send a non-UTC DateTime as `timestamptz` will throw an exception, etc. Npgsql also supports reading and writing DateTimeOffset to `timestamp with time zone`, but only with Offset=0. Prior to 6.0, `timestamp with time zone` would be converted to a local timestamp when read - see below for more details. The precise improvements and breaking changes are detailed in the [6.0 breaking changes](../release-notes/6.0.html#timestamp-rationalization-and-improvements); to revert to the pre-6.0 behavior, add the following at the start of your application, before any Npgsql operations are invoked:
+In PostgreSQL, `timestamp with time zone` represents a UTC timestamp, while `timestamp without time zone` represents a local or unspecified time zone. Starting with 6.0, Npgsql maps UTC DateTime to `timestamp with time zone`, and Local/Unspecified DateTime to `timestamp without time zone`; trying to send a non-UTC DateTime as `timestamptz` will throw an exception, etc. Npgsql also supports reading and writing DateTimeOffset to `timestamp with time zone`, but only with Offset=0. Prior to 6.0, `timestamp with time zone` would be converted to a local timestamp when read - see below for more details. The precise improvements and breaking changes are detailed in the [6.0 breaking changes](../release-notes/6.0.md#timestamp-rationalization-and-improvements); to revert to the pre-6.0 behavior, add the following at the start of your application, before any Npgsql operations are invoked:
 
 ```c#
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -57,7 +57,7 @@ time without time zone      | TimeSpan                   | TimeOnly (6.0+)
 time with time zone         | DateTimeOffset             |
 interval                    | TimeSpan (<sup>3</sup>)    | <xref:NpgsqlTypes.NpgsqlInterval>
 
-<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
+<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
 

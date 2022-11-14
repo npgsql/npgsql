@@ -89,9 +89,9 @@ tstzrange                       | [Interval](https://nodatime.org/3.0.x/api/Noda
 tsrange                         | `NpgsqlRange<LocalDateTime>`                                                            |                               | An interval between two timestamps in an unknown or implicit time zone.
 daterange                       | [DateInterval](https://nodatime.org/3.0.x/api/NodaTime.DateInterval.html)               | `NpgsqlRange<LocalDate>` etc. | An interval between two dates.
 
-<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), writing or reading ZonedDateTime or OffsetDateTime automatically converted to or from UTC. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
+<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), writing or reading ZonedDateTime or OffsetDateTime automatically converted to or from UTC. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
-<sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), `timestamp without time zone` was mapped to Instant by default, instead of LocalDateTime. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
+<sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), `timestamp without time zone` was mapped to Instant by default, instead of LocalDateTime. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
 ## Infinity values
 

@@ -2,7 +2,7 @@
 
 The [Npgsql.GeoJSON](https://nuget.org/packages/Npgsql.GeoJSON) plugin makes Npgsql read and write PostGIS spatial types as [GeoJSON (RFC7946) types](http://geojson.org/), via the [GeoJSON.NET](https://github.com/GeoJSON-Net/GeoJSON.Net) library.
 
-As an alternative, you can use [Npgsql.NetTopologySuite](nts.md), which is a full-fledged .NET spatial library with many features. If you prefer to work with the pre-4.0 types, you can still do so by using the [Npgsql.LegacyPostgis plugin](legacy-postgis.md).
+As an alternative, you can use [Npgsql.NetTopologySuite](nts.md), which is a full-fledged .NET spatial library with many features.
 
 ## Setup
 

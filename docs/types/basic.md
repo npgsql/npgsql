@@ -67,7 +67,7 @@ multirange types (PG14)     | NpgsqlRange\<TElement>[]   |
 enum types                  | TEnum                      |
 array types                 | Array (of element type)    |
 
-<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.html#major-changes-to-timestamp-mapping).
+<sup>1</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` returns a Local DateTime instead of Utc. [See the breaking change note for more info](../release-notes/6.0.md#major-changes-to-timestamp-mapping).
 
 <sup>2</sup> In versions prior to 6.0 (or when `Npgsql.EnableLegacyTimestampBehavior` is enabled), reading a `timestamp with time zone` as a DateTimeOffset returns a local offset based on the timezone of the server where Npgsql is running.
 
