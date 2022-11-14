@@ -77,7 +77,7 @@
 - name: FAQ
   href: faq.md
 - name: API reference
-  href: "../../obj/api/Npgsql/"
+  href: "https://www.npgsql.org/doc/api/Npgsql.html"
 - name: Developer notes
   items:
   - name: Tests
