@@ -22,8 +22,8 @@ Npgsql's data source supports additional configuration beyond the connection str
 var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=localhost;Username=test;Password=test");
 dataSourceBuilder
     .UseLoggerFactory(loggerFactory) // Configure logging
-    .UseNodaTime() // Use NodaTime for date/time types
-    .UsePeriodicPasswordProvider(); // Automatically rotate the password periodically
+    .UsePeriodicPasswordProvider() // Automatically rotate the password periodically
+    .UseNodaTime(); // Use NodaTime for date/time types
 await using var dataSource = dataSourceBuilder.Build();
 ```
 
