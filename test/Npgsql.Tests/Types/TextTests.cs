@@ -34,6 +34,11 @@ public class TextTests : MultiplexingTestBase
         => AssertType(Encoding.UTF8.GetBytes("foo"), "foo", "text", NpgsqlDbType.Text, DbType.String, isDefault: false);
 
     [Test]
+    public Task Text_as_ReadOnlyMemory_of_bytes()
+        => AssertTypeWrite(new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes("foo")), "foo", "text", NpgsqlDbType.Text, DbType.String,
+            isDefault: false);
+
+    [Test]
     public Task Char_as_char()
         => AssertType('f', "f", "character", NpgsqlDbType.Char, inferredDbType: DbType.String, isDefault: false);
 
