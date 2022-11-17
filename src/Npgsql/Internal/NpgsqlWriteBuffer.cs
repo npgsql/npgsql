@@ -449,8 +449,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
     public void WriteBytes(byte[] buf) => WriteBytes(buf.AsSpan());
 
-    public void WriteBytes(ReadOnlyMemory<byte> buf, int offset, int count)
-        => WriteBytes(buf.Slice(offset, count));
+    public void WriteBytes(byte[] buf, int offset, int count)
+        => WriteBytes(new ReadOnlySpan<byte>(buf, offset, count));
 
     public Task WriteBytesRaw(ReadOnlyMemory<byte> bytes, bool async, CancellationToken cancellationToken = default)
     {
@@ -479,7 +479,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
                         await buffer.Flush(async, cancellationToken);
                     var writeLen = Math.Min(remaining, buffer.WriteSpaceLeft);
                     var offset = bytes.Length - remaining;
-                    buffer.WriteBytes(bytes, offset, writeLen);
+                    buffer.WriteBytes(bytes.Slice(offset, writeLen));
                     remaining -= writeLen;
                 }
                 while (remaining > 0);
