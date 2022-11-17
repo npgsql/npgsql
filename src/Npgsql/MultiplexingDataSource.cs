@@ -32,7 +32,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig,
+        NpgsqlSingleHostDataSourceConfiguration dataSourceConfig,
         NpgsqlMultiHostDataSource? parentPool = null)
         : base(settings, dataSourceConfig, parentPool)
     {

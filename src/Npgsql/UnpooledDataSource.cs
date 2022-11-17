@@ -9,7 +9,7 @@ namespace Npgsql;
 
 sealed class UnpooledDataSource : NpgsqlDataSource
 {
-    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
+    public UnpooledDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlSingleHostDataSourceConfiguration dataSourceConfig)
         : base(settings, dataSourceConfig)
     {
     }

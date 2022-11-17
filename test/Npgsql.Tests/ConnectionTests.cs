@@ -223,11 +223,6 @@ public class ConnectionTests : MultiplexingTestBase
             );
     }
 
-    [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
-    public void Mandatory_connection_string_params()
-        => Assert.Throws<ArgumentException>(() =>
-            new NpgsqlConnection("User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"));
-
     [Test, Description("Reuses the same connection instance for a failed connection, then a successful one")]
     public async Task Fail_connect_then_succeed([Values] bool pooling)
     {

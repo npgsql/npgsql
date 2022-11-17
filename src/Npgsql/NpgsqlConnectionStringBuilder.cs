@@ -1561,31 +1561,16 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
 
     #region Misc
 
+    // ToDo: Find a better place to validate settings since this only validates what comes from the connection string
     internal void PostProcessAndValidate()
     {
-        if (string.IsNullOrWhiteSpace(Host))
-            throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
         if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
             throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
-
-        if (!Host.Contains(','))
-        {
-            if (TargetSessionAttributesParsed is not null &&
-                TargetSessionAttributesParsed != Npgsql.TargetSessionAttributes.Any)
-            {
-                throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
-            }
-
-            // Support single host:port format in Host
-            if (!IsUnixSocket(Host, Port, out _) &&
-                TrySplitHostPort(Host.AsSpan(), out var newHost, out var newPort))
-            {
-                Host = newHost;
-                Port = newPort;
-            }
-        }
+        if (Host != null && !Host.Contains(',') && TargetSessionAttributesParsed is not null &&
+            TargetSessionAttributesParsed != Npgsql.TargetSessionAttributes.Any)
+            throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
     }
 
     internal string ToStringWithoutPassword()
