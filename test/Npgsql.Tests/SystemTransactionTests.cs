@@ -35,7 +35,7 @@ public class SystemTransactionTests : TestBase
     [Test, Description("Single connection enlisting implicitly, committing")]
     public void Implicit_enlist()
     {
-        var conn = new NpgsqlConnection(ConnectionStringEnlistOn);
+        using var conn = new NpgsqlConnection(ConnectionStringEnlistOn);
         using (var scope = new TransactionScope())
         {
             conn.Open();
