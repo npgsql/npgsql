@@ -439,13 +439,9 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         buf.CopyTo(new Span<byte>(Buffer, WritePosition, Buffer.Length - WritePosition));
         WritePosition += buf.Length;
     }
-    
+
     public void WriteBytes(ReadOnlyMemory<byte> buf)
-    {
-        Debug.Assert(buf.Length <= WriteSpaceLeft);
-        buf.CopyTo(Buffer.AsMemory(WritePosition, Buffer.Length - WritePosition));
-        WritePosition += buf.Length;
-    }
+        => WriteBytes(buf.Span);
 
     public void WriteBytes(byte[] buf) => WriteBytes(buf.AsSpan());
 
