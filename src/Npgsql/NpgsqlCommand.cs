@@ -1609,7 +1609,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         Debug.Assert(CurrentActivity is null);
         if (NpgsqlActivitySource.IsEnabled)
-            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText, CommandType, EnableStoredProcedureCompatMode);
+            CurrentActivity = NpgsqlActivitySource.CommandStart(connector, CommandText, CommandType);
     }
 
     internal void TraceReceivedFirstResponse()

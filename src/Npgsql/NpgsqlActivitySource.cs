@@ -21,7 +21,7 @@ static class NpgsqlActivitySource
 
     internal static bool IsEnabled => Source.HasListeners();
 
-    internal static Activity? CommandStart(NpgsqlConnector connector, string commandText, CommandType commandType, bool storedProcCompatMode)
+    internal static Activity? CommandStart(NpgsqlConnector connector, string commandText, CommandType commandType)
     {
         var settings = connector.Settings;
 
@@ -32,7 +32,7 @@ static class NpgsqlActivitySource
         switch (commandType)
         {
         case CommandType.StoredProcedure:
-            dbOperation = storedProcCompatMode ? "SELECT" : "CALL";
+            dbOperation = NpgsqlCommand.EnableStoredProcedureCompatMode ? "SELECT" : "CALL";
             // In this case our activity name follows the concept of the CommandType.TableDirect case
             // ("<db.operation> <db.name>.<db.sql.table>") but replaces db.sql.table with the procedure name
             // which seems to match the spec's intent without being explicitly specified that way (it suggests
