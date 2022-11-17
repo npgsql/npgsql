@@ -18,19 +18,16 @@ sealed class KerberosUsernameProvider
     static string? _principalWithRealm;
     static string? _principalWithoutRealm;
 
-#pragma warning disable CS1998
-    internal static async ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger, bool async, CancellationToken cancellationToken)
-#pragma warning restore CS1998
+    internal static ValueTask<string?> GetUsernameAsync(bool includeRealm, ILogger connectionLogger, bool async, CancellationToken cancellationToken)
     {
         if (_performedDetection)
-            return includeRealm ? _principalWithRealm : _principalWithoutRealm;
+            return new(includeRealm ? _principalWithRealm : _principalWithoutRealm);
         var klistPath = FindInPath("klist");
         if (klistPath == null)
         {
             connectionLogger.LogDebug("klist not found in PATH, skipping Kerberos username detection");
-            return null;
+            return new((string?)null);
         }
-
         var processStartInfo = new ProcessStartInfo
         {
             FileName = klistPath,
@@ -38,46 +35,54 @@ sealed class KerberosUsernameProvider
             RedirectStandardError = true,
             UseShellExecute = false
         };
+
         var process = Process.Start(processStartInfo);
         if (process is null)
         {
             connectionLogger.LogDebug("klist process could not be started");
-            return null;
+            return new((string?)null);
         }
 
-#if NET5_0_OR_GREATER
-        if (async)
-            await process.WaitForExitAsync(cancellationToken);
-        else
-            // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-            process.WaitForExit();
-#else
-            // ReSharper disable once MethodHasAsyncOverload
-            process.WaitForExit();
-#endif
+        return GetUsernameAsyncInternal();
 
-        if (process.ExitCode != 0)
+#pragma warning disable CS1998
+        async ValueTask<string?> GetUsernameAsyncInternal()
+#pragma warning restore CS1998
         {
-            connectionLogger.LogDebug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
-            return null;
-        }
-
-        var line = default(string);
-        for (var i = 0; i < 2; i++)
-            // ReSharper disable once MethodHasAsyncOverload
-#if NET7_0_OR_GREATER
-            if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken) : process.StandardOutput.ReadLine()) == null)
-#elif NET5_0_OR_GREATER
-            if ((line = async ? await process.StandardOutput.ReadLineAsync() : process.StandardOutput.ReadLine()) == null)
+#if NET5_0_OR_GREATER
+            if (async)
+                await process.WaitForExitAsync(cancellationToken);
+            else
+                // ReSharper disable once MethodHasAsyncOverloadWithCancellation
+                process.WaitForExit();
 #else
-            if ((line = process.StandardOutput.ReadLine()) == null)
+            // ReSharper disable once MethodHasAsyncOverload
+            process.WaitForExit();
 #endif
+
+            if (process.ExitCode != 0)
             {
-                connectionLogger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
+                connectionLogger.LogDebug($"klist exited with code {process.ExitCode}: {process.StandardError.ReadToEnd()}");
                 return null;
             }
 
-        return ParseKListOutput(line!, includeRealm, connectionLogger);
+            var line = default(string);
+            for (var i = 0; i < 2; i++)
+                // ReSharper disable once MethodHasAsyncOverload
+#if NET7_0_OR_GREATER
+                if ((line = async ? await process.StandardOutput.ReadLineAsync(cancellationToken) : process.StandardOutput.ReadLine()) == null)
+#elif NET5_0_OR_GREATER
+                if ((line = async ? await process.StandardOutput.ReadLineAsync() : process.StandardOutput.ReadLine()) == null)
+#else
+                if ((line = process.StandardOutput.ReadLine()) == null)
+#endif
+                {
+                    connectionLogger.LogDebug("Unexpected output from klist, aborting Kerberos username detection");
+                    return null;
+                }
+
+            return ParseKListOutput(line!, includeRealm, connectionLogger);
+        }
     }
 
     static string? ParseKListOutput(string line, bool includeRealm, ILogger connectionLogger)

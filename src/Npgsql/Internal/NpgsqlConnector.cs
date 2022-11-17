@@ -697,31 +697,37 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         var username = Settings.Username;
         if (username?.Length > 0)
-            return SetInferredUserName(username);
+        {
+            InferredUserName = username;
+            return username;
+        }
 
         username = PostgresEnvironment.User;
         if (username?.Length > 0)
-            return SetInferredUserName(username);
+        {
+            InferredUserName = username;
+            return username;
+        }
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async, cancellationToken);
 
             if (username?.Length > 0)
-                return SetInferredUserName(username);
+            {
+                InferredUserName = username;
+                return username;
+            }
         }
 
         username = Environment.UserName;
         if (username?.Length > 0)
-            return SetInferredUserName(username);
+        {
+            InferredUserName = username;
+            return username;
+        }
 
         throw new NpgsqlException("No username could be found, please specify one explicitly");
-
-        string SetInferredUserName(string userName)
-        {
-            InferredUserName = userName;
-            return userName;
-        }
     }
 
     async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)
