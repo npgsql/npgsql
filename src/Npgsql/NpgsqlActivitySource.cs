@@ -69,8 +69,10 @@ static class NpgsqlActivitySource
         activity.SetTag("db.name", dbName);
         activity.SetTag("db.statement", commandText);
         activity.SetTag("db.connection_id", connector.Id);
-        activity.SetTag("db.operation", dbOperation);
-        activity.SetTag("db.sql.table", dbSqlTable);
+        if (dbOperation != null)
+            activity.SetTag("db.operation", dbOperation);
+        if (dbSqlTable != null)
+            activity.SetTag("db.sql.table", dbSqlTable);
 
         var endPoint = connector.ConnectedEndPoint;
         Debug.Assert(endPoint is not null);
