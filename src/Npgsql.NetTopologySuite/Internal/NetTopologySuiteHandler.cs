@@ -22,7 +22,6 @@ partial class NetTopologySuiteHandler : NpgsqlTypeHandler<Geometry>,
 {
     readonly PostGisReader _reader;
     readonly PostGisWriter _writer;
-    readonly LengthStream _lengthStream = new();
 
     internal NetTopologySuiteHandler(PostgresType postgresType, PostGisReader reader, PostGisWriter writer)
         : base(postgresType)
@@ -91,9 +90,10 @@ partial class NetTopologySuiteHandler : NpgsqlTypeHandler<Geometry>,
 
     int ValidateAndGetLengthCore(Geometry value)
     {
-        _lengthStream.SetLength(0);
-        _writer.Write(value, _lengthStream);
-        return (int)_lengthStream.Length;
+        var lengthStream = new LengthStream();
+        lengthStream.SetLength(0);
+        _writer.Write(value, lengthStream);
+        return (int)lengthStream.Length;
     }
 
     sealed class LengthStream : Stream
