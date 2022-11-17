@@ -380,11 +380,16 @@ CREATE DOMAIN {domainType} AS TEXT");
         Assert.That(columns.All(r => r["table_name"].Equals(table)));
         Assert.That(columns.All(r => r["constraint_type"].Equals("UNIQUE KEY")));
 
-        Assert.That(columns[0]["column_name"], Is.EqualTo("f1"));
-        Assert.That(columns[0]["ordinal_number"], Is.EqualTo(1));
+        Assert.That(columns.Count, Is.EqualTo(2));
 
-        Assert.That(columns[1]["column_name"], Is.EqualTo("f2"));
-        Assert.That(columns[1]["ordinal_number"], Is.EqualTo(2));
+        // Columns are not necessarily in the correct order
+        var firstColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f1")!;
+        Assert.NotNull(firstColumn);
+        Assert.That(firstColumn["ordinal_number"], Is.EqualTo(1));
+
+        var secondColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f2")!;
+        Assert.NotNull(secondColumn);
+        Assert.That(secondColumn["ordinal_number"], Is.EqualTo(2));
     }
 
     [Test]
