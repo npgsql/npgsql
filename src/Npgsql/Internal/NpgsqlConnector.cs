@@ -96,6 +96,17 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// </summary>
     internal int BackendProcessId { get; private set; }
 
+    string? _inferredUserName;
+
+    /// <summary>
+    /// The user name that has been inferred when the connector was opened
+    /// </summary>
+    internal string InferredUserName
+    {
+        get => _inferredUserName ?? throw new InvalidOperationException($"{nameof(InferredUserName)} cannot be accessed before the connector has been opened.");
+        private set => _inferredUserName = value;
+    }
+
     bool SupportsPostgresCancellation => BackendProcessId != 0;
 
     /// <summary>
@@ -682,29 +693,47 @@ public sealed partial class NpgsqlConnector : IDisposable
         WriteStartup(startupParams);
     }
 
-    async ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
+    ValueTask<string> GetUsernameAsync(bool async, CancellationToken cancellationToken)
     {
         var username = Settings.Username;
         if (username?.Length > 0)
-            return username;
+        {
+            InferredUserName = username;
+            return new(username);
+        }
 
         username = PostgresEnvironment.User;
         if (username?.Length > 0)
-            return username;
-
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async, cancellationToken);
-
-            if (username?.Length > 0)
-                return username;
+            InferredUserName = username;
+            return new(username);
         }
 
-        username = Environment.UserName;
-        if (username?.Length > 0)
-            return username;
+        return GetUsernameAsyncInternal();
 
-        throw new NpgsqlException("No username could be found, please specify one explicitly");
+        async ValueTask<string> GetUsernameAsyncInternal()
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                username = await KerberosUsernameProvider.GetUsernameAsync(Settings.IncludeRealm, ConnectionLogger, async,
+                    cancellationToken);
+
+                if (username?.Length > 0)
+                {
+                    InferredUserName = username;
+                    return username;
+                }
+            }
+
+            username = Environment.UserName;
+            if (username?.Length > 0)
+            {
+                InferredUserName = username;
+                return username;
+            }
+
+            throw new NpgsqlException("No username could be found, please specify one explicitly");
+        }
     }
 
     async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)

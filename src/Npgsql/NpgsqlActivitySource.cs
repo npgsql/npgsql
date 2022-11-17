@@ -1,5 +1,6 @@
 ﻿using Npgsql.Internal;
 using System;
+using System.Data;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -20,19 +21,58 @@ static class NpgsqlActivitySource
 
     internal static bool IsEnabled => Source.HasListeners();
 
-    internal static Activity? CommandStart(NpgsqlConnector connector, string sql)
+    internal static Activity? CommandStart(NpgsqlConnector connector, string commandText, CommandType commandType)
     {
         var settings = connector.Settings;
-        var activity = Source.StartActivity(settings.Database!, ActivityKind.Client);
+
+        var dbName = settings.Database ?? connector.InferredUserName;
+        string? dbOperation = null;
+        string? dbSqlTable = null;
+        string activityName;
+        switch (commandType)
+        {
+        case CommandType.StoredProcedure:
+            dbOperation = NpgsqlCommand.EnableStoredProcedureCompatMode ? "SELECT" : "CALL";
+            // In this case our activity name follows the concept of the CommandType.TableDirect case
+            // ("<db.operation> <db.name>.<db.sql.table>") but replaces db.sql.table with the procedure name
+            // which seems to match the spec's intent without being explicitly specified that way (it suggests
+            // using the procedure name but doesn't mention using db.operation or db.name in that case).
+            activityName = $"{dbOperation} {dbName}.{commandText}";
+            break;
+        case CommandType.TableDirect:
+            dbOperation = "SELECT";
+            // The OpenTelemetry spec actually asks to include the database name into db.sql.table
+            // but then again mixes the concept of database and schema.
+            // As I interpret it, it actually wants db.sql.table to include the schema name and not the
+            // database name if the concept of schemas exists in the database system.
+            // This also makes sense in the context of the activity name which otherwise would include the
+            // database name twice.
+            dbSqlTable = commandText;
+            activityName = $"{dbOperation} {dbName}.{dbSqlTable}";
+            break;
+        case CommandType.Text:
+            activityName = dbName;
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(commandType), commandType, null);
+        }
+
+        var activity = Source.StartActivity(activityName, ActivityKind.Client);
         if (activity is not { IsAllDataRequested: true })
             return activity;
 
         activity.SetTag("db.system", "postgresql");
         activity.SetTag("db.connection_string", connector.UserFacingConnectionString);
-        activity.SetTag("db.user", settings.Username);
-        activity.SetTag("db.name", settings.Database);
-        activity.SetTag("db.statement", sql);
+        activity.SetTag("db.user", connector.InferredUserName);
+        // We trace the actual (maybe inferred) database name we're connected to, even if it
+        // wasn't specified in the connection string
+        activity.SetTag("db.name", dbName);
+        activity.SetTag("db.statement", commandText);
         activity.SetTag("db.connection_id", connector.Id);
+        if (dbOperation != null)
+            activity.SetTag("db.operation", dbOperation);
+        if (dbSqlTable != null)
+            activity.SetTag("db.sql.table", dbSqlTable);
 
         var endPoint = connector.ConnectedEndPoint;
         Debug.Assert(endPoint is not null);
