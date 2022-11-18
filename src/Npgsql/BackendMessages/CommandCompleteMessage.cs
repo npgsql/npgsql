@@ -111,7 +111,7 @@ sealed class CommandCompleteMessage : IBackendMessage
     static ulong ParseNumber(byte[] bytes, ref int pos)
     {
         Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
-        uint result = 0;
+        ulong result = 0;
         do
         {
             result = result * 10 + bytes[pos++] - '0';
