@@ -55,5 +55,5 @@ public readonly struct ReplicationSlotOptions
     /// <summary>
     /// The identifier of the snapshot exported by the CREATE_REPLICATION_SLOT command.
     /// </summary>
-    internal string? SnapshotName { get; }
+    public string? SnapshotName { get; }
 }
