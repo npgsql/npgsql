@@ -116,6 +116,13 @@ class PoolingDataSource : NpgsqlDataSource
         _logger = LoggingConfiguration.ConnectionLogger;
     }
 
+    internal override bool NeedsRefresh()
+    {
+        return false;
+    }
+
+    internal override bool Refresh(NpgsqlConnection conn) => throw new NotImplementedException();
+
     internal sealed override ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {

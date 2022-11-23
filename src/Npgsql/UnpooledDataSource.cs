@@ -20,6 +20,13 @@ sealed class UnpooledDataSource : NpgsqlDataSource
 
     internal override bool OwnsConnectors => true;
 
+    internal override bool NeedsRefresh()
+    {
+        return false;
+    }
+
+    internal override bool Refresh(NpgsqlConnection conn) => throw new System.NotImplementedException();
+
     internal override async ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {

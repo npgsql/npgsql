@@ -971,6 +971,24 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
     bool _loadBalanceHosts;
+    
+    /// <summary>
+    /// Enables balancing between multiple hosts by round-robin in a specified topology
+    /// </summary>
+    [Category("Failover and load balancing")]
+    [Description("Enables balancing between multiple hosts by round-robin in a topology.")]
+    [DisplayName("Topology Keys")]
+    [NpgsqlConnectionStringProperty]
+    public string? TopologyKeys
+    {
+        get => _topologyKeys;
+        set
+        {
+            _topologyKeys = value;
+            SetValue(nameof(TopologyKeys), value);
+        }
+    }
+    string? _topologyKeys;
 
     /// <summary>
     /// Controls for how long the host's cached state will be considered as valid.

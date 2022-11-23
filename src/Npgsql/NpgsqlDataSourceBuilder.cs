@@ -340,6 +340,16 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     {
         var config = PrepareConfiguration();
 
+        // if (ConnectionStringBuilder.TopologyKeys != null)
+        // {
+        //     new TopologyAwareDataSource(ConnectionStringBuilder, config);
+        // }
+
+        if (ConnectionStringBuilder.LoadBalanceHosts)
+        {
+            return new ClusterAwareDataSource(ConnectionStringBuilder, config);
+        }
+
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
             ValidateMultiHost();

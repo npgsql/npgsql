@@ -179,7 +179,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     void SetupDataSource()
     {
         // Fast path: a pool already corresponds to this exact version of the connection string.
-        if (PoolManager.Pools.TryGetValue(_connectionString, out _dataSource))
+        if (PoolManager.Pools.TryGetValue(_connectionString, out _dataSource) && !_dataSource.NeedsRefresh())
         {
             Settings = _dataSource.Settings;  // Great, we already have a pool
             return;
@@ -322,7 +322,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     EnlistTransaction(enlistToTransaction);
 
                 LogMessages.OpenedConnection(_connectionLogger, Host!, Port, Database, _userFacingConnectionString, connector.Id);
-                FullState = ConnectionState.Open;
+                   FullState = ConnectionState.Open;
             }
             catch
             {

@@ -1,1 +1,5 @@
 ﻿#nullable enable
+Npgsql.ClusterAwareDataSource
+Npgsql.NpgsqlConnectionStringBuilder.TopologyKeys.get -> string?
+Npgsql.NpgsqlConnectionStringBuilder.TopologyKeys.set -> void
+Npgsql.TopologyAwareDataSource
