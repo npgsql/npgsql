@@ -89,8 +89,8 @@ public class SecurityTests : TestBase
         if (username == null)
             throw new Exception("Could find username");
 
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
-            IntegratedSecurity = true,
+        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
             Username = username,
             Password = null
         }.ToString();
@@ -113,7 +113,6 @@ public class SecurityTests : TestBase
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            IntegratedSecurity = true,
             Username = null,
             Password = null
         }.ToString();
@@ -136,7 +135,6 @@ public class SecurityTests : TestBase
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            IntegratedSecurity = true,
             Username = null,
             Password = null,
             Database = null

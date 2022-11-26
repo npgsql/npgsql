@@ -392,7 +392,6 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal string Database => Settings.Database!;
     string KerberosServiceName => Settings.KerberosServiceName;
     int ConnectionTimeout => Settings.Timeout;
-    bool IntegratedSecurity => Settings.IntegratedSecurity;
 
     /// <summary>
     /// The actual command timeout value that gets set on internal commands.

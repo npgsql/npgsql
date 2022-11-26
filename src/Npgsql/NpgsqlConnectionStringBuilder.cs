@@ -262,7 +262,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _database;
 
     /// <summary>
-    /// The username to connect with. Not required if using IntegratedSecurity.
+    /// The username to connect with. Not required if using GSS/SSPI/Kerberos.
     /// </summary>
     [Category("Connection")]
     [Description("The username to connect with. Not required if using IntegratedSecurity.")]
@@ -280,7 +280,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     string? _username;
 
     /// <summary>
-    /// The password to connect with. Not required if using IntegratedSecurity.
+    /// The password to connect with. Not required if using GSS/SSPI/Kerberos.
     /// </summary>
     [Category("Connection")]
     [Description("The password to connect with. Not required if using IntegratedSecurity.")]
@@ -558,28 +558,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
     bool _checkCertificateRevocation;
-
-    /// <summary>
-    /// Whether to use Windows integrated security to log in.
-    /// </summary>
-    [Category("Security")]
-    [Description("Whether to use Windows integrated security to log in.")]
-    [DisplayName("Integrated Security")]
-    [NpgsqlConnectionStringProperty]
-    public bool IntegratedSecurity
-    {
-        get => _integratedSecurity;
-        set
-        {
-            // No integrated security if we're on mono and .NET 4.5 because of ClaimsIdentity,
-            // see https://github.com/npgsql/Npgsql/issues/133
-            if (value && Type.GetType("Mono.Runtime") != null)
-                throw new NotSupportedException("IntegratedSecurity is currently unsupported on mono and .NET 4.5 (see https://github.com/npgsql/Npgsql/issues/133)");
-            _integratedSecurity = value;
-            SetValue(nameof(IntegratedSecurity), value);
-        }
-    }
-    bool _integratedSecurity;
 
     /// <summary>
     /// The Kerberos service name to be used for authentication.
@@ -1415,6 +1393,25 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     #endregion
 
     #region Properties - Obsolete
+
+    /// <summary>
+    /// Whether to use Windows integrated security to log in.
+    /// </summary>
+    [Category("Security")]
+    [Description("Whether to use Windows integrated security to log in.")]
+    [DisplayName("Integrated Security")]
+    [NpgsqlConnectionStringProperty]
+    [Obsolete("The IntegratedSecurity parameter is no longer needed and does nothing.")]
+    public bool IntegratedSecurity
+    {
+        get => _integratedSecurity;
+        set
+        {
+            _integratedSecurity = value;
+            SetValue(nameof(IntegratedSecurity), value);
+        }
+    }
+    bool _integratedSecurity;
 
     /// <summary>
     /// Obsolete, see https://www.npgsql.org/doc/release-notes/6.0.html
