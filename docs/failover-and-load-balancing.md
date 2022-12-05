@@ -9,7 +9,7 @@ Npgsql 6.0 allows specifying multiple hosts in your application's connection str
 
 Npgsql allows you to specify multiple servers in your connection string as follows:
 
-### [Npgsql 7.0+](#tab/7.0)
+### [Npgsql 7.0+](#tab/7)
 
 ```c#
 var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=server1,server2;Username=test;Password=test");
@@ -36,7 +36,7 @@ By default, Npgsql will try to connect to the servers in the order in which they
 
 In the failover scenario above, if `server1` goes down, `server2` is typically promoted to being the new primary. However, `server1` may be brought back up and assume the role of standby - the servers will have switched roles - and Npgsql will continue to connect to `server1` whenever possible. If you need to connect to a specific server type - e.g. to the primary in order to perform writes - you can do so as follows:
 
-### [Npgsql 7.0+](#tab/7.0)
+### [Npgsql 7.0+](#tab/7)
 
 ```c#
 await using var connection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
@@ -70,7 +70,7 @@ Going a step further, it's important to understand that applications don't alway
 
 You can tell Npgsql that you *prefer* a connection to a standby:
 
-### [Npgsql 7.0+](#tab/7.0)
+### [Npgsql 7.0+](#tab/7)
 
 ```c#
 // At startup:
@@ -92,7 +92,7 @@ With "prefer standby", as long as at least one standby server is available, Npgs
 
 The following options are supported for the target session attributes:
 
-### [Npgsql 7.0+](#tab/7.0)
+### [Npgsql 7.0+](#tab/7)
 
 Option        | Description
 ------------- | -----------
