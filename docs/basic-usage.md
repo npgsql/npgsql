@@ -27,7 +27,7 @@ dataSourceBuilder
 await using var dataSource = dataSourceBuilder.Build();
 ```
 
-For more information on data source configuration, consult the relevant documentation pages.
+You typically build a single data source, and then use that instance throughout your application; data sources are thread-safe, and (usually) correspond to a connection pool inside Npgsql. For more information on data source configuration, consult the relevant documentation pages.
 
 ## Basic SQL Execution
 

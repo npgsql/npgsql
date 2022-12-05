@@ -9,9 +9,21 @@ Npgsql 6.0 allows specifying multiple hosts in your application's connection str
 
 Npgsql allows you to specify multiple servers in your connection string as follows:
 
-```text
-Host=server1,server2;Username=test;Password=test
+### [Npgsql 7.0+](#tab/7.0)
+
+```c#
+var dataSourceBuilder = new NpgsqlDataSourceBuilder("Host=server1,server2;Username=test;Password=test");
+await using var dataSource = dataSourceBuilder.BuildMultiHost();
+await using var connection = await dataSource.OpenConnectionAsync();
 ```
+
+### [Older versions](#tab/old)
+
+```c#
+await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test");
+```
+
+***
 
 Different ports may be specified per host with the standard colon syntax: `Host=server1:5432,server2:5433`.
 
@@ -22,27 +34,77 @@ By default, Npgsql will try to connect to the servers in the order in which they
 
 ## Specifying server types
 
-In the failover scenario above, if `server1` goes down, `server2` is typically promoted to being the new primary. However, `server1` may be brought back up and assume the role of standby - the servers will have switched roles - and Npgsql will continue to connect to `server1` whenever possible. To mitigate this, you can tell Npgsql which server type you wish to connect to:
+In the failover scenario above, if `server1` goes down, `server2` is typically promoted to being the new primary. However, `server1` may be brought back up and assume the role of standby - the servers will have switched roles - and Npgsql will continue to connect to `server1` whenever possible. If you need to connect to a specific server type - e.g. to the primary in order to perform writes - you can do so as follows:
 
-```text
-Host=server1,server2;Username=test;Password=test;Target Session Attributes=primary
+### [Npgsql 7.0+](#tab/7.0)
+
+```c#
+await using var connection = await dataSource.OpenConnectionAsync(TargetSessionAttributes.Primary);
 ```
 
-This will make Npgsql return connections only to the primary server, regardless of where it's located in the host list you provide.
+This makes Npgsql return connections only to the primary server, regardless of where it's located in the host list you provide.
+
+You can also get a separate data source which will only return connections to a specific server type. For example, you can create a primary-only data sources in your application startup, and use that data source as usual:
+
+```c#
+// At startup:
+_primaryDataSource = dataSource.WithTargetSession(TargetSessionAttributes.Primary);
+
+// ... and wherever you need a connection:
+await using var connection = await _primaryDataSource.OpenConnectionAsync();
+```
+
+### [Older versions](#tab/old)
+
+```c#
+await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test;Target Session Attributes=primary");
+```
+
+This makes Npgsql return connections only to the primary server, regardless of where it's located in the host list you provide.
+
+***
 
 ## Load distribution
 
 Going a step further, it's important to understand that applications don't always make use of the database in the same way; some parts of your application only need to read data from the database, while others need to write data. If you have one or more standby servers, Npgsql can dispatch read-only queries to those servers to reduce the load on your primary. While the failover setup described above improves *reliability*, this technique improves *performance*.
 
-The `Target Session Attributes` parameter can be used to ask for a connection to a Standby, whenever possible:
+You can tell Npgsql that you *prefer* a connection to a standby:
 
-```text
-Host=server1,server2;Username=test;Password=test;Target Session Attributes=prefer-standby
+### [Npgsql 7.0+](#tab/7.0)
+
+```c#
+// At startup:
+_preferStandbyDatASource = dataSource.WithTargetSession(TargetSessionAttributes.PreferStandby);
+
+// ... and wherever you need a connection:
+await using var connection = await _preferStandbyDatASource.OpenConnectionAsync();
 ```
 
-With `prefer-standby`, as long as at least one standby server is available, Npgsql will return connections to that server. However, if all standby servers are down (or have exhausted their `Max Pool Size` setting), a connection to the primary will be returned instead.
+### [Older versions](#tab/old)
 
-`Target Session Attributes` supports the following options:
+```c#
+await using var connection = new NpgsqlConnection("Host=server1,server2;Username=test;Password=test;Target Session Attributes=prefer-standby");
+```
+
+***
+
+With "prefer standby", as long as at least one standby server is available, Npgsql returns connections to that server. However, if all standby servers are down (or have exhausted their `Max Pool Size` setting), a connection to the primary is returned instead.
+
+The following options are supported for the target session attributes:
+
+### [Npgsql 7.0+](#tab/7.0)
+
+Option        | Description
+------------- | -----------
+Any           | Any successful connection is acceptable.
+Primary       | Server must not be in hot standby mode (`pg_is_in_recovery()` must return false).
+Standby       | Server must be in hot standby mode (`pg_is_in_recovery()` must return true).
+PreferPrimary | First try to find a primary server, but if none of the listed hosts is a primary server, try again in `Any` mode.
+PreferStandby | First try to find a standby server, but if none of the listed hosts is a standby server, try again in `Any` mode.
+ReadWrite     | Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the `default_transaction_read_only` parameter must be off).
+ReadOnly      | Session must not accept read-write transactions by default (the converse).
+
+### [Older versions](#tab/old)
 
 Option         | Description
 -------------- | -----------
@@ -54,10 +116,12 @@ prefer-standby | First try to find a standby server, but if none of the listed h
 read-write     | Session must accept read-write transactions by default (that is, the server must not be in hot standby mode and the `default_transaction_read_only` parameter must be off).
 read-only      | Session must not accept read-write transactions by default (the converse).
 
-Npgsql detects whether a server is a primary or a standby by occasionally querying [`pg_is_in_recovery()`](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-RECOVERY-CONTROL), and whether a server is read-write or read-only by querying [`default_transaction_read_only`](https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-DEFAULT-TRANSACTION-READ-ONLY) - this is consistent with how PostgreSQL's libpq implements `target_session_attributes`. Servers are queried just before a connection is returned from the pool; the query intervals can be controlled via the `Host Recheck Seconds` parameter (10 seconds by default). PostgreSQL 14 reports state changes automatically, so querying isn't needed (except when a host is down).
+***
+
+Npgsql detects whether a server is a primary or a standby by occasionally querying [`pg_is_in_recovery()`](https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-RECOVERY-CONTROL), and whether a server is read-write or read-only by querying [`default_transaction_read_only`](https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-DEFAULT-TRANSACTION-READ-ONLY) - this is consistent with how PostgreSQL's libpq implements `target_session_attributes`. Servers are queried just before a connection is returned from the pool; the query intervals can be controlled via the `Host Recheck Seconds` parameter (10 seconds by default).
 
 > [!NOTE]
-> If you choose to distribute load across multiple servers, make sure you understand what consistency guarantees are provided by PostgreSQL in your particular setup. In some cases, hot standbys lag behind their primary servers, and will therefore return slightly out-of-date results. This is usually OK, but if you require up-to-date results at all times, synchronous commit may provide a good solution (but has a performance cost).
+> If you choose to distribute load across multiple servers, make sure you understand what consistency guarantees are provided by PostgreSQL in your particular setup. In some cases, hot standbys lag behind their primary servers, and will therefore return slightly out-of-date results. This is usually OK, but if you require up-to-date results at all times, synchronous commit may provide a good solution (albeit with a performance cost).
 
 ## Load balancing
 
@@ -69,4 +133,4 @@ You can specify `Load Balance Hosts=true` in the connection string to instruct N
 Host=server1,server2,server3,server4,server5;Username=test;Password=test;Load Balance Hosts=true;Target Session Attributes=prefer-standby
 ```
 
-With this connection string, every time a connection is opened, Npgsql will start at a different point in the list. For example, in the 3rd connection attempt, Npgsql will first try to return a connection to `server3`; if that server is reachable and is a standby, it will be selected. This allows spreading your (typically read-only) application load across all available servers, and can greatly improve your scalability.
+With this connection string, every time a connection is opened, Npgsql starts at a different point in the list. For example, in the 3rd connection attempt, Npgsql first tries to return a connection to `server3`; if that server is reachable and is a standby, it is selected. This allows spreading your (typically read-only) application load across all available servers, and can greatly improve your scalability.
