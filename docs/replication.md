@@ -1,14 +1,10 @@
 # Logical and Physical Replication
 
-> [!NOTE]
-> This feature was introduced in Npgsql 5.0.
+Replication allows a client to receive a continuous stream of updates from a PostgreSQL database, providing a near-realtime view of all changes as they occur. While this feature was originally developed to keep PostgreSQL standby replicas in sync with a primary, it can be used by arbitrary client applications.
 
-Replication allows a client to receive a continuous stream of updates from a PostgreSQL database, providing a near-realtime view of all changes as they occur. While this feature was originally developed to keep PostgreSQL standby replicas in sync with a primary, it can be used by arbitrary applications to get an update feed from a PostgreSQL server.
+Replication can be used anywhere where a constant change feed of database changes is required; for example, an external application can be notified in near-realtime of any changes that occurred in a particular database table. This can be useful for external auditing purposes, for replicating certain data somewhere else, for implement the outbox pattern (see [Additional resources](#additional-resources) below), and various other usages.
 
 Npgsql provides a 1st-class API for writing .NET replication clients, detailed below. While PostgreSQL supports both logical and physical replication, in the majority of cases .NET applications will want to use logical replication.
-
-> [!WARNING]
-> Replication support is new in Npgsql and should be considered a bit experimental. Some APIs may change based on user feedback.
 
 ## Logical replication
 
@@ -130,3 +126,7 @@ Message: COMMIT 230413
 ## Physical replication
 
 Finally, PostgreSQL also supports physical replication, which streams raw block data rather than logical events on changes. While useful for synchronizing PostgreSQL replicas and supported by Npgsql, this mode is unlikely to be useful for a typical .NET program client.
+
+## Additional resources
+
+* See [here](https://event-driven.io/en/push_based_outbox_pattern_with_postgres_logical_replication/) for a great post on implementing the outbox pattern via PostgreSQL logical replication. The outbox pattern guarantees delivery of an event from the database to e.g. a queue.
