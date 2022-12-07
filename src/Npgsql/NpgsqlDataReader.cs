@@ -1155,9 +1155,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         // If multiplexing isn't on, _sendTask contains the task for the writing of this command.
         // Make sure that this task, which may have executed asynchronously and in parallel with the reading,
-        // has completed, throwing any exceptions it generated.
-        // Note: if the following is removed, mysterious concurrent connection usage errors start happening
-        // on .NET Framework.
+        // has completed, throwing any exceptions it generated. If we don't do this, there's the possibility of a race condition where the
+        // user executes a new command after reader.Dispose() returns, but some additional write stuff is still finishing up from the last
+        // command.
         if (_sendTask != null)
         {
             try
