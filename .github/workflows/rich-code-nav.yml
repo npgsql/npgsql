@@ -14,6 +14,7 @@ env:
 
 jobs:
   build:
+    if: ${{ false }}  # disable as it's failing, see https://github.com/microsoft/RichCodeNavIndexer/issues/128
     runs-on: windows-latest
 
     steps:
