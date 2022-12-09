@@ -107,7 +107,7 @@ sealed class ResettableCancellationTokenSource : IDisposable
         lock (lockObject)
         {
             // if there was an attempt to cancel while the connector was breaking
-            // we do nothing and return the default token
+            // we do nothing and return
             // as we're going to fail while reading or writing anyway
             if (isDisposed)
             {
