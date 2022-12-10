@@ -87,7 +87,7 @@ Options<sup>[1](#misc_sup_1)</sup> | Specifies any valid [PostgreSQL connection 
 Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
-Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING
+Client Encoding          | Gets or sets the client_encoding parameter.                                                          | PGCLIENTENCODING, UTF8
 Encoding                 | Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.            | UTF8
 Timezone                 | Gets or sets the session timezone.                                                                   | PGTZ
 EF Template Database     | The database template to specify when creating a database in Entity Framework.                       | template1
