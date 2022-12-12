@@ -6,10 +6,15 @@
   "workspaceFolder": "/workspace",
 
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash",
+    "terminal.integrated.profiles.linux": {
+      "bash": {
+          "path": "/bin/bash"
+      }
+    },
+    "terminal.integrated.defaultProfile.linux": "bash",
     "remote.extensionKind": {
       "ms-azuretools.vscode-docker": "workspace"
-    },
+    }
   },
 
   "extensions": [
@@ -22,7 +27,7 @@
   "forwardPorts": [5432, 5050],
 
   "remoteEnv": {
-    "DeveloperBuild": "True",
+    "DeveloperBuild": "True"
   },
 
   "postCreateCommand": "dotnet restore Npgsql.sln"
