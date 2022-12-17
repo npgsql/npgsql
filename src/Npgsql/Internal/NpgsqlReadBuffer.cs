@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -519,9 +518,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
     public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken = default)
     {
-        if (output.Length == 0)
-            return new ValueTask<int>(0);
-
         var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
         if (readFromBuffer > 0)
         {
@@ -529,6 +525,9 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             ReadPosition += readFromBuffer;
             return new ValueTask<int>(readFromBuffer);
         }
+        
+        if (output.Length == 0)
+            return new ValueTask<int>(0);
 
         return ReadAsyncLong(this, output, cancellationToken);
 

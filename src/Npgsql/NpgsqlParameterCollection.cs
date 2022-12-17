@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -565,7 +566,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             throw new ArgumentNullException(nameof(values));
 
         foreach (var parameter in values)
-            Add(Cast(parameter) ?? throw new ArgumentException("Collection contains a null value.", nameof(values)));
+            Add(Cast(parameter));
     }
 
     /// <inheritdoc />
@@ -748,10 +749,18 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     internal PlaceholderType PlaceholderType { get; set; }
 
     static NpgsqlParameter Cast(object? value)
-        => value is NpgsqlParameter p
-            ? p
-            : throw new InvalidCastException(
-                $"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
+    {
+        var castedValue = value as NpgsqlParameter;
+        if (castedValue is null)
+            ThrowInvalidCastException(value);
+
+        return castedValue;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+    static void ThrowInvalidCastException(object? value) =>
+        throw new InvalidCastException(
+            $"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
 }
 
 enum PlaceholderType
