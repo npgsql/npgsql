@@ -1392,5 +1392,29 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
     }
 
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4804")]
+    [Description("Concurrent write and read failure can lead to deadlocks while cleaning up the connector.")]
+    public async Task Concurrent_read_write_failure_deadlock()
+    {
+        if (IsMultiplexing)
+            return;
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+        await using var conn = await OpenConnectionAsync(connectionString);
+
+        await using var cmd = conn.CreateCommand();
+        // Attempt to send a big enough query to fill buffers
+        // That way the write side should be stuck, waiting for the server to empty buffers
+        cmd.CommandText = new string('a', 8_000_000);
+        var queryTask = cmd.ExecuteNonQueryAsync();
+
+        var server = await postmasterMock.WaitForServerConnection();
+        server.Close();
+
+        Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask);
+    }
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
