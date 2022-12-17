@@ -1160,17 +1160,28 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         // command.
         if (_sendTask != null)
         {
-            try
+            // If the connector is broken, we have no reason to wait for the sendTask to complete
+            // as we're not going to send anything else over it
+            // and that can lead to deadlocks (concurrent write and read failure, see #4804)
+            if (Connector.IsBroken)
             {
-                if (async)
-                    await _sendTask;
-                else
-                    _sendTask.GetAwaiter().GetResult();
+                // Prevent unobserved Task notifications by observing the failed Task exception.
+                _ = _sendTask.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Current);
             }
-            catch (Exception e)
+            else
             {
-                // TODO: think of a better way to handle exceptions, see #1323 and #3163
-                _commandLogger.LogDebug(e, "Exception caught while sending the request", Connector.Id);
+                try
+                {
+                    if (async)
+                        await _sendTask;
+                    else
+                        _sendTask.GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    // TODO: think of a better way to handle exceptions, see #1323 and #3163
+                    _commandLogger.LogDebug(e, "Exception caught while sending the request", Connector.Id);
+                }
             }
         }
 
