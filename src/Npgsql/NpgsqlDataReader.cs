@@ -1162,7 +1162,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             // If the connector is broken, we have no reason to wait for the sendTask to complete
             // as we're not going to send anything else over it
-            // and that can lead to deadlocks (concurrent write and read failure)
+            // and that can lead to deadlocks (concurrent write and read failure, see #4804)
             if (Connector.IsBroken)
             {
                 // Prevent unobserved Task notifications by observing the failed Task exception.
