@@ -731,6 +731,30 @@ LANGUAGE 'plpgsql'");
         Assert.That(await batch.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4264")]
+    public async Task Batch_with_auto_prepare_reuse()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            MaxAutoPrepare = 20
+        };
+
+        await using var conn = await OpenConnectionAsync(csb);
+
+        var tempTableName = await CreateTempTable(conn, "id int");
+
+        await using var batch = new NpgsqlBatch(conn);
+        for (var i = 0; i < 2; ++i)
+        {
+            for (var j = 0; j < 10; ++j)
+            {
+                batch.BatchCommands.Add(new NpgsqlBatchCommand($"DELETE FROM {tempTableName} WHERE 1=0"));
+            }
+            await batch.ExecuteNonQueryAsync();
+            batch.BatchCommands.Clear();
+        }
+    }
+
     #endregion Miscellaneous
 
     #region Logging
