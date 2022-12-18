@@ -107,7 +107,7 @@ public class NpgsqlBatchCommandCollection : DbBatchCommandCollection, IList<Npgs
         return castedValue;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+    [DoesNotReturn]
     static void ThrowInvalidCastException(DbBatchCommand? value) =>
         throw new InvalidCastException(
             $"The value \"{value}\" is not of type \"{nameof(NpgsqlBatchCommand)}\" and cannot be used in this batch command collection.");

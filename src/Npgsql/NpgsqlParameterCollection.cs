@@ -757,7 +757,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         return castedValue;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+    [DoesNotReturn]
     static void ThrowInvalidCastException(object? value) =>
         throw new InvalidCastException(
             $"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
