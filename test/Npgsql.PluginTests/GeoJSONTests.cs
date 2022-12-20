@@ -309,7 +309,7 @@ public class GeoJSONTests : TestBase
         Assert.That(actual, Is.EqualTo(data.Geometry));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4693")]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4827")]
     public async Task Import_big_geometry()
     {
         await using var conn = await OpenConnectionAsync();
