@@ -450,7 +450,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.LineString;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -477,7 +477,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.Polygon;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -511,7 +511,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiPoint;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -538,7 +538,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiLineString;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -565,7 +565,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiPolygon;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -591,7 +591,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.GeometryCollection;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {

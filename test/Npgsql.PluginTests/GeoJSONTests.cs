@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeoJSON.Net;
@@ -9,6 +10,7 @@ using GeoJSON.Net.Geometry;
 using Newtonsoft.Json;
 using Npgsql.GeoJSON.Internal;
 using Npgsql.Tests;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.PluginTests;
@@ -32,7 +34,8 @@ public class GeoJSONTests : TestBase
         },
         new()
         {
-            Geometry = new LineString(new[] {
+            Geometry = new LineString(new[]
+                {
                     new Position(longitude: 1d, latitude: 1d),
                     new Position(longitude: 1d, latitude: 2d)
                 })
@@ -41,8 +44,10 @@ public class GeoJSONTests : TestBase
         },
         new()
         {
-            Geometry = new Polygon(new[] {
-                    new LineString(new[] {
+            Geometry = new Polygon(new[]
+                {
+                    new LineString(new[]
+                    {
                         new Position(longitude: 1d, latitude: 1d),
                         new Position(longitude: 2d, latitude: 2d),
                         new Position(longitude: 3d, latitude: 3d),
@@ -54,7 +59,8 @@ public class GeoJSONTests : TestBase
         },
         new()
         {
-            Geometry = new MultiPoint(new[] {
+            Geometry = new MultiPoint(new[]
+                {
                     new Point(new Position(longitude: 1d, latitude: 1d))
                 })
                 { BoundingBoxes = new[] { 1d, 1d, 1d, 1d } },
@@ -62,8 +68,10 @@ public class GeoJSONTests : TestBase
         },
         new()
         {
-            Geometry = new MultiLineString(new[] {
-                    new LineString(new[] {
+            Geometry = new MultiLineString(new[]
+                {
+                    new LineString(new[]
+                    {
                         new Position(longitude: 1d, latitude: 1d),
                         new Position(longitude: 1d, latitude: 2d)
                     })
@@ -73,9 +81,12 @@ public class GeoJSONTests : TestBase
         },
         new()
         {
-            Geometry = new MultiPolygon(new[] {
-                    new Polygon(new[] {
-                        new LineString(new[] {
+            Geometry = new MultiPolygon(new[]
+                {
+                    new Polygon(new[]
+                    {
+                        new LineString(new[]
+                        {
                             new Position(longitude: 1d, latitude: 1d),
                             new Position(longitude: 2d, latitude: 2d),
                             new Position(longitude: 3d, latitude: 3d),
@@ -84,15 +95,20 @@ public class GeoJSONTests : TestBase
                     })
                 })
                 { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
-            CommandText = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)])))"
+            CommandText =
+                "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)])))"
         },
         new()
         {
-            Geometry = new GeometryCollection(new IGeometryObject[] {
+            Geometry = new GeometryCollection(new IGeometryObject[]
+                {
                     new Point(new Position(longitude: 1d, latitude: 1d)),
-                    new MultiPolygon(new[] {
-                        new Polygon(new[] {
-                            new LineString(new[] {
+                    new MultiPolygon(new[]
+                    {
+                        new Polygon(new[]
+                        {
+                            new LineString(new[]
+                            {
                                 new Position(longitude: 1d, latitude: 1d),
                                 new Position(longitude: 2d, latitude: 2d),
                                 new Position(longitude: 3d, latitude: 3d),
@@ -102,7 +118,8 @@ public class GeoJSONTests : TestBase
                     })
                 })
                 { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
-            CommandText = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))))"
+            CommandText =
+                "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))))"
         },
     };
 
@@ -114,7 +131,8 @@ public class GeoJSONTests : TestBase
         using var reader = cmd.ExecuteReader();
         Assert.That(reader.Read());
         Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(data.Geometry));
-        Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(JsonConvert.DeserializeObject<IGeometryObject>(reader.GetFieldValue<string>(1), new GeometryConverter())));
+        Assert.That(reader.GetFieldValue<GeoJSONObject>(0),
+            Is.EqualTo(JsonConvert.DeserializeObject<IGeometryObject>(reader.GetFieldValue<string>(1), new GeometryConverter())));
     }
 
     [Test, TestCaseSource(nameof(Tests))]
@@ -140,14 +158,16 @@ public class GeoJSONTests : TestBase
     {
         new()
         {
-            Geometry = new LineString(new[] {
+            Geometry = new LineString(new[]
+            {
                 new Position(1d, 1d, 0d),
                 new Position(2d, 2d)
             })
         },
         new()
         {
-            Geometry =  new LineString(new[] {
+            Geometry = new LineString(new[]
+            {
                 new Position(1d, 1d, 0d),
                 new Position(2d, 2d),
                 new Position(3d, 3d),
@@ -282,6 +302,68 @@ public class GeoJSONTests : TestBase
             Assert.That(reader[0], Is.EqualTo(point));
             Assert.That(reader[1], Is.EqualTo(point));
         }
+    }
+
+    [Test, TestCaseSource(nameof(Tests))]
+    public void Import_geometry(TestData data)
+    {
+        using var conn = OpenConnection(option: GeoJSONOptions.BoundingBox);
+        conn.ExecuteNonQuery("CREATE TEMP TABLE data (field geometry)");
+
+        using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write(data.Geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT field FROM data";
+        using var reader = cmd.ExecuteReader();
+        Assert.IsTrue(reader.Read());
+        var actual = reader.GetValue(0);
+        Assert.That(actual, Is.EqualTo(data.Geometry));
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4827")]
+    public void Import_big_geometry()
+    {
+        using var conn = OpenConnection();
+        conn.ExecuteNonQuery("CREATE TEMP TABLE data (id text, field geometry)");
+
+        var geometry = new MultiLineString(new[]
+        {
+            new LineString(
+                Enumerable.Range(1, 507)
+                    .Select(i => new Position(longitude: i, latitude: i))
+                    .Append(new Position(longitude: 1d, latitude: 1d))),
+            new LineString(new[]
+            {
+                new Position(longitude: 1d, latitude: 1d),
+                new Position(longitude: 1d, latitude: 2d),
+                new Position(longitude: 1d, latitude: 3d),
+                new Position(longitude: 1d, latitude: 1d),
+            })
+        });
+
+        using (var writer = conn.BeginBinaryImport("COPY data (id, field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write("a", NpgsqlDbType.Text);
+            writer.Write(geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT field FROM data";
+        using var reader = cmd.ExecuteReader();
+        Assert.IsTrue(reader.Read());
+        var actual = reader.GetValue(0);
+        Assert.That(actual, Is.EqualTo(geometry));
     }
 
     protected override NpgsqlConnection OpenConnection(string? connectionString = null)
