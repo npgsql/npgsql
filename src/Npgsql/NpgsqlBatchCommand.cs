@@ -20,7 +20,13 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     public override string CommandText
     {
         get => _commandText;
-        set => _commandText = value ?? string.Empty;
+        set
+        {
+            _commandText = value ?? string.Empty;
+
+            ResetPreparation();
+            // TODO: Technically should do this also if the parameter list (or type) changes
+        }
     }
 
     /// <inheritdoc/>
@@ -127,6 +133,8 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
 
     PreparedStatement? _preparedStatement;
 
+    internal NpgsqlConnector? ConnectorPreparedOn { get; set; }
+
     internal bool IsPreparing;
 
     /// <summary>
@@ -220,6 +228,12 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
         StatementType = msg.StatementType;
         Rows = msg.Rows;
         OID = msg.OID;
+    }
+
+    internal void ResetPreparation()
+    {
+        PreparedStatement = null;
+        ConnectorPreparedOn = null;
     }
 
     /// <summary>
