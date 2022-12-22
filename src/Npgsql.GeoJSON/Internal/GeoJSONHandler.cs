@@ -167,6 +167,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
             var lines = new LineString[buf.ReadInt32(littleEndian)];
             for (var i = 0; i < lines.Length; ++i)
             {
+                await buf.Ensure(SizeOfLength, async);
                 var coordinates = new Position[buf.ReadInt32(littleEndian)];
                 for (var j = 0; j < coordinates.Length; ++j)
                 {
@@ -230,6 +231,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
                 var lines = new LineString[buf.ReadInt32(littleEndian)];
                 for (var j = 0; j < lines.Length; ++j)
                 {
+                    await buf.Ensure(SizeOfLength, async);
                     var coordinates = new Position[buf.ReadInt32(littleEndian)];
                     for (var k = 0; k < coordinates.Length; ++k)
                     {
@@ -498,7 +500,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
 
         for (var i = 0; i < lines.Count; ++i)
         {
-            if (buf.WriteSpaceLeft < 4)
+            if (buf.WriteSpaceLeft < SizeOfLength)
                 await buf.Flush(async, cancellationToken);
             var coordinates = lines[i].Coordinates;
             buf.WriteInt32(coordinates.Count);
