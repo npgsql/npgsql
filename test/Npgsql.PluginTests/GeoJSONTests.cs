@@ -366,6 +366,68 @@ public class GeoJSONTests : TestBase
         Assert.That(actual, Is.EqualTo(geometry));
     }
 
+    [Test, TestCaseSource(nameof(Tests))]
+    public void Export_geometry(TestData data)
+    {
+        using var conn = OpenConnection(option: GeoJSONOptions.BoundingBox);
+        conn.ExecuteNonQuery("CREATE TEMP TABLE data (field geometry)");
+
+        using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write(data.Geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        using (var reader = conn.BeginBinaryExport("COPY data (field) TO STDOUT BINARY"))
+        {
+            reader.StartRow();
+            var field = reader.Read<GeoJSONObject>(NpgsqlDbType.Geometry);
+            Assert.That(field, Is.EqualTo(data.Geometry));
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4830")]
+    public void Export_big_geometry()
+    {
+        using var conn = OpenConnection();
+        conn.ExecuteNonQuery("CREATE TEMP TABLE data (id text, field geometry)");
+
+        var geometry = new Polygon(new[] {
+            new LineString(
+                Enumerable.Range(1, 507)
+                    .Select(i => new Position(longitude: i, latitude: i))
+                    .Append(new Position(longitude: 1d, latitude: 1d))),
+            new LineString(new[] {
+                new Position(longitude: 1d, latitude: 1d),
+                new Position(longitude: 1d, latitude: 2d),
+                new Position(longitude: 1d, latitude: 3d),
+                new Position(longitude: 1d, latitude: 1d),
+            })
+        });
+
+        using (var writer = conn.BeginBinaryImport("COPY data (id, field) FROM STDIN BINARY"))
+        {
+            writer.StartRow();
+            writer.Write("aaaa", NpgsqlDbType.Text);
+            writer.Write(geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = writer.Complete();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        using (var reader = conn.BeginBinaryExport("COPY data (id, field) TO STDOUT BINARY"))
+        {
+            reader.StartRow();
+            var id = reader.Read<string>();
+            var field = reader.Read<GeoJSONObject>(NpgsqlDbType.Geometry);
+            Assert.That(id, Is.EqualTo("aaaa"));
+            Assert.That(field, Is.EqualTo(geometry));
+        }
+    }
+
     protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         => OpenConnection(connectionString, GeoJSONOptions.None);
 
