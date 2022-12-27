@@ -77,7 +77,7 @@ class PoolingDataSource : NpgsqlDataSource
 
     internal PoolingDataSource(
         NpgsqlConnectionStringBuilder settings,
-        NpgsqlDataSourceConfiguration dataSourceConfig,
+        NpgsqlSingleHostDataSourceConfiguration dataSourceConfig,
         NpgsqlMultiHostDataSource? parentPool = null)
         : base(settings, dataSourceConfig)
     {

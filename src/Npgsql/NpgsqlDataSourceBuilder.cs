@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -340,18 +344,14 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     {
         var config = PrepareConfiguration();
 
-        if (ConnectionStringBuilder.Host!.Contains(","))
-        {
-            ValidateMultiHost();
-
-            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
-        }
+        if (config is NpgsqlMultiHostDataSourceConfiguration multiHostConfig)
+            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, multiHostConfig);
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, config)
+            ? new MultiplexingDataSource(ConnectionStringBuilder, (NpgsqlSingleHostDataSourceConfiguration)config)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, config)
-                : new UnpooledDataSource(ConnectionStringBuilder, config);
+                ? new PoolingDataSource(ConnectionStringBuilder, (NpgsqlSingleHostDataSourceConfiguration)config)
+                : new UnpooledDataSource(ConnectionStringBuilder, (NpgsqlSingleHostDataSourceConfiguration)config);
     }
 
     /// <summary>
@@ -359,11 +359,8 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
     {
-        var config = PrepareConfiguration();
-
         ValidateMultiHost();
-
-        return new(ConnectionStringBuilder, config);
+        return new(ConnectionStringBuilder, PrepareConfiguration().AsMultiHostConfiguration());
     }
 
     NpgsqlDataSourceConfiguration PrepareConfiguration()
@@ -376,10 +373,46 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             throw new NotSupportedException(NpgsqlStrings.CannotSetBothPasswordProviderAndPassword);
         }
 
-        return new(
-            _loggerFactory is null
-                ? NpgsqlLoggingConfiguration.NullConfiguration
-                : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
+        var loggingConfiguration = _loggerFactory is null
+            ? NpgsqlLoggingConfiguration.NullConfiguration
+            : new (_loggerFactory, _sensitiveDataLoggingEnabled);
+
+        var host = InferHost();
+
+        if (host.Contains(','))
+        {
+            ValidateMultiHost();
+
+            return new NpgsqlMultiHostDataSourceConfiguration(
+                loggingConfiguration,
+                _userCertificateValidationCallback,
+                _clientCertificatesCallback,
+                _periodicPasswordProvider,
+                _periodicPasswordSuccessRefreshInterval,
+                _periodicPasswordFailureRefreshInterval,
+                _resolverFactories,
+                _userTypeMappings,
+                DefaultNameTranslator,
+                _syncConnectionInitializer,
+                _asyncConnectionInitializer, InferHostsAndPorts(host));
+        }
+
+        if (ConnectionStringBuilder.TargetSessionAttributesParsed is not null &&
+            ConnectionStringBuilder.TargetSessionAttributesParsed != TargetSessionAttributes.Any)
+        {
+            throw new NotSupportedException("Target Session Attributes other then Any is only supported with multiple hosts");
+        }
+
+        var port = InferPort();
+        // Support single host:port format in Host
+        if (!NpgsqlConnectionStringBuilder.IsUnixSocket(host, port, out _) &&
+            NpgsqlConnectionStringBuilder.TrySplitHostPort(host.AsSpan(), out var newHost, out var newPort))
+        {
+            host = newHost;
+            port = newPort;
+        }
+        return new NpgsqlSingleHostDataSourceConfiguration(
+            loggingConfiguration,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
             _periodicPasswordProvider,
@@ -389,7 +422,62 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _userTypeMappings,
             DefaultNameTranslator,
             _syncConnectionInitializer,
-            _asyncConnectionInitializer);
+            _asyncConnectionInitializer,
+            host,
+            port);
+
+
+        string InferHost()
+        {
+            var host = ConnectionStringBuilder.Host;
+            if (host?.Length > 0)
+                return host;
+
+            host = PostgresEnvironment.Host;
+            if (host?.Length > 0)
+                return host;
+
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+#if NET5_0_OR_GREATER
+                   || !Socket.OSSupportsUnixDomainSockets
+#endif
+                // Todo: Maybe decide on some central location to put compile time constants
+                // ToDo: Maybe use a more helpful default on Linux since /tmp doesn't work on Ubuntu
+                ? "localhost" : "/tmp";
+        }
+
+        int InferPort()
+        {
+            var port = ConnectionStringBuilder.Port;
+            if (port > 0)
+                return port;
+
+            var portString = PostgresEnvironment.Port;
+
+            // Todo: Maybe decide on some central location to put compile time constants
+            return portString?.Length > 0 ? int.Parse(portString) : 5432;
+        }
+
+        ImmutableArray<(string Host, int Port)> InferHostsAndPorts(string multiHostString)
+        {
+            var hosts = multiHostString.Split(',');
+            var builder = ImmutableArray.CreateBuilder<(string Host, int Port)>(hosts.Length);
+            var inferredPort = 0;
+            for (var i = 0; i < hosts.Length; i++)
+            {
+                var host = hosts[i].AsSpan().Trim();
+                if (NpgsqlConnectionStringBuilder.TrySplitHostPort(host, out var newHost, out var newPort))
+                    builder.Add((newHost, newPort));
+                else
+                {
+                    if (inferredPort == 0)
+                        inferredPort = InferPort();
+                    builder.Add((host.ToString(), inferredPort));
+                }
+            }
+
+            return builder.MoveToImmutable();
+        }
     }
 
     void ValidateMultiHost()

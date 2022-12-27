@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -260,4 +261,25 @@ public class DataSourceTests : TestBase
             ? await command.ExecuteScalarAsync()
             : command.ExecuteScalar(), Is.EqualTo(1));
     }
+
+    #region Empty connection string
+
+    [Test]
+    public async Task EmptyConnectionString()
+    {
+        // Ignore on build server for now since we don't have SSPI/GSS
+        // there and /tmp is the wrong socket directory for Ubuntu
+        if (TestUtil.IsOnBuildServer)
+            return;
+
+        var dsb = new NpgsqlDataSourceBuilder("password=npgsql_tests");
+        await using var dataSource = dsb.Build();
+        await using var connection = dataSource.CreateConnection();
+        Assert.That(connection.State, Is.EqualTo(ConnectionState.Closed));
+
+        await connection.OpenAsync();
+        Assert.That(await connection.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+    }
+
+    #endregion Empty connection string
 }

@@ -387,8 +387,8 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Configuration settings
 
-    internal string Host => Settings.Host!;
-    internal int Port => Settings.Port;
+    internal string Host => ((NpgsqlSingleHostDataSourceConfiguration)DataSource.Configuration).Host;
+    internal int Port => ((NpgsqlSingleHostDataSourceConfiguration)DataSource.Configuration).Port;
     internal string Database => Settings.Database!;
     string KerberosServiceName => Settings.KerberosServiceName;
     int ConnectionTimeout => Settings.Timeout;

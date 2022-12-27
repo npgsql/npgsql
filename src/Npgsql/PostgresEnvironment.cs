@@ -6,6 +6,10 @@ namespace Npgsql;
 
 static class PostgresEnvironment
 {
+    internal static string? Host => Environment.GetEnvironmentVariable("PGHOST");
+
+    internal static string? Port => Environment.GetEnvironmentVariable("PGPORT");
+
     internal static string? User => Environment.GetEnvironmentVariable("PGUSER");
 
     internal static string? Password => Environment.GetEnvironmentVariable("PGPASSWORD");

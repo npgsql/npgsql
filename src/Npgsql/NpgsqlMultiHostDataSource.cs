@@ -30,27 +30,36 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
     volatile int _roundRobinIndex = -1;
 
-    internal NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
+    internal NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlMultiHostDataSourceConfiguration dataSourceConfig)
         : base(settings, dataSourceConfig)
     {
-        var hosts = settings.Host!.Split(',');
+        var hosts = dataSourceConfig.Hosts;
         _pools = new NpgsqlDataSource[hosts.Length];
         for (var i = 0; i < hosts.Length; i++)
         {
+            var hostPort = hosts[i];
             var poolSettings = settings.Clone();
             Debug.Assert(!poolSettings.Multiplexing);
-            var host = hosts[i].AsSpan().Trim();
-            if (NpgsqlConnectionStringBuilder.TrySplitHostPort(host, out var newHost, out var newPort))
-            {
-                poolSettings.Host = newHost;
-                poolSettings.Port = newPort;
-            }
-            else
-                poolSettings.Host = host.ToString();
+            poolSettings.Host = hostPort.Host;
+            poolSettings.Port = hostPort.Port;
+            var singleHostConfig = new NpgsqlSingleHostDataSourceConfiguration(
+                dataSourceConfig.LoggingConfiguration,
+                dataSourceConfig.UserCertificateValidationCallback,
+                dataSourceConfig.ClientCertificatesCallback,
+                dataSourceConfig.PeriodicPasswordProvider,
+                dataSourceConfig.PeriodicPasswordSuccessRefreshInterval,
+                dataSourceConfig.PeriodicPasswordFailureRefreshInterval,
+                dataSourceConfig.ResolverFactories,
+                dataSourceConfig.UserTypeMappings,
+                dataSourceConfig.DefaultNameTranslator,
+                dataSourceConfig.ConnectionInitializer,
+                dataSourceConfig.ConnectionInitializerAsync,
+                hostPort.Host,
+                hostPort.Port);
 
             _pools[i] = settings.Pooling
-                ? new PoolingDataSource(poolSettings, dataSourceConfig, this)
-                : new UnpooledDataSource(poolSettings, dataSourceConfig);
+                ? new PoolingDataSource(poolSettings, singleHostConfig, this)
+                : new UnpooledDataSource(poolSettings, singleHostConfig);
         }
 
         var targetSessionAttributeValues = Enum.GetValues(typeof(TargetSessionAttributes)).Cast<TargetSessionAttributes>().ToArray();
