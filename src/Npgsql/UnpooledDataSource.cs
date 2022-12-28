@@ -37,7 +37,7 @@ sealed class UnpooledDataSource : NpgsqlDataSource
     }
 
     internal override ValueTask<NpgsqlConnector?> OpenNewConnector(
-        NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        NpgsqlConnection? conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         => new((NpgsqlConnector?)null);
 
     internal override void Return(NpgsqlConnector connector)

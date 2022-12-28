@@ -340,7 +340,6 @@ public sealed class NpgsqlTransaction : DbTransaction
             }
 
             IsDisposed = true;
-            _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
     }
 
@@ -357,7 +356,6 @@ public sealed class NpgsqlTransaction : DbTransaction
             }
 
             IsDisposed = true;
-            _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
         return default;
 
@@ -376,7 +374,6 @@ public sealed class NpgsqlTransaction : DbTransaction
             }
 
             IsDisposed = true;
-            _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
     }
 
