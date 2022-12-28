@@ -2236,24 +2236,6 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
 
-    [Test, Description("Cancellation does not work with the multiplexing")]
-    public async Task Cancel_multiplexing_disabled()
-    {
-        if (!IsMultiplexing)
-            return;
-
-        await using var dataSource = CreateDataSource();
-        await using var conn = await dataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
-        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
-        var cancelledToken = new CancellationToken(canceled: true);
-        Assert.IsTrue(await reader.ReadAsync());
-        while (await reader.ReadAsync(cancelledToken)) { }
-        Assert.IsTrue(await reader.NextResultAsync(cancelledToken));
-        while (await reader.ReadAsync(cancelledToken)) { }
-        Assert.IsFalse(conn.Connector!.UserCancellationRequested);
-    }
-
     #endregion Cancellation
 
     #region Timeout
