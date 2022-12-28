@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
@@ -116,6 +117,24 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
 
         await AssertType(connection, "happy", "happy", type, npgsqlDbType: null, isDefaultForWriting: false);
     }
+
+    [Test]
+    public async Task Unmapped_unknown_enum_as_int()
+    {
+        await using var connection = await OpenConnectionAsync();
+
+        await AssertTypeWrite(UnmappedEnum.Happy, "2", "integer", NpgsqlDbType.Integer, DbType.Int32, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [Test]
+    public async Task Unmapped_unknown_enum_as_string()
+    {
+        await using var connection = await OpenConnectionAsync();
+
+        await AssertTypeWrite(UnmappedEnum.Happy, "Happy", "text", NpgsqlDbType.Text, DbType.String, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    enum UnmappedEnum { Sad, Ok, Happy }
 
     enum NameTranslationEnum
     {
