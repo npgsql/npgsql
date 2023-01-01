@@ -21,6 +21,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
     readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
 
+    readonly Task _multiplexWriteLoop;
+
     /// <summary>
     /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
     /// flushing to the network.
@@ -56,13 +58,12 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
         _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
 
-        // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
-        // pool clearing
-        _ = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
+        _multiplexWriteLoop = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
             .ContinueWith(t =>
             {
                 // Note that we *must* observe the exception if the task is faulted.
-                _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                if (t.Exception?.InnerException is not ChannelClosedException)
+                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
             }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
@@ -156,6 +157,10 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     break;
                 }
             }
+            catch (ChannelClosedException)
+            {
+                throw;
+            }
             catch (Exception exception)
             {
                 LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(_connectionLogger, exception);
@@ -194,6 +199,10 @@ sealed class MultiplexingDataSource : PoolingDataSource
                 // operations complete, so skip it and continue.
                 if (writtenSynchronously)
                     Flush(connector, ref stats);
+            }
+            catch (ChannelClosedException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -347,6 +356,20 @@ sealed class MultiplexingDataSource : PoolingDataSource
         }
 
         // ReSharper disable once FunctionNeverReturns
+    }
+
+    protected override void DisposeBase()
+    {
+        base.DisposeBase();
+        MultiplexCommandWriter.Complete();
+        _multiplexWriteLoop.GetAwaiter().GetResult();
+    }
+
+    protected override async ValueTask DisposeAsyncBase()
+    {
+        await base.DisposeAsyncBase();
+        MultiplexCommandWriter.Complete();
+        await _multiplexWriteLoop;
     }
 
     struct MultiplexingStats

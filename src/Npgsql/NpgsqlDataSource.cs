@@ -397,31 +397,43 @@ public abstract class NpgsqlDataSource : DbDataSource
     #region Dispose
 
     /// <inheritdoc />
-    protected override void Dispose(bool disposing)
+    protected sealed override void Dispose(bool disposing)
     {
         if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+            DisposeBase();
+    }
+
+    /// <inheritdoc cref="Dispose" />
+    protected virtual void DisposeBase()
+    {
+        var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
+        if (cancellationTokenSource is not null)
         {
-            var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
-            if (cancellationTokenSource is not null)
-            {
-                cancellationTokenSource.Cancel();
-                cancellationTokenSource.Dispose();
-            }
-
-            _passwordProviderTimer?.Dispose();
-
-            _setupMappingsSemaphore.Dispose();
-
-            Clear();
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
         }
+
+        _passwordProviderTimer?.Dispose();
+
+        _setupMappingsSemaphore.Dispose();
+
+        Clear();
     }
 
     /// <inheritdoc />
-    protected override ValueTask DisposeAsyncCore()
+    protected sealed override ValueTask DisposeAsyncCore()
     {
         // TODO: async Clear, #4499
-        Dispose(true);
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+            DisposeAsyncBase();
 
+        return default;
+    }
+
+    /// <inheritdoc cref="DisposeAsyncCore" />
+    protected virtual ValueTask DisposeAsyncBase()
+    {
+        DisposeBase();
         return default;
     }
 

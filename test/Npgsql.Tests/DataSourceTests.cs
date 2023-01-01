@@ -71,7 +71,7 @@ public class DataSourceTests : TestBase
         await using var command = dataSource.CreateCommand();
         command.CommandText = "SELECT 1";
 
-        using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+        await using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
         {
             Assert.True(reader.Read());
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
