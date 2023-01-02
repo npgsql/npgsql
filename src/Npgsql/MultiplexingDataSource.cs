@@ -62,8 +62,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             .ContinueWith(t =>
             {
                 // Note that we *must* observe the exception if the task is faulted.
-                if (t.Exception?.InnerException is not ChannelClosedException)
-                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
             }, TaskContinuationOptions.OnlyOnFaulted);
     }
 
@@ -80,10 +79,18 @@ sealed class MultiplexingDataSource : PoolingDataSource
         while (true)
         {
             NpgsqlConnector? connector;
+            NpgsqlCommand? command;
 
-            // Get a first command out.
-            if (!_multiplexCommandReader.TryRead(out var command))
-                command = await _multiplexCommandReader.ReadAsync();
+            try
+            {
+                // Get a first command out.
+                if (!_multiplexCommandReader.TryRead(out command))
+                    command = await _multiplexCommandReader.ReadAsync();
+            }
+            catch (ChannelClosedException)
+            {
+                return;
+            }
 
             try
             {
@@ -157,10 +164,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     break;
                 }
             }
-            catch (ChannelClosedException)
-            {
-                throw;
-            }
             catch (Exception exception)
             {
                 LogMessages.ExceptionWhenOpeningConnectionForMultiplexing(_connectionLogger, exception);
@@ -199,10 +202,6 @@ sealed class MultiplexingDataSource : PoolingDataSource
                 // operations complete, so skip it and continue.
                 if (writtenSynchronously)
                     Flush(connector, ref stats);
-            }
-            catch (ChannelClosedException)
-            {
-                throw;
             }
             catch (Exception ex)
             {
