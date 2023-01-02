@@ -430,6 +430,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         return default;
     }
 
+#pragma warning disable CS1998
     /// <inheritdoc cref="DisposeAsyncCore" />
     protected virtual async ValueTask DisposeAsyncBase()
     {
@@ -453,6 +454,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Clear();
     }
+#pragma warning restore CS1998
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private protected void CheckDisposed()
