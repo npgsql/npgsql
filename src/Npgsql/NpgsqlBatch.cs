@@ -171,4 +171,30 @@ public class NpgsqlBatch : DbBatch
 
     /// <inheritdoc />
     public override void Cancel() => Command.Cancel();
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        ClearTransaction();
+        if (Command.IsCached && Connection is not null && Connection.CachedBatch is null)
+        {
+            BatchCommands.Clear();
+            Connection.CachedBatch = this;
+            return;
+        }
+
+        Command.IsCached = false;
+    }
+
+    /// <summary>
+    /// Clears the current transaction.
+    /// </summary>
+    protected virtual void ClearTransaction() => Transaction = null;
+
+    internal static NpgsqlBatch CreateCachedBatch(NpgsqlConnection connection)
+    {
+        var batch = new NpgsqlBatch(connection);
+        batch.Command.IsCached = true;
+        return batch;
+    }
 }
