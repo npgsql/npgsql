@@ -425,16 +425,27 @@ public abstract class NpgsqlDataSource : DbDataSource
     {
         // TODO: async Clear, #4499
         if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
-            DisposeAsyncBase();
+            return DisposeAsyncBase();
 
         return default;
     }
 
     /// <inheritdoc cref="DisposeAsyncCore" />
-    protected virtual ValueTask DisposeAsyncBase()
+    protected virtual async ValueTask DisposeAsyncBase()
     {
-        DisposeBase();
-        return default;
+        var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
+        if (cancellationTokenSource is not null)
+        {
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+        }
+
+        if (_passwordProviderTimer is not null)
+            await _passwordProviderTimer.DisposeAsync();
+
+        _setupMappingsSemaphore.Dispose();
+
+        Clear();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
