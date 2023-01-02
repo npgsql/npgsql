@@ -360,16 +360,16 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     protected override void DisposeBase()
     {
-        base.DisposeBase();
         MultiplexCommandWriter.Complete();
         _multiplexWriteLoop.GetAwaiter().GetResult();
+        base.DisposeBase();
     }
 
     protected override async ValueTask DisposeAsyncBase()
     {
-        await base.DisposeAsyncBase();
         MultiplexCommandWriter.Complete();
         await _multiplexWriteLoop;
+        await base.DisposeAsyncBase();
     }
 
     struct MultiplexingStats
