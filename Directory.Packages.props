@@ -15,7 +15,7 @@
 
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.4.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.3" />
-    <PackageVersion Include="Scriban.Signed" Version="5.5.1 " />
+    <PackageVersion Include="Scriban.Signed" Version="5.5.2 " />
 
     <!-- Plugins -->
     <PackageVersion Include="NetTopologySuite" Version="2.5.0" />
