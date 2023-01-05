@@ -65,6 +65,49 @@ public interface INpgsqlTypeMapper
         where TEnum : struct, Enum;
 
     /// <summary>
+    /// Maps a CLR enum to a PostgreSQL enum type.
+    /// </summary>
+    /// <remarks>
+    /// CLR enum labels are mapped by name to PostgreSQL enum labels.
+    /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+    /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+    /// You can also use the <see cref="PgNameAttribute"/> on your enum fields to manually specify a PostgreSQL enum label.
+    /// If there is a discrepancy between the .NET and database labels while an enum is read or written,
+    /// an exception will be raised.
+    /// </remarks>
+    /// <param name="clrType">The .NET enum type to be mapped</param>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
+    [RequiresDynamicCode("Calling MapEnum with a Type can require creating new generic types or methods. This may not work when AOT compiling.")]
+    INpgsqlTypeMapper MapEnum(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type clrType,
+        string? pgName = null,
+        INpgsqlNameTranslator? nameTranslator = null);
+
+    /// <summary>
+    /// Removes an existing enum mapping.
+    /// </summary>
+    /// <param name="clrType">The .NET enum type to be mapped</param>
+    /// <param name="pgName">
+    /// A PostgreSQL type name for the corresponding enum type in the database.
+    /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
+    /// </param>
+    /// <param name="nameTranslator">
+    /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+    /// Defaults to <see cref="DefaultNameTranslator" />.
+    /// </param>
+    bool UnmapEnum(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]Type clrType,
+        string? pgName = null,
+        INpgsqlNameTranslator? nameTranslator = null);
+
+    /// <summary>
     /// Maps a CLR type to a PostgreSQL composite type.
     /// </summary>
     /// <remarks>
