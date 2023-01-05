@@ -34,7 +34,7 @@ public class GlobalTypeMapperTests : TestBase
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
 
-        // But they do affect on new data sources
+        // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
         await AssertType(dataSource2, "happy", "happy", type, npgsqlDbType: null, isDefault: false);
     }
@@ -63,7 +63,7 @@ public class GlobalTypeMapperTests : TestBase
             // Global mapping changes have no effect on already-built data sources
             await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
 
-            // But they do affect on new data sources
+            // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
             Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
         }
@@ -94,7 +94,7 @@ public class GlobalTypeMapperTests : TestBase
         // Global mapping changes have no effect on already-built data sources
         await AssertType(dataSource1, Mood.Happy, "happy", type, npgsqlDbType: null);
 
-        // But they do affect on new data sources
+        // But they do affect new data sources
         await using var dataSource2 = CreateDataSource();
         await AssertType(dataSource2, "happy", "happy", type, npgsqlDbType: null, isDefault: false);
     }
