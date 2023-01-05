@@ -275,6 +275,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
+    public INpgsqlTypeMapper MapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
+        Type enumType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) => throw new NotImplementedException();
+
+    /// <inheritdoc />
+    public bool UnmapEnum([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
+        Type enumType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) => throw new NotImplementedException();
+
+    /// <inheritdoc />
     [RequiresDynamicCode("Mapping composite types involves serializing arbitrary types, requiring require creating new generic types or methods. This is currently unsupported with NativeAOT, vote on issue #5303 if this is important to you.")]
     public INpgsqlTypeMapper MapComposite<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] T>(
         string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
