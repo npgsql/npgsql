@@ -11,9 +11,13 @@ using System.Transactions;
 
 namespace Npgsql;
 
-#pragma warning disable CS1591
-#pragma warning disable RS0016
-
+/// <summary>
+/// An <see cref="NpgsqlDataSource" /> which manages connections for multiple hosts, is aware of their states (primary, secondary,
+/// offline...) and can perform failover and load balancing across them.
+/// </summary>
+/// <remarks>
+/// See <see href="https://www.npgsql.org/doc/failover-and-load-balancing.html" />.
+/// </remarks>
 public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
@@ -113,38 +117,50 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
     /// Returns an <see cref="NpgsqlDataSource" /> that wraps this multi-host one with the given server type.
     /// </summary>
     /// <param name="targetSessionAttributes">Specifies the server type (e.g. primary, standby).</param>
-    public NpgsqlDataSource For(TargetSessionAttributes targetSessionAttributes)
+    public NpgsqlDataSource WithTargetSession(TargetSessionAttributes targetSessionAttributes)
         => _wrappers[(int)targetSessionAttributes];
 
-    static bool IsPreferred(ClusterState state, TargetSessionAttributes preferredType)
+    static bool IsPreferred(DatabaseState state, TargetSessionAttributes preferredType)
         => state switch
         {
-            ClusterState.Offline => false,
-            ClusterState.Unknown => true, // We will check compatibility again after refreshing the cluster state
-            ClusterState.PrimaryReadWrite when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary
-                || preferredType == TargetSessionAttributes.ReadWrite  => true,
-            ClusterState.PrimaryReadOnly when preferredType == TargetSessionAttributes.Primary || preferredType == TargetSessionAttributes.PreferPrimary
-                || preferredType == TargetSessionAttributes.ReadOnly => true,
-            ClusterState.Standby when preferredType == TargetSessionAttributes.Standby || preferredType == TargetSessionAttributes.PreferStandby
-                                                                                       || preferredType == TargetSessionAttributes.ReadOnly => true,
+            DatabaseState.Offline => false,
+            DatabaseState.Unknown => true, // We will check compatibility again after refreshing the database state
+
+            DatabaseState.PrimaryReadWrite when preferredType is
+                TargetSessionAttributes.Primary or
+                TargetSessionAttributes.PreferPrimary or
+                TargetSessionAttributes.ReadWrite
+                => true,
+
+            DatabaseState.PrimaryReadOnly when preferredType is
+                TargetSessionAttributes.Primary or
+                TargetSessionAttributes.PreferPrimary or
+                TargetSessionAttributes.ReadOnly
+                => true,
+
+            DatabaseState.Standby when preferredType is
+                TargetSessionAttributes.Standby or
+                TargetSessionAttributes.PreferStandby or
+                TargetSessionAttributes.ReadOnly
+                => true,
+
             _ => preferredType == TargetSessionAttributes.Any
         };
 
-    static bool IsOnline(ClusterState state, TargetSessionAttributes preferredType)
+    static bool IsOnline(DatabaseState state, TargetSessionAttributes preferredType)
     {
         Debug.Assert(preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby);
-        return state != ClusterState.Offline;
+        return state != DatabaseState.Offline;
     }
 
-    static ClusterState GetClusterState(NpgsqlDataSource pool, bool ignoreExpiration = false)
-        => GetClusterState(pool.Settings.Host!, pool.Settings.Port, ignoreExpiration);
-
-    static ClusterState GetClusterState(string host, int port, bool ignoreExpiration)
-        => ClusterStateCache.GetClusterState(host, port, ignoreExpiration);
-
-    async ValueTask<NpgsqlConnector?> TryGetIdleOrNew(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async,
-        TargetSessionAttributes preferredType, Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
-        IList<Exception> exceptions, CancellationToken cancellationToken)
+    async ValueTask<NpgsqlConnector?> TryGetIdleOrNew(
+        NpgsqlConnection conn,
+        TimeSpan timeoutPerHost,
+        bool async,
+        TargetSessionAttributes preferredType, Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
+        int poolIndex,
+        IList<Exception> exceptions,
+        CancellationToken cancellationToken)
     {
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -154,8 +170,8 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             if (poolIndex == pools.Length)
                 poolIndex = 0;
 
-            var clusterState = GetClusterState(pool);
-            if (!clusterValidator(clusterState, preferredType))
+            var databaseState = pool.GetDatabaseState();
+            if (!stateValidator(databaseState, preferredType))
                 continue;
 
             NpgsqlConnector? connector = null;
@@ -164,11 +180,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             {
                 if (pool.TryGetIdleConnector(out connector))
                 {
-                    if (clusterState == ClusterState.Unknown)
+                    if (databaseState == DatabaseState.Unknown)
                     {
-                        clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                        Debug.Assert(clusterState != ClusterState.Unknown);
-                        if (!clusterValidator(clusterState, preferredType))
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                        Debug.Assert(databaseState != DatabaseState.Unknown);
+                        if (!stateValidator(databaseState, preferredType))
                         {
                             pool.Return(connector);
                             continue;
@@ -182,11 +198,14 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                     connector = await pool.OpenNewConnector(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
                     if (connector is not null)
                     {
-                        if (clusterState == ClusterState.Unknown)
+                        if (databaseState == DatabaseState.Unknown)
                         {
-                            clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                            Debug.Assert(clusterState != ClusterState.Unknown);
-                            if (!clusterValidator(clusterState, preferredType))
+                            // While opening a new connector we might have refreshed the database state, check again
+                            databaseState = pool.GetDatabaseState();
+                            if (databaseState == DatabaseState.Unknown)
+                                databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                            Debug.Assert(databaseState != DatabaseState.Unknown);
+                            if (!stateValidator(databaseState, preferredType))
                             {
                                 pool.Return(connector);
                                 continue;
@@ -208,9 +227,15 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         return null;
     }
 
-    async ValueTask<NpgsqlConnector?> TryGet(NpgsqlConnection conn, TimeSpan timeoutPerHost, bool async, TargetSessionAttributes preferredType,
-        Func<ClusterState, TargetSessionAttributes, bool> clusterValidator, int poolIndex,
-        IList<Exception> exceptions, CancellationToken cancellationToken)
+    async ValueTask<NpgsqlConnector?> TryGet(
+        NpgsqlConnection conn,
+        TimeSpan timeoutPerHost,
+        bool async,
+        TargetSessionAttributes preferredType,
+        Func<DatabaseState, TargetSessionAttributes, bool> stateValidator,
+        int poolIndex,
+        IList<Exception> exceptions,
+        CancellationToken cancellationToken)
     {
         var pools = _pools;
         for (var i = 0; i < pools.Length; i++)
@@ -220,8 +245,8 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             if (poolIndex == pools.Length)
                 poolIndex = 0;
 
-            var clusterState = GetClusterState(pool);
-            if (!clusterValidator(clusterState, preferredType))
+            var databaseState = pool.GetDatabaseState();
+            if (!stateValidator(databaseState, preferredType))
                 continue;
 
             NpgsqlConnector? connector = null;
@@ -229,15 +254,15 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             try
             {
                 connector = await pool.Get(conn, new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
-                if (clusterState == ClusterState.Unknown)
+                if (databaseState == DatabaseState.Unknown)
                 {
-                    // Get might have opened a new physical connection and refreshed the cluster state, check again
-                    clusterState = GetClusterState(pool);
-                    if (clusterState == ClusterState.Unknown)
-                        clusterState = await connector.QueryClusterState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
+                    // Get might have opened a new physical connection and refreshed the database state, check again
+                    databaseState = pool.GetDatabaseState();
+                    if (databaseState == DatabaseState.Unknown)
+                        databaseState = await connector.QueryDatabaseState(new NpgsqlTimeout(timeoutPerHost), async, cancellationToken);
 
-                    Debug.Assert(clusterState != ClusterState.Unknown);
-                    if (!clusterValidator(clusterState, preferredType))
+                    Debug.Assert(databaseState != DatabaseState.Unknown);
+                    if (!stateValidator(databaseState, preferredType))
                     {
                         pool.Return(connector);
                         continue;
@@ -257,7 +282,11 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         return null;
     }
 
-    internal override async ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+    internal override async ValueTask<NpgsqlConnector> Get(
+        NpgsqlConnection conn,
+        NpgsqlTimeout timeout,
+        bool async,
+        CancellationToken cancellationToken)
     {
         CheckDisposed();
 
@@ -267,9 +296,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
         var timeoutPerHost = timeout.IsSet ? timeout.CheckAndGetTimeLeft() : TimeSpan.Zero;
         var preferredType = GetTargetSessionAttributes(conn);
-        var checkUnpreferred =
-            preferredType == TargetSessionAttributes.PreferPrimary ||
-            preferredType == TargetSessionAttributes.PreferStandby;
+        var checkUnpreferred = preferredType is TargetSessionAttributes.PreferPrimary or TargetSessionAttributes.PreferStandby;
 
         var connector = await TryGetIdleOrNew(conn, timeoutPerHost, async, preferredType, IsPreferred, poolIndex, exceptions, cancellationToken) ??
                         (checkUnpreferred ?
@@ -280,10 +307,7 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
                             await TryGet(conn, timeoutPerHost, async, preferredType, IsOnline, poolIndex, exceptions, cancellationToken)
                             : null);
 
-        if (connector is not null)
-            return connector;
-
-        throw NoSuitableHostsException(exceptions);
+        return connector ?? throw NoSuitableHostsException(exceptions);
     }
 
     static NpgsqlException NoSuitableHostsException(IList<Exception> exceptions)
@@ -333,6 +357,18 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
             pool.Clear();
     }
 
+    /// <summary>
+    /// Clears the database state (primary, secondary, offline...) for all data sources managed by this multi-host data source.
+    /// Can be useful to make Npgsql retry a PostgreSQL instance which was previously detected to be offline.
+    /// </summary>
+    public void ClearDatabaseStates()
+    {
+        foreach (var pool in _pools)
+        {
+            pool.UpdateDatabaseState(default, default, default, ignoreTimeStamp: true);
+        }
+    }
+
     internal override (int Total, int Idle, int Busy) Statistics
     {
         get
@@ -351,7 +387,9 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         }
     }
 
-    internal override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
+    internal override bool TryRentEnlistedPending(
+        Transaction transaction,
+        NpgsqlConnection connection,
         [NotNullWhen(true)] out NpgsqlConnector? connector)
     {
         lock (_pendingEnlistedConnectors)
@@ -381,13 +419,13 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
         }
 
         bool TryGetValidConnector(List<NpgsqlConnector> list, TargetSessionAttributes preferredType,
-            Func<ClusterState, TargetSessionAttributes, bool> validationFunc, [NotNullWhen(true)] out NpgsqlConnector? connector)
+            Func<DatabaseState, TargetSessionAttributes, bool> validationFunc, [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             for (var i = list.Count - 1; i >= 0; i--)
             {
                 connector = list[i];
-                var lastKnownState = GetClusterState(connector.Host, connector.Port, ignoreExpiration: true);
-                Debug.Assert(lastKnownState != ClusterState.Unknown);
+                var lastKnownState = connector.DataSource.GetDatabaseState(ignoreExpiration: true);
+                Debug.Assert(lastKnownState != DatabaseState.Unknown);
                 if (validationFunc(lastKnownState, preferredType))
                 {
                     list.RemoveAt(i);

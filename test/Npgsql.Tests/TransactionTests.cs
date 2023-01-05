@@ -21,7 +21,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
@@ -50,7 +50,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
@@ -76,7 +76,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
@@ -102,7 +102,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
@@ -125,7 +125,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Rollback_on_Dispose()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using (var tx = await conn.BeginTransactionAsync())
         {
@@ -138,7 +138,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Rollback_on_Close()
     {
         await using var conn1 = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn1, "name TEXT", out var table);
+        var table = await CreateTempTable(conn1, "name TEXT");
 
         using (var conn2 = await OpenConnectionAsync())
         {
@@ -153,7 +153,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Rollback_failed()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var tx = await conn.BeginTransactionAsync();
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
@@ -247,7 +247,7 @@ public class TransactionTests : MultiplexingTestBase
             Assert.Ignore("Multiplexing: not implemented");
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         if (IsMultiplexing)
         {
@@ -370,7 +370,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Savepoint()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         const string name = "theSavePoint";
 
         using (var tx = conn.BeginTransaction())
@@ -394,7 +394,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Savepoint_async()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         const string name = "theSavePoint";
 
         using (var tx = conn.BeginTransaction())
@@ -456,7 +456,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task IsCompleted_commit()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         var tx = conn.BeginTransaction();
         Assert.That(!tx.IsCompleted);
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
@@ -470,7 +470,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task IsCompleted_rollback()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         var tx = conn.BeginTransaction();
         Assert.That(!tx.IsCompleted);
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
@@ -484,7 +484,7 @@ public class TransactionTests : MultiplexingTestBase
     public async Task IsCompleted_rollback_failed()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
         var tx = conn.BeginTransaction();
         Assert.That(!tx.IsCompleted);
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
@@ -626,7 +626,7 @@ public class TransactionTests : MultiplexingTestBase
         using var __ = CreateTempPool(csb.ToString(), out var connectionString);
 
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+        var table = await CreateTempTable(conn, "name TEXT");
 
         await using var conn1 = await OpenConnectionAsync(connectionString);
         var tx1 = conn1.BeginTransaction();

@@ -30,18 +30,21 @@ public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
             ? default : CRSMaps.GetOrAdd(connector.Settings.ConnectionString, _ =>
             {
                 var builder = new CrsMapBuilder();
-                using (var cmd = connector.CreateCommand(
-                           "SELECT min(srid), max(srid), auth_name " +
-                           "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                           "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;"))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        builder.Add(new CrsMapEntry(
-                            reader.GetInt32(0),
-                            reader.GetInt32(1),
-                            reader.GetString(2)));
-                    }
+                using var cmd = connector.CreateCommand(
+                    "SELECT min(srid), max(srid), auth_name " +
+                    "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
+                    "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;");
+                cmd.AllResultTypesAreUnknown = true;
+                using var reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    builder.Add(new CrsMapEntry(
+                        int.Parse(reader.GetString(0)),
+                        int.Parse(reader.GetString(1)),
+                        reader.GetString(2)));
+                }
+
                 return builder.Build();
             });
 

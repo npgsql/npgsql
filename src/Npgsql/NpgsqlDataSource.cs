@@ -3,13 +3,18 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Security;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -29,13 +34,34 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
+    readonly List<TypeHandlerResolverFactory> _resolverFactories;
+    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings;
+    readonly INpgsqlNameTranslator _defaultNameTranslator;
+
+    internal TypeMapper TypeMapper { get; private set; } = null!; // Initialized at bootstrapping
+
+    /// <summary>
+    /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
+    /// </summary>
+    internal NpgsqlDatabaseInfo DatabaseInfo { get; set; } = null!; // Initialized at bootstrapping
+
+    internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
+    internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
+
     readonly Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     readonly TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
+
+    internal Action<NpgsqlConnection>? ConnectionInitializer { get; }
+    internal Func<NpgsqlConnection, Task>? ConnectionInitializerAsync { get; }
 
     readonly Timer? _passwordProviderTimer;
     readonly CancellationTokenSource? _timerPasswordProviderCancellationTokenSource;
     readonly Task _passwordRefreshTask = null!;
     string? _password;
+
+    bool _isBootstrapped;
+
+    volatile DatabaseStateInfo _databaseStateInfo = new();
 
     // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
     // (i.e. access to connectors of a specific transaction won't be concurrent)
@@ -44,9 +70,14 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal abstract (int Total, int Idle, int Busy) Statistics { get; }
 
-    volatile bool _isDisposed;
+    volatile int _isDisposed;
 
     readonly ILogger _connectionLogger;
+
+    /// <summary>
+    /// Semaphore to ensure we don't perform type loading and mapping setup concurrently for this data source.
+    /// </summary>
+    readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
@@ -59,7 +90,17 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
-        (LoggingConfiguration, _periodicPasswordProvider, _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval)
+        (LoggingConfiguration,
+                UserCertificateValidationCallback,
+                ClientCertificatesCallback,
+                _periodicPasswordProvider,
+                _periodicPasswordSuccessRefreshInterval,
+                _periodicPasswordFailureRefreshInterval,
+                _resolverFactories,
+                _userTypeMappings,
+                _defaultNameTranslator,
+                ConnectionInitializer,
+                ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
@@ -79,15 +120,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    /// <summary>
-    /// Returns a new, unopened connection from this data source.
-    /// </summary>
+    /// <inheritdoc />
     public new NpgsqlConnection CreateConnection()
         => NpgsqlConnection.FromDataSource(this);
 
-    /// <summary>
-    /// Returns a new, opened connection from this data source.
-    /// </summary>
+    /// <inheritdoc />
     public new NpgsqlConnection OpenConnection()
     {
         var connection = CreateConnection();
@@ -104,12 +141,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
-    /// <summary>
-    /// Returns a new, opened connection from this data source.
-    /// </summary>
-    /// <param name="cancellationToken">
-    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
-    /// </param>
+    /// <inheritdoc />
+    protected override DbConnection OpenDbConnection()
+        => OpenConnection();
+
+    /// <inheritdoc />
     public new async ValueTask<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = CreateConnection();
@@ -127,12 +163,16 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     /// <inheritdoc />
+    protected override async ValueTask<DbConnection> OpenDbConnectionAsync(CancellationToken cancellationToken = default)
+        => await OpenConnectionAsync(cancellationToken);
+
+    /// <inheritdoc />
     protected override DbConnection CreateDbConnection()
         => CreateConnection();
 
     /// <inheritdoc />
     protected override DbCommand CreateDbCommand(string? commandText = null)
-        => CreateCommand();
+        => CreateCommand(commandText);
 
     /// <inheritdoc />
     protected override DbBatch CreateDbBatch()
@@ -162,6 +202,53 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     public static NpgsqlDataSource Create(NpgsqlConnectionStringBuilder connectionStringBuilder)
         => Create(connectionStringBuilder.ToString());
+
+    internal async Task Bootstrap(
+        NpgsqlConnector connector,
+        NpgsqlTimeout timeout,
+        bool forceReload,
+        bool async,
+        CancellationToken cancellationToken)
+    {
+        if (_isBootstrapped && !forceReload)
+            return;
+
+        var hasSemaphore = async
+            ? await _setupMappingsSemaphore.WaitAsync(timeout.CheckAndGetTimeLeft(), cancellationToken)
+            : _setupMappingsSemaphore.Wait(timeout.CheckAndGetTimeLeft(), cancellationToken);
+
+        if (!hasSemaphore)
+            throw new TimeoutException();
+
+        try
+        {
+            if (_isBootstrapped && !forceReload)
+                return;
+
+            // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
+            // empty). So we set up here, and then later inject the DatabaseInfo.
+            var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
+            connector.TypeMapper = typeMapper;
+
+            NpgsqlDatabaseInfo databaseInfo;
+
+            using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
+                databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
+
+            DatabaseInfo = databaseInfo;
+            connector.DatabaseInfo = databaseInfo;
+            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
+            TypeMapper = typeMapper;
+
+            _isBootstrapped = true;
+        }
+        finally
+        {
+            _setupMappingsSemaphore.Release();
+        }
+    }
+
+    #region Password management
 
     /// <summary>
     /// Manually sets the password to be used the next time a physical connection is opened.
@@ -213,6 +300,8 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
     }
 
+    #endregion Password management
+
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
 
@@ -226,6 +315,39 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal abstract void Clear();
 
     internal abstract bool OwnsConnectors { get; }
+
+    #region Database state management
+
+    internal DatabaseState GetDatabaseState(bool ignoreExpiration = false)
+    {
+        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+
+        var databaseStateInfo = _databaseStateInfo;
+
+        return ignoreExpiration || !databaseStateInfo.Timeout.HasExpired
+            ? databaseStateInfo.State
+            : DatabaseState.Unknown;
+    }
+
+    internal DatabaseState UpdateDatabaseState(
+        DatabaseState newState,
+        DateTime timeStamp,
+        TimeSpan stateExpiration,
+        bool ignoreTimeStamp = false)
+    {
+        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+
+        var databaseStateInfo = _databaseStateInfo;
+        
+        if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
+            return _databaseStateInfo.State;
+
+        _databaseStateInfo = new(newState, new NpgsqlTimeout(stateExpiration), timeStamp);
+
+        return newState;
+    }
+
+    #endregion Database state management
 
     #region Pending Enlisted Connections
 
@@ -277,7 +399,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
         {
             var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
             if (cancellationTokenSource is not null)
@@ -288,7 +410,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             _passwordProviderTimer?.Dispose();
 
-            _isDisposed = true;
+            _setupMappingsSemaphore.Dispose();
 
             Clear();
         }
@@ -306,9 +428,22 @@ public abstract class NpgsqlDataSource : DbDataSource
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private protected void CheckDisposed()
     {
-        if (_isDisposed)
+        if (_isDisposed == 1)
             throw new ObjectDisposedException(GetType().FullName);
     }
 
     #endregion
+    
+    class DatabaseStateInfo
+    {
+        internal readonly DatabaseState State;
+        internal readonly NpgsqlTimeout Timeout;
+        // While the TimeStamp is not strictly required, it does lower the risk of overwriting the current state with an old value
+        internal readonly DateTime TimeStamp;
+
+        public DatabaseStateInfo() : this(default, default, default) {}
+        
+        public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
+            => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
+    }
 }

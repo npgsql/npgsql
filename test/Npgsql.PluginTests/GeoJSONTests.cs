@@ -1,15 +1,16 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
 using GeoJSON.Net;
 using GeoJSON.Net.Converters;
 using GeoJSON.Net.CoordinateReferenceSystem;
 using GeoJSON.Net.Geometry;
 using Newtonsoft.Json;
-using Npgsql.GeoJSON.Internal;
 using Npgsql.Tests;
+using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.PluginTests;
 
@@ -107,32 +108,32 @@ public class GeoJSONTests : TestBase
     };
 
     [Test, TestCaseSource(nameof(Tests))]
-    public void Read(TestData data)
+    public async Task Read(TestData data)
     {
-        using var conn = OpenConnection(option: GeoJSONOptions.BoundingBox);
-        using var cmd = new NpgsqlCommand($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn);
-        using var reader = cmd.ExecuteReader();
-        Assert.That(reader.Read());
+        await using var conn = await OpenConnectionAsync(GeoJSONOptions.BoundingBox);
+        await using var cmd = new NpgsqlCommand($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(data.Geometry));
         Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(JsonConvert.DeserializeObject<IGeometryObject>(reader.GetFieldValue<string>(1), new GeometryConverter())));
     }
 
     [Test, TestCaseSource(nameof(Tests))]
-    public void Write(TestData data)
+    public async Task Write(TestData data)
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn);
         cmd.Parameters.AddWithValue("p", data.Geometry);
-        Assert.That(cmd.ExecuteScalar(), Is.True);
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.True);
     }
 
     [Test]
-    public void IgnoreM()
+    public async Task IgnoreM()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_makepointm(1,1,1)", conn);
-        using var reader = cmd.ExecuteReader();
-        Assert.That(reader.Read());
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_makepointm(1,1,1)", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Position(1d, 1d))));
     }
 
@@ -157,40 +158,40 @@ public class GeoJSONTests : TestBase
     };
 
     [Test, TestCaseSource(nameof(NotAllZSpecifiedTests))]
-    public void Not_all_Z_specified(TestData data)
+    public async Task Not_all_Z_specified(TestData data)
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
         cmd.Parameters.AddWithValue("p", data.Geometry);
-        Assert.That(() => cmd.ExecuteScalar(), Throws.ArgumentException);
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.ArgumentException);
     }
 
     [Test]
-    public void Read_unknown_CRS()
+    public async Task Read_unknown_CRS()
     {
-        using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
-        using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
-        using var reader = cmd.ExecuteReader();
-        Assert.That(reader.Read());
+        await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
+        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(await reader.ReadAsync());
         Assert.That(() => reader.GetValue(0), Throws.InvalidOperationException);
     }
 
     [Test]
-    public void Read_unspecified_CRS()
+    public async Task Read_unspecified_CRS()
     {
-        using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
-        using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
-        using var reader = cmd.ExecuteReader();
-        Assert.That(reader.Read());
+        await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
+        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<Point>(0).CRS, Is.Null);
     }
 
     [Test]
-    public void Read_short_CRS()
+    public async Task Read_short_CRS()
     {
-        using var conn = OpenConnection(option: GeoJSONOptions.ShortCRS);
-        using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
-        var point = (Point)cmd.ExecuteScalar()!;
+        await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
+        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+        var point = (Point)(await cmd.ExecuteScalarAsync())!;
         var crs = point.CRS as NamedCRS;
 
         Assert.That(crs, Is.Not.Null);
@@ -198,11 +199,11 @@ public class GeoJSONTests : TestBase
     }
 
     [Test]
-    public void Read_long_CRS()
+    public async Task Read_long_CRS()
     {
-        using var conn = OpenConnection(option: GeoJSONOptions.LongCRS);
-        using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
-        var point = (Point)cmd.ExecuteScalar()!;
+        await using var conn = await OpenConnectionAsync(GeoJSONOptions.LongCRS);
+        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+        var point = (Point)(await cmd.ExecuteScalarAsync())!;
         var crs = point.CRS as NamedCRS;
 
         Assert.That(crs, Is.Not.Null);
@@ -210,94 +211,224 @@ public class GeoJSONTests : TestBase
     }
 
     [Test]
-    public void Write_ill_formed_CRS()
+    public async Task Write_ill_formed_CRS()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("ill:formed") });
-        Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<FormatException>());
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<FormatException>());
     }
 
     [Test]
-    public void Write_linked_CRS()
+    public async Task Write_linked_CRS()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new LinkedCRS("href") });
-        Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<NotSupportedException>());
+        Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<NotSupportedException>());
     }
 
     [Test]
-    public void Write_unspecified_CRS()
+    public async Task Write_unspecified_CRS()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new UnspecifiedCRS() });
-        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(0));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(0));
     }
 
     [Test]
-    public void Write_short_CRS()
+    public async Task Write_short_CRS()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("EPSG:4326") });
-        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
 
     [Test]
-    public void Write_long_CRS()
+    public async Task Write_long_CRS()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:EPSG::4326") });
-        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
 
     [Test]
-    public void Write_CRS84()
+    public async Task Write_CRS84()
     {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:OGC::CRS84") });
-        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(4326));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
 
     [Test]
-    public void Roundtrip_geometry_geography()
+    public async Task Roundtrip_geometry_geography()
     {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "geom GEOMETRY, geog GEOGRAPHY");
+
         var point = new Point(new Position(0d, 0d));
-        using var conn = OpenConnection();
-        conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
-        using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
+        await using (var cmd = new NpgsqlCommand($"INSERT INTO {table} (geom, geog) VALUES (@p, @p)", conn))
         {
             cmd.Parameters.AddWithValue("p", point);
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
         }
 
-        using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
-        using (var reader = cmd.ExecuteReader())
+        await using (var cmd = new NpgsqlCommand($"SELECT geom, geog FROM {table}", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync())
         {
-            reader.Read();
+            await reader.ReadAsync();
             Assert.That(reader[0], Is.EqualTo(point));
             Assert.That(reader[1], Is.EqualTo(point));
         }
     }
 
-    protected override NpgsqlConnection OpenConnection(string? connectionString = null)
-        => OpenConnection(connectionString, GeoJSONOptions.None);
-
-    protected NpgsqlConnection OpenConnection(string? connectionString = null, GeoJSONOptions option = GeoJSONOptions.None)
+    [Test, TestCaseSource(nameof(Tests))]
+    public async Task Import_geometry(TestData data)
     {
-        var conn = base.OpenConnection(connectionString);
-        conn.TypeMapper.UseGeoJson(option);
-        return conn;
+        await using var conn = await OpenConnectionAsync(options: GeoJSONOptions.BoundingBox);
+        var table = await CreateTempTable(conn, "field geometry");
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync(data.Geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT field FROM {table}";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        var actual = reader.GetValue(0);
+        Assert.That(actual, Is.EqualTo(data.Geometry));
     }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4827")]
+    public async Task Import_big_geometry()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "id text, field geometry");
+
+        var geometry = new MultiLineString(new[] {
+            new LineString(
+                Enumerable.Range(1, 507)
+                    .Select(i => new Position(longitude: i, latitude: i))
+                    .Append(new Position(longitude: 1d, latitude: 1d))),
+            new LineString(new[] {
+                new Position(longitude: 1d, latitude: 1d),
+                new Position(longitude: 1d, latitude: 2d),
+                new Position(longitude: 1d, latitude: 3d),
+                new Position(longitude: 1d, latitude: 1d),
+            })
+        });
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (id, field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync("a", NpgsqlDbType.Text);
+            await writer.WriteAsync(geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT field FROM {table}";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        Assert.IsTrue(await reader.ReadAsync());
+        var actual = reader.GetValue(0);
+        Assert.That(actual, Is.EqualTo(geometry));
+    }
+
+    [Test, TestCaseSource(nameof(Tests))]
+    public async Task Export_geometry(TestData data)
+    {
+        await using var conn = await OpenConnectionAsync(options: GeoJSONOptions.BoundingBox);
+        var table = await CreateTempTable(conn, "field geometry");
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync(data.Geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        await using (var reader = await conn.BeginBinaryExportAsync($"COPY {table} (field) TO STDOUT BINARY"))
+        {
+            await reader.StartRowAsync();
+            var field = await reader.ReadAsync<GeoJSONObject>(NpgsqlDbType.Geometry);
+            Assert.That(field, Is.EqualTo(data.Geometry));
+        }
+    }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4830")]
+    public async Task Export_big_geometry()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "id text, field geometry");
+
+        var geometry = new Polygon(new[] {
+            new LineString(
+                Enumerable.Range(1, 507)
+                    .Select(i => new Position(longitude: i, latitude: i))
+                    .Append(new Position(longitude: 1d, latitude: 1d))),
+            new LineString(new[] {
+                new Position(longitude: 1d, latitude: 1d),
+                new Position(longitude: 1d, latitude: 2d),
+                new Position(longitude: 1d, latitude: 3d),
+                new Position(longitude: 1d, latitude: 1d),
+            })
+        });
+
+        await using (var writer = await conn.BeginBinaryImportAsync($"COPY {table} (id, field) FROM STDIN BINARY"))
+        {
+            await writer.StartRowAsync();
+            await writer.WriteAsync("aaaa", NpgsqlDbType.Text);
+            await writer.WriteAsync(geometry, NpgsqlDbType.Geometry);
+
+            var rowsWritten = await writer.CompleteAsync();
+            Assert.That(rowsWritten, Is.EqualTo(1));
+        }
+
+        await using (var reader = await conn.BeginBinaryExportAsync($"COPY {table} (id, field) TO STDOUT BINARY"))
+        {
+            await reader.StartRowAsync();
+            var id = await reader.ReadAsync<string>();
+            var field = await reader.ReadAsync<GeoJSONObject>(NpgsqlDbType.Geometry);
+            Assert.That(id, Is.EqualTo("aaaa"));
+            Assert.That(field, Is.EqualTo(geometry));
+        }
+    }
+
+    ValueTask<NpgsqlConnection> OpenConnectionAsync(GeoJSONOptions options = GeoJSONOptions.None)
+        => GetDataSource(options).OpenConnectionAsync();
+
+    NpgsqlDataSource GetDataSource(GeoJSONOptions options = GeoJSONOptions.None)
+        => GeoJsonDataSources.GetOrAdd(options, _ =>
+        {
+            var dataSourceBuilder = CreateDataSourceBuilder();
+            dataSourceBuilder.UseGeoJson(options);
+            return dataSourceBuilder.Build();
+        });
 
     [OneTimeSetUp]
     public async Task SetUp()
     {
-        await using var conn = await base.OpenConnectionAsync();
-        await TestUtil.EnsurePostgis(conn);
+        await using var conn = await OpenConnectionAsync();
+        await EnsurePostgis(conn);
     }
+
+    [OneTimeTearDown]
+    public async Task Teardown()
+        => await Task.WhenAll(GeoJsonDataSources.Values.Select(async ds => await ds.DisposeAsync()));
+
+    ConcurrentDictionary<GeoJSONOptions, NpgsqlDataSource> GeoJsonDataSources = new();
 }

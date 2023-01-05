@@ -6,11 +6,11 @@ name: Trigger Documentation Build
 on:
   push:
     branches:
-      - stable
+      - docs
 
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
     - name: Trigger documentation build
       run: |

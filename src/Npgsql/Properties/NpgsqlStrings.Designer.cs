@@ -69,6 +69,12 @@ namespace Npgsql.Properties {
             }
         }
         
+        internal static string NoMultirangeTypeFound {
+            get {
+                return ResourceManager.GetString("NoMultirangeTypeFound", resourceCulture);
+            }
+        }
+        
         internal static string NotSupportedOnDataSourceCommand {
             get {
                 return ResourceManager.GetString("NotSupportedOnDataSourceCommand", resourceCulture);
@@ -99,12 +105,6 @@ namespace Npgsql.Properties {
             }
         }
         
-        internal static string MultipleHostsMustBeSpecified {
-            get {
-                return ResourceManager.GetString("MultipleHostsMustBeSpecified", resourceCulture);
-            }
-        }
-        
         internal static string CannotSpecifyTargetSessionAttributes {
             get {
                 return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
@@ -114,6 +114,24 @@ namespace Npgsql.Properties {
         internal static string CannotReadIntervalWithMonthsAsTimeSpan {
             get {
                 return ResourceManager.GetString("CannotReadIntervalWithMonthsAsTimeSpan", resourceCulture);
+            }
+        }
+        
+        internal static string PositionalParameterAfterNamed {
+            get {
+                return ResourceManager.GetString("PositionalParameterAfterNamed", resourceCulture);
+            }
+        }
+        
+        internal static string CannotReadInfinityValue {
+            get {
+                return ResourceManager.GetString("CannotReadInfinityValue", resourceCulture);
+            }
+        }
+        
+        internal static string SyncAndAsyncConnectionInitializersRequired {
+            get {
+                return ResourceManager.GetString("SyncAndAsyncConnectionInitializersRequired", resourceCulture);
             }
         }
     }

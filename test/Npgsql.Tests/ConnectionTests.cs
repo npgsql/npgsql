@@ -7,12 +7,15 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using Npgsql.Util;
+using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -68,14 +71,13 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
-    [NonParallelizable] // Killing conn is using the default pool
     public async Task Broken_lifecycle([Values] bool openFromClose)
     {
         if (IsMultiplexing)
             return;
 
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        await using var conn = new NpgsqlConnection(connString);
+        await using var dataSource = CreateDataSource();
+        await using var conn = dataSource.CreateConnection();
 
         var eventOpen = false;
         var eventClosed = false;
@@ -138,9 +140,8 @@ public class ConnectionTests : MultiplexingTestBase
         if (IsMultiplexing)
             return;
 
-        using var conn = new NpgsqlConnection(ConnectionString);
-
-        conn.Open();
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         using (var conn2 = await OpenConnectionAsync())
             conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
@@ -148,8 +149,7 @@ public class ConnectionTests : MultiplexingTestBase
         // Allow some time for the pg_terminate to kill our connection
         using (var cmd = CreateSleepCommand(conn, 10))
             Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                .AssignableTo<NpgsqlException>()
-            );
+                .AssignableTo<NpgsqlException>());
 
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -158,38 +158,38 @@ public class ConnectionTests : MultiplexingTestBase
     #region Connection Errors
 
 #if IGNORE
-        [Test]
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task Connection_refused(bool pooled)
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
-            using (var conn = new NpgsqlConnection(csb)) {
-                Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<SocketException>()
-                    // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
-                    // https://github.com/dotnet/corefx/issues/8464
-                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-                );
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-            }
+    [Test]
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Connection_refused(bool pooled)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+        using (var conn = new NpgsqlConnection(csb)) {
+            Assert.That(() => conn.Open(), Throws.Exception
+                .TypeOf<SocketException>()
+                // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+                // https://github.com/dotnet/corefx/issues/8464
+                .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+            );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
         }
+    }
 
-        [Test]
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task Connection_refused_async(bool pooled)
+    [Test]
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task Connection_refused_async(bool pooled)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
+        using (var conn = new NpgsqlConnection(csb))
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Port = 44444, Pooling = pooled };
-            using (var conn = new NpgsqlConnection(csb))
-            {
-                Assert.That(async () => await conn.OpenAsync(), Throws.Exception
-                    .TypeOf<SocketException>()
-                    .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-                );
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-            }
+            Assert.That(async () => await conn.OpenAsync(), Throws.Exception
+                .TypeOf<SocketException>()
+                .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
+            );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
         }
+    }
 #endif
 
     [Test]
@@ -409,70 +409,33 @@ public class ConnectionTests : MultiplexingTestBase
 
     #region ConnectionString - Host
 
-    [TestCase("127.0.0.1", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
-    [TestCase("127.0.0.1:5432", ExpectedResult = new []{"tcp://127.0.0.1:5432"})]
-    [TestCase("::1", ExpectedResult = new []{"tcp://::1:5432"})]
-    [TestCase("[::1]", ExpectedResult = new []{"tcp://[::1]:5432"})]
-    [TestCase("[::1]:5432", ExpectedResult = new []{"tcp://[::1]:5432"})]
-    [TestCase("localhost", ExpectedResult = new []{"tcp://localhost:5432"})]
-    [TestCase("localhost:5432", ExpectedResult = new []{"tcp://localhost:5432"})]
+    [TestCase("127.0.0.1", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("127.0.0.1:5432", ExpectedResult = new [] { "127.0.0.1:5432" })]
+    [TestCase("::1", ExpectedResult = new [] { "::1:5432" })]
+    [TestCase("[::1]", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("[::1]:5432", ExpectedResult = new [] { "[::1]:5432" })]
+    [TestCase("localhost", ExpectedResult = new [] { "localhost:5432" })]
+    [TestCase("localhost:5432", ExpectedResult = new [] { "localhost:5432" })]
     [TestCase("127.0.0.1,127.0.0.1:5432,::1,[::1],[::1]:5432,localhost,localhost:5432",
         ExpectedResult = new []
         {
-            "tcp://127.0.0.1:5432",
-            "tcp://127.0.0.1:5432",
-            "tcp://::1:5432",
-            "tcp://[::1]:5432",
-            "tcp://[::1]:5432",
-            "tcp://localhost:5432",
-            "tcp://localhost:5432"
+            "127.0.0.1:5432",
+            "127.0.0.1:5432",
+            "::1:5432",
+            "[::1]:5432",
+            "[::1]:5432",
+            "localhost:5432",
+            "localhost:5432"
         })]
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable, Ignore("Fails locally")]
-    public async Task<string[]> ConnectionString_Host(string host)
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
+    public string[] ConnectionString_Host(string host)
     {
-        var numberOfHosts = host.Split(',').Length;
-        if (numberOfHosts > 1)
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder
         {
-            if (IsMultiplexing)
-                throw new SuccessException("Multiple hosts in connection string is ignored for Multiplexing");
-            // We reset the cluster's state for multiple hosts
-            // Because other tests might have marked some of the hosts as disabled
-            ClusterStateCache.Clear();
-        }
-
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Host = host,
-            MaxPoolSize = 1
-        }.ConnectionString;
-
-        var connections = new NpgsqlConnection?[numberOfHosts];
-        var returnValues = new string[numberOfHosts];
-        try
-        {
-            for (var i = 0; i < connections.Length; i++)
-            {
-                var c = new NpgsqlConnection(connectionString);
-                await c.OpenAsync();
-                returnValues[i] = c.DataSource;
-                connections[i] = c;
-            }
-
-            // When multiplexing NpgsqlConnection.DataSource is not set so we succeed
-            // if we successfully connected and reached this point
-            if (IsMultiplexing)
-                throw new SuccessException("DataSource is ignored for Multiplexing");
-
-            return returnValues;
-        }
-        finally
-        {
-            foreach (var connection in connections)
-            {
-                if (connection != null)
-                    await connection.DisposeAsync();
-            }
-        }
+            ConnectionStringBuilder = { Host = host }
+        };
+        using var dataSource = dataSourceBuilder.BuildMultiHost();
+        return dataSource.Pools.Select(ds => $"{ds.Settings.Host}:{ds.Settings.Port}").ToArray()!;
     }
 
     #endregion ConnectionString - Host
@@ -722,11 +685,12 @@ public class ConnectionTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, hanging");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { MaxPoolSize = 1 };
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.MaxPoolSize = 1;
         if (keepAlive)
-            csb.KeepAlive = 1;
-        using var _ = CreateTempPool(csb, out var connString);
-        await using var conn = await OpenConnectionAsync(connString);
+            dataSourceBuilder.ConnectionStringBuilder.KeepAlive = 1;
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
         var connector = conn.Connector;
         Assert.That(connector, Is.Not.Null);
         await conn.CloseAsync();
@@ -751,6 +715,31 @@ public class ConnectionTests : MultiplexingTestBase
             Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Throws.Exception
                 .AssignableTo<NpgsqlException>());
         }
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4603")]
+    public async Task Reload_types_keepalive_concurrent()
+    {
+        if (IsMultiplexing)
+            Assert.Ignore("Multiplexing doesn't support keepalive");
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            KeepAlive = 1,
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+
+        await using var conn = await OpenConnectionAsync(connString);
+
+        var startTimestamp = Stopwatch.GetTimestamp();
+        // Give a few seconds for a KeepAlive to possibly perform
+        while (GetElapsedTime(startTimestamp).TotalSeconds < 2)
+            Assert.DoesNotThrow(conn.ReloadTypes);
+
+        // dotnet 3.1 doesn't have Stopwatch.GetElapsedTime method.
+        static TimeSpan GetElapsedTime(long startingTimestamp) =>
+            new((long)((Stopwatch.GetTimestamp() - startingTimestamp) * ((double)10000000 / Stopwatch.Frequency)));
     }
 
     #region ChangeDatabase
@@ -891,34 +880,32 @@ public class ConnectionTests : MultiplexingTestBase
             // Make sure messages are in English
             Options = "-c lc_messages=en_US.UTF-8"
         });
-        await using (GetTempFunctionName(conn, out var function))
-        {
-            await conn.ExecuteNonQueryAsync($@"
+        var function = await GetTempFunctionName(conn);
+        await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
 'BEGIN RAISE NOTICE ''testnotice''; END;'
 LANGUAGE 'plpgsql'");
 
-            var mre = new ManualResetEvent(false);
-            PostgresNotice? notice = null;
-            NoticeEventHandler action = (sender, args) =>
-            {
-                notice = args.Notice;
-                mre.Set();
-            };
-            conn.Notice += action;
-            try
-            {
-                // See docs for CreateSleepCommand
-                await conn.ExecuteNonQueryAsync($"SELECT {function}()::TEXT");
-                mre.WaitOne(5000);
-                Assert.That(notice, Is.Not.Null, "No notice was emitted");
-                Assert.That(notice!.MessageText, Is.EqualTo("testnotice"));
-                Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
-            }
-            finally
-            {
-                conn.Notice -= action;
-            }
+        var mre = new ManualResetEvent(false);
+        PostgresNotice? notice = null;
+        NoticeEventHandler action = (sender, args) =>
+        {
+            notice = args.Notice;
+            mre.Set();
+        };
+        conn.Notice += action;
+        try
+        {
+            // See docs for CreateSleepCommand
+            await conn.ExecuteNonQueryAsync($"SELECT {function}()::TEXT");
+            mre.WaitOne(5000);
+            Assert.That(notice, Is.Not.Null, "No notice was emitted");
+            Assert.That(notice!.MessageText, Is.EqualTo("testnotice"));
+            Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
+        }
+        finally
+        {
+            conn.Notice -= action;
         }
     }
 
@@ -1009,6 +996,50 @@ LANGUAGE 'plpgsql'");
         Assert.That(clonedConn.ConnectionString, Does.Not.Contain("Password="));
     }
 
+    [Test]
+    public async Task CloneWith_and_data_source_with_password()
+    {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
+        // Set the password via the data source property later to make sure that's picked up by CloneWith
+        var password = dataSourceBuilder.ConnectionStringBuilder.Password!;
+        dataSourceBuilder.ConnectionStringBuilder.Password = null;
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var connection = dataSource.CreateConnection();
+        dataSource.Password = password;
+
+        // Test that the up-to-date password gets copied to the clone, as if we opened the original connection instead of cloning it
+        using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString) { Password = null }, out var tempConnectionString);
+        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+        await clonedConnection.OpenAsync();
+    }
+
+    [Test]
+    public async Task CloneWith_and_data_source_with_auth_callbacks()
+    {
+        var (userCertificateValidationCallbackCalled, clientCertificatesCallbackCalled) = (false, false);
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseUserCertificateValidationCallback(UserCertificateValidationCallback);
+        dataSourceBuilder.UseClientCertificatesCallback(ClientCertificatesCallback);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = dataSource.CreateConnection();
+
+        using var _ = CreateTempPool(ConnectionString, out var tempConnectionString);
+        await using var clonedConnection = connection.CloneWith(tempConnectionString);
+
+        clonedConnection.UserCertificateValidationCallback!(null!, null, null, SslPolicyErrors.None);
+        Assert.True(userCertificateValidationCallbackCalled);
+        clonedConnection.ProvideClientCertificatesCallback!(null!);
+        Assert.True(clientCertificatesCallbackCalled);
+
+        bool UserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors)
+            => userCertificateValidationCallbackCalled = true;
+
+        void ClientCertificatesCallback(X509CertificateCollection certs)
+            => clientCertificatesCallbackCalled = true;
+    }
+
     #endregion PersistSecurityInfo
 
     [Test]
@@ -1016,55 +1047,33 @@ LANGUAGE 'plpgsql'");
     [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
     public void Clone()
     {
-        using (CreateTempPool(ConnectionString, out var connectionString))
-        using (var conn = new NpgsqlConnection(connectionString))
-        {
-            ProvideClientCertificatesCallback callback1 = certificates => { };
-            conn.ProvideClientCertificatesCallback = callback1;
-            RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
-            conn.UserCertificateValidationCallback = callback2;
+        using var pool = CreateTempPool(ConnectionString, out var connectionString);
+        using var conn = new NpgsqlConnection(connectionString);
+        ProvideClientCertificatesCallback callback1 = certificates => { };
+        conn.ProvideClientCertificatesCallback = callback1;
+        RemoteCertificateValidationCallback callback2 = (sender, certificate, chain, errors) => true;
+        conn.UserCertificateValidationCallback = callback2;
 
-            conn.Open();
-            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        conn.Open();
+        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
-            using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
-            {
-                Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
-                Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
-                Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
-                conn2.Open();
-                Assert.That(async () => await conn2.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
-            }
-        }
+        using var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone();
+        Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
+        Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
+        Assert.That(conn2.UserCertificateValidationCallback, Is.SameAs(callback2));
+        conn2.Open();
+        Assert.That(async () => await conn2.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
-    [NonParallelizable]
-    public async Task ReloadTypes()
+    [Test]
+    public async Task Clone_with_data_source()
     {
-        if (IsMultiplexing)
-            return;
+        await using var connection = await SharedDataSource.OpenConnectionAsync();
+        await using var clonedConnection = (NpgsqlConnection)((ICloneable)connection).Clone();
 
-        using (CreateTempPool(ConnectionString, out var connectionString))
-        using (var conn = await OpenConnectionAsync(connectionString))
-        using (var conn2 = await OpenConnectionAsync(connectionString))
-        {
-            Assert.That(await conn.ExecuteScalarAsync("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"),
-                Is.False);
-            await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-            Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
-            conn.ReloadTypes();
-            conn.TypeMapper.MapEnum<ReloadTypesEnum>();
-
-            // Make sure conn2 picks up the new type after a pooled close
-            var connId = conn2.ProcessID;
-            conn2.Close();
-            conn2.Open();
-            Assert.That(conn2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
-            conn2.TypeMapper.MapEnum<ReloadTypesEnum>();
-        }
+        Assert.That(clonedConnection.NpgsqlDataSource, Is.SameAs(SharedDataSource));
+        Assert.DoesNotThrowAsync(() => clonedConnection.OpenAsync());
     }
-    enum ReloadTypesEnum { First, Second };
 
     [Test]
     [NonParallelizable] // Anyone can reload DatabaseInfo between us opening a connection
@@ -1147,8 +1156,10 @@ LANGUAGE 'plpgsql'");
     [Ignore("Flaky")]
     public async Task Exception_during_close()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
-        using var conn = await OpenConnectionAsync(csb);
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.Pooling = false;
+        await using var dataSource = dataSourceBuilder.Build();
+        using var conn = await dataSource.OpenConnectionAsync();
         var connectorId = conn.ProcessID;
 
         using (var conn2 = await OpenConnectionAsync())
@@ -1167,14 +1178,33 @@ LANGUAGE 'plpgsql'");
 
         using var _ = CreateTempPool(builder, out var connectionString);
         using var conn = await OpenConnectionAsync(connectionString);
-        // Arrays should not be supported in this mode
-        Assert.That(async () => await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::INTEGER[]"),
-            Throws.Exception.TypeOf<NotSupportedException>());
-        // Test that some basic types do work
+
         Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));
         Assert.That(await conn.ExecuteScalarAsync("SELECT 'foo'"), Is.EqualTo("foo"));
         Assert.That(await conn.ExecuteScalarAsync("SELECT TRUE"), Is.EqualTo(true));
         Assert.That(await conn.ExecuteScalarAsync("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '{1,2,3}'::int[]"), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT '[1,10)'::int4range"), Is.EqualTo(new NpgsqlRange<int>(1, true, 10, false)));
+
+        if (conn.PostgreSqlVersion >= new Version(14, 0))
+        {
+            var multirangeArray = (NpgsqlRange<int>[])(await conn.ExecuteScalarAsync("SELECT '{[3,7), (8,]}'::int4multirange"))!;
+            Assert.That(multirangeArray.Length, Is.EqualTo(2));
+            Assert.That(multirangeArray[0], Is.EqualTo(new NpgsqlRange<int>(3, true, false, 7, false, false)));
+            Assert.That(multirangeArray[1], Is.EqualTo(new NpgsqlRange<int>(9, true, false, 0, false, true)));
+        }
+        else
+        {
+            using var cmd = new NpgsqlCommand("SELECT $1", conn)
+            {
+                Parameters = { new() { Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.IntegerMultirange } }
+            };
+
+            Assert.That(async () => await cmd.ExecuteScalarAsync(),
+                Throws.Exception.TypeOf<ArgumentException>()
+                    .With.Message.EqualTo(string.Format(NpgsqlStrings.NoMultirangeTypeFound, "integer")));
+        }
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
@@ -1402,120 +1432,155 @@ CREATE TABLE record ()");
                 : original));
     }
 
-    [Test]
-    public async Task Physical_open_callback_sync()
-    {
-        await using var defaultConn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
+    #region Physical connection initialization
 
-        using var __ = CreateTempPool(ConnectionString, out var connectionString);
-        using var conn = new NpgsqlConnection(connectionString);
-        conn.PhysicalOpenCallback = connector =>
+    [Test]
+    public async Task PhysicalConnectionInitializer_sync()
+    {
+        await using var adminConn = await OpenConnectionAsync();
+        var table = await CreateTempTable(adminConn, "ID INTEGER");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            conn => conn.ExecuteNonQuery($"INSERT INTO {table} VALUES (1)"),
+            _ => throw new NotSupportedException());
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using (var conn = dataSource.OpenConnection())
         {
-            using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
-            cmd.ExecuteNonQuery();
-        };
-        conn.PhysicalOpenAsyncCallback = _ => throw new NotImplementedException();
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""), Is.EqualTo(1));
+        }
 
-        Assert.DoesNotThrow(conn.Open);
-
-        var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
-        Assert.AreEqual(1, rowsCount);
-    }
-
-    [Test]
-    public async Task Physical_open_async_callback()
-    {
-        await using var defaultConn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(defaultConn, "ID INTEGER", out var table);
-
-        using var __ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn = new NpgsqlConnection(connectionString);
-        conn.PhysicalOpenAsyncCallback = async connector =>
+        // Opening a second time should get us an idle connection, which should not cause the initializer to get executed
+        await using (var conn = dataSource.OpenConnection())
         {
-            using var cmd = connector.CreateCommand($"INSERT INTO \"{table}\" VALUES(1)");
-            await cmd.ExecuteNonQueryAsync();
-        };
-        conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
-
-        Assert.DoesNotThrowAsync(conn.OpenAsync);
-
-        var rowsCount = (long)(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""))!;
-        Assert.AreEqual(1, rowsCount);
-    }
-
-    [Test]
-    public async Task Physical_open_callback_throws()
-    {
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn = new NpgsqlConnection(connectionString);
-        conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
-
-        Assert.Throws<NotImplementedException>(conn.Open);
-    }
-
-    [Test]
-    public async Task Physical_open_async_callback_throws()
-    {
-        PhysicalOpenAsyncCallback callback = _ => throw new NotImplementedException();
-
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn = new NpgsqlConnection(connectionString);
-        conn.PhysicalOpenAsyncCallback = callback;
-
-        Assert.ThrowsAsync<NotImplementedException>(conn.OpenAsync);
-
-        if (IsMultiplexing)
-        {
-            // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
-            // or on NpgsqlCommand.ExecuteReaderAsync.
-            // We've already tested the first case above, testing the second one below.
-            conn.PhysicalOpenAsyncCallback = null;
-            // Allow the bootstrap to complete
-            Assert.DoesNotThrowAsync(conn.OpenAsync);
-
-            NpgsqlConnection.ClearPool(conn);
-
-            conn.PhysicalOpenAsyncCallback = callback;
-            Assert.ThrowsAsync<NotImplementedException>(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""), Is.EqualTo(1));
         }
     }
 
     [Test]
-    public async Task Physical_open_callback_idle_connection()
+    public async Task PhysicalConnectionInitializer_async()
     {
-        if (IsMultiplexing)
+        await using var adminConn = await OpenConnectionAsync();
+        var table = await CreateTempTable(adminConn, "ID INTEGER");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            _ => throw new NotSupportedException(),
+            async conn => await conn.ExecuteNonQueryAsync($"INSERT INTO {table} VALUES (1)"));
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""), Is.EqualTo(1));
+        }
+
+        // Opening a second time should get us an idle connection, which should not cause the initializer to get executed
+        await using (var conn = await dataSource.OpenConnectionAsync())
+        {
+            Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM \"{table}\""), Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public async Task PhysicalConnectionInitializer_sync_with_break()
+    {
+        if (IsMultiplexing) // Sync I/O
             return;
 
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn = new NpgsqlConnection(connectionString);
+        await using var adminConn = await OpenConnectionAsync();
 
-        Assert.DoesNotThrow(conn.Open);
-        conn.Close();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            conn =>
+            {
+                // Use another connection to kill the connector currently in the pool
+                using (var conn2 = OpenConnection())
+                    conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
 
-        conn.PhysicalOpenCallback = _ => throw new NotImplementedException();
+                conn.ExecuteScalar("SELECT 1");
+            },
+            _ => throw new NotSupportedException());
+        await using var dataSource = dataSourceBuilder.Build();
 
-        Assert.DoesNotThrow(conn.Open);
-        Assert.DoesNotThrow(() => conn.ExecuteNonQuery("SELECT 1"));
+        Assert.That(() => dataSource.OpenConnection(), Throws.Exception.InstanceOf<NpgsqlException>());
+        Assert.That(dataSource.Statistics, Is.EqualTo((0, 0, 0)));
     }
 
     [Test]
-    public async Task Physical_open_async_callback_idle_connection()
+    public async Task PhysicalConnectionInitializer_async_with_break()
     {
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn = new NpgsqlConnection(connectionString);
+        await using var adminConn = await OpenConnectionAsync();
 
-        Assert.DoesNotThrowAsync(conn.OpenAsync);
-        await conn.CloseAsync();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            _ => throw new NotSupportedException(),
+            async conn =>
+            {
+                // Use another connection to kill the connector currently in the pool
+                await using (var conn2 = await OpenConnectionAsync())
+                    await conn2.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({conn.ProcessID})");
 
-        conn.PhysicalOpenAsyncCallback = _ => throw new NotImplementedException();
+                await conn.ExecuteScalarAsync("SELECT 1");
+            });
+        await using var dataSource = dataSourceBuilder.Build();
 
-        Assert.DoesNotThrowAsync(conn.OpenAsync);
-        Assert.DoesNotThrowAsync(() => conn.ExecuteNonQueryAsync("SELECT 1"));
+        Assert.That(async () => await dataSource.OpenConnectionAsync(), Throws.Exception.InstanceOf<NpgsqlException>());
+        Assert.That(dataSource.Statistics, Is.EqualTo((0, 0, 0)));
     }
 
     [Test]
-    [NonParallelizable]
+    public async Task PhysicalConnectionInitializer_async_throws_on_second_open()
+    {
+        // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
+        // or on NpgsqlCommand.ExecuteReaderAsync.
+        // We've already tested the first case in PhysicalConnectionInitializer_async_throws above, testing the second one below.
+        await using var adminConn = await OpenConnectionAsync();
+
+        var count = 0;
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            _ => throw new NotSupportedException(),
+            _ =>
+            {
+                if (++count == 1)
+                    return Task.CompletedTask;
+                throw new Exception("INTENTIONAL FAILURE");
+            });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        Assert.DoesNotThrowAsync(async () => await dataSource.OpenConnectionAsync());
+
+        var exception = Assert.ThrowsAsync<Exception>(async () => await dataSource.OpenConnectionAsync())!;
+        Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
+    }
+
+    [Test]
+    public async Task PhysicalConnectionInitializer_disposes_connection()
+    {
+        NpgsqlConnection? initializerConnection = null;
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UsePhysicalConnectionInitializer(
+            _ => throw new NotSupportedException(),
+            conn =>
+            {
+                initializerConnection = conn;
+                return Task.CompletedTask;
+            });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        Assert.That(initializerConnection, Is.Not.Null);
+        Assert.That(conn, Is.Not.SameAs(initializerConnection));
+        Assert.That(() => initializerConnection!.Open(), Throws.Exception.TypeOf<ObjectDisposedException>());
+    }
+
+    #endregion Physical connection initialization
+
+    [Test]
+    [NonParallelizable] // Modifies global database info factories
     [IssueLink("https://github.com/npgsql/npgsql/issues/4425")]
     public async Task Breaking_connection_while_loading_database_info()
     {
@@ -1529,7 +1594,7 @@ CREATE TABLE record ()");
         try
         {
             // Test the first time we load the database info
-            Assert.ThrowsAsync<NotImplementedException>(firstConn.OpenAsync);
+            Assert.ThrowsAsync<IOException>(firstConn.OpenAsync);
         }
         finally
         {
@@ -1539,13 +1604,13 @@ CREATE TABLE record ()");
         await firstConn.OpenAsync();
         await using var secondConn = await OpenConnectionAsync(connString);
         await secondConn.CloseAsync();
-        firstConn.ReloadTypes();
+        await firstConn.ReloadTypesAsync();
 
         NpgsqlDatabaseInfo.RegisterFactory(new BreakingDatabaseInfoFactory());
         try
         {
-            // Test the case of loading the database info after type reloading
-            Assert.ThrowsAsync<NotImplementedException>(secondConn.OpenAsync);
+            // Make sure that the database info is now cached and won't be reloaded
+            Assert.DoesNotThrowAsync(secondConn.OpenAsync);
         }
         finally
         {
@@ -1556,7 +1621,7 @@ CREATE TABLE record ()");
     class BreakingDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
         public Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnector conn, NpgsqlTimeout timeout, bool async)
-            => throw conn.Break(new NotImplementedException());
+            => throw conn.Break(new IOException());
     }
 
     #region Logging tests

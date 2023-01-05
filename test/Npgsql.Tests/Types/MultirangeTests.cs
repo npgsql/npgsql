@@ -49,15 +49,15 @@ public class MultirangeTests : TestBase
 
         async Task WriteInternal(IList<NpgsqlRange<int>> multirange)
         {
-            conn.ReloadTypes();
+            await conn.ReloadTypesAsync();
             cmd.Parameters.Add(new() { Value = multirange });
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
 
-            conn.ReloadTypes();
+            await conn.ReloadTypesAsync();
             cmd.Parameters[0] = new() { Value = multirange, NpgsqlDbType = NpgsqlDbType.IntegerMultirange };
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
 
-            conn.ReloadTypes();
+            await conn.ReloadTypesAsync();
             cmd.Parameters[0] = new() { Value = multirange, DataTypeName = "int4multirange" };
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("{[3,7),[9,)}"));
         }

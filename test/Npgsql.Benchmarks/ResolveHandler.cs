@@ -8,8 +8,8 @@ namespace Npgsql.Benchmarks;
 [MemoryDiagnoser]
 public class ResolveHandler
 {
-    NpgsqlConnection _conn = null!;
-    ConnectorTypeMapper _typeMapper = null!;
+    NpgsqlDataSource? _dataSource;
+    TypeMapper _typeMapper = null!;
 
     [Params(0, 1, 2)]
     public int NumPlugins { get; set; }
@@ -17,17 +17,17 @@ public class ResolveHandler
     [GlobalSetup]
     public void Setup()
     {
-        _conn = BenchmarkEnvironment.OpenConnection();
-        _typeMapper = (ConnectorTypeMapper)_conn.TypeMapper;
-
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder();
         if (NumPlugins > 0)
-            _typeMapper.UseNodaTime();
+            dataSourceBuilder.UseNodaTime();
         if (NumPlugins > 1)
-            _typeMapper.UseNetTopologySuite();
+            dataSourceBuilder.UseNetTopologySuite();
+        _dataSource = dataSourceBuilder.Build();
+        _typeMapper = _dataSource.TypeMapper;
     }
 
     [GlobalCleanup]
-    public void Cleanup() => _conn.Dispose();
+    public void Cleanup() => _dataSource?.Dispose();
 
     [Benchmark]
     public NpgsqlTypeHandler ResolveOID()
@@ -48,5 +48,4 @@ public class ResolveHandler
     [Benchmark]
     public NpgsqlTypeHandler ResolveClrTypeGeneric()
         => _typeMapper.ResolveByValue(8);
-
 }

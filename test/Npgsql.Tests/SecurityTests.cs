@@ -89,8 +89,8 @@ public class SecurityTests : TestBase
         if (username == null)
             throw new Exception("Could find username");
 
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
-            IntegratedSecurity = true,
+        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
             Username = username,
             Password = null
         }.ToString();
@@ -113,7 +113,6 @@ public class SecurityTests : TestBase
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            IntegratedSecurity = true,
             Username = null,
             Password = null
         }.ToString();
@@ -136,7 +135,6 @@ public class SecurityTests : TestBase
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            IntegratedSecurity = true,
             Username = null,
             Password = null,
             Database = null
@@ -288,17 +286,40 @@ public class SecurityTests : TestBase
     }
 
     [Test]
-    public void User_callback_is_invoked([Values] bool acceptCertificate)
+    public async Task DataSource_UserCertificateValidationCallback_is_invoked([Values] bool acceptCertificate)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Require,
-            Pooling = false
-        };
-
         var callbackWasInvoked = false;
 
-        using var connection = CreateConnection(csb.ToString());
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.SslMode = SslMode.Require;
+        dataSourceBuilder.UseUserCertificateValidationCallback((_, _, _, _) =>
+        {
+            callbackWasInvoked = true;
+            return acceptCertificate;
+        });
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = dataSource.CreateConnection();
+
+        if (acceptCertificate)
+            Assert.DoesNotThrowAsync(async () => await connection.OpenAsync());
+        else
+        {
+            var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await connection.OpenAsync())!;
+            Assert.That(ex.InnerException, Is.TypeOf<AuthenticationException>());
+        }
+
+        Assert.That(callbackWasInvoked);
+    }
+
+    [Test]
+    public async Task Connection_UserCertificateValidationCallback_is_invoked([Values] bool acceptCertificate)
+    {
+        var callbackWasInvoked = false;
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.ConnectionStringBuilder.SslMode = SslMode.Require;
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) =>
         {
             callbackWasInvoked = true;

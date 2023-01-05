@@ -296,6 +296,7 @@ public partial class NumericHandler : NpgsqlTypeHandler<decimal>,
             var weight = 0;
             var groupCount = 0;
             Span<short> groups = stackalloc short[MaxGroupCount];
+            groups.Fill(0); // SkipLocalsInit
 
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
@@ -408,13 +409,9 @@ public partial class NumericHandler : NpgsqlTypeHandler<decimal>,
         if (lengthCache.IsPopulated)
             return lengthCache.Get();
 
-        var result = (ushort[]?)parameter?.ConvertedValue;
-        if (result == null)
-        {
-            result = FromBigInteger(value)!;
-            if (parameter != null)
-                parameter.ConvertedValue = result;
-        }
+        var result = FromBigInteger(value);
+        if (parameter != null)
+            parameter.ConvertedValue = result;
 
         return lengthCache.Set((4 + result[0]) * sizeof(ushort));
     }

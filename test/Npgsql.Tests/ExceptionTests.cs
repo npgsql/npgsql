@@ -62,8 +62,8 @@ public class ExceptionTests : TestBase
     public async Task Error_details_are_redacted()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = GetTempFunctionName(conn, out var raiseExceptionFunc);
-        await using var __ = GetTempFunctionName(conn, out var raiseNoticeFunc);
+        var raiseExceptionFunc = await GetTempFunctionName(conn);
+        var raiseNoticeFunc = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {raiseExceptionFunc}() RETURNS VOID AS $$
@@ -96,8 +96,8 @@ $$ LANGUAGE 'plpgsql';");
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IncludeErrorDetail = true };
         using var _ = CreateTempPool(builder, out var connectionStringWithDetails);
         await using var conn = await OpenConnectionAsync(connectionStringWithDetails);
-        await using var __ = GetTempFunctionName(conn, out var raiseExceptionFunc);
-        await using var ___ = GetTempFunctionName(conn, out var raiseNoticeFunc);
+        var raiseExceptionFunc = await GetTempFunctionName(conn);
+        var raiseNoticeFunc = await GetTempFunctionName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE OR REPLACE FUNCTION {raiseExceptionFunc}() RETURNS VOID AS $$
@@ -182,7 +182,7 @@ $$ LANGUAGE 'plpgsql';");
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "9.3.0", "5 error fields haven't been added yet");
 
-        await using var _ = await GetTempTypeName(conn, out var domainName);
+        var domainName = await GetTempTypeName(conn);
 
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {domainName} AS INT NOT NULL");
         var pgEx = Assert.ThrowsAsync<PostgresException>(async () => await conn.ExecuteNonQueryAsync($"SELECT CAST(NULL AS {domainName})"))!;

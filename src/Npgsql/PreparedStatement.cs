@@ -10,7 +10,7 @@ namespace Npgsql;
 /// candidate for preparation (i.e. awaiting further usages).
 /// </summary>
 [DebuggerDisplay("{Name} ({State}): {Sql}")]
-class PreparedStatement
+sealed class PreparedStatement
 {
     readonly PreparedStatementManager _manager;
 
@@ -69,7 +69,7 @@ class PreparedStatement
     internal static PreparedStatement CreateAutoPrepareCandidate(PreparedStatementManager manager, string sql)
         => new(manager, sql, false);
 
-    PreparedStatement(PreparedStatementManager manager, string sql, bool isExplicit)
+    internal PreparedStatement(PreparedStatementManager manager, string sql, bool isExplicit)
     {
         _manager = manager;
         Sql = sql;
@@ -79,7 +79,6 @@ class PreparedStatement
 
     internal void SetParamTypes(List<NpgsqlParameter> parameters)
     {
-        Debug.Assert(HandlerParamTypes == null);
         if (parameters.Count == 0)
         {
             HandlerParamTypes = EmptyParamTypes;
@@ -165,5 +164,10 @@ enum PreparedState
     /// <summary>
     /// The statement has been unprepared and is no longer usable.
     /// </summary>
-    Unprepared
+    Unprepared,
+
+    /// <summary>
+    /// The statement was invalidated because e.g. table schema has changed since preparation.
+    /// </summary>
+    Invalidated
 }

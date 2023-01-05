@@ -5,9 +5,9 @@ using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput;
 
-class ReadOnlyArrayBuffer<T> : IReadOnlyList<T>
+sealed class ReadOnlyArrayBuffer<T> : IReadOnlyList<T>
 {
-    public static readonly ReadOnlyArrayBuffer<T> Empty = new(Array.Empty<T>());
+    public static readonly ReadOnlyArrayBuffer<T> Empty = new();
     T[] _items;
     int _size;
 

@@ -126,7 +126,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     }
 
 #if NETSTANDARD2_0
-        public void Write(ReadOnlySpan<byte> buffer)
+    public void Write(ReadOnlySpan<byte> buffer)
 #else
     public override void Write(ReadOnlySpan<byte> buffer)
 #endif
@@ -165,7 +165,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     }
 
 #if NETSTANDARD2_0
-        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #else
     public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
@@ -243,7 +243,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     }
 
 #if NETSTANDARD2_0
-        public int Read(Span<byte> span)
+    public int Read(Span<byte> span)
 #else
     public override int Read(Span<byte> span)
 #endif
@@ -259,7 +259,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     }
 
 #if NETSTANDARD2_0
-        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+    public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #else
     public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
@@ -392,7 +392,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     protected override void Dispose(bool disposing) => DisposeAsync(disposing, false).GetAwaiter().GetResult();
 
 #if NETSTANDARD2_0
-        public ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
 #else
     public override ValueTask DisposeAsync()
 #endif
@@ -539,11 +539,11 @@ public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     }
 
 #if NETSTANDARD2_0
-        public ValueTask DisposeAsync()
-        {
-            Dispose();
-            return default;
-        }
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        return default;
+    }
 #endif
 }
 

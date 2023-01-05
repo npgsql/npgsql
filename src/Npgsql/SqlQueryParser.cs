@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Npgsql;
 
-class SqlQueryParser
+sealed class SqlQueryParser
 {
     readonly Dictionary<string, int> _paramIndexMap = new();
     readonly StringBuilder _rewrittenSql = new();
@@ -60,7 +60,7 @@ class SqlQueryParser
         bool standardConformingStrings = true,
         bool deriveParameters = false)
     {
-        ReadOnlySpan<char> sql;
+        string sql;
         NpgsqlParameterCollection parameters;
         List<NpgsqlBatchCommand>? batchCommands;
 
@@ -69,7 +69,7 @@ class SqlQueryParser
         {
             // Batching mode. We're processing only one batch - if we encounter a semicolon (legacy batching), that's an error.
             Debug.Assert(batchCommand is not null);
-            sql = batchCommand.CommandText.AsSpan();
+            sql = batchCommand.CommandText;
             parameters = batchCommand.Parameters;
             batchCommands = null;
         }
@@ -77,7 +77,7 @@ class SqlQueryParser
         {
             // Command mode. Semicolons (legacy batching) may occur.
             Debug.Assert(batchCommand is null);
-            sql = command.CommandText.AsSpan();
+            sql = command.CommandText;
             parameters = command.Parameters;
             batchCommands = command.InternalBatchCommands;
             MoveToNextBatchCommand();
@@ -106,7 +106,7 @@ class SqlQueryParser
         var lastChar = ch;
         ch = sql[currCharOfs++];
         NoneContinue:
-        for (; ; lastChar = ch, ch = sql[currCharOfs++])
+        while (true)
         {
             switch (ch)
             {
@@ -117,25 +117,21 @@ class SqlQueryParser
             case '\'':
                 if (standardConformingStrings)
                     goto Quoted;
-                else
-                    goto Escaped;
+                goto Escaped;
             case '$':
                 if (!IsIdentifier(lastChar))
                     goto DollarQuotedStart;
-                else
-                    break;
+                break;
             case '"':
-                goto DoubleQuoted;
+                goto Quoted;
             case ':':
                 if (lastChar != ':')
                     goto NamedParamStart;
-                else
-                    break;
+                break;
             case '@':
                 if (lastChar != '@')
                     goto NamedParamStart;
-                else
-                    break;
+                break;
             case ';':
                 if (parenthesisLevel == 0)
                     goto SemiColon;
@@ -150,12 +146,14 @@ class SqlQueryParser
             case 'E':
                 if (!IsLetter(lastChar))
                     goto EscapedStart;
-                else
-                    break;
+                break;
             }
 
             if (currCharOfs >= end)
                 goto Finish;
+
+            lastChar = ch;
+            ch = sql[currCharOfs++];
         }
 
         NamedParamStart:
@@ -166,7 +164,7 @@ class SqlQueryParser
             if (IsParamNameChar(ch))
             {
                 if (currCharOfs - 1 > currTokenBeg)
-                    _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                    _rewrittenSql.Append(sql, currTokenBeg, currCharOfs - 1 - currTokenBeg);
                 currTokenBeg = currCharOfs++ - 1;
                 goto NamedParam;
             }
@@ -177,12 +175,12 @@ class SqlQueryParser
 
         NamedParam:
         // We have already at least one character of the param name
-        for (;;)
+        while (true)
         {
             lastChar = ch;
             if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
             {
-                var paramName = sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
+                var paramName = sql.Substring(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1));
 
                 if (!_paramIndexMap.TryGetValue(paramName, out var index))
                 {
@@ -198,7 +196,7 @@ class SqlQueryParser
                         {
                             // Parameter placeholder does not match a parameter on this command.
                             // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                            _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg));
+                            _rewrittenSql.Append(sql, currTokenBeg, currCharOfs - currTokenBeg);
                             currTokenBeg = currCharOfs;
                             if (currCharOfs >= end)
                                 goto Finish;
@@ -229,24 +227,16 @@ class SqlQueryParser
         }
 
         Quoted:
-        while (currCharOfs < end)
+        Debug.Assert(ch == '\'' || ch == '"');
+        while (currCharOfs < end && sql[currCharOfs] != ch)
         {
-            if (sql[currCharOfs++] == '\'')
-            {
-                ch = '\0';
-                goto None;
-            }
+            currCharOfs++;
         }
-        goto Finish;
-
-        DoubleQuoted:
-        while (currCharOfs < end)
+        if (currCharOfs < end)
         {
-            if (sql[currCharOfs++] == '"')
-            {
-                ch = '\0';
-                goto None;
-            }
+            currCharOfs++;
+            ch = '\0';
+            goto None;
         }
         goto Finish;
 
@@ -379,14 +369,14 @@ class SqlQueryParser
         goto Finish;
 
         DollarQuoted:
-        var tag = sql.Slice(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
-        var pos = sql.Slice(dollarTagEnd + 1).IndexOf(tag);
+        var tag = sql.AsSpan(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+        var pos = sql.AsSpan(dollarTagEnd + 1).IndexOf(tag);
         if (pos == -1)
         {
             currCharOfs = end;
             goto Finish;
         }
-        pos += dollarTagEnd + 1; // If the substring is found adjust the position to be relative to the entire span
+        pos += dollarTagEnd + 1; // If the substring is found adjust the position to be relative to the entire string
         currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
         ch = '\0';
         goto None;
@@ -460,7 +450,7 @@ class SqlQueryParser
         goto Finish;
 
         SemiColon:
-        _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
+        _rewrittenSql.Append(sql, currTokenBeg, currCharOfs - currTokenBeg - 1);
         batchCommand.FinalCommandText = _rewrittenSql.ToString();
         while (currCharOfs < end)
         {
@@ -494,7 +484,7 @@ class SqlQueryParser
         return;
 
         Finish:
-        _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
+        _rewrittenSql.Append(sql, currTokenBeg, end - currTokenBeg);
         batchCommand.FinalCommandText = _rewrittenSql.ToString();
         if (batchCommands is not null && batchCommands.Count > statementIndex + 1)
             batchCommands.RemoveRange(statementIndex + 1, batchCommands.Count - (statementIndex + 1));
@@ -515,17 +505,23 @@ class SqlQueryParser
         }
     }
 
+    // Is ASCII letter comparison optimization https://github.com/dotnet/runtime/blob/60cfaec2e6cffeb9a006bec4b8908ffcf71ac5b4/src/libraries/System.Private.CoreLib/src/System/Char.cs#L236
+
     static bool IsLetter(char ch)
-        => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
+        // [a-zA-Z]
+        => (uint)((ch | 0x20) - 'a') <= ('z' - 'a');
 
     static bool IsIdentifierStart(char ch)
-        => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_' || 128 <= ch && ch <= 255;
+        // [a-zA-Z_\x80-\xFF]
+        => (uint)((ch | 0x20) - 'a') <= ('z' - 'a') || ch == '_' || (uint)(ch - 128) <= 127u;
 
     static bool IsDollarTagIdentifier(char ch)
-        => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || 128 <= ch && ch <= 255;
+        // [a-zA-Z0-9_\x80-\xFF]
+        => (uint)((ch | 0x20) - 'a') <= ('z' - 'a') || (uint)(ch - '0') <= ('9' - '0') || ch == '_' || (uint)(ch - 128) <= 127u;
 
     static bool IsIdentifier(char ch)
-        => 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || '0' <= ch && ch <= '9' || ch == '_' || ch == '$' || 128 <= ch && ch <= 255;
+        // [a-zA-Z0-9_$\x80-\xFF]
+        => (uint)((ch | 0x20) - 'a') <= ('z' - 'a') || (uint)(ch - '0') <= ('9' - '0') || ch == '_' || ch == '$' || (uint)(ch - 128) <= 127u;
 
     static bool IsParamNameChar(char ch)
         => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??

@@ -23,19 +23,13 @@ namespace Npgsql.Internal.TypeHandlers;
 /// Use it at your own risk.
 /// </remarks>
 public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
-    INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
+    INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ReadOnlyMemory<byte>>, ITextReaderHandler
 {
     // Text types are handled a bit more efficiently when sent as text than as binary
     // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
     internal override bool PreferTextWrite => true;
 
     readonly Encoding _encoding;
-
-    #region State
-
-    readonly char[] _singleCharArray = new char[1];
-
-    #endregion
 
     /// <inheritdoc />
     protected internal TextHandler(PostgresType postgresType, Encoding encoding)
@@ -120,14 +114,27 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         while (buf.ReadBytesLeft < maxBytes)
             await buf.ReadMore(async);
 
-        var decoder = buf.TextEncoding.GetDecoder();
-        decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
-        buf.Skip(len - bytesUsed);
+        return ReadCharCore();
 
-        if (charsUsed < 1)
-            throw new NpgsqlException("Could not read char - string was empty");
+        unsafe char ReadCharCore()
+        {
+            var decoder = buf.TextEncoding.GetDecoder();
 
-        return _singleCharArray[0];
+#if NETSTANDARD2_0
+            var singleCharArray = new char[1];
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
+#else
+            Span<char> singleCharArray = stackalloc char[1];
+            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
+#endif
+
+            buf.Skip(len - bytesUsed);
+
+            if (charsUsed < 1)
+                throw new NpgsqlException("Could not read char - string was empty");
+
+            return singleCharArray[0];
+        }
     }
 
     ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
@@ -175,6 +182,9 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             return bytes;
         }
     }
+    
+    ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        => throw new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL text is supported, no reading.");
 
     #endregion
 
@@ -223,12 +233,22 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     /// <inheritdoc />
     public int ValidateAndGetLength(char value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
-        _singleCharArray[0] = value;
-        return _encoding.GetByteCount(_singleCharArray);
+#if NETSTANDARD2_0
+        var singleCharArray = new char[1];
+#else
+        Span<char> singleCharArray = stackalloc char[1];
+#endif
+
+        singleCharArray[0] = value;
+        return _encoding.GetByteCount(singleCharArray);
     }
 
     /// <inheritdoc />
     public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        => value.Length;
+
+    /// <inheritdoc />
+    public int ValidateAndGetLength(ReadOnlyMemory<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value.Length;
 
     /// <inheritdoc />
@@ -257,15 +277,33 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     }
 
     /// <inheritdoc />
-    public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+    public async Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
-        _singleCharArray[0] = value;
-        var len = _encoding.GetByteCount(_singleCharArray);
-        return buf.WriteChars(_singleCharArray, 0, 1, len, async, cancellationToken);
+        if (buf.WriteSpaceLeft < _encoding.GetMaxByteCount(1))
+            await buf.Flush(async, cancellationToken);
+        WriteCharCore(value, buf);
+
+        static unsafe void WriteCharCore(char value, NpgsqlWriteBuffer buf)
+        {
+#if NETSTANDARD2_0
+            var singleCharArray = new char[1];
+            singleCharArray[0] = value;
+            buf.WriteChars(singleCharArray, 0, 1);
+#else
+            Span<char> singleCharArray = stackalloc char[1];
+            singleCharArray[0] = value;
+            buf.WriteChars(singleCharArray);
+#endif
+        }
     }
 
-    /// <inheritdoc />
-    public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+
+    public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
+        CancellationToken cancellationToken = default)
+        => buf.WriteBytesRaw(value, async, cancellationToken);
+
+    public Task Write(ReadOnlyMemory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
+        CancellationToken cancellationToken = default)
         => buf.WriteBytesRaw(value, async, cancellationToken);
 
     #endregion

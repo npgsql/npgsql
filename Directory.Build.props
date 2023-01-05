@@ -1,6 +1,6 @@
 ﻿<Project>
   <PropertyGroup>
-    <VersionPrefix>7.0.0-preview.8</VersionPrefix>
+    <VersionPrefix>8.0.0-preview.1</VersionPrefix>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
@@ -8,8 +8,9 @@
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <Copyright>Copyright 2021 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2022 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
@@ -18,7 +19,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <NoWarn>$(NoWarn);NU5105</NoWarn>
+    <NoWarn>$(NoWarn);NETSDK1138</NoWarn> <!-- The target framework 'net5.0' is out of support  -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 

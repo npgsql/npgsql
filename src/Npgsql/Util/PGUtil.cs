@@ -1,6 +1,7 @@
 using Npgsql.Internal;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -15,8 +16,8 @@ static class Statics
     internal static bool LegacyTimestampBehavior;
     internal static bool DisableDateTimeInfinityConversions;
 #else
-        internal static readonly bool LegacyTimestampBehavior;
-        internal static readonly bool DisableDateTimeInfinityConversions;
+    internal static readonly bool LegacyTimestampBehavior;
+    internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
     static Statics()
@@ -24,17 +25,29 @@ static class Statics
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
     {
-        if (msg is T asT)
-            return asT;
+        if (msg.GetType() != typeof(T))
+            ThrowIfMsgWrongType<T>(msg, connector);
 
-        throw connector.Break(
-            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. " +
-                                "Please file a bug."));
+        return (T)msg;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static T ExpectAny<T>(IBackendMessage msg, NpgsqlConnector connector)
+    {
+        if (msg is T t)
+            return t;
+
+        ThrowIfMsgWrongType<T>(msg, connector);
+        return default;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+    static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
+        => throw connector.Break(
+            new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
 
     internal static DeferDisposable Defer(Action action) => new(action);
     internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);

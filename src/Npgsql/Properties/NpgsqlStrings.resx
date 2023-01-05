@@ -30,6 +30,9 @@
     <data name="CannotUseTrustServerCertificate" xml:space="preserve">
         <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
     </data>
+    <data name="NoMultirangeTypeFound" xml:space="preserve">
+        <value>No multirange type could be found in the database for subtype {0}.</value>
+    </data>
     <data name="NotSupportedOnDataSourceCommand" xml:space="preserve">
         <value>Connection and transaction access is not supported on commands created from DbDataSource.</value>
     </data>
@@ -45,13 +48,19 @@
     <data name="ArgumentMustBePositive" xml:space="preserve">
         <value>'{0}' must be positive.</value>
     </data>
-    <data name="MultipleHostsMustBeSpecified" xml:space="preserve">
-        <value>Multiple hosts must be specified.</value>
-    </data>
     <data name="CannotSpecifyTargetSessionAttributes" xml:space="preserve">
         <value>When creating a multi-host data source, TargetSessionAttributes cannot be specified. Create without TargetSessionAttributes, and then obtain DataSource wrappers from it. Consult the docs for more information.</value>
     </data>
     <data name="CannotReadIntervalWithMonthsAsTimeSpan" xml:space="preserve">
         <value>Cannot read interval values with non-zero months as TimeSpan, since that type doesn't support months. Consider using NodaTime Period which better corresponds to PostgreSQL interval, or read the value as NpgsqlInterval, or transform the interval to not contain months or years in PostgreSQL before reading it.</value>
+    </data>
+    <data name="PositionalParameterAfterNamed" xml:space="preserve">
+        <value>When using CommandType.StoredProcedure, all positional parameters must come before named parameters.</value>
+    </data>
+    <data name="CannotReadInfinityValue" xml:space="preserve">
+        <value>Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled.</value>
+    </data>
+    <data name="SyncAndAsyncConnectionInitializersRequired" xml:space="preserve">
+        <value>Both sync and async connection initializers must be provided.</value>
     </data>
 </root>

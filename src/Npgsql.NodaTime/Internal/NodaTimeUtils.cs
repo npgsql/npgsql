@@ -9,8 +9,8 @@ static class NodaTimeUtils
     internal static bool LegacyTimestampBehavior;
     internal static bool DisableDateTimeInfinityConversions;
 #else
-        internal static readonly bool LegacyTimestampBehavior;
-        internal static readonly bool DisableDateTimeInfinityConversions;
+    internal static readonly bool LegacyTimestampBehavior;
+    internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
     static NodaTimeUtils()

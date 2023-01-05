@@ -5,7 +5,7 @@ using Npgsql.Internal;
 namespace Npgsql.BackendMessages;
 
 [Serializable]
-class ErrorOrNoticeMessage
+sealed class ErrorOrNoticeMessage
 {
     internal string Severity { get; }
     internal string InvariantSeverity { get; }

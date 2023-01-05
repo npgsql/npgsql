@@ -15,34 +15,31 @@ namespace Npgsql.Internal;
 partial class NpgsqlConnector
 {
 #if !NET6_0_OR_GREATER
-        static byte[] Hi(string str, byte[] salt, int count)
+    static byte[] Hi(string str, byte[] salt, int count)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
+        var salt1 = new byte[salt.Length + 4];
+        byte[] hi, u1;
+
+        Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
+        salt1[salt1.Length - 1] = 1;
+
+        hi = u1 = hmac.ComputeHash(salt1);
+
+        for (var i = 1; i < count; i++)
         {
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
-            var salt1 = new byte[salt.Length + 4];
-            byte[] hi, u1;
-
-            Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
-            salt1[salt1.Length - 1] = 1;
-
-            hi = u1 = hmac.ComputeHash(salt1);
-
-            for (var i = 1; i < count; i++)
-            {
-                var u2 = hmac.ComputeHash(u1);
-                NpgsqlConnector.Xor(hi, u2);
-                u1 = u2;
-            }
-
-            return hi;
+            var u2 = hmac.ComputeHash(u1);
+            NpgsqlConnector.Xor(hi, u2);
+            u1 = u2;
         }
+
+        return hi;
+    }
 #endif
 
 #if !NET7_0_OR_GREATER
     async Task AuthenticateGSS(bool async)
     {
-        if (!IntegratedSecurity)
-            throw new NpgsqlException("GSS/SSPI authentication but IntegratedSecurity not enabled");
-
         var targetName = $"{KerberosServiceName}/{Host}";
 
         using var negotiateStream = new NegotiateStream(new GSSPasswordMessageStream(this), true);
@@ -79,7 +76,7 @@ partial class NpgsqlConnector
     /// <remarks>
     /// See https://referencesource.microsoft.com/#System/net/System/Net/_StreamFramer.cs,16417e735f0e9530,references
     /// </remarks>
-    class GSSPasswordMessageStream : Stream
+    sealed class GSSPasswordMessageStream : Stream
     {
         readonly NpgsqlConnector _connector;
         int _leftToWrite;
@@ -132,7 +129,7 @@ partial class NpgsqlConnector
         {
             if (_leftToRead == 0)
             {
-                var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
+                var response = ExpectAny<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
                 if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                     throw new AuthenticationCompleteException();
                 var gssMsg = response as AuthenticationGSSContinueMessage;
@@ -174,6 +171,6 @@ partial class NpgsqlConnector
         }
     }
 
-    class AuthenticationCompleteException : Exception { }
+    sealed class AuthenticationCompleteException : Exception { }
 #endif
 }

@@ -22,7 +22,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 #if DEBUG
     internal static bool TwoPassCompatMode;
 #else
-        internal static readonly bool TwoPassCompatMode;
+    internal static readonly bool TwoPassCompatMode;
 #endif
 
     static NpgsqlParameterCollection()
@@ -679,7 +679,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         }
     }
 
-    internal void ProcessParameters(ConnectorTypeMapper typeMapper, bool validate)
+    internal void ProcessParameters(TypeMapper typeMapper, bool validateValues, CommandType commandType)
     {
         HasOutputParameters = false;
         PlaceholderType = PlaceholderType.NoParameters;
@@ -714,14 +714,14 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
 
             case ParameterDirection.InputOutput:
-                if (PlaceholderType == PlaceholderType.Positional)
-                    throw new NotSupportedException("Output parameters are not supported in positional mode");
+                if (PlaceholderType == PlaceholderType.Positional && commandType != CommandType.StoredProcedure)
+                    throw new NotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
                 HasOutputParameters = true;
                 break;
 
             case ParameterDirection.Output:
-                if (PlaceholderType == PlaceholderType.Positional)
-                    throw new NotSupportedException("Output parameters are not supported in positional mode");
+                if (PlaceholderType == PlaceholderType.Positional && commandType != CommandType.StoredProcedure)
+                    throw new NotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
                 HasOutputParameters = true;
                 continue;
 
@@ -736,7 +736,7 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             p.Bind(typeMapper);
 
-            if (validate)
+            if (validateValues)
             {
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();

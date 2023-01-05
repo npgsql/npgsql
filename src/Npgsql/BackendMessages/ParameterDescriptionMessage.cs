@@ -3,7 +3,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.BackendMessages;
 
-class ParameterDescriptionMessage : IBackendMessage
+sealed class ParameterDescriptionMessage : IBackendMessage
 {
     // ReSharper disable once InconsistentNaming
     internal List<uint> TypeOIDs { get; }

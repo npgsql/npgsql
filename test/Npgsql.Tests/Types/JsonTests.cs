@@ -51,6 +51,10 @@ public class JsonTests : MultiplexingTestBase
         => await AssertType(Encoding.ASCII.GetBytes(@"{""K"": ""V""}"), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
+    public async Task Write_as_ReadOnlyMemory_of_byte()
+        => await AssertTypeWrite(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(@"{""K"": ""V""}")), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+
+    [Test]
     public async Task Write_as_ArraySegment_of_char()
         => await AssertTypeWrite(
             new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);

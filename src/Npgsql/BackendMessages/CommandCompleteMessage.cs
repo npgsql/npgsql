@@ -3,7 +3,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.BackendMessages;
 
-class CommandCompleteMessage : IBackendMessage
+sealed class CommandCompleteMessage : IBackendMessage
 {
     internal StatementType StatementType { get; private set; }
     internal uint OID { get; private set; }
@@ -78,12 +78,19 @@ class CommandCompleteMessage : IBackendMessage
             return this;
 
         case (byte)'C':
-            if (!AreEqual(bytes, i, "COPY "))
-                goto default;
-            StatementType = StatementType.Copy;
-            i += 5;
-            Rows = ParseNumber(bytes, ref i);
-            return this;
+            if (AreEqual(bytes, i, "COPY "))
+            {
+                StatementType = StatementType.Copy;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
+            }
+            if (bytes[i + 4] == 0 && AreEqual(bytes, i, "CALL"))
+            {
+                StatementType = StatementType.Call;
+                return this;
+            }
+            goto default;
 
         default:
             StatementType = StatementType.Other;
@@ -104,7 +111,7 @@ class CommandCompleteMessage : IBackendMessage
     static ulong ParseNumber(byte[] bytes, ref int pos)
     {
         Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
-        uint result = 0;
+        ulong result = 0;
         do
         {
             result = result * 10 + bytes[pos++] - '0';

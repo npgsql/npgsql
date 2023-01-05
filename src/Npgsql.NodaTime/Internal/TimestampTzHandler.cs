@@ -3,6 +3,7 @@ using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.NodaTime.Properties;
 using Npgsql.PostgresTypes;
 using BclTimestampTzHandler = Npgsql.Internal.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
@@ -14,8 +15,6 @@ sealed partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpg
     INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<long>
 {
     readonly BclTimestampTzHandler _bclHandler;
-
-    const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
 
     public TimestampTzHandler(PostgresType postgresType)
         : base(postgresType)
@@ -29,8 +28,12 @@ sealed partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpg
     internal static Instant ReadInstant(NpgsqlReadBuffer buf)
         => buf.ReadInt64() switch
         {
-            long.MaxValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : Instant.MaxValue,
-            long.MinValue => DisableDateTimeInfinityConversions ? throw new InvalidCastException(InfinityExceptionMessage) : Instant.MinValue,
+            long.MaxValue => DisableDateTimeInfinityConversions
+                ? throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue)
+                : Instant.MaxValue,
+            long.MinValue => DisableDateTimeInfinityConversions
+                ? throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue)
+                : Instant.MinValue,
             var value => DecodeInstant(value)
         };
 

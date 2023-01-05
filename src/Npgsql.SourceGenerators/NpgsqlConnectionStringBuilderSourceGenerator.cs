@@ -108,7 +108,7 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
         context.AddSource(type.Name + ".Generated.cs", SourceText.From(output, Encoding.UTF8));
     }
 
-    class PropertyDetails
+    sealed class PropertyDetails
     {
         public string Name { get; set; } = null!;
         public string CanonicalName { get; set; } = null!;

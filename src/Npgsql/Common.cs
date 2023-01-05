@@ -75,6 +75,7 @@ public enum StatementType
     Fetch,
     Copy,
     Other,
-    Merge
+    Merge,
+    Call
 #pragma warning restore 1591
 }

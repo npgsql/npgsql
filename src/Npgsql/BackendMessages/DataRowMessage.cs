@@ -5,7 +5,7 @@
 /// because in sequential mode the message will be traversed and processed sequentially by
 /// <see cref="NpgsqlDataReader"/>.
 /// </summary>
-class DataRowMessage : IBackendMessage
+sealed class DataRowMessage : IBackendMessage
 {
     public BackendMessageCode Code => BackendMessageCode.DataRow;
 

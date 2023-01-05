@@ -45,7 +45,7 @@ public class NpgsqlException : DbException
 #if NET5_0_OR_GREATER
     public override bool IsTransient
 #else
-        public virtual bool IsTransient
+    public virtual bool IsTransient
 #endif
         => InnerException is IOException or SocketException or TimeoutException or NpgsqlException { IsTransient: true };
 
@@ -56,11 +56,11 @@ public class NpgsqlException : DbException
     /// <inheritdoc/>
     protected override DbBatchCommand? DbBatchCommand => BatchCommand;
 #else
-        /// <summary>
-        /// If the exception was thrown as a result of executing a <see cref="DbBatch"/>, references the <see cref="DbBatchCommand"/> within
-        /// the batch which triggered the exception. Otherwise <see langword="null"/>.
-        /// </summary>
-        public NpgsqlBatchCommand? BatchCommand { get; set; }
+    /// <summary>
+    /// If the exception was thrown as a result of executing a <see cref="DbBatch"/>, references the <see cref="DbBatchCommand"/> within
+    /// the batch which triggered the exception. Otherwise <see langword="null"/>.
+    /// </summary>
+    public NpgsqlBatchCommand? BatchCommand { get; set; }
 #endif
 
     #region Serialization

@@ -452,6 +452,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
         using var _ = Connector.StartUserAction(
             ConnectorState.Replication, _replicationCancellationTokenSource.Token, attemptPgCancellation: _pgCancellationSupported);
 
+        NpgsqlReadBuffer.ColumnStream? columnStream = null;
+
         try
         {
             await connector.WriteQuery(command, true, cancellationToken);
@@ -473,7 +475,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             var buf = connector.ReadBuffer;
 
             // Cancellation is handled at the replication level - we don't want every ReadAsync
-            var columnStream = new NpgsqlReadBuffer.ColumnStream(connector, startCancellableOperations: false);
+            columnStream = new NpgsqlReadBuffer.ColumnStream(connector, startCancellableOperations: false);
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 
@@ -499,7 +501,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     await buf.EnsureAsync(24);
                     var startLsn = buf.ReadUInt64();
                     var endLsn = buf.ReadUInt64();
-                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Unspecified).ToLocalTime();
+                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
 
                     if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
@@ -556,24 +558,27 @@ public abstract class ReplicationConnection : IAsyncDisposable
         }
         finally
         {
-#if NETSTANDARD2_0
-                if (_sendFeedbackTimer != null)
-                {
-                    var mre = new ManualResetEvent(false);
-                    var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
-                    Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
-                    if (actuallyDisposed)
-                        await mre.WaitOneAsync(cancellationToken);
-                }
+            if (columnStream != null && !bypassingStream && !_replicationCancellationTokenSource.Token.IsCancellationRequested)
+                await columnStream.DisposeAsync();
 
-                if (_requestFeedbackTimer != null)
-                {
-                    var mre = new ManualResetEvent(false);
-                    var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
-                    Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
-                    if (actuallyDisposed)
-                        await mre.WaitOneAsync(cancellationToken);
-                }
+#if NETSTANDARD2_0
+            if (_sendFeedbackTimer != null)
+            {
+                var mre = new ManualResetEvent(false);
+                var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
+                Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
+                if (actuallyDisposed)
+                    await mre.WaitOneAsync(cancellationToken);
+            }
+
+            if (_requestFeedbackTimer != null)
+            {
+                var mre = new ManualResetEvent(false);
+                var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
+                Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
+                if (actuallyDisposed)
+                    await mre.WaitOneAsync(cancellationToken);
+            }
 #else
 
             if (_sendFeedbackTimer != null)

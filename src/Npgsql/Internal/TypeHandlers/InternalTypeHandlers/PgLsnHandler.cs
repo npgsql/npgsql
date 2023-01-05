@@ -6,7 +6,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
 
-partial class PgLsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLogSequenceNumber>
+sealed partial class PgLsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLogSequenceNumber>
 {
     public PgLsnHandler(PostgresType pgType) : base(pgType) {}
 

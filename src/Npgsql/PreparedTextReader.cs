@@ -42,11 +42,11 @@ sealed class PreparedTextReader : TextReader
             : -1;
     }
 
-    public
-#if !NETSTANDARD2_0
-    override 
+#if NETSTANDARD2_0
+    public int Read(Span<char> buffer)
+#else
+    public override int Read(Span<char> buffer)
 #endif
-    int Read(Span<char> buffer)
     {
         CheckDisposed();
 

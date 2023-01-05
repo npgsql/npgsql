@@ -157,7 +157,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Composite()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var typeName); ;
+        var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS (c0 integer, c1 text)");
         conn.ReloadTypes();
         var sqls = new string[]

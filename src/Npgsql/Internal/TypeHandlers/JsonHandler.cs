@@ -54,7 +54,8 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             typeof(TAny) == typeof(char[])             ||
             typeof(TAny) == typeof(ArraySegment<char>) ||
             typeof(TAny) == typeof(char)               ||
-            typeof(TAny) == typeof(byte[]))
+            typeof(TAny) == typeof(byte[])             ||
+            typeof(TAny) == typeof(ReadOnlyMemory<byte>))
         {
             return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen;
         }
@@ -102,6 +103,8 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             await _textHandler.Write((char)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(byte[]))
             await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+        else if (typeof(TAny) == typeof(ReadOnlyMemory<byte>))
+            await _textHandler.Write((ReadOnlyMemory<byte>)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(JsonDocument))
         {
             var data = parameter?.ConvertedValue != null
@@ -146,6 +149,7 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             ArraySegment<char> s      => ValidateAndGetLength(s, ref lengthCache, parameter),
             char s                    => ValidateAndGetLength(s, ref lengthCache, parameter),
             byte[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
+            ReadOnlyMemory<byte> s    => ValidateAndGetLength(s, ref lengthCache, parameter),
             JsonDocument jsonDocument => ValidateAndGetLength(jsonDocument, ref lengthCache, parameter),
             _                         => ValidateAndGetLength(value, ref lengthCache, parameter)
         };
@@ -166,6 +170,7 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             ArraySegment<char> s      => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
             char s                    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
             byte[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            ReadOnlyMemory<byte> s    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
             JsonDocument jsonDocument => WriteWithLengthCustom(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
             _                         => WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken),
         });
@@ -187,7 +192,8 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             typeof(T) == typeof(char[])             ||
             typeof(T) == typeof(ArraySegment<char>) ||
             typeof(T) == typeof(char)               ||
-            typeof(T) == typeof(byte[]))
+            typeof(T) == typeof(byte[])             ||
+            typeof(T) == typeof(ReadOnlyMemory<byte>))
         {
             return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription);
         }

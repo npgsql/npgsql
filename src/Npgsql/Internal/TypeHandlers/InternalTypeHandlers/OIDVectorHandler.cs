@@ -11,7 +11,7 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
 /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
 /// be 0 (we send 1 for regular arrays).
 /// </summary>
-class OIDVectorHandler : ArrayHandler<uint>
+sealed class OIDVectorHandler : ArrayHandler<uint>
 {
     public OIDVectorHandler(PostgresType oidvectorType, PostgresType oidType)
         : base(oidvectorType, new UInt32Handler(oidType), ArrayNullabilityMode.Never, 0) { }

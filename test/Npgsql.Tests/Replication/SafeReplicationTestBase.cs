@@ -41,9 +41,16 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
         }
     }
 
-    private protected async Task<TConnection> OpenReplicationConnectionAsync(NpgsqlConnectionStringBuilder? csb = null, CancellationToken cancellationToken = default)
+    private protected Task<TConnection> OpenReplicationConnectionAsync(
+        NpgsqlConnectionStringBuilder csb,
+        CancellationToken cancellationToken = default)
+        => OpenReplicationConnectionAsync(csb.ToString(), cancellationToken);
+
+    private protected async Task<TConnection> OpenReplicationConnectionAsync(
+        string? connectionString = null,
+        CancellationToken cancellationToken = default)
     {
-        var c = new TConnection { ConnectionString = csb?.ToString() ?? ConnectionString };
+        var c = new TConnection { ConnectionString = connectionString ?? ConnectionString };
         await c.Open(cancellationToken);
         return c;
     }
@@ -70,27 +77,34 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
     }
 
     private protected Task SafeReplicationTest(Func<string, string, Task> testAction, [CallerMemberName] string memberName = "")
-        => SafeReplicationTestCore((slotName, tableName, publicationName) => testAction(slotName, tableName), memberName);
+        => SafeReplicationTestCore((slotName, tableNames, publicationName) => testAction(slotName, tableNames[0]), 1, memberName);
 
     private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
-        => SafeReplicationTestCore(testAction, memberName);
+        => SafeReplicationTestCore((slotName, tableNames, publicationName) => testAction(slotName, tableNames[0], publicationName), 1, memberName);
+
+    private protected Task SafeReplicationTest(Func<string, string[], string, Task> testAction, int tableCount, [CallerMemberName] string memberName = "")
+        => SafeReplicationTestCore(testAction, tableCount, memberName);
 
     static readonly Version Pg10Version = new(10, 0);
 
-    async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
+    async Task SafeReplicationTestCore(Func<string, string[], string, Task> testAction, int tableCount, string memberName)
     {
         // if the supplied name is too long we create on from a guid.
         var baseName = $"{memberName}_{Postfix}";
         var name = (baseName.Length > _maxIdentifierLength - 4 ? Guid.NewGuid().ToString("N") : baseName).ToLowerInvariant();
         var slotName = $"s_{name}".ToLowerInvariant();
-        var tableName = $"t_{name}".ToLowerInvariant();
+        var tableNames = new string[tableCount];
+        for (var i = tableNames.Length - 1; i >= 0; i--)
+        {
+            tableNames[i] = $"t{(tableCount == 1 ? "" : i.ToString())}_{name}".ToLowerInvariant();
+        }
         var publicationName = $"p_{name}".ToLowerInvariant();
 
         await Cleanup();
 
         try
         {
-            await testAction(slotName, tableName, publicationName);
+            await testAction(slotName, tableNames, publicationName);
         }
         finally
         {
@@ -139,7 +153,8 @@ public abstract class SafeReplicationTestBase<TConnection> : TestBase
             if (c.PostgreSqlVersion >= Pg10Version)
                 await c.ExecuteNonQueryAsync($"DROP PUBLICATION IF EXISTS {publicationName}");
 
-            await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName}");
+            for (var i = tableNames.Length - 1; i >= 0; i--)
+                await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableNames[i]} CASCADE;");
 
             async Task DropSlot()
             {

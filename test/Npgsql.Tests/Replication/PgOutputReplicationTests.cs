@@ -12,6 +12,7 @@ using Npgsql.Replication.PgOutput;
 using Npgsql.Replication.PgOutput.Messages;
 using TruncateOptions = Npgsql.Replication.PgOutput.Messages.TruncateMessage.TruncateOptions;
 using ReplicaIdentitySetting = Npgsql.Replication.PgOutput.Messages.RelationMessage.ReplicaIdentitySetting;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Replication;
 
@@ -42,6 +43,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
 
     bool IsBinary => _binary ?? false;
     bool IsStreaming => _streaming ?? false;
+    ulong Version => _protocolVersion;
 
     public PgOutputReplicationTests(ProtocolVersion protocolVersion, ReplicationDataMode dataMode, TransactionMode transactionMode)
     {
@@ -994,7 +996,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         public string Name { get; set; } = string.Empty;
     }
 
-    [Test, Parallelizable(ParallelScope.None)]
+#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
+    [Test, NonParallelizable]
     public Task CompositeType()
     {
         // We don't test transaction streaming here because there's nothing special in that case
@@ -1004,52 +1007,69 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         return SafePgOutputReplicationTest(
             async (slotName, tableName, publicationName) =>
             {
-                await using (var tmpConn = await OpenConnectionAsync())
-                    await tmpConn.ExecuteNonQueryAsync(@$"DROP TYPE IF EXISTS descriptor CASCADE;
-                                                CREATE TYPE descriptor AS (id bigint, name text);
-                                                CREATE TABLE {tableName} (descriptor_field descriptor);
-                                                CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
-                Internal.NpgsqlDatabaseInfo.Cache.Clear();
+                await using var adminConnection = await OpenConnectionAsync();
+                await adminConnection.ExecuteNonQueryAsync(@$"
+DROP TYPE IF EXISTS descriptor CASCADE;
+CREATE TYPE descriptor AS (id bigint, name text);
+CREATE TABLE {tableName} (descriptor_field descriptor);
+CREATE PUBLICATION {publicationName} FOR TABLE {tableName};");
+
                 NpgsqlConnection.GlobalTypeMapper.MapComposite<Descriptor>("descriptor");
-                var rc = await OpenReplicationConnectionAsync();
-                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
-                var expected = new Descriptor{Id = 1248, Name = "My Descriptor"};
-                var stringValue = $"({expected.Id},\"{expected.Name}\")";
 
-                await using var c = await OpenConnectionAsync();
-                await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES ('{stringValue}')");
-
-                using var streamingCts = new CancellationTokenSource();
-                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
-                    .GetAsyncEnumerator();
-
-                await AssertTransactionStart(messages);
-                await NextMessage<TypeMessage>(messages);
-                await NextMessage<RelationMessage>(messages);
-
-                // non-null
-                var columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
-                await columnEnumerator.MoveNextAsync();
-                Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
-                Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
-                if (IsBinary)
+                try
                 {
-                    var result = await columnEnumerator.Current.Get<Descriptor>();
-                    Assert.That(result.Id, Is.EqualTo(expected.Id));
-                    Assert.That(result.Name, Is.EqualTo(expected.Name));
+
+                    // Use a one-time connection string to make sure we get a new data source without cached mappings.
+                    // In regular tests we'd use a data source, but replication doesn't work with data sources (yet).
+                    // In addition, clear the DatabaseInfo cache.
+                    using var _ = CreateTempPool(ConnectionString, out var connString);
+                    var rc = await OpenReplicationConnectionAsync(connString);
+                    var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+                    var expected = new Descriptor { Id = 1248, Name = "My Descriptor" };
+                    var stringValue = $"({expected.Id},\"{expected.Name}\")";
+
+                    await using var c = await OpenConnectionAsync();
+                    await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} VALUES ('{stringValue}')");
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                        .GetAsyncEnumerator();
+
+                    await AssertTransactionStart(messages);
+                    await NextMessage<TypeMessage>(messages);
+                    await NextMessage<RelationMessage>(messages);
+
+                    // non-null
+                    var columnEnumerator = (await NextMessage<InsertMessage>(messages)).NewRow.GetAsyncEnumerator();
+                    await columnEnumerator.MoveNextAsync();
+                    Assert.That(columnEnumerator.Current.IsDBNull, Is.False);
+                    Assert.That(columnEnumerator.Current.IsUnchangedToastedValue, Is.False);
+                    if (IsBinary)
+                    {
+                        var result = await columnEnumerator.Current.Get<Descriptor>();
+                        Assert.That(result.Id, Is.EqualTo(expected.Id));
+                        Assert.That(result.Name, Is.EqualTo(expected.Name));
+                    }
+                    else
+                        Assert.That(await columnEnumerator.Current.Get(), Is.EqualTo(stringValue));
+
+                    await columnEnumerator.MoveNextAsync();
+
+                    await AssertTransactionCommit(messages);
+
+                    streamingCts.Cancel();
+                    await AssertReplicationCancellation(messages);
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }
-                else
-                    Assert.That(await columnEnumerator.Current.Get(), Is.EqualTo(stringValue));
-                await columnEnumerator.MoveNextAsync();
+                finally
+                {
+                    await adminConnection.ExecuteNonQueryAsync("DROP TYPE IF EXISTS descriptor CASCADE;");
 
-                await AssertTransactionCommit(messages);
-
-                streamingCts.Cancel();
-                await AssertReplicationCancellation(messages);
-                await c.ExecuteNonQueryAsync("DROP TYPE IF EXISTS descriptor CASCADE;");
-                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+                    NpgsqlConnection.GlobalTypeMapper.Reset();
+                }
             });
     }
+#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
 
     [Test]
     public Task TwoPhase([Values]bool commit)
@@ -1129,6 +1149,111 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 }
             }, $"{GetObjectName(nameof(TwoPhase))}_{(commit ? "commit" : "rollback")}");
     }
+
+
+    [Test(Description = "Tests whether columns of internally cached RelationMessage instances are accidentally overwritten.")]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4633")]
+    public Task Bug4633()
+    {
+        // We don't need all the various test cases here since the bug gets triggered in any case
+        if (IsStreaming || IsBinary || Version > 1)
+            return Task.CompletedTask;
+
+        return SafePgOutputReplicationTest(
+            async (slotName, tableNames, publicationName) =>
+            {
+                await using var c = await OpenConnectionAsync();
+                await c.ExecuteNonQueryAsync(@$"
+CREATE TABLE {tableNames[0]}
+(
+    id uuid NOT NULL,
+    text text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[0]} PRIMARY KEY (id)
+);
+CREATE TABLE {tableNames[1]}
+(
+    id uuid NOT NULL,
+    message_id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    CONSTRAINT pk_{tableNames[1]} PRIMARY KEY (id),
+    CONSTRAINT fk_{tableNames[1]}_message_id FOREIGN KEY (message_id) REFERENCES {tableNames[0]} (id)
+);
+CREATE PUBLICATION {publicationName} FOR TABLE {tableNames[0]}, {tableNames[1]} WITH (PUBLISH = 'insert');");
+                await using var rc = await OpenReplicationConnectionAsync();
+                var slot = await rc.CreatePgOutputReplicationSlot(slotName);
+
+                await using var tran = await c.BeginTransactionAsync();
+                await c.ExecuteNonQueryAsync(@$"
+INSERT INTO {tableNames[0]} VALUES ('B6CB5293-F65E-4F48-A74B-06D5355DAA74', 'random', now());
+INSERT INTO {tableNames[1]} VALUES ('55870BEC-C42E-4AB0-83BA-225BB7777B37', 'B6CB5293-F65E-4F48-A74B-06D5355DAA74', now());
+INSERT INTO {tableNames[0]} VALUES ('5F89F5FE-6F4F-465F-BB87-716B1413F88D', 'another random', now());");
+                await tran.CommitAsync();
+
+                using var streamingCts = new CancellationTokenSource();
+                var messages = SkipEmptyTransactions(rc.StartReplication(slot, GetOptions(publicationName), streamingCts.Token))
+                    .GetAsyncEnumerator();
+
+                // Begin Transaction
+                var transactionXid = await AssertTransactionStart(messages);
+
+                // First Relation
+                var relationMsg = await NextMessage<RelationMessage>(messages);
+                var relation1Name = relationMsg.RelationName;
+                var relation1Id = relationMsg.RelationId;
+                Assert.That(relation1Name, Is.EqualTo(tableNames[0]));
+                Assert.That(relationMsg.Columns.Count, Is.EqualTo(3));
+                Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(relationMsg.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert first value
+                var insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation1Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation1Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Second Relation
+                relationMsg = await NextMessage<RelationMessage>(messages);
+                var relation2Name = relationMsg.RelationName;
+                var relation2Id = relationMsg.RelationId;
+                Assert.That(relation2Name, Is.EqualTo(tableNames[1]));
+                Assert.That(relationMsg.Columns.Count, Is.EqualTo(3));
+                Assert.That(relationMsg.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(relationMsg.Columns[1].ColumnName, Is.EqualTo("message_id"));
+                Assert.That(relationMsg.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert second value
+                insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation2Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation2Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("message_id"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Insert third value
+                insertMsg = await NextMessage<InsertMessage>(messages);
+                Assert.That(insertMsg.Relation.RelationName, Is.EqualTo(relation1Name));
+                Assert.That(insertMsg.Relation.RelationId, Is.EqualTo(relation1Id));
+                Assert.That(insertMsg.Relation.Columns.Count, Is.EqualTo(3));
+                Assert.That(insertMsg.Relation.Columns[0].ColumnName, Is.EqualTo("id"));
+                Assert.That(insertMsg.Relation.Columns[1].ColumnName, Is.EqualTo("text"));
+                Assert.That(insertMsg.Relation.Columns[2].ColumnName, Is.EqualTo("created_at"));
+
+                // Commit Transaction
+                await AssertTransactionCommit(messages);
+
+                streamingCts.Cancel();
+                await AssertReplicationCancellation(messages);
+                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+            }, 2);
+    }
+
+    #region Non-Test stuff (helper methods, initialization, enums, ...)
 
     async Task<uint?> AssertTransactionStart(IAsyncEnumerator<PgOutputReplicationMessage> messages)
     {
@@ -1241,6 +1366,9 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
     Task SafePgOutputReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
         => SafeReplicationTest(testAction, GetObjectName(memberName));
 
+    Task SafePgOutputReplicationTest(Func<string, string[], string, Task> testAction, int tableCount, [CallerMemberName] string memberName = "")
+        => SafeReplicationTest(testAction, tableCount, GetObjectName(memberName));
+
     string GetObjectName(string memberName)
     {
         var sb = new StringBuilder(memberName)
@@ -1300,4 +1428,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         NonStreamingTransactionMode,
         StreamingTransactionMode,
     }
+
+    #endregion Non-Test stuff (helper methods, initialization, ennums, ...)
 }

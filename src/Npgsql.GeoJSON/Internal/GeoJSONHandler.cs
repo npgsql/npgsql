@@ -23,8 +23,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
 {
     readonly GeoJSONOptions _options;
     readonly CrsMap _crsMap;
-    NamedCRS? _lastCrs;
-    int _lastSrid;
+    readonly ConcurrentDictionary<int, NamedCRS> _cachedCrs = new();
 
     internal GeoJsonHandler(PostgresType postgresType, GeoJSONOptions options, CrsMap crsMap)
         : base(postgresType)
@@ -168,6 +167,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
             var lines = new LineString[buf.ReadInt32(littleEndian)];
             for (var i = 0; i < lines.Length; ++i)
             {
+                await buf.Ensure(SizeOfLength, async);
                 var coordinates = new Position[buf.ReadInt32(littleEndian)];
                 for (var j = 0; j < coordinates.Length; ++j)
                 {
@@ -231,6 +231,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
                 var lines = new LineString[buf.ReadInt32(littleEndian)];
                 for (var j = 0; j < lines.Length; ++j)
                 {
+                    await buf.Ensure(SizeOfLength, async);
                     var coordinates = new Position[buf.ReadInt32(littleEndian)];
                     for (var k = 0; k < coordinates.Length; ++k)
                     {
@@ -450,7 +451,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.LineString;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -477,7 +478,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.Polygon;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -499,7 +500,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
 
         for (var i = 0; i < lines.Count; ++i)
         {
-            if (buf.WriteSpaceLeft < 4)
+            if (buf.WriteSpaceLeft < SizeOfLength)
                 await buf.Flush(async, cancellationToken);
             var coordinates = lines[i].Coordinates;
             buf.WriteInt32(coordinates.Count);
@@ -511,7 +512,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiPoint;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -538,7 +539,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiLineString;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -565,7 +566,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.MultiPolygon;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -591,7 +592,7 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
     public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         var type = EwkbGeometryType.GeometryCollection;
-        var size = SizeOfHeader;
+        var size = SizeOfHeaderWithLength;
         var srid = GetSrid(value.CRS);
         if (srid != 0)
         {
@@ -642,17 +643,29 @@ sealed partial class GeoJsonHandler : NpgsqlTypeHandler<GeoJSONObject>,
         if (crsType == GeoJSONOptions.None)
             return null;
 
-        if (_lastSrid == srid && _lastCrs != null)
-            return _lastCrs;
+#if NETSTANDARD2_0
+        return _cachedCrs.GetOrAdd(srid, srid =>
+        {
+            var authority = _crsMap.GetAuthority(srid);
 
-        var authority = _crsMap.GetAuthority(srid);
-        if (authority == null)
-            throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table");
+            return authority is null
+                ? throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table")
+                : new NamedCRS(crsType == GeoJSONOptions.LongCRS
+                    ? "urn:ogc:def:crs:" + authority + "::" + srid
+                    : authority + ":" + srid);
+        });
+#else
+        return _cachedCrs.GetOrAdd(srid, static (srid, me) =>
+        {
+            var authority = me._crsMap.GetAuthority(srid);
 
-        _lastCrs = new NamedCRS(crsType == GeoJSONOptions.LongCRS
-            ? "urn:ogc:def:crs:" + authority + "::" + srid : authority + ":" + srid);
-        _lastSrid = srid;
-        return _lastCrs;
+            return authority is null
+                ? throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table")
+                : new NamedCRS(me.CrsType == GeoJSONOptions.LongCRS
+                    ? "urn:ogc:def:crs:" + authority + "::" + srid
+                    : authority + ":" + srid);
+        }, this);
+#endif
     }
 
     static int GetSrid(ICRSObject crs)

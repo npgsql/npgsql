@@ -62,25 +62,29 @@ public class LegacyNodaTimeTests : TestBase
     protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         => throw new NotSupportedException();
 
+#pragma warning disable CS1998 // Release code blocks below lack await
+#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
     [OneTimeSetUp]
-    public void Setup()
+    public async Task Setup()
     {
 #if DEBUG
         Internal.NodaTimeUtils.LegacyTimestampBehavior = true;
         Util.Statics.LegacyTimestampBehavior = true;
 
-        // Clear any previous cached mappings/handlers in case tests were executed before the legacy flag was set
+        // Clear any previous cached mappings/handlers in case tests were executed before the legacy flag was set.
         NpgsqlConnection.GlobalTypeMapper.Reset();
         NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
+        await using var connection = await OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 #else
-            Assert.Ignore(
-                "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
+        Assert.Ignore(
+            "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
 
     }
 
     [OneTimeTearDown]
-    public void Teardown()
+    public async Task Teardown()
     {
 #if DEBUG
         Internal.NodaTimeUtils.LegacyTimestampBehavior = false;
@@ -89,8 +93,13 @@ public class LegacyNodaTimeTests : TestBase
         // Clear any previous cached mappings/handlers to not affect test which will run later without the legacy flag
         NpgsqlConnection.GlobalTypeMapper.Reset();
         NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
+
+        await using var connection = await OpenConnectionAsync();
+        await connection.ReloadTypesAsync();
 #endif
     }
+#pragma warning restore CS1998
+#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
 
     #endregion Support
 }

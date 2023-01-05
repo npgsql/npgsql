@@ -4,7 +4,7 @@ using Npgsql.Internal.TypeHandling;
 
 namespace Npgsql.TypeMapping;
 
-class BuiltInTypeHandlerResolverFactory : TypeHandlerResolverFactory
+sealed class BuiltInTypeHandlerResolverFactory : TypeHandlerResolverFactory
 {
     public override TypeHandlerResolver Create(NpgsqlConnector connector)
         => new BuiltInTypeHandlerResolver(connector);

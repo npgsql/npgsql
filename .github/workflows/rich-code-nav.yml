@@ -9,11 +9,12 @@ on:
       - '*'
 
 env:
-  dotnet_sdk_version: '7.0.100-preview.6.22352.1'
+  dotnet_sdk_version: '7.0.100'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
   build:
+    if: ${{ false }}  # disable as it's failing, see https://github.com/microsoft/RichCodeNavIndexer/issues/128
     runs-on: windows-latest
 
     steps:
@@ -29,7 +30,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3.0.3
         with:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 

@@ -29,7 +29,6 @@ public class NetTopologySuiteTypeHandlerResolver : TypeHandlerResolver
 
         var (pgGeometryType, pgGeographyType) = (PgType("geometry"), PgType("geography"));
 
-        // TODO: In multiplexing, these are used concurrently... not sure they're thread-safe :(
         var reader = new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates);
         var writer = new PostGisWriter();
 

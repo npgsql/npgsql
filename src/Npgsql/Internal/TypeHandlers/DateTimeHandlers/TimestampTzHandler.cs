@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using static Npgsql.Internal.TypeHandlers.DateTimeHandlers.DateTimeUtils;
@@ -33,8 +34,6 @@ public partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<DateTime>,
 
     #region Read
 
-    const string InfinityExceptionMessage = "Can't read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled";
-
     /// <inheritdoc />
     public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
     {
@@ -53,11 +52,11 @@ public partial class TimestampTzHandler : NpgsqlSimpleTypeHandler<DateTime>,
             {
             case long.MaxValue:
                 return DisableDateTimeInfinityConversions
-                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                     : DateTimeOffset.MaxValue;
             case long.MinValue:
                 return DisableDateTimeInfinityConversions
-                    ? throw new InvalidCastException(InfinityExceptionMessage)
+                    ? throw new InvalidCastException(NpgsqlStrings.CannotReadInfinityValue)
                     : DateTimeOffset.MinValue;
             default:
                 var dateTime = DecodeTimestamp(value, DateTimeKind.Utc);

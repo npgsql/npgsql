@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -14,14 +14,14 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers;
 
-class UnmappedEnumHandler : TextHandler
+sealed class UnmappedEnumHandler : TextHandler
 {
     readonly INpgsqlNameTranslator _nameTranslator;
 
-    readonly Dictionary<Enum, string> _enumToLabel = new();
-    readonly Dictionary<string, Enum> _labelToEnum = new();
-
-    Type? _resolvedType;
+    // Note that a separate instance of UnmappedEnumHandler is created for each PG enum type, so concurrency isn't "really" needed.
+    // However, in theory multiple different CLR enums may be used with the same PG enum type, and even if there's only one, we only know
+    // about it late (after construction), when the user actually reads/writes with one. So this handler is fully thread-safe.
+    readonly ConcurrentDictionary<Type, TypeRecord> _types = new();
 
     internal UnmappedEnumHandler(PostgresEnumType pgType, INpgsqlNameTranslator nameTranslator, Encoding encoding)
         : base(pgType, encoding)
@@ -29,16 +29,15 @@ class UnmappedEnumHandler : TextHandler
 
     #region Read
 
-    protected internal override async ValueTask<TAny> ReadCustom<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    protected internal override async ValueTask<TAny> ReadCustom<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         var s = await base.Read(buf, len, async, fieldDescription);
         if (typeof(TAny) == typeof(string))
             return (TAny)(object)s;
 
-        if (_resolvedType != typeof(TAny))
-            Map(typeof(TAny));
+        var typeRecord = GetTypeRecord(typeof(TAny));
 
-        if (!_labelToEnum.TryGetValue(s, out var value))
+        if (!typeRecord.LabelToEnum.TryGetValue(s, out var value))
             throw new InvalidCastException($"Received enum value '{s}' from database which wasn't found on enum {typeof(TAny)}");
 
         // TODO: Avoid boxing
@@ -66,11 +65,11 @@ class UnmappedEnumHandler : TextHandler
         var type = value.GetType();
         if (type == typeof(string))
             return base.ValidateAndGetLength((string)value, ref lengthCache, parameter);
-        if (_resolvedType != type)
-            Map(type);
+
+        var typeRecord = GetTypeRecord(type);
 
         // TODO: Avoid boxing
-        return _enumToLabel.TryGetValue((Enum)value, out var str)
+        return typeRecord.EnumToLabel.TryGetValue((Enum)value, out var str)
             ? base.ValidateAndGetLength(str, ref lengthCache, parameter)
             : throw new InvalidCastException($"Can't write value {value} as enum {type}");
     }
@@ -104,11 +103,11 @@ class UnmappedEnumHandler : TextHandler
         var type = value.GetType();
         if (type == typeof(string))
             return base.Write((string)value, buf, lengthCache, parameter, async, cancellationToken);
-        if (_resolvedType != type)
-            Map(type);
+
+        var typeRecord = GetTypeRecord(type);
 
         // TODO: Avoid boxing
-        if (!_enumToLabel.TryGetValue((Enum)value, out var str))
+        if (!typeRecord.EnumToLabel.TryGetValue((Enum)value, out var str))
             throw new InvalidCastException($"Can't write value {value} as enum {type}");
         return base.Write(str, buf, lengthCache, parameter, async, cancellationToken);
     }
@@ -117,25 +116,34 @@ class UnmappedEnumHandler : TextHandler
 
     #region Misc
 
-    void Map([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type type)
+    TypeRecord GetTypeRecord(Type type)
     {
-        Debug.Assert(_resolvedType != type);
+#if NETSTANDARD2_0
+        return _types.GetOrAdd(type, t => CreateTypeRecord(t, _nameTranslator));
+#else
+        return _types.GetOrAdd(type, static (t, translator) => CreateTypeRecord(t, translator), _nameTranslator);
+#endif
+    }
 
-        _enumToLabel.Clear();
-        _labelToEnum.Clear();
+    static TypeRecord CreateTypeRecord(Type type, INpgsqlNameTranslator nameTranslator)
+    {
+        var enumToLabel = new Dictionary<Enum, string>();
+        var labelToEnum = new Dictionary<string, Enum>();
 
         foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public))
         {
             var attribute = (PgNameAttribute?)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-            var enumName = attribute?.PgName ?? _nameTranslator.TranslateMemberName(field.Name);
+            var enumName = attribute?.PgName ?? nameTranslator.TranslateMemberName(field.Name);
             var enumValue = (Enum)field.GetValue(null)!;
 
-            _enumToLabel[enumValue] = enumName;
-            _labelToEnum[enumName] = enumValue;
+            enumToLabel[enumValue] = enumName;
+            labelToEnum[enumName] = enumValue;
         }
 
-        _resolvedType = type;
+        return new(enumToLabel, labelToEnum);
     }
 
     #endregion
+
+    record struct TypeRecord(Dictionary<Enum, string> EnumToLabel, Dictionary<string, Enum> LabelToEnum);
 }

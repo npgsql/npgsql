@@ -1,7 +1,7 @@
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 using NUnit.Framework;
 
 // ReSharper disable MethodHasAsyncOverload
@@ -143,6 +143,9 @@ public class DataSourceTests : TestBase
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 2, Idle: 1, Busy: 1)));
 
         dataSource.Dispose();
+
+        Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
+
         Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<ObjectDisposedException>());
         Assert.That(dataSource.Statistics, Is.EqualTo((Total: 1, Idle: 0, Busy: 1)));
 
@@ -182,7 +185,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_command()
     {
-        await using var command = DataSource.CreateCommand();
+        await using var command = SharedDataSource.CreateCommand();
 
         Assert.That(() => command.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => command.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());
@@ -196,7 +199,7 @@ public class DataSourceTests : TestBase
     [Test]
     public async Task Cannot_access_connection_transaction_on_data_source_batch()
     {
-        await using var batch = DataSource.CreateBatch();
+        await using var batch = SharedDataSource.CreateBatch();
 
         Assert.That(() => batch.Connection, Throws.Exception.TypeOf<NotSupportedException>());
         Assert.That(() => batch.Connection = null, Throws.Exception.TypeOf<NotSupportedException>());
@@ -240,5 +243,21 @@ public class DataSourceTests : TestBase
             dataSource.Dispose();
             Assert.That(() => dataSource.OpenConnection(), Throws.Exception.TypeOf<ObjectDisposedException>());
         }
+    }
+
+    [Test] // #4752
+    public async Task As_DbDataSource([Values] bool async)
+    {
+        await using DbDataSource dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var connection = async
+            ? await dataSource.OpenConnectionAsync()
+            : dataSource.OpenConnection();
+        Assert.That(connection.State, Is.EqualTo(ConnectionState.Open));
+
+        await using var command = dataSource.CreateCommand("SELECT 1");
+
+        Assert.That(async
+            ? await command.ExecuteScalarAsync()
+            : command.ExecuteScalar(), Is.EqualTo(1));
     }
 }

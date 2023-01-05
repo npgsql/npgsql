@@ -21,7 +21,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task Allow_DBNull()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "nullable INTEGER, non_nullable INTEGER NOT NULL", out var table);
+        var table = await CreateTempTable(conn, "nullable INTEGER, non_nullable INTEGER NOT NULL");
 
         using var cmd = new NpgsqlCommand($"SELECT nullable,non_nullable,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -36,7 +36,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     {
         var dbName = new NpgsqlConnectionStringBuilder(ConnectionString).Database;
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -49,7 +49,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task BaseColumnName()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -102,7 +102,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task BaseSchemaName()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -116,7 +116,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     {
         var host = new NpgsqlConnectionStringBuilder(ConnectionString).Host;
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -129,7 +129,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task BaseTableName()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -143,7 +143,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     {
         await using (var conn = await OpenConnectionAsync())
         {
-            await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+            var table = await CreateTempTable(conn, "foo INTEGER");
 
             using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -159,7 +159,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
         // See https://github.com/npgsql/npgsql/issues/1676
         using (var conn = await OpenConnectionAsync())
         {
-            await using var _ = await CreateTempTable(conn, "col TEXT", out var table);
+            var table = await CreateTempTable(conn, "col TEXT");
 
             var behavior = CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo;
             //var behavior = CommandBehavior.SchemaOnly;
@@ -174,7 +174,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task ColumnOrdinal()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "first INTEGER, second INTEGER", out var table);
+        var table = await CreateTempTable(conn, "first INTEGER, second INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT second,first FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -189,7 +189,7 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task ColumnAttributeNumber()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "first INTEGER, second INTEGER", out var table);
+        var table = await CreateTempTable(conn, "first INTEGER, second INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT second,first FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -203,10 +203,9 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task ColumnSize()
     {
-        if (IsRedshift)
-            Assert.Ignore("Column size is never unlimited on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "bounded VARCHAR(30), unbounded VARCHAR", out var table);
+        IgnoreOnRedshift(conn, "Column size is never unlimited on Redshift");
+        var table = await CreateTempTable(conn, "bounded VARCHAR(30), unbounded VARCHAR");
 
         using var cmd = new NpgsqlCommand($"SELECT bounded,unbounded,'a'::VARCHAR(10),'b'::VARCHAR FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -220,13 +219,13 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task IsAutoIncrement()
     {
-        if (IsRedshift)
-            Assert.Ignore("Serial columns not support on Redshift");
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "inc SERIAL, non_inc INT", out var table);
+        await using var conn = await OpenConnectionAsync();
+        IgnoreOnRedshift(conn, "Serial columns not support on Redshift");
 
-        using var cmd = new NpgsqlCommand($"SELECT inc,non_inc,8 FROM {table}", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+        var table = await CreateTempTable(conn, "serial SERIAL, int INT");
+
+        await using var cmd = new NpgsqlCommand($"SELECT serial, int, 8 FROM {table}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
         Assert.That(columns[0].IsAutoIncrement, Is.True, "Serial not identified as autoincrement");
         Assert.That(columns[1].IsAutoIncrement, Is.False, "Regular int column identified as autoincrement");
@@ -236,31 +235,46 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task IsAutoIncrement_identity()
     {
-        using var conn = await OpenConnectionAsync();
-        if (conn.PostgreSqlVersion < new Version(10, 0))
-            Assert.Ignore("IDENTITY introduced in PostgreSQL 10");
+        await using var conn = await OpenConnectionAsync();
+        IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
+        MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
 
-        await using var _ = await CreateTempTable(
-            conn,
-            "inc SERIAL, identity INT GENERATED BY DEFAULT AS IDENTITY, non_inc INT",
-            out var table);
+        var table =
+            await CreateTempTable(conn, "identity1 INT GENERATED BY DEFAULT AS IDENTITY, identity2 INT GENERATED ALWAYS AS IDENTITY");
 
-        using var cmd = new NpgsqlCommand($"SELECT inc,identity,non_inc,8 FROM {table}", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+        await using var cmd = new NpgsqlCommand($"SELECT identity1, identity2 FROM {table}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
-        Assert.That(columns[0].IsAutoIncrement, Is.True, "Serial not identified as autoincrement");
+        Assert.That(columns[0].IsAutoIncrement, Is.True, "PG 10 IDENTITY not identified as autoincrement");
         Assert.That(columns[1].IsAutoIncrement, Is.True, "PG 10 IDENTITY not identified as autoincrement");
-        Assert.That(columns[2].IsAutoIncrement, Is.False, "Regular int column identified as autoincrement");
-        Assert.That(columns[3].IsAutoIncrement, Is.Null, "Literal int identified as autoincrement");
+    }
+
+    [Test]
+    public async Task IsIdentity()
+    {
+        await using var conn = await OpenConnectionAsync();
+        IgnoreOnRedshift(conn, "Identity columns not support on Redshift");
+        MinimumPgVersion(conn, "10.0", "IDENTITY introduced in PostgreSQL 10");
+        var table = await CreateTempTable(
+            conn,
+            "identity1 INT GENERATED BY DEFAULT AS IDENTITY, identity2 INT GENERATED ALWAYS AS IDENTITY, serial SERIAL, int INT");
+
+        await using var cmd = new NpgsqlCommand($"SELECT identity1, identity2, serial, int, 8 FROM {table}", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+        var columns = await GetColumnSchema(reader);
+        Assert.That(columns[0].IsIdentity, Is.True, "PG 10 IDENTITY not identified as identity");
+        Assert.That(columns[1].IsIdentity, Is.True, "PG 10 IDENTITY not identified as identity");
+        Assert.That(columns[2].IsIdentity, Is.False, "Serial identified as identity");
+        Assert.That(columns[3].IsIdentity, Is.False, "Regular int column identified as identity");
+        Assert.That(columns[4].IsIdentity, Is.False, "Literal int identified as identity");
     }
 
     [Test]
     public async Task IsKey()
     {
-        if (IsRedshift)
-            Assert.Ignore("Key not supported in reader schema on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE", out var table);
+        IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
+        var table = await CreateTempTable(conn, "id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE");
 
         using var cmd = new NpgsqlCommand($"SELECT id,non_id,uniq,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -279,10 +293,9 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task IsKey_composite()
     {
-        if (IsRedshift)
-            Assert.Ignore("Key not supported in reader schema on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id1 INT, id2 INT, PRIMARY KEY (id1, id2)", out var table);
+        IgnoreOnRedshift(conn, "Key not supported in reader schema on Redshift");
+        var table = await CreateTempTable(conn, "id1 INT, id2 INT, PRIMARY KEY (id1, id2)");
 
         using var cmd = new NpgsqlCommand($"SELECT id1,id2 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -294,10 +307,9 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task IsLong()
     {
-        if (IsRedshift)
-            Assert.Ignore("bytea not supported on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "long BYTEA, non_long INT", out var table);
+        IgnoreOnRedshift(conn, "bytea not supported on Redshift");
+        var table = await CreateTempTable(conn, "long BYTEA, non_long INT");
 
         using var cmd = new NpgsqlCommand($"SELECT long, non_long, 8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -311,8 +323,8 @@ public class ReaderNewSchemaTests : SyncOrAsyncTestBase
     public async Task IsReadOnly_on_view()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempViewName(conn, out var view);
-        await using var __ = await GetTempTableName(conn, out var table);
+        var view = await GetTempViewName(conn);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE VIEW {view} AS SELECT 8 AS foo;
@@ -338,10 +350,9 @@ CREATE TABLE {table} (bar INTEGER)");
     [Test]
     public async Task IsUnique()
     {
-        if (IsRedshift)
-            Assert.Ignore("Unique not supported in reader schema on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var __ = await GetTempTableName(conn, out var table);
+        IgnoreOnRedshift(conn, "Unique not supported in reader schema on Redshift");
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table} (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE, non_id_second INT, non_id_third INT);
@@ -361,10 +372,9 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [Test]
     public async Task NumericPrecision()
     {
-        if (IsRedshift)
-            Assert.Ignore("Precision is never unlimited on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "a NUMERIC(8), b NUMERIC, c INTEGER", out var table);
+        IgnoreOnRedshift(conn, "Precision is never unlimited on Redshift");
+        var table = await CreateTempTable(conn, "a NUMERIC(8), b NUMERIC, c INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8) FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -378,10 +388,9 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [Test]
     public async Task NumericScale()
     {
-        if (IsRedshift)
-            Assert.Ignore("Scale is never unlimited on Redshift");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "a NUMERIC(8,5), b NUMERIC, c INTEGER", out var table);
+        IgnoreOnRedshift(conn, "Scale is never unlimited on Redshift");
+        var table = await CreateTempTable(conn, "a NUMERIC(8,5), b NUMERIC, c INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8,5) FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -396,7 +405,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task DataType()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8::INTEGER FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -409,7 +418,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task DataType_unknown_type()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo::INTEGER FROM {table}", conn);
         cmd.AllResultTypesAreUnknown = true;
@@ -421,24 +430,18 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     [Test]
     public async Task DataType_with_composite()
     {
-        if (IsRedshift)
-            Assert.Ignore("Composite types not support on Redshift");
+        await using var adminConnection = await OpenConnectionAsync();
+        IgnoreOnRedshift(adminConnection, "Composite types not support on Redshift");
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS (foo int)");
+        var tableName = await CreateTempTable(adminConnection, $"comp {type}");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapComposite<SomeComposite>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-        using var _ = CreateTempPool(csb, out var connString);
-
-        await using var conn = await OpenConnectionAsync(connString);
-        await using var __ = await GetTempTypeName(conn, out var typeName);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS (foo int)");
-        conn.ReloadTypes();
-        conn.TypeMapper.MapComposite<SomeComposite>(typeName);
-        await using var ___ = await CreateTempTable(conn, $"comp {typeName}", out var tableName);
-
-        using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{typeName} FROM {tableName}", conn);
+        await using var cmd = new NpgsqlCommand($"SELECT comp,'(4)'::{type} FROM {tableName}", connection);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         var columns = await GetColumnSchema(reader);
         Assert.That(columns[0].DataType, Is.SameAs(typeof(SomeComposite)));
@@ -452,7 +455,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     {
         // Also see DataTypeWithComposite
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -465,7 +468,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task PostgresType()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -480,7 +483,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task ColumnSchema_with_and_without_KeyInfo()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
         await using (var reader = await cmd.ExecuteReaderAsync())
@@ -596,7 +599,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
             : typeName.Substring(0, openingParen) + typeName.Substring(typeName.IndexOf(')') + 1);
 
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, $"foo {typeName}", out var table);
+        var table = await CreateTempTable(conn, $"foo {typeName}");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,NULL::{typeName} FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -617,8 +620,7 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task DefaultValue()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(
-            conn, "with_default INTEGER DEFAULT(8), without_default INTEGER", out var table);
+        var table = await CreateTempTable(conn, "with_default INTEGER DEFAULT(8), without_default INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT with_default,without_default,8 FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -632,8 +634,8 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
     public async Task Same_column_name()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTableName(conn, out var table1);
-        await using var __ = await GetTempTableName(conn, out var table2);
+        var table1 = await GetTempTableName(conn);
+        var table2 = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TABLE {table1} (foo INTEGER);
@@ -652,16 +654,18 @@ CREATE TABLE {table2} (foo INTEGER)");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
     public async Task Domain_type()
     {
-        if (IsRedshift)
-            Assert.Ignore("Domain types not support on Redshift");
         // if (IsMultiplexing)
         //     Assert.Ignore("Multiplexing: ReloadTypes");
         using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var domainTypeName);
-        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN pg_temp.{domainTypeName} AS varchar(2)");
+        IgnoreOnRedshift(conn, "Domain types not support on Redshift");
+
+        const string domainTypeName = "my_domain";
+        var schema = await CreateTempSchema(conn);
+        var tableName = await GetTempTableName(conn);
+        await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {schema}.{domainTypeName} AS varchar(2)");
         conn.ReloadTypes();
-        await conn.ExecuteNonQueryAsync($"CREATE TEMP TABLE data (domain {domainTypeName})");
-        using var cmd = new NpgsqlCommand("SELECT domain FROM data", conn);
+        await conn.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (domain {schema}.{domainTypeName})");
+        using var cmd = new NpgsqlCommand($"SELECT domain FROM {tableName}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
         var columns = await GetColumnSchema(reader);
         var domainSchema = columns.Single(c => c.ColumnName == "domain");
@@ -675,7 +679,7 @@ CREATE TABLE {table2} (foo INTEGER)");
     public async Task NpgsqlDbType()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo,8::INTEGER FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -712,7 +716,7 @@ CREATE TABLE {table2} (foo INTEGER)");
     public async Task IsAliased()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT foo, foo AS bar, NULL AS foobar FROM {table}", conn);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
@@ -723,13 +727,29 @@ CREATE TABLE {table2} (foo INTEGER)");
         Assert.That(columns[2].IsAliased, Is.Null);
     }
 
+    [Test] // #4672
+    public async Task With_parameter_without_value()
+    {
+        await using var conn = await OpenConnectionAsync();
+        var table = await CreateTempTable(conn, "foo INTEGER");
+
+        using var cmd = new NpgsqlCommand($"SELECT foo FROM {table} WHERE foo > @p", conn)
+        {
+            Parameters = { new() { ParameterName = "p", NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Integer } }
+        };
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+        var columns = await GetColumnSchema(reader);
+        Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+    }
+
     #region Not supported
 
     [Test]
     public async Task IsExpression()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
@@ -740,22 +760,11 @@ CREATE TABLE {table2} (foo INTEGER)");
     public async Task IsHidden()
     {
         using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+        var table = await CreateTempTable(conn, "foo INTEGER");
 
         using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
         Assert.That(reader.GetColumnSchema().Single().IsHidden, Is.False);
-    }
-
-    [Test]
-    public async Task IsIdentity()
-    {
-        using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
-
-        using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
-        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
-        Assert.That(reader.GetColumnSchema().Single().IsIdentity, Is.False);
     }
 
     #endregion

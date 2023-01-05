@@ -131,28 +131,29 @@ public class SchemaTests : SyncOrAsyncTestBase
     [Test]
     public async Task DataTypes()
     {
-        await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var enumTypeName);
-        await using var __ = await GetTempTypeName(conn, out var compositeTypeName);
-        await using var ___ = await GetTempDomainName(conn, out var domainName);
+        await using var adminConnection = await OpenConnectionAsync();
+        var enumType = await GetTempTypeName(adminConnection);
+        var compositeType = await GetTempTypeName(adminConnection);
+        var domainType = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {enumType} AS ENUM ('a', 'b');
+CREATE TYPE {compositeType} AS (a INTEGER);
+CREATE DOMAIN {domainType} AS TEXT");
 
-        await conn.ExecuteNonQueryAsync($@"
-CREATE TYPE {enumTypeName} AS ENUM ('a', 'b');
-CREATE TYPE {compositeTypeName} AS (a INTEGER);
-CREATE DOMAIN {domainName} AS TEXT");
-        conn.ReloadTypes();
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<TestEnum>(enumType);
+        dataSourceBuilder.MapComposite<TestComposite>(compositeType);
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var connection = await dataSource.OpenConnectionAsync();
 
-        conn.TypeMapper.MapEnum<TestEnum>(enumTypeName);
-        conn.TypeMapper.MapComposite<TestComposite>(compositeTypeName);
-
-        var dataTable = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
+        var dataTable = await GetSchema(connection, DbMetaDataCollectionNames.MetaDataCollections);
         var metadata = dataTable.Rows
             .Cast<DataRow>()
             .Single(r => r["CollectionName"].Equals("DataTypes"));
         Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
         Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
 
-        var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
+        var dataTypes = await GetSchema(connection, DbMetaDataCollectionNames.DataTypes);
 
         var intRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("integer"));
         Assert.That(intRow["DataType"], Is.EqualTo("System.Int32"));
@@ -189,15 +190,15 @@ CREATE DOMAIN {domainName} AS TEXT");
         Assert.That(intRangeRow["ProviderDbType"], Is.EqualTo((int)(NpgsqlDbType.Integer | NpgsqlDbType.Range)));
         Assert.That(intRangeRow["OID"], Is.EqualTo(3904));
 
-        var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + enumTypeName));
+        var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + enumType));
         Assert.That(enumRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestEnum"));
         Assert.That(enumRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
-        var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + compositeTypeName));
+        var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + compositeType));
         Assert.That(compositeRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestComposite"));
         Assert.That(compositeRow["ProviderDbType"], Is.SameAs(DBNull.Value));
 
-        var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + domainName));
+        var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("." + domainType));
         Assert.That(domainRow["DataType"], Is.EqualTo("System.String"));
         Assert.That(domainRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Text));
         Assert.That(domainRow["IsBestMatch"], Is.False);
@@ -236,7 +237,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var _ = await CreateTempTable(conn, "int INTEGER", out var table);
+        var table = await CreateTempTable(conn, "int INTEGER");
         await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (int) VALUES (4)");
 
         var dt = await GetSchema(conn, "DataSourceInformation");
@@ -254,7 +255,8 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Precision_and_scale()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "explicit_both NUMERIC(10,2), explicit_precision NUMERIC(10), implicit_both NUMERIC, integer INTEGER, text TEXT", out var table);
+        var table = await CreateTempTable(
+            conn, "explicit_both NUMERIC(10,2), explicit_precision NUMERIC(10), implicit_both NUMERIC, integer INTEGER, text TEXT");
 
         var dataTable = await GetSchema(conn, "Columns", new[] { null, null, table });
         var rows = dataTable.Rows.Cast<DataRow>().ToList();
@@ -307,7 +309,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task GetSchema_tables_with_restrictions()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "bar INTEGER", out var table);
+        var table = await CreateTempTable(conn, "bar INTEGER");
 
         var dt = await GetSchema(conn, "Tables",  new[] { null, null, table });
         foreach (var row in dt.Rows.OfType<DataRow>())
@@ -318,7 +320,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task GetSchema_views_with_restrictions()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var __ = await GetTempViewName(conn, out var view);
+        var view = await GetTempViewName(conn);
 
         await conn.ExecuteNonQueryAsync($"CREATE VIEW {view} AS SELECT 8 AS foo");
 
@@ -331,7 +333,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Primary_key()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id INT PRIMARY KEY, f1 INT", out var table);
+        var table = await CreateTempTable(conn, "id INT PRIMARY KEY, f1 INT");
 
         var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", new[] { null, null, table });
         var column = dataTable.Rows.Cast<DataRow>().Single();
@@ -346,7 +348,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Primary_key_composite()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "id1 INT, id2 INT, f1 INT, PRIMARY KEY (id1, id2)", out var table);
+        var table = await CreateTempTable(conn, "id1 INT, id2 INT, f1 INT, PRIMARY KEY (id1, id2)");
 
         var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", new[] { null, null, table });
         var columns = dataTable.Rows.Cast<DataRow>().OrderBy(r => r["ordinal_number"]).ToList();
@@ -363,7 +365,7 @@ CREATE DOMAIN {domainName} AS TEXT");
     public async Task Unique_constraint()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "f1 INT, f2 INT, UNIQUE (f1, f2)", out var table);
+        var table = await CreateTempTable(conn, "f1 INT, f2 INT, UNIQUE (f1, f2)");
 
         var database = await conn.ExecuteScalarAsync("SELECT current_database()");
 
@@ -378,19 +380,30 @@ CREATE DOMAIN {domainName} AS TEXT");
         Assert.That(columns.All(r => r["table_name"].Equals(table)));
         Assert.That(columns.All(r => r["constraint_type"].Equals("UNIQUE KEY")));
 
-        Assert.That(columns[0]["column_name"], Is.EqualTo("f1"));
-        Assert.That(columns[0]["ordinal_number"], Is.EqualTo(1));
+        Assert.That(columns.Count, Is.EqualTo(2));
 
-        Assert.That(columns[1]["column_name"], Is.EqualTo("f2"));
-        Assert.That(columns[1]["ordinal_number"], Is.EqualTo(2));
+        // Columns are not necessarily in the correct order
+        var firstColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f1")!;
+        Assert.NotNull(firstColumn);
+        Assert.That(firstColumn["ordinal_number"], Is.EqualTo(1));
+
+        var secondColumn = columns.FirstOrDefault(x => (string)x["column_name"] == "f2")!;
+        Assert.NotNull(secondColumn);
+        Assert.That(secondColumn["ordinal_number"], Is.EqualTo(2));
     }
 
     [Test]
     public async Task Unique_index_composite()
     {
         await using var conn = await OpenConnectionAsync();
-        var constraint = GetUniqueIdentifier("temp_constraint");
-        await using var _ = await CreateTempTable(conn, $"f1 INT, f2 INT, CONSTRAINT {constraint} UNIQUE (f1, f2)", out var table);
+        var table = await GetTempTableName(conn);
+        var constraint = table + "_uq";
+        await conn.ExecuteNonQueryAsync(@$"
+CREATE TABLE {table} (
+    f1 INT,
+    f2 INT,
+    CONSTRAINT {constraint} UNIQUE (f1, f2)
+)");
 
         var database = await conn.ExecuteScalarAsync("SELECT current_database()");
 
@@ -477,7 +490,7 @@ tsquery tsquery,
 tid tid,
 xid xid,
 cid cid";
-        await using var _ = await CreateTempTable(conn, columnDefinition, out var table);
+        var table = await CreateTempTable(conn, columnDefinition);
 
         var columnsSchema = await GetSchema(conn, "Columns", new[] { null, null, table });
         var columns = columnsSchema.Rows.Cast<DataRow>().ToList();
@@ -493,8 +506,8 @@ cid cid";
     public async Task Enum_in_public_schema()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await GetTempTypeName(conn, out var enumName);
-        await using var __ = await GetTempTableName(conn, out var table);
+        var enumName = await GetTempTypeName(conn);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TYPE {enumName} AS ENUM ('red', 'yellow', 'blue');
@@ -509,9 +522,9 @@ CREATE TABLE {table} (color {enumName});");
     public async Task Enum_in_non_public_schema()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempSchema(conn, out var schema);
-        await using var __ = await GetTempTypeName(conn, out var enumName);
-        await using var ___ = await GetTempTableName(conn, out var table);
+        const string enumName = "my_enum";
+        var schema = await CreateTempSchema(conn);
+        var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
 CREATE TYPE {schema}.{enumName} AS ENUM ('red', 'yellow', 'blue');

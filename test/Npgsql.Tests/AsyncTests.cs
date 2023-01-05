@@ -11,7 +11,7 @@ public class AsyncTests : TestBase
     public async Task NonQuery()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var _ = await CreateTempTable(conn, "int INTEGER", out var tableName);
+        var tableName = await CreateTempTable(conn, "int INTEGER");
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"INSERT INTO {tableName} (int) VALUES (4)";
         await cmd.ExecuteNonQueryAsync();
