@@ -63,7 +63,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             {
                 if (t.IsFaulted)
                 {
-                    // Note that we *must* observe the exception if the task is faulted.
+                    // Note that MultiplexingWriteLoop should never throw an exception - everything should be caught and handled internally.
                     _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
                 }
             });
