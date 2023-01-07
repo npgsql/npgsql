@@ -397,33 +397,64 @@ public abstract class NpgsqlDataSource : DbDataSource
     #region Dispose
 
     /// <inheritdoc />
-    protected override void Dispose(bool disposing)
+    protected sealed override void Dispose(bool disposing)
     {
         if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+            DisposeBase();
+    }
+
+    /// <inheritdoc cref="Dispose" />
+    protected virtual void DisposeBase()
+    {
+        var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
+        if (cancellationTokenSource is not null)
         {
-            var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
-            if (cancellationTokenSource is not null)
-            {
-                cancellationTokenSource.Cancel();
-                cancellationTokenSource.Dispose();
-            }
-
-            _passwordProviderTimer?.Dispose();
-
-            _setupMappingsSemaphore.Dispose();
-
-            Clear();
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
         }
+
+        _passwordProviderTimer?.Dispose();
+
+        _setupMappingsSemaphore.Dispose();
+
+        Clear();
     }
 
     /// <inheritdoc />
-    protected override ValueTask DisposeAsyncCore()
+    protected sealed override ValueTask DisposeAsyncCore()
     {
-        // TODO: async Clear, #4499
-        Dispose(true);
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
+            return DisposeAsyncBase();
 
         return default;
     }
+
+#pragma warning disable CS1998
+    /// <inheritdoc cref="DisposeAsyncCore" />
+    protected virtual async ValueTask DisposeAsyncBase()
+    {
+        var cancellationTokenSource = _timerPasswordProviderCancellationTokenSource;
+        if (cancellationTokenSource is not null)
+        {
+            cancellationTokenSource.Cancel();
+            cancellationTokenSource.Dispose();
+        }
+
+        if (_passwordProviderTimer is not null)
+        {
+#if NET5_0_OR_GREATER
+            await _passwordProviderTimer.DisposeAsync();
+#else
+            _passwordProviderTimer.Dispose();
+#endif
+        }
+
+        _setupMappingsSemaphore.Dispose();
+
+        // TODO: async Clear, #4499
+        Clear();
+    }
+#pragma warning restore CS1998
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private protected void CheckDisposed()

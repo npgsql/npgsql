@@ -71,7 +71,7 @@ public class DataSourceTests : TestBase
         await using var command = dataSource.CreateCommand();
         command.CommandText = "SELECT 1";
 
-        using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+        await using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
         {
             Assert.True(reader.Read());
             Assert.That(reader.GetInt32(0), Is.EqualTo(1));
@@ -259,5 +259,19 @@ public class DataSourceTests : TestBase
         Assert.That(async
             ? await command.ExecuteScalarAsync()
             : command.ExecuteScalar(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Executing_command_on_disposed_datasource([Values] bool multiplexing)
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Multiplexing = multiplexing
+        };
+        DbDataSource dataSource = NpgsqlDataSource.Create(csb.ConnectionString);
+        await using (var _ = await dataSource.OpenConnectionAsync()) {}
+        await dataSource.DisposeAsync();
+        await using var command = dataSource.CreateCommand("SELECT 1");
+        Assert.ThrowsAsync<ObjectDisposedException>(command.ExecuteNonQueryAsync);
     }
 }

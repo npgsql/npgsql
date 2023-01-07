@@ -21,6 +21,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
     readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
     internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
 
+    readonly Task _multiplexWriteLoop;
+
     /// <summary>
     /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
     /// flushing to the network.
@@ -56,14 +58,15 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _connectionLogger = dataSourceConfig.LoggingConfiguration.ConnectionLogger;
         _commandLogger = dataSourceConfig.LoggingConfiguration.CommandLogger;
 
-        // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
-        // pool clearing
-        _ = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
+        _multiplexWriteLoop = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
             .ContinueWith(t =>
             {
-                // Note that we *must* observe the exception if the task is faulted.
-                _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
-            }, TaskContinuationOptions.OnlyOnFaulted);
+                if (t.IsFaulted)
+                {
+                    // Note that MultiplexingWriteLoop should never throw an exception - everything should be caught and handled internally.
+                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                }
+            });
     }
 
     async Task MultiplexingWriteLoop()
@@ -79,10 +82,18 @@ sealed class MultiplexingDataSource : PoolingDataSource
         while (true)
         {
             NpgsqlConnector? connector;
+            NpgsqlCommand? command;
 
-            // Get a first command out.
-            if (!_multiplexCommandReader.TryRead(out var command))
-                command = await _multiplexCommandReader.ReadAsync();
+            try
+            {
+                // Get a first command out.
+                if (!_multiplexCommandReader.TryRead(out command))
+                    command = await _multiplexCommandReader.ReadAsync();
+            }
+            catch (ChannelClosedException)
+            {
+                return;
+            }
 
             try
             {
@@ -347,6 +358,20 @@ sealed class MultiplexingDataSource : PoolingDataSource
         }
 
         // ReSharper disable once FunctionNeverReturns
+    }
+
+    protected override void DisposeBase()
+    {
+        MultiplexCommandWriter.Complete(new ObjectDisposedException(nameof(MultiplexingDataSource)));
+        _multiplexWriteLoop.GetAwaiter().GetResult();
+        base.DisposeBase();
+    }
+
+    protected override async ValueTask DisposeAsyncBase()
+    {
+        MultiplexCommandWriter.Complete(new ObjectDisposedException(nameof(MultiplexingDataSource)));
+        await _multiplexWriteLoop;
+        await base.DisposeAsyncBase();
     }
 
     struct MultiplexingStats
