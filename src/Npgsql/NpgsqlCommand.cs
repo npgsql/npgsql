@@ -14,6 +14,7 @@ using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Properties;
@@ -1507,7 +1508,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
                 // the first read). But waiting on writing would allow us to do sync writing and async reading.
                 ExecutionCompletion.Reset();
-                await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
+                try
+                {
+                    await dataSource.MultiplexCommandWriter.WriteAsync(this, cancellationToken);
+                }
+                catch (ChannelClosedException ex)
+                {
+                    Debug.Assert(ex.InnerException is not null);
+                    throw ex.InnerException;
+                }
                 connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
                 // TODO: Overload of StartBindingScope?
                 conn.Connector = connector;

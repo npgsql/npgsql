@@ -362,14 +362,14 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     protected override void DisposeBase()
     {
-        MultiplexCommandWriter.Complete();
+        MultiplexCommandWriter.Complete(new ObjectDisposedException(nameof(MultiplexingDataSource)));
         _multiplexWriteLoop.GetAwaiter().GetResult();
         base.DisposeBase();
     }
 
     protected override async ValueTask DisposeAsyncBase()
     {
-        MultiplexCommandWriter.Complete();
+        MultiplexCommandWriter.Complete(new ObjectDisposedException(nameof(MultiplexingDataSource)));
         await _multiplexWriteLoop;
         await base.DisposeAsyncBase();
     }
