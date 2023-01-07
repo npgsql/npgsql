@@ -61,9 +61,12 @@ sealed class MultiplexingDataSource : PoolingDataSource
         _multiplexWriteLoop = Task.Run(MultiplexingWriteLoop, CancellationToken.None)
             .ContinueWith(t =>
             {
-                // Note that we *must* observe the exception if the task is faulted.
-                _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
-            }, TaskContinuationOptions.OnlyOnFaulted);
+                if (t.IsFaulted)
+                {
+                    // Note that we *must* observe the exception if the task is faulted.
+                    _connectionLogger.LogError(t.Exception, "Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.");
+                }
+            });
     }
 
     async Task MultiplexingWriteLoop()
