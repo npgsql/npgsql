@@ -23,6 +23,10 @@ using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+using System.Text.Json.Nodes;
+#endif
+
 namespace Npgsql.TypeMapping;
 
 sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
@@ -54,7 +58,11 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         { "name",              new(NpgsqlDbType.Name,      "name") },
         { "refcursor",         new(NpgsqlDbType.Refcursor, "refcursor") },
         { "citext",            new(NpgsqlDbType.Citext,    "citext") },
-        { "jsonb",             new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)) },
+        { "jsonb",             new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+            , typeof(JsonObject), typeof(JsonArray)
+#endif
+        ) },
         { "json",              new(NpgsqlDbType.Json,      "json") },
         { "jsonpath",          new(NpgsqlDbType.JsonPath,  "jsonpath") },
 
@@ -397,6 +405,10 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             { typeof(char),               "text" },
             { typeof(ArraySegment<char>), "text" },
             { typeof(JsonDocument),       "jsonb" },
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+            { typeof(JsonObject),         "jsonb" },
+            { typeof(JsonArray),          "jsonb" },
+#endif
 
             // Date/time types
             // The DateTime entry is for LegacyTimestampBehavior mode only. In regular mode we resolve through
@@ -599,6 +611,12 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             return _textHandler;
         if (typeof(T) == typeof(JsonDocument))
             return JsonbHandler();
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+        if (typeof(T) == typeof(JsonObject))
+            return JsonbHandler();
+        if (typeof(T) == typeof(JsonArray))
+            return JsonbHandler();
+#endif
 
         // Date/time types
         // No resolution for DateTime, since that's value-dependent (Kind)

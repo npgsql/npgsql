@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -68,6 +69,34 @@ public class JsonTests : MultiplexingTestBase
             NpgsqlDbType,
             isDefault: false,
             comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString());
+
+#if NET6_0_OR_GREATER
+    [Test]
+    public Task Roundtrip_JsonObject()
+        => AssertType(
+            new JsonObject { ["Bar"] = 8 },
+            IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
+            PostgresType,
+            NpgsqlDbType,
+            // By default we map JsonObject to jsonb
+            isDefaultForWriting: IsJsonb,
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false,
+            comparer: (x, y) => x.ToString() == y.ToString());
+
+    [Test]
+    public Task Roundtrip_JsonArray()
+        => AssertType(
+            new JsonArray { 1, 2, 3 },
+            IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
+            PostgresType,
+            NpgsqlDbType,
+            // By default we map JsonArray to jsonb
+            isDefaultForWriting: IsJsonb,
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false,
+            comparer: (x, y) => x.ToString() == y.ToString());
+#endif
 
     [Test]
     public async Task As_poco()
@@ -140,6 +169,40 @@ public class JsonTests : MultiplexingTestBase
 
         Assert.That(car.RootElement.GetProperty("key").GetString(), Is.EqualTo("foo"));
     }
+
+#if NET6_0_OR_GREATER
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4537")]
+    public async Task Write_jsonobject_array_without_npgsqldbtype()
+    {
+        // By default we map JsonObject to jsonb
+        if (!IsJsonb)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+        var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json[]");
+
+        await using var cmd = new NpgsqlCommand { Connection = conn };
+
+        var jsonObject1 = new JsonObject
+        {
+            { "name", "value1" },
+            { "amount", 1 },
+            { "unit", "ml" }
+        };
+
+        var jsonObject2 = new JsonObject
+        {
+            { "name", "value2" },
+            { "amount", 2 },
+            { "unit", "g" }
+        };
+
+        cmd.CommandText = $"INSERT INTO {tableName} (ingredients) VALUES (@p)";
+        cmd.Parameters.Add(new("p", new[] { jsonObject1, jsonObject2 }));
+        await cmd.ExecuteNonQueryAsync();
+    }
+#endif
 
     public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
         : base(multiplexingMode)

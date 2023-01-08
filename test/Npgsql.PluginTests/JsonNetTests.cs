@@ -72,7 +72,9 @@ public class JsonNetTests : TestBase
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             _pgTypeName,
             _npgsqlDbType,
-            isDefault: false,
+            // By default we map JObject to jsonb
+            isDefaultForWriting: IsJsonb,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
@@ -83,7 +85,9 @@ public class JsonNetTests : TestBase
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             _pgTypeName,
             _npgsqlDbType,
-            isDefault: false,
+            // By default we map JArray to jsonb
+            isDefaultForWriting: IsJsonb,
+            isDefaultForReading: false,
             isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
@@ -168,6 +172,7 @@ public class JsonNetTests : TestBase
             isDefault: false,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
+
     [Test]
     public async Task Bug3464()
     {
@@ -190,8 +195,37 @@ public class JsonNetTests : TestBase
         public string? SomeString { get; set; }
     }
 
-    readonly NpgsqlDbType _npgsqlDbType;
-    readonly string _pgTypeName;
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/4537")]
+    public async Task Write_jobject_array_without_npgsqldbtype()
+    {
+        // By default we map JObject to jsonb
+        if (!IsJsonb)
+            return;
+
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
+        var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json[]");
+
+        await using var cmd = new NpgsqlCommand { Connection = conn };
+
+        var jsonObject1 = new JObject
+        {
+            { "name", "value1" },
+            { "amount", 1 },
+            { "unit", "ml" }
+        };
+
+        var jsonObject2 = new JObject
+        {
+            { "name", "value2" },
+            { "amount", 2 },
+            { "unit", "g" }
+        };
+
+        cmd.CommandText = $"INSERT INTO {tableName} (ingredients) VALUES (@p)";
+        cmd.Parameters.Add(new("p", new[] { jsonObject1, jsonObject2 }));
+        await cmd.ExecuteNonQueryAsync();
+    }
 
     class Foo
     {
@@ -199,6 +233,9 @@ public class JsonNetTests : TestBase
         public override bool Equals(object? obj) => (obj as Foo)?.Bar == Bar;
         public override int GetHashCode() => Bar.GetHashCode();
     }
+
+    readonly NpgsqlDbType _npgsqlDbType;
+    readonly string _pgTypeName;
 
     [OneTimeSetUp]
     public void SetUp()
