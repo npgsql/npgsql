@@ -1,5 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql;
 
@@ -20,11 +23,25 @@ static class PoolManager
             pool.Clear();
     }
 
+    internal static async Task ClearAsync(string connString, CancellationToken cancellationToken = default)
+    {
+        // TODO: Actually remove the pools from here, #3387 (but be careful of concurrency)
+        if (Pools.TryGetValue(connString, out var pool))
+            await pool.ClearAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     internal static void ClearAll()
     {
         // TODO: Actually remove the pools from here, #3387 (but be careful of concurrency)
         foreach (var pool in Pools.Values)
             pool.Clear();
+    }
+
+    internal static async Task ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        // TODO: Actually remove the pools from here, #3387 (but be careful of concurrency)
+        foreach (var pool in Pools.Values)
+            await pool.ClearAsync(cancellationToken).ConfigureAwait(false);
     }
 
     static PoolManager()

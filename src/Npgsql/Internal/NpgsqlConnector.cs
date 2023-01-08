@@ -2005,11 +2005,21 @@ public sealed partial class NpgsqlConnector
         }
     }
 
-    // TODO in theory this should be async-optional, but the only I/O done here is the Terminate Flush, which is
-    // very unlikely to block (plus locking would need to be worked out)
     internal void Close()
     {
-        lock (SyncObj)
+        Close(async: false).GetAwaiter().GetResult();
+    }
+
+    SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+
+    internal async Task Close(bool async, CancellationToken cancellationToken = default)
+    {
+        if (async)
+            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        else
+            _semaphore.Wait(cancellationToken);
+
+        try
         {
             if (IsReady)
             {
@@ -2021,7 +2031,7 @@ public sealed partial class NpgsqlConnector
                     // see https://github.com/npgsql/npgsql/issues/3592
                     WriteBuffer.Clear();
                     WriteTerminate();
-                    Flush();
+                    await Flush(async, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -2038,6 +2048,10 @@ public sealed partial class NpgsqlConnector
             }
 
             State = ConnectorState.Closed;
+        }
+        finally
+        {
+            _semaphore.Release();
         }
 
         FullCleanup();

@@ -28,7 +28,7 @@ sealed class MultiHostDataSourceWrapper : NpgsqlDataSource
 
     internal override (int Total, int Idle, int Busy) Statistics => _wrappedSource.Statistics;
 
-    internal override void Clear() => _wrappedSource.Clear();
+    internal override Task Clear(bool async, CancellationToken cancellationToken = default) => _wrappedSource.Clear(async, cancellationToken);
     internal override ValueTask<NpgsqlConnector> Get(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         => _wrappedSource.Get(conn, timeout, async, cancellationToken);
     internal override bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)

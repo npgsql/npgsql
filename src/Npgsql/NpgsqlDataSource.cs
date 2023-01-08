@@ -347,7 +347,11 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal abstract void Return(NpgsqlConnector connector);
 
-    internal abstract void Clear();
+    internal void Clear() => Clear(async: false).GetAwaiter().GetResult();
+
+    internal Task ClearAsync(CancellationToken cancellationToken = default) => Clear(async: true, cancellationToken);
+
+    internal abstract Task Clear(bool async, CancellationToken cancellationToken = default);
 
     internal abstract bool OwnsConnectors { get; }
 
@@ -464,7 +468,6 @@ public abstract class NpgsqlDataSource : DbDataSource
         return default;
     }
 
-#pragma warning disable CS1998
     /// <inheritdoc cref="DisposeAsyncCore" />
     protected virtual async ValueTask DisposeAsyncBase()
     {
@@ -486,10 +489,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         _setupMappingsSemaphore.Dispose();
 
-        // TODO: async Clear, #4499
-        Clear();
+        await ClearAsync().ConfigureAwait(false);
     }
-#pragma warning restore CS1998
 
     private protected void CheckDisposed()
     {

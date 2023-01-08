@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -169,8 +169,8 @@ class PoolingDataSource : NpgsqlDataSource
                             }
                         }
 
-                        if (CheckIdleConnector(connector))
-                            return connector;
+                        if (await CheckIdleConnector(connector, async, finalToken).ConfigureAwait(false))
+                            return connector!;
                     }
                     catch (OperationCanceledException)
                     {
@@ -217,8 +217,13 @@ class PoolingDataSource : NpgsqlDataSource
         return false;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
+    {
+        return CheckIdleConnector(connector, async: false).GetAwaiter().GetResult();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    async Task<bool> CheckIdleConnector(NpgsqlConnector? connector, bool async, CancellationToken cancellationToken = default)
     {
         if (connector is null)
             return false;
@@ -232,14 +237,14 @@ class PoolingDataSource : NpgsqlDataSource
         // if keepalive isn't turned on.
         if (connector.IsBroken)
         {
-            CloseConnector(connector);
+            await CloseConnector(connector, async, cancellationToken).ConfigureAwait(false);
             return false;
         }
 
         if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
         {
             LogMessages.ConnectionExceededMaximumLifetime(_logger, _connectionLifetime, connector.Id);
-            CloseConnector(connector);
+            await CloseConnector(connector, async, cancellationToken).ConfigureAwait(false);
             return false;
         }
 
@@ -340,7 +345,7 @@ class PoolingDataSource : NpgsqlDataSource
         Debug.Assert(written);
     }
 
-    internal override void Clear()
+    internal override async Task Clear(bool async, CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref _clearCounter);
 
@@ -352,9 +357,9 @@ class PoolingDataSource : NpgsqlDataSource
             var count = _idleCount;
             while (count > 0 && _idleConnectorReader.TryRead(out var connector))
             {
-                if (CheckIdleConnector(connector))
+                if (await CheckIdleConnector(connector, async, cancellationToken).ConfigureAwait(false))
                 {
-                    CloseConnector(connector);
+                    await CloseConnector(connector!, async, cancellationToken).ConfigureAwait(false);
                     count--;
                 }
             }
@@ -367,9 +372,14 @@ class PoolingDataSource : NpgsqlDataSource
 
     void CloseConnector(NpgsqlConnector connector)
     {
+        CloseConnector(connector, async: false).GetAwaiter().GetResult();
+    }
+
+    async Task CloseConnector(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
+    {
         try
         {
-            connector.Close();
+            await connector.Close(async, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
