@@ -1,4 +1,6 @@
 ﻿#nullable enable
+Npgsql.NpgsqlDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X509Certificates.X509Certificate2? rootCertificate) -> Npgsql.NpgsqlDataSourceBuilder!
+Npgsql.NpgsqlDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 override Npgsql.NpgsqlBatch.Dispose() -> void
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!

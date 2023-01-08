@@ -63,4 +63,7 @@
     <data name="SyncAndAsyncConnectionInitializersRequired" xml:space="preserve">
         <value>Both sync and async connection initializers must be provided.</value>
     </data>
+    <data name="CannotUseValidationRootCertificateCallbackWithUserCallback" xml:space="preserve">
+        <value>ValidationRootCertificateCallback cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
+    </data>
 </root>

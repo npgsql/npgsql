@@ -842,6 +842,8 @@ public sealed partial class NpgsqlConnector
                     var checkCertificateRevocation = Settings.CheckCertificateRevocation;
 
                     RemoteCertificateValidationCallback? certificateValidationCallback;
+                    X509Certificate2? caCert;
+                    string? certRootPath = null;
 
                     if (UserCertificateValidationCallback is not null)
                     {
@@ -850,6 +852,9 @@ public sealed partial class NpgsqlConnector
 
                         if (Settings.RootCertificate is not null)
                             throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback));
+
+                        if (DataSource.RootCertificateCallback is not null)
+                            throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback));
 
                         certificateValidationCallback = UserCertificateValidationCallback;
                     }
@@ -861,10 +866,11 @@ public sealed partial class NpgsqlConnector
                         certificateValidationCallback = SslTrustServerValidation;
                         checkCertificateRevocation = false;
                     }
-                    else if ((Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is
-                             { } certRootPath)
+                    else if ((caCert = DataSource.RootCertificateCallback?.Invoke()) is not null ||
+                             (certRootPath = Settings.RootCertificate ??
+                                             PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
                     {
-                        certificateValidationCallback = SslRootValidation(certRootPath, sslMode == SslMode.VerifyFull);
+                        certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCert);
                     }
                     else if (sslMode == SslMode.VerifyCA)
                     {
@@ -1650,8 +1656,8 @@ public sealed partial class NpgsqlConnector
         (sender, certificate, chain, sslPolicyErrors)
             => true;
 
-    static RemoteCertificateValidationCallback SslRootValidation(string certRootPath, bool verifyFull) =>
-        (sender, certificate, chain, sslPolicyErrors) =>
+    static RemoteCertificateValidationCallback SslRootValidation(bool verifyFull, string? certRootPath, X509Certificate2? caCertificate)
+        => (_, certificate, chain, sslPolicyErrors) =>
         {
             if (certificate is null || chain is null)
                 return false;
@@ -1670,13 +1676,22 @@ public sealed partial class NpgsqlConnector
 
             var certs = new X509Certificate2Collection();
 
+            if (certRootPath is null)
+            {
+                Debug.Assert(caCertificate is not null);
+                certs.Add(caCertificate);
+            }
+            else
+            {
+                Debug.Assert(caCertificate is null);
 #if NET5_0_OR_GREATER
-            if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
-                certs.ImportFromPemFile(certRootPath);
+                if (Path.GetExtension(certRootPath).ToUpperInvariant() != ".PFX")
+                    certs.ImportFromPemFile(certRootPath);
 #endif
 
-            if (certs.Count == 0)
-                certs.Add(new X509Certificate2(certRootPath));
+                if (certs.Count == 0)
+                    certs.Add(new X509Certificate2(certRootPath));
+            }
 
 #if NET5_0_OR_GREATER
             chain.ChainPolicy.CustomTrustStore.AddRange(certs);

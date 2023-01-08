@@ -100,7 +100,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _userTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync)
+                ConnectionInitializerAsync,
+                RootCertificateCallback)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
@@ -301,6 +302,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion Password management
+    
+    internal Func<X509Certificate2?>? RootCertificateCallback { get; }
 
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);
@@ -464,7 +467,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     #endregion
     
-    class DatabaseStateInfo
+    sealed class DatabaseStateInfo
     {
         internal readonly DatabaseState State;
         internal readonly NpgsqlTimeout Timeout;
