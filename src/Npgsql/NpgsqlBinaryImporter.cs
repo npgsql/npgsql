@@ -52,8 +52,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         set
         {
             _buf.Timeout = value;
-            // While calling Complete(), we're using the connector, which overwrites the buffer's timeout with it's own
-            _connector.UserTimeout = (int)value.TotalMilliseconds;
+            _connector.ReadBuffer.Timeout = value;
         }
     }
 

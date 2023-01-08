@@ -34,11 +34,6 @@ public readonly struct NpgsqlTimeout
         var timeLeft = CheckAndGetTimeLeft();
         // Set the remaining timeout on the read and write buffers
         connector.ReadBuffer.Timeout = connector.WriteBuffer.Timeout = timeLeft;
-
-        // Note that we set UserTimeout as well, otherwise the read timeout will get overwritten in ReadMessage
-        // Note also that we must set the read buffer's timeout directly (above), since the SSL handshake
-        // reads data directly from the buffer, without going through ReadMessage.
-        connector.UserTimeout = (int) Math.Ceiling(timeLeft.TotalMilliseconds);
     }
 
     internal bool IsSet => _expiration != DateTime.MaxValue;

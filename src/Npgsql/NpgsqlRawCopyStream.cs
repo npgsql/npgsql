@@ -47,12 +47,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     public override int ReadTimeout
     {
         get => (int) _readBuf.Timeout.TotalMilliseconds;
-        set
-        {
-            _readBuf.Timeout = TimeSpan.FromMilliseconds(value);
-            // While calling the connector it will overwrite our read buffer timeout
-            _connector.UserTimeout = value;
-        }
+        set => _readBuf.Timeout = TimeSpan.FromMilliseconds(value);
     }
 
     /// <summary>

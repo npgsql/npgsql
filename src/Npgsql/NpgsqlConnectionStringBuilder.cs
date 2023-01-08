@@ -835,29 +835,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     int _commandTimeout;
 
     /// <summary>
-    /// The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error.
-    /// </summary>
-    [Category("Timeouts")]
-    [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
-    [DisplayName("Internal Command Timeout")]
-    [NpgsqlConnectionStringProperty]
-    [DefaultValue(-1)]
-    public int InternalCommandTimeout
-    {
-        get => _internalCommandTimeout;
-        set
-        {
-            if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
-                throw new ArgumentOutOfRangeException(nameof(value), value,
-                    $"InternalCommandTimeout must be >= {NpgsqlConnector.MinimumInternalCommandTimeout}, 0 (infinite) or -1 (use CommandTimeout)");
-
-            _internalCommandTimeout = value;
-            SetValue(nameof(InternalCommandTimeout), value);
-        }
-    }
-    int _internalCommandTimeout;
-
-    /// <summary>
     /// The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
     /// Zero for infinity, -1 to skip the wait.
     /// Defaults to 2000 milliseconds.
@@ -1571,6 +1548,30 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         }
     }
     bool _trustServerCertificate;
+
+    /// <summary>
+    /// The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error.
+    /// </summary>
+    [Category("Obsolete")]
+    [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
+    [DisplayName("Internal Command Timeout")]
+    [NpgsqlConnectionStringProperty]
+    [DefaultValue(-1)]
+    [Obsolete("The InternalCommandTimeout parameter is no longer needed and does nothing.")]
+    public int InternalCommandTimeout
+    {
+        get => _internalCommandTimeout;
+        set
+        {
+            if (value != 0 && value != -1 && value < NpgsqlConnector.MinimumInternalCommandTimeout)
+                throw new ArgumentOutOfRangeException(nameof(value), value,
+                    $"InternalCommandTimeout must be >= {NpgsqlConnector.MinimumInternalCommandTimeout}, 0 (infinite) or -1 (use CommandTimeout)");
+
+            _internalCommandTimeout = value;
+            SetValue(nameof(InternalCommandTimeout), value);
+        }
+    }
+    int _internalCommandTimeout;
 
     #endregion
 
