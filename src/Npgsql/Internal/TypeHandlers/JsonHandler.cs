@@ -11,6 +11,10 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+using System.Text.Json.Nodes;
+#endif
+
 namespace Npgsql.Internal.TypeHandlers;
 
 /// <summary>
@@ -66,11 +70,25 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
-            var data = SerializeJsonDocument((JsonDocument)(object)value!);
+            var data = SerializeJsonDocument((JsonDocument)(object)value);
             if (parameter != null)
                 parameter.ConvertedValue = data;
             return lengthCache.Set(data.Length + _headerLen);
         }
+        
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+        if (typeof(TAny) == typeof(JsonObject) || typeof(TAny) == typeof(JsonArray))
+        {
+            lengthCache ??= new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
+            var data = SerializeJsonObject((JsonNode)(object)value);
+            if (parameter != null)
+                parameter.ConvertedValue = data;
+            return lengthCache.Set(data.Length + _headerLen);
+        }
+#endif
 
         // User POCO, need to serialize. At least internally ArrayPool buffers are used...
         var s = JsonSerializer.Serialize(value, _serializerOptions);
@@ -94,30 +112,39 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             buf.WriteByte(JsonbProtocolVersion);
 
         if (typeof(TAny) == typeof(string))
-            await _textHandler.Write((string)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((string)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(char[]))
-            await _textHandler.Write((char[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((char[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(ArraySegment<char>))
-            await _textHandler.Write((ArraySegment<char>)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((ArraySegment<char>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(char))
-            await _textHandler.Write((char)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((char)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(byte[]))
-            await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((byte[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(ReadOnlyMemory<byte>))
-            await _textHandler.Write((ReadOnlyMemory<byte>)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
+            await _textHandler.Write((ReadOnlyMemory<byte>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(JsonDocument))
         {
             var data = parameter?.ConvertedValue != null
                 ? (byte[])parameter.ConvertedValue
-                : SerializeJsonDocument((JsonDocument)(object)value!);
+                : SerializeJsonDocument((JsonDocument)(object)value);
             await buf.WriteBytesRaw(data, async, cancellationToken);
         }
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+        else if (typeof(TAny) == typeof(JsonObject) || typeof(TAny) == typeof(JsonArray))
+        {
+            var data = parameter?.ConvertedValue != null
+                ? (byte[])parameter.ConvertedValue
+                : SerializeJsonObject((JsonNode)(object)value);
+            await buf.WriteBytesRaw(data, async, cancellationToken);
+        }
+#endif
         else
         {
             // User POCO, read serialized representation from the validation phase
             var s = parameter?.ConvertedValue != null
                 ? (string)parameter.ConvertedValue
-                : JsonSerializer.Serialize(value!, value!.GetType(), _serializerOptions);
+                : JsonSerializer.Serialize(value, value.GetType(), _serializerOptions);
 
             await _textHandler.Write(s, buf, lengthCache, parameter, async, cancellationToken);
         }
@@ -151,6 +178,10 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             byte[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
             ReadOnlyMemory<byte> s    => ValidateAndGetLength(s, ref lengthCache, parameter),
             JsonDocument jsonDocument => ValidateAndGetLength(jsonDocument, ref lengthCache, parameter),
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+            JsonObject jsonObject     => ValidateAndGetLength(jsonObject, ref lengthCache, parameter),
+            JsonArray jsonArray       => ValidateAndGetLength(jsonArray, ref lengthCache, parameter),
+#endif
             _                         => ValidateAndGetLength(value, ref lengthCache, parameter)
         };
 
@@ -172,6 +203,10 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             byte[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
             ReadOnlyMemory<byte> s    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
             JsonDocument jsonDocument => WriteWithLengthCustom(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+            JsonObject jsonObject     => WriteWithLengthCustom(jsonObject, buf, lengthCache, parameter, async, cancellationToken),
+            JsonArray jsonArray       => WriteWithLengthCustom(jsonArray, buf, lengthCache, parameter, async, cancellationToken),
+#endif
             _                         => WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken),
         });
     }
@@ -243,4 +278,17 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
         writer.Flush();
         return stream.ToArray();
     }
+
+#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
+    byte[] SerializeJsonObject(JsonNode jsonObject)
+    {
+        // TODO: Writing is currently really inefficient - please don't criticize :)
+        // We need to implement one-pass writing to serialize directly to the buffer (or just switch to pipelines).
+        using var stream = new MemoryStream();
+        using var writer = new Utf8JsonWriter(stream);
+        jsonObject.WriteTo(writer);
+        writer.Flush();
+        return stream.ToArray();
+    }
+#endif
 }

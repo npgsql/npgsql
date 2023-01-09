@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.TypeMapping;
@@ -23,7 +24,11 @@ public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
         _jsonClrTypes = jsonClrTypes ?? Array.Empty<Type>();
         _settings = settings ?? new JsonSerializerSettings();
 
-        _byType = new();
+        _byType = new()
+        {
+            { typeof(JObject), "jsonb" },
+            { typeof(JArray), "jsonb" }
+        };
 
         if (jsonbClrTypes is not null)
             foreach (var type in jsonbClrTypes)
