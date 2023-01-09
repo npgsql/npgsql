@@ -76,7 +76,7 @@ public partial class DateHandler : NpgsqlSimpleTypeHandler<DateTime>, INpgsqlSim
             }
         }
 
-        buf.WriteInt32((value - BaseValueDateTime).Days);
+        buf.WriteInt32((value.Date - BaseValueDateTime).Days);
     }
 
     /// <inheritdoc />
