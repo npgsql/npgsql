@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using Newtonsoft.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Json.NET.Internal;
@@ -13,7 +11,7 @@ namespace Npgsql.Json.NET.Internal;
 public class JsonNetTypeHandlerResolver : TypeHandlerResolver
 {
     readonly NpgsqlDatabaseInfo _databaseInfo;
-    readonly JsonNetJsonbHandler _jsonNetJsonbHandler;
+    readonly JsonNetJsonHandler _jsonNetJsonbHandler;
     readonly JsonNetJsonHandler _jsonNetJsonHandler;
     readonly Dictionary<Type, string> _dataTypeNamesByClrType;
 
@@ -24,8 +22,8 @@ public class JsonNetTypeHandlerResolver : TypeHandlerResolver
     {
         _databaseInfo = connector.DatabaseInfo;
 
-        _jsonNetJsonbHandler = new JsonNetJsonbHandler(PgType("jsonb"), connector, settings);
-        _jsonNetJsonHandler = new JsonNetJsonHandler(PgType("json"), connector, settings);
+        _jsonNetJsonbHandler = new JsonNetJsonHandler(PgType("jsonb"), connector, isJsonb: true, settings);
+        _jsonNetJsonHandler = new JsonNetJsonHandler(PgType("json"), connector, isJsonb: false, settings);
 
         _dataTypeNamesByClrType = dataTypeNamesByClrType;
     }

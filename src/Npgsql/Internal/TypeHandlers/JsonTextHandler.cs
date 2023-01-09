@@ -23,7 +23,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// </remarks>
 public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
 {
-    readonly TextHandler _textHandler;
+    protected TextHandler TextHandler { get; }
     readonly bool _isJsonb;
     readonly int _headerLen;
 
@@ -40,8 +40,24 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     {
         _isJsonb = isJsonb;
         _headerLen = isJsonb ? 1 : 0;
-        _textHandler = new TextHandler(postgresType, encoding);
+        TextHandler = new TextHandler(postgresType, encoding);
     }
+
+    protected bool IsSupportedAsText<T>()
+        => typeof(T) == typeof(string) ||
+           typeof(T) == typeof(char[]) ||
+           typeof(T) == typeof(ArraySegment<char>) ||
+           typeof(T) == typeof(char) ||
+           typeof(T) == typeof(byte[]) ||
+           typeof(T) == typeof(ReadOnlyMemory<byte>);
+
+    protected bool IsSupported(Type type)
+        => type == typeof(string) ||
+           type == typeof(char[]) ||
+           type == typeof(ArraySegment<char>) ||
+           type == typeof(char) ||
+           type == typeof(byte[]) ||
+           type == typeof(ReadOnlyMemory<byte>);
 
     protected bool TryValidateAndGetLengthCustom<TAny>(
         [DisallowNull] TAny value,
@@ -49,14 +65,9 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
         NpgsqlParameter? parameter,
         out int length)
     {
-        if (typeof(TAny) == typeof(string) ||
-            typeof(TAny) == typeof(char[]) ||
-            typeof(TAny) == typeof(ArraySegment<char>) ||
-            typeof(TAny) == typeof(char) ||
-            typeof(TAny) == typeof(byte[]) ||
-            typeof(TAny) == typeof(ReadOnlyMemory<byte>))
+        if (IsSupportedAsText<TAny>())
         {
-            length = _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen;
+            length = TextHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen;
             return true;
         }
 
@@ -67,21 +78,11 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     /// <inheritdoc />
     protected internal override int ValidateAndGetLengthCustom<TAny>([DisallowNull] TAny value, ref NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter)
-    {
-        if (typeof(TAny) == typeof(string) ||
-            typeof(TAny) == typeof(char[]) ||
-            typeof(TAny) == typeof(ArraySegment<char>) ||
-            typeof(TAny) == typeof(char) ||
-            typeof(TAny) == typeof(byte[]) ||
-            typeof(TAny) == typeof(ReadOnlyMemory<byte>))
-        {
-            return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen;
-        }
-
-        throw new InvalidCastException(
-            $"Can't write CLR type {value.GetType()}. " +
-            "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information.");
-    }
+        => IsSupportedAsText<TAny>()
+            ? TextHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen
+            : throw new InvalidCastException(
+                $"Can't write CLR type {value.GetType()}. " +
+                "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information.");
 
     protected override async Task WriteWithLengthCustom<TAny>(
         [DisallowNull] TAny value,
@@ -102,17 +103,17 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             buf.WriteByte(JsonbProtocolVersion);
 
         if (typeof(TAny) == typeof(string))
-            await _textHandler.Write((string)(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((string)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(char[]))
-            await _textHandler.Write((char[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((char[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(ArraySegment<char>))
-            await _textHandler.Write((ArraySegment<char>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((ArraySegment<char>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(char))
-            await _textHandler.Write((char)(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((char)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(byte[]))
-            await _textHandler.Write((byte[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((byte[])(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else if (typeof(TAny) == typeof(ReadOnlyMemory<byte>))
-            await _textHandler.Write((ReadOnlyMemory<byte>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
+            await TextHandler.Write((ReadOnlyMemory<byte>)(object)value, buf, lengthCache, parameter, async, cancellationToken);
         else throw new InvalidCastException(
             $"Can't write CLR type {value.GetType()}. " +
             "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information.");
@@ -132,7 +133,7 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             buf.WriteByte(JsonbProtocolVersion);
         }
 
-        await _textHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
+        await TextHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -176,7 +177,7 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     }
 
     /// <inheritdoc />
-    protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
+    protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         if (_isJsonb)
         {
@@ -184,18 +185,11 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
             var version = buf.ReadByte();
             if (version != JsonbProtocolVersion)
                 throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
-            byteLen--;
+            len--;
         }
 
-        if (typeof(T) == typeof(string)             ||
-            typeof(T) == typeof(char[])             ||
-            typeof(T) == typeof(ArraySegment<char>) ||
-            typeof(T) == typeof(char)               ||
-            typeof(T) == typeof(byte[])             ||
-            typeof(T) == typeof(ReadOnlyMemory<byte>))
-        {
-            return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription);
-        }
+        if (IsSupportedAsText<T>())
+            return await TextHandler.Read<T>(buf, len, async, fieldDescription);
 
         throw new InvalidCastException(
             $"Can't read JSON as CLR type {typeof(T)}. " +
@@ -216,6 +210,6 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
                 throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
         }
 
-        return _textHandler.GetTextReader(stream, buffer);
+        return TextHandler.GetTextReader(stream, buffer);
     }
 }
