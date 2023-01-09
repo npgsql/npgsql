@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -57,7 +58,7 @@ class JsonNetJsonHandler : JsonTextHandler
 
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => value is null || IsSupported(value.GetType())
+        => value is null or DBNull || IsSupported(value.GetType())
             ? base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken)
             : WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken);
 }

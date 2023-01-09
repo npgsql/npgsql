@@ -149,7 +149,7 @@ public class SystemTextJsonHandler : JsonTextHandler
 
     /// <inheritdoc />
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => value is null || IsSupported(value.GetType())
+        => value is null or DBNull || IsSupported(value.GetType())
             ? base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken)
             : value switch
             {
