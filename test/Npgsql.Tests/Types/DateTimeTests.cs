@@ -16,6 +16,10 @@ public class DateTimeTests : TestBase
     public Task Date_as_DateTime()
         => AssertType(new DateTime(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefaultForWriting: false);
 
+    [Test]
+    public Task Date_as_DateTime_with_date_and_time_before_2000()
+        => AssertTypeWrite(new DateTime(1980, 10, 1, 11, 0, 0), "1980-10-01", "date", NpgsqlDbType.Date, DbType.Date, isDefault: false);
+
     // Internal PostgreSQL representation (days since 2020-01-01), for out-of-range values.
     [Test]
     public Task Date_as_int()
