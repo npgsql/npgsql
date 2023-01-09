@@ -60,7 +60,7 @@ public abstract class TestBase
         await using var connection = await dataSource.OpenConnectionAsync();
 
         return await AssertType(connection, value, sqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefaultForReading,
-            isDefaultForWriting, isDefault, isNpgsqlDbTypeInferredFromClrType);
+            isDefaultForWriting, isDefault, isNpgsqlDbTypeInferredFromClrType, comparer);
     }
 
     public async Task<T> AssertType<T>(
@@ -88,6 +88,23 @@ public abstract class TestBase
     {
         await using var connection = await OpenConnectionAsync();
         return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault);
+    }
+
+    public async Task AssertTypeWrite<T>(
+        NpgsqlDataSource dataSource,
+        T value,
+        string expectedSqlLiteral,
+        string pgTypeName,
+        NpgsqlDbType npgsqlDbType,
+        DbType? dbType = null,
+        DbType? inferredDbType = null,
+        bool isDefault = true,
+        bool isNpgsqlDbTypeInferredFromClrType = true)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync();
+
+        await AssertTypeWrite(connection, () => value, expectedSqlLiteral, pgTypeName, npgsqlDbType, dbType, inferredDbType, isDefault,
+            isNpgsqlDbTypeInferredFromClrType);
     }
 
     public Task AssertTypeWrite<T>(

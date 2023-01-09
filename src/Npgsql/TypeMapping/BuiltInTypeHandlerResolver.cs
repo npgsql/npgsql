@@ -3,12 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
-using System.Data;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
-using System.Text.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
@@ -22,10 +20,6 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
-
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-using System.Text.Json.Nodes;
-#endif
 
 namespace Npgsql.TypeMapping;
 
@@ -58,11 +52,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         { "name",              new(NpgsqlDbType.Name,      "name") },
         { "refcursor",         new(NpgsqlDbType.Refcursor, "refcursor") },
         { "citext",            new(NpgsqlDbType.Citext,    "citext") },
-        { "jsonb",             new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-            , typeof(JsonObject), typeof(JsonArray)
-#endif
-        ) },
+        { "jsonb",             new(NpgsqlDbType.Jsonb,     "jsonb") },
         { "json",              new(NpgsqlDbType.Json,      "json") },
         { "jsonpath",          new(NpgsqlDbType.JsonPath,  "jsonpath") },
 
@@ -192,8 +182,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     TextHandler? _nameHandler;
     TextHandler? _refcursorHandler;
     TextHandler? _citextHandler;
-    JsonHandler? _jsonbHandler; // Note that old version of PG (and Redshift) don't have jsonb
-    JsonHandler? _jsonHandler;
+    JsonTextHandler? _jsonbHandler; // Note that old version of PG (and Redshift) don't have jsonb
+    JsonTextHandler? _jsonHandler;
     JsonPathHandler? _jsonPathHandler;
 
     // Date/time types
@@ -404,11 +394,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             { typeof(char[]),             "text" },
             { typeof(char),               "text" },
             { typeof(ArraySegment<char>), "text" },
-            { typeof(JsonDocument),       "jsonb" },
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-            { typeof(JsonObject),         "jsonb" },
-            { typeof(JsonArray),          "jsonb" },
-#endif
 
             // Date/time types
             // The DateTime entry is for LegacyTimestampBehavior mode only. In regular mode we resolve through
@@ -609,14 +594,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             return _textHandler;
         if (typeof(T) == typeof(ArraySegment<char>))
             return _textHandler;
-        if (typeof(T) == typeof(JsonDocument))
-            return JsonbHandler();
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-        if (typeof(T) == typeof(JsonObject))
-            return JsonbHandler();
-        if (typeof(T) == typeof(JsonArray))
-            return JsonbHandler();
-#endif
 
         // Date/time types
         // No resolution for DateTime, since that's value-dependent (Kind)
@@ -702,8 +679,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler? CitextHandler()   => _citextHandler ??= _databaseInfo.TryGetPostgresTypeByName("citext", out var pgType)
         ? new TextHandler(pgType, _connector.TextEncoding)
         : null;
-    NpgsqlTypeHandler JsonbHandler()     => _jsonbHandler ??= new JsonHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
-    NpgsqlTypeHandler JsonHandler()      => _jsonHandler ??= new JsonHandler(PgType("json"), _connector.TextEncoding, isJsonb: false);
+    NpgsqlTypeHandler JsonbHandler()     => _jsonbHandler ??= new JsonTextHandler(PgType("jsonb"), _connector.TextEncoding, isJsonb: true);
+    NpgsqlTypeHandler JsonHandler()      => _jsonHandler ??= new JsonTextHandler(PgType("json"), _connector.TextEncoding, isJsonb: false);
     NpgsqlTypeHandler JsonPathHandler()  => _jsonPathHandler ??= new JsonPathHandler(PgType("jsonpath"), _connector.TextEncoding);
 
     // Date/time types

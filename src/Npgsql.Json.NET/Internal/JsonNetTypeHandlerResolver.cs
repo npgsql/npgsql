@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using Newtonsoft.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Json.NET.Internal;
@@ -13,36 +11,28 @@ namespace Npgsql.Json.NET.Internal;
 public class JsonNetTypeHandlerResolver : TypeHandlerResolver
 {
     readonly NpgsqlDatabaseInfo _databaseInfo;
-    readonly JsonbHandler _jsonbHandler;
-    readonly JsonHandler _jsonHandler;
+    readonly JsonNetJsonHandler _jsonNetJsonbHandler;
+    readonly JsonNetJsonHandler _jsonNetJsonHandler;
     readonly Dictionary<Type, string> _dataTypeNamesByClrType;
 
     internal JsonNetTypeHandlerResolver(
         NpgsqlConnector connector,
-        Dictionary<Type, string> dataClrTypeNamesDataTypeNamesByClrClrType,
+        Dictionary<Type, string> dataTypeNamesByClrType,
         JsonSerializerSettings settings)
     {
         _databaseInfo = connector.DatabaseInfo;
 
-        _jsonbHandler = new JsonbHandler(PgType("jsonb"), connector, settings);
-        _jsonHandler = new JsonHandler(PgType("json"), connector, settings);
+        _jsonNetJsonbHandler = new JsonNetJsonHandler(PgType("jsonb"), connector, isJsonb: true, settings);
+        _jsonNetJsonHandler = new JsonNetJsonHandler(PgType("json"), connector, isJsonb: false, settings);
 
-        _dataTypeNamesByClrType = dataClrTypeNamesDataTypeNamesByClrClrType;
+        _dataTypeNamesByClrType = dataTypeNamesByClrType;
     }
-
-    public NpgsqlTypeHandler? ResolveNpgsqlDbType(NpgsqlDbType npgsqlDbType)
-        => npgsqlDbType switch
-        {
-            NpgsqlDbType.Jsonb => _jsonbHandler,
-            NpgsqlDbType.Json => _jsonHandler,
-            _ => null
-        };
 
     public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
         => typeName switch
         {
-            "jsonb" => _jsonbHandler,
-            "json" => _jsonHandler,
+            "jsonb" => _jsonNetJsonbHandler,
+            "json" => _jsonNetJsonHandler,
             _ => null
         };
 

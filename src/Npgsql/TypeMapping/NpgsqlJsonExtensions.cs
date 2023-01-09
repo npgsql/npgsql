@@ -1,35 +1,34 @@
-﻿using System;
+using System;
+using System.Text.Json;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using Newtonsoft.Json;
-using Npgsql.Json.NET.Internal;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql;
 
 /// <summary>
-/// Extension allowing adding the Json.NET plugin to an Npgsql type mapper.
+/// Extension allowing adding the System.Text.Json plugin to an Npgsql type mapper.
 /// </summary>
-public static class NpgsqlJsonNetExtensions
+public static class NpgsqlJsonExtensions
 {
     /// <summary>
-    /// Sets up JSON.NET mappings for the PostgreSQL json and jsonb types.
+    /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
     /// </summary>
     /// <param name="mapper">The type mapper to set up.</param>
-    /// <param name="settings">Optional settings to customize JSON serialization.</param>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
     /// <param name="jsonbClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
     /// </param>
     /// <param name="jsonClrTypes">
     /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
     /// </param>
-    public static INpgsqlTypeMapper UseJsonNet(
+    public static INpgsqlTypeMapper UseSystemTextJson(
         this INpgsqlTypeMapper mapper,
-        JsonSerializerSettings? settings = null,
+        JsonSerializerOptions? serializerOptions = null,
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        mapper.AddTypeResolverFactory(new JsonNetTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, settings));
+        mapper.AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return mapper;
     }
 }
