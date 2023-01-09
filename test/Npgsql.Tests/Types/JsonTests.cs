@@ -49,20 +49,22 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_bytes()
-        => await AssertType(Encoding.ASCII.GetBytes(@"{""K"": ""V""}"), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertType(@"{""K"": ""V""}"u8.ToArray(), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
-        => await AssertTypeWrite(new ReadOnlyMemory<byte>(Encoding.ASCII.GetBytes(@"{""K"": ""V""}")), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertTypeWrite(new ReadOnlyMemory<byte>(@"{""K"": ""V""}"u8.ToArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType,
+            isDefault: false);
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
-        => await AssertTypeWrite(
-            new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertTypeWrite(new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType,
+            isDefault: false);
 
     [Test]
     public async Task As_JsonDocument()
         => await AssertType(
+            JsonDataSource,
             JsonDocument.Parse(@"{""K"": ""V""}"),
             IsJsonb ? @"{""K"": ""V""}" : @"{""K"":""V""}",
             PostgresType,
@@ -70,10 +72,18 @@ public class JsonTests : MultiplexingTestBase
             isDefault: false,
             comparer: (x, y) => x.RootElement.GetProperty("K").GetString() == y.RootElement.GetProperty("K").GetString());
 
+    [Test]
+    public async Task As_JsonDocument_supported_only_with_SystemTextJson()
+        => await AssertTypeUnsupported(
+            JsonDocument.Parse(@"{""K"": ""V""}"),
+            @"{""K"": ""V""}",
+            PostgresType);
+
 #if NET6_0_OR_GREATER
     [Test]
     public Task Roundtrip_JsonObject()
         => AssertType(
+            JsonDataSource,
             new JsonObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             PostgresType,
@@ -87,6 +97,7 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public Task Roundtrip_JsonArray()
         => AssertType(
+            JsonDataSource,
             new JsonArray { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
@@ -101,13 +112,13 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_poco()
         => await AssertType(
+            JsonDataSource,
             new WeatherForecast
             {
                 Date = new DateTime(2019, 9, 1),
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            // Warning: in theory jsonb order and whitespace may change across versions
             IsJsonb
                 ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}"
                 : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}",
@@ -122,6 +133,7 @@ public class JsonTests : MultiplexingTestBase
         var bigString = new string('x', Math.Max(conn.Settings.ReadBufferSize, conn.Settings.WriteBufferSize));
 
         await AssertType(
+            JsonDataSource,
             new WeatherForecast
             {
                 Date = new DateTime(2019, 9, 1),
@@ -137,6 +149,18 @@ public class JsonTests : MultiplexingTestBase
             isDefault: false);
     }
 
+    [Test]
+    public async Task As_poco_supported_only_with_SystemTextJson()
+        => await AssertTypeUnsupported(
+            new WeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}",
+            PostgresType);
+
     record WeatherForecast
     {
         public DateTime Date { get; set; }
@@ -150,18 +174,18 @@ public class JsonTests : MultiplexingTestBase
     [IssueLink("https://github.com/npgsql/efcore.pg/issues/1082")]
     public async Task Can_read_two_json_documents()
     {
-        using var conn = await OpenConnectionAsync();
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
 
         JsonDocument car;
-        using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
-        using (var reader = await cmd.ExecuteReaderAsync())
+        await using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
             car = reader.GetFieldValue<JsonDocument>(0);
         }
 
-        using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
-        using (var reader = await cmd.ExecuteReaderAsync())
+        await using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
+        await using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
             reader.GetFieldValue<JsonDocument>(0);
@@ -179,7 +203,7 @@ public class JsonTests : MultiplexingTestBase
         if (!IsJsonb)
             return;
 
-        await using var conn = await OpenConnectionAsync();
+        await using var conn = await JsonDataSource.OpenConnectionAsync();
         var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json[]");
 
         await using var cmd = new NpgsqlCommand { Connection = conn };
@@ -204,6 +228,67 @@ public class JsonTests : MultiplexingTestBase
     }
 #endif
 
+    [Test]
+    public async Task Custom_JsonSerializerOptions()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseSystemTextJson(new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertTypeWrite(
+            dataSource,
+            new WeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            IsJsonb
+                ? @"{""date"": ""2019-09-01T00:00:00"", ""summary"": ""Partly cloudy"", ""temperatureC"": 10}"
+                : @"{""date"":""2019-09-01T00:00:00"",""temperatureC"":10,""summary"":""Partly cloudy""}",
+            PostgresType,
+            NpgsqlDbType,
+            isDefault: false);
+    }
+
+    [Test]
+    public async Task Poco_default_mapping()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        if (IsJsonb)
+            dataSourceBuilder.UseSystemTextJson(jsonbClrTypes: new[] { typeof(WeatherForecast) });
+        else
+            dataSourceBuilder.UseSystemTextJson(jsonClrTypes: new[] { typeof(WeatherForecast) });
+        await using var dataSource = dataSourceBuilder.Build();
+
+        await AssertTypeWrite(
+            dataSource,
+            new WeatherForecast
+            {
+                Date = new DateTime(2019, 9, 1),
+                Summary = "Partly cloudy",
+                TemperatureC = 10
+            },
+            IsJsonb
+                ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}"
+                : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}",
+            PostgresType,
+            NpgsqlDbType,
+            isNpgsqlDbTypeInferredFromClrType: false);
+    }
+
+    [OneTimeSetUp]
+    public void SetUp()
+    {
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.UseSystemTextJson();
+        JsonDataSource = dataSourceBuilder.Build();
+    }
+
+    [OneTimeTearDown]
+    public async Task Teardown()
+        => await JsonDataSource.DisposeAsync();
+
     public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
         : base(multiplexingMode)
     {
@@ -215,4 +300,5 @@ public class JsonTests : MultiplexingTestBase
     bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
     string PostgresType => IsJsonb ? "jsonb" : "json";
     readonly NpgsqlDbType NpgsqlDbType;
+    NpgsqlDataSource JsonDataSource = default!;
 }

@@ -10,19 +10,19 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Json.NET.Internal;
 
-class JsonbHandler : Npgsql.Internal.TypeHandlers.JsonHandler
+class JsonNetJsonHandler : Npgsql.Internal.TypeHandlers.SystemTextJsonHandler
 {
     readonly JsonSerializerSettings _settings;
 
-    public JsonbHandler(PostgresType postgresType, NpgsqlConnector connector, JsonSerializerSettings settings)
-        : base(postgresType, connector.TextEncoding, isJsonb: true) => _settings = settings;
+    public JsonNetJsonHandler(PostgresType postgresType, NpgsqlConnector connector, JsonSerializerSettings settings)
+        : base(postgresType, connector.TextEncoding, isJsonb: false) => _settings = settings;
 
     protected override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
     {
-        if (typeof(T) == typeof(string)             ||
-            typeof(T) == typeof(char[])             ||
+        if (typeof(T) == typeof(string) ||
+            typeof(T) == typeof(char[]) ||
             typeof(T) == typeof(ArraySegment<char>) ||
-            typeof(T) == typeof(char)               ||
+            typeof(T) == typeof(char) ||
             typeof(T) == typeof(byte[]))
         {
             return await base.ReadCustom<T>(buf, len, async, fieldDescription);
@@ -79,7 +79,7 @@ class JsonbHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
         }
 
-        return ValidateAndGetLengthCustom(value, ref lengthCache, parameter);
+        return ValidateAndGetLength(value, ref lengthCache, parameter);
     }
 
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -95,6 +95,6 @@ class JsonbHandler : Npgsql.Internal.TypeHandlers.JsonHandler
             return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        return WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken);
+        return WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
     }
 }

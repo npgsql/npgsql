@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 #if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
 using System.Text.Json.Nodes;
@@ -18,7 +16,7 @@ using System.Text.Json.Nodes;
 namespace Npgsql.Internal.TypeHandlers;
 
 /// <summary>
-/// A type handler for the PostgreSQL json and jsonb data type.
+/// A type handler for the PostgreSQL json and jsonb data type which uses System.Text.Json.
 /// </summary>
 /// <remarks>
 /// See https://www.postgresql.org/docs/current/datatype-json.html.
@@ -27,7 +25,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
 /// Use it at your own risk.
 /// </remarks>
-public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
+public class SystemTextJsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
 {
     readonly JsonSerializerOptions _serializerOptions;
     readonly TextHandler _textHandler;
@@ -42,7 +40,7 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
     /// <inheritdoc />
-    public JsonHandler(PostgresType postgresType, Encoding encoding, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
+    public SystemTextJsonHandler(PostgresType postgresType, Encoding encoding, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
         : base(postgresType)
     {
         _serializerOptions = serializerOptions ?? DefaultSerializerOptions;
@@ -99,7 +97,7 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     }
 
     /// <inheritdoc />
-    protected override async Task WriteWithLengthCustom<TAny>([DisallowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+    protected override async Task WriteWithLengthCustom<TAny>([DisallowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
     {
         var spaceRequired = _isJsonb ? 5 : 4;
 
@@ -212,7 +210,7 @@ public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     }
 
     /// <inheritdoc />
-    protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
+    protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
     {
         if (_isJsonb)
         {

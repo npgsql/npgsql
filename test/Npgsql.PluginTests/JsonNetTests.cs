@@ -177,7 +177,7 @@ public class JsonNetTests : TestBase
     public async Task Bug3464()
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.UseJsonNet(new[] { typeof(Bug3464Class) });
+        dataSourceBuilder.UseJsonNet(jsonbClrTypes: new[] { typeof(Bug3464Class) });
         await using var dataSource = dataSourceBuilder.Build();
 
         var expected = new Bug3464Class { SomeString = new string('5', 8174) };
