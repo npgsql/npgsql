@@ -7,19 +7,37 @@ using Npgsql.Properties;
 
 namespace Npgsql;
 
-sealed class NpgsqlDataSourceCommand : NpgsqlCommand
+/// <summary>
+/// Represents a command that is executed directly against a Npgsql data source
+/// </summary>
+public class NpgsqlDataSourceCommand : NpgsqlCommand
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NpgsqlDataSourceCommand"/> class
+    /// </summary>
+    /// <param name="connection">An instance of <see cref="NpgsqlConnection"/></param>
     internal NpgsqlDataSourceCommand(NpgsqlConnection connection)
         : base(cmdText: null, connection)
     {
     }
 
-    // For NpgsqlBatch only
+    /// <summary>
+    /// Initializes a new instance of the <see cref="NpgsqlDataSourceCommand"/> class
+    /// </summary>
+    /// <param name="batchCommandCapacity">The initial command capacity for batching commands.</param>
+    /// <param name="connection">An instance of <see cref="NpgsqlConnection"/></param>
     internal NpgsqlDataSourceCommand(int batchCommandCapacity, NpgsqlConnection connection)
         : base(batchCommandCapacity, connection)
     {
     }
 
+    /// <summary>
+    /// Executes the command as reader and returns a <see cref="NpgsqlDataReader"/> object
+    /// </summary>
+    /// <param name="behavior">An instance of <see cref="CommandBehavior"/></param>
+    /// <param name="async">True if the operation is async, false otherwise</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous operation</returns>
     internal override async ValueTask<NpgsqlDataReader> ExecuteReader(
         CommandBehavior behavior,
         bool async,
@@ -52,18 +70,30 @@ sealed class NpgsqlDataSourceCommand : NpgsqlCommand
 
     // The below are incompatible with commands executed directly against DbDataSource, since no DbConnection
     // is involved at the user API level and the command owns the DbConnection.
+    /// <summary>
+    /// Not Supported for NpgsqlDataSourceCommand
+    /// </summary>
     public override void Prepare()
         => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceCommand);
 
+    /// <summary>
+    /// Not Supported for NpgsqlDataSourceCommand
+    /// </summary>
     public override Task PrepareAsync(CancellationToken cancellationToken = default)
         => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceCommand);
 
+    /// <summary>
+    /// Not Supported for NpgsqlDataSourceCommand
+    /// </summary>
     protected override DbConnection? DbConnection
     {
         get => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceCommand);
         set => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceCommand);
     }
 
+    /// <summary>
+    /// Not Supported for NpgsqlDataSourceCommand
+    /// </summary>
     protected override DbTransaction? DbTransaction
     {
         get => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceCommand);
