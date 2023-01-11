@@ -2010,14 +2010,21 @@ public sealed partial class NpgsqlConnector
         Close(async: false).GetAwaiter().GetResult();
     }
 
-    SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+    readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
     internal async Task Close(bool async, CancellationToken cancellationToken = default)
     {
-        if (async)
-            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        else
-            _semaphore.Wait(cancellationToken);
+        try
+        {
+            if (async)
+                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            else
+                _semaphore.Wait(cancellationToken);
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
 
         try
         {
@@ -2051,7 +2058,15 @@ public sealed partial class NpgsqlConnector
         }
         finally
         {
-            _semaphore.Release();
+            try
+            {
+                _semaphore.Release();
+                _semaphore.Dispose();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore
+            }
         }
 
         FullCleanup();
