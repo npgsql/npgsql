@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -438,7 +439,6 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     static void ThrowNotSpaceLeft()
         => throw new InvalidOperationException("There is not enough space left in the buffer.");
 

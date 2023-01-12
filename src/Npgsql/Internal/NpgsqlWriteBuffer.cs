@@ -336,7 +336,6 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         WritePosition += Unsafe.SizeOf<T>();
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
     static void ThrowNotSpaceLeft()
         => throw new InvalidOperationException("There is not enough space left in the buffer.");
 

@@ -9,6 +9,14 @@ namespace Npgsql;
 static class ThrowHelper
 {
     [DoesNotReturn]
+    internal static void ThrowInvalidOperationException(string message)
+        => throw new InvalidOperationException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowObjectDisposedException(string objectName) =>
+        throw new ObjectDisposedException(objectName);
+
+    [DoesNotReturn]
     internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type)
     {
         var parameterName = parameter is null

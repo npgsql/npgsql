@@ -246,7 +246,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return null;
         }
 
-        var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false)!;
+        var msg = Connector.ParseServerMessage(readBuf, BackendMessageCode.DataRow, len, false)!;
         Debug.Assert(msg.Code == BackendMessageCode.DataRow);
         ProcessMessage(msg);
         return true;
@@ -520,6 +520,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 switch (msg.Code)
                 {
                 case BackendMessageCode.DataRow:
+                    Connector.State = ConnectorState.Fetching;
                     return true;
                 case BackendMessageCode.CommandComplete:
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
@@ -816,14 +817,16 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return;
 
         default:
-            throw new Exception("Received unexpected backend message of type " + msg.Code);
+            ThrowUnexpectedBackendMessage(msg.Code);
+            return;
         }
+
+        static void ThrowUnexpectedBackendMessage(BackendMessageCode code)
+            => throw new Exception("Received unexpected backend message of type " + code);
     }
 
     void ProcessDataRowMessage(DataRowMessage msg)
     {
-        Connector.State = ConnectorState.Fetching;
-
         // The connector's buffer can actually change between DataRows:
         // If a large DataRow exceeding the connector's current read buffer arrives, and we're
         // reading in non-sequential mode, a new oversize buffer is allocated. We thus have to
@@ -870,8 +873,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     #endregion
-
-    void Cancel() => Connector.PerformPostgresCancellation();
 
     /// <summary>
     /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
@@ -2275,7 +2276,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             Debug.Assert(_column > -1);
 
             if (posInColumn < PosInColumn)
-                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
+                ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
             if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
@@ -2337,7 +2338,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
-        if (_columnStream != null)
+        if (_columnStream is not null)
         {
             _columnStream.Dispose();
             _columnStream = null;
@@ -2351,24 +2352,25 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     #region Checks
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckResultSet()
     {
         switch (State)
         {
         case ReaderState.BeforeResult:
         case ReaderState.InResult:
-            break;
+            return;
         case ReaderState.Closed:
-            throw new InvalidOperationException("The reader is closed");
+            ThrowHelper.ThrowInvalidOperationException("The reader is closed");
+            return;
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlDataReader));
+            return;
         default:
-            throw new InvalidOperationException("No resultset is currently being traversed");
+            ThrowHelper.ThrowInvalidOperationException("No resultset is currently being traversed");
+            return;
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     FieldDescription CheckRowAndGetField(int column)
     {
         switch (State)
@@ -2376,15 +2378,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         case ReaderState.InResult:
             break;
         case ReaderState.Closed:
-            throw new InvalidOperationException("The reader is closed");
+            ThrowHelper.ThrowInvalidOperationException("The reader is closed");
+            break;
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlDataReader));
+            break;
         default:
-            throw new InvalidOperationException("No row is available");
+            ThrowHelper.ThrowInvalidOperationException("No row is available");
+            break;
         }
 
         if (column < 0 || column >= RowDescription!.Count)
-            throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription!.Count - 1}");
+            ThrowColumnOutOfRange(RowDescription!.Count);
 
         return RowDescription[column];
     }
@@ -2393,37 +2398,39 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Checks that we have a RowDescription, but not necessary an actual resultset
     /// (for operations which work in SchemaOnly mode.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     FieldDescription GetField(int column)
     {
-        if (RowDescription == null)
-            throw new InvalidOperationException("No resultset is currently being traversed");
+        if (RowDescription is null)
+            ThrowHelper.ThrowInvalidOperationException("No resultset is currently being traversed");
 
         if (column < 0 || column >= RowDescription.Count)
-            throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.Count - 1}");
+            ThrowColumnOutOfRange(RowDescription.Count);
 
         return RowDescription[column];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckColumnStart()
     {
         Debug.Assert(_isSequential);
         if (PosInColumn != 0)
-            throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
+            ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckClosedOrDisposed()
     {
         switch (State)
         {
         case ReaderState.Closed:
-            throw new InvalidOperationException("The reader is closed");
+            ThrowHelper.ThrowInvalidOperationException("The reader is closed");
+            return;
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlDataReader));
+            return;
         }
     }
+
+    static void ThrowColumnOutOfRange(int maxIndex) =>
+        throw new IndexOutOfRangeException($"Column must be between {0} and {maxIndex - 1}");
 
     #endregion
 
@@ -2436,7 +2443,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     internal void UnbindIfNecessary()
     {
         // We're closing the connection, but reader is not yet disposed
-        // We have to unbind the reader from the connector, otherwise there could be a concurency issues
+        // We have to unbind the reader from the connector, otherwise there could be a concurrency issues
         // See #3126 and #3290
         if (State != ReaderState.Disposed)
         {
