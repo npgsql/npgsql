@@ -44,7 +44,7 @@ static class Statics
         return default;
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining), DoesNotReturn]
+    [DoesNotReturn]
     static void ThrowIfMsgWrongType<T>(IBackendMessage msg, NpgsqlConnector connector)
         => throw connector.Break(
             new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug."));
@@ -135,8 +135,12 @@ static class PGUtil
         case BackendMessageCode.RowDescription:
             return;
         default:
-            throw new NpgsqlException("Unknown message code: " + code);
+            ThrowUnknownMessageCode(code);
+            return;
         }
+
+        static void ThrowUnknownMessageCode(BackendMessageCode code)
+            => throw new NpgsqlException("Unknown message code: " + code);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
