@@ -366,7 +366,11 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         return new(ConnectionStringBuilder, config);
     }
 
-    NpgsqlDataSourceConfiguration PrepareConfiguration()
+
+    /// <summary>
+    /// Return the config object
+    /// </summary>
+    public NpgsqlDataSourceConfiguration PrepareConfiguration()
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 

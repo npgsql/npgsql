@@ -333,7 +333,10 @@ public partial class NpgsqlConnector : IDisposable
         ProvidePasswordCallback = connector.ProvidePasswordCallback;
     }
 
-    NpgsqlConnector(NpgsqlDataSource dataSource)
+    /// <summary>
+    /// Constructor by a dataSource
+    /// </summary>
+    public NpgsqlConnector(NpgsqlDataSource dataSource)
     {
         Debug.Assert(dataSource.OwnsConnectors);
 
