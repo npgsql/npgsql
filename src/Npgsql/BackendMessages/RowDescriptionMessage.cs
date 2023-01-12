@@ -125,9 +125,11 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     /// Given a string name, returns the field's ordinal index in the row.
     /// </summary>
     internal int GetFieldIndex(string name)
-        => TryGetFieldIndex(name, out var ret)
-            ? ret
-            : throw new IndexOutOfRangeException("Field not found in row: " + name);
+    {
+        if (!TryGetFieldIndex(name, out var ret))
+            ThrowHelper.ThrowIndexOutOfRangeException($"Field not found in row: {name}");
+        return ret;
+    }
 
     /// <summary>
     /// Given a string name, returns the field's ordinal index in the row.
@@ -181,7 +183,14 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
             => _rowDescription = rowDescription;
 
         public FieldDescription Current
-            => _pos >= 0 ? _rowDescription[_pos] : throw new InvalidOperationException();
+        {
+            get
+            {
+                if (_pos < 0)
+                    ThrowHelper.ThrowInvalidOperationException();
+                return _rowDescription[_pos];
+            }
+        }
 
         object IEnumerator.Current => Current;
 

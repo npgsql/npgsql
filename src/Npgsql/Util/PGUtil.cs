@@ -140,7 +140,7 @@ static class PGUtil
         }
 
         static void ThrowUnknownMessageCode(BackendMessageCode code)
-            => throw new NpgsqlException("Unknown message code: " + code);
+            => ThrowHelper.ThrowNpgsqlException($"Unknown message code: {code}");
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -160,9 +160,7 @@ enum FormatCode : short
 static class EnumerableExtensions
 {
     internal static string Join(this IEnumerable<string> values, string separator)
-    {
-        return string.Join(separator, values);
-    }
+        => string.Join(separator, values);
 }
 
 static class ExceptionExtensions
@@ -178,7 +176,7 @@ public readonly struct NpgsqlTimeout
 {
     readonly DateTime _expiration;
 
-    internal static NpgsqlTimeout Infinite = new(TimeSpan.Zero);
+    internal static readonly NpgsqlTimeout Infinite = new(TimeSpan.Zero);
 
     internal NpgsqlTimeout(TimeSpan expiration)
         => _expiration = expiration > TimeSpan.Zero
@@ -190,7 +188,7 @@ public readonly struct NpgsqlTimeout
     internal void Check()
     {
         if (HasExpired)
-            throw new TimeoutException();
+            ThrowHelper.ThrowTimeoutException();
     }
 
     internal void CheckAndApply(NpgsqlConnector connector)

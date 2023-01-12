@@ -440,7 +440,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     }
 
     static void ThrowNotSpaceLeft()
-        => throw new InvalidOperationException("There is not enough space left in the buffer.");
+        => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
 
     public string ReadString(int byteLen)
     {

@@ -619,11 +619,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     async ValueTask<NpgsqlTransaction> BeginTransaction(IsolationLevel level, bool async, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
-            throw new NotSupportedException("Unsupported IsolationLevel: " + level);
+            ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {IsolationLevel.Chaos}");
 
         CheckReady();
         if (Connector is { InTransaction: true })
-            throw new InvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
+            ThrowHelper.ThrowInvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
         // There was a committed/rolled back transaction, but it was not disposed
         var connector = ConnectorBindingScope == ConnectorBindingScope.Transaction
@@ -1525,16 +1525,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         case ConnectionState.Open | ConnectionState.Executing:
         case ConnectionState.Open | ConnectionState.Fetching:
         case ConnectionState.Connecting:
-            break;
+            return;
         case ConnectionState.Closed:
         case ConnectionState.Broken:
-            throw new InvalidOperationException("Connection is not open");
+            ThrowHelper.ThrowInvalidOperationException("Connection is not open");
+            return;
         default:
-            throw new ArgumentOutOfRangeException();
+            ThrowHelper.ThrowArgumentOutOfRangeException();
+            return;
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckClosed()
     {
         CheckDisposed();
@@ -1543,22 +1544,23 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
         case ConnectionState.Closed:
         case ConnectionState.Broken:
-            break;
+            return;
         case ConnectionState.Open:
         case ConnectionState.Connecting:
         case ConnectionState.Open | ConnectionState.Executing:
         case ConnectionState.Open | ConnectionState.Fetching:
-            throw new InvalidOperationException("Connection already open");
+            ThrowHelper.ThrowInvalidOperationException("Connection already open");
+            return;
         default:
-            throw new ArgumentOutOfRangeException();
+            ThrowHelper.ThrowArgumentOutOfRangeException();
+            return;
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     void CheckDisposed()
     {
         if (_disposed)
-            throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlConnection));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1570,15 +1572,18 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
         case ConnectionState.Open:
         case ConnectionState.Connecting:  // We need to do type loading as part of connecting
-            break;
+            return;
         case ConnectionState.Closed:
         case ConnectionState.Broken:
-            throw new InvalidOperationException("Connection is not open");
+            ThrowHelper.ThrowInvalidOperationException("Connection is not open");
+            return;
         case ConnectionState.Open | ConnectionState.Executing:
         case ConnectionState.Open | ConnectionState.Fetching:
-            throw new InvalidOperationException("Connection is busy");
+            ThrowHelper.ThrowInvalidOperationException("Connection is busy");
+            return;
         default:
-            throw new ArgumentOutOfRangeException();
+            ThrowHelper.ThrowArgumentOutOfRangeException();
+            return;
         }
     }
 

@@ -26,7 +26,15 @@ sealed class TypeMapper
     NpgsqlDatabaseInfo? _databaseInfo;
 
     internal NpgsqlDatabaseInfo DatabaseInfo
-        => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
+    {
+        get
+        {
+            var databaseInfo = _databaseInfo;
+            if (databaseInfo is null)
+                ThrowHelper.ThrowInvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
+            return databaseInfo;
+        }
+    }
 
     volatile TypeHandlerResolver[] _resolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
@@ -497,7 +505,7 @@ sealed class TypeMapper
     internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfoByOid(uint oid)
     {
         if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
-            throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
+            ThrowHelper.ThrowInvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
         foreach (var resolver in _resolvers)
             if (resolver.GetMappingByDataTypeName(pgType.FullName) is { } mapping)

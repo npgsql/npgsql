@@ -159,7 +159,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == NumColumns)
             _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
         else if (_column != -1)
-            throw new InvalidOperationException("Already in the middle of a row");
+            ThrowHelper.ThrowInvalidOperationException("Already in the middle of a row");
 
         await _buf.Ensure(2, async);
         _leftToReadInDataMsg -= 2;
@@ -216,7 +216,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         CheckDisposed();
 
         if (_column == -1 || _column == NumColumns)
-            throw new InvalidOperationException("Not reading a row");
+            ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
         var type = typeof(T);
         var handler = _typeHandlerCache[_column];
@@ -267,7 +267,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         CheckDisposed();
         if (_column == -1 || _column == NumColumns)
-            throw new InvalidOperationException("Not reading a row");
+            ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
         var handler = _typeHandlerCache[_column];
         if (handler == null)
@@ -372,7 +372,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     void CheckDisposed()
     {
         if (_isDisposed)
-            throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlBinaryExporter), "The COPY operation has already ended.");
     }
 
     #endregion

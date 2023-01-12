@@ -208,9 +208,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
         set
         {
             if (value is null)
-                throw new ArgumentNullException(nameof(value));
+                ThrowHelper.ThrowArgumentNullException(nameof(value));
             if (value.Collection is not null)
-                throw new InvalidOperationException("The parameter already belongs to a collection");
+                ThrowHelper.ThrowInvalidOperationException("The parameter already belongs to a collection");
 
             var oldValue = InternalList[index];
 
@@ -233,9 +233,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     public NpgsqlParameter Add(NpgsqlParameter value)
     {
         if (value is null)
-            throw new ArgumentNullException(nameof(value));
+            ThrowHelper.ThrowArgumentNullException(nameof(value));
         if (value.Collection is not null)
-            throw new InvalidOperationException("The parameter already belongs to a collection");
+            ThrowHelper.ThrowInvalidOperationException("The parameter already belongs to a collection");
 
         InternalList.Add(value);
         value.Collection = this;
@@ -448,11 +448,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     public void Remove(string parameterName)
     {
         if (parameterName is null)
-            throw new ArgumentNullException(nameof(parameterName));
+            ThrowHelper.ThrowArgumentNullException(nameof(parameterName));
 
         var index = IndexOf(parameterName);
         if (index < 0)
-            throw new InvalidOperationException("No parameter with the specified name exists in the collection");
+            ThrowHelper.ThrowInvalidOperationException("No parameter with the specified name exists in the collection");
 
         RemoveAt(index);
     }
@@ -626,9 +626,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
     public bool Remove(NpgsqlParameter item)
     {
         if (item == null)
-            throw new ArgumentNullException(nameof(item));
+            ThrowHelper.ThrowArgumentNullException(nameof(item));
         if (item.Collection != this)
-            throw new InvalidOperationException("The item does not belong to this collection");
+            ThrowHelper.ThrowInvalidOperationException("The item does not belong to this collection");
 
         var index = IndexOf(item);
         if (index >= 0)

@@ -456,11 +456,10 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 #pragma warning restore CS1998
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private protected void CheckDisposed()
     {
         if (_isDisposed == 1)
-            throw new ObjectDisposedException(GetType().FullName);
+            ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
     }
 
     #endregion

@@ -2,33 +2,34 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using Npgsql.Internal.TypeHandling;
 
 namespace Npgsql;
 
 static class ThrowHelper
 {
     [DoesNotReturn]
+    internal static void ThrowArgumentOutOfRangeException()
+        => throw new ArgumentOutOfRangeException();
+
+    [DoesNotReturn]
+    internal static void ThrowInvalidOperationException()
+        => throw new InvalidOperationException();
+
+    [DoesNotReturn]
     internal static void ThrowInvalidOperationException(string message)
         => throw new InvalidOperationException(message);
 
     [DoesNotReturn]
-    internal static void ThrowObjectDisposedException(string objectName) =>
-        throw new ObjectDisposedException(objectName);
+    internal static void ThrowObjectDisposedException(string? objectName)
+        => throw new ObjectDisposedException(objectName);
 
     [DoesNotReturn]
-    internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type)
-    {
-        var parameterName = parameter is null
-            ? null
-            : parameter.TrimmedName == string.Empty
-                ? $"${parameter.Collection!.IndexOf(parameter) + 1}"
-                : parameter.TrimmedName;
+    internal static void ThrowObjectDisposedException(string objectName, string message)
+        => throw new ObjectDisposedException(objectName, message);
 
-        throw new InvalidCastException(parameterName is null
-            ? $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}'."
-            : $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}' for parameter '{parameterName}'.");
-    }
+    [DoesNotReturn]
+    internal static void ThrowObjectDisposedException(string objectName, Exception? innerException)
+        => throw new ObjectDisposedException(objectName, innerException);
 
     [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue(FieldDescription field) =>
@@ -45,4 +46,28 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowInvalidOperationException_BinaryImportParametersMismatch(int columnCount, int valueCount) =>
         throw new InvalidOperationException($"The binary import operation was started with {columnCount} column(s), but {valueCount} value(s) were provided.");
+
+    [DoesNotReturn]
+    internal static void ThrowNpgsqlException(string message)
+        => throw new NpgsqlException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowArgumentException(string message, string paramName)
+        => throw new ArgumentException(message, paramName);
+
+    [DoesNotReturn]
+    internal static void ThrowArgumentNullException(string paramName)
+        => throw new ArgumentNullException(paramName);
+
+    [DoesNotReturn]
+    internal static void ThrowIndexOutOfRangeException(string message)
+        => throw new IndexOutOfRangeException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowNotSupportedException(string message)
+        => throw new NotSupportedException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowTimeoutException()
+        => throw new TimeoutException();
 }

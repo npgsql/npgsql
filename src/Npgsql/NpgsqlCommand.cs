@@ -188,9 +188,10 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         {
             Debug.Assert(!IsWrappedByBatch);
 
-            _commandText = State == CommandState.Idle
-                ? value ?? string.Empty
-                : throw new InvalidOperationException("An open data reader exists for this command.");
+            if (State != CommandState.Idle)
+                ThrowHelper.ThrowInvalidOperationException("An open data reader exists for this command.");
+
+            _commandText = value ?? string.Empty;
 
             ResetPreparation();
             // TODO: Technically should do this also if the parameter list (or type) changes
@@ -961,11 +962,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static void ValidateParameterCount(NpgsqlBatchCommand batchCommand)
         {
             if (batchCommand.PositionalParameters.Count > ushort.MaxValue)
-                throw new NpgsqlException($"A statement cannot have more than {ushort.MaxValue} parameters");
+                ThrowHelper.ThrowNpgsqlException($"A statement cannot have more than {ushort.MaxValue} parameters");
         }
     }
 
@@ -1793,15 +1793,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         return clone;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     NpgsqlConnection? CheckAndGetConnection()
     {
         if (State == CommandState.Disposed)
-            throw new ObjectDisposedException(GetType().FullName);
+            ThrowHelper.ThrowObjectDisposedException(GetType().FullName);
         if (InternalConnection == null)
         {
             if (_connector is null)
-                throw new InvalidOperationException("Connection property has not been initialized.");
+                ThrowHelper.ThrowInvalidOperationException("Connection property has not been initialized.");
             return null;
         }
         switch (InternalConnection.FullState)
@@ -1812,7 +1811,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         case ConnectionState.Open | ConnectionState.Fetching:
             return InternalConnection;
         default:
-            throw new InvalidOperationException("Connection is not open");
+            ThrowHelper.ThrowInvalidOperationException("Connection is not open");
+            return null;
         }
     }
 

@@ -105,7 +105,7 @@ sealed class PreparedTextReader : TextReader
     void CheckDisposed()
     {
         if (_disposed || _stream.IsDisposed)
-            throw new ObjectDisposedException(null);
+            ThrowHelper.ThrowObjectDisposedException(nameof(PreparedTextReader));
     }
 
     protected override void Dispose(bool disposing)
