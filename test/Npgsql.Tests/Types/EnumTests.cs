@@ -144,6 +144,35 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         await AssertType(dataSource, Enum2.Alpha, "alpha", $"{schema2}.my_enum", npgsqlDbType: null);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4557")]
+    public async Task Same_name_in_different_schemas_with_searchpath()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var schema1 = await CreateTempSchema(adminConnection);
+        var schema2 = await CreateTempSchema(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {schema1}.my_enum AS ENUM ('one');
+CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
+
+        var csb1 = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SearchPath = schema1
+        };
+        var dataSourceBuilder1 = new NpgsqlDataSourceBuilder(csb1.ConnectionString);
+        dataSourceBuilder1.MapEnum<Enum1>("my_enum");
+        await using var dataSource1 = dataSourceBuilder1.Build();
+        await AssertType(dataSource1, Enum1.One, "one", "my_enum", npgsqlDbType: null);
+
+        var csb2 = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SearchPath = schema2
+        };
+        var dataSourceBuilder2 = new NpgsqlDataSourceBuilder(csb2.ConnectionString);
+        dataSourceBuilder2.MapEnum<Enum2>("my_enum");
+        await using var dataSource2 = dataSourceBuilder2.Build();
+        await AssertType(dataSource2, Enum2.Alpha, "alpha", "my_enum", npgsqlDbType: null);
+    }
+
     enum Enum1 { One }
     enum Enum2 { Alpha }
 

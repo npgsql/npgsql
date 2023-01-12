@@ -64,7 +64,8 @@ public sealed class TypeMapper
     internal void Initialize(
         NpgsqlDatabaseInfo databaseInfo,
         List<TypeHandlerResolverFactory> resolverFactories,
-        Dictionary<string, IUserTypeMapping> userTypeMappings)
+        Dictionary<string, IUserTypeMapping> userTypeMappings,
+        string? searchPath)
     {
         _databaseInfo = databaseInfo;
 
@@ -75,7 +76,7 @@ public sealed class TypeMapper
 
         foreach (var userTypeMapping in userTypeMappings.Values)
         {
-            if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType))
+            if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType, searchPath))
             {
                 _handlersByOID[pgType.OID] =
                     _handlersByDataTypeName[pgType.FullName] =

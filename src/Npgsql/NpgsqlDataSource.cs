@@ -238,7 +238,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             DatabaseInfo = databaseInfo;
             connector.DatabaseInfo = databaseInfo;
-            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
+            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings, Settings.SearchPath);
             TypeMapper = typeMapper;
 
             _isBootstrapped = true;

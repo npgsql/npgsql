@@ -149,6 +149,46 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             isDefaultForWriting: false);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4365")]
+    public async Task Same_name_in_different_schemas_with_searchpath()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var firstSchemaName = await CreateTempSchema(adminConnection);
+        var secondSchemaName = await CreateTempSchema(adminConnection);
+
+        await adminConnection.ExecuteNonQueryAsync($@"
+CREATE TYPE {firstSchemaName}.containee AS (x int, some_text text);
+CREATE TYPE {secondSchemaName}.containee AS (x int, some_text text);");
+
+        var csb1 = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SearchPath = firstSchemaName
+        };
+        var dataSourceBuilder1 = new NpgsqlDataSourceBuilder(csb1.ConnectionString);
+        dataSourceBuilder1.MapComposite<SomeComposite>("containee");
+        await using var dataSource1 = dataSourceBuilder1.Build();
+        await AssertType(
+            dataSource1,
+            new SomeComposite { SomeText = "foo", X = 9 },
+            @"(9,foo)",
+            "containee",
+            npgsqlDbType: null);
+
+        var csb2 = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            SearchPath = secondSchemaName
+        };
+        var dataSourceBuilder2 = new NpgsqlDataSourceBuilder(csb2.ConnectionString);
+        dataSourceBuilder2.MapComposite<SomeComposite>("containee");
+        await using var dataSource2 = dataSourceBuilder2.Build();
+        await AssertType(
+            dataSource2,
+            new SomeComposite { SomeText = "foo", X = 9 },
+            @"(9,foo)",
+            "containee",
+            npgsqlDbType: null);
+    }
+
     [Test]
     public async Task Struct()
     {

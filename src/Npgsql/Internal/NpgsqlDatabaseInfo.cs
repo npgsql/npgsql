@@ -184,7 +184,7 @@ public abstract class NpgsqlDatabaseInfo
             ? pgType
             : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the database");
 
-    public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
+    public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType, string? searchPath = null)
     {
         // Full type name with namespace
         if (pgName.IndexOf('.') > -1)
@@ -200,6 +200,16 @@ public abstract class NpgsqlDatabaseInfo
 
             // If the name was found but the value is null, that means that there are
             // two db types with the same name (different schemas).
+            // Try to fall back to search_path + pgName.
+            if (searchPath?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) is { Length: > 0 } searchPaths)
+            {
+                foreach (var searchPathValue in searchPaths)
+                {
+                    if (ByFullName.TryGetValue($"{searchPathValue.Trim()}.{pgName}", out pgType))
+                        return true;
+                }
+            }
+
             // Try to fall back to pg_catalog, otherwise fail.
             if (ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
                 return true;

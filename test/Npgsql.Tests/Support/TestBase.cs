@@ -157,8 +157,13 @@ public abstract class TestBase
 
         var dataTypeName = reader.GetDataTypeName(0);
         var dotIndex = dataTypeName.IndexOf('.');
-        if (dotIndex > -1 && dataTypeName.Substring(0, dotIndex) is "pg_catalog" or "public")
-            dataTypeName = dataTypeName.Substring(dotIndex + 1);
+        if (dotIndex > -1)
+        {
+            var schemaName = dataTypeName.Substring(0, dotIndex);
+            if (schemaName == "pg_catalog" || schemaName == "public" ||
+                connection.Settings.SearchPath?.Split(',', StringSplitOptions.RemoveEmptyEntries).Contains(schemaName) == true)
+                dataTypeName = dataTypeName.Substring(dotIndex + 1);
+        }
 
         Assert.That(dataTypeName, Is.EqualTo(pgTypeName),
             $"Got wrong result from GetDataTypeName when reading '{truncatedSqlLiteral}'");
