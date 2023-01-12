@@ -1715,31 +1715,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
         }
 
-        var position = Buffer.ReadPosition;
-        try
-        {
-            return NullableHandler<T>.Exists
-                ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
-                : typeof(T) == typeof(object)
-                    ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
-                    : field.Handler.Read<T>(Buffer, ColumnLen, field);
-        }
-        catch
-        {
-            if (Connector.State != ConnectorState.Broken)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-            }
-            throw;
-        }
-        finally
-        {
-            // Important: position must still be updated
-            PosInColumn += ColumnLen;
-        }
+        // We don't handle exceptions or update PosInColumn
+        // As with non-sequential reads we always just move to the start/end of the column
+        return NullableHandler<T>.Exists
+            ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
+            : typeof(T) == typeof(object)
+                ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
+                : field.Handler.Read<T>(Buffer, ColumnLen, field);
     }
 
     async ValueTask<T> GetFieldValueSequential<T>(int column, bool async, CancellationToken cancellationToken = default)
