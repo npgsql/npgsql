@@ -520,6 +520,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 switch (msg.Code)
                 {
                 case BackendMessageCode.DataRow:
+                    Connector.State = ConnectorState.Fetching;
                     return true;
                 case BackendMessageCode.CommandComplete:
                     if (statement.AppendErrorBarrier ?? Command.EnableErrorBarriers)
@@ -826,9 +827,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     void ProcessDataRowMessage(DataRowMessage msg)
     {
-        // TODO: move to TryFastRead with ReaderState.BeforeResult check?
-        Connector.State = ConnectorState.Fetching;
-
         // The connector's buffer can actually change between DataRows:
         // If a large DataRow exceeding the connector's current read buffer arrives, and we're
         // reading in non-sequential mode, a new oversize buffer is allocated. We thus have to
