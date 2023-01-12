@@ -31,7 +31,7 @@ namespace Npgsql;
 /// Reads a forward-only stream of rows from a data source.
 /// </summary>
 #pragma warning disable CA1010
-public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
+public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #pragma warning restore CA1010
 {
     internal NpgsqlCommand Command { get; private set; } = default!;
@@ -144,7 +144,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     readonly ILogger _commandLogger;
 
-    internal NpgsqlDataReader(NpgsqlConnector connector)
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    public NpgsqlDataReader(NpgsqlConnector connector)
     {
         Connector = connector;
         _commandLogger = connector.CommandLogger;

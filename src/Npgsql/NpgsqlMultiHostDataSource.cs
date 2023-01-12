@@ -18,7 +18,7 @@ namespace Npgsql;
 /// <remarks>
 /// See <see href="https://www.npgsql.org/doc/failover-and-load-balancing.html" />.
 /// </remarks>
-public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
+public class NpgsqlMultiHostDataSource : NpgsqlDataSource
 {
     internal override bool OwnsConnectors => false;
 
@@ -30,7 +30,10 @@ public sealed class NpgsqlMultiHostDataSource : NpgsqlDataSource
 
     volatile int _roundRobinIndex = -1;
 
-    internal NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
+    /// <summary>
+    /// A public constructor for the class
+    /// </summary>
+    public NpgsqlMultiHostDataSource(NpgsqlConnectionStringBuilder settings, NpgsqlDataSourceConfiguration dataSourceConfig)
         : base(settings, dataSourceConfig)
     {
         var hosts = settings.Host!.Split(',');

@@ -38,7 +38,7 @@ public class NpgsqlDataSourceCommand : NpgsqlCommand
     /// <param name="async">True if the operation is async, false otherwise</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation</returns>
-    internal override async ValueTask<NpgsqlDataReader> ExecuteReader(
+    public override async ValueTask<NpgsqlDataReader> ExecuteReader(
         CommandBehavior behavior,
         bool async,
         CancellationToken cancellationToken)

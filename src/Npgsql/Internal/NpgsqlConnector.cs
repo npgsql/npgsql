@@ -31,7 +31,7 @@ namespace Npgsql.Internal;
 /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
 /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
 /// </summary>
-public sealed partial class NpgsqlConnector : IDisposable
+public partial class NpgsqlConnector : IDisposable
 {
     #region Fields and Properties
 
@@ -358,7 +358,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         _isKeepAliveEnabled = Settings.KeepAlive > 0;
         if (_isKeepAliveEnabled)
             _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
-        
+
         DataReader = new NpgsqlDataReader(this);
 
         // TODO: Not just for automatic preparation anymore...
@@ -637,7 +637,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 reader.NextResult();
                 reader.Read();
             }
-                
+
             _isTransactionReadOnly = reader.GetString(0) != "off";
 
             var databaseState = UpdateDatabaseState();
@@ -2004,7 +2004,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             return reason;
         }
     }
-        
+
     void FullCleanup()
     {
         Debug.Assert(Monitor.IsEntered(this));

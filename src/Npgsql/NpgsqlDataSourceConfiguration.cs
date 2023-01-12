@@ -9,7 +9,10 @@ using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql;
 
-sealed record NpgsqlDataSourceConfiguration(
+/// <summary>
+/// Represents the configuration options for a Npgsql data source.
+/// </summary>
+public sealed record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
