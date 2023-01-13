@@ -482,25 +482,40 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public ConnectionState FullState
     {
         // Note: we allow accessing the state after dispose, #164
-        get => _fullState switch
+        get
         {
-            ConnectionState.Open => Connector == null
-                ? ConnectionState.Open // When unbound, we only know we're open
-                : Connector.State switch
-                {
-                    ConnectorState.Ready       => ConnectionState.Open,
-                    ConnectorState.Executing   => ConnectionState.Open | ConnectionState.Executing,
-                    ConnectorState.Fetching    => ConnectionState.Open | ConnectionState.Fetching,
-                    ConnectorState.Copy        => ConnectionState.Open | ConnectionState.Fetching,
-                    ConnectorState.Replication => ConnectionState.Open | ConnectionState.Fetching,
-                    ConnectorState.Waiting     => ConnectionState.Open | ConnectionState.Fetching,
-                    ConnectorState.Connecting  => ConnectionState.Connecting,
-                    ConnectorState.Broken      => ConnectionState.Broken,
-                    ConnectorState.Closed      => throw new InvalidOperationException("Internal Npgsql bug: connection is in state Open but connector is in state Closed"),
-                    _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.")
-                },
-            _ => _fullState
-        };
+            if (_fullState != ConnectionState.Open)
+                return _fullState;
+
+            if (Connector is null)
+                return ConnectionState.Open; // When unbound, we only know we're open
+
+            switch (Connector.State)
+            {
+            case ConnectorState.Ready:
+                return ConnectionState.Open;
+            case ConnectorState.Executing:
+                return ConnectionState.Open | ConnectionState.Executing;
+            case ConnectorState.Fetching:
+                return ConnectionState.Open | ConnectionState.Fetching;
+            case ConnectorState.Copy:
+                return ConnectionState.Open | ConnectionState.Fetching;
+            case ConnectorState.Replication:
+                return ConnectionState.Open | ConnectionState.Fetching;
+            case ConnectorState.Waiting:
+                return ConnectionState.Open | ConnectionState.Fetching;
+            case ConnectorState.Connecting:
+                return ConnectionState.Connecting;
+            case ConnectorState.Broken:
+                return ConnectionState.Broken;
+            case ConnectorState.Closed:
+                ThrowHelper.ThrowInvalidOperationException("Internal Npgsql bug: connection is in state Open but connector is in state Closed");
+                return ConnectionState.Broken;
+            default:
+                ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.");
+                return ConnectionState.Broken;
+            }
+        }
         internal set
         {
             var originalOpen = _fullState.HasFlag(ConnectionState.Open);
@@ -1563,7 +1578,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlConnection));
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void CheckReady()
     {
         CheckDisposed();
