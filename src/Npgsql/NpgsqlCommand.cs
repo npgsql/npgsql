@@ -828,7 +828,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             : (batchCommand.CommandText, batchCommand.CommandType, batchCommand.Parameters);
 
         if (string.IsNullOrEmpty(commandText))
-            throw new InvalidOperationException("CommandText property has not been initialized");
+            ThrowHelper.ThrowInvalidOperationException("CommandText property has not been initialized");
 
         switch (commandType)
         {
@@ -863,7 +863,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             case PlaceholderType.Named:
                 if (!EnableSqlRewriting)
-                    throw new NotSupportedException($"Named parameters are not supported when Npgsql.{nameof(EnableSqlRewriting)} is disabled");
+                    ThrowHelper.ThrowNotSupportedException($"Named parameters are not supported when Npgsql.{nameof(EnableSqlRewriting)} is disabled");
 
                 // The parser is cached on NpgsqlConnector - unless we're in multiplexing mode.
                 parser ??= new SqlQueryParser();
@@ -872,7 +872,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     parser.ParseRawQuery(this, standardConformingStrings);
                     if (InternalBatchCommands.Count > 1 && _parameters.HasOutputParameters)
-                        throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
+                        ThrowHelper.ThrowNotSupportedException("Commands with multiple queries cannot have out parameters");
                     for (var i = 0; i < InternalBatchCommands.Count; i++)
                         ValidateParameterCount(InternalBatchCommands[i]);
                 }
@@ -880,18 +880,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     parser.ParseRawQuery(batchCommand, standardConformingStrings);
                     if (batchCommand.Parameters.HasOutputParameters)
-                        throw new NotSupportedException("Batches cannot cannot have out parameters");
+                        ThrowHelper.ThrowNotSupportedException("Batches cannot cannot have out parameters");
                     ValidateParameterCount(batchCommand);
                 }
 
                 break;
 
             case PlaceholderType.Mixed:
-                throw new NotSupportedException("Mixing named and positional parameters isn't supported");
+                ThrowHelper.ThrowNotSupportedException("Mixing named and positional parameters isn't supported");
+                break;
 
             default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {Parameters.PlaceholderType}");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {Parameters.PlaceholderType}");
+                break;
             }
 
             break;
@@ -928,7 +929,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (parameter.IsPositional)
                 {
                     if (seenNamedParam)
-                        throw new ArgumentException(NpgsqlStrings.PositionalParameterAfterNamed);
+                        ThrowHelper.ThrowArgumentException(NpgsqlStrings.PositionalParameterAfterNamed);
                 }
                 else
                 {
@@ -959,7 +960,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             break;
 
         default:
-            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
+            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
+            break;
         }
 
         static void ValidateParameterCount(NpgsqlBatchCommand batchCommand)
@@ -1315,7 +1317,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             Debug.Assert(conn is null);
             if (behavior.HasFlag(CommandBehavior.CloseConnection))
-                throw new ArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with {nameof(NpgsqlConnector)}", nameof(behavior));
+                ThrowHelper.ThrowArgumentException($"{nameof(CommandBehavior.CloseConnection)} is not supported with {nameof(NpgsqlConnector)}", nameof(behavior));
             connector = _connector;
         }
         else
@@ -1484,8 +1486,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     // The waiting on the ExecutionCompletion ManualResetValueTaskSource is necessarily
                     // asynchronous, so allowing sync would mean sync-over-async.
-                    throw new NotSupportedException(
-                        "Synchronous command execution is not supported when multiplexing is on");
+                    ThrowHelper.ThrowNotSupportedException("Synchronous command execution is not supported when multiplexing is on");
                 }
 
                 if (IsWrappedByBatch)

@@ -12,6 +12,10 @@ static class ThrowHelper
         => throw new ArgumentOutOfRangeException();
 
     [DoesNotReturn]
+    internal static void ThrowArgumentOutOfRangeException(string paramName, string message)
+        => throw new ArgumentOutOfRangeException(paramName, message);
+
+    [DoesNotReturn]
     internal static void ThrowInvalidOperationException()
         => throw new InvalidOperationException();
 
@@ -50,6 +54,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowNpgsqlException(string message)
         => throw new NpgsqlException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowArgumentException(string message)
+        => throw new ArgumentException(message);
 
     [DoesNotReturn]
     internal static void ThrowArgumentException(string message, string paramName)
