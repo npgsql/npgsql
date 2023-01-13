@@ -1469,7 +1469,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             var authType = (AuthenticationRequestType)buf.ReadInt32();
             return authType switch
             {
-                AuthenticationRequestType.AuthenticationOk                => (AuthenticationRequestMessage)AuthenticationOkMessage.Instance,
+                AuthenticationRequestType.AuthenticationOk                => AuthenticationOkMessage.Instance,
                 AuthenticationRequestType.AuthenticationCleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
                 AuthenticationRequestType.AuthenticationMD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
                 AuthenticationRequestType.AuthenticationGSS               => AuthenticationGSSMessage.Instance,
@@ -1540,14 +1540,23 @@ public sealed partial class NpgsqlConnector : IDisposable
     }
 
     internal bool InTransaction
-        => TransactionStatus switch
+    {
+        get
         {
-            TransactionStatus.Idle                     => false,
-            TransactionStatus.Pending                  => true,
-            TransactionStatus.InTransactionBlock       => true,
-            TransactionStatus.InFailedTransactionBlock => true,
-            _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.")
-        };
+            switch (TransactionStatus)
+            {
+            case TransactionStatus.Idle:
+                return false;
+            case TransactionStatus.Pending:
+            case TransactionStatus.InTransactionBlock:
+            case TransactionStatus.InFailedTransactionBlock:
+                return true;
+            default:
+                ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(TransactionStatus)}. Please file a bug.", TransactionStatus);
+                return false;
+            }
+        }
+    }
 
     /// <summary>
     /// Handles a new transaction indicator received on a ReadyForQuery message
@@ -1562,7 +1571,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         switch (newStatus)
         {
         case TransactionStatus.Idle:
-            break;
+            return;
         case TransactionStatus.InTransactionBlock:
         case TransactionStatus.InFailedTransactionBlock:
             // In multiplexing mode, we can't support transaction in SQL: the connector must be removed from the
@@ -1571,14 +1580,15 @@ public sealed partial class NpgsqlConnector : IDisposable
             if (Connection is null)
             {
                 Debug.Assert(Settings.Multiplexing);
-                throw new NotSupportedException("In multiplexing mode, transactions must be started with BeginTransaction");
+                ThrowHelper.ThrowNotSupportedException("In multiplexing mode, transactions must be started with BeginTransaction");
             }
-            break;
+            return;
         case TransactionStatus.Pending:
-            throw new Exception($"Internal Npgsql bug: invalid TransactionStatus {nameof(TransactionStatus.Pending)} received, should be frontend-only");
+            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: invalid TransactionStatus {nameof(TransactionStatus.Pending)} received, should be frontend-only");
+            return;
         default:
-            throw new InvalidOperationException(
-                $"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(TransactionStatus)}. Please file a bug.", newStatus);
+            return;
         }
     }
 
@@ -2172,7 +2182,8 @@ public sealed partial class NpgsqlConnector : IDisposable
                 endBindingScope = true;
                 break;
             default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                return;
             }
 
             if (_sendResetOnClose)
@@ -2306,7 +2317,8 @@ public sealed partial class NpgsqlConnector : IDisposable
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:
-                throw new InvalidOperationException("Connection is not open");
+                ThrowHelper.ThrowInvalidOperationException("Connection is not open");
+                break;
             case ConnectorState.Executing:
             case ConnectorState.Fetching:
             case ConnectorState.Waiting:
@@ -2318,7 +2330,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                     ? new NpgsqlOperationInProgressException(State)
                     : new NpgsqlOperationInProgressException(currentCommand);
             default:
-                throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+                throw new ArgumentOutOfRangeException(nameof(State), State, $"Invalid connector state: {State}");
             }
 
             Debug.Assert(IsReady);

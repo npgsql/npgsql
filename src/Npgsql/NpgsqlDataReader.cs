@@ -1483,7 +1483,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     async ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
     {
         if (_columnStream is { IsDisposed: false })
-            throw new InvalidOperationException("A stream is already open for this reader");
+            ThrowHelper.ThrowInvalidOperationException("A stream is already open for this reader");
 
         using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
@@ -1950,10 +1950,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override int GetOrdinal(string name)
     {
         if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("name cannot be empty", nameof(name));
+            ThrowHelper.ThrowArgumentException($"{nameof(name)} cannot be empty", nameof(name));
         CheckClosedOrDisposed();
         if (RowDescription is null)
-            throw new InvalidOperationException("No resultset is currently being traversed");
+            ThrowHelper.ThrowInvalidOperationException("No resultset is currently being traversed");
         return RowDescription.GetFieldIndex(name);
     }
 

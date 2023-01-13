@@ -447,13 +447,13 @@ public sealed class NpgsqlTransaction : DbTransaction
     {
         CheckDisposed();
         if (IsCompleted)
-            throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
+            ThrowHelper.ThrowInvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
     }
 
     void CheckDisposed()
     {
         if (IsDisposed)
-            throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name, _disposeReason);
+            ThrowHelper.ThrowObjectDisposedException(nameof(NpgsqlTransaction), _disposeReason);
     }
 
     static bool RequiresQuoting(string identifier)

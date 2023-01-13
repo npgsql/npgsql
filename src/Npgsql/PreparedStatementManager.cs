@@ -198,8 +198,8 @@ sealed class PreparedStatementManager
                 continue;
 
             default:
-                throw new Exception(
-                    $"Invalid {nameof(PreparedState)} state {slot.State} encountered when scanning prepared statement slots");
+                ThrowHelper.ThrowInvalidOperationException($"Invalid {nameof(PreparedState)} state {slot.State} encountered when scanning prepared statement slots");
+                return null;
             }
         }
 

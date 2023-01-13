@@ -113,7 +113,7 @@ public sealed partial class NpgsqlWriteBuffer
         void CheckDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(null);
+                ThrowHelper.ThrowObjectDisposedException(nameof(ParameterStream));
         }
 
         protected override void Dispose(bool disposing)

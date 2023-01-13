@@ -519,7 +519,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         else
         {
             var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
-            throw new InvalidOperationException($"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
+            ThrowHelper.ThrowInvalidOperationException($"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
         }
     }
 

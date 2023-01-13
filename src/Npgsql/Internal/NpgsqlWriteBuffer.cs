@@ -337,7 +337,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     }
 
     static void ThrowNotSpaceLeft()
-        => throw new InvalidOperationException("There is not enough space left in the buffer.");
+        => ThrowHelper.ThrowInvalidOperationException("There is not enough space left in the buffer.");
 
     public Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken = default)
         => WriteString(s, s.Length, byteLen, async, cancellationToken);
