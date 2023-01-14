@@ -3,8 +3,8 @@
     <PropertyGroup>
         <Authors>Shay Rojansky</Authors>
         <!-- DbDataSource was introduced to .NET in net7.0. Before that Npgsql has its own built-in copy. -->
-        <TargetFrameworks>netstandard2.0;net7.0</TargetFrameworks>
-        <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net7.0</TargetFrameworks>
+        <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">netstandard2.0;net6.0</TargetFrameworks>
+        <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
         <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql;di;dependency injection</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>

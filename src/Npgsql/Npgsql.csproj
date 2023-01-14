@@ -5,10 +5,8 @@
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
     <PackageTags>npgsql;postgresql;postgres;ado;ado.net;database;sql</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- At this point we target netcoreapp3.1 to avoid taking a dependency on System.Text.Json, which is
-         necessary for older TFMs. -->
-    <TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.1;net5.0;net6.0;net7.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(DeveloperBuild)' == 'True'">net7.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +17,7 @@
     <ProjectReference Include="../Npgsql.SourceGenerators/Npgsql.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net7.0' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
   </ItemGroup>
 
@@ -31,13 +29,10 @@
     <PackageReference Include="System.Text.Json" />
     <PackageReference Include="System.Threading.Channels" />
     <PackageReference Include="System.Collections.Immutable" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' ">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' OR '$(TargetFramework)' == 'net5.0' OR '$(TargetFramework)' == 'net6.0' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net6.0' ">
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
   </ItemGroup>
 

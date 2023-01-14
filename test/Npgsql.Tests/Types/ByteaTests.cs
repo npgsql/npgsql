@@ -34,7 +34,6 @@ public class ByteaTests : MultiplexingTestBase
         await Bytea(array, sqlLiteral);
     }
 
-#if !NETSTANDARD2_0
     [Test]
     public Task Write_as_Memory()
         => AssertTypeWrite(
@@ -52,7 +51,6 @@ public class ByteaTests : MultiplexingTestBase
     [Test]
     public Task Read_as_ReadOnlyMemory_not_supported()
         => AssertTypeUnsupportedRead<ReadOnlyMemory<byte>, NotSupportedException>("\\x010203", "bytea");
-#endif
 
     [Test]
     public Task Write_as_ArraySegment()
