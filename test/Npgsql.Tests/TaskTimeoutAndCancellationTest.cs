@@ -55,10 +55,6 @@ public class TaskTimeoutAndCancellationTest : TestBase
     [NonParallelizable] // To make sure unobserved tasks from other tests do not leak
     public Task DelayedFaultedTaskCancellation(string testCase) => RunDelayedFaultedTaskTestAsync(async getUnobservedTaskException =>
     {
-        // Run the garbage collector to collect unobserved Tasks.
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-
         var cancel = true;
         var timeout = true;
         switch (testCase)
@@ -93,6 +89,10 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     static async Task RunDelayedFaultedTaskTestAsync(Func<Func<Exception?>, Task> test)
     {
+        // Run the garbage collector to collect unobserved Tasks from other tests.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
         Exception? unobservedTaskException = null;
 
         // Subscribe to UnobservedTaskException event to store the Exception, if any.
