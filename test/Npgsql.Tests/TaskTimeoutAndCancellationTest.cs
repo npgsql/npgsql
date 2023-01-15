@@ -6,6 +6,7 @@ using Npgsql.Util;
 
 namespace Npgsql.Tests;
 
+[NonParallelizable] // To make sure unobserved tasks from other tests do not leak
 public class TaskTimeoutAndCancellationTest : TestBase
 {
     const int TestResultValue = 777;
@@ -52,7 +53,6 @@ public class TaskTimeoutAndCancellationTest : TestBase
     [TestCase("CancelAndTimeout")]
     [TestCase("CancelOnly")]
     [TestCase("TimeoutOnly")]
-    [NonParallelizable] // To make sure unobserved tasks from other tests do not leak
     public Task DelayedFaultedTaskCancellation(string testCase) => RunDelayedFaultedTaskTestAsync(async getUnobservedTaskException =>
     {
         var cancel = true;
