@@ -267,8 +267,7 @@ public class MultipleHostsTests : TestBase
         }
         else
         {
-            await using var connection = new NpgsqlConnection(connectionString);
-            Assert.That(async () => await connection.OpenAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(() => new NpgsqlConnection(connectionString), Throws.Exception.TypeOf<NotSupportedException>());
         }
     }
 

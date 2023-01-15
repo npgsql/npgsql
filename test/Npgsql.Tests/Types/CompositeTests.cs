@@ -255,6 +255,8 @@ CREATE TYPE {compositeType} AS (street TEXT, postal_code {domainType})");
         else
         {
             Assert.ThrowsAsync<ArgumentException>(DoAssertion);
+            // Start a transaction specifically for multiplexing (to bind a connector to the connection)
+            await using var tx = await connection.BeginTransactionAsync();
             Assert.Null(connection.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains(table)));
             Assert.Null(connection.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains(table)));
 

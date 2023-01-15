@@ -961,6 +961,10 @@ LANGUAGE plpgsql VOLATILE";
     [Test]
     public async Task Nullable_scalar()
     {
+        // We read the same column multiple times
+        if (IsSequential)
+            return;
+
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
         var p1 = new NpgsqlParameter { ParameterName = "p1", Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Smallint };

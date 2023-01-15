@@ -40,7 +40,8 @@ class PoolManagerTests : TestBase
     [Test]
     public void ClearAllPools()
     {
-        using (OpenConnection()) {}
+        using (var conn = new NpgsqlConnection(ConnectionString))
+            conn.Open();
         // Now have one connection in the pool
         Assert.That(PoolManager.Pools.TryGetValue(ConnectionString, out var pool), Is.True);
         Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
@@ -54,9 +55,11 @@ class PoolManagerTests : TestBase
     public void ClearAllPools_with_busy()
     {
         NpgsqlDataSource? pool;
-        using (OpenConnection())
+        using (var conn = new NpgsqlConnection(ConnectionString))
         {
-            using (OpenConnection()) { }
+            conn.Open();
+            using (var anotherConn = new NpgsqlConnection(ConnectionString))
+                anotherConn.Open();
             // We have one idle, one busy
 
             NpgsqlConnection.ClearAllPools();

@@ -372,7 +372,7 @@ public abstract class TestBase
             {
                 if (!DataSources.TryGetValue(connectionString, out dataSource))
                 {
-                    DataSources[connectionString] = dataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
+                    DataSources[connectionString] = dataSource = NpgsqlDataSource.Create(connectionString);
                 }
             }
         }

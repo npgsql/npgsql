@@ -23,15 +23,15 @@ class PoolTests : TestBase
     }
 
     [Test]
-    public async Task MinPoolSize_bigger_than_MaxPoolSize_throws()
-    {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+    public void MinPoolSize_bigger_than_MaxPoolSize_throws()
+        => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            MinPoolSize = 2,
-            MaxPoolSize = 1
+            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MinPoolSize = 2,
+                MaxPoolSize = 1
+            });
         });
-        Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync());
-    }
 
     [Test]
     public async Task Reuse_connector_before_creating_new()
@@ -79,7 +79,7 @@ class PoolTests : TestBase
             Timeout = 2
         });
 
-        await using (var conn1 = await dataSource.OpenConnectionAsync())
+        await using (var conn1 = dataSource.CreateConnection())
         {
             await conn1.OpenAsync();
             // Pool is now exhausted
@@ -147,27 +147,25 @@ class PoolTests : TestBase
     }
 
     [Test]
-    public async Task ConnectionPruningInterval_zero_throws()
-    {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+    public void ConnectionPruningInterval_zero_throws()
+        => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            ConnectionPruningInterval = 0
+            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConnectionPruningInterval = 0
+            });
         });
-
-        Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync());
-    }
 
     [Test]
-    public async Task ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
-    {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+    public void ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
+        => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            ConnectionIdleLifetime = 1,
-            ConnectionPruningInterval = 2
+            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConnectionIdleLifetime = 1,
+                ConnectionPruningInterval = 2
+            });
         });
-
-        Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync());
-    }
 
     [Theory, Explicit("Slow, and flaky under pressure, based on timing")]
     [TestCase(0, 2, 1, 2)] // min pool size 0, sample twice
@@ -273,7 +271,7 @@ class PoolTests : TestBase
     {
         var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(ClearPool)
+            ApplicationName = nameof(ClearPool) + iterations
         }.ToString();
 
         NpgsqlConnection? conn = null;
@@ -281,7 +279,10 @@ class PoolTests : TestBase
         {
             for (var i = 0; i < iterations; i++)
             {
-                using (conn = new NpgsqlConnection(connString)) {}
+                using (conn = new NpgsqlConnection(connString))
+                {
+                    conn.Open();
+                }
 
                 // Now have one connection in the pool
                 Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));

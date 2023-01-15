@@ -26,7 +26,7 @@ public class ConnectionTests : MultiplexingTestBase
     [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
     public async Task Basic_lifecycle()
     {
-        await using var conn = await OpenConnectionAsync();
+        await using var conn = CreateConnection();
 
         var eventOpen = false;
         var eventClosed = false;
@@ -1440,6 +1440,9 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_sync()
     {
+        if (IsMultiplexing) // Sync I/O
+            return;
+
         await using var adminConn = await OpenConnectionAsync();
         var table = await CreateTempTable(adminConn, "ID INTEGER");
 
@@ -1491,8 +1494,6 @@ CREATE TABLE record ()");
         if (IsMultiplexing) // Sync I/O
             return;
 
-        await using var adminConn = await OpenConnectionAsync();
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
             conn =>
@@ -1513,8 +1514,6 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_async_with_break()
     {
-        await using var adminConn = await OpenConnectionAsync();
-
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
             _ => throw new NotSupportedException(),
@@ -1538,8 +1537,6 @@ CREATE TABLE record ()");
         // With multiplexing a physical connection might open on NpgsqlConnection.OpenAsync (if there was no completed bootstrap beforehand)
         // or on NpgsqlCommand.ExecuteReaderAsync.
         // We've already tested the first case in PhysicalConnectionInitializer_async_throws above, testing the second one below.
-        await using var adminConn = await OpenConnectionAsync();
-
         var count = 0;
         var dataSourceBuilder = CreateDataSourceBuilder();
         dataSourceBuilder.UsePhysicalConnectionInitializer(
@@ -1552,9 +1549,21 @@ CREATE TABLE record ()");
             });
         await using var dataSource = dataSourceBuilder.Build();
 
-        Assert.DoesNotThrowAsync(async () => await dataSource.OpenConnectionAsync());
+        await using var conn1 = dataSource.CreateConnection();
+        Assert.DoesNotThrowAsync(async () => await conn1.OpenAsync());
 
-        var exception = Assert.ThrowsAsync<Exception>(async () => await dataSource.OpenConnectionAsync())!;
+        // We start a transaction specifically for multiplexing (to bind a connector to the connection)
+        await using var tx = await conn1.BeginTransactionAsync();
+
+        await using var conn2 = dataSource.CreateConnection();
+        Exception exception;
+        if (IsMultiplexing)
+        {
+            await conn2.OpenAsync();
+            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.BeginTransactionAsync())!;
+        }
+        else
+            exception = Assert.ThrowsAsync<Exception>(async () => await conn2.OpenAsync())!;
         Assert.That(exception.Message, Is.EqualTo("INTENTIONAL FAILURE"));
     }
 

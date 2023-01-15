@@ -560,7 +560,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using (var tx = conn.BeginTransaction())
+        await using (var tx = await conn.BeginTransactionAsync())
         {
             Assert.That(conn.Connector, Is.Not.Null);
             Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),

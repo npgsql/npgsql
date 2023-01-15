@@ -285,7 +285,7 @@ public class SecurityTests : TestBase
         try
         {
             await using var dataSource = CreateDataSource(csb);
-            await using var conn = dataSource.CreateConnection();
+            await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsFalse(conn.IsSecure);
         }
         catch (Exception e) when (!IsOnBuildServer)
