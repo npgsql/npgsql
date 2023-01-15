@@ -353,10 +353,10 @@ public abstract class TestBase
     protected static readonly NpgsqlDataSource SharedDataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
 
     protected virtual NpgsqlDataSourceBuilder CreateDataSourceBuilder()
-        => new(TestUtil.ConnectionString);
+        => new(ConnectionString);
 
     protected virtual NpgsqlDataSource CreateDataSource()
-        => CreateDataSource(TestUtil.ConnectionString);
+        => CreateDataSource(ConnectionString);
 
     protected virtual NpgsqlDataSource CreateDataSource(string connectionString)
         => NpgsqlDataSource.Create(connectionString);

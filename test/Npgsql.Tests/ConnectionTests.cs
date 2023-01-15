@@ -354,8 +354,8 @@ public class ConnectionTests : MultiplexingTestBase
     {
         using (var conn = await OpenConnectionAsync())
             Assert.That(await conn.ExecuteScalarAsync("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { ClientEncoding = "SQL_ASCII" };
-        await using var dataSource = CreateDataSource();
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { ClientEncoding = "SQL_ASCII" };
+        await using var dataSource = CreateDataSource(csb);
         using (var conn = await dataSource.OpenConnectionAsync())
             Assert.That(await conn.ExecuteScalarAsync("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
     }
@@ -1419,12 +1419,13 @@ CREATE TABLE record ()");
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
             MaxPoolSize = 1,
-            NoResetOnClose = noResetOnClose
+            NoResetOnClose = noResetOnClose,
+            ApplicationName = nameof(NoResetOnClose) + noResetOnClose
         };
         await using var dataSource = CreateDataSource(builder);
         var original = builder.ApplicationName;
 
-        using var conn = await dataSource.OpenConnectionAsync();
+        await using var conn = await dataSource.OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("SET application_name = 'modified'");
         await conn.CloseAsync();
         await conn.OpenAsync();

@@ -820,7 +820,7 @@ public class CommandTests : MultiplexingTestBase
 
         if (IsMultiplexing)
         {
-            Assert.That(() => conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
+            Assert.That(async () => await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
                 Throws.Exception.TypeOf<NotSupportedException>());
         }
         else

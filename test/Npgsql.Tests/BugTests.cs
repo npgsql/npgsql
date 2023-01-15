@@ -385,7 +385,7 @@ CREATE TYPE {compositeType} AS (value {domainType})");
             MaxAutoPrepare = 2
         };
         await using var dataSource = CreateDataSource(builder);
-        await using var conn = dataSource.CreateConnection();
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand();
         cmd.Connection = conn;
 
