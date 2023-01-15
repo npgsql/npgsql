@@ -512,7 +512,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 ThrowHelper.ThrowInvalidOperationException("Internal Npgsql bug: connection is in state Open but connector is in state Closed");
                 return ConnectionState.Broken;
             default:
-                ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.");
+                ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(ConnectorState)}. Please file a bug.", Connector.State);
                 return ConnectionState.Broken;
             }
         }
@@ -634,7 +634,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     async ValueTask<NpgsqlTransaction> BeginTransaction(IsolationLevel level, bool async, CancellationToken cancellationToken)
     {
         if (level == IsolationLevel.Chaos)
-            ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {IsolationLevel.Chaos}");
+            ThrowHelper.ThrowNotSupportedException($"Unsupported IsolationLevel: {nameof(IsolationLevel.Chaos)}");
 
         CheckReady();
         if (Connector is { InTransaction: true })

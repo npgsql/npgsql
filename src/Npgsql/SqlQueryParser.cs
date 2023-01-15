@@ -207,7 +207,7 @@ sealed class SqlQueryParser
                     }
 
                     if (!parameter.IsInputDirection)
-                        throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
+                        ThrowHelper.ThrowInvalidOperationException("Parameter '{{0}}' referenced in SQL but is an out-only parameter", paramName);
 
                     batchCommand.PositionalParameters.Add(parameter);
                     index = _paramIndexMap[paramName] = batchCommand.PositionalParameters.Count;
@@ -466,9 +466,8 @@ sealed class SqlQueryParser
 
             if (command is null)
             {
-                throw new NotSupportedException(
-                    $"Specifying multiple SQL statements in a single {nameof(NpgsqlBatchCommand)} isn't supported, " +
-                    "please remove all semicolons.");
+                ThrowHelper.ThrowNotSupportedException($"Specifying multiple SQL statements in a single {nameof(NpgsqlBatchCommand)} isn't supported, " +
+                                                       "please remove all semicolons.");
             }
 
             statementIndex++;

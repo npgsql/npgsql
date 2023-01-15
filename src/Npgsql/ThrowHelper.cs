@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using Npgsql.Internal;
 
 namespace Npgsql;
 
@@ -14,6 +15,10 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowArgumentOutOfRangeException(string paramName, string message)
         => throw new ArgumentOutOfRangeException(paramName, message);
+
+    [DoesNotReturn]
+    internal static void ThrowArgumentOutOfRangeException(string paramName, string message, object argument)
+        => throw new ArgumentOutOfRangeException(paramName, string.Format(message, argument));
 
     [DoesNotReturn]
     internal static void ThrowInvalidOperationException()
@@ -40,6 +45,10 @@ static class ThrowHelper
         => throw new ObjectDisposedException(objectName, innerException);
 
     [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message, object argument)
+        => throw new InvalidCastException(string.Format(message, argument));
+
+    [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue(FieldDescription field) =>
         throw new InvalidCastException($"Column '{field.Name}' is null.");
 
@@ -58,6 +67,18 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowNpgsqlException(string message)
         => throw new NpgsqlException(message);
+
+    [DoesNotReturn]
+    internal static void ThrowNpgsqlException(string message, Exception? innerException)
+        => throw new NpgsqlException(message, innerException);
+
+    [DoesNotReturn]
+    internal static void ThrowNpgsqlOperationInProgressException(NpgsqlCommand command)
+        => throw new NpgsqlOperationInProgressException(command);
+    
+    [DoesNotReturn]
+    internal static void ThrowNpgsqlOperationInProgressException(ConnectorState state)
+        => throw new NpgsqlOperationInProgressException(state);
 
     [DoesNotReturn]
     internal static void ThrowArgumentException(string message)
