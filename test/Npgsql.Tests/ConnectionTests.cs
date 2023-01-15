@@ -1467,6 +1467,11 @@ CREATE TABLE record ()");
     [Test]
     public async Task PhysicalConnectionInitializer_async()
     {
+        // With multiplexing the connector might become idle at undetermined point after the query is executed.
+        // Which is why we ignore it.
+        if (IsMultiplexing)
+            return;
+
         await using var adminConn = await OpenConnectionAsync();
         var table = await CreateTempTable(adminConn, "ID INTEGER");
 
