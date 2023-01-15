@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-
-#if NETCOREAPP1_0_OR_GREATER
-using System.Collections.Immutable;
-#endif
 
 namespace Npgsql.Internal.TypeHandlers;
 
@@ -26,10 +23,8 @@ namespace Npgsql.Internal.TypeHandlers;
 /// </remarks>
 public class HstoreHandler :
     NpgsqlTypeHandler<Dictionary<string, string?>>,
-    INpgsqlTypeHandler<IDictionary<string, string?>>
-#if NETCOREAPP1_0_OR_GREATER
-    , INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
-#endif
+    INpgsqlTypeHandler<IDictionary<string, string?>>,
+    INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
 {
     /// <summary>
     /// The text handler to which we delegate encoding/decoding of the actual strings
@@ -68,6 +63,11 @@ public class HstoreHandler :
     }
 
     /// <inheritdoc />
+    public int ValidateAndGetLength(
+        ImmutableDictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        => ValidateAndGetLength((IDictionary<string, string?>)value, ref lengthCache, parameter);
+
+    /// <inheritdoc />
     public override int ValidateAndGetLength(Dictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLength(value, ref lengthCache, parameter);
 
@@ -75,9 +75,7 @@ public class HstoreHandler :
     public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value switch
         {
-#if NETCOREAPP1_0_OR_GREATER
             ImmutableDictionary<string, string?> converted => ((INpgsqlTypeHandler<ImmutableDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-#endif
             Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
             IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
 
@@ -96,9 +94,7 @@ public class HstoreHandler :
         CancellationToken cancellationToken = default)
         => value switch
         {
-#if NETCOREAPP1_0_OR_GREATER
             ImmutableDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-#endif
             Dictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
             IDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
@@ -122,6 +118,11 @@ public class HstoreHandler :
             await _textHandler.WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
         }
     }
+
+    /// <inheritdoc />
+    public Task Write(ImmutableDictionary<string, string?> value,
+        NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async, cancellationToken);
 
     /// <inheritdoc />
     public override Task Write(Dictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
@@ -164,21 +165,6 @@ public class HstoreHandler :
         NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => new(Read(buf, len, async, fieldDescription).Result);
 
-    #endregion
-
-#if NETCOREAPP1_0_OR_GREATER
-    #region ImmutableDictionary
-
-    /// <inheritdoc />
-    public int ValidateAndGetLength(
-        ImmutableDictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        => ValidateAndGetLength((IDictionary<string, string?>)value, ref lengthCache, parameter);
-
-    /// <inheritdoc />
-    public Task Write(ImmutableDictionary<string, string?> value,
-        NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async, cancellationToken);
-
     async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
         NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
@@ -189,5 +175,4 @@ public class HstoreHandler :
     }
 
     #endregion
-#endif
 }

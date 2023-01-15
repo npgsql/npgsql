@@ -146,11 +146,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         { "bit varying", new(NpgsqlDbType.Varbit,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
         { "varbit",      new(NpgsqlDbType.Varbit,  "bit varying", typeof(BitArray), typeof(BitVector32)) },
         { "bit",         new(NpgsqlDbType.Bit,     "bit") },
-        { "hstore",      new(NpgsqlDbType.Hstore,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>)
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1
-            , typeof(ImmutableDictionary<string, string?>)
-#endif
-        ) },
+        { "hstore",      new(NpgsqlDbType.Hstore,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>), typeof(ImmutableDictionary<string, string?>)) },
 
         // Internal types
         { "int2vector",  new(NpgsqlDbType.Int2Vector,   "int2vector") },
@@ -446,9 +442,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             { typeof(BitArray),                            "bit varying" },
             { typeof(BitVector32),                         "bit varying" },
             { typeof(Dictionary<string, string>),          "hstore" },
-#if !NETSTANDARD2_0 && !NETSTANDARD2_1
             { typeof(ImmutableDictionary<string, string>), "hstore" },
-#endif
 
             // Internal types
             { typeof(NpgsqlLogSequenceNumber), "pg_lsn" },
