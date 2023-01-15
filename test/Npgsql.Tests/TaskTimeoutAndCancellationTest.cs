@@ -92,6 +92,7 @@ public class TaskTimeoutAndCancellationTest : TestBase
         // Run the garbage collector to collect unobserved Tasks from other tests.
         GC.Collect();
         GC.WaitForPendingFinalizers();
+        GC.Collect();
 
         Exception? unobservedTaskException = null;
 
