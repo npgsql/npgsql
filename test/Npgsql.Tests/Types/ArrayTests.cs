@@ -28,11 +28,10 @@ public class ArrayTests : MultiplexingTestBase
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
         {
-            ApplicationName = nameof(Array_resolution),  // Prevent backend type caching in TypeHandlerRegistry
             Pooling = false
         };
-
-        using var conn = await OpenConnectionAsync(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = await dataSource.OpenConnectionAsync();
 
         // Resolve type by NpgsqlDbType
         using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -165,8 +164,11 @@ public class ArrayTests : MultiplexingTestBase
     [TestCase(ArrayNullabilityMode.PerInstance)]
     public async Task Value_type_array_nullabilities(ArrayNullabilityMode mode)
     {
-        using var pool = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString){ ArrayNullabilityMode = mode}, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            ArrayNullabilityMode = mode
+        });
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT onedim, twodim FROM (VALUES" +
                                                 "('{1, 2, 3, 4}'::int[],'{{1, 2},{3, 4}}'::int[][])," +
                                                 "('{5, NULL, 6, 7}'::int[],'{{5, NULL},{6, 7}}'::int[][])" +
@@ -524,7 +526,7 @@ public class ArrayTests : MultiplexingTestBase
     [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
     public async Task List_type_resolution()
     {
-        using var conn = await OpenConnectionAsync(ConnectionString);
+        await using var conn = await OpenConnectionAsync();
         await AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
         await AssertIListRoundtrips(conn, new IntList { 1, 2, 3 });
         await AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });

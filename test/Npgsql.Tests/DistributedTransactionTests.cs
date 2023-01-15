@@ -22,9 +22,11 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+
         using (new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
             conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
@@ -44,8 +46,10 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         using (new TransactionScope())
         {
             conn1.EnlistTransaction(Transaction.Current);
@@ -69,9 +73,11 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+
         using (var scope = new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
             conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
@@ -120,18 +126,20 @@ public class DistributedTransactionTests : TestBase
             Enlist = true
         };
 
+        using var dataSource = CreateDataSource(csb);
+
         using var scope = new TransactionScope();
 
         int processId;
 
-        using (var conn1 = OpenConnection(csb))
+        using (var conn1 = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
         {
             processId = conn1.ProcessID;
             cmd.ExecuteNonQuery();
         }
 
-        using (var conn2 = OpenConnection(csb))
+        using (var conn2 = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
         {
             // The connection reuse optimization isn't implemented for unpooled connections (though it could be)
@@ -149,13 +157,15 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
                 using (var tx = new TransactionScope())
-                using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                using (var conn1 = dataSource.OpenConnection())
                 {
                     eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
                     conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
@@ -221,12 +231,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (var scope = new TransactionScope())
                 {
@@ -273,12 +285,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (new TransactionScope())
                 {
@@ -326,12 +340,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (var scope = new TransactionScope())
                 {
@@ -427,7 +443,8 @@ Exception {2}",
 
     int GetNumberOfPreparedTransactions()
     {
-        using (var conn = OpenConnection(ConnectionStringEnlistOff))
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using (var conn = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));

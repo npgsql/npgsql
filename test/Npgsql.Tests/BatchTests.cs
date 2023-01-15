@@ -467,8 +467,8 @@ public class BatchTests : MultiplexingTestBase
     public async Task Batch_close_dispose_reader_with_multiple_errors([Values] bool withErrorBarriers, [Values] bool dispose)
     {
         // Create a temp pool since we dispose the reader (and check the state afterwards) and it can be reused by another connection
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        await using var conn = await OpenConnectionAsync(connString);
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "id INT");
 
         await using var batch = new NpgsqlBatch(conn)
@@ -741,7 +741,8 @@ LANGUAGE 'plpgsql'");
             MaxAutoPrepare = 20
         };
 
-        await using var conn = await OpenConnectionAsync(csb);
+        await using var dataSource = CreateDataSource(csb);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         var tempTableName = await CreateTempTable(conn, "id int");
 

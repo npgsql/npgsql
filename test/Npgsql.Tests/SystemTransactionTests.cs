@@ -7,14 +7,14 @@ namespace Npgsql.Tests;
 
 // This test suite contains ambient transaction tests, except those involving distributed transactions which are only
 // supported on .NET Framework / Windows. Distributed transaction tests are in DistributedTransactionTests.
-[NonParallelizable]
+[NonParallelizable] // All tests are using the exact same table
 public class SystemTransactionTests : TestBase
 {
     [Test, Description("Single connection enlisting explicitly, committing")]
     public void Explicit_enlist()
     {
-        using var conn = new NpgsqlConnection(ConnectionStringEnlistOff);
-        conn.Open();
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using var conn = dataSource.OpenConnection();
         using (var scope = new TransactionScope())
         {
             conn.EnlistTransaction(Transaction.Current);
@@ -35,7 +35,8 @@ public class SystemTransactionTests : TestBase
     [Test, Description("Single connection enlisting implicitly, committing")]
     public void Implicit_enlist()
     {
-        using var conn = new NpgsqlConnection(ConnectionStringEnlistOn);
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+        using var conn = dataSource.CreateConnection();
         using (var scope = new TransactionScope())
         {
             conn.Open();
@@ -54,9 +55,10 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Enlist_Off()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
         using (new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             Assert.That(conn1.EnlistedTransaction, Is.Null);
             Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
@@ -64,7 +66,7 @@ public class SystemTransactionTests : TestBase
         }
 
         // Scope disposed and not completed => rollback, but no enlistment, so changes should still be there.
-        using (var conn3 = OpenConnection(ConnectionStringEnlistOff))
+        using (var conn3 = dataSource.OpenConnection())
         {
             Assert.That(conn3.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Insert unexpectedly rollback-ed");
         }
@@ -73,7 +75,8 @@ public class SystemTransactionTests : TestBase
     [Test, Description("Single connection enlisting explicitly, rollback")]
     public void Rollback_explicit_enlist()
     {
-        using var conn = OpenConnection();
+        using var dataSource = CreateDataSource();
+        using var conn = dataSource.OpenConnection();
         using (new TransactionScope())
         {
             conn.EnlistTransaction(Transaction.Current);
@@ -93,13 +96,15 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/2408")]
     public void Rollback_implicit_enlist([Values(true, false)] bool pooling)
     {
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
         {
             Pooling = pooling
-        }.ToString();
+        };
+
+        using var dataSource = CreateDataSource(csb);
 
         using (new TransactionScope())
-        using (var conn = OpenConnection(connectionString))
+        using (var conn = dataSource.OpenConnection())
         {
             Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             AssertNoDistributedIdentifier();
@@ -113,14 +118,15 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Two_consecutive_connections()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using (var scope = new TransactionScope())
         {
-            using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+            using (var conn1 = dataSource.OpenConnection())
             {
                 Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
             }
 
-            using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+            using (var conn2 = dataSource.OpenConnection())
             {
                 Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
             }
@@ -136,12 +142,9 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Close_connection()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            ApplicationName = nameof(Close_connection),
-        }.ToString();
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using (var scope = new TransactionScope())
-        using (var conn = OpenConnection(connString))
+        using (var conn = dataSource.OpenConnection())
         {
             Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             conn.Close();
@@ -150,17 +153,14 @@ public class SystemTransactionTests : TestBase
             scope.Complete();
         }
         AssertNumberOfRows(1);
-        Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));
-        Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
-
-        using (var conn = new NpgsqlConnection(connString))
-            NpgsqlConnection.ClearPool(conn);
+        Assert.That(dataSource.Statistics.Idle, Is.EqualTo(1));
     }
 
     [Test]
     public void Enlist_to_two_transactions()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using var conn = dataSource.OpenConnection();
         var ctx = new CommittableTransaction();
         conn.EnlistTransaction(ctx);
         Assert.That(() => conn.EnlistTransaction(new CommittableTransaction()), Throws.Exception.TypeOf<InvalidOperationException>());
@@ -174,7 +174,8 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Enlist_twice_to_same_transaction()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using var conn = dataSource.OpenConnection();
         var ctx = new CommittableTransaction();
         conn.EnlistTransaction(ctx);
         conn.EnlistTransaction(ctx);
@@ -188,7 +189,8 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Scope_after_scope()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using var conn = dataSource.OpenConnection();
         using (new TransactionScope())
             conn.EnlistTransaction(Transaction.Current);
         using (new TransactionScope())
@@ -204,8 +206,9 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Reuse_connection()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using (var scope = new TransactionScope())
-        using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.CreateConnection())
         {
             conn.Open();
             var processId = conn.ProcessID;
@@ -225,8 +228,9 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Reuse_connection_rollback()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using (new TransactionScope())
-        using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.CreateConnection())
         {
             conn.Open();
             var processId = conn.ProcessID;
@@ -246,7 +250,8 @@ public class SystemTransactionTests : TestBase
     [Test, Ignore("Timeout doesn't seem to fire on .NET Core / Linux")]
     public void Timeout_triggers_rollback_while_busy()
     {
-        using (var conn = OpenConnection(ConnectionStringEnlistOff))
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using (var conn = dataSource.OpenConnection())
         {
             using (new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromSeconds(1)))
             {
@@ -264,8 +269,9 @@ public class SystemTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1579")]
     public void Schema_connection_should_not_enlist()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using var tran = new TransactionScope();
-        using var conn = OpenConnection(ConnectionStringEnlistOn);
+        using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT * FROM data", conn);
         using var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo);
         reader.GetColumnSchema();
@@ -283,10 +289,10 @@ public class SystemTransactionTests : TestBase
             Enlist = true
         };
 
-
+        using var dataSource = CreateDataSource(csb);
         using var scope = new TransactionScope();
 
-        using (var conn = OpenConnection(csb))
+        using (var conn = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             cmd.ExecuteNonQuery();
 
@@ -302,8 +308,9 @@ public class SystemTransactionTests : TestBase
             Pooling = pooling,
         };
 
+        using var dataSource = CreateDataSource(csb);
         using var scope = new TransactionScope();
-        var conn = OpenConnection(csb);
+        var conn = dataSource.OpenConnection();
 
         conn.ExecuteNonQuery("SELECT 1");
         conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_rollback)));
@@ -318,10 +325,11 @@ public class SystemTransactionTests : TestBase
             Pooling = pooling,
         };
 
+        using var dataSource = CreateDataSource(csb);
         var ex = Assert.Throws<TransactionInDoubtException>(() =>
         {
             using var scope = new TransactionScope();
-            var conn = OpenConnection(csb);
+            var conn = dataSource.OpenConnection();
 
             conn.ExecuteNonQuery("SELECT 1");
             conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_commit)));
@@ -342,6 +350,7 @@ public class SystemTransactionTests : TestBase
             Enlist = true
         };
 
+        using var dataSource = CreateDataSource(csb);
         for (var i = 0; i < 2; i++)
         {
             using var outerScope = new TransactionScope();
@@ -355,7 +364,7 @@ public class SystemTransactionTests : TestBase
             {
             }
 
-            var ex = Assert.Throws<TransactionException>(() => OpenConnection(csb))!;
+            var ex = Assert.Throws<TransactionException>(() => dataSource.OpenConnection())!;
             Assert.That(ex.Message, Is.EqualTo("The operation is not valid for the state of the transaction."));
         }
     }
@@ -363,16 +372,17 @@ public class SystemTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1594")]
     public void Bug1594()
     {
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
         using var outerScope = new TransactionScope();
 
-        using (var conn = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.OpenConnection())
         using (var innerScope1 = new TransactionScope())
         {
             conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
             innerScope1.Complete();
         }
 
-        using (OpenConnection(ConnectionStringEnlistOn))
+        using (dataSource.OpenConnection())
         using (new TransactionScope())
         {
             // Don't complete, triggering rollback
@@ -386,7 +396,8 @@ public class SystemTransactionTests : TestBase
 
     int GetNumberOfPreparedTransactions()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn);
         cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
         return (int)(long)cmd.ExecuteScalar()!;
@@ -421,7 +432,7 @@ public class SystemTransactionTests : TestBase
         // All tests in this fixture should have exclusive access to the database they're running on.
         // If we run these tests in parallel (i.e. two builds in parallel) they will interfere.
         // Solve this by taking a PostgreSQL advisory lock for the lifetime of the fixture.
-        _controlConn.ExecuteNonQuery("SELECT pg_advisory_lock(666)");
+        _controlConn.ExecuteNonQuery("SELECT pg_advisory_lock(42)");
 
         _controlConn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
         _controlConn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");

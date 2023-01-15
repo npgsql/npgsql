@@ -216,11 +216,8 @@ public class PrepareTests: TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/395")]
     public void Across_close_open_same_connector()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(PrepareTests) + '.' + nameof(Across_close_open_same_connector)
-        };
-        using var conn = OpenConnectionAndUnprepare(csb);
+        using var dataSource = CreateDataSource();
+        using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
         cmd.Prepare();
         Assert.That(cmd.IsPrepared, Is.True);
@@ -232,18 +229,14 @@ public class PrepareTests: TestBase
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
         cmd.Prepare();
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
-        NpgsqlConnection.ClearPool(conn);
     }
 
     [Test]
     public void Across_close_open_different_connector()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(PrepareTests) + '.' + nameof(Across_close_open_different_connector)
-        }.ToString();
-        using var conn1 = new NpgsqlConnection(connString);
-        using var conn2 = new NpgsqlConnection(connString);
+        using var dataSource = CreateDataSource();
+        using var conn1 = dataSource.CreateConnection();
+        using var conn2 = dataSource.CreateConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn1);
         conn1.Open();
         cmd.Prepare();
@@ -257,17 +250,13 @@ public class PrepareTests: TestBase
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));  // Execute unprepared
         cmd.Prepare();
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
-        NpgsqlConnection.ClearPool(conn1);
     }
 
     [Test]
     public void Reuse_prepared_statement()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(PrepareTests) + '.' + nameof(Reuse_prepared_statement)
-        }.ToString();
-        using var conn1 = OpenConnection(connString);
+        using var dataSource = CreateDataSource();
+        using var conn1 = dataSource.OpenConnection();
         var preparedStatement = "";
         using (var cmd1 = new NpgsqlCommand("SELECT @p", conn1))
         {
@@ -286,7 +275,6 @@ public class PrepareTests: TestBase
             Assert.That(cmd2.InternalBatchCommands[0].PreparedStatement!.Name, Is.EqualTo(preparedStatement));
             Assert.That(cmd2.ExecuteScalar(), Is.EqualTo(8));
         }
-        NpgsqlConnection.ClearPool(conn1);
     }
 
     [Test]
@@ -393,7 +381,8 @@ public class PrepareTests: TestBase
             MaxAutoPrepare = 5,
             AutoPrepareMinUsages = 2
         };
-        using var conn = OpenConnectionAndUnprepare(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         var sql = new StringBuilder();
         for (var i = 0; i < 2 + 1; i++)
             sql.Append("SELECT 1;");
@@ -535,12 +524,8 @@ public class PrepareTests: TestBase
     [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after connection close.")]
     public void Persistent_across_connections()
     {
-        var connSettings = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ApplicationName = nameof(Persistent_across_connections)
-        };
-
-        using var conn = OpenConnectionAndUnprepare(connSettings);
+        using var dataSource = CreateDataSource();
+        using var conn = dataSource.OpenConnection();
         var processId = conn.ProcessID;
 
         AssertNumPreparedStatements(conn, 0);
@@ -564,8 +549,6 @@ public class PrepareTests: TestBase
         }
         AssertNumPreparedStatements(conn, 1, "Prepared statement deallocated");
         Assert.That(GetPreparedStatements(conn).Single(), Is.EqualTo(stmtName), "Prepared statement name changed unexpectedly");
-
-        NpgsqlConnection.ClearPool(conn);
     }
 
     [Test, Description("Makes sure that calling Prepare() twice on a command does not deallocate or make a new one after the first prepared statement when command does not change")]
@@ -742,7 +725,8 @@ public class PrepareTests: TestBase
     public void Multiplexing_not_supported()
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Multiplexing = true };
-        using var conn = OpenConnection(builder);
+        using var dataSource = CreateDataSource(builder);
+        using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
 
         Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NotSupportedException>());
@@ -758,7 +742,8 @@ public class PrepareTests: TestBase
             AutoPrepareMinUsages = 2
         };
 
-        await using var connection = await OpenConnectionAsync(csb);
+        await using var dataSource = CreateDataSource(csb);
+        await using var connection = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(connection, "foo int");
 
         await using var command = new NpgsqlCommand($"SELECT * FROM {table}", connection);
@@ -777,15 +762,12 @@ public class PrepareTests: TestBase
         Assert.False(command.IsPrepared);
     }
 
-    NpgsqlConnection OpenConnectionAndUnprepare(string? connectionString = null)
+    NpgsqlConnection OpenConnectionAndUnprepare()
     {
-        var conn = OpenConnection(connectionString);
+        var conn = OpenConnection();
         conn.UnprepareAll();
         return conn;
     }
-
-    NpgsqlConnection OpenConnectionAndUnprepare(NpgsqlConnectionStringBuilder csb)
-        => OpenConnectionAndUnprepare(csb.ToString());
 
     void AssertNumPreparedStatements(NpgsqlConnection conn, int expected)
         => Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements WHERE statement NOT LIKE '%FROM pg_prepared_statements%'"), Is.EqualTo(expected));

@@ -19,7 +19,8 @@ public class SecurityTests : TestBase
             TrustServerCertificate = true
         };
 
-        using var conn = OpenConnection(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.True);
     }
 
@@ -35,7 +36,8 @@ public class SecurityTests : TestBase
             TrustServerCertificate = true
         };
 
-        using var conn = OpenConnection(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsScram, Is.False);
         Assert.That(conn.IsScramPlus, Is.False);
     }
@@ -65,7 +67,8 @@ public class SecurityTests : TestBase
             TrustServerCertificate = true
         };
 
-        using var conn = OpenConnection(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
         conn.ExecuteNonQuery("DISCARD ALL");
         Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
@@ -78,7 +81,8 @@ public class SecurityTests : TestBase
         {
             SslMode = SslMode.Disable
         };
-        using var conn = OpenConnection(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.False);
     }
 
@@ -163,7 +167,8 @@ public class SecurityTests : TestBase
             TrustServerCertificate = true
         };
 
-        using var conn = OpenConnection(csb);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.OpenConnection();
         using var cmd = CreateSleepCommand(conn, 10000);
         var cts = new CancellationTokenSource(1000).Token;
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
@@ -185,7 +190,8 @@ public class SecurityTests : TestBase
 
         try
         {
-            using var conn = OpenConnection(csb);
+            using var dataSource = CreateDataSource(csb);
+            using var conn = dataSource.OpenConnection();
             // scram-sha-256-plus only works begining from PostgreSQL 11
             if (conn.PostgreSqlVersion.Major >= 11)
             {
@@ -218,7 +224,8 @@ public class SecurityTests : TestBase
 
         try
         {
-            await using var conn = await OpenConnectionAsync(csb);
+            await using var dataSource = CreateDataSource(csb);
+            await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsTrue(conn.IsSecure);
         }
         catch (Exception e) when (!IsOnBuildServer)
@@ -236,7 +243,8 @@ public class SecurityTests : TestBase
             SslMode = SslMode.Require
         };
 
-        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await OpenConnectionAsync(csb))!;
+        using var dataSource = CreateDataSource(csb);
+        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
         Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
     }
 
@@ -250,7 +258,8 @@ public class SecurityTests : TestBase
             Pooling = false
         };
 
-        using var connection = CreateConnection(csb.ToString());
+        await using var dataSource = CreateDataSource(csb);
+        await using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
         await connection.OpenAsync();
@@ -275,7 +284,8 @@ public class SecurityTests : TestBase
 
         try
         {
-            await using var conn = await OpenConnectionAsync(csb);
+            await using var dataSource = CreateDataSource(csb);
+            await using var conn = dataSource.CreateConnection();
             Assert.IsFalse(conn.IsSecure);
         }
         catch (Exception e) when (!IsOnBuildServer)
@@ -345,7 +355,8 @@ public class SecurityTests : TestBase
             SslMode = sslMode
         };
 
-        var connection = CreateConnection(csb.ToString());
+        using var dataSource = CreateDataSource(csb);
+        using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
         var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
@@ -361,7 +372,8 @@ public class SecurityTests : TestBase
             RootCertificate = "foo"
         };
 
-        var connection = CreateConnection(csb.ToString());
+        using var dataSource = CreateDataSource(csb);
+        using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
         var ex = Assert.ThrowsAsync<ArgumentException>(async () => await connection.OpenAsync())!;
@@ -380,13 +392,13 @@ public class SecurityTests : TestBase
             MaxPoolSize = 1,
             TrustServerCertificate = true
         };
-        using var _ = CreateTempPool(csb, out var connString);
+        await using var dataSource = CreateDataSource(csb);
 
         NpgsqlConnection conn = default!;
 
         try
         {
-            conn = await OpenConnectionAsync(connString);
+            conn = await dataSource.OpenConnectionAsync();
             Assert.IsTrue(conn.IsSecure);
         }
         catch (Exception e) when (!IsOnBuildServer)
@@ -429,13 +441,13 @@ public class SecurityTests : TestBase
             Password = "npgsql_tests_nossl",
             MaxPoolSize = 1
         };
-        using var _ = CreateTempPool(csb, out var connString);
+        await using var dataSource = CreateDataSource(csb);
 
         NpgsqlConnection conn = default!;
 
         try
         {
-            conn = await OpenConnectionAsync(connString);
+            conn = await dataSource.OpenConnectionAsync();
             Assert.IsFalse(conn.IsSecure);
         }
         catch (Exception e) when (!IsOnBuildServer)

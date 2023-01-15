@@ -21,8 +21,8 @@ public class AuthenticationTests : MultiplexingTestBase
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
         using var _ = SetEnvironmentVariable("PGUSER", builder.Username);
         builder.Username = null;
-        using var __ = CreateTempPool(builder.ConnectionString, out var connectionString);
-        using var ___ = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(builder);
+        await using var __ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
@@ -32,8 +32,8 @@ public class AuthenticationTests : MultiplexingTestBase
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
         using var _ = SetEnvironmentVariable("PGPASSWORD", builder.Password);
         builder.Password = null;
-        using var __ = CreateTempPool(builder.ConnectionString, out var connectionString);
-        using var ___ = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(builder);
+        await using var __ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
@@ -152,8 +152,8 @@ public class AuthenticationTests : MultiplexingTestBase
 
         try
         {
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(builder);
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -177,8 +177,8 @@ public class AuthenticationTests : MultiplexingTestBase
 
         try
         {
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(builder);
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -223,8 +223,8 @@ public class AuthenticationTests : MultiplexingTestBase
         try
         {
             File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(builder);
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -281,8 +281,8 @@ public class AuthenticationTests : MultiplexingTestBase
             builder.Passfile = passFile;
             builder.ApplicationName = $"{nameof(Password_source_precedence)}:{Guid.NewGuid()}";
 
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var connection = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(builder);
+            await using var conn = await dataSource.OpenConnectionAsync();
         };
     }
 
@@ -316,7 +316,9 @@ public class AuthenticationTests : MultiplexingTestBase
 
         // The server will accept a connection from the client, but will not respond to the client's authentication
         // request. This should trigger a timeout
-        Assert.That(async () => await OpenConnectionAsync(connectionString),
+        await using var dataSource = CreateDataSource(connectionString);
+        await using var connection = dataSource.CreateConnection();
+        Assert.That(async () => await connection.OpenAsync(),
             Throws.Exception.TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>());
     }
@@ -344,7 +346,7 @@ public class AuthenticationTests : MultiplexingTestBase
             Username = null,
             Password = null
         });
-        await using var c = await  dataSource.OpenConnectionAsync();
+        await using var c = await dataSource.OpenConnectionAsync();
         Assert.That(c.State, Is.EqualTo(ConnectionState.Open));
     }
 

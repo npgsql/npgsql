@@ -51,15 +51,14 @@ public class LegacyNodaTimeTests : TestBase
 
     #region Support
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
+    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
     {
-        var conn = new NpgsqlConnection(connectionString ?? ConnectionString);
-        await conn.OpenAsync();
+        var conn = await base.OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
         return conn;
     }
 
-    protected override NpgsqlConnection OpenConnection(string? connectionString = null)
+    protected override NpgsqlConnection OpenConnection()
         => throw new NotSupportedException();
 
 #pragma warning disable CS1998 // Release code blocks below lack await
