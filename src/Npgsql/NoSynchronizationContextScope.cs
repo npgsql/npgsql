@@ -15,11 +15,18 @@ namespace Npgsql;
 /// <remarks>
 /// https://stackoverflow.com/a/28307965/640325
 /// </remarks>
-static class NoSynchronizationContextScope
+public static class NoSynchronizationContextScope
 {
-    internal static Disposable Enter() => new(SynchronizationContext.Current);
+    /// <summary>
+    /// Enter a using block and temporarily disable the synchronization context.
+    /// </summary>
+    /// <returns>A disposable object that will restore the synchronization context when disposed.</returns>
+    public static Disposable Enter() => new(SynchronizationContext.Current);
 
-    internal struct Disposable : IDisposable
+    /// <summary>
+    /// A disposable struct that will restore the synchronization context when disposed.
+    /// </summary>
+    public struct Disposable : IDisposable
     {
         readonly SynchronizationContext? _synchronizationContext;
 
@@ -31,6 +38,9 @@ static class NoSynchronizationContextScope
             _synchronizationContext = synchronizationContext;
         }
 
+        /// <summary>
+        /// Restores the synchronization context to its previous value.
+        /// </summary>
         public void Dispose()
             => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
     }
