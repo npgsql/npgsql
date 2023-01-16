@@ -293,15 +293,15 @@ public class AuthenticationTests : MultiplexingTestBase
         {
             Password = "bad"
         };
-        using (CreateTempPool(builder, out var connectionString))
-        using (var conn = new NpgsqlConnection(connectionString))
-        {
-            Assert.That(() => conn.OpenAsync(), Throws.Exception
-                .TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).StartsWith("28")
-            );
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-        }
+
+        using var dataSource = CreateDataSource(builder);
+        using var conn = dataSource.CreateConnection();
+
+        Assert.That(() => conn.OpenAsync(), Throws.Exception
+            .TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).StartsWith("28")
+        );
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
     }
 
     [Test, Description("Simulates a timeout during the authentication phase")]
@@ -310,13 +310,11 @@ public class AuthenticationTests : MultiplexingTestBase
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
         await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-
-        var __ = postmasterMock.AcceptServer();
+        _ = postmasterMock.AcceptServer();
 
         // The server will accept a connection from the client, but will not respond to the client's authentication
         // request. This should trigger a timeout
-        await using var dataSource = CreateDataSource(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
         await using var connection = dataSource.CreateConnection();
         Assert.That(async () => await connection.OpenAsync(),
             Throws.Exception.TypeOf<NpgsqlException>()

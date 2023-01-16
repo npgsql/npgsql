@@ -215,12 +215,14 @@ public class ConnectionTests : MultiplexingTestBase
         {
             Database = "does_not_exist"
         };
-        using (CreateTempPool(builder, out var connectionString))
-        using (var conn = new NpgsqlConnection(connectionString))
-            Assert.That(() => conn.Open(),
-                Throws.Exception.TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.InvalidCatalogName)
-            );
+
+        using var dataSource = CreateDataSource(builder);
+        using var conn = dataSource.CreateConnection();
+
+        Assert.That(() => conn.Open(),
+            Throws.Exception.TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.InvalidCatalogName)
+        );
     }
 
     [Test, Description("Tests that mandatory connection string parameters are indeed mandatory")]
@@ -245,10 +247,9 @@ public class ConnectionTests : MultiplexingTestBase
                 Pooling = pooling
             };
 
-            // Create a temp pool to allow us to drop database at the end of the test
-            using var _ = CreateTempPool(csb, out var connString);
+            await using var dataSource = CreateDataSource(csb);
 
-            await using var conn2 = new NpgsqlConnection(connString);
+            await using var conn2 = dataSource.CreateConnection();
             var pgEx = Assert.ThrowsAsync<PostgresException>(conn2.OpenAsync)!;
             Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.InvalidCatalogName)); // database doesn't exist
             Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
@@ -279,8 +280,8 @@ public class ConnectionTests : MultiplexingTestBase
             Host = unknownIp,
             Timeout = 2
         };
-        using var _ = CreateTempPool(csb, out var connString);
-        using var conn = new NpgsqlConnection(connString);
+        using var dataSource = CreateDataSource(csb);
+        using var conn = dataSource.CreateConnection();
 
         var sw = Stopwatch.StartNew();
         if (async)
