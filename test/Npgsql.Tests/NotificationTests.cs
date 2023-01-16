@@ -124,12 +124,11 @@ public class NotificationTests : TestBase
     {
         var notify = GetUniqueIdentifier(nameof(NotificationTests));
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            KeepAlive = 1,
-            Pooling = false
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.KeepAlive = 1;
+            csb.Pooling = false;
+        });
         using var conn = dataSource.OpenConnection();
         using var notifyingConn = dataSource.OpenConnection();
         conn.ExecuteNonQuery($"LISTEN {notify}");
@@ -146,12 +145,11 @@ public class NotificationTests : TestBase
     {
         var notify = GetUniqueIdentifier(nameof(NotificationTests));
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            KeepAlive = 1,
-            Pooling = false
-        };
-        await using var dataSource = CreateDataSource(csb);
+            csb.KeepAlive = 1;
+            csb.Pooling = false;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var notifyingConn = await dataSource.OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync($"LISTEN {notify}");

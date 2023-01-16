@@ -365,11 +365,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task GetDataTypeName_enum()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        };
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('one')");
@@ -384,11 +380,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task GetDataTypeName_domain()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        };
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
@@ -1113,13 +1105,11 @@ LANGUAGE plpgsql VOLATILE";
     [Test]
     public async Task Unbound_reader_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = 1,
-            MaxPoolSize = 1,
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.MinPoolSize = 1;
+            csb.MaxPoolSize = 1;
+        });
         await using var conn1 = await dataSource.OpenConnectionAsync();
         using var cmd1 = conn1.CreateCommand();
         cmd1.CommandText = "SELECT 1";

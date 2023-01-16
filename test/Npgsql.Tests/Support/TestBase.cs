@@ -361,14 +361,11 @@ public abstract class TestBase
     protected virtual NpgsqlDataSource CreateDataSource(string connectionString)
         => NpgsqlDataSource.Create(connectionString);
 
-    protected virtual NpgsqlDataSource CreateDataSource(NpgsqlConnectionStringBuilder csb)
-        => NpgsqlDataSource.Create(csb);
-
-    protected virtual NpgsqlDataSource CreateDataSource(Action<NpgsqlConnectionStringBuilder> action)
+    protected virtual NpgsqlDataSource CreateDataSource(Action<NpgsqlConnectionStringBuilder> connectionStringBuilderAction)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-        action(csb);
-        return CreateDataSource(csb);
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
+        connectionStringBuilderAction(connectionStringBuilder);
+        return NpgsqlDataSource.Create(connectionStringBuilder);
     }
 
     protected static NpgsqlDataSource GetDataSource(string connectionString)

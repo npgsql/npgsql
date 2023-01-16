@@ -736,12 +736,7 @@ LANGUAGE 'plpgsql'");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4264")]
     public async Task Batch_with_auto_prepare_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxAutoPrepare = 20
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxAutoPrepare = 20);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var tempTableName = await CreateTempTable(conn, "id int");

@@ -120,13 +120,11 @@ public class DistributedTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
     public void Multiple_unpooled_connections_do_not_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            Enlist = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.Pooling = false;
+            csb.Enlist = true;
+        });
 
         using var scope = new TransactionScope();
 

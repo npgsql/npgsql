@@ -13,13 +13,11 @@ public class SecurityTests : TestBase
     [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
     public void Basic_ssl()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            TrustServerCertificate = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.TrustServerCertificate = true;
+        });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.True);
     }
@@ -30,13 +28,11 @@ public class SecurityTests : TestBase
         if (!IsOnBuildServer)
             Assert.Ignore("Only executed in CI");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            TrustServerCertificate = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.TrustServerCertificate = true;
+        });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsScram, Is.False);
         Assert.That(conn.IsScramPlus, Is.False);
@@ -61,13 +57,11 @@ public class SecurityTests : TestBase
     [Test, Description("Makes sure that ssl_renegotiation_limit is always 0, renegotiation is buggy")]
     public void No_ssl_renegotiation()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            TrustServerCertificate = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.TrustServerCertificate = true;
+        });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
         conn.ExecuteNonQuery("DISCARD ALL");
@@ -77,11 +71,7 @@ public class SecurityTests : TestBase
     [Test, Description("Makes sure that when SSL is disabled IsSecure returns false")]
     public void IsSecure_without_ssl()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Disable
-        };
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.SslMode = SslMode.Disable);
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.False);
     }
@@ -161,13 +151,11 @@ public class SecurityTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1718")]
     public void Bug1718()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            TrustServerCertificate = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.TrustServerCertificate = true;
+        });
         using var conn = dataSource.OpenConnection();
         using var cmd = CreateSleepCommand(conn, 10000);
         var cts = new CancellationTokenSource(1000).Token;
@@ -180,19 +168,17 @@ public class SecurityTests : TestBase
     [Test]
     public void ScramPlus()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Require,
-            Username = "npgsql_tests_scram",
-            Password = "npgsql_tests_scram",
-            TrustServerCertificate = true
-        };
-
         try
         {
-            using var dataSource = CreateDataSource(csb);
+            using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = SslMode.Require;
+                csb.Username = "npgsql_tests_scram";
+                csb.Password = "npgsql_tests_scram";
+                csb.TrustServerCertificate = true;
+            });
             using var conn = dataSource.OpenConnection();
-            // scram-sha-256-plus only works begining from PostgreSQL 11
+            // scram-sha-256-plus only works beginning from PostgreSQL 11
             if (conn.PostgreSqlVersion.Major >= 11)
             {
                 Assert.That(conn.IsScramPlus, Is.True);
@@ -213,18 +199,16 @@ public class SecurityTests : TestBase
             Assert.Ignore("Multiplexing doesn't support keepalive");
         }
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Allow,
-            Username = "npgsql_tests_ssl",
-            Password = "npgsql_tests_ssl",
-            Multiplexing = multiplexing,
-            KeepAlive = keepAlive ? 10 : 0
-        };
-
         try
         {
-            await using var dataSource = CreateDataSource(csb);
+            await using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = SslMode.Allow;
+                csb.Username = "npgsql_tests_ssl";
+                csb.Password = "npgsql_tests_ssl";
+                csb.Multiplexing = multiplexing;
+                csb.KeepAlive = keepAlive ? 10 : 0;
+            });
             await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsTrue(conn.IsSecure);
         }
@@ -238,12 +222,7 @@ public class SecurityTests : TestBase
     [Test]
     public void SslMode_Require_throws_without_TSC()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Require
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.SslMode = SslMode.Require);
         var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
         Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
     }
@@ -251,14 +230,12 @@ public class SecurityTests : TestBase
     [Test]
     public async Task SslMode_Require_with_callback_without_TSC()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            TrustServerCertificate = false,
-            Pooling = false
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.TrustServerCertificate = false;
+            csb.Pooling = false;
+        });
         await using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
@@ -273,18 +250,16 @@ public class SecurityTests : TestBase
             Assert.Ignore("Multiplexing doesn't support keepalive");
         }
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = SslMode.Prefer,
-            Username = "npgsql_tests_nossl",
-            Password = "npgsql_tests_nossl",
-            Multiplexing = multiplexing,
-            KeepAlive = keepAlive ? 10 : 0
-        };
-
         try
         {
-            await using var dataSource = CreateDataSource(csb);
+            await using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = SslMode.Prefer;
+                csb.Username = "npgsql_tests_nossl";
+                csb.Password = "npgsql_tests_nossl";
+                csb.Multiplexing = multiplexing;
+                csb.KeepAlive = keepAlive ? 10 : 0;
+            });
             await using var conn = await dataSource.OpenConnectionAsync();
             Assert.IsFalse(conn.IsSecure);
         }
@@ -350,12 +325,7 @@ public class SecurityTests : TestBase
     [Test]
     public void Connect_with_Verify_and_callback_throws([Values(SslMode.VerifyCA, SslMode.VerifyFull)] SslMode sslMode)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SslMode = sslMode
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.SslMode = sslMode);
         using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
@@ -366,13 +336,11 @@ public class SecurityTests : TestBase
     [Test]
     public void Connect_with_RootCertificate_and_callback_throws()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            RootCertificate = "foo"
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.RootCertificate = "foo";
+        });
         using var connection = dataSource.CreateConnection();
         connection.UserCertificateValidationCallback = (_, _, _, _) => true;
 
@@ -384,15 +352,14 @@ public class SecurityTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
     public async Task Bug4305_Secure([Values] bool async)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Require,
-            Username = "npgsql_tests_ssl",
-            Password = "npgsql_tests_ssl",
-            MaxPoolSize = 1,
-            TrustServerCertificate = true
-        };
-        await using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Require;
+            csb.Username = "npgsql_tests_ssl";
+            csb.Password = "npgsql_tests_ssl";
+            csb.MaxPoolSize = 1;
+            csb.TrustServerCertificate = true;
+        });
 
         NpgsqlConnection conn = default!;
 
@@ -434,14 +401,13 @@ public class SecurityTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/4305")]
     public async Task Bug4305_not_Secure([Values] bool async)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            SslMode = SslMode.Disable,
-            Username = "npgsql_tests_nossl",
-            Password = "npgsql_tests_nossl",
-            MaxPoolSize = 1
-        };
-        await using var dataSource = CreateDataSource(csb);
+            csb.SslMode = SslMode.Disable;
+            csb.Username = "npgsql_tests_nossl";
+            csb.Password = "npgsql_tests_nossl";
+            csb.MaxPoolSize = 1;
+        });
 
         NpgsqlConnection conn = default!;
 

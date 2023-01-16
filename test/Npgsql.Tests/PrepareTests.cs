@@ -376,12 +376,11 @@ public class PrepareTests: TestBase
     [Test]
     public void One_command_same_sql_auto_prepare()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 5,
-            AutoPrepareMinUsages = 2
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 5;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         var sql = new StringBuilder();
         for (var i = 0; i < 2 + 1; i++)
@@ -724,8 +723,7 @@ public class PrepareTests: TestBase
     [Test]
     public void Multiplexing_not_supported()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Multiplexing = true };
-        using var dataSource = CreateDataSource(builder);
+        using var dataSource = CreateDataSource(csb => csb.Multiplexing = true);
         using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
 
@@ -736,13 +734,11 @@ public class PrepareTests: TestBase
     [Test]
     public async Task Explicitly_prepared_statement_invalidation()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         await using var connection = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(connection, "foo int");
 

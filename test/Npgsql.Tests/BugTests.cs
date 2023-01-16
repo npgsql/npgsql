@@ -153,12 +153,11 @@ public class BugTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
     public void Bug1558()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            Enlist = true
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.Pooling = false;
+            csb.Enlist = true;
+        });
         using var tx = new TransactionScope();
         using var conn = dataSource.OpenConnection();
     }
@@ -166,13 +165,12 @@ public class BugTests : TestBase
     [Test]
     public void Bug1695()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 1
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.Pooling = false;
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 1;
+        });
         using var conn = dataSource.OpenConnection();
         using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
         using (var reader = cmd.ExecuteReader())
@@ -290,12 +288,12 @@ public class BugTests : TestBase
     [Test]
     public void Bug1761()
     {
-        using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Enlist = true,
-            Pooling = true,
-            MinPoolSize = 1,
-            MaxPoolSize = 1
+            csb.Enlist = true;
+            csb.Pooling = true;
+            csb.MinPoolSize = 1;
+            csb.MaxPoolSize = 1;
         });
 
         for (var i = 0; i < 2; i++)
@@ -379,12 +377,11 @@ CREATE TYPE {compositeType} AS (value {domainType})");
     [IssueLink("https://github.com/npgsql/npgsql/issues/2178")]
     public async Task Bug2178()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            AutoPrepareMinUsages = 2,
-            MaxAutoPrepare = 2
-        };
-        await using var dataSource = CreateDataSource(builder);
+            csb.AutoPrepareMinUsages = 2;
+            csb.MaxAutoPrepare = 2;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand();
         cmd.Connection = conn;
@@ -1102,11 +1099,8 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
     public async Task Chunked_string_write_buffer_encoding_space()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        // write buffer size must be 8192 for this test to work
-        // so guard against changes to the default / a change in the test harness
-        builder.WriteBufferSize = 8192;
-        await using var dataSource = CreateDataSource(builder);
+        // write buffer size must be 8192 for this test to work so guard against changes to the default / a change in the test harness
+        await using var dataSource = CreateDataSource(csb => csb.WriteBufferSize = 8192);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var tableName = await CreateTempTable(conn, "col1 text, col2 text");
@@ -1131,11 +1125,8 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
     public async Task Chunked_char_array_write_buffer_encoding_space()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        // write buffer size must be 8192 for this test to work
-        // so guard against changes to the default / a change in the test harness
-        builder.WriteBufferSize = 8192;
-        await using var dataSource = CreateDataSource(builder);
+        // write buffer size must be 8192 for this test to work so guard against changes to the default / a change in the test harness
+        await using var dataSource = CreateDataSource(csb => csb.WriteBufferSize = 8192);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var tableName = await CreateTempTable(conn, "col1 text, col2 text");

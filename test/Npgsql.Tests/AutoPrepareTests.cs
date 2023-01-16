@@ -13,13 +13,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Basic()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         checkCmd.Prepare();
@@ -49,13 +47,11 @@ public class AutoPrepareTests : TestBase
     [Test, Description("Passes the maximum limit for autoprepared statements, recycling the least-recently used one")]
     public void Recycle()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            AutoPrepareMinUsages = 2,
-            MaxAutoPrepare = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.AutoPrepareMinUsages = 2;
+            csb.MaxAutoPrepare = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         checkCmd.Prepare();
@@ -92,13 +88,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Persist()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
 
         using (var conn = dataSource.OpenConnection())
         using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
@@ -127,13 +121,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public async Task Positional_parameter()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            AutoPrepareMinUsages = 2,
-            MaxAutoPrepare = 2
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.AutoPrepareMinUsages = 2;
+            csb.MaxAutoPrepare = 2;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         await checkCmd.PrepareAsync();
@@ -153,12 +145,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Promote_auto_to_explicit()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         using var cmd1 = new NpgsqlCommand("SELECT 1", conn);
@@ -182,12 +173,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Candidate_eject()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 3
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 3;
+        });
         using var conn = dataSource.OpenConnection();
         using var cmd = conn.CreateCommand();
 
@@ -223,12 +213,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void One_command_same_sql_twice()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 1; SELECT 1; SELECT 1", conn);
         //cmd.Prepare();
@@ -240,12 +229,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Across_close_open_different_connector()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn1 = dataSource.CreateConnection();
         using var conn2 = dataSource.CreateConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn1);
@@ -266,13 +254,11 @@ public class AutoPrepareTests : TestBase
     [Test]
     public void Unprepare_all()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
         cmd.Prepare();  // Explicit
@@ -285,13 +271,11 @@ public class AutoPrepareTests : TestBase
     [Test, Description("Prepares the same SQL with different parameters (overloading)")]
     public void Overloaded_sql()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using (var cmd = new NpgsqlCommand("SELECT @p", conn))
         {
@@ -319,13 +303,11 @@ public class AutoPrepareTests : TestBase
     {
         const string query = "SELECT @p::integer";
         const int answer = 42;
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         using var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn);
         using var cmd = new NpgsqlCommand(query, conn);
@@ -351,12 +333,11 @@ public class AutoPrepareTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2644")]
     public void Row_description_properly_cloned()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         using var conn = dataSource.OpenConnection();
         conn.UnprepareAll();
         using var cmd1 = new NpgsqlCommand("SELECT 1 AS foo", conn);
@@ -372,12 +353,9 @@ public class AutoPrepareTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
     public async Task Dont_auto_prepare_more_than_max_statements_in_batch()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxAutoPrepare = 50,
-        };
+        const int maxAutoPrepare = 50;
 
-        await using var dataSource = CreateDataSource(builder);
+        await using var dataSource = CreateDataSource(csb => csb.MaxAutoPrepare = maxAutoPrepare);
         await using var connection = await dataSource.OpenConnectionAsync();
         for (var i = 0; i < 100; i++)
         {
@@ -386,18 +364,15 @@ public class AutoPrepareTests : TestBase
             await command.ExecuteNonQueryAsync();
         }
 
-        Assert.That(await connection.ExecuteScalarAsync(CountPreparedStatements), Is.LessThanOrEqualTo(builder.MaxAutoPrepare));
+        Assert.That(await connection.ExecuteScalarAsync(CountPreparedStatements), Is.LessThanOrEqualTo(maxAutoPrepare));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
     public async Task Dont_auto_prepare_more_than_max_statements_in_batch_random()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxAutoPrepare = 10,
-        };
+        const int maxAutoPrepare = 10;
 
-        await using var dataSource = CreateDataSource(builder);
+        await using var dataSource = CreateDataSource(csb => csb.MaxAutoPrepare = maxAutoPrepare);
         await using var connection = await dataSource.OpenConnectionAsync();
         var random = new Random(1);
         for (var i = 0; i < 100; i++)
@@ -407,19 +382,17 @@ public class AutoPrepareTests : TestBase
             await command.ExecuteNonQueryAsync();
         }
 
-        Assert.That(await connection.ExecuteScalarAsync(CountPreparedStatements), Is.LessThanOrEqualTo(builder.MaxAutoPrepare));
+        Assert.That(await connection.ExecuteScalarAsync(CountPreparedStatements), Is.LessThanOrEqualTo(maxAutoPrepare));
     }
 
     [Test]
     public async Task Replace_and_execute_within_same_batch()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 1,
-            AutoPrepareMinUsages = 2
-        };
-
-        await using var dataSource = CreateDataSource(builder);
+            csb.MaxAutoPrepare = 1;
+            csb.AutoPrepareMinUsages = 2;
+        });
         await using var connection = await dataSource.OpenConnectionAsync();
         for (var i = 0; i < 2; i++)
             await connection.ExecuteNonQueryAsync("SELECT 1");
@@ -438,12 +411,11 @@ AND statement NOT LIKE '%pg_type%'";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
     public async Task Auto_prepared_command_failure()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-        await using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var tableName = await GetTempTableName(conn);
@@ -468,13 +440,11 @@ AND statement NOT LIKE '%pg_type%'";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3002")]
     public void Replace_with_bad_sql()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 2,
-            AutoPrepareMinUsages = 1
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 2;
+            csb.AutoPrepareMinUsages = 1;
+        });
         using var conn = dataSource.OpenConnection();
 
         conn.ExecuteNonQuery("SELECT 1");
@@ -501,22 +471,21 @@ AND statement NOT LIKE '%pg_type%'";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4082")]
     public async Task Batch_statement_execution_error_cleanup()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 2,
-            AutoPrepareMinUsages = 1
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 2;
+            csb.AutoPrepareMinUsages = 1;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         var funcName = await GetTempFunctionName(conn);
 
         // Create a function we can use to raise an error with a single statement
-        conn.ExecuteNonQuery(@$"
-                CREATE OR REPLACE FUNCTION {funcName}() RETURNS VOID AS
-                    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
-                LANGUAGE 'plpgsql';
-            ");
+        await conn.ExecuteNonQueryAsync(
+$"""
+CREATE OR REPLACE FUNCTION {funcName}() RETURNS VOID AS
+    'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
+LANGUAGE 'plpgsql';
+""");
 
         conn.UnprepareAll();
 
@@ -547,13 +516,11 @@ AND statement NOT LIKE '%pg_type%'";
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4404")]
     public async Task SchemaOnly()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            AutoPrepareMinUsages = 2,
-            MaxAutoPrepare = 10,
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.AutoPrepareMinUsages = 2;
+            csb.MaxAutoPrepare = 10;
+        });
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT 1", conn);
 
@@ -566,13 +533,11 @@ AND statement NOT LIKE '%pg_type%'";
     [Test]
     public async Task Auto_prepared_statement_invalidation()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxAutoPrepare = 10,
-            AutoPrepareMinUsages = 2
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+            csb.MaxAutoPrepare = 10;
+            csb.AutoPrepareMinUsages = 2;
+        });
         await using var connection = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(connection, "foo int");
 

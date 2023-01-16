@@ -14,10 +14,10 @@ class PoolTests : TestBase
     [Test]
     public async Task MinPoolSize_equals_MaxPoolSize()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = 30,
-            MaxPoolSize = 30
+            csb.MinPoolSize = 30;
+            csb.MaxPoolSize = 30;
         });
         await using var conn = await dataSource.OpenConnectionAsync();
     }
@@ -26,10 +26,10 @@ class PoolTests : TestBase
     public void MinPoolSize_bigger_than_MaxPoolSize_throws()
         => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+            await using var dataSource = CreateDataSource(csb =>
             {
-                MinPoolSize = 2,
-                MaxPoolSize = 1
+                csb.MinPoolSize = 2;
+                csb.MaxPoolSize = 1;
             });
         });
 
@@ -47,10 +47,10 @@ class PoolTests : TestBase
     [Test]
     public async Task Get_connector_from_exhausted_pool([Values(true, false)] bool async)
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxPoolSize = 1,
-            Timeout = 0
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 0;
         });
 
         await using var conn1 = await dataSource.OpenConnectionAsync();
@@ -73,10 +73,10 @@ class PoolTests : TestBase
     [Test]
     public async Task Timeout_getting_connector_from_exhausted_pool([Values(true, false)] bool async)
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxPoolSize = 1,
-            Timeout = 2
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 2;
         });
 
         await using (var conn1 = dataSource.CreateConnection())
@@ -100,11 +100,7 @@ class PoolTests : TestBase
     [Explicit("Timing-based")]
     public async Task OpenAsync_cancel()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1,
-        });
-
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn1 = await dataSource.OpenConnectionAsync();
 
         AssertPoolState(dataSource, open: 1, idle: 0);
@@ -131,10 +127,7 @@ class PoolTests : TestBase
     [Test, Description("Makes sure that when a pooled connection is closed it's properly reset, and that parameter settings aren't leaked")]
     public async Task ResetOnClose()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            SearchPath = "public"
-        });
+        await using var dataSource = CreateDataSource(csb => csb.SearchPath = "public");
         await using var conn = await dataSource.OpenConnectionAsync();
         Assert.That(await conn.ExecuteScalarAsync("SHOW search_path"), Is.Not.Contains("pg_temp"));
         var backendId = conn.Connector!.BackendProcessId;
@@ -150,20 +143,17 @@ class PoolTests : TestBase
     public void ConnectionPruningInterval_zero_throws()
         => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ConnectionPruningInterval = 0
-            });
+            await using var dataSource = CreateDataSource(csb => csb.ConnectionPruningInterval = 0);
         });
 
     [Test]
     public void ConnectionPruningInterval_bigger_than_ConnectionIdleLifetime_throws()
         => Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+            await using var dataSource = CreateDataSource(csb =>
             {
-                ConnectionIdleLifetime = 1,
-                ConnectionPruningInterval = 2
+                csb.ConnectionIdleLifetime = 1;
+                csb.ConnectionPruningInterval = 2;
             });
         });
 
@@ -176,11 +166,11 @@ class PoolTests : TestBase
     [TestCase(2, 20, 3, 7)] // test high samples.
     public async Task Prune_idle_connectors(int minPoolSize, int connectionIdleLifeTime, int connectionPruningInterval, int samples)
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = minPoolSize,
-            ConnectionIdleLifetime = connectionIdleLifeTime,
-            ConnectionPruningInterval = connectionPruningInterval
+            csb.MinPoolSize = minPoolSize;
+            csb.ConnectionIdleLifetime = connectionIdleLifeTime;
+            csb.ConnectionPruningInterval = connectionPruningInterval;
         });
 
         var connectionPruningIntervalMs = connectionPruningInterval * 1000;
@@ -216,10 +206,7 @@ class PoolTests : TestBase
     [Test, Description("Makes sure that when a waiting async open is is given a connection, the continuation is executed in the TP rather than on the closing thread")]
     public async Task Close_releases_waiter_on_another_thread()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        });
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn1 = await dataSource.OpenConnectionAsync(); // Pool is now exhausted
 
         AssertPoolState(dataSource, open: 1, idle: 0);
@@ -247,10 +234,10 @@ class PoolTests : TestBase
     [Test] //TODO: parallelize
     public async Task Release_waiter_on_connection_failure()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            Port = 9999,
-            MaxPoolSize = 1
+            csb.Port = 9999;
+            csb.MaxPoolSize = 1;
         });
 
         var tasks = Enumerable.Range(0, 2).Select(i => Task.Run(async () =>
@@ -363,10 +350,7 @@ class PoolTests : TestBase
     //[TestCase(10, 20, 30, false)]
     public async Task Exercise_pool(int maxPoolSize, int numTasks, int seconds, bool async)
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = maxPoolSize
-        });
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = maxPoolSize);
 
         Console.WriteLine($"Spinning up {numTasks} parallel tasks for {seconds} seconds (MaxPoolSize={maxPoolSize})...");
         StopFlag = 0;
@@ -392,11 +376,7 @@ class PoolTests : TestBase
     [Test]
     public async Task ConnectionLifetime()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ConnectionLifetime = 1
-        });
-
+        await using var dataSource = CreateDataSource(csb => csb.ConnectionLifetime = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         var processId = conn.ProcessID;
         await conn.CloseAsync();
@@ -428,12 +408,12 @@ class PoolTests : TestBase
     {
         const int numParallelCommands = 10000;
 
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxPoolSize = 1,
-            MaxAutoPrepare = 5,
-            AutoPrepareMinUsages = 5,
-            Timeout = 0
+            csb.MaxPoolSize = 1;
+            csb.MaxAutoPrepare = 5;
+            csb.AutoPrepareMinUsages = 5;
+            csb.Timeout = 0;
         });
 
         await Task.WhenAll(Enumerable.Range(0, numParallelCommands)
@@ -454,10 +434,10 @@ class PoolTests : TestBase
     [Ignore("Multiplexing: fails")]
     public async Task MultiplexedCommandDoesntGetExecutedOnTransactionedConnector()
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MaxPoolSize = 1,
-            Timeout = 1
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 1;
         });
 
         await using var connWithTx = await dataSource.OpenConnectionAsync();

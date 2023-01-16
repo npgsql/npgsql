@@ -96,12 +96,7 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/2408")]
     public void Rollback_implicit_enlist([Values(true, false)] bool pooling)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
 
         using (new TransactionScope())
         using (var conn = dataSource.OpenConnection())
@@ -283,13 +278,11 @@ public class SystemTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
     public void Single_unpooled_connection()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            Enlist = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+            csb.Pooling = false;
+            csb.Enlist = true;
+        });
         using var scope = new TransactionScope();
 
         using (var conn = dataSource.OpenConnection())
@@ -303,12 +296,7 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_rollback([Values] bool pooling)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling,
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
         using var scope = new TransactionScope();
         var conn = dataSource.OpenConnection();
 
@@ -320,12 +308,7 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_commit([Values] bool pooling)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling,
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
         var ex = Assert.Throws<TransactionInDoubtException>(() =>
         {
             using var scope = new TransactionScope();
@@ -345,12 +328,7 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/4085")]
     public void Open_connection_with_enlist_and_aborted_TransactionScope()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Enlist = true
-        };
-
-        using var dataSource = CreateDataSource(csb);
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
         for (var i = 0; i < 2; i++)
         {
             using var outerScope = new TransactionScope();

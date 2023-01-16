@@ -325,12 +325,7 @@ public class TransactionTests : MultiplexingTestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
     public async Task Failed_transaction_on_close_with_custom_timeout()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = true
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = true);
 
         await using var conn = await dataSource.OpenConnectionAsync();
 
@@ -626,12 +621,11 @@ public class TransactionTests : MultiplexingTestBase
     [Test]
     public async Task Unbound_transaction_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = 1,
-            MaxPoolSize = 1,
-        };
-        await using var dataSource = CreateDataSource(csb);
+            csb.MinPoolSize = 1;
+            csb.MaxPoolSize = 1;
+        });
 
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
@@ -696,12 +690,7 @@ public class TransactionTests : MultiplexingTestBase
         if (IsMultiplexing)
             return;
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
         await conn.ExecuteNonQueryAsync("SELECT 1", tx);

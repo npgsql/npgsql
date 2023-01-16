@@ -145,11 +145,7 @@ public class CommandTests : MultiplexingTestBase
         if (IsMultiplexing)
             return; // Multiplexing, Timeout
 
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            CommandTimeout = 1
-        });
-
+        await using var dataSource = CreateDataSource(csb => csb.CommandTimeout = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn, 10);
         Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
@@ -166,11 +162,7 @@ public class CommandTests : MultiplexingTestBase
         if (IsMultiplexing)
             return; // Multiplexing, Timeout
 
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            CommandTimeout = 1
-        });
-
+        await using var dataSource = CreateDataSource(csb => csb.CommandTimeout = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = CreateSleepCommand(conn, 10);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(),
@@ -210,11 +202,7 @@ public class CommandTests : MultiplexingTestBase
     {
         Assert.That(NpgsqlConnector.MinimumInternalCommandTimeout, Is.Not.EqualTo(NpgsqlCommand.DefaultTimeout));
         var timeout = NpgsqlConnector.MinimumInternalCommandTimeout;
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            CommandTimeout = timeout
-        };
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.CommandTimeout = timeout);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var command = new NpgsqlCommand("SELECT 1", conn);
         Assert.That(command.CommandTimeout, Is.EqualTo(timeout));

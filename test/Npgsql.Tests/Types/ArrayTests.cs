@@ -28,11 +28,7 @@ public class ArrayTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, ReloadTypes");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         // Resolve type by NpgsqlDbType
@@ -165,10 +161,7 @@ public class ArrayTests : MultiplexingTestBase
     [TestCase(ArrayNullabilityMode.PerInstance)]
     public async Task Value_type_array_nullabilities(ArrayNullabilityMode mode)
     {
-        await using var dataSource = CreateDataSource(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            ArrayNullabilityMode = mode
-        });
+        await using var dataSource = CreateDataSource(csb => csb.ArrayNullabilityMode = mode);
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
 """

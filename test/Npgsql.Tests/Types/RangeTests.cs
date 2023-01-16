@@ -22,12 +22,7 @@ class RangeTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, ReloadTypes");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         // Resolve type by NpgsqlDbType
@@ -103,11 +98,7 @@ class RangeTests : MultiplexingTestBase
     [NonParallelizable]
     public async Task Range_with_long_subtype()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        };
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var typeName = await GetTempTypeName(conn);

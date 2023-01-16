@@ -13,12 +13,7 @@ public class DomainTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, ReloadTypes");
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
-
-        await using var dataSource = CreateDataSource(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await dataSource.OpenConnectionAsync();
         var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {type} AS text");
