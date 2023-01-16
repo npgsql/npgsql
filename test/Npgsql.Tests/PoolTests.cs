@@ -343,27 +343,17 @@ class PoolTests : TestBase
     [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
     public void Open_physical_failure()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            ApplicationName = nameof(Open_physical_failure),
-            Port = 44444,
-            MaxPoolSize = 1
-        }.ToString();
-        using var conn = new NpgsqlConnection(connString);
-        try
-        {
-            for (var i = 0; i < 1; i++)
-                Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.InnerException.TypeOf<SocketException>());
-            Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));
-            AssertPoolState(pool, open: 0, idle: 0);
-        }
-        finally
-        {
-            conn.Close();
-            NpgsqlConnection.ClearPool(conn);
-        }
+            csb.Port = 44444;
+            csb.MaxPoolSize = 1;
+        });
+        using var conn = dataSource.CreateConnection();
+        for (var i = 0; i < 1; i++)
+            Assert.That(() => conn.Open(), Throws.Exception
+                .TypeOf<NpgsqlException>()
+                .With.InnerException.TypeOf<SocketException>());
+        AssertPoolState(dataSource, open: 0, idle: 0);
     }
 
     //[Test, Explicit]
