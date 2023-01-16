@@ -207,7 +207,7 @@ sealed class SqlQueryParser
                     }
 
                     if (!parameter.IsInputDirection)
-                        ThrowHelper.ThrowInvalidOperationException("Parameter '{{0}}' referenced in SQL but is an out-only parameter", paramName);
+                        ThrowHelper.ThrowInvalidOperationException("Parameter '{0}' referenced in SQL but is an out-only parameter", paramName);
 
                     batchCommand.PositionalParameters.Add(parameter);
                     index = _paramIndexMap[paramName] = batchCommand.PositionalParameters.Count;
