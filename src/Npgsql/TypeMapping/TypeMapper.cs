@@ -136,61 +136,66 @@ sealed class TypeMapper
         if (_handlersByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
             return handler;
 
-        lock (_writeLock)
+        return ResolveLong();
+
+        NpgsqlTypeHandler ResolveLong()
         {
-            // First, try to resolve as a base type; translate the NpgsqlDbType to a PG data type name and look that up.
-            if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
+            lock (_writeLock)
             {
-                foreach (var resolver in _resolvers)
+                // First, try to resolve as a base type; translate the NpgsqlDbType to a PG data type name and look that up.
+                if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
                 {
-                    try
+                    foreach (var resolver in _resolvers)
                     {
-                        if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
-                            return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
-                    }
-                    catch (Exception e)
-                    {
-                        _commandLogger.LogError(e,
-                            $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
+                        try
+                        {
+                            if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
+                                return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+                        }
+                        catch (Exception e)
+                        {
+                            _commandLogger.LogError(e,
+                                $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
+                        }
                     }
                 }
+
+                if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
+                {
+                    var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
+
+                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
+                        throw new ArgumentException(
+                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
+
+                    return _handlersByNpgsqlDbType[npgsqlDbType] =
+                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
+                }
+
+                if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
+                {
+                    var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
+
+                    if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
+                        throw new ArgumentException(
+                            $"No range type could be found in the database for subtype {subtypeHandler.PostgresType}");
+
+                    return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateRangeHandler(pgRangeType);
+                }
+
+                if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
+                {
+                    var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
+
+                    if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
+                        throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
+
+                    return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
+                }
+
+                throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                          "You may need to install an extension or upgrade to a newer version.");
             }
-
-            if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
-            {
-                var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
-
-                if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                    throw new ArgumentException(
-                        $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                return _handlersByNpgsqlDbType[npgsqlDbType] =
-                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-            }
-
-            if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
-            {
-                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
-
-                if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
-                    throw new ArgumentException(
-                        $"No range type could be found in the database for subtype {subtypeHandler.PostgresType}");
-
-                return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateRangeHandler(pgRangeType);
-            }
-
-            if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
-            {
-                var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
-
-                if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
-                    throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
-
-                return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
-            }
-
-            throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
-                                      "You may need to install an extension or upgrade to a newer version.");
         }
     }
 
@@ -202,22 +207,27 @@ sealed class TypeMapper
         if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
             return handler;
 
-        lock (_writeLock)
-        {
-            foreach (var resolver in _resolvers)
-            {
-                try
-                {
-                    if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
-                        return _handlersByDataTypeName[typeName] = handler;
-                }
-                catch (Exception e)
-                {
-                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
-                }
-            }
+        return ResolveLong();
 
-            return null;
+        NpgsqlTypeHandler? ResolveLong()
+        {
+            lock (_writeLock)
+            {
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
+                            return _handlersByDataTypeName[typeName] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
+                    }
+                }
+
+                return null;
+            }
         }
     }
 
@@ -310,7 +320,6 @@ sealed class TypeMapper
         return ResolveByValue((object)value);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal NpgsqlTypeHandler ResolveByValue(object value)
     {
         // We resolve as follows:
@@ -323,22 +332,27 @@ sealed class TypeMapper
         if (_handlersByClrType.TryGetValue(type, out var handler))
             return handler;
 
-        foreach (var resolver in _resolvers)
-        {
-            try
-            {
-                if ((handler = resolver.ResolveValueDependentValue(value)) is not null)
-                    return handler;
-            }
-            catch (Exception e)
-            {
-                _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
-            }
-        }
+        return ResolveLong();
 
-        // ResolveByClrType either throws, or resolves a handler and caches it in _handlersByClrType (where it would be found above the
-        // next time we resolve this type)
-        return ResolveByClrType(type);
+        NpgsqlTypeHandler ResolveLong()
+        {
+            foreach (var resolver in _resolvers)
+            {
+                try
+                {
+                    if ((handler = resolver.ResolveValueDependentValue(value)) is not null)
+                        return handler;
+                }
+                catch (Exception e)
+                {
+                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                }
+            }
+
+            // ResolveByClrType either throws, or resolves a handler and caches it in _handlersByClrType (where it would be found above the
+            // next time we resolve this type)
+            return ResolveByClrType(type);
+        }
     }
 
     // TODO: This is needed as a separate method only because of binary COPY, see #3957

@@ -891,7 +891,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 break;
 
             default:
-                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {Parameters.PlaceholderType}");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {{0}}", Parameters.PlaceholderType);
                 break;
             }
 
@@ -960,7 +960,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             break;
 
         default:
-            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {CommandType} of enum {nameof(CommandType)}. Please file a bug.");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(CommandType), $"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(CommandType)}. Please file a bug.", commandType);
             break;
         }
 

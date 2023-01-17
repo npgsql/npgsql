@@ -2272,42 +2272,12 @@ public sealed partial class NpgsqlConnector : IDisposable
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
-        // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
-        // (which itself must be protected by a lock, since its dispose isn't thread-safe).
+        // If keepalive is enabled, we must protect state transitions with a lock.
         // This will make the keepalive abort safely if a user query is in progress, and make
         // the user query wait if a keepalive is in progress.
-
-        // If keepalive isn't enabled, we don't use the semaphore and rely only on the connector's
+        // If keepalive isn't enabled, we don't use the lock and rely only on the connector's
         // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
-        if (!_isKeepAliveEnabled)
-            return DoStartUserAction(newState, command);
-
-        lock (this)
-        {
-            if (!IsConnected)
-            {
-                throw IsBroken
-                    ? new NpgsqlException("The connection was previously broken because of the following exception", _breakReason)
-                    : new NpgsqlException("The connection is closed");
-            }
-
-            // Disable keepalive, it will be restarted at the end of the user action
-            _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
-
-            try
-            {
-                // Check that the connector is ready.
-                return DoStartUserAction(newState, command);
-            }
-            catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
-            {
-                // We failed, but there is no current operation.
-                // As such, we re-enable the keepalive.
-                var keepAlive = Settings.KeepAlive * 1000;
-                _keepAliveTimer!.Change(keepAlive, keepAlive);
-                throw;
-            }
-        }
+        return _isKeepAliveEnabled ? DoStartUserActionWithKeepAlive(newState, command) : DoStartUserAction(newState, command);
 
         UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command)
         {
@@ -2326,11 +2296,14 @@ public sealed partial class NpgsqlConnector : IDisposable
             case ConnectorState.Connecting:
             case ConnectorState.Copy:
                 var currentCommand = _currentCommand;
-                throw currentCommand == null
-                    ? new NpgsqlOperationInProgressException(State)
-                    : new NpgsqlOperationInProgressException(currentCommand);
+                if (currentCommand is null)
+                    ThrowHelper.ThrowNpgsqlOperationInProgressException(State);
+                else
+                    ThrowHelper.ThrowNpgsqlOperationInProgressException(currentCommand);
+                break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(State), State, $"Invalid connector state: {State}");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(State), "Invalid connector state: {0}", State);
+                break;
             }
 
             Debug.Assert(IsReady);
@@ -2349,6 +2322,37 @@ public sealed partial class NpgsqlConnector : IDisposable
             UserTimeout = (command?.CommandTimeout ?? Settings.CommandTimeout) * 1000;
 
             return new UserAction(this);
+        }
+
+        UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command)
+        {
+            lock (this)
+            {
+                if (!IsConnected)
+                {
+                    if (IsBroken)
+                        ThrowHelper.ThrowNpgsqlException("The connection was previously broken because of the following exception", _breakReason);
+                    else
+                        ThrowHelper.ThrowNpgsqlException("The connection is closed");
+                }
+
+                // Disable keepalive, it will be restarted at the end of the user action
+                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
+
+                try
+                {
+                    // Check that the connector is ready.
+                    return DoStartUserAction(newState, command);
+                }
+                catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
+                {
+                    // We failed, but there is no current operation.
+                    // As such, we re-enable the keepalive.
+                    var keepAlive = Settings.KeepAlive * 1000;
+                    _keepAliveTimer!.Change(keepAlive, keepAlive);
+                    throw;
+                }
+            }
         }
     }
 

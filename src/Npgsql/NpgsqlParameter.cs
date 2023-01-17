@@ -510,13 +510,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (Handler is not null)
             return;
 
-        if (_npgsqlDbType.HasValue)
-            Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
-        else if (_dataTypeName is not null)
-            Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
-        else if (_value is not null)
-            Handler = typeMapper.ResolveByValue(_value);
-        else
+        Resolve(typeMapper);
+
+        void Resolve(TypeMapper typeMapper)
+        {
+            if (_npgsqlDbType.HasValue)
+                Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
+            else if (_dataTypeName is not null)
+                Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
+            else if (_value is not null)
+                Handler = typeMapper.ResolveByValue(_value);
+            else
+                ThrowInvalidOperationException();
+        }
+
+        void ThrowInvalidOperationException()
         {
             var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
             ThrowHelper.ThrowInvalidOperationException($"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
@@ -534,7 +542,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_value is DBNull)
             return 0;
         if (_value == null)
-            throw new InvalidCastException($"Parameter {ParameterName} must be set");
+            ThrowHelper.ThrowInvalidCastException("Parameter {0} must be set", ParameterName);
 
         var lengthCache = LengthCache;
         var len = Handler!.ValidateObjectAndGetLength(_value, ref lengthCache, this);

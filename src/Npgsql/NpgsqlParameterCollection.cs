@@ -705,8 +705,8 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
             case PlaceholderType.Mixed:
                 break;
             default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {PlaceholderType}");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(PlaceholderType), $"Unknown {nameof(PlaceholderType)} value: {{0}}", PlaceholderType);
+                break;
             }
 
             switch (p.Direction)
@@ -716,13 +716,13 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             case ParameterDirection.InputOutput:
                 if (PlaceholderType == PlaceholderType.Positional && commandType != CommandType.StoredProcedure)
-                    throw new NotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
+                    ThrowHelper.ThrowNotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
                 HasOutputParameters = true;
                 break;
 
             case ParameterDirection.Output:
                 if (PlaceholderType == PlaceholderType.Positional && commandType != CommandType.StoredProcedure)
-                    throw new NotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
+                    ThrowHelper.ThrowNotSupportedException("Output parameters are not supported in positional mode (unless used with CommandType.StoredProcedure)");
                 HasOutputParameters = true;
                 continue;
 
@@ -731,8 +731,9 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 continue;
 
             default:
-                throw new ArgumentOutOfRangeException(nameof(ParameterDirection),
-                    $"Unhandled {nameof(ParameterDirection)} value: {p.Direction}");
+                ThrowHelper.ThrowArgumentOutOfRangeException(nameof(ParameterDirection),
+                    $"Unhandled {nameof(ParameterDirection)} value: {{0}}", p.Direction);
+                break;
             }
 
             p.Bind(typeMapper);
