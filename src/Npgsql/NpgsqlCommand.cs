@@ -960,7 +960,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             break;
 
         default:
-            ThrowHelper.ThrowInvalidOperationException($"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(CommandType)}. Please file a bug.", CommandType);
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(CommandType), $"Internal Npgsql bug: unexpected value {{0}} of enum {nameof(CommandType)}. Please file a bug.", commandType);
             break;
         }
 
