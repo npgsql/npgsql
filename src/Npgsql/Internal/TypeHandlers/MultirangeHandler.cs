@@ -9,7 +9,9 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers;
 
-public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange<TSubtype>[]>,
+// NOTE: This cannot inherit from NpgsqlTypeHandler<NpgsqlRange<TSubtype>[]>, since that triggers infinite generic recursion in Native AOT
+public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler,
+    INpgsqlTypeHandler<NpgsqlRange<TSubtype>[]>,
     INpgsqlTypeHandler<List<NpgsqlRange<TSubtype>>>
 {
     /// <summary>
@@ -22,7 +24,7 @@ public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange
         : base(pgMultirangeType)
         => RangeHandler = rangeHandler;
 
-    public override ValueTask<NpgsqlRange<TSubtype>[]> Read(
+    public ValueTask<NpgsqlRange<TSubtype>[]> Read(
         NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => ReadMultirangeArray<TSubtype>(buf, len, async, fieldDescription);
 
@@ -64,7 +66,10 @@ public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange
         return multirange;
     }
 
-    public override int ValidateAndGetLength(NpgsqlRange<TSubtype>[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+    public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        => await Read(buf, len, async, fieldDescription);
+
+    public int ValidateAndGetLength(NpgsqlRange<TSubtype>[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLengthMultirange(value, ref lengthCache, parameter);
 
     public int ValidateAndGetLength(List<NpgsqlRange<TSubtype>> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -89,7 +94,7 @@ public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange
         return sum;
     }
 
-    public override Task Write(
+    public Task Write(
         NpgsqlRange<TSubtype>[] value,
         NpgsqlWriteBuffer buf,
         NpgsqlLengthCache? lengthCache,
@@ -123,6 +128,21 @@ public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler<NpgsqlRange
         for (var i = 0; i < value.Count; i++)
             await RangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
     }
+
+    public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>[]);
+    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>[]);
+
+    /// <inheritdoc />
+    public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)
+        => throw new NotSupportedException();
+
+    /// <inheritdoc />
+    public override NpgsqlTypeHandler CreateMultirangeHandler(PostgresMultirangeType pgMultirangeType)
+        => throw new NotSupportedException();
 }
 
 public class MultirangeHandler<TSubtype1, TSubtype2> : MultirangeHandler<TSubtype1>,

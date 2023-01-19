@@ -1705,6 +1705,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     #region ICustomTypeDescriptor
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("PropertyDescriptor's PropertyType cannot be statically discovered.")]
     protected override void GetProperties(Hashtable propertyDescriptors)
     {
         // Tweak which properties are exposed via TypeDescriptor. This affects the VS DDEX
