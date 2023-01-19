@@ -2277,9 +2277,12 @@ public sealed partial class NpgsqlConnector : IDisposable
         // the user query wait if a keepalive is in progress.
         // If keepalive isn't enabled, we don't use the lock and rely only on the connector's
         // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
-        return _isKeepAliveEnabled ? DoStartUserActionWithKeepAlive(newState, command) : DoStartUserAction(newState, command);
+        return _isKeepAliveEnabled 
+            ? DoStartUserActionWithKeepAlive(newState, command, cancellationToken, attemptPgCancellation)
+            : DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation);
 
-        UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command)
+        UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command,
+            CancellationToken cancellationToken, bool attemptPgCancellation)
         {
             switch (State)
             {
@@ -2324,7 +2327,8 @@ public sealed partial class NpgsqlConnector : IDisposable
             return new UserAction(this);
         }
 
-        UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command)
+        UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command,
+            CancellationToken cancellationToken, bool attemptPgCancellation)
         {
             lock (this)
             {
@@ -2342,7 +2346,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 try
                 {
                     // Check that the connector is ready.
-                    return DoStartUserAction(newState, command);
+                    return DoStartUserAction(newState, command, cancellationToken, attemptPgCancellation);
                 }
                 catch (Exception ex) when (ex is not NpgsqlOperationInProgressException)
                 {

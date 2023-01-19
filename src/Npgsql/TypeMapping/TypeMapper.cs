@@ -136,9 +136,9 @@ sealed class TypeMapper
         if (_handlersByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
             return handler;
 
-        return ResolveLong();
+        return ResolveLong(npgsqlDbType);
 
-        NpgsqlTypeHandler ResolveLong()
+        NpgsqlTypeHandler ResolveLong(NpgsqlDbType npgsqlDbType)
         {
             lock (_writeLock)
             {
@@ -149,7 +149,7 @@ sealed class TypeMapper
                     {
                         try
                         {
-                            if ((handler = resolver.ResolveByDataTypeName(dataTypeName)) is not null)
+                            if (resolver.ResolveByDataTypeName(dataTypeName) is { } handler)
                                 return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
                         }
                         catch (Exception e)
@@ -207,9 +207,9 @@ sealed class TypeMapper
         if (_handlersByDataTypeName.TryGetValue(typeName, out var handler))
             return handler;
 
-        return ResolveLong();
+        return ResolveLong(typeName);
 
-        NpgsqlTypeHandler? ResolveLong()
+        NpgsqlTypeHandler? ResolveLong(string typeName)
         {
             lock (_writeLock)
             {
@@ -217,7 +217,7 @@ sealed class TypeMapper
                 {
                     try
                     {
-                        if ((handler = resolver.ResolveByDataTypeName(typeName)) is not null)
+                        if (resolver.ResolveByDataTypeName(typeName) is { } handler)
                             return _handlersByDataTypeName[typeName] = handler;
                     }
                     catch (Exception e)
@@ -332,15 +332,15 @@ sealed class TypeMapper
         if (_handlersByClrType.TryGetValue(type, out var handler))
             return handler;
 
-        return ResolveLong();
+        return ResolveLong(value, type);
 
-        NpgsqlTypeHandler ResolveLong()
+        NpgsqlTypeHandler ResolveLong(object value, Type type)
         {
             foreach (var resolver in _resolvers)
             {
                 try
                 {
-                    if ((handler = resolver.ResolveValueDependentValue(value)) is not null)
+                    if (resolver.ResolveValueDependentValue(value) is { } handler)
                         return handler;
                 }
                 catch (Exception e)
