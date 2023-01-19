@@ -50,8 +50,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             if (byteLen <= buf.Size)
             {
                 // The string's byte representation can fit in our read buffer, read it.
-                while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async);
+                await buf.Ensure(byteLen, async);
                 return buf.ReadString(byteLen);
             }
 
@@ -84,8 +83,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         if (byteLen <= buf.Size)
         {
             // The string's byte representation can fit in our read buffer, read it.
-            while (buf.ReadBytesLeft < byteLen)
-                await buf.ReadMore(async);
+            await buf.Ensure(byteLen, async);
             return buf.ReadChars(byteLen);
         }
 
@@ -111,8 +109,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     {
         // Make sure we have enough bytes in the buffer for a single character
         var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
-        while (buf.ReadBytesLeft < maxBytes)
-            await buf.ReadMore(async);
+        await buf.Ensure(maxBytes, async);
 
         return ReadCharCore();
 
@@ -155,8 +152,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             if (byteLen <= buf.Size)
             {
                 // The bytes can fit in our read buffer, read it.
-                while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async);
+                await buf.Ensure(byteLen, async);
                 buf.ReadBytes(bytes, 0, byteLen);
                 return bytes;
             }
