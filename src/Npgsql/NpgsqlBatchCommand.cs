@@ -110,7 +110,7 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// </summary>
     /// <remarks>
     /// If the user provided positional parameters, this references the <see cref="Parameters"/> (in batching mode) or the list
-    /// backing <see cref="NpgsqlCommand.Parameters" /> (in non-batching) mode. If the user provided named parameters, this is a
+    /// backing <see cref="NpgsqlCommandOrig.Parameters" /> (in non-batching) mode. If the user provided named parameters, this is a
     /// separate list containing the re-ordered parameters.
     /// </remarks>
     internal List<NpgsqlParameter> PositionalParameters

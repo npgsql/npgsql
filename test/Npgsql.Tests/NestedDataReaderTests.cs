@@ -11,7 +11,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Basic()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(@"SELECT ARRAY[ROW(1, 2, 3), ROW(4, 5, 6)]
+        await using var command = new NpgsqlCommandOrig(@"SELECT ARRAY[ROW(1, 2, 3), ROW(4, 5, 6)]
                                                     UNION ALL
                                                     SELECT ARRAY[ROW(7, 8, 9), ROW(10, 11, 12)]", conn);
         await using var reader = await command.ExecuteReaderAsync();
@@ -47,7 +47,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Different_field_count()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(@"SELECT ARRAY[ROW(1), ROW(), ROW('2'::TEXT, 3), ROW(4)]", conn);
+        await using var command = new NpgsqlCommandOrig(@"SELECT ARRAY[ROW(1), ROW(), ROW('2'::TEXT, 3), ROW(4)]", conn);
         await using var reader = await command.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync(), Is.True);
         using var nestedReader = reader.GetData(0);
@@ -73,7 +73,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Nested()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(@"SELECT
+        await using var command = new NpgsqlCommandOrig(@"SELECT
                 ARRAY[
                     ROW(
                         ARRAY[
@@ -124,7 +124,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Single_row()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand("SELECT ROW(1, ARRAY[ROW(2), ROW(3)])", conn);
+        await using var command = new NpgsqlCommandOrig("SELECT ROW(1, ARRAY[ROW(2), ROW(3)])", conn);
         await using var reader = await command.ExecuteReaderAsync();
         await reader.ReadAsync();
         using var nestedReader = reader.GetData(0);
@@ -145,7 +145,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Empty_array()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand("SELECT ARRAY[]::RECORD[]", conn);
+        await using var command = new NpgsqlCommandOrig("SELECT ARRAY[]::RECORD[]", conn);
         await using var reader = await command.ExecuteReaderAsync();
         await reader.ReadAsync();
         using var nestedReader = reader.GetData(0);
@@ -167,7 +167,7 @@ public class NestedDataReaderTests : TestBase
         };
         foreach (var sql in sqls)
         {
-            await using var command = new NpgsqlCommand(sql, conn);
+            await using var command = new NpgsqlCommandOrig(sql, conn);
             await using var reader = await command.ExecuteReaderAsync();
             await reader.ReadAsync();
             using var nestedReader = reader.GetData(0);
@@ -188,7 +188,7 @@ public class NestedDataReaderTests : TestBase
     public void GetBytes()
     {
         using var conn = OpenConnection();
-        using var command = new NpgsqlCommand(@"SELECT ROW('\x010203'::BYTEA, NULL::BYTEA)", conn);
+        using var command = new NpgsqlCommandOrig(@"SELECT ROW('\x010203'::BYTEA, NULL::BYTEA)", conn);
         using var reader = command.ExecuteReader();
         reader.Read();
         using var nestedReader = reader.GetData(0);
@@ -216,7 +216,7 @@ public class NestedDataReaderTests : TestBase
     public async Task Throw_after_next_row()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand(@"SELECT ROW(1) UNION ALL SELECT ROW(2) UNION ALL SELECT ROW(3)", conn);
+        await using var command = new NpgsqlCommandOrig(@"SELECT ROW(1) UNION ALL SELECT ROW(2) UNION ALL SELECT ROW(3)", conn);
         await using var reader = await command.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync(), Is.True);
         var nestedReader = reader.GetData(0);

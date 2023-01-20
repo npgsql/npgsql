@@ -35,7 +35,7 @@ public class ArrayTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync(csb);
 
         // Resolve type by NpgsqlDbType
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.AddWithValue("p", NpgsqlDbType.Array | NpgsqlDbType.Integer, DBNull.Value);
             using var reader = await cmd.ExecuteReaderAsync();
@@ -46,7 +46,7 @@ public class ArrayTests : MultiplexingTestBase
 
         // Resolve type by ClrType (type inference)
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new int[0] });
             using var reader = await cmd.ExecuteReaderAsync();
@@ -57,7 +57,7 @@ public class ArrayTests : MultiplexingTestBase
 
         // Resolve type by DataTypeName
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "integer[]", Value = DBNull.Value });
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -69,7 +69,7 @@ public class ArrayTests : MultiplexingTestBase
 
         // Resolve type by OID (read)
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT '{1, 3}'::INTEGER[]", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT '{1, 3}'::INTEGER[]", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
@@ -85,7 +85,7 @@ public class ArrayTests : MultiplexingTestBase
         using var conn = new NpgsqlConnection(connString);
         await conn.OpenAsync();
 
-        using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 1", conn);
         _ = await cmd.ExecuteScalarAsync();
 
         cmd.CommandText = "SELECT ARRAY[1,2]";
@@ -96,7 +96,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Ints()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2, @p3", conn);
 
         var expected = new[] { 1, 5, 9 };
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
@@ -124,7 +124,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Nullable_ints()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2, @p3", conn);
 
         var expected = new int?[] { 1, 5, null, 9 };
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
@@ -150,7 +150,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Nullable_ints_cannot_be_read_as_non_nullable()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT '{1, NULL, 2}'::integer[]", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT '{1, NULL, 2}'::integer[]", conn);
         using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
@@ -167,7 +167,7 @@ public class ArrayTests : MultiplexingTestBase
     {
         using var pool = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString){ ArrayNullabilityMode = mode}, out var connectionString);
         await using var conn = await OpenConnectionAsync(connectionString);
-        await using var cmd = new NpgsqlCommand("SELECT onedim, twodim FROM (VALUES" +
+        await using var cmd = new NpgsqlCommandOrig("SELECT onedim, twodim FROM (VALUES" +
                                                 "('{1, 2, 3, 4}'::int[],'{{1, 2},{3, 4}}'::int[][])," +
                                                 "('{5, NULL, 6, 7}'::int[],'{{5, NULL},{6, 7}}'::int[][])" +
                                                 ") AS x(onedim,twodim)", conn);
@@ -239,7 +239,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Empty_array()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
 
         cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = new int[0] });
         var reader = await cmd.ExecuteReaderAsync();
@@ -253,7 +253,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Empty_multidimensional_array()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
 
         var expected = new int[0, 0];
         cmd.Parameters.AddWithValue("p", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
@@ -268,7 +268,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Wrong_array_dimensions_throws()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT ARRAY[[1], [2]]", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT ARRAY[[1], [2]]", conn);
 
         var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
@@ -281,7 +281,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Read_null_as_non_nullable_array_throws()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
 
         var expected = new int?[] { 1, 5, null, 9 };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
@@ -300,7 +300,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Read_null_as_non_nullable_list_throws()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
 
         var expected = new int?[] { 1, 5, null, 9 };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
@@ -323,7 +323,7 @@ public class ArrayTests : MultiplexingTestBase
         for (var i = 0; i < expected.Length; i++)
             expected[i] = i;
 
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var p = new NpgsqlParameter {ParameterName = "p", Value = expected};
         cmd.Parameters.Add(p);
 
@@ -342,7 +342,7 @@ public class ArrayTests : MultiplexingTestBase
             expected[0, i] = i;
         for (var i = 0; i < len; i++)
             expected[1, i] = i;
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var p = new NpgsqlParameter {ParameterName = "p", Value = expected};
         cmd.Parameters.Add(p);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
@@ -357,7 +357,7 @@ public class ArrayTests : MultiplexingTestBase
         var largeString = new StringBuilder();
         largeString.Append('a', conn.Settings.WriteBufferSize);
         var expected = new[] {"value1", null, largeString.ToString(), "val3"};
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Text) {Value = expected};
         cmd.Parameters.Add(p);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
@@ -369,7 +369,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Zero_dimensional()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var expected = new int[0];
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
         cmd.Parameters.Add(p);
@@ -385,7 +385,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Two_dimensional_ints()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2", conn);
         var expected = new[,] { { 1, 2, 3 }, { 7, 8, 9 } };
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
         var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
@@ -403,14 +403,14 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Read_non_zero_lower_bounded()
     {
         using var conn = await OpenConnectionAsync();
-        using (var cmd = new NpgsqlCommand("SELECT '[2:3]={ 8, 9 }'::INT[]", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT '[2:3]={ 8, 9 }'::INT[]", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
             Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(new[] {8, 9}));
         }
 
-        using (var cmd = new NpgsqlCommand("SELECT '[2:3][2:3]={ {8,9}, {1,2} }'::INT[][]", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT '[2:3][2:3]={ {8,9}, {1,2} }'::INT[][]", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
@@ -422,7 +422,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Array_of_byte_arrays()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2", conn);
         var expected = new[] { new byte[] { 1, 2 }, new byte[] { 3, 4, } };
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Bytea);
         var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
@@ -443,7 +443,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task IList_non_generic()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var expected = new ArrayList(new[] { 1, 2, 3 });
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
         cmd.Parameters.Add(p);
@@ -455,7 +455,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task IList_generic()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2", conn);
         var expected = new[] { 1, 2, 3 }.ToList();
         var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
         var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
@@ -472,7 +472,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task IList_generic_fails_for_multidimensional_array()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
         var expected = new[,] { { 1, 2 }, { 3, 4 } };
         var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
         cmd.Parameters.Add(p1);
@@ -490,7 +490,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task IEnumerable_throws_friendly_exception()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", Enumerable.Range(1, 3));
         Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>().With.Message.Contains("array or List"));
     }
@@ -500,7 +500,7 @@ public class ArrayTests : MultiplexingTestBase
     {
         var mixedList = new ArrayList { 1, "yo" };
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, mixedList);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
             .TypeOf<Exception>()
@@ -514,7 +514,7 @@ public class ArrayTests : MultiplexingTestBase
         jagged[0] = new[] { 8 };
         jagged[1] = new[] { 8, 10 };
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
             .TypeOf<Exception>()
@@ -551,7 +551,7 @@ public class ArrayTests : MultiplexingTestBase
         TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
         conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
         conn.ReloadTypes();
-        using var cmd = new NpgsqlCommand("SELECT @p1::posint[], @p2::posint[][]", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1::posint[], @p2::posint[][]", conn);
         var oneDim = new[] { 1, 3, 5, 9 };
         var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
@@ -584,7 +584,7 @@ public class ArrayTests : MultiplexingTestBase
         conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_array_1d  AS int[] CHECK(array_length(VALUE, 1) = 4);" +
                              "CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2);");
         conn.ReloadTypes();
-        using var cmd = new NpgsqlCommand("SELECT @p1::int_array_1d, @p2::int_array_2d", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1::int_array_1d, @p2::int_array_2d", conn);
         var oneDim = new[] { 1, 3, 5, 9 };
         var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
@@ -609,7 +609,7 @@ public class ArrayTests : MultiplexingTestBase
     public async Task Read_two_empty_arrays()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT '{}'::INT[], '{}'::INT[]", conn);
         using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
         Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
@@ -619,7 +619,7 @@ public class ArrayTests : MultiplexingTestBase
 
     async Task AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
     {
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
 
         using var reader = await cmd.ExecuteReaderAsync();

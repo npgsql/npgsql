@@ -170,7 +170,7 @@ class SqlQueryParserTests
     {
         var parser = new SqlQueryParser();
 
-        var cmd = new NpgsqlCommand("SELECT 1; SELECT 2");
+        var cmd = new NpgsqlCommandOrig("SELECT 1; SELECT 2");
         parser.ParseRawQuery(cmd);
         Assert.That(cmd.InternalBatchCommands, Has.Count.EqualTo(2));
 
@@ -195,7 +195,7 @@ class SqlQueryParserTests
 
     List<NpgsqlBatchCommand> ParseCommand(string sql, NpgsqlParameter[] parameters, bool standardConformingStrings)
     {
-        var cmd = new NpgsqlCommand(sql);
+        var cmd = new NpgsqlCommandOrig(sql);
         cmd.Parameters.AddRange(parameters);
         var parser = new SqlQueryParser();
         parser.ParseRawQuery(cmd, standardConformingStrings);

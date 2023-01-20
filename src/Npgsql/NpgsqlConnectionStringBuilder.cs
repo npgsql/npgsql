@@ -842,7 +842,7 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     [Description("The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity.")]
     [DisplayName("Command Timeout")]
     [NpgsqlConnectionStringProperty]
-    [DefaultValue(NpgsqlCommand.DefaultTimeout)]
+    [DefaultValue(NpgsqlCommandOrig.DefaultTimeout)]
     public int CommandTimeout
     {
         get => _commandTimeout;
@@ -1833,7 +1833,7 @@ public enum ArrayNullabilityMode
     /// and as nullable arrays (e.g. <c>int?[]</c>) if it does.
     /// </summary>
     /// <remarks>When using this setting, make sure that your code is prepared to the fact
-    /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReader.GetValue"/>
+    /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReaderOrig.GetValue"/>
     /// may change on a row by row base.</remarks>
     PerInstance,
 }

@@ -103,7 +103,7 @@ class NetworkTypeTests : MultiplexingTestBase
     public async Task Macaddr_multiple()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT unnest(ARRAY['08-00-2B-01-02-03'::MACADDR, '08-00-2B-01-02-04'::MACADDR])", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT unnest(ARRAY['08-00-2B-01-02-03'::MACADDR, '08-00-2B-01-02-04'::MACADDR])", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         r.Read();
         var p1 = (PhysicalAddress)r[0];

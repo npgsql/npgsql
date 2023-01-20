@@ -10,7 +10,7 @@ namespace Npgsql;
 /// <summary>
 /// Represents a command that is executed directly against a Npgsql data source
 /// </summary>
-public class NpgsqlDataSourceCommand : NpgsqlCommand
+public class NpgsqlDataSourceCommand : NpgsqlCommandOrig
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="NpgsqlDataSourceCommand"/> class
@@ -32,13 +32,13 @@ public class NpgsqlDataSourceCommand : NpgsqlCommand
     }
 
     /// <summary>
-    /// Executes the command as reader and returns a <see cref="NpgsqlDataReader"/> object
+    /// Executes the command as reader and returns a <see cref="NpgsqlDataReaderOrig"/> object
     /// </summary>
     /// <param name="behavior">An instance of <see cref="CommandBehavior"/></param>
     /// <param name="async">True if the operation is async, false otherwise</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation</returns>
-    public override async ValueTask<NpgsqlDataReader> ExecuteReader(
+    public override async ValueTask<NpgsqlDataReaderOrig> ExecuteReader(
         CommandBehavior behavior,
         bool async,
         CancellationToken cancellationToken)

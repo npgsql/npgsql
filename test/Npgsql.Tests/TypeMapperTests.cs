@@ -123,7 +123,7 @@ public class TypeMapperTests : TestBase
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
-        await using var command = new NpgsqlCommand("SELECT @p = 'hello'::citext", connection);
+        await using var command = new NpgsqlCommandOrig("SELECT @p = 'hello'::citext", connection);
         command.Parameters.AddWithValue("p", "HeLLo");
         Assert.That(command.ExecuteScalar(), Is.True);
     }

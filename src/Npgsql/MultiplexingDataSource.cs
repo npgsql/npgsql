@@ -18,8 +18,8 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
     internal volatile bool StartupCheckPerformed;
 
-    readonly ChannelReader<NpgsqlCommand> _multiplexCommandReader;
-    internal ChannelWriter<NpgsqlCommand> MultiplexCommandWriter { get; }
+    readonly ChannelReader<NpgsqlCommandOrig> _multiplexCommandReader;
+    internal ChannelWriter<NpgsqlCommandOrig> MultiplexCommandWriter { get; }
 
     /// <summary>
     /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
@@ -33,7 +33,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
     internal MultiplexingDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig,
-        NpgsqlMultiHostDataSource? parentPool = null)
+        NpgsqlMultiHostDataSourceOrig? parentPool = null)
         : base(settings, dataSourceConfig, parentPool)
     {
         Debug.Assert(Settings.Multiplexing);
@@ -44,7 +44,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
 
         _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
-        var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
+        var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommandOrig>(
             new BoundedChannelOptions(MultiplexingCommandChannelBound)
             {
                 FullMode = BoundedChannelFullMode.Wait,
@@ -201,7 +201,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
             }
         }
 
-        bool WriteCommand(NpgsqlConnector connector, NpgsqlCommand command, ref MultiplexingStats stats)
+        bool WriteCommand(NpgsqlConnector connector, NpgsqlCommandOrig command, ref MultiplexingStats stats)
         {
             // Note: this method *never* awaits on I/O - doing so would suspend all outgoing multiplexing commands
             // for the entire pool. In the normal/fast case, writing the command is purely synchronous (serialize

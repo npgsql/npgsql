@@ -41,7 +41,7 @@ public class NpgsqlParameterTest : TestBase
     public void DataTypeName()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var p1 = new NpgsqlParameter { ParameterName = "p", Value = 8, DataTypeName = "integer" };
         cmd.Parameters.Add(p1);
         Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
@@ -662,7 +662,7 @@ public class NpgsqlParameterTest : TestBase
     public void Null_value_throws()
     {
         using var connection = OpenConnection();
-        using var command = new NpgsqlCommand("SELECT @p", connection)
+        using var command = new NpgsqlCommandOrig("SELECT @p", connection)
         {
             Parameters = { new NpgsqlParameter("p", null) }
         };
@@ -674,7 +674,7 @@ public class NpgsqlParameterTest : TestBase
     public void Null_value_with_nullable_type()
     {
         using var connection = OpenConnection();
-        using var command = new NpgsqlCommand("SELECT @p", connection)
+        using var command = new NpgsqlCommandOrig("SELECT @p", connection)
         {
             Parameters = { new NpgsqlParameter<int?>("p", null) }
         };

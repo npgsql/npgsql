@@ -36,8 +36,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected  string _sourceColumn;
 
     internal string TrimmedName { get; private protected set; } = PositionalName;
-    internal const string PositionalName = ""; 
-        
+    internal const string PositionalName = "";
+
     /// <summary>
     /// Can be used to communicate a value from the validation phase to the writing phase.
     /// To be used by type handlers only.
@@ -249,7 +249,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             if (Collection is not null)
                 Collection.ChangeParameterName(this, value);
-            else 
+            else
                 ChangeParameterName(value);
         }
     }
@@ -496,7 +496,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// <summary>
     /// The PostgreSQL data type, such as int4 or text, as discovered from pg_type.
     /// This property is automatically set if parameters have been derived via
-    /// <see cref="NpgsqlCommandBuilder.DeriveParameters"/> and can be used to
+    /// <see cref="NpgsqlCommandOrigBuilder.DeriveParameters"/> and can be used to
     /// acquire additional information about the parameters' data type.
     /// </summary>
     public PostgresType? PostgresType { get; internal set; }

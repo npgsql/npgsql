@@ -37,7 +37,7 @@ public class NodaTimeInfinityTests : TestBase
 
         await using var conn = await OpenConnectionAsync();
         await using var cmd =
-            new NpgsqlCommand("SELECT 'infinity'::timestamp with time zone, '-infinity'::timestamp with time zone", conn);
+            new NpgsqlCommandOrig("SELECT 'infinity'::timestamp with time zone, '-infinity'::timestamp with time zone", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -54,7 +54,7 @@ public class NodaTimeInfinityTests : TestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text, $3::text, $4::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text, $2::text, $3::text, $4::text", conn)
         {
             Parameters =
             {
@@ -78,7 +78,7 @@ public class NodaTimeInfinityTests : TestBase
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
         {
             Parameters = { new() { Value = Instant.MinValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
         };
@@ -95,7 +95,7 @@ public class NodaTimeInfinityTests : TestBase
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
         }
 
-        await using var cmd2 = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+        await using var cmd2 = new NpgsqlCommandOrig("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
         {
             Parameters = { new() { Value = Instant.MaxValue, NpgsqlDbType = NpgsqlDbType.TimestampTz } }
         };
@@ -107,7 +107,7 @@ public class NodaTimeInfinityTests : TestBase
     public async Task Timestamptz_read()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand(
+        await using var cmd = new NpgsqlCommandOrig(
             "SELECT '-infinity'::timestamp with time zone, 'infinity'::timestamp with time zone", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -132,7 +132,7 @@ public class NodaTimeInfinityTests : TestBase
 
         // TODO: Switch to use LocalDateTime.MinMaxValue when available (#4061)
 
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn)
         {
             Parameters = { new() { Value = LocalDate.MinIsoValue + LocalTime.MinValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
@@ -149,7 +149,7 @@ public class NodaTimeInfinityTests : TestBase
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("-infinity"));
         }
 
-        await using var cmd2 = new NpgsqlCommand("SELECT $1::text", conn)
+        await using var cmd2 = new NpgsqlCommandOrig("SELECT $1::text", conn)
         {
             Parameters = { new() { Value = LocalDate.MaxIsoValue + LocalTime.MaxValue, NpgsqlDbType = NpgsqlDbType.Timestamp } }
         };
@@ -163,7 +163,7 @@ public class NodaTimeInfinityTests : TestBase
     public async Task Timestamp_read()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand(
+        await using var cmd = new NpgsqlCommandOrig(
             "SELECT '-infinity'::timestamp without time zone, 'infinity'::timestamp without time zone", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -187,7 +187,7 @@ public class NodaTimeInfinityTests : TestBase
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn)
         {
             Parameters = { new() { Value = LocalDate.MinIsoValue, NpgsqlDbType = NpgsqlDbType.Date } }
         };
@@ -210,7 +210,7 @@ public class NodaTimeInfinityTests : TestBase
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT '-infinity'::date, 'infinity'::date", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -236,7 +236,7 @@ public class NodaTimeInfinityTests : TestBase
         await using var conn = await OpenConnectionAsync();
         conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 DATE, d2 DATE, d3 DATE, d4 DATE)");
 
-        using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4)", conn))
+        using (var cmd = new NpgsqlCommandOrig("INSERT INTO data VALUES (@p1, @p2, @p3, @p4)", conn))
         {
             cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, LocalDate.MaxIsoValue);
             cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, LocalDate.MinIsoValue);
@@ -245,7 +245,7 @@ public class NodaTimeInfinityTests : TestBase
             cmd.ExecuteNonQuery();
         }
 
-        using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT FROM data", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT FROM data", conn))
         using (var reader = cmd.ExecuteReader())
         {
             reader.Read();
@@ -255,7 +255,7 @@ public class NodaTimeInfinityTests : TestBase
             Assert.That(reader.GetValue(3), Is.EqualTo("-infinity"));
         }
 
-        using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT * FROM data", conn))
         using (var reader = cmd.ExecuteReader())
         {
             reader.Read();

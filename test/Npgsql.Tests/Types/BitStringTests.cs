@@ -68,7 +68,7 @@ public class BitStringTests : MultiplexingTestBase
     public async Task Array()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         var expected = new[] { new BitArray(new[] { true, false, true }), new BitArray(new[] { false }) };
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Varbit) { Value = expected };
         cmd.Parameters.Add(p);
@@ -85,7 +85,7 @@ public class BitStringTests : MultiplexingTestBase
     public async Task Array_of_single_bits()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p::BIT(1)[]", conn);
         var expected = new[] { true, false };
         var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Bit) {Value = expected};
         cmd.Parameters.Add(p);

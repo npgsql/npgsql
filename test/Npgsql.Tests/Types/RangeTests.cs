@@ -31,7 +31,7 @@ class RangeTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync(csb);
 
         // Resolve type by NpgsqlDbType
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.AddWithValue("p", NpgsqlDbType.Range | NpgsqlDbType.Integer, DBNull.Value);
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -43,7 +43,7 @@ class RangeTests : MultiplexingTestBase
 
         // Resolve type by ClrType (type inference)
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new NpgsqlRange<int>(3, 5) });
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -55,7 +55,7 @@ class RangeTests : MultiplexingTestBase
 
         // Resolve type by DataTypeName
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = "int4range", Value = DBNull.Value });
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -67,7 +67,7 @@ class RangeTests : MultiplexingTestBase
 
         // Resolve type by OID (read)
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT int4range(3, 5)", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT int4range(3, 5)", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
@@ -80,7 +80,7 @@ class RangeTests : MultiplexingTestBase
     public async Task Range()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2, @p3, @p4", conn);
         var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty };
         var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
         var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
@@ -120,7 +120,7 @@ class RangeTests : MultiplexingTestBase
             new string('z', conn.Settings.WriteBufferSize + 10)
         );
 
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         await reader.ReadAsync();
@@ -212,7 +212,7 @@ class RangeTests : MultiplexingTestBase
         // The default CLR mapping for timestamptz is DateTime, but it also supports DateTimeOffset.
         // The range should also support both, defaulting to the first.
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
 
         var dto1 = new DateTimeOffset(2010, 1, 3, 10, 0, 0, TimeSpan.Zero);
         var dto2 = new DateTimeOffset(2010, 1, 4, 10, 0, 0, TimeSpan.Zero);

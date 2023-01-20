@@ -25,7 +25,7 @@ public class DomainTests : MultiplexingTestBase
 
         // Resolve type by DataTypeName
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT @p", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DataTypeName = type, Value = DBNull.Value });
             using (var reader = await cmd.ExecuteReaderAsync())
@@ -38,7 +38,7 @@ public class DomainTests : MultiplexingTestBase
         // When sending back domain types, PG sends back the type OID of their base type. So we never need to resolve domains from
         // a type OID.
         conn.ReloadTypes();
-        using (var cmd = new NpgsqlCommand($"SELECT 'foo'::{type}", conn))
+        using (var cmd = new NpgsqlCommandOrig($"SELECT 'foo'::{type}", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();

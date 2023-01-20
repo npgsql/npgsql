@@ -23,7 +23,7 @@ public class JsonPathTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
 
-        using var cmd = new NpgsqlCommand($"SELECT {query}::jsonpath", conn);
+        using var cmd = new NpgsqlCommandOrig($"SELECT {query}::jsonpath", conn);
         using var rdr = await cmd.ExecuteReaderAsync();
 
         rdr.Read();
@@ -38,7 +38,7 @@ public class JsonPathTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
 
-        using var cmd = new NpgsqlCommand($"SELECT 'Passed' WHERE @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
+        using var cmd = new NpgsqlCommandOrig($"SELECT 'Passed' WHERE @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
         using var rdr = await cmd.ExecuteReaderAsync();
 
         Assert.True(rdr.Read());

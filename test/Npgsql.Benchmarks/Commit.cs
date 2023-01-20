@@ -10,12 +10,12 @@ namespace Npgsql.Benchmarks;
 public class Commit
 {
     readonly NpgsqlConnection _conn;
-    readonly NpgsqlCommand _cmd;
+    readonly NpgsqlCommandOrig _cmd;
 
     public Commit()
     {
         _conn = BenchmarkEnvironment.OpenConnection();
-        _cmd = new NpgsqlCommand("SELECT 1", _conn);
+        _cmd = new NpgsqlCommandOrig("SELECT 1", _conn);
     }
 
     [Benchmark]

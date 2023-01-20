@@ -182,7 +182,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// Creates a command ready for use against this <see cref="NpgsqlDataSource" />.
     /// </summary>
     /// <param name="commandText">An optional SQL for the command.</param>
-    public new NpgsqlCommand CreateCommand(string? commandText = null)
+    public new NpgsqlCommandOrig CreateCommand(string? commandText = null)
         => new NpgsqlDataSourceCommand(CreateConnection()) { CommandText = commandText };
 
     /// <summary>
@@ -320,7 +320,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
     internal DatabaseState GetDatabaseState(bool ignoreExpiration = false)
     {
-        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+        Debug.Assert(this is not NpgsqlMultiHostDataSourceOrig);
 
         var databaseStateInfo = _databaseStateInfo;
 
@@ -335,10 +335,10 @@ public abstract class NpgsqlDataSource : DbDataSource
         TimeSpan stateExpiration,
         bool ignoreTimeStamp = false)
     {
-        Debug.Assert(this is not NpgsqlMultiHostDataSource);
+        Debug.Assert(this is not NpgsqlMultiHostDataSourceOrig);
 
         var databaseStateInfo = _databaseStateInfo;
-        
+
         if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
             return _databaseStateInfo.State;
 
@@ -433,7 +433,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion
-    
+
     class DatabaseStateInfo
     {
         internal readonly DatabaseState State;
@@ -442,7 +442,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         internal readonly DateTime TimeStamp;
 
         public DatabaseStateInfo() : this(default, default, default) {}
-        
+
         public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
             => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
     }

@@ -22,7 +22,7 @@ public class AsyncTests : TestBase
     public async Task Scalar()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT 1", conn);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
     }
 
@@ -30,7 +30,7 @@ public class AsyncTests : TestBase
     public async Task Reader()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT 1", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
         Assert.That(reader[0], Is.EqualTo(1));
@@ -40,7 +40,7 @@ public class AsyncTests : TestBase
     public async Task Columnar()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT NULL, 2, 'Some Text'", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT NULL, 2, 'Some Text'", conn);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         await reader.ReadAsync();
         Assert.That(await reader.IsDBNullAsync(0), Is.True);

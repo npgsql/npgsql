@@ -74,7 +74,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <summary>
     /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
     /// </summary>
-    internal NpgsqlCommand? CachedCommand { get; set; }
+    internal NpgsqlCommandOrig? CachedCommand { get; set; }
 
     /// <summary>
     /// Flag used to make sure we never double-close a connection, returning it twice to the pool.
@@ -207,7 +207,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         {
             // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
             // MultiHostDataSource with that TargetSessionAttributes.
-            if (_dataSource is NpgsqlMultiHostDataSource multiHostDataSource && settings.TargetSessionAttributesParsed.HasValue)
+            if (_dataSource is NpgsqlMultiHostDataSourceOrig multiHostDataSource && settings.TargetSessionAttributesParsed.HasValue)
                 _dataSource = multiHostDataSource.WithTargetSession(settings.TargetSessionAttributesParsed.Value);
 
             // The pool was found, but only under the canonical key - we're using a different version
@@ -230,7 +230,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             Debug.Assert(_dataSource is not MultiHostDataSourceWrapper);
             // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
             // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-            if (_dataSource is NpgsqlMultiHostDataSource multiHostConnectorPool)
+            if (_dataSource is NpgsqlMultiHostDataSourceOrig multiHostConnectorPool)
                 foreach (var hostPool in multiHostConnectorPool.Pools)
                     NpgsqlEventSource.Log.DataSourceCreated(hostPool);
             else
@@ -241,7 +241,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
         // If this is a multi-host data source and the user specified a TargetSessionAttributes, create a wrapper in front of the
         // MultiHostDataSource with that TargetSessionAttributes.
-        if (_dataSource is NpgsqlMultiHostDataSource multiHostDataSource2 && settings.TargetSessionAttributesParsed.HasValue)
+        if (_dataSource is NpgsqlMultiHostDataSourceOrig multiHostDataSource2 && settings.TargetSessionAttributesParsed.HasValue)
             _dataSource = multiHostDataSource2.WithTargetSession(settings.TargetSessionAttributesParsed.Value);
 
         _dataSource = PoolManager.Pools.GetOrAdd(_connectionString, _dataSource);
@@ -548,10 +548,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     protected override DbCommand CreateDbCommand() => CreateCommand();
 
     /// <summary>
-    /// Creates and returns a <see cref="NpgsqlCommand"/> object associated with the <see cref="NpgsqlConnection"/>.
+    /// Creates and returns a <see cref="NpgsqlCommandOrig"/> object associated with the <see cref="NpgsqlConnection"/>.
     /// </summary>
-    /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
-    public new NpgsqlCommand CreateCommand()
+    /// <returns>A <see cref="NpgsqlCommandOrig"/> object.</returns>
+    public new NpgsqlCommandOrig CreateCommand()
     {
         CheckDisposed();
 
@@ -563,7 +563,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             return cachedCommand;
         }
 
-        return NpgsqlCommand.CreateCachedCommand(this);
+        return NpgsqlCommandOrig.CreateCachedCommand(this);
     }
 
 #if NET6_0_OR_GREATER
@@ -817,7 +817,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             return Task.CompletedTask;
         }
 
-        return CloseAsync(async);            
+        return CloseAsync(async);
     }
 
     async Task CloseAsync(bool async)
@@ -881,7 +881,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
                     // TODO: move reset logic to ConnectorSource.Return
                     connector.Transaction?.UnbindIfNecessary();
-                }  
+                }
 
                 if (Settings.Multiplexing)
                 {
@@ -1195,7 +1195,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         using (NoSynchronizationContextScope.Enter())
             return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
-    } 
+    }
 
     async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
     {

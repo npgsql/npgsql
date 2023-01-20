@@ -26,7 +26,7 @@ public class TransactionTests : MultiplexingTestBase
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
         {
-            var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+            var cmd = new NpgsqlCommandOrig($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
             cmd.ExecuteNonQuery();
@@ -55,7 +55,7 @@ public class TransactionTests : MultiplexingTestBase
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
         {
-            var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+            var cmd = new NpgsqlCommandOrig($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
             await cmd.ExecuteNonQueryAsync();
@@ -81,7 +81,7 @@ public class TransactionTests : MultiplexingTestBase
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
         {
-            var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+            var cmd = new NpgsqlCommandOrig($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
             cmd.ExecuteNonQuery();
@@ -107,7 +107,7 @@ public class TransactionTests : MultiplexingTestBase
         var tx = await conn.BeginTransactionAsync();
         await using (tx)
         {
-            var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+            var cmd = new NpgsqlCommandOrig($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
             await cmd.ExecuteNonQueryAsync();
@@ -282,7 +282,7 @@ public class TransactionTests : MultiplexingTestBase
         await using var conn = await OpenConnectionAsync();
 
         var tx = conn.BeginTransaction();
-        using var cmd = new NpgsqlCommand("BAD QUERY", conn, tx);
+        using var cmd = new NpgsqlCommandOrig("BAD QUERY", conn, tx);
         Assert.That(cmd.CommandTimeout != 1);
         cmd.CommandTimeout = 1;
         try
@@ -308,7 +308,7 @@ public class TransactionTests : MultiplexingTestBase
         var transaction = conn.BeginTransaction();
         transaction.Save("TestSavePoint");
 
-        using var cmd = new NpgsqlCommand("SELECT unknown_thing", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT unknown_thing", conn);
         cmd.CommandTimeout = 1;
         try
         {
@@ -334,9 +334,9 @@ public class TransactionTests : MultiplexingTestBase
 
         conn.BeginTransaction();
         var backendProcessId = conn.ProcessID;
-        using (var badCmd = new NpgsqlCommand("SEL", conn))
+        using (var badCmd = new NpgsqlCommandOrig("SEL", conn))
         {
-            badCmd.CommandTimeout = NpgsqlCommand.DefaultTimeout + 1;
+            badCmd.CommandTimeout = NpgsqlCommandOrig.DefaultTimeout + 1;
             Assert.That(() => badCmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>());
         }
         // Connection now in failed transaction state, and a custom timeout is in place
@@ -733,7 +733,7 @@ public class TransactionTests : MultiplexingTestBase
         connTimeoutChanged.Open();
         using var t = connTimeoutChanged.BeginTransaction();
         try {
-            var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged, t);
+            var command = new NpgsqlCommandOrig("select count(*) from dta", connTimeoutChanged, t);
             _ = command.ExecuteScalar();
         } catch (Exception) {
             t.Rollback();

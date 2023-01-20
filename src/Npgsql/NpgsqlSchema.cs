@@ -113,12 +113,12 @@ static class NpgsqlSchema
         return table;
     }
 
-    static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, params string[]? names)
+    static NpgsqlCommandOrig BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, params string[]? names)
         => BuildCommand(conn, query, restrictions, true, names);
 
-    static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, bool addWhere, params string[]? names)
+    static NpgsqlCommandOrig BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, bool addWhere, params string[]? names)
     {
-        var command = new NpgsqlCommand();
+        var command = new NpgsqlCommandOrig();
 
         if (restrictions != null && names != null)
         {
@@ -507,7 +507,7 @@ FROM pg_constraint c
         row["ParameterNameMaxLength"] = 63; // For function out parameters
         row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
 
-        if (NpgsqlCommand.EnableSqlRewriting)
+        if (NpgsqlCommandOrig.EnableSqlRewriting)
         {
             row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
             row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";

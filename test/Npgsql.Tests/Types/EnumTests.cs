@@ -156,7 +156,7 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
 
-        using var cmd = new NpgsqlCommand($"SELECT 'ok'::{type}", conn);
+        using var cmd = new NpgsqlCommandOrig($"SELECT 'ok'::{type}", conn);
         using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         var enumType = (PostgresEnumType)reader.GetPostgresType(0);

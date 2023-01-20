@@ -14,7 +14,7 @@ public sealed class NpgsqlOperationInProgressException : NpgsqlException
     /// <param name="command">
     /// A command which was in progress when the operation which triggered this exception was executed.
     /// </param>
-    public NpgsqlOperationInProgressException(NpgsqlCommand command)
+    public NpgsqlOperationInProgressException(NpgsqlCommandOrig command)
         : base("A command is already in progress: " + command.CommandText)
     {
         CommandInProgress = command;
@@ -30,5 +30,5 @@ public sealed class NpgsqlOperationInProgressException : NpgsqlException
     /// Otherwise, if the connection if busy with another type of operation (e.g. COPY), contains
     /// <see langword="null" />.
     /// </summary>
-    public NpgsqlCommand? CommandInProgress { get; }
+    public NpgsqlCommandOrig? CommandInProgress { get; }
 }

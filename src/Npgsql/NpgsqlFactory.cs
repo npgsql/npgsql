@@ -22,7 +22,7 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     /// <summary>
     /// Returns a strongly typed <see cref="DbCommand"/> instance.
     /// </summary>
-    public override DbCommand CreateCommand() => new NpgsqlCommand();
+    public override DbCommand CreateCommand() => new NpgsqlCommandOrig();
 
     /// <summary>
     /// Returns a strongly typed <see cref="DbConnection"/> instance.
@@ -42,7 +42,7 @@ public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     /// <summary>
     /// Returns a strongly typed <see cref="DbCommandBuilder"/> instance.
     /// </summary>
-    public override DbCommandBuilder CreateCommandBuilder() => new NpgsqlCommandBuilder();
+    public override DbCommandBuilder CreateCommandBuilder() => new NpgsqlCommandOrigBuilder();
 
     /// <summary>
     /// Returns a strongly typed <see cref="DbDataAdapter"/> instance.

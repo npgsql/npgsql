@@ -41,7 +41,7 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                 var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, temporary, twoPhase: twoPhase);
 
                 using var cmd =
-                    new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.SlotName}'",
+                    new NpgsqlCommandOrig($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.SlotName}'",
                         c);
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -158,7 +158,7 @@ public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalRepl
                 await using (var transaction = c.BeginTransaction(IsolationLevel.RepeatableRead))
                 {
                     await c.ExecuteScalarAsync($"SET TRANSACTION SNAPSHOT '{options.SnapshotName}';", transaction);
-                    using var cmd = new NpgsqlCommand($"SELECT value FROM {tableName}", c, transaction);
+                    using var cmd = new NpgsqlCommandOrig($"SELECT value FROM {tableName}", c, transaction);
                     await using var reader = await cmd.ExecuteReaderAsync();
                     Assert.That(reader.Read, Is.True);
                     Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo("Before snapshot"));

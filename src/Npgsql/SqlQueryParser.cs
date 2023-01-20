@@ -12,7 +12,7 @@ sealed class SqlQueryParser
 
     /// <summary>
     /// <p>
-    /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommand.CommandText"/> or
+    /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommandOrig.CommandText"/> or
     /// <see cref="NpgsqlBatchCommand.CommandText"/>, and rewrites it for PostgreSQL compatibility.
     /// </p>
     /// <p>
@@ -20,21 +20,21 @@ sealed class SqlQueryParser
     /// up by semicolons (legacy batching, SELECT 1; SELECT 2).
     /// </p>
     /// </summary>
-    /// <param name="command">The user-facing <see cref="NpgsqlCommand"/> being executed.</param>
+    /// <param name="command">The user-facing <see cref="NpgsqlCommandOrig"/> being executed.</param>
     /// <param name="standardConformingStrings">Whether PostgreSQL standards-conforming are used.</param>
     /// <param name="deriveParameters">
     /// A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived
     /// parameters.
     /// </param>
     internal void ParseRawQuery(
-        NpgsqlCommand? command,
+        NpgsqlCommandOrig? command,
         bool standardConformingStrings = true,
         bool deriveParameters = false)
         => ParseRawQuery(command, batchCommand: null, standardConformingStrings, deriveParameters);
 
     /// <summary>
     /// <p>
-    /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommand.CommandText"/> or
+    /// Receives a user SQL query as passed in by the user in <see cref="NpgsqlCommandOrig.CommandText"/> or
     /// <see cref="NpgsqlBatchCommand.CommandText"/>, and rewrites it for PostgreSQL compatibility.
     /// </p>
     /// <p>
@@ -55,7 +55,7 @@ sealed class SqlQueryParser
         => ParseRawQuery(command: null, batchCommand, standardConformingStrings, deriveParameters);
 
     void ParseRawQuery(
-        NpgsqlCommand? command,
+        NpgsqlCommandOrig? command,
         NpgsqlBatchCommand? batchCommand,
         bool standardConformingStrings = true,
         bool deriveParameters = false)

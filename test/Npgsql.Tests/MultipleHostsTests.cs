@@ -927,7 +927,7 @@ public class MultipleHostsTests : TestBase
         Assert.ThrowsAsync<NpgsqlException>(() => readOnlyClient);
         Assert.AreEqual(125, queriesDone);
 
-        Task Client(NpgsqlMultiHostDataSource multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
+        Task Client(NpgsqlMultiHostDataSourceOrig multiHostDataSource, TargetSessionAttributes targetSessionAttributes)
         {
             var dataSource = multiHostDataSource.WithTargetSession(targetSessionAttributes);
             var tasks = new List<Task>(5);

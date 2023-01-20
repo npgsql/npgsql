@@ -115,21 +115,21 @@ ORDER BY attnum";
                 .Where(f => f.TableOID != 0)  // Only column fields
                 .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
                 .Join(" OR ");
-				
+
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-	
+
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Suppress,
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-	
+
                 await connection.Open(async, cancellationToken);
 
-                using var cmd = new NpgsqlCommand(query, connection);
+                using var cmd = new NpgsqlCommandOrig(query, connection);
                 var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
                 try
                 {
@@ -189,7 +189,7 @@ ORDER BY attnum";
         return result.AsReadOnly()!;
     }
 
-    NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo, bool oldQueryMode)
+    NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReaderOrig reader, NpgsqlDatabaseInfo databaseInfo, bool oldQueryMode)
     {
         // We don't set ColumnName here. It should always contain the column alias rather than
         // the table column name (i.e. in case of "SELECT foo AS foo_alias"). It will be set later.

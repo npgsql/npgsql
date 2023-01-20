@@ -58,7 +58,7 @@ public abstract class TypeHandlerBenchmarks<T>
     protected static PostgresType GetPostgresType(string pgType)
     {
         using (var conn = BenchmarkEnvironment.OpenConnection())
-        using (var cmd = new NpgsqlCommand($"SELECT NULL::{pgType}", conn))
+        using (var cmd = new NpgsqlCommandOrig($"SELECT NULL::{pgType}", conn))
         using (var reader = cmd.ExecuteReader())
             return reader.GetPostgresType(0);
     }

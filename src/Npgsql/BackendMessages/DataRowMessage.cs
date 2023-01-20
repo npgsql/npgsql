@@ -3,7 +3,7 @@
 /// <summary>
 /// DataRow is special in that it does not parse the actual contents of the backend message,
 /// because in sequential mode the message will be traversed and processed sequentially by
-/// <see cref="NpgsqlDataReader"/>.
+/// <see cref="NpgsqlDataReaderOrig"/>.
 /// </summary>
 sealed class DataRowMessage : IBackendMessage
 {

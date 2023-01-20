@@ -25,7 +25,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 var slot = await rc.CreateReplicationSlot(slotName, temporary, reserveWal);
 
                 using var cmd =
-                    new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.Name}'",
+                    new NpgsqlCommandOrig($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.Name}'",
                         c);
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -47,7 +47,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 if (createSlot)
                     await c.ExecuteNonQueryAsync($"SELECT pg_create_physical_replication_slot('{slotName}', {reserveWal}, false)");
                 using var cmd =
-                    new NpgsqlCommand($@"SELECT slot_name, substring(pg_walfile_name(restart_lsn), 1, 8)::bigint AS timeline_id, restart_lsn
+                    new NpgsqlCommandOrig($@"SELECT slot_name, substring(pg_walfile_name(restart_lsn), 1, 8)::bigint AS timeline_id, restart_lsn
                                             FROM pg_replication_slots
                                             WHERE slot_name = '{slotName}'", c);
                 await using var reader = await cmd.ExecuteReaderAsync();

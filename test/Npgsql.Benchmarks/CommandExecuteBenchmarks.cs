@@ -12,22 +12,22 @@ namespace Npgsql.Benchmarks;
 [Config(typeof(Config))]
 public class CommandExecuteBenchmarks
 {
-    readonly NpgsqlCommand _executeNonQueryCmd;
-    readonly NpgsqlCommand _executeNonQueryWithParamCmd;
-    readonly NpgsqlCommand _executeNonQueryPreparedCmd;
-    readonly NpgsqlCommand _executeScalarCmd;
-    readonly NpgsqlCommand _executeReaderCmd;
+    readonly NpgsqlCommandOrig _executeNonQueryCmd;
+    readonly NpgsqlCommandOrig _executeNonQueryWithParamCmd;
+    readonly NpgsqlCommandOrig _executeNonQueryPreparedCmd;
+    readonly NpgsqlCommandOrig _executeScalarCmd;
+    readonly NpgsqlCommandOrig _executeReaderCmd;
 
     public CommandExecuteBenchmarks()
     {
         var conn = BenchmarkEnvironment.OpenConnection();
-        _executeNonQueryCmd = new NpgsqlCommand("SET lock_timeout = 1000", conn);
-        _executeNonQueryWithParamCmd = new NpgsqlCommand("SET lock_timeout = 1000", conn);
+        _executeNonQueryCmd = new NpgsqlCommandOrig("SET lock_timeout = 1000", conn);
+        _executeNonQueryWithParamCmd = new NpgsqlCommandOrig("SET lock_timeout = 1000", conn);
         _executeNonQueryWithParamCmd.Parameters.AddWithValue("not_used", DBNull.Value);
-        _executeNonQueryPreparedCmd = new NpgsqlCommand("SET lock_timeout = 1000", conn);
+        _executeNonQueryPreparedCmd = new NpgsqlCommandOrig("SET lock_timeout = 1000", conn);
         _executeNonQueryPreparedCmd.Prepare();
-        _executeScalarCmd = new NpgsqlCommand("SELECT 1", conn);
-        _executeReaderCmd   = new NpgsqlCommand("SELECT 1", conn);
+        _executeScalarCmd = new NpgsqlCommandOrig("SELECT 1", conn);
+        _executeReaderCmd   = new NpgsqlCommandOrig("SELECT 1", conn);
     }
 
     [Benchmark]

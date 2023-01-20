@@ -53,7 +53,7 @@ public class MoneyTests : TestBase
     public async Task Write_with_large_scale(string query, decimal parameter, decimal expected)
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p, @p = " + query, conn);
         cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = parameter });
         using var rdr = await cmd.ExecuteReaderAsync();
         rdr.Read();

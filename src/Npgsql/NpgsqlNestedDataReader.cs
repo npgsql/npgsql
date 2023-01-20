@@ -15,12 +15,12 @@ namespace Npgsql;
 
 /// <summary>
 /// Reads a forward-only stream of rows from a nested data source.
-/// Can be retrieved using <see cref="NpgsqlDataReader.GetData(int)"/> or
+/// Can be retrieved using <see cref="NpgsqlDataReaderOrig.GetData(int)"/> or
 /// <see cref="NpgsqlNestedDataReader.GetData(int)"/>.
 /// </summary>
 public sealed class NpgsqlNestedDataReader : DbDataReader
 {
-    readonly NpgsqlDataReader _outermostReader;
+    readonly NpgsqlDataReaderOrig _outermostReader;
     ulong _uniqueOutermostReaderRowId;
     readonly NpgsqlNestedDataReader? _outerNestedReader;
     NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
@@ -50,7 +50,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
     TypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
 
-    internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
+    internal NpgsqlNestedDataReader(NpgsqlDataReaderOrig outermostReader, NpgsqlNestedDataReader? outerNestedReader,
         ulong uniqueOutermostReaderRowId, int depth, PostgresCompositeType? compositeType)
     {
         _outermostReader = outermostReader;

@@ -10,7 +10,7 @@ public class InternalTypeTests : MultiplexingTestBase
     public async Task Read_internal_char()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT typdelim FROM pg_type WHERE typname='int4'", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT typdelim FROM pg_type WHERE typname='int4'", conn);
         using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         Assert.That(reader.GetChar(0), Is.EqualTo(','));
@@ -27,7 +27,7 @@ public class InternalTypeTests : MultiplexingTestBase
     {
         var postgresType = npgsqlDbType.ToString().ToLowerInvariant();
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand($"SELECT @max, 4294967295::{postgresType}, @eight, 8::{postgresType}", conn);
+        using var cmd = new NpgsqlCommandOrig($"SELECT @max, 4294967295::{postgresType}, @eight, 8::{postgresType}", conn);
         cmd.Parameters.AddWithValue("max", npgsqlDbType, uint.MaxValue);
         cmd.Parameters.AddWithValue("eight", npgsqlDbType, 8u);
         using var reader = await cmd.ExecuteReaderAsync();

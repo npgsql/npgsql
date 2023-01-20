@@ -63,7 +63,7 @@ public class TextTests : MultiplexingTestBase
     {
         const string data = "SomeText";
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p::TEXT", conn);
         var p = new NpgsqlParameter("p", data) { Size = 4 };
         cmd.Parameters.Add(p);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data.Substring(0, 4)));
@@ -103,7 +103,7 @@ public class TextTests : MultiplexingTestBase
     public async Task Aliased_DbTypes(DbType dbType)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var command = new NpgsqlCommand("SELECT @p", conn);
+        await using var command = new NpgsqlCommandOrig("SELECT @p", conn);
         command.Parameters.Add(new NpgsqlParameter("p", dbType) { Value = "SomeString" });
         Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo("SomeString")); // Inferred DbType...
     }

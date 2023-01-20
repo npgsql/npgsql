@@ -147,7 +147,7 @@ public partial class NpgsqlConnector : IDisposable
     /// </summary>
     internal int PendingPrependedResponses { get; set; }
 
-    internal NpgsqlDataReader? CurrentReader;
+    internal NpgsqlDataReaderOrig? CurrentReader;
 
     internal PreparedStatementManager PreparedStatementManager { get; }
 
@@ -227,14 +227,14 @@ public partial class NpgsqlConnector : IDisposable
     /// The command currently being executed by the connector, null otherwise.
     /// Used only for concurrent use error reporting purposes.
     /// </summary>
-    NpgsqlCommand? _currentCommand;
+    NpgsqlCommandOrig? _currentCommand;
 
     bool _sendResetOnClose;
 
     /// <summary>
     /// The connector source (e.g. pool) from where this connector came, and to which it will be returned.
     /// Note that in multi-host scenarios, this references the host-specific <see cref="PoolingDataSource"/> rather than the
-    /// <see cref="NpgsqlMultiHostDataSource"/>.
+    /// <see cref="NpgsqlMultiHostDataSourceOrig"/>.
     /// </summary>
     internal NpgsqlDataSource DataSource { get; }
 
@@ -306,9 +306,9 @@ public partial class NpgsqlConnector : IDisposable
 
     #endregion
 
-    internal NpgsqlDataReader DataReader { get; set; }
+    internal NpgsqlDataReaderOrig DataReader { get; set; }
 
-    internal NpgsqlDataReader? UnboundDataReader { get; set; }
+    internal NpgsqlDataReaderOrig? UnboundDataReader { get; set; }
 
     #region Constructors
 
@@ -362,7 +362,7 @@ public partial class NpgsqlConnector : IDisposable
         if (_isKeepAliveEnabled)
             _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
 
-        DataReader = new NpgsqlDataReader(this);
+        DataReader = new NpgsqlDataReaderOrig(this);
 
         // TODO: Not just for automatic preparation anymore...
         PreparedStatementManager = new PreparedStatementManager(this);
@@ -375,7 +375,7 @@ public partial class NpgsqlConnector : IDisposable
             // Note: the in-flight channel can probably be single-writer, but that doesn't actually do anything
             // at this point. And we currently rely on being able to complete the channel at any point (from
             // Break). We may want to revisit this if an optimized, SingleWriter implementation is introduced.
-            var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommand>(
+            var commandsInFlightChannel = Channel.CreateUnbounded<NpgsqlCommandOrig>(
                 new UnboundedChannelOptions { SingleReader = true });
             CommandsInFlightReader = commandsInFlightChannel.Reader;
             CommandsInFlightWriter = commandsInFlightChannel.Writer;
@@ -1117,8 +1117,8 @@ public partial class NpgsqlConnector : IDisposable
 
     #region I/O
 
-    readonly ChannelReader<NpgsqlCommand>? CommandsInFlightReader;
-    internal readonly ChannelWriter<NpgsqlCommand>? CommandsInFlightWriter;
+    readonly ChannelReader<NpgsqlCommandOrig>? CommandsInFlightReader;
+    internal readonly ChannelWriter<NpgsqlCommandOrig>? CommandsInFlightWriter;
 
     internal volatile int CommandsInFlightCount;
 
@@ -1130,7 +1130,7 @@ public partial class NpgsqlConnector : IDisposable
         Debug.Assert(Settings.Multiplexing);
         Debug.Assert(CommandsInFlightReader != null);
 
-        NpgsqlCommand? command = null;
+        NpgsqlCommandOrig? command = null;
         var commandsRead = 0;
 
         try
@@ -1153,7 +1153,7 @@ public partial class NpgsqlConnector : IDisposable
                     command.ExecutionCompletion.SetResult(this);
 
                     // Now wait until that command's reader is disposed. Note that RunContinuationsAsynchronously is
-                    // true, so that the user code calling NpgsqlDataReader.Dispose will not continue executing
+                    // true, so that the user code calling NpgsqlDataReaderOrig.Dispose will not continue executing
                     // synchronously here. The prevents issues if the code after the next command's execution
                     // completion blocks.
                     await new ValueTask(ReaderCompleted, ReaderCompleted.Version);
@@ -2246,7 +2246,7 @@ public partial class NpgsqlConnector : IDisposable
     /// </summary>
     /// <param name="newState">The new state to be set when entering this user action.</param>
     /// <param name="command">
-    /// The <see cref="NpgsqlCommand" /> that is starting execution - if an <see cref="NpgsqlOperationInProgressException" /> is
+    /// The <see cref="NpgsqlCommandOrig" /> that is starting execution - if an <see cref="NpgsqlOperationInProgressException" /> is
     /// thrown, it will reference this.
     /// </param>
     /// <param name="cancellationToken">
@@ -2261,7 +2261,7 @@ public partial class NpgsqlConnector : IDisposable
     /// </param>
     internal UserAction StartUserAction(
         ConnectorState newState,
-        NpgsqlCommand? command,
+        NpgsqlCommandOrig? command,
         CancellationToken cancellationToken = default,
         bool attemptPgCancellation = true)
     {
@@ -2302,7 +2302,7 @@ public partial class NpgsqlConnector : IDisposable
             }
         }
 
-        UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommand? command)
+        UserAction DoStartUserAction(ConnectorState newState, NpgsqlCommandOrig? command)
         {
             switch (State)
             {
@@ -2562,11 +2562,11 @@ public partial class NpgsqlConnector : IDisposable
     #region Misc
 
     /// <summary>
-    /// Creates and returns a <see cref="NpgsqlCommand"/> object associated with the <see cref="NpgsqlConnector"/>.
+    /// Creates and returns a <see cref="NpgsqlCommandOrig"/> object associated with the <see cref="NpgsqlConnector"/>.
     /// </summary>
     /// <param name="cmdText">The text of the query.</param>
-    /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
-    public NpgsqlCommand CreateCommand(string? cmdText = null) => new(cmdText, this);
+    /// <returns>A <see cref="NpgsqlCommandOrig"/> object.</returns>
+    public NpgsqlCommandOrig CreateCommand(string? cmdText = null) => new(cmdText, this);
 
     void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
     {

@@ -268,9 +268,9 @@ Npgsql.NpgsqlBatch.Connection.get -> Npgsql.NpgsqlConnection?
 Npgsql.NpgsqlBatch.Connection.set -> void
 Npgsql.NpgsqlBatch.EnableErrorBarriers.get -> bool
 Npgsql.NpgsqlBatch.EnableErrorBarriers.set -> void
-Npgsql.NpgsqlBatch.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReader!
-Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
-Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
+Npgsql.NpgsqlBatch.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReaderOrig!
+Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReaderOrig!>!
+Npgsql.NpgsqlBatch.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReaderOrig!>!
 Npgsql.NpgsqlBatch.NpgsqlBatch(Npgsql.NpgsqlConnection? connection = null, Npgsql.NpgsqlTransaction? transaction = null) -> void
 Npgsql.NpgsqlBatch.Transaction.get -> Npgsql.NpgsqlTransaction?
 Npgsql.NpgsqlBatch.Transaction.set -> void
@@ -327,38 +327,38 @@ Npgsql.NpgsqlBinaryImporter.WriteNull() -> void
 Npgsql.NpgsqlBinaryImporter.WriteNullAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object![]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object![]! values) -> System.Threading.Tasks.Task!
-Npgsql.NpgsqlCommand
-Npgsql.NpgsqlCommand.AllResultTypesAreUnknown.get -> bool
-Npgsql.NpgsqlCommand.AllResultTypesAreUnknown.set -> void
-Npgsql.NpgsqlCommand.Connection.get -> Npgsql.NpgsqlConnection?
-Npgsql.NpgsqlCommand.Connection.set -> void
-Npgsql.NpgsqlCommand.CreateParameter() -> Npgsql.NpgsqlParameter!
-Npgsql.NpgsqlCommand.Disposed -> System.EventHandler?
-Npgsql.NpgsqlCommand.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReader!
-Npgsql.NpgsqlCommand.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
-Npgsql.NpgsqlCommand.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReader!>!
-Npgsql.NpgsqlCommand.IsPrepared.get -> bool
-Npgsql.NpgsqlCommand.NpgsqlCommand() -> void
-Npgsql.NpgsqlCommand.NpgsqlCommand(string? cmdText) -> void
-Npgsql.NpgsqlCommand.NpgsqlCommand(string? cmdText, Npgsql.NpgsqlConnection? connection) -> void
-Npgsql.NpgsqlCommand.NpgsqlCommand(string? cmdText, Npgsql.NpgsqlConnection? connection, Npgsql.NpgsqlTransaction? transaction) -> void
-Npgsql.NpgsqlCommand.Parameters.get -> Npgsql.NpgsqlParameterCollection!
-Npgsql.NpgsqlCommand.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
-Npgsql.NpgsqlCommand.Transaction.get -> Npgsql.NpgsqlTransaction?
-Npgsql.NpgsqlCommand.Transaction.set -> void
-Npgsql.NpgsqlCommand.UnknownResultTypeList.get -> bool[]?
-Npgsql.NpgsqlCommand.UnknownResultTypeList.set -> void
-Npgsql.NpgsqlCommand.Unprepare() -> void
-Npgsql.NpgsqlCommand.UnprepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Npgsql.NpgsqlCommandBuilder
-Npgsql.NpgsqlCommandBuilder.GetDeleteCommand() -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.GetDeleteCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.GetInsertCommand() -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.GetInsertCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.GetUpdateCommand() -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.GetUpdateCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommand!
-Npgsql.NpgsqlCommandBuilder.NpgsqlCommandBuilder() -> void
-Npgsql.NpgsqlCommandBuilder.NpgsqlCommandBuilder(Npgsql.NpgsqlDataAdapter? adapter) -> void
+Npgsql.NpgsqlCommandOrig
+Npgsql.NpgsqlCommandOrig.AllResultTypesAreUnknown.get -> bool
+Npgsql.NpgsqlCommandOrig.AllResultTypesAreUnknown.set -> void
+Npgsql.NpgsqlCommandOrig.Connection.get -> Npgsql.NpgsqlConnection?
+Npgsql.NpgsqlCommandOrig.Connection.set -> void
+Npgsql.NpgsqlCommandOrig.CreateParameter() -> Npgsql.NpgsqlParameter!
+Npgsql.NpgsqlCommandOrig.Disposed -> System.EventHandler?
+Npgsql.NpgsqlCommandOrig.ExecuteReader(System.Data.CommandBehavior behavior = System.Data.CommandBehavior.Default) -> Npgsql.NpgsqlDataReaderOrig!
+Npgsql.NpgsqlCommandOrig.ExecuteReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReaderOrig!>!
+Npgsql.NpgsqlCommandOrig.ExecuteReaderAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlDataReaderOrig!>!
+Npgsql.NpgsqlCommandOrig.IsPrepared.get -> bool
+Npgsql.NpgsqlCommandOrig.NpgsqlCommandOrig() -> void
+Npgsql.NpgsqlCommandOrig.NpgsqlCommandOrig(string? cmdText) -> void
+Npgsql.NpgsqlCommandOrig.NpgsqlCommandOrig(string? cmdText, Npgsql.NpgsqlConnection? connection) -> void
+Npgsql.NpgsqlCommandOrig.NpgsqlCommandOrig(string? cmdText, Npgsql.NpgsqlConnection? connection, Npgsql.NpgsqlTransaction? transaction) -> void
+Npgsql.NpgsqlCommandOrig.Parameters.get -> Npgsql.NpgsqlParameterCollection!
+Npgsql.NpgsqlCommandOrig.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
+Npgsql.NpgsqlCommandOrig.Transaction.get -> Npgsql.NpgsqlTransaction?
+Npgsql.NpgsqlCommandOrig.Transaction.set -> void
+Npgsql.NpgsqlCommandOrig.UnknownResultTypeList.get -> bool[]?
+Npgsql.NpgsqlCommandOrig.UnknownResultTypeList.set -> void
+Npgsql.NpgsqlCommandOrig.Unprepare() -> void
+Npgsql.NpgsqlCommandOrig.UnprepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlCommandOrigBuilder
+Npgsql.NpgsqlCommandOrigBuilder.GetDeleteCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.GetDeleteCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.GetInsertCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.GetInsertCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.GetUpdateCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.GetUpdateCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandOrigBuilder.NpgsqlCommandOrigBuilder() -> void
+Npgsql.NpgsqlCommandOrigBuilder.NpgsqlCommandOrigBuilder(Npgsql.NpgsqlDataAdapter? adapter) -> void
 Npgsql.NpgsqlConnection
 Npgsql.NpgsqlConnection.BeginBinaryExport(string! copyToCommand) -> Npgsql.NpgsqlBinaryExporter!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
@@ -377,7 +377,7 @@ Npgsql.NpgsqlConnection.BeginTransactionAsync(System.Threading.CancellationToken
 Npgsql.NpgsqlConnection.CloneWith(string! connectionString) -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlConnection.CommandTimeout.get -> int
 Npgsql.NpgsqlConnection.CreateBatch() -> Npgsql.NpgsqlBatch!
-Npgsql.NpgsqlConnection.CreateCommand() -> Npgsql.NpgsqlCommand!
+Npgsql.NpgsqlConnection.CreateCommand() -> Npgsql.NpgsqlCommandOrig!
 Npgsql.NpgsqlConnection.Disposed -> System.EventHandler?
 Npgsql.NpgsqlConnection.FullState.get -> System.Data.ConnectionState
 Npgsql.NpgsqlConnection.HasIntegerDateTimes.get -> bool
@@ -562,36 +562,36 @@ Npgsql.NpgsqlCopyTextWriter
 Npgsql.NpgsqlCopyTextWriter.Cancel() -> void
 Npgsql.NpgsqlCopyTextWriter.CancelAsync() -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlDataAdapter
-Npgsql.NpgsqlDataAdapter.DeleteCommand.get -> Npgsql.NpgsqlCommand?
+Npgsql.NpgsqlDataAdapter.DeleteCommand.get -> Npgsql.NpgsqlCommandOrig?
 Npgsql.NpgsqlDataAdapter.DeleteCommand.set -> void
-Npgsql.NpgsqlDataAdapter.InsertCommand.get -> Npgsql.NpgsqlCommand?
+Npgsql.NpgsqlDataAdapter.InsertCommand.get -> Npgsql.NpgsqlCommandOrig?
 Npgsql.NpgsqlDataAdapter.InsertCommand.set -> void
 Npgsql.NpgsqlDataAdapter.NpgsqlDataAdapter() -> void
-Npgsql.NpgsqlDataAdapter.NpgsqlDataAdapter(Npgsql.NpgsqlCommand! selectCommand) -> void
+Npgsql.NpgsqlDataAdapter.NpgsqlDataAdapter(Npgsql.NpgsqlCommandOrig! selectCommand) -> void
 Npgsql.NpgsqlDataAdapter.NpgsqlDataAdapter(string! selectCommandText, Npgsql.NpgsqlConnection! selectConnection) -> void
 Npgsql.NpgsqlDataAdapter.NpgsqlDataAdapter(string! selectCommandText, string! selectConnectionString) -> void
 Npgsql.NpgsqlDataAdapter.RowUpdated -> Npgsql.NpgsqlRowUpdatedEventHandler?
 Npgsql.NpgsqlDataAdapter.RowUpdating -> Npgsql.NpgsqlRowUpdatingEventHandler?
-Npgsql.NpgsqlDataAdapter.SelectCommand.get -> Npgsql.NpgsqlCommand?
+Npgsql.NpgsqlDataAdapter.SelectCommand.get -> Npgsql.NpgsqlCommandOrig?
 Npgsql.NpgsqlDataAdapter.SelectCommand.set -> void
-Npgsql.NpgsqlDataAdapter.UpdateCommand.get -> Npgsql.NpgsqlCommand?
+Npgsql.NpgsqlDataAdapter.UpdateCommand.get -> Npgsql.NpgsqlCommandOrig?
 Npgsql.NpgsqlDataAdapter.UpdateCommand.set -> void
-Npgsql.NpgsqlDataReader
-Npgsql.NpgsqlDataReader.GetColumnSchema() -> System.Collections.ObjectModel.ReadOnlyCollection<Npgsql.Schema.NpgsqlDbColumn!>!
-Npgsql.NpgsqlDataReader.GetColumnSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.ObjectModel.ReadOnlyCollection<Npgsql.Schema.NpgsqlDbColumn!>!>!
-Npgsql.NpgsqlDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
-Npgsql.NpgsqlDataReader.GetDataTypeOID(int ordinal) -> uint
-Npgsql.NpgsqlDataReader.GetPostgresType(int ordinal) -> Npgsql.PostgresTypes.PostgresType!
-Npgsql.NpgsqlDataReader.GetStreamAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.Stream!>!
-Npgsql.NpgsqlDataReader.GetTextReaderAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
-Npgsql.NpgsqlDataReader.GetTimeSpan(int ordinal) -> System.TimeSpan
-Npgsql.NpgsqlDataReader.IsOnRow.get -> bool
-Npgsql.NpgsqlDataReader.ReaderClosed -> System.EventHandler?
-Npgsql.NpgsqlDataReader.Rows.get -> ulong
-Npgsql.NpgsqlDataReader.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
+Npgsql.NpgsqlDataReaderOrig
+Npgsql.NpgsqlDataReaderOrig.GetColumnSchema() -> System.Collections.ObjectModel.ReadOnlyCollection<Npgsql.Schema.NpgsqlDbColumn!>!
+Npgsql.NpgsqlDataReaderOrig.GetColumnSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.ObjectModel.ReadOnlyCollection<Npgsql.Schema.NpgsqlDbColumn!>!>!
+Npgsql.NpgsqlDataReaderOrig.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
+Npgsql.NpgsqlDataReaderOrig.GetDataTypeOID(int ordinal) -> uint
+Npgsql.NpgsqlDataReaderOrig.GetPostgresType(int ordinal) -> Npgsql.PostgresTypes.PostgresType!
+Npgsql.NpgsqlDataReaderOrig.GetStreamAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.Stream!>!
+Npgsql.NpgsqlDataReaderOrig.GetTextReaderAsync(int ordinal, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.IO.TextReader!>!
+Npgsql.NpgsqlDataReaderOrig.GetTimeSpan(int ordinal) -> System.TimeSpan
+Npgsql.NpgsqlDataReaderOrig.IsOnRow.get -> bool
+Npgsql.NpgsqlDataReaderOrig.ReaderClosed -> System.EventHandler?
+Npgsql.NpgsqlDataReaderOrig.Rows.get -> ulong
+Npgsql.NpgsqlDataReaderOrig.Statements.get -> System.Collections.Generic.IReadOnlyList<Npgsql.NpgsqlBatchCommand!>!
 Npgsql.NpgsqlDataSource
 Npgsql.NpgsqlDataSource.CreateBatch() -> Npgsql.NpgsqlBatch!
-Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommand!
+Npgsql.NpgsqlDataSource.CreateCommand(string? commandText = null) -> Npgsql.NpgsqlCommandOrig!
 Npgsql.NpgsqlDataSource.CreateConnection() -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
@@ -599,7 +599,7 @@ Npgsql.NpgsqlDataSource.Password.set -> void
 Npgsql.NpgsqlDataSourceBuilder
 Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
-Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
+Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSourceOrig!
 Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
 Npgsql.NpgsqlDataSourceBuilder.ConnectionStringBuilder.get -> Npgsql.NpgsqlConnectionStringBuilder!
 Npgsql.NpgsqlDataSourceBuilder.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
@@ -651,12 +651,12 @@ Npgsql.NpgsqlLargeObjectStream.Has64BitSupport.get -> bool
 Npgsql.NpgsqlLargeObjectStream.SeekAsync(long offset, System.IO.SeekOrigin origin, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 Npgsql.NpgsqlLargeObjectStream.SetLength(long value, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlLoggingConfiguration
-Npgsql.NpgsqlMultiHostDataSource
-Npgsql.NpgsqlMultiHostDataSource.ClearDatabaseStates() -> void
-Npgsql.NpgsqlMultiHostDataSource.CreateConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
-Npgsql.NpgsqlMultiHostDataSource.OpenConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
-Npgsql.NpgsqlMultiHostDataSource.OpenConnectionAsync(Npgsql.TargetSessionAttributes targetSessionAttributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
-Npgsql.NpgsqlMultiHostDataSource.WithTargetSession(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
+Npgsql.NpgsqlMultiHostDataSourceOrig
+Npgsql.NpgsqlMultiHostDataSourceOrig.ClearDatabaseStates() -> void
+Npgsql.NpgsqlMultiHostDataSourceOrig.CreateConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlMultiHostDataSourceOrig.OpenConnection(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlConnection!
+Npgsql.NpgsqlMultiHostDataSourceOrig.OpenConnectionAsync(Npgsql.TargetSessionAttributes targetSessionAttributes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
+Npgsql.NpgsqlMultiHostDataSourceOrig.WithTargetSession(Npgsql.TargetSessionAttributes targetSessionAttributes) -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlNestedDataReader
 Npgsql.NpgsqlNestedDataReader.GetData(int ordinal) -> Npgsql.NpgsqlNestedDataReader!
 Npgsql.NpgsqlNoticeEventArgs
@@ -668,8 +668,8 @@ Npgsql.NpgsqlNotificationEventArgs.Condition.get -> string!
 Npgsql.NpgsqlNotificationEventArgs.Payload.get -> string!
 Npgsql.NpgsqlNotificationEventArgs.PID.get -> int
 Npgsql.NpgsqlOperationInProgressException
-Npgsql.NpgsqlOperationInProgressException.CommandInProgress.get -> Npgsql.NpgsqlCommand?
-Npgsql.NpgsqlOperationInProgressException.NpgsqlOperationInProgressException(Npgsql.NpgsqlCommand! command) -> void
+Npgsql.NpgsqlOperationInProgressException.CommandInProgress.get -> Npgsql.NpgsqlCommandOrig?
+Npgsql.NpgsqlOperationInProgressException.NpgsqlOperationInProgressException(Npgsql.NpgsqlCommandOrig! command) -> void
 Npgsql.NpgsqlParameter
 Npgsql.NpgsqlParameter.Clone() -> Npgsql.NpgsqlParameter!
 Npgsql.NpgsqlParameter.Collection.get -> Npgsql.NpgsqlParameterCollection?
@@ -1509,38 +1509,38 @@ override Npgsql.NpgsqlBatchCommandCollection.Insert(int index, System.Data.Commo
 override Npgsql.NpgsqlBatchCommandCollection.IsReadOnly.get -> bool
 override Npgsql.NpgsqlBatchCommandCollection.Remove(System.Data.Common.DbBatchCommand! item) -> bool
 override Npgsql.NpgsqlBatchCommandCollection.RemoveAt(int index) -> void
-override Npgsql.NpgsqlCommand.Cancel() -> void
-override Npgsql.NpgsqlCommand.CommandText.get -> string!
-override Npgsql.NpgsqlCommand.CommandText.set -> void
-override Npgsql.NpgsqlCommand.CommandTimeout.get -> int
-override Npgsql.NpgsqlCommand.CommandTimeout.set -> void
-override Npgsql.NpgsqlCommand.CommandType.get -> System.Data.CommandType
-override Npgsql.NpgsqlCommand.CommandType.set -> void
-override Npgsql.NpgsqlCommand.CreateDbParameter() -> System.Data.Common.DbParameter!
-override Npgsql.NpgsqlCommand.DbConnection.get -> System.Data.Common.DbConnection?
-override Npgsql.NpgsqlCommand.DbConnection.set -> void
-override Npgsql.NpgsqlCommand.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
-override Npgsql.NpgsqlCommand.DbTransaction.get -> System.Data.Common.DbTransaction?
-override Npgsql.NpgsqlCommand.DbTransaction.set -> void
-override Npgsql.NpgsqlCommand.DesignTimeVisible.get -> bool
-override Npgsql.NpgsqlCommand.DesignTimeVisible.set -> void
-override Npgsql.NpgsqlCommand.Dispose(bool disposing) -> void
-override Npgsql.NpgsqlCommand.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
-override Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
-override Npgsql.NpgsqlCommand.ExecuteNonQuery() -> int
-override Npgsql.NpgsqlCommand.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
-override Npgsql.NpgsqlCommand.ExecuteScalar() -> object?
-override Npgsql.NpgsqlCommand.ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<object?>!
-override Npgsql.NpgsqlCommand.Prepare() -> void
-override Npgsql.NpgsqlCommand.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Npgsql.NpgsqlCommand.UpdatedRowSource.get -> System.Data.UpdateRowSource
-override Npgsql.NpgsqlCommand.UpdatedRowSource.set -> void
-override Npgsql.NpgsqlCommandBuilder.QuoteIdentifier(string! unquotedIdentifier) -> string!
-override Npgsql.NpgsqlCommandBuilder.QuotePrefix.get -> string!
-override Npgsql.NpgsqlCommandBuilder.QuotePrefix.set -> void
-override Npgsql.NpgsqlCommandBuilder.QuoteSuffix.get -> string!
-override Npgsql.NpgsqlCommandBuilder.QuoteSuffix.set -> void
-override Npgsql.NpgsqlCommandBuilder.UnquoteIdentifier(string! quotedIdentifier) -> string!
+override Npgsql.NpgsqlCommandOrig.Cancel() -> void
+override Npgsql.NpgsqlCommandOrig.CommandText.get -> string!
+override Npgsql.NpgsqlCommandOrig.CommandText.set -> void
+override Npgsql.NpgsqlCommandOrig.CommandTimeout.get -> int
+override Npgsql.NpgsqlCommandOrig.CommandTimeout.set -> void
+override Npgsql.NpgsqlCommandOrig.CommandType.get -> System.Data.CommandType
+override Npgsql.NpgsqlCommandOrig.CommandType.set -> void
+override Npgsql.NpgsqlCommandOrig.CreateDbParameter() -> System.Data.Common.DbParameter!
+override Npgsql.NpgsqlCommandOrig.DbConnection.get -> System.Data.Common.DbConnection?
+override Npgsql.NpgsqlCommandOrig.DbConnection.set -> void
+override Npgsql.NpgsqlCommandOrig.DbParameterCollection.get -> System.Data.Common.DbParameterCollection!
+override Npgsql.NpgsqlCommandOrig.DbTransaction.get -> System.Data.Common.DbTransaction?
+override Npgsql.NpgsqlCommandOrig.DbTransaction.set -> void
+override Npgsql.NpgsqlCommandOrig.DesignTimeVisible.get -> bool
+override Npgsql.NpgsqlCommandOrig.DesignTimeVisible.set -> void
+override Npgsql.NpgsqlCommandOrig.Dispose(bool disposing) -> void
+override Npgsql.NpgsqlCommandOrig.ExecuteDbDataReader(System.Data.CommandBehavior behavior) -> System.Data.Common.DbDataReader!
+override Npgsql.NpgsqlCommandOrig.ExecuteDbDataReaderAsync(System.Data.CommandBehavior behavior, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Data.Common.DbDataReader!>!
+override Npgsql.NpgsqlCommandOrig.ExecuteNonQuery() -> int
+override Npgsql.NpgsqlCommandOrig.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+override Npgsql.NpgsqlCommandOrig.ExecuteScalar() -> object?
+override Npgsql.NpgsqlCommandOrig.ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<object?>!
+override Npgsql.NpgsqlCommandOrig.Prepare() -> void
+override Npgsql.NpgsqlCommandOrig.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Npgsql.NpgsqlCommandOrig.UpdatedRowSource.get -> System.Data.UpdateRowSource
+override Npgsql.NpgsqlCommandOrig.UpdatedRowSource.set -> void
+override Npgsql.NpgsqlCommandOrigBuilder.QuoteIdentifier(string! unquotedIdentifier) -> string!
+override Npgsql.NpgsqlCommandOrigBuilder.QuotePrefix.get -> string!
+override Npgsql.NpgsqlCommandOrigBuilder.QuotePrefix.set -> void
+override Npgsql.NpgsqlCommandOrigBuilder.QuoteSuffix.get -> string!
+override Npgsql.NpgsqlCommandOrigBuilder.QuoteSuffix.set -> void
+override Npgsql.NpgsqlCommandOrigBuilder.UnquoteIdentifier(string! quotedIdentifier) -> string!
 override Npgsql.NpgsqlConnection.CanCreateBatch.get -> bool
 override Npgsql.NpgsqlConnection.ChangeDatabase(string! dbName) -> void
 override Npgsql.NpgsqlConnection.Close() -> void
@@ -1570,52 +1570,52 @@ override Npgsql.NpgsqlConnectionStringBuilder.Remove(string! keyword) -> bool
 override Npgsql.NpgsqlConnectionStringBuilder.this[string! keyword].get -> object!
 override Npgsql.NpgsqlConnectionStringBuilder.this[string! keyword].set -> void
 override Npgsql.NpgsqlConnectionStringBuilder.TryGetValue(string! keyword, out object? value) -> bool
-override Npgsql.NpgsqlDataReader.Close() -> void
-override Npgsql.NpgsqlDataReader.CloseAsync() -> System.Threading.Tasks.Task!
-override Npgsql.NpgsqlDataReader.Depth.get -> int
-override Npgsql.NpgsqlDataReader.DisposeAsync() -> System.Threading.Tasks.ValueTask
-override Npgsql.NpgsqlDataReader.FieldCount.get -> int
-override Npgsql.NpgsqlDataReader.GetBoolean(int ordinal) -> bool
-override Npgsql.NpgsqlDataReader.GetByte(int ordinal) -> byte
-override Npgsql.NpgsqlDataReader.GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) -> long
-override Npgsql.NpgsqlDataReader.GetChar(int ordinal) -> char
-override Npgsql.NpgsqlDataReader.GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) -> long
-override Npgsql.NpgsqlDataReader.GetDataTypeName(int ordinal) -> string!
-override Npgsql.NpgsqlDataReader.GetDateTime(int ordinal) -> System.DateTime
-override Npgsql.NpgsqlDataReader.GetDecimal(int ordinal) -> decimal
-override Npgsql.NpgsqlDataReader.GetDouble(int ordinal) -> double
-override Npgsql.NpgsqlDataReader.GetEnumerator() -> System.Collections.IEnumerator!
-override Npgsql.NpgsqlDataReader.GetFieldType(int ordinal) -> System.Type!
-override Npgsql.NpgsqlDataReader.GetFieldValue<T>(int ordinal) -> T
-override Npgsql.NpgsqlDataReader.GetFieldValueAsync<T>(int ordinal, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
-override Npgsql.NpgsqlDataReader.GetFloat(int ordinal) -> float
-override Npgsql.NpgsqlDataReader.GetGuid(int ordinal) -> System.Guid
-override Npgsql.NpgsqlDataReader.GetInt16(int ordinal) -> short
-override Npgsql.NpgsqlDataReader.GetInt32(int ordinal) -> int
-override Npgsql.NpgsqlDataReader.GetInt64(int ordinal) -> long
-override Npgsql.NpgsqlDataReader.GetName(int ordinal) -> string!
-override Npgsql.NpgsqlDataReader.GetOrdinal(string! name) -> int
-override Npgsql.NpgsqlDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
-override Npgsql.NpgsqlDataReader.GetProviderSpecificValue(int ordinal) -> object!
-override Npgsql.NpgsqlDataReader.GetProviderSpecificValues(object![]! values) -> int
-override Npgsql.NpgsqlDataReader.GetSchemaTable() -> System.Data.DataTable?
-override Npgsql.NpgsqlDataReader.GetSchemaTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Data.DataTable?>!
-override Npgsql.NpgsqlDataReader.GetStream(int ordinal) -> System.IO.Stream!
-override Npgsql.NpgsqlDataReader.GetString(int ordinal) -> string!
-override Npgsql.NpgsqlDataReader.GetTextReader(int ordinal) -> System.IO.TextReader!
-override Npgsql.NpgsqlDataReader.GetValue(int ordinal) -> object!
-override Npgsql.NpgsqlDataReader.GetValues(object![]! values) -> int
-override Npgsql.NpgsqlDataReader.HasRows.get -> bool
-override Npgsql.NpgsqlDataReader.IsClosed.get -> bool
-override Npgsql.NpgsqlDataReader.IsDBNull(int ordinal) -> bool
-override Npgsql.NpgsqlDataReader.IsDBNullAsync(int ordinal, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-override Npgsql.NpgsqlDataReader.NextResult() -> bool
-override Npgsql.NpgsqlDataReader.NextResultAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-override Npgsql.NpgsqlDataReader.Read() -> bool
-override Npgsql.NpgsqlDataReader.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-override Npgsql.NpgsqlDataReader.RecordsAffected.get -> int
-override Npgsql.NpgsqlDataReader.this[int ordinal].get -> object!
-override Npgsql.NpgsqlDataReader.this[string! name].get -> object!
+override Npgsql.NpgsqlDataReaderOrig.Close() -> void
+override Npgsql.NpgsqlDataReaderOrig.CloseAsync() -> System.Threading.Tasks.Task!
+override Npgsql.NpgsqlDataReaderOrig.Depth.get -> int
+override Npgsql.NpgsqlDataReaderOrig.DisposeAsync() -> System.Threading.Tasks.ValueTask
+override Npgsql.NpgsqlDataReaderOrig.FieldCount.get -> int
+override Npgsql.NpgsqlDataReaderOrig.GetBoolean(int ordinal) -> bool
+override Npgsql.NpgsqlDataReaderOrig.GetByte(int ordinal) -> byte
+override Npgsql.NpgsqlDataReaderOrig.GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) -> long
+override Npgsql.NpgsqlDataReaderOrig.GetChar(int ordinal) -> char
+override Npgsql.NpgsqlDataReaderOrig.GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) -> long
+override Npgsql.NpgsqlDataReaderOrig.GetDataTypeName(int ordinal) -> string!
+override Npgsql.NpgsqlDataReaderOrig.GetDateTime(int ordinal) -> System.DateTime
+override Npgsql.NpgsqlDataReaderOrig.GetDecimal(int ordinal) -> decimal
+override Npgsql.NpgsqlDataReaderOrig.GetDouble(int ordinal) -> double
+override Npgsql.NpgsqlDataReaderOrig.GetEnumerator() -> System.Collections.IEnumerator!
+override Npgsql.NpgsqlDataReaderOrig.GetFieldType(int ordinal) -> System.Type!
+override Npgsql.NpgsqlDataReaderOrig.GetFieldValue<T>(int ordinal) -> T
+override Npgsql.NpgsqlDataReaderOrig.GetFieldValueAsync<T>(int ordinal, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
+override Npgsql.NpgsqlDataReaderOrig.GetFloat(int ordinal) -> float
+override Npgsql.NpgsqlDataReaderOrig.GetGuid(int ordinal) -> System.Guid
+override Npgsql.NpgsqlDataReaderOrig.GetInt16(int ordinal) -> short
+override Npgsql.NpgsqlDataReaderOrig.GetInt32(int ordinal) -> int
+override Npgsql.NpgsqlDataReaderOrig.GetInt64(int ordinal) -> long
+override Npgsql.NpgsqlDataReaderOrig.GetName(int ordinal) -> string!
+override Npgsql.NpgsqlDataReaderOrig.GetOrdinal(string! name) -> int
+override Npgsql.NpgsqlDataReaderOrig.GetProviderSpecificFieldType(int ordinal) -> System.Type!
+override Npgsql.NpgsqlDataReaderOrig.GetProviderSpecificValue(int ordinal) -> object!
+override Npgsql.NpgsqlDataReaderOrig.GetProviderSpecificValues(object![]! values) -> int
+override Npgsql.NpgsqlDataReaderOrig.GetSchemaTable() -> System.Data.DataTable?
+override Npgsql.NpgsqlDataReaderOrig.GetSchemaTableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Data.DataTable?>!
+override Npgsql.NpgsqlDataReaderOrig.GetStream(int ordinal) -> System.IO.Stream!
+override Npgsql.NpgsqlDataReaderOrig.GetString(int ordinal) -> string!
+override Npgsql.NpgsqlDataReaderOrig.GetTextReader(int ordinal) -> System.IO.TextReader!
+override Npgsql.NpgsqlDataReaderOrig.GetValue(int ordinal) -> object!
+override Npgsql.NpgsqlDataReaderOrig.GetValues(object![]! values) -> int
+override Npgsql.NpgsqlDataReaderOrig.HasRows.get -> bool
+override Npgsql.NpgsqlDataReaderOrig.IsClosed.get -> bool
+override Npgsql.NpgsqlDataReaderOrig.IsDBNull(int ordinal) -> bool
+override Npgsql.NpgsqlDataReaderOrig.IsDBNullAsync(int ordinal, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+override Npgsql.NpgsqlDataReaderOrig.NextResult() -> bool
+override Npgsql.NpgsqlDataReaderOrig.NextResultAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+override Npgsql.NpgsqlDataReaderOrig.Read() -> bool
+override Npgsql.NpgsqlDataReaderOrig.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+override Npgsql.NpgsqlDataReaderOrig.RecordsAffected.get -> int
+override Npgsql.NpgsqlDataReaderOrig.this[int ordinal].get -> object!
+override Npgsql.NpgsqlDataReaderOrig.this[string! name].get -> object!
 override Npgsql.NpgsqlDataSource.ConnectionString.get -> string!
 override Npgsql.NpgsqlException.DbBatchCommand.get -> System.Data.Common.DbBatchCommand?
 override Npgsql.NpgsqlException.IsTransient.get -> bool
@@ -1837,7 +1837,7 @@ override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.set -> void
 override sealed Npgsql.NpgsqlParameter.SourceVersion.get -> System.Data.DataRowVersion
 override sealed Npgsql.NpgsqlParameter.SourceVersion.set -> void
 static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name) -> string!
-static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommand! command) -> void
+static Npgsql.NpgsqlCommandOrigBuilder.DeriveParameters(Npgsql.NpgsqlCommandOrig! command) -> void
 static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
@@ -1911,5 +1911,5 @@ static NpgsqlTypes.NpgsqlTsVector.Parse(string! value) -> NpgsqlTypes.NpgsqlTsVe
 static readonly Npgsql.NpgsqlFactory.Instance -> Npgsql.NpgsqlFactory!
 static readonly NpgsqlTypes.NpgsqlLogSequenceNumber.Invalid -> NpgsqlTypes.NpgsqlLogSequenceNumber
 static readonly NpgsqlTypes.NpgsqlRange<T>.Empty -> NpgsqlTypes.NpgsqlRange<T>
-virtual Npgsql.NpgsqlCommand.Clone() -> Npgsql.NpgsqlCommand!
+virtual Npgsql.NpgsqlCommandOrig.Clone() -> Npgsql.NpgsqlCommandOrig!
 virtual Npgsql.Replication.PgOutput.ReplicationTuple.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerator<Npgsql.Replication.PgOutput.ReplicationValue!>!

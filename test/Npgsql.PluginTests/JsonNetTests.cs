@@ -90,7 +90,7 @@ public class JsonNetTests : TestBase
     public async Task Deserialize_failure()
     {
         await using var conn = await JsonDataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($@"SELECT '[1, 2, 3]'::{_pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommandOrig($@"SELECT '[1, 2, 3]'::{_pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
         // Attempt to deserialize JSON array into object
@@ -177,7 +177,7 @@ public class JsonNetTests : TestBase
 
         var expected = new Bug3464Class { SomeString = new string('5', 8174) };
         await using var conn = await dataSource.OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn);
+        await using var cmd = new NpgsqlCommandOrig(@"SELECT @p1, @p2", conn);
 
         cmd.Parameters.AddWithValue("p1", expected).NpgsqlDbType = _npgsqlDbType;
         cmd.Parameters.AddWithValue("p2", expected).NpgsqlDbType = _npgsqlDbType;

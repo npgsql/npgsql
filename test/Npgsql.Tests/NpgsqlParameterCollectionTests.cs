@@ -18,7 +18,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Can_only_add_NpgsqlParameter()
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         Assert.That(() => command.Parameters.Add("hello"), Throws.Exception.TypeOf<InvalidCastException>());
         Assert.That(() => command.Parameters.Add(new SomeOtherDbParameter()), Throws.Exception.TypeOf<InvalidCastException>());
         Assert.That(() => command.Parameters.Add(null!), Throws.Exception.TypeOf<ArgumentNullException>());
@@ -31,8 +31,8 @@ public class NpgsqlParameterCollectionTests
     public void Clear()
     {
         var p = new NpgsqlParameter();
-        var c1 = new NpgsqlCommand();
-        var c2 = new NpgsqlCommand();
+        var c1 = new NpgsqlCommandOrig();
+        var c2 = new NpgsqlCommandOrig();
         c1.Parameters.Add(p);
         Assert.AreEqual(1, c1.Parameters.Count);
         Assert.AreEqual(0, c2.Parameters.Count);
@@ -49,7 +49,7 @@ public class NpgsqlParameterCollectionTests
         if (_compatMode == CompatMode.TwoPass)
             return;
 
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         // Put plenty of parameters in the collection to turn on hash lookup functionality.
         for (var i = 0; i < LookupThreshold; i++)
         {
@@ -74,7 +74,7 @@ public class NpgsqlParameterCollectionTests
         if (_compatMode == CompatMode.OnePass)
             return;
 
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         // Put plenty of parameters in the collection to turn on hash lookup functionality.
         for (var i = 0; i < count; i++)
         {
@@ -101,7 +101,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Remove_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         // Put plenty of parameters in the collection to turn on hash lookup functionality.
         for (var i = 0; i < count; i++)
         {
@@ -121,7 +121,7 @@ public class NpgsqlParameterCollectionTests
     public void Remove_case_differing_parameter([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
         // We add two case-differing parameters which will match as well, before adding the others.
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         command.Parameters.Add(new NpgsqlParameter("PP0", 1));
         command.Parameters.Add(new NpgsqlParameter("Pp0", 1));
         for (var i = 0; i < count - 2; i++)
@@ -145,7 +145,7 @@ public class NpgsqlParameterCollectionTests
         if (_compatMode == CompatMode.OnePass)
             return;
 
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         // Put plenty of parameters in the collection to turn on hash lookup functionality.
         for (var i = 0; i < count; i++)
         {
@@ -175,7 +175,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Finds_case_insensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
             parameters.Add(new NpgsqlParameter($"p{i}", i));
@@ -186,7 +186,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Finds_case_sensitive_lookups([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
             parameters.Add(new NpgsqlParameter($"p{i}", i));
@@ -197,7 +197,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Throws_on_indexer_mismatch([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
             parameters.Add(new NpgsqlParameter($"p{i}", i));
@@ -217,7 +217,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Positional_parameter_lookup_returns_first_match([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
         for (var i = 0; i < count; i++)
             parameters.Add(new NpgsqlParameter(NpgsqlParameter.PositionalName, i));
@@ -231,7 +231,7 @@ public class NpgsqlParameterCollectionTests
         if (_compatMode == CompatMode.OnePass)
             return;
 
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
 
         parameters.Add(new NpgsqlParameter("foo", 8));
@@ -252,7 +252,7 @@ public class NpgsqlParameterCollectionTests
         if (_compatMode == CompatMode.OnePass)
             return;
 
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
 
         parameters.Add(new NpgsqlParameter("FOO", 8));
@@ -269,7 +269,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void IndexOf_matches_all_parameter_syntaxes()
     {
-        using var command = new NpgsqlCommand();
+        using var command = new NpgsqlCommandOrig();
         var parameters = command.Parameters;
 
         parameters.Add(new NpgsqlParameter("@foo0", 8));
@@ -287,7 +287,7 @@ public class NpgsqlParameterCollectionTests
     [Test]
     public void Cloning_succeeds([Values(LookupThreshold, LookupThreshold - 2)] int count)
     {
-        var command = new NpgsqlCommand();
+        var command = new NpgsqlCommandOrig();
         for (var i = 0; i < count; i++)
         {
             command.Parameters.Add(new NpgsqlParameter());
@@ -299,7 +299,7 @@ public class NpgsqlParameterCollectionTests
     public void Clean_name()
     {
         var param = new NpgsqlParameter();
-        var command = new NpgsqlCommand();
+        var command = new NpgsqlCommandOrig();
         command.Parameters.Add(param);
 
         param.ParameterName = null;

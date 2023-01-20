@@ -6,7 +6,7 @@ var connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB")
 
 await using var conn = new NpgsqlConnection(connectionString);
 await conn.OpenAsync();
-await using var cmd = new NpgsqlCommand("SELECT 'Hello World'", conn);
+await using var cmd = new NpgsqlCommandOrig("SELECT 'Hello World'", conn);
 await using var reader = await cmd.ExecuteReaderAsync();
 while (await reader.ReadAsync())
 {

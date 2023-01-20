@@ -266,7 +266,7 @@ public class SystemTransactionTests : TestBase
     {
         using var tran = new TransactionScope();
         using var conn = OpenConnection(ConnectionStringEnlistOn);
-        using var cmd = new NpgsqlCommand("SELECT * FROM data", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT * FROM data", conn);
         using var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo);
         reader.GetColumnSchema();
         AssertNoDistributedIdentifier();
@@ -287,7 +287,7 @@ public class SystemTransactionTests : TestBase
         using var scope = new TransactionScope();
 
         using (var conn = OpenConnection(csb))
-        using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT 1", conn))
             cmd.ExecuteNonQuery();
 
         scope.Complete();
@@ -387,7 +387,7 @@ public class SystemTransactionTests : TestBase
     int GetNumberOfPreparedTransactions()
     {
         using var conn = OpenConnection(ConnectionStringEnlistOff);
-        using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn);
         cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
         return (int)(long)cmd.ExecuteScalar()!;
     }

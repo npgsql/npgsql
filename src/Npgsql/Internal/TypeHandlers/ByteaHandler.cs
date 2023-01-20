@@ -44,9 +44,9 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
 
     ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => throw new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading.");
-    
+
     ValueTask<Stream> INpgsqlTypeHandler<Stream>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        => throw new NotSupportedException("Reading a PostgreSQL bytea as a Stream is unsupported, use NpgsqlDataReader.GetStream() instead..");
+        => throw new NotSupportedException("Reading a PostgreSQL bytea as a Stream is unsupported, use NpgsqlDataReaderOrig.GetStream() instead..");
 
     int ValidateAndGetLength(int bufferLen, NpgsqlParameter? parameter)
         => parameter == null || parameter.Size <= 0 || parameter.Size >= bufferLen
@@ -57,7 +57,7 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     {
         if (parameter != null && parameter.Size > 0)
             return parameter.Size;
-        
+
         if (!stream.CanSeek)
             throw new NpgsqlException("Cannot write a stream of bytes. Either provide a positive size, or a seekable stream.");
 
@@ -78,7 +78,7 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     /// <inheritdoc />
     public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLength(value.Count, parameter);
-    
+
     /// <inheritdoc />
     public int ValidateAndGetLength(Stream value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLength(value, parameter);
@@ -90,7 +90,7 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     /// <inheritdoc />
     public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value.Array is null ? Task.CompletedTask : Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async, cancellationToken);
-    
+
     /// <inheritdoc />
     public Task Write(Stream value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => Write(value, buf, ValidateAndGetLength(value, parameter), async, cancellationToken);
@@ -109,8 +109,8 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
         await buf.Flush(async, cancellationToken);
         await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async, cancellationToken);
     }
-    
-    Task Write(Stream value, NpgsqlWriteBuffer buf, int count, bool async, CancellationToken cancellationToken = default) 
+
+    Task Write(Stream value, NpgsqlWriteBuffer buf, int count, bool async, CancellationToken cancellationToken = default)
         => buf.WriteStreamRaw(value, count, async, cancellationToken);
 
 #if !NETSTANDARD2_0

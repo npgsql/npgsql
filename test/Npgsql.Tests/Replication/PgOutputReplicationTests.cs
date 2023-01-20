@@ -76,7 +76,7 @@ public class PgOutputReplicationTests : SafeReplicationTestBase<LogicalReplicati
                 var options = await rc.CreatePgOutputReplicationSlot(slotName);
 
                 using var cmd =
-                    new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.Name}'",
+                    new NpgsqlCommandOrig($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.Name}'",
                         c);
                 await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -803,7 +803,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 for (var i = 0; i < 10; i++)
                     bytes[i] = (byte)i;
 
-                using (var command = new NpgsqlCommand($"INSERT INTO {tableName} VALUES ($1)", c))
+                using (var command = new NpgsqlCommandOrig($"INSERT INTO {tableName} VALUES ($1)", c))
                 {
                     command.Parameters.Add(new() { Value = bytes });
                     await command.ExecuteNonQueryAsync();

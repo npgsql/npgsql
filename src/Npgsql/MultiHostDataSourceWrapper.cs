@@ -8,7 +8,7 @@ using System.Transactions;
 namespace Npgsql;
 
 /// <summary>
-/// MultiHostDataSourceWrapper class is a wrapper for the NpgsqlMultiHostDataSource class.
+/// MultiHostDataSourceWrapper class is a wrapper for the NpgsqlMultiHostDataSourceOrig class.
 /// This class provides additional functionality specific to working with a multi-host data source.
 /// </summary>
 public class MultiHostDataSourceWrapper : NpgsqlDataSource
@@ -19,14 +19,14 @@ public class MultiHostDataSourceWrapper : NpgsqlDataSource
     /// </summary>
     internal override bool OwnsConnectors => false;
 
-    readonly NpgsqlMultiHostDataSource _wrappedSource;
+    readonly NpgsqlMultiHostDataSourceOrig _wrappedSource;
 
     /// <summary>
     /// Creates a new instance of MultiHostDataSourceWrapper.
     /// </summary>
-    /// <param name="source">An instance of NpgsqlMultiHostDataSource</param>
+    /// <param name="source">An instance of NpgsqlMultiHostDataSourceOrig</param>
     /// <param name="targetSessionAttributes">A target session attribute</param>
-    public MultiHostDataSourceWrapper(NpgsqlMultiHostDataSource source, TargetSessionAttributes targetSessionAttributes)
+    public MultiHostDataSourceWrapper(NpgsqlMultiHostDataSourceOrig source, TargetSessionAttributes targetSessionAttributes)
         : base(CloneSettingsForTargetSessionAttributes(source.Settings, targetSessionAttributes), source.Configuration)
         => _wrappedSource = source;
 

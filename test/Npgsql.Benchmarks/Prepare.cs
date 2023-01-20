@@ -15,7 +15,7 @@ public class Prepare
     NpgsqlConnection _conn = default!, _autoPreparingConn = default!;
     static readonly string[] Queries;
     string _query = default!;
-    NpgsqlCommand _preparedCmd = default!;
+    NpgsqlCommandOrig _preparedCmd = default!;
 
     /// <summary>
     /// The more tables are joined, the more complex the query is to plan, and therefore the more
@@ -36,7 +36,7 @@ public class Prepare
 
         foreach (var conn in new[] { _conn, _autoPreparingConn })
         {
-            using (var cmd = new NpgsqlCommand { Connection = conn })
+            using (var cmd = new NpgsqlCommandOrig { Connection = conn })
             {
                 for (var i = 0; i < 100; i++)
                 {
@@ -49,7 +49,7 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
             }
         }
         _query = Queries[TablesToJoin];
-        _preparedCmd = new NpgsqlCommand(_query, _conn);
+        _preparedCmd = new NpgsqlCommandOrig(_query, _conn);
         _preparedCmd.Prepare();
     }
 
@@ -63,7 +63,7 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
     {
         // Create tables and data
         using (var conn = BenchmarkEnvironment.OpenConnection())
-        using (var cmd = new NpgsqlCommand {Connection = conn})
+        using (var cmd = new NpgsqlCommandOrig {Connection = conn})
         {
             for (var i = 0; i < TablesToJoinValues.Max(); i++)
             {
@@ -80,14 +80,14 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
     [Benchmark(Baseline = true)]
     public object Unprepared()
     {
-        using (var cmd = new NpgsqlCommand(_query, _conn))
+        using (var cmd = new NpgsqlCommandOrig(_query, _conn))
             return cmd.ExecuteScalar()!;
     }
 
     [Benchmark]
     public object AutoPrepared()
     {
-        using (var cmd = new NpgsqlCommand(_query, _autoPreparingConn))
+        using (var cmd = new NpgsqlCommandOrig(_query, _autoPreparingConn))
             return cmd.ExecuteScalar()!;
     }
 

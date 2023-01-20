@@ -11,24 +11,24 @@ namespace Npgsql;
 /// This class creates database commands for automatic insert, update and delete operations.
 ///</summary>
 [System.ComponentModel.DesignerCategory("")]
-public sealed class NpgsqlCommandBuilder : DbCommandBuilder
+public sealed class NpgsqlCommandOrigBuilder : DbCommandBuilder
 {
     // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
     // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrigBuilder"/> class.
     /// </summary>
-    public NpgsqlCommandBuilder()
+    public NpgsqlCommandOrigBuilder()
         : this(null)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrigBuilder"/> class.
     /// </summary>
     /// <param name="adapter">The adapter.</param>
-    public NpgsqlCommandBuilder(NpgsqlDataAdapter? adapter)
+    public NpgsqlCommandOrigBuilder(NpgsqlDataAdapter? adapter)
     {
         DataAdapter = adapter;
         QuotePrefix = "\"";
@@ -95,20 +95,20 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
     /// Parameters name will be parameter1, parameter2, ... for CommandType.StoredProcedure and named after the placeholder for CommandType.Text
     ///</summary>
-    /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
-    public static void DeriveParameters(NpgsqlCommand command) => command.DeriveParameters();
+    /// <param name="command">NpgsqlCommandOrig whose function parameters will be obtained.</param>
+    public static void DeriveParameters(NpgsqlCommandOrig command) => command.DeriveParameters();
 
     /// <summary>
-    /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required
+    /// Gets the automatically generated <see cref="NpgsqlCommandOrig"/> object required
     /// to perform insertions at the data source.
     /// </summary>
     /// <returns>
-    /// The automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions.
+    /// The automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform insertions.
     /// </returns>
-    public new NpgsqlCommand GetInsertCommand() => GetInsertCommand(false);
+    public new NpgsqlCommandOrig GetInsertCommand() => GetInsertCommand(false);
 
     /// <summary>
-    /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions
+    /// Gets the automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform insertions
     /// at the data source, optionally using columns for parameter names.
     /// </summary>
     /// <param name="useColumnsForParameterNames">
@@ -116,11 +116,11 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// If <see langword="false"/>, generate <c>@p1</c>, <c>@p2</c>, and so on.
     /// </param>
     /// <returns>
-    /// The automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions.
+    /// The automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform insertions.
     /// </returns>
-    public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
+    public new NpgsqlCommandOrig GetInsertCommand(bool useColumnsForParameterNames)
     {
-        var cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+        var cmd = (NpgsqlCommandOrig) base.GetInsertCommand(useColumnsForParameterNames);
         cmd.UpdatedRowSource = UpdateRowSource.None;
         return cmd;
     }
@@ -132,10 +132,10 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// <returns>
     /// The automatically generated System.Data.Common.DbCommand object required to perform updates.
     /// </returns>
-    public new NpgsqlCommand GetUpdateCommand() => GetUpdateCommand(false);
+    public new NpgsqlCommandOrig GetUpdateCommand() => GetUpdateCommand(false);
 
     /// <summary>
-    /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform updates
+    /// Gets the automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform updates
     /// at the data source, optionally using columns for parameter names.
     /// </summary>
     /// <param name="useColumnsForParameterNames">
@@ -143,11 +143,11 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// If <see langword="false"/>, generate <c>@p1</c>, <c>@p2</c>, and so on.
     /// </param>
     /// <returns>
-    /// The automatically generated <see cref="NpgsqlCommand"/> object required to perform updates.
+    /// The automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform updates.
     /// </returns>
-    public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
+    public new NpgsqlCommandOrig GetUpdateCommand(bool useColumnsForParameterNames)
     {
-        var cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
+        var cmd = (NpgsqlCommandOrig)base.GetUpdateCommand(useColumnsForParameterNames);
         cmd.UpdatedRowSource = UpdateRowSource.None;
         return cmd;
     }
@@ -159,10 +159,10 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// <returns>
     /// The automatically generated System.Data.Common.DbCommand object required to perform deletions.
     /// </returns>
-    public new NpgsqlCommand GetDeleteCommand() => GetDeleteCommand(false);
+    public new NpgsqlCommandOrig GetDeleteCommand() => GetDeleteCommand(false);
 
     /// <summary>
-    /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform deletions
+    /// Gets the automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform deletions
     /// at the data source, optionally using columns for parameter names.
     /// </summary>
     /// <param name="useColumnsForParameterNames">
@@ -170,11 +170,11 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     /// If <see langword="false"/>, generate @p1, @p2, and so on.
     /// </param>
     /// <returns>
-    /// The automatically generated <see cref="NpgsqlCommand"/> object required to perform deletions.
+    /// The automatically generated <see cref="NpgsqlCommandOrig"/> object required to perform deletions.
     /// </returns>
-    public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
+    public new NpgsqlCommandOrig GetDeleteCommand(bool useColumnsForParameterNames)
     {
-        var cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+        var cmd = (NpgsqlCommandOrig) base.GetDeleteCommand(useColumnsForParameterNames);
         cmd.UpdatedRowSource = UpdateRowSource.None;
         return cmd;
     }
@@ -193,7 +193,7 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
     //}
 
 /*
-        private static void SetParameterValuesFromRow(NpgsqlCommand command, DataRow row)
+        private static void SetParameterValuesFromRow(NpgsqlCommandOrig command, DataRow row)
         {
             foreach (NpgsqlParameter parameter in command.Parameters)
             {
@@ -246,7 +246,7 @@ public sealed class NpgsqlCommandBuilder : DbCommandBuilder
         => GetParameterName(parameterOrdinal);
 
     /// <summary>
-    /// Registers the <see cref="NpgsqlCommandBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
+    /// Registers the <see cref="NpgsqlCommandOrigBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
     /// </summary>
     /// <param name="adapter">The <see cref="System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
     protected override void SetRowUpdatingHandler(DbDataAdapter adapter)

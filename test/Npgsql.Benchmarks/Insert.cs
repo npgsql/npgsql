@@ -7,7 +7,7 @@ namespace Npgsql.Benchmarks;
 public class Insert
 {
     NpgsqlConnection _conn = default!;
-    NpgsqlCommand _truncateCmd = default!;
+    NpgsqlCommandOrig _truncateCmd = default!;
 
     [Params(1, 100, 1000, 10000)]
     public int BatchSize { get; set; }
@@ -22,10 +22,10 @@ public class Insert
         _conn = new NpgsqlConnection(connString);
         _conn.Open();
 
-        using (var cmd = new NpgsqlCommand("CREATE TEMP TABLE data (int1 INT4, text1 TEXT, int2 INT4, text2 TEXT)", _conn))
+        using (var cmd = new NpgsqlCommandOrig("CREATE TEMP TABLE data (int1 INT4, text1 TEXT, int2 INT4, text2 TEXT)", _conn))
             cmd.ExecuteNonQuery();
 
-        _truncateCmd = new NpgsqlCommand("TRUNCATE data", _conn);
+        _truncateCmd = new NpgsqlCommandOrig("TRUNCATE data", _conn);
     }
 
     [GlobalCleanup]
@@ -34,7 +34,7 @@ public class Insert
     [Benchmark(Baseline = true)]
     public void Unbatched()
     {
-        var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p0, @p1, @p2, @p3)", _conn);
+        var cmd = new NpgsqlCommandOrig("INSERT INTO data VALUES (@p0, @p1, @p2, @p3)", _conn);
         cmd.Parameters.AddWithValue("p0", NpgsqlDbType.Integer, 8);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Text, "foo");
         cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer, 9);
@@ -49,7 +49,7 @@ public class Insert
     [Benchmark]
     public void Batched()
     {
-        var cmd = new NpgsqlCommand { Connection = _conn };
+        var cmd = new NpgsqlCommandOrig { Connection = _conn };
         var sb = new StringBuilder();
         for (var i = 0; i < BatchSize; i++)
         {

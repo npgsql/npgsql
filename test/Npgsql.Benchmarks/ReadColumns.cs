@@ -8,7 +8,7 @@ namespace Npgsql.Benchmarks;
 public class ReadColumns
 {
     NpgsqlConnection _conn = default!;
-    NpgsqlCommand _cmd = default!;
+    NpgsqlCommandOrig _cmd = default!;
 
     [Params(1, 10, 100, 1000)]
     public int NumColumns { get; set; } = 100;
@@ -19,7 +19,7 @@ public class ReadColumns
     public void GlobalSetup()
     {
         _conn = BenchmarkEnvironment.OpenConnection();
-        _cmd = new NpgsqlCommand(Queries[NumColumns], _conn);
+        _cmd = new NpgsqlCommandOrig(Queries[NumColumns], _conn);
     }
 
     [GlobalCleanup]

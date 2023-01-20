@@ -127,7 +127,7 @@ public abstract class TestBase
         if (sqlLiteral.Contains('\''))
             sqlLiteral = sqlLiteral.Replace("'", "''");
 
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", connection);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT '{sqlLiteral}'::{pgTypeName}", connection);
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         await reader.ReadAsync();
 
@@ -188,7 +188,7 @@ public abstract class TestBase
         var errorIdentifierIndex = -1;
         var errorIdentifier = new Dictionary<int, string>();
 
-        await using var cmd = new NpgsqlCommand { Connection = connection };
+        await using var cmd = new NpgsqlCommandOrig { Connection = connection };
         NpgsqlParameter p;
         // With NpgsqlDbType
         if (npgsqlDbType is not null)
@@ -270,7 +270,7 @@ public abstract class TestBase
     public async Task AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -284,7 +284,7 @@ public abstract class TestBase
         where TException : Exception
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -298,7 +298,7 @@ public abstract class TestBase
         where TException : Exception
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
         };
@@ -455,7 +455,7 @@ public abstract class TestBase
 
     // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
     // how to transfer that. So cast to text server-side.
-    protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
+    protected static NpgsqlCommandOrig CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
         => new($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
     #endregion

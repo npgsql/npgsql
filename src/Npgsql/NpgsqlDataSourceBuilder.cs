@@ -344,7 +344,7 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         {
             ValidateMultiHost();
 
-            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
+            return new NpgsqlMultiHostDataSourceOrig(ConnectionStringBuilder, config);
         }
 
         return ConnectionStringBuilder.Multiplexing
@@ -355,9 +355,9 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
-    /// Builds and returns a <see cref="NpgsqlMultiHostDataSource" /> which is ready for use for load-balancing and failover scenarios.
+    /// Builds and returns a <see cref="NpgsqlMultiHostDataSourceOrig" /> which is ready for use for load-balancing and failover scenarios.
     /// </summary>
-    public NpgsqlMultiHostDataSource BuildMultiHost()
+    public NpgsqlMultiHostDataSourceOrig BuildMultiHost()
     {
         var config = PrepareConfiguration();
 

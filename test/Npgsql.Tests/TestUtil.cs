@@ -367,8 +367,8 @@ CREATE TABLE {tableName} ({columns});");
     internal static IDisposable DisableSqlRewriting()
     {
 #if DEBUG
-        NpgsqlCommand.EnableSqlRewriting = false;
-        return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
+        NpgsqlCommandOrig.EnableSqlRewriting = false;
+        return new DeferredExecutionDisposable(() => NpgsqlCommandOrig.EnableSqlRewriting = true);
 #else
             Assert.Ignore("Cannot disable SQL rewriting in RELEASE builds");
             throw new NotSupportedException("Cannot disable SQL rewriting in RELEASE builds");
@@ -421,27 +421,27 @@ public static class NpgsqlConnectionExtensions
 {
     public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
     {
-        using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        using var command = tx == null ? new NpgsqlCommandOrig(sql, conn) : new NpgsqlCommandOrig(sql, conn, tx);
         return command.ExecuteNonQuery();
     }
 
     public static object? ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
     {
-        using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        using var command = tx == null ? new NpgsqlCommandOrig(sql, conn) : new NpgsqlCommandOrig(sql, conn, tx);
         return command.ExecuteScalar();
     }
 
     public static async Task<int> ExecuteNonQueryAsync(
         this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null, CancellationToken cancellationToken = default)
     {
-        await using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        await using var command = tx == null ? new NpgsqlCommandOrig(sql, conn) : new NpgsqlCommandOrig(sql, conn, tx);
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public static async Task<object?> ExecuteScalarAsync(
         this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null, CancellationToken cancellationToken = default)
     {
-        await using var command = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
+        await using var command = tx == null ? new NpgsqlCommandOrig(sql, conn) : new NpgsqlCommandOrig(sql, conn, tx);
         return await command.ExecuteScalarAsync(cancellationToken);
     }
 }
@@ -481,9 +481,9 @@ public static class CommandBehaviorExtensions
         => (behavior & CommandBehavior.SequentialAccess) != 0;
 }
 
-public static class NpgsqlCommandExtensions
+public static class NpgsqlCommandOrigExtensions
 {
-    public static void WaitUntilCommandIsInProgress(this NpgsqlCommand command)
+    public static void WaitUntilCommandIsInProgress(this NpgsqlCommandOrig command)
     {
         while (command.State != CommandState.InProgress)
             Thread.Sleep(50);

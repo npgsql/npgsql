@@ -21,7 +21,7 @@ public class BugTests : TestBase
     public void SequentialNullCheckOnNonFirstField()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 'X', NULL", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 'X', NULL", conn);
         using var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
         dr.Read();
         Assert.That(dr.IsDBNull(1), Is.True);
@@ -31,7 +31,7 @@ public class BugTests : TestBase
     public void SequentialSkipOverFirstRow()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 1; SELECT 2", conn);
         using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
         Assert.That(reader.NextResult(), Is.True);
         Assert.That(reader.Read(), Is.True);
@@ -42,7 +42,7 @@ public class BugTests : TestBase
     public void SequentialConsumeWithNull()
     {
         using var conn = OpenConnection();
-        using var command = new NpgsqlCommand("SELECT 1, NULL", conn);
+        using var command = new NpgsqlCommandOrig("SELECT 1, NULL", conn);
         using var reader = command.ExecuteReader(CommandBehavior.SequentialAccess);
         reader.Read();
     }
@@ -53,7 +53,7 @@ public class BugTests : TestBase
     public void Many_parameters_with_mixed_FormatCode()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand();
+        using var cmd = new NpgsqlCommandOrig();
         cmd.Connection = conn;
         var sb = new StringBuilder("SELECT @text_param");
         cmd.Parameters.AddWithValue("@text_param", "some_text");
@@ -75,7 +75,7 @@ public class BugTests : TestBase
     public void Record_with_non_int_field()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT ('one'::TEXT, 2)", conn);
         using var reader = cmd.ExecuteReader();
         reader.Read();
         var record = reader.GetFieldValue<object[]>(0);
@@ -87,7 +87,7 @@ public class BugTests : TestBase
     public void Bug1450()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand();
+        using var cmd = new NpgsqlCommandOrig();
         cmd.Connection = conn;
         cmd.CommandText = "CREATE TEMP TABLE a (a1 int); CREATE TEMP TABLE b (b1 int);";
         cmd.ExecuteNonQuery();
@@ -143,7 +143,7 @@ public class BugTests : TestBase
         await using var conn = await OpenConnectionAsync();
         var tableName = await CreateTempTable(conn, "id INT4");
         conn.ExecuteNonQuery($"INSERT INTO {tableName} (id) VALUES (NULL)");
-        await using var cmd = new NpgsqlCommand($"SELECT * FROM {tableName}", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT * FROM {tableName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         var dt = new DataTable();
         dt.Load(reader);
@@ -172,7 +172,7 @@ public class BugTests : TestBase
             AutoPrepareMinUsages = 1
         };
         using var conn = OpenConnection(csb);
-        using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT 1; SELECT 2", conn))
         using (var reader = cmd.ExecuteReader())
         {
             reader.Read();
@@ -213,7 +213,7 @@ public class BugTests : TestBase
     public void Bug1964()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("INVALID SQL", conn);
+        using var cmd = new NpgsqlCommandOrig("INVALID SQL", conn);
         cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
         Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
             .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.SyntaxError));
@@ -223,7 +223,7 @@ public class BugTests : TestBase
     public void Bug1986()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 'hello', 'goodbye'", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 'hello', 'goodbye'", conn);
         using var reader = cmd.ExecuteReader();
         reader.Read();
         using (var textReader1 = reader.GetTextReader(0))
@@ -250,7 +250,7 @@ public class BugTests : TestBase
 
         for (var i = 0; i < 2; i++)
         {
-            await using var cmd = new NpgsqlCommand("SELECT @p", connection);
+            await using var cmd = new NpgsqlCommandOrig("SELECT @p", connection);
             cmd.Parameters.AddWithValue("p", Mood.Happy);
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(Mood.Happy));
         }
@@ -265,7 +265,7 @@ public class BugTests : TestBase
         // picked up by sequential reader which continues to read from the original buffer.
         using var conn = OpenConnection();
         var longFieldName = new string('x', conn.Settings.ReadBufferSize);
-        using var cmd = new NpgsqlCommand($"SELECT 8 AS {longFieldName}", conn);
+        using var cmd = new NpgsqlCommandOrig($"SELECT 8 AS {longFieldName}", conn);
         using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
         reader.Read();
         Assert.That(reader.GetInt32(0), Is.EqualTo(8));
@@ -276,7 +276,7 @@ public class BugTests : TestBase
     {
         var expected = 64.27245f;
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT @p = 64.27245::real, 64.27245::real, @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p = 64.27245::real, 64.27245::real, @p", conn);
         cmd.Parameters.AddWithValue("p", expected);
         using var rdr = await cmd.ExecuteReaderAsync();
         rdr.Read();
@@ -307,7 +307,7 @@ public class BugTests : TestBase
                 // properly from this failure.
 
                 using (var connection = OpenConnection(connString))
-                using (var cmd = new NpgsqlCommand("SELECT 1", connection))
+                using (var cmd = new NpgsqlCommandOrig("SELECT 1", connection))
                 {
                     cmd.CommandText = "select 1;";
                     cmd.ExecuteNonQuery();
@@ -326,7 +326,7 @@ public class BugTests : TestBase
     public void Bug2274()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 1", conn);
         cmd.Parameters.Add(new NpgsqlParameter
         {
             ParameterName = "p",
@@ -383,7 +383,7 @@ CREATE TYPE {compositeType} AS (value {domainType})");
             MaxAutoPrepare = 2
         };
         using var conn = new NpgsqlConnection(builder.ConnectionString);
-        using var cmd = new NpgsqlCommand();
+        using var cmd = new NpgsqlCommandOrig();
         conn.Open();
         cmd.Connection = conn;
 
@@ -428,7 +428,7 @@ SELECT table_name
 FROM information_schema.views
 WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
 
-        using var cmd = new NpgsqlCommand(sql, conn);
+        using var cmd = new NpgsqlCommandOrig(sql, conn);
         cmd.Parameters.AddWithValue("@p0", "%trig%");
         cmd.Parameters.AddWithValue("@p1", true);
         using var reader = cmd.ExecuteReader();
@@ -441,7 +441,7 @@ WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
     public void Bug1285()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand { Connection = conn };
+        using var cmd = new NpgsqlCommandOrig { Connection = conn };
         cmd.CommandText = Bug1285CreateStatement;
         cmd.ExecuteNonQuery();
 
@@ -1218,11 +1218,11 @@ $$;");
         using (var conn = new NpgsqlConnection(ConnectionString))
         {
             conn.Open();
-            var okCommand = new NpgsqlCommand(OkCommand, conn);
+            var okCommand = new NpgsqlCommandOrig(OkCommand, conn);
             okCommand.Prepare();
             using (okCommand.ExecuteReader()) { }
 
-            var errorCommand = new NpgsqlCommand(ErrorCommand, conn);
+            var errorCommand = new NpgsqlCommandOrig(ErrorCommand, conn);
             Assert.That(() => errorCommand.Prepare(), Throws.Exception
                 .TypeOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable));
@@ -1231,7 +1231,7 @@ $$;");
         using (var conn = new NpgsqlConnection(ConnectionString))
         {
             conn.Open();
-            var okCommand = new NpgsqlCommand(OkCommand, conn);
+            var okCommand = new NpgsqlCommandOrig(OkCommand, conn);
             okCommand.Prepare();
             using (okCommand.ExecuteReader()) { }
             conn.UnprepareAll();
@@ -1301,7 +1301,7 @@ $$;");
             using var connection = OpenConnection();
 
             var data = new string('x', 5_000_000);
-            using var cmd = new NpgsqlCommand("SELECT generate_series(1, 500000); SELECT @p", connection);
+            using var cmd = new NpgsqlCommandOrig("SELECT generate_series(1, 500000); SELECT @p", connection);
             cmd.Parameters.AddWithValue("p", NpgsqlDbType.Text, data);
             cmd.ExecuteNonQuery();
         }
@@ -1400,7 +1400,7 @@ $$;");
     public async Task Bug4123()
     {
         using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT 1", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT 1", conn);
         using var rdr = await cmd.ExecuteReaderAsync();
 
         await rdr.ReadAsync();

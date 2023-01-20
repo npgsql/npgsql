@@ -628,7 +628,7 @@ public class NodaTimeTests : TestBase
     public async Task Bug3438()
     {
         await using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p1, @p2", conn);
 
         var expected = Duration.FromSeconds(2148);
 

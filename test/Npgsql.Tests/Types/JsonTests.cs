@@ -35,7 +35,7 @@ public class JsonTests : MultiplexingTestBase
     public async Task As_string_with_GetTextReader()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($@"SELECT '{{""K"": ""V""}}'::{PostgresType}", conn);
+        await using var cmd = new NpgsqlCommandOrig($@"SELECT '{{""K"": ""V""}}'::{PostgresType}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         using var textReader = await reader.GetTextReaderAsync(0);
@@ -120,14 +120,14 @@ public class JsonTests : MultiplexingTestBase
         using var conn = await OpenConnectionAsync();
 
         JsonDocument car;
-        using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
+        using (var cmd = new NpgsqlCommandOrig(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
             car = reader.GetFieldValue<JsonDocument>(0);
         }
 
-        using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
+        using (var cmd = new NpgsqlCommandOrig(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
         using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();

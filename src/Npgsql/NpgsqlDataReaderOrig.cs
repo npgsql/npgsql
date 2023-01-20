@@ -31,10 +31,10 @@ namespace Npgsql;
 /// Reads a forward-only stream of rows from a data source.
 /// </summary>
 #pragma warning disable CA1010
-public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
+public class NpgsqlDataReaderOrig : DbDataReader, IDbColumnSchemaGenerator
 #pragma warning restore CA1010
 {
-    internal NpgsqlCommand Command { get; private set; } = default!;
+    internal NpgsqlCommandOrig Command { get; private set; } = default!;
     internal NpgsqlConnector Connector { get; }
     NpgsqlConnection? _connection;
 
@@ -147,14 +147,14 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Constructor
     /// </summary>
-    public NpgsqlDataReader(NpgsqlConnector connector)
+    public NpgsqlDataReaderOrig(NpgsqlConnector connector)
     {
         Connector = connector;
         _commandLogger = connector.CommandLogger;
     }
 
     internal void Init(
-        NpgsqlCommand command,
+        NpgsqlCommandOrig command,
         CommandBehavior behavior,
         List<NpgsqlBatchCommand> statements,
         Task? sendTask = null)
@@ -914,7 +914,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// traverses the result.
     ///
     /// For commands with multiple queries, this exposes the number of rows affected on
-    /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReader.RecordsAffected"/>
+    /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReaderOrig.RecordsAffected"/>
     /// which exposes an aggregation across all statements.
     /// </remarks>
     [Obsolete("Use the new DbBatch API")]
@@ -927,7 +927,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         => State switch
         {
             ReaderState.Closed => throw new InvalidOperationException("Invalid attempt to call HasRows when reader is closed."),
-            ReaderState.Disposed => throw new ObjectDisposedException(nameof(NpgsqlDataReader)),
+            ReaderState.Disposed => throw new ObjectDisposedException(nameof(NpgsqlDataReaderOrig)),
             _ => _hasRows
         };
 
@@ -1006,7 +1006,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     /// <summary>
-    /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
+    /// Releases the resources used by the <see cref="NpgsqlDataReaderOrig"/>.
     /// </summary>
     protected override void Dispose(bool disposing)
     {
@@ -1035,7 +1035,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     /// <summary>
-    /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
+    /// Releases the resources used by the <see cref="NpgsqlDataReaderOrig"/>.
     /// </summary>
 #if NETSTANDARD2_0
     public ValueTask DisposeAsync()
@@ -1075,12 +1075,12 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     /// <summary>
-    /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
+    /// Closes the <see cref="NpgsqlDataReaderOrig"/> reader, allowing a new command to be executed.
     /// </summary>
     public override void Close() => Close(connectionClosing: false, async: false, isDisposing: false).GetAwaiter().GetResult();
 
     /// <summary>
-    /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
+    /// Closes the <see cref="NpgsqlDataReaderOrig"/> reader, allowing a new command to be executed.
     /// </summary>
 #if NETSTANDARD2_0
     public Task CloseAsync()
@@ -2032,7 +2032,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (State != ReaderState.InResult)
         {
             throw State == ReaderState.Disposed
-                ? new ObjectDisposedException(nameof(NpgsqlDataReader))
+                ? new ObjectDisposedException(nameof(NpgsqlDataReaderOrig))
                 : new InvalidOperationException("No row is available");
         }
 
@@ -2363,7 +2363,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         case ReaderState.Closed:
             throw new InvalidOperationException("The reader is closed");
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            throw new ObjectDisposedException(nameof(NpgsqlDataReaderOrig));
         default:
             throw new InvalidOperationException("No resultset is currently being traversed");
         }
@@ -2379,7 +2379,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         case ReaderState.Closed:
             throw new InvalidOperationException("The reader is closed");
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            throw new ObjectDisposedException(nameof(NpgsqlDataReaderOrig));
         default:
             throw new InvalidOperationException("No row is available");
         }
@@ -2422,7 +2422,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         case ReaderState.Closed:
             throw new InvalidOperationException("The reader is closed");
         case ReaderState.Disposed:
-            throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            throw new ObjectDisposedException(nameof(NpgsqlDataReaderOrig));
         }
     }
 
@@ -2443,7 +2443,7 @@ public class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             Connector.DataReader = Connector.UnboundDataReader is { State: ReaderState.Disposed } previousReader
                 ? previousReader
-                : new NpgsqlDataReader(Connector);
+                : new NpgsqlDataReaderOrig(Connector);
             Connector.UnboundDataReader = this;
         }
     }

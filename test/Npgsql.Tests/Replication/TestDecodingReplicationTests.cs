@@ -27,7 +27,7 @@ public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalRepli
 
                 await using var c = await OpenConnectionAsync();
                 using var cmd =
-                    new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.Name}'",
+                    new NpgsqlCommandOrig($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.Name}'",
                         c);
                 await using var reader = await cmd.ExecuteReaderAsync();
 

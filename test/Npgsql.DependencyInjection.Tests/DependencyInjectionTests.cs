@@ -26,13 +26,13 @@ public class DependencyInjectionTests
     }
 
     [Test]
-    public async Task NpgsqlMultiHostDataSource_is_registered_properly([Values] bool async)
+    public async Task NpgsqlMultiHostDataSourceOrig_is_registered_properly([Values] bool async)
     {
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddMultiHostNpgsqlDataSource(TestUtil.ConnectionString);
 
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
-        var multiHostDataSource = serviceProvider.GetRequiredService<NpgsqlMultiHostDataSource>();
+        var multiHostDataSource = serviceProvider.GetRequiredService<NpgsqlMultiHostDataSourceOrig>();
         var dataSource = serviceProvider.GetRequiredService<NpgsqlDataSource>();
 
         Assert.That(dataSource, Is.SameAs(multiHostDataSource));

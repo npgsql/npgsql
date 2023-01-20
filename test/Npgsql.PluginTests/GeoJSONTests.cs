@@ -110,7 +110,7 @@ public class GeoJSONTests : TestBase
     public async Task Read(TestData data)
     {
         await using var conn = await OpenConnectionAsync(GeoJSONOptions.BoundingBox);
-        await using var cmd = new NpgsqlCommand($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT {data.CommandText}, st_asgeojson({data.CommandText},options:=1)", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<GeoJSONObject>(0), Is.EqualTo(data.Geometry));
@@ -121,7 +121,7 @@ public class GeoJSONTests : TestBase
     public async Task Write(TestData data)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT st_asewkb(@p) = st_asewkb({data.CommandText})", conn);
         cmd.Parameters.AddWithValue("p", data.Geometry);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.True);
     }
@@ -130,7 +130,7 @@ public class GeoJSONTests : TestBase
     public async Task IgnoreM()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_makepointm(1,1,1)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_makepointm(1,1,1)", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Position(1d, 1d))));
@@ -160,7 +160,7 @@ public class GeoJSONTests : TestBase
     public async Task Not_all_Z_specified(TestData data)
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         cmd.Parameters.AddWithValue("p", data.Geometry);
         Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.ArgumentException);
     }
@@ -169,7 +169,7 @@ public class GeoJSONTests : TestBase
     public async Task Read_unknown_CRS()
     {
         await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
-        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_setsrid(st_makepoint(0,0), 1)", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync());
         Assert.That(() => reader.GetValue(0), Throws.InvalidOperationException);
@@ -179,7 +179,7 @@ public class GeoJSONTests : TestBase
     public async Task Read_unspecified_CRS()
     {
         await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
-        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_setsrid(st_makepoint(0,0), 0)", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         Assert.That(await reader.ReadAsync());
         Assert.That(reader.GetFieldValue<Point>(0).CRS, Is.Null);
@@ -189,7 +189,7 @@ public class GeoJSONTests : TestBase
     public async Task Read_short_CRS()
     {
         await using var conn = await OpenConnectionAsync(GeoJSONOptions.ShortCRS);
-        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
         var point = (Point)(await cmd.ExecuteScalarAsync())!;
         var crs = point.CRS as NamedCRS;
 
@@ -201,7 +201,7 @@ public class GeoJSONTests : TestBase
     public async Task Read_long_CRS()
     {
         await using var conn = await OpenConnectionAsync(GeoJSONOptions.LongCRS);
-        await using var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn);
         var point = (Point)(await cmd.ExecuteScalarAsync())!;
         var crs = point.CRS as NamedCRS;
 
@@ -213,7 +213,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_ill_formed_CRS()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("ill:formed") });
         Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<FormatException>());
     }
@@ -222,7 +222,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_linked_CRS()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new LinkedCRS("href") });
         Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.TypeOf<NotSupportedException>());
     }
@@ -231,7 +231,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_unspecified_CRS()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new UnspecifiedCRS() });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(0));
     }
@@ -240,7 +240,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_short_CRS()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("EPSG:4326") });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
@@ -249,7 +249,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_long_CRS()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:EPSG::4326") });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
@@ -258,7 +258,7 @@ public class GeoJSONTests : TestBase
     public async Task Write_CRS84()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT st_srid(@p)", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT st_srid(@p)", conn);
         cmd.Parameters.AddWithValue("p", new Point(new Position(0d, 0d)) { CRS = new NamedCRS("urn:ogc:def:crs:OGC::CRS84") });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(4326));
     }
@@ -270,13 +270,13 @@ public class GeoJSONTests : TestBase
         var table = await CreateTempTable(conn, "geom GEOMETRY, geog GEOGRAPHY");
 
         var point = new Point(new Position(0d, 0d));
-        await using (var cmd = new NpgsqlCommand($"INSERT INTO {table} (geom, geog) VALUES (@p, @p)", conn))
+        await using (var cmd = new NpgsqlCommandOrig($"INSERT INTO {table} (geom, geog) VALUES (@p, @p)", conn))
         {
             cmd.Parameters.AddWithValue("p", point);
             await cmd.ExecuteNonQueryAsync();
         }
 
-        await using (var cmd = new NpgsqlCommand($"SELECT geom, geog FROM {table}", conn))
+        await using (var cmd = new NpgsqlCommandOrig($"SELECT geom, geog FROM {table}", conn))
         await using (var reader = await cmd.ExecuteReaderAsync())
         {
             await reader.ReadAsync();

@@ -184,7 +184,7 @@ public class ByteaTests : MultiplexingTestBase
     public async Task Truncate_array()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         byte[] data = { 1, 2, 3, 4, 5, 6 };
         var p = new NpgsqlParameter("p", data) { Size = 4 };
         cmd.Parameters.Add(p);
@@ -211,7 +211,7 @@ public class ByteaTests : MultiplexingTestBase
     public async Task Truncate_stream()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         byte[] data = { 1, 2, 3, 4, 5, 6 };
         var p = new NpgsqlParameter("p", new MemoryStream(data)) { Size = 4 };
         cmd.Parameters.Add(p);
@@ -250,7 +250,7 @@ public class ByteaTests : MultiplexingTestBase
     public async Task Write_as_NonSeekable_stream()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         byte[] data = { 1, 2, 3, 4, 5, 6 };
         var p = new NpgsqlParameter("p", new NonSeekableStream(data)) { Size = 4 };
         cmd.Parameters.Add(p);
@@ -271,7 +271,7 @@ public class ByteaTests : MultiplexingTestBase
     public async Task Array_of_bytea()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT :p1", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT :p1", conn);
         var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
         var inVal = new[] { bytes, bytes };
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array, inVal);

@@ -125,14 +125,14 @@ public class DistributedTransactionTests : TestBase
         int processId;
 
         using (var conn1 = OpenConnection(csb))
-        using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
+        using (var cmd = new NpgsqlCommandOrig("SELECT 1", conn1))
         {
             processId = conn1.ProcessID;
             cmd.ExecuteNonQuery();
         }
 
         using (var conn2 = OpenConnection(csb))
-        using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
+        using (var cmd = new NpgsqlCommandOrig("SELECT 1", conn2))
         {
             // The connection reuse optimization isn't implemented for unpooled connections (though it could be)
             Assert.That(conn2.ProcessID, Is.Not.EqualTo(processId));
@@ -428,7 +428,7 @@ Exception {2}",
     int GetNumberOfPreparedTransactions()
     {
         using (var conn = OpenConnection(ConnectionStringEnlistOff))
-        using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
             return (int)(long)cmd.ExecuteScalar()!;
@@ -597,7 +597,7 @@ Start formatting event queue, going to sleep a bit for late events
 
         // Roll back any lingering prepared transactions from failed previous runs
         var lingeringTransactions = new List<string>();
-        using (var cmd = new NpgsqlCommand("SELECT gid FROM pg_prepared_xacts WHERE database=@database", connection))
+        using (var cmd = new NpgsqlCommandOrig("SELECT gid FROM pg_prepared_xacts WHERE database=@database", connection))
         {
             cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database!);
             using var reader = cmd.ExecuteReader();

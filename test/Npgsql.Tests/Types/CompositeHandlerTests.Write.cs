@@ -6,7 +6,7 @@ namespace Npgsql.Tests.Types;
 
 public partial class CompositeHandlerTests
 {
-    async Task Write<T>(Action<NpgsqlDataReader, T> assert, string? schema = null)
+    async Task Write<T>(Action<NpgsqlDataReaderOrig, T> assert, string? schema = null)
         where T : IComposite, IInitializable, new()
     {
         var composite = new T();
@@ -14,12 +14,12 @@ public partial class CompositeHandlerTests
         await Write(composite, assert, schema);
     }
 
-    async Task Write<T>(T composite, Action<NpgsqlDataReader, T>? assert = null, string? schema = null)
+    async Task Write<T>(T composite, Action<NpgsqlDataReaderOrig, T>? assert = null, string? schema = null)
         where T : IComposite
     {
         await using var dataSource = await OpenAndMapComposite(composite, schema, nameof(Write), out var _);
         await using var connection = await dataSource.OpenConnectionAsync();
-        await using var command = new NpgsqlCommand("SELECT (@c).*", connection);
+        await using var command = new NpgsqlCommandOrig("SELECT (@c).*", connection);
 
         command.Parameters.AddWithValue("c", composite);
         await using var reader = await command.ExecuteReaderAsync();

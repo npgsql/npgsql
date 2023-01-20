@@ -1,6 +1,6 @@
 Npgsql is the open source .NET data provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
 
-This package helps set up Npgsql in applications using dependency injection, notably ASP.NET applications. It allows easy configuration of your Npgsql connections and registers the appropriate services in your DI container. 
+This package helps set up Npgsql in applications using dependency injection, notably ASP.NET applications. It allows easy configuration of your Npgsql connections and registers the appropriate services in your DI container.
 
 For example, if using the ASP.NET minimal web API, simply use the following to register Npgsql:
 
@@ -16,7 +16,7 @@ This registers a transient [`NpgsqlConnection`](https://www.npgsql.org/doc/api/N
 app.MapGet("/", async (NpgsqlConnection connection) =>
 {
     await connection.OpenAsync();
-    await using var command = new NpgsqlCommand("SELECT number FROM data LIMIT 1", connection);
+    await using var command = new NpgsqlCommandOrig("SELECT number FROM data LIMIT 1", connection);
     return "Hello World: " + await command.ExecuteScalarAsync();
 });
 ```

@@ -18,7 +18,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT ($1 AT TIME ZONE 'UTC')::text", conn)
         {
             Parameters =
             {
@@ -41,7 +41,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand(
+        await using var cmd = new NpgsqlCommandOrig(
             "SELECT '-infinity'::timestamp with time zone, 'infinity'::timestamp with time zone",
             conn);
 
@@ -65,7 +65,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text, $2::text", conn)
         {
             Parameters =
             {
@@ -87,7 +87,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand(
+        await using var cmd = new NpgsqlCommandOrig(
             "SELECT '-infinity'::timestamp without time zone, 'infinity'::timestamp without time zone",
             conn);
 
@@ -111,7 +111,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text, $2::text", conn)
         {
             Parameters =
             {
@@ -132,7 +132,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT '-infinity'::date, 'infinity'::date", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -155,7 +155,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT $1::text, $2::text", conn)
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text, $2::text", conn)
         {
             Parameters =
             {
@@ -176,7 +176,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
     {
         await using var conn = await OpenConnectionAsync();
 
-        await using var cmd = new NpgsqlCommand("SELECT '-infinity'::date, 'infinity'::date", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT '-infinity'::date, 'infinity'::date", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();

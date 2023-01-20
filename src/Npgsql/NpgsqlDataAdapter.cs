@@ -45,7 +45,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     /// Constructor.
     /// </summary>
     /// <param name="selectCommand"></param>
-    public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
+    public NpgsqlDataAdapter(NpgsqlCommandOrig selectCommand)
         => SelectCommand = selectCommand;
 
     /// <summary>
@@ -54,7 +54,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     /// <param name="selectCommandText"></param>
     /// <param name="selectConnection"></param>
     public NpgsqlDataAdapter(string selectCommandText, NpgsqlConnection selectConnection)
-        : this(new NpgsqlCommand(selectCommandText, selectConnection)) {}
+        : this(new NpgsqlCommandOrig(selectCommandText, selectConnection)) {}
 
     /// <summary>
     /// Constructor.
@@ -106,36 +106,36 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
     /// <summary>
     /// Delete command.
     /// </summary>
-    public new NpgsqlCommand? DeleteCommand
+    public new NpgsqlCommandOrig? DeleteCommand
     {
-        get => (NpgsqlCommand?)base.DeleteCommand;
+        get => (NpgsqlCommandOrig?)base.DeleteCommand;
         set => base.DeleteCommand = value;
     }
 
     /// <summary>
     /// Select command.
     /// </summary>
-    public new NpgsqlCommand? SelectCommand
+    public new NpgsqlCommandOrig? SelectCommand
     {
-        get => (NpgsqlCommand?)base.SelectCommand;
+        get => (NpgsqlCommandOrig?)base.SelectCommand;
         set => base.SelectCommand = value;
     }
 
     /// <summary>
     /// Update command.
     /// </summary>
-    public new NpgsqlCommand? UpdateCommand
+    public new NpgsqlCommandOrig? UpdateCommand
     {
-        get => (NpgsqlCommand?)base.UpdateCommand;
+        get => (NpgsqlCommandOrig?)base.UpdateCommand;
         set => base.UpdateCommand = value;
     }
 
     /// <summary>
     /// Insert command.
     /// </summary>
-    public new NpgsqlCommand? InsertCommand
+    public new NpgsqlCommandOrig? InsertCommand
     {
-        get => (NpgsqlCommand?)base.InsertCommand;
+        get => (NpgsqlCommandOrig?)base.InsertCommand;
         set => base.InsertCommand = value;
     }
 
@@ -172,7 +172,7 @@ public sealed class NpgsqlDataAdapter : DbDataAdapter
         }
     }
 
-    async Task<int> Fill(DataTable dataTable, NpgsqlDataReader dataReader, bool async, CancellationToken cancellationToken = default)
+    async Task<int> Fill(DataTable dataTable, NpgsqlDataReaderOrig dataReader, bool async, CancellationToken cancellationToken = default)
     {
         dataTable.BeginLoadData();
         try

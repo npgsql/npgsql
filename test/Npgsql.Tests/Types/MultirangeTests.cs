@@ -13,7 +13,7 @@ public class MultirangeTests : TestBase
     public async Task Read()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT '{[3,7), (8,]}'::int4multirange", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT '{[3,7), (8,]}'::int4multirange", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -42,7 +42,7 @@ public class MultirangeTests : TestBase
         var multirangeList = new List<NpgsqlRange<int>>(multirangeArray);
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn);
 
         await WriteInternal(multirangeArray);
         await WriteInternal(multirangeList);
@@ -75,7 +75,7 @@ public class MultirangeTests : TestBase
         var multirangeList = new List<NpgsqlRange<decimal>>(multirangeArray);
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn);
 
         await WriteInternal(multirangeArray);
         await WriteInternal(multirangeList);
@@ -100,7 +100,7 @@ public class MultirangeTests : TestBase
     public async Task Read_Datemultirange()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT '{[2020-01-01,2020-01-05), (2020-01-10,]}'::datemultirange", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT '{[2020-01-01,2020-01-05), (2020-01-10,]}'::datemultirange", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
@@ -142,7 +142,7 @@ public class MultirangeTests : TestBase
         var multirangeList = new List<NpgsqlRange<DateOnly>>(multirangeArray);
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn);
 
         await WriteInternal(multirangeArray);
         await WriteInternal(multirangeList);
@@ -176,7 +176,7 @@ public class MultirangeTests : TestBase
         var multirangeList = new List<NpgsqlRange<DateTime>>(multirangeArray);
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT $1::text", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT $1::text", conn);
 
         await WriteInternal(multirangeArray);
         await WriteInternal(multirangeList);

@@ -11,7 +11,7 @@ using NpgsqlTypes;
 namespace Npgsql;
 
 /// <summary>
-/// Represents a collection of parameters relevant to a <see cref="NpgsqlCommand"/> as well as their respective mappings to columns in
+/// Represents a collection of parameters relevant to a <see cref="NpgsqlCommandOrig"/> as well as their respective mappings to columns in
 /// a <see cref="DataSet"/>.
 /// </summary>
 public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
@@ -773,7 +773,7 @@ enum PlaceholderType
 
     /// <summary>
     /// The parameter collection includes both named and positional parameters.
-    /// This is only supported when <see cref="NpgsqlCommand.CommandType" /> is set to <see cref="CommandType.StoredProcedure" />.
+    /// This is only supported when <see cref="NpgsqlCommandOrig.CommandType" /> is set to <see cref="CommandType.StoredProcedure" />.
     /// </summary>
     Mixed
 }

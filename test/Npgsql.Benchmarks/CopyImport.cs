@@ -6,17 +6,17 @@ namespace Npgsql.Benchmarks;
 public class CopyImport
 {
     NpgsqlConnection _conn = default!;
-    NpgsqlCommand _truncateCmd = default!;
+    NpgsqlCommandOrig _truncateCmd = default!;
     const int Rows = 1000;
 
     [GlobalSetup]
     public void Setup()
     {
         _conn = BenchmarkEnvironment.OpenConnection();
-        using (var cmd = new NpgsqlCommand("CREATE TEMP TABLE data (i1 INT, i2 INT, i3 INT, i4 INT, i5 INT, i6 INT, i7 INT, i8 INT, i9 INT, i10 INT)", _conn))
+        using (var cmd = new NpgsqlCommandOrig("CREATE TEMP TABLE data (i1 INT, i2 INT, i3 INT, i4 INT, i5 INT, i6 INT, i7 INT, i8 INT, i9 INT, i10 INT)", _conn))
             cmd.ExecuteNonQuery();
 
-        _truncateCmd = new NpgsqlCommand("TRUNCATE data", _conn);
+        _truncateCmd = new NpgsqlCommandOrig("TRUNCATE data", _conn);
         _truncateCmd.Prepare();
     }
 

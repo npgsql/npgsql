@@ -184,7 +184,7 @@ public class NetTopologySuiteTests : TestBase
     public async Task Read_as_concrete_type()
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT st_makepoint(1,1)", conn);
         using var reader = cmd.ExecuteReader();
         reader.Read();
         Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Coordinate(1d, 1d))));
@@ -197,13 +197,13 @@ public class NetTopologySuiteTests : TestBase
         var point = new Point(new Coordinate(1d, 1d));
         using var conn = await OpenConnectionAsync();
         conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
-        using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
+        using (var cmd = new NpgsqlCommandOrig("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
         {
             cmd.Parameters.AddWithValue("@p", point);
             cmd.ExecuteNonQuery();
         }
 
-        using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
+        using (var cmd = new NpgsqlCommandOrig("SELECT geom, geog FROM data", conn))
         using (var reader = cmd.ExecuteReader())
         {
             reader.Read();
@@ -278,7 +278,7 @@ public class NetTopologySuiteTests : TestBase
             {
                 await using var connection = OpenConnection();
 
-                await using (var cmd = new NpgsqlCommand())
+                await using (var cmd = new NpgsqlCommandOrig())
                 {
                     cmd.Connection = connection;
                     cmd.CommandText =
@@ -293,7 +293,7 @@ public class NetTopologySuiteTests : TestBase
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                await using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", connection))
+                await using (var cmd = new NpgsqlCommandOrig($"SELECT * FROM {table}", connection))
                 await using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     await reader.ReadAsync();

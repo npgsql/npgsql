@@ -26,7 +26,7 @@ namespace Npgsql;
 /// </summary>
 // ReSharper disable once RedundantNameQualifier
 [System.ComponentModel.DesignerCategory("")]
-public class NpgsqlCommand : DbCommand, ICloneable, IComponent
+public class NpgsqlCommandOrig : DbCommand, ICloneable, IComponent
 {
     #region Fields
 
@@ -47,7 +47,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     readonly NpgsqlParameterCollection _parameters;
 
     /// <summary>
-    /// Whether this <see cref="NpgsqlCommand" /> is wrapped by an <see cref="NpgsqlBatch" />.
+    /// Whether this <see cref="NpgsqlCommandOrig" /> is wrapped by an <see cref="NpgsqlBatch" />.
     /// </summary>
     internal bool IsWrappedByBatch { get; }
 
@@ -95,32 +95,32 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
 
     #region Constructors
 
-    static NpgsqlCommand()
+    static NpgsqlCommandOrig()
     {
         EnableSqlRewriting = !AppContext.TryGetSwitch("Npgsql.EnableSqlRewriting", out var enabled) || enabled;
         EnableStoredProcedureCompatMode = AppContext.TryGetSwitch("Npgsql.EnableStoredProcedureCompatMode", out enabled) && enabled;
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrig"/> class.
     /// </summary>
-    public NpgsqlCommand() : this(null, null, null) {}
+    public NpgsqlCommandOrig() : this(null, null, null) {}
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrig"/> class with the text of the query.
     /// </summary>
     /// <param name="cmdText">The text of the query.</param>
     // ReSharper disable once IntroduceOptionalParameters.Global
-    public NpgsqlCommand(string? cmdText) : this(cmdText, null, null) {}
+    public NpgsqlCommandOrig(string? cmdText) : this(cmdText, null, null) {}
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query and a
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrig"/> class with the text of the query and a
     /// <see cref="NpgsqlConnection"/>.
     /// </summary>
     /// <param name="cmdText">The text of the query.</param>
     /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
     // ReSharper disable once IntroduceOptionalParameters.Global
-    public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection)
+    public NpgsqlCommandOrig(string? cmdText, NpgsqlConnection? connection)
     {
         GC.SuppressFinalize(this);
         InternalBatchCommands = new List<NpgsqlBatchCommand>(1);
@@ -131,20 +131,20 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query, a
+    /// Initializes a new instance of the <see cref="NpgsqlCommandOrig"/> class with the text of the query, a
     /// <see cref="NpgsqlConnection"/>, and the <see cref="NpgsqlTransaction"/>.
     /// </summary>
     /// <param name="cmdText">The text of the query.</param>
     /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
-    /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
-    public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection, NpgsqlTransaction? transaction)
+    /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommandOrig"/> executes.</param>
+    public NpgsqlCommandOrig(string? cmdText, NpgsqlConnection? connection, NpgsqlTransaction? transaction)
         : this(cmdText, connection)
         => Transaction = transaction;
 
     /// <summary>
-    /// Used when this <see cref="NpgsqlCommand"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
+    /// Used when this <see cref="NpgsqlCommandOrig"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
     /// </summary>
-    internal NpgsqlCommand(int batchCommandCapacity, NpgsqlConnection? connection = null)
+    internal NpgsqlCommandOrig(int batchCommandCapacity, NpgsqlConnection? connection = null)
     {
         GC.SuppressFinalize(this);
         InternalBatchCommands = new List<NpgsqlBatchCommand>(batchCommandCapacity);
@@ -157,17 +157,17 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         _parameters = null!;
     }
 
-    internal NpgsqlCommand(string? cmdText, NpgsqlConnector connector) : this(cmdText)
+    internal NpgsqlCommandOrig(string? cmdText, NpgsqlConnector connector) : this(cmdText)
         => _connector = connector;
 
     /// <summary>
-    /// Used when this <see cref="NpgsqlCommand"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
+    /// Used when this <see cref="NpgsqlCommandOrig"/> instance is wrapped inside an <see cref="NpgsqlBatch"/>.
     /// </summary>
-    internal NpgsqlCommand(NpgsqlConnector connector, int batchCommandCapacity)
+    internal NpgsqlCommandOrig(NpgsqlConnector connector, int batchCommandCapacity)
         : this(batchCommandCapacity)
         => _connector = connector;
 
-    internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
+    internal static NpgsqlCommandOrig CreateCachedCommand(NpgsqlConnection connection)
         => new(null, connection) { IsCached = true };
 
     #endregion Constructors
@@ -215,7 +215,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     }
 
     /// <summary>
-    /// Gets or sets a value indicating how the <see cref="NpgsqlCommand.CommandText"/> property is to be interpreted.
+    /// Gets or sets a value indicating how the <see cref="NpgsqlCommandOrig.CommandText"/> property is to be interpreted.
     /// </summary>
     /// <value>
     /// One of the <see cref="System.Data.CommandType"/> values. The default is <see cref="System.Data.CommandType.Text"/>.
@@ -246,7 +246,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     }
 
     /// <summary>
-    /// Gets or sets the <see cref="NpgsqlConnection"/> used by this instance of the <see cref="NpgsqlCommand"/>.
+    /// Gets or sets the <see cref="NpgsqlConnection"/> used by this instance of the <see cref="NpgsqlCommandOrig"/>.
     /// </summary>
     /// <value>The connection to a data source. The default value is <see langword="null"/>.</value>
     [DefaultValue(null)]
@@ -463,7 +463,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     void DeriveParametersForFunction()
     {
-        using var c = new NpgsqlCommand(DeriveParametersForFunctionQuery, InternalConnection);
+        using var c = new NpgsqlCommandOrig(DeriveParametersForFunctionQuery, InternalConnection);
         c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
         c.Parameters[0].Value = CommandText;
 
@@ -671,7 +671,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             ? PrepareLong(this, async, connector, cancellationToken)
             : Task.CompletedTask;
 
-        static async Task PrepareLong(NpgsqlCommand command, bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
+        static async Task PrepareLong(NpgsqlCommandOrig command, bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
         {
             try
             {
@@ -1265,36 +1265,36 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
     /// <summary>
     /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
-    /// and returns a <see cref="NpgsqlDataReader"/>.
+    /// and returns a <see cref="NpgsqlDataReaderOrig"/>.
     /// </summary>
     /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <returns>A task representing the operation.</returns>
-    public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
+    public new NpgsqlDataReaderOrig ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
         => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>, which executes
     /// the <see cref="CommandText"/> against the <see cref="Connection"/>
-    /// and returns a <see cref="NpgsqlDataReader"/>.
+    /// and returns a <see cref="NpgsqlDataReaderOrig"/>.
     /// </summary>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+    public new Task<NpgsqlDataReaderOrig> ExecuteReaderAsync(CancellationToken cancellationToken = default)
         => ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
 
     /// <summary>
     /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>,
     /// which executes the <see cref="CommandText"/> against the <see cref="Connection"/>
-    /// and returns a <see cref="NpgsqlDataReader"/>.
+    /// and returns a <see cref="NpgsqlDataReaderOrig"/>.
     /// </summary>
     /// <param name="behavior">One of the enumeration values that specifies the command behavior.</param>
     /// <param name="cancellationToken">
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
+    public new Task<NpgsqlDataReaderOrig> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
     {
         using (NoSynchronizationContextScope.Enter())
             return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
@@ -1307,7 +1307,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <summary>
     /// Execute reader
     /// </summary>
-    public virtual async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+    public virtual async ValueTask<NpgsqlDataReaderOrig> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
     {
         var conn = CheckAndGetConnection();
         _behavior = behavior;
@@ -1561,7 +1561,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     #region Cancel
 
     /// <summary>
-    /// Attempts to cancel the execution of an <see cref="NpgsqlCommand" />.
+    /// Attempts to cancel the execution of an <see cref="NpgsqlCommandOrig" />.
     /// </summary>
     /// <remarks>As per the specs, no exception will be thrown by this method in case of failure.</remarks>
     public override void Cancel()
@@ -1754,16 +1754,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <summary>
     /// Create a new command based on this one.
     /// </summary>
-    /// <returns>A new NpgsqlCommand object.</returns>
+    /// <returns>A new NpgsqlCommandOrig object.</returns>
     object ICloneable.Clone() => Clone();
 
     /// <summary>
     /// Create a new command based on this one.
     /// </summary>
-    /// <returns>A new NpgsqlCommand object.</returns>
-    public virtual NpgsqlCommand Clone()
+    /// <returns>A new NpgsqlCommandOrig object.</returns>
+    public virtual NpgsqlCommandOrig Clone()
     {
-        var clone = new NpgsqlCommand(CommandText, InternalConnection, Transaction)
+        var clone = new NpgsqlCommandOrig(CommandText, InternalConnection, Transaction)
         {
             CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList, ObjectResultTypes = ObjectResultTypes
         };

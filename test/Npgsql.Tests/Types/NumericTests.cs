@@ -88,7 +88,7 @@ public class NumericTests : MultiplexingTestBase
     public async Task Read(string query, decimal expected)
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT " + query, conn);
         Assert.That(
             decimal.GetBits((decimal)(await cmd.ExecuteScalarAsync())!),
             Is.EqualTo(decimal.GetBits(expected)));
@@ -99,7 +99,7 @@ public class NumericTests : MultiplexingTestBase
     public async Task Write(string query, decimal expected)
     {
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT @p, @p = " + query, conn);
         cmd.Parameters.AddWithValue("p", expected);
         using var rdr = await cmd.ExecuteReaderAsync();
         rdr.Read();
@@ -127,7 +127,7 @@ public class NumericTests : MultiplexingTestBase
     {
         using var conn = await OpenConnectionAsync();
         //This 29-digit number causes OverflowException. Here it is important to have unread column after failing one to leave it ReaderState.InResult
-        using var cmd = new NpgsqlCommand(@"SELECT (0.20285714285714285714285714285)::numeric, generate_series FROM generate_series(1, 2)", conn);
+        using var cmd = new NpgsqlCommandOrig(@"SELECT (0.20285714285714285714285714285)::numeric, generate_series FROM generate_series(1, 2)", conn);
         using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         var i = 1;
 
@@ -154,7 +154,7 @@ public class NumericTests : MultiplexingTestBase
         {
             var bigInt = new BigInteger(expected);
             using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+            using var cmd = new NpgsqlCommandOrig("SELECT " + query, conn);
             using var rdr = await cmd.ExecuteReaderAsync();
             await rdr.ReadAsync();
             Assert.That(rdr.GetFieldValue<BigInteger>(0), Is.EqualTo(bigInt));
@@ -169,7 +169,7 @@ public class NumericTests : MultiplexingTestBase
         {
             var bigInt = new BigInteger(expected);
             using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+            using var cmd = new NpgsqlCommandOrig("SELECT @p, @p = " + query, conn);
             cmd.Parameters.AddWithValue("p", bigInt);
             using var rdr = await cmd.ExecuteReaderAsync();
             await rdr.ReadAsync();
@@ -183,7 +183,7 @@ public class NumericTests : MultiplexingTestBase
     {
         var num = BigInteger.Parse(string.Join("", Enumerable.Range(0, 17000).Select(i => ((i + 1) % 10).ToString())));
         using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT '0.1'::numeric, @p", conn);
+        using var cmd = new NpgsqlCommandOrig("SELECT '0.1'::numeric, @p", conn);
         cmd.Parameters.AddWithValue("p", num);
         using var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         await rdr.ReadAsync();

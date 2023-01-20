@@ -23,14 +23,14 @@ await using var conn = new NpgsqlConnection(connString);
 await conn.OpenAsync();
 
 // Insert some data
-await using (var cmd = new NpgsqlCommand("INSERT INTO data (some_field) VALUES (@p)", conn))
+await using (var cmd = new NpgsqlCommandOrig("INSERT INTO data (some_field) VALUES (@p)", conn))
 {
     cmd.Parameters.AddWithValue("p", "Hello world");
     await cmd.ExecuteNonQueryAsync();
 }
 
 // Retrieve all rows
-await using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
+await using (var cmd = new NpgsqlCommandOrig("SELECT some_field FROM data", conn))
 await using (var reader = await cmd.ExecuteReaderAsync())
 {
     while (await reader.ReadAsync())
@@ -40,10 +40,10 @@ await using (var reader = await cmd.ExecuteReaderAsync())
 
 ## Key features
 
-* High-performance PostgreSQL driver. Regularly figures in the top contenders on the [TechEmpower Web Framework Benchmarks](https://www.techempower.com/benchmarks/).
-* Full support of most PostgreSQL types, including advanced ones such as arrays, enums, ranges, multiranges, composites, JSON, PostGIS and others.
-* Highly-efficient bulk import/export API.
-* Failover, load balancing and general multi-host support.
-* Great integration with Entity Framework Core via [Npgsql.EntityFrameworkCore.PostgreSQL](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL).
+- High-performance PostgreSQL driver. Regularly figures in the top contenders on the [TechEmpower Web Framework Benchmarks](https://www.techempower.com/benchmarks/).
+- Full support of most PostgreSQL types, including advanced ones such as arrays, enums, ranges, multiranges, composites, JSON, PostGIS and others.
+- Highly-efficient bulk import/export API.
+- Failover, load balancing and general multi-host support.
+- Great integration with Entity Framework Core via [Npgsql.EntityFrameworkCore.PostgreSQL](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL).
 
 For the full documentation, please visit the Npgsql website at [https://www.npgsql.org](https://www.npgsql.org).

@@ -30,7 +30,7 @@ class MiscTypeTests : MultiplexingTestBase
     {
         const string expected = "some_text";
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT '{expected}'", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT '{expected}'", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         Assert.That(reader.GetString(0), Is.EqualTo(expected));
@@ -43,7 +43,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Null()
     {
         await using var conn = await OpenConnectionAsync();
-        await using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
+        await using (var cmd = new NpgsqlCommandOrig("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p1", DBNull.Value);
             cmd.Parameters.Add(new NpgsqlParameter<string?>("p2", null));
@@ -59,7 +59,7 @@ class MiscTypeTests : MultiplexingTestBase
         }
 
         // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
-        await using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+        await using (var cmd = new NpgsqlCommandOrig("SELECT @p::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
             Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
@@ -75,7 +75,7 @@ class MiscTypeTests : MultiplexingTestBase
     {
         var recordLiteral = "(1,'foo'::text)::record";
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
@@ -94,7 +94,7 @@ class MiscTypeTests : MultiplexingTestBase
     {
         var recordLiteral = "(1,'foo'::text)::record";
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
@@ -113,7 +113,7 @@ class MiscTypeTests : MultiplexingTestBase
     {
         var recordLiteral = "(1,'foo'::text)::record";
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
+        await using var cmd = new NpgsqlCommandOrig($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
@@ -138,7 +138,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task DbType_causes_inference()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         cmd.Parameters.Add(new NpgsqlParameter { ParameterName="p", DbType = DbType.Object, Value = 3 });
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(3));
     }
@@ -149,7 +149,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task AllResultTypesAreUnknown()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT TRUE", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT TRUE", conn);
         cmd.AllResultTypesAreUnknown = true;
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
@@ -164,7 +164,7 @@ class MiscTypeTests : MultiplexingTestBase
             return;
 
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT TRUE, 8", conn);
         cmd.UnknownResultTypeList = new[] { true, false };
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
@@ -177,7 +177,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Known_type_as_unknown()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT 8", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT 8", conn);
         cmd.AllResultTypesAreUnknown = true;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("8"));
     }
@@ -186,7 +186,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Unrecognized_null()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p::TEXT", conn);
         var p = new NpgsqlParameter("p", DBNull.Value);
         cmd.Parameters.Add(p);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -199,7 +199,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Send_unknown()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p::INT4", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p::INT4", conn);
         var p = new NpgsqlParameter("p", "8");
         cmd.Parameters.Add(p);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -229,7 +229,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Unsupported_DbType()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
+        await using var cmd = new NpgsqlCommandOrig("SELECT @p", conn);
         Assert.That(() => cmd.Parameters.Add(new NpgsqlParameter("p", DbType.UInt32) { Value = 8u }),
             Throws.Exception.TypeOf<NotSupportedException>());
     }

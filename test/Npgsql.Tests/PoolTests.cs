@@ -494,7 +494,7 @@ class PoolTests : TestBase
             {
                 using var conn = new NpgsqlConnection(connString);
                 await conn.OpenAsync();
-                using var cmd = new NpgsqlCommand("SELECT " + i, conn);
+                using var cmd = new NpgsqlCommandOrig("SELECT " + i, conn);
                 var result = await cmd.ExecuteScalarAsync();
                 Assert.That(result, Is.EqualTo(i));
             }));
@@ -520,7 +520,7 @@ class PoolTests : TestBase
         // Any commands execute should timeout
 
         using var conn2 = OpenConnection(connString);
-        using var cmd = new NpgsqlCommand("SELECT 1", conn2);
+        using var cmd = new NpgsqlCommandOrig("SELECT 1", conn2);
         Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteScalarAsync());
     }
 

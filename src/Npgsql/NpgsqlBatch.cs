@@ -11,7 +11,7 @@ public class NpgsqlBatch : DbBatch
 {
     internal const int DefaultBatchCommandsSize = 5;
 
-    private protected NpgsqlCommand Command { get; }
+    private protected NpgsqlCommandOrig Command { get; }
 
     /// <inheritdoc />
     protected override DbBatchCommandCollection DbBatchCommands => BatchCommands;
@@ -95,7 +95,7 @@ public class NpgsqlBatch : DbBatch
     /// Initializes a new <see cref="NpgsqlBatch"/>.
     /// </summary>
     /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
-    /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
+    /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommandOrig"/> executes.</param>
     public NpgsqlBatch(NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
         Command = new(DefaultBatchCommandsSize);
@@ -126,7 +126,7 @@ public class NpgsqlBatch : DbBatch
         => ExecuteReader(behavior);
 
     /// <inheritdoc cref="DbBatch.ExecuteReader"/>
-    public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
+    public new NpgsqlDataReaderOrig ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
         => Command.ExecuteReader(behavior);
 
     /// <inheritdoc />
@@ -136,11 +136,11 @@ public class NpgsqlBatch : DbBatch
         => await ExecuteReaderAsync(behavior, cancellationToken);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CancellationToken)"/>
-    public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+    public new Task<NpgsqlDataReaderOrig> ExecuteReaderAsync(CancellationToken cancellationToken = default)
         => Command.ExecuteReaderAsync(cancellationToken);
 
     /// <inheritdoc cref="DbBatch.ExecuteReaderAsync(CommandBehavior,CancellationToken)"/>
-    public new Task<NpgsqlDataReader> ExecuteReaderAsync(
+    public new Task<NpgsqlDataReaderOrig> ExecuteReaderAsync(
         CommandBehavior behavior,
         CancellationToken cancellationToken = default)
         => Command.ExecuteReaderAsync(behavior, cancellationToken);
