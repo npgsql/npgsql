@@ -59,23 +59,34 @@ sealed partial class RecordHandler : NpgsqlTypeHandler<object[]>
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => await Read(buf, len, async, fieldDescription);
 
-    public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    public override ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
     {
-        await buf.Ensure(4, async);
-        var fieldCount = buf.ReadInt32();
-        var result = new object[fieldCount];
+        // While reading a value we resolve the type by OID, which can be anything
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            throw new NotSupportedException();
 
-        for (var i = 0; i < fieldCount; i++)
+        // ILinker can't reduce the method to a simple throw
+        // So make it a separate method
+        return ActualRead(buf, async);
+
+        async ValueTask<object[]> ActualRead(NpgsqlReadBuffer buf, bool async)
         {
-            await buf.Ensure(8, async);
-            var typeOID = buf.ReadUInt32();
-            var fieldLen = buf.ReadInt32();
-            if (fieldLen == -1)  // Null field, simply skip it and leave at default
-                continue;
-            result[i] = await _typeMapper.ResolveByOID(typeOID).ReadAsObject(buf, fieldLen, async);
-        }
+            await buf.Ensure(4, async);
+            var fieldCount = buf.ReadInt32();
+            var result = new object[fieldCount];
 
-        return result;
+            for (var i = 0; i < fieldCount; i++)
+            {
+                await buf.Ensure(8, async);
+                var typeOID = buf.ReadUInt32();
+                var fieldLen = buf.ReadInt32();
+                if (fieldLen == -1)  // Null field, simply skip it and leave at default
+                    continue;
+                result[i] = await _typeMapper.ResolveByOID(typeOID).ReadAsObject(buf, fieldLen, async);
+            }
+
+            return result;
+        }
     }
 
     /// <inheritdoc />

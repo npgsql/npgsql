@@ -510,6 +510,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     // here for the parameters, then as a regular row).
                     msg = await Connector.ReadMessage(async);
                     ProcessMessage(msg);
+                    // PopulateOutputParameters call GetValue
+                    // Which resolves the type by OID, which can be anything
+                    if (!RuntimeFeature.IsDynamicCodeSupported)
+                        throw new NotSupportedException();
                     if (msg.Code == BackendMessageCode.DataRow)
                         PopulateOutputParameters();
                 }
@@ -1321,6 +1325,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
     public override int GetValues(object[] values)
     {
+        // Surprisingly, ILinker doesn't remove this method even though it's not called
+        // GetValue resolves the type by OID, which can be anything
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            throw new NotSupportedException();
+
         if (values == null)
             throw new ArgumentNullException(nameof(values));
         CheckResultSet();
@@ -1717,8 +1726,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         return NullableHandler<T>.Exists
             ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
             : typeof(T) == typeof(object)
-                ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
+                ? ReadAsObject(field)
                 : field.Handler.Read<T>(Buffer, ColumnLen, field);
+
+        // ILinker can't determine that GetFieldValue is never called with T as object
+        T ReadAsObject(FieldDescription field)
+        {
+            // ReadAsObject resolves the type by OID, which can be anything
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+                throw new NotSupportedException();
+
+            return (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field);
+        }
     }
 
     async ValueTask<T> GetFieldValueSequential<T>(int column, bool async, CancellationToken cancellationToken = default)
@@ -1749,9 +1768,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
                     : await NullableHandler<T>.ReadAsync(field.Handler, Buffer, ColumnLen, async, field)
                 : typeof(T) == typeof(object)
-                    ? ColumnLen <= Buffer.ReadBytesLeft
-                        ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
-                        : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, field)
+                    ? await ReadAsObject(field)
                     : ColumnLen <= Buffer.ReadBytesLeft
                         ? field.Handler.Read<T>(Buffer, ColumnLen, field)
                         : await field.Handler.Read<T>(Buffer, ColumnLen, async, field);
@@ -1771,6 +1788,18 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             // Important: position must still be updated
             PosInColumn += ColumnLen;
+        }
+
+        // ILinker can't determine that GetFieldValue is never called with T as object
+        async ValueTask<T> ReadAsObject(FieldDescription field)
+        {
+            // ReadAsObject resolves the type by OID, which can be anything
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+                throw new NotSupportedException();
+
+            return ColumnLen <= Buffer.ReadBytesLeft
+                ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
+                : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, field);
         }
     }
 
@@ -2026,7 +2055,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
     public override IEnumerator GetEnumerator()
-        => new DbEnumerator(this);
+    {
+        if (!RuntimeFeature.IsDynamicCodeSupported)
+            throw new NotSupportedException();
+        return new DbEnumerator(this);
+    }
 
     /// <summary>
     /// Returns schema information for the columns in the current resultset.
