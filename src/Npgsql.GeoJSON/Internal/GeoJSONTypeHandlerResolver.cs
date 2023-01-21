@@ -76,8 +76,8 @@ public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
                 ? "geography"
                 : "geometry";
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
+        => DoGetMappingByDataTypeName(type.Name);
 
     internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => dataTypeName switch

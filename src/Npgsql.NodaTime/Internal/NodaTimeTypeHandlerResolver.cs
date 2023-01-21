@@ -178,8 +178,8 @@ public class NodaTimeTypeHandlerResolver : TypeHandlerResolver
         return null;
     }
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
+        => DoGetMappingByDataTypeName(type.Name);
 
     internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => dataTypeName switch

@@ -650,8 +650,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     internal static string? ClrTypeToDataTypeName(Type type)
         => ClrTypeToDataTypeNameTable.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
+        => DoGetMappingByDataTypeName(type.Name);
 
     internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => Mappings.TryGetValue(dataTypeName, out var mapping) ? mapping : null;

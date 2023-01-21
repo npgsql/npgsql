@@ -184,7 +184,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
                 => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
             public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
 
-            public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
+            public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type) => throw new NotSupportedException();
         }
     }
 

@@ -1,4 +1,5 @@
 using System;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandling;
 
@@ -18,6 +19,12 @@ public abstract class TypeHandlerResolver
     /// </summary>
     public abstract NpgsqlTypeHandler? ResolveByClrType(Type type);
 
+    /// <summary>
+    /// Resolves a type handler given a PostgreSQL type.
+    /// </summary>
+    public virtual NpgsqlTypeHandler? ResolveByPostgresType(PostgresType type)
+        => ResolveByDataTypeName(type.Name);
+
     public virtual NpgsqlTypeHandler? ResolveValueDependentValue(object value) => null;
 
     public virtual NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value) => null;
@@ -26,5 +33,5 @@ public abstract class TypeHandlerResolver
     /// Gets type mapping information for a given PostgreSQL type.
     /// Invoked in scenarios when mapping information is required, rather than a type handler for reading or writing.
     /// </summary>
-    public abstract TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName);
+    public abstract TypeMappingInfo? GetMappingByPostgresType(PostgresType type);
 }

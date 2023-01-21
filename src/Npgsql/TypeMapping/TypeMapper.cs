@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
@@ -103,31 +102,33 @@ sealed class TypeMapper
         if (_handlersByOID.TryGetValue(oid, out handler))
             return true;
 
-        if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
-            return false;
+        return TryResolveLong(oid, out handler);
 
-        lock (_writeLock)
+        bool TryResolveLong(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
         {
-            if ((handler = ResolveByDataTypeNameCore(pgType.FullName)) is not null)
+            if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
             {
-                _handlersByOID[oid] = handler;
-                return true;
-            }
-            
-            if ((handler = ResolveByDataTypeNameCore(pgType.Name)) is not null)
-            {
-                _handlersByOID[oid] = handler;
-                return true;
-            }
-            
-            if ((handler = ResolveComplexTypeByDataTypeName(pgType.FullName, throwOnError: false)) is not null)
-            {
-                _handlersByOID[oid] = handler;
-                return true;
+                handler = null;
+                return false;
             }
 
-            handler = null;
-            return false;
+            lock (_writeLock)
+            {
+                if ((handler = ResolveByPostgresType(pgType)) is not null)
+                {
+                    _handlersByOID[oid] = handler;
+                    return true;
+                }
+
+                if ((handler = ResolveComplexTypeByDataTypeName(pgType.FullName, throwOnError: false)) is not null)
+                {
+                    _handlersByOID[oid] = handler;
+                    return true;
+                }
+
+                handler = null;
+                return false;
+            }
         }
     }
 
@@ -223,6 +224,35 @@ sealed class TypeMapper
                     catch (Exception e)
                     {
                         _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {typeName}");
+                    }
+                }
+
+                return null;
+            }
+        }
+    }
+
+    NpgsqlTypeHandler? ResolveByPostgresType(PostgresType type)
+    {
+        if (_handlersByDataTypeName.TryGetValue(type.FullName, out var handler))
+            return handler;
+
+        return ResolveLong(type);
+
+        NpgsqlTypeHandler? ResolveLong(PostgresType type)
+        {
+            lock (_writeLock)
+            {
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if (resolver.ResolveByPostgresType(type) is { } handler)
+                            return _handlersByDataTypeName[type.FullName] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving data type name {type.FullName}");
                     }
                 }
 
@@ -454,14 +484,12 @@ sealed class TypeMapper
         }
     }
 
+    #endregion Type handler lookup
+
     internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
     {
         foreach (var resolver in _resolvers)
-            if ((mapping = resolver.GetMappingByDataTypeName(pgType.FullName)) is not null)
-                return true;
-        
-        foreach (var resolver in _resolvers)
-            if ((mapping = resolver.GetMappingByDataTypeName(pgType.Name)) is not null)
+            if ((mapping = resolver.GetMappingByPostgresType(pgType)) is not null)
                 return true;
 
         switch (pgType)
@@ -514,33 +542,13 @@ sealed class TypeMapper
         return false;
     }
 
-    #endregion Type handler lookup
-
     internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfoByOid(uint oid)
     {
         if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
             ThrowHelper.ThrowInvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
-        foreach (var resolver in _resolvers)
-            if (resolver.GetMappingByDataTypeName(pgType.FullName) is { } mapping)
-                return (mapping.NpgsqlDbType, pgType);
-        
-        foreach (var resolver in _resolvers)
-            if (resolver.GetMappingByDataTypeName(pgType.Name) is { } mapping)
-                return (mapping.NpgsqlDbType, pgType);
-
-        switch (pgType)
-        {
-        case PostgresArrayType pgArrayType:
-            var (elementNpgsqlDbType, _) = GetTypeInfoByOid(pgArrayType.Element.OID);
-            if (elementNpgsqlDbType.HasValue)
-                return new(elementNpgsqlDbType | NpgsqlDbType.Array, pgType);
-            break;
-
-        case PostgresDomainType pgDomainType:
-            var (baseNpgsqlDbType, _) = GetTypeInfoByOid(pgDomainType.BaseType.OID);
-            return new(baseNpgsqlDbType, pgType);
-        }
+        if (TryGetMapping(pgType, out var mapping))
+            return (mapping.NpgsqlDbType, pgType);
 
         return (null, pgType);
     }
