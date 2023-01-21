@@ -1126,13 +1126,14 @@ LANGUAGE 'plpgsql'");
 
     [Test, Description("Tests an exception happening when sending the Terminate message while closing a ready connector")]
     [IssueLink("https://github.com/npgsql/npgsql/issues/777")]
-    [Ignore("Flaky")]
     public async Task Exception_during_close()
     {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.ConnectionStringBuilder.Pooling = false;
-        await using var dataSource = dataSourceBuilder.Build();
-        using var conn = await dataSource.OpenConnectionAsync();
+        // Pooling must be on to use multiplexing
+        if (IsMultiplexing)
+            return;
+
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var connectorId = conn.ProcessID;
 
         using (var conn2 = await OpenConnectionAsync())
