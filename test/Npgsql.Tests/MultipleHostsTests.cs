@@ -249,7 +249,6 @@ public class MultipleHostsTests : TestBase
     [TestCase("prefer-standby")]
     [TestCase("read-write")]
     [TestCase("read-only")]
-    // TODO: rewrite with DataSource?
     public async Task TargetSessionAttributes_with_single_host(string targetSessionAttributes)
     {
         var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
