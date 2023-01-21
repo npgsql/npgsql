@@ -403,10 +403,11 @@ public class AutoPrepareTests : TestBase
     }
 
     // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
-    const string CountPreparedStatements = @"
+    const string CountPreparedStatements = """
 SELECT COUNT(*) FROM pg_prepared_statements
 WHERE statement NOT LIKE '%pg_prepared_statements%'
-AND statement NOT LIKE '%pg_type%'";
+AND statement NOT LIKE '%pg_type%'
+""";
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
     public async Task Auto_prepared_command_failure()
