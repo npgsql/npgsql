@@ -10,8 +10,6 @@ namespace Npgsql.Json.NET.Internal;
 
 public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
 {
-    readonly Type[] _jsonbClrTypes;
-    readonly Type[] _jsonClrTypes;
     readonly JsonSerializerSettings _settings;
     readonly Dictionary<Type, string> _byType;
 
@@ -20,8 +18,6 @@ public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
         Type[]? jsonClrTypes,
         JsonSerializerSettings? settings)
     {
-        _jsonbClrTypes = jsonbClrTypes ?? Array.Empty<Type>();
-        _jsonClrTypes = jsonClrTypes ?? Array.Empty<Type>();
         _settings = settings ?? new JsonSerializerSettings();
 
         _byType = new()
@@ -39,7 +35,7 @@ public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
                 _byType[type] = "json";
     }
 
-    public override TypeHandlerResolver Create(NpgsqlConnector connector)
+    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new JsonNetTypeHandlerResolver(connector, _byType, _settings);
 
     public override string? GetDataTypeNameByClrType(Type type)

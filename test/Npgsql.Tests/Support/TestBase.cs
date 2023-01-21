@@ -313,13 +313,15 @@ public abstract class TestBase
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName);
+    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource);
 
-    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null)
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
-        await using var conn = await OpenConnectionAsync();
+        await using var conn = dataSource is not null
+            ? await dataSource.OpenConnectionAsync()
+            : await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
@@ -366,6 +368,15 @@ public abstract class TestBase
         var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
         connectionStringBuilderAction(connectionStringBuilder);
         return NpgsqlDataSource.Create(connectionStringBuilder);
+    }
+
+    protected virtual NpgsqlDataSource CreateDataSourceWithRanges(Action<NpgsqlConnectionStringBuilder>? connectionStringBuilderAction = null)
+    {
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
+        connectionStringBuilderAction?.Invoke(connectionStringBuilder);
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString);
+        dataSourceBuilder.UseRange();
+        return dataSourceBuilder.Build();
     }
 
     protected static NpgsqlDataSource GetDataSource(string connectionString)

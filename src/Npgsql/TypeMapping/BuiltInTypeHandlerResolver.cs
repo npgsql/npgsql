@@ -245,10 +245,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     // Complex type handlers over timestamp/timestamptz (because DateTime is value-dependent)
     NpgsqlTypeHandler? _timestampArrayHandler;
     NpgsqlTypeHandler? _timestampTzArrayHandler;
-    NpgsqlTypeHandler? _timestampRangeHandler;
-    NpgsqlTypeHandler? _timestampTzRangeHandler;
-    NpgsqlTypeHandler? _timestampMultirangeHandler;
-    NpgsqlTypeHandler? _timestampTzMultirangeHandler;
 
     #endregion Cached handlers
 
@@ -493,12 +489,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
             IList<DateTime> array => ArrayHandler(array.Count == 0 ? DateTimeKind.Unspecified : array[0].Kind),
 
-            NpgsqlRange<DateTime> range => RangeHandler(!range.LowerBoundInfinite ? range.LowerBound.Kind :
-                !range.UpperBoundInfinite ? range.UpperBound.Kind : DateTimeKind.Unspecified),
-
-            NpgsqlRange<DateTime>[] multirange => MultirangeHandler(GetMultirangeKind(multirange)),
-            List<NpgsqlRange<DateTime>> multirange => MultirangeHandler(GetMultirangeKind(multirange)),
-
             _ => null
         };
 
@@ -508,32 +498,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
                     (PostgresArrayType)PgType("timestamp with time zone[]"), _connector.Settings.ArrayNullabilityMode)
                 : _timestampArrayHandler ??= _timestampHandler.CreateArrayHandler(
                     (PostgresArrayType)PgType("timestamp without time zone[]"), _connector.Settings.ArrayNullabilityMode);
-
-        NpgsqlTypeHandler RangeHandler(DateTimeKind kind)
-            => kind == DateTimeKind.Utc
-                ? _timestampTzRangeHandler ??= _timestampTzHandler.CreateRangeHandler((PostgresRangeType)PgType("tstzrange"))
-                : _timestampRangeHandler ??= _timestampHandler.CreateRangeHandler((PostgresRangeType)PgType("tsrange"));
-
-        NpgsqlTypeHandler MultirangeHandler(DateTimeKind kind)
-            => kind == DateTimeKind.Utc
-                ? _timestampTzMultirangeHandler ??= _timestampTzHandler.CreateMultirangeHandler((PostgresMultirangeType)PgType("tstzmultirange"))
-                : _timestampMultirangeHandler ??= _timestampHandler.CreateMultirangeHandler((PostgresMultirangeType)PgType("tsmultirange"));
-    }
-
-    static DateTimeKind GetRangeKind(NpgsqlRange<DateTime> range)
-        => !range.LowerBoundInfinite
-            ? range.LowerBound.Kind
-            : !range.UpperBoundInfinite
-                ? range.UpperBound.Kind
-                : DateTimeKind.Unspecified;
-
-    static DateTimeKind GetMultirangeKind(IList<NpgsqlRange<DateTime>> multirange)
-    {
-        for (var i = 0; i < multirange.Count; i++)
-            if (!multirange[i].IsEmpty)
-                return GetRangeKind(multirange[i]);
-
-        return DateTimeKind.Unspecified;
     }
 
     internal static string? ValueDependentValueToDataTypeName(object value)
@@ -558,6 +522,22 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
 
             _ => null
         };
+    }
+    
+    static DateTimeKind GetRangeKind(NpgsqlRange<DateTime> range)
+        => !range.LowerBoundInfinite
+            ? range.LowerBound.Kind
+            : !range.UpperBoundInfinite
+                ? range.UpperBound.Kind
+                : DateTimeKind.Unspecified;
+    
+    static DateTimeKind GetMultirangeKind(IList<NpgsqlRange<DateTime>> multirange)
+    {
+        for (var i = 0; i < multirange.Count; i++)
+            if (!multirange[i].IsEmpty)
+                return GetRangeKind(multirange[i]);
+
+        return DateTimeKind.Unspecified;
     }
 
     public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)

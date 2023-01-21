@@ -27,7 +27,7 @@ public class NetTopologySuiteTypeHandlerResolverFactory : TypeHandlerResolverFac
         _geographyAsDefault = geographyAsDefault;
     }
 
-    public override TypeHandlerResolver Create(NpgsqlConnector connector)
+    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
             _geographyAsDefault);
 

@@ -2,6 +2,7 @@
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -162,7 +163,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
     class CitextToStringTypeHandlerResolverFactory : TypeHandlerResolverFactory
     {
-        public override TypeHandlerResolver Create(NpgsqlConnector connector)
+        public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
             => new CitextToStringTypeHandlerResolver(connector);
 
         public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();

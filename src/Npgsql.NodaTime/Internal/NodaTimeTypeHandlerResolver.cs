@@ -78,6 +78,18 @@ public class NodaTimeTypeHandlerResolver : TypeHandlerResolver
             ? handler
             : null;
 
+    public override NpgsqlTypeHandler? ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType switch
+        {
+            NpgsqlDbType.TimestampTzRange => TsTzRange(),
+            NpgsqlDbType.DateRange => DateRange(),
+            NpgsqlDbType.TimestampTzMultirange => TsTzMultirange(),
+            NpgsqlDbType.DateMultirange => DateMultirange(),
+            NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array => TsTzRangeArray(),
+            NpgsqlDbType.DateRange | NpgsqlDbType.Array => TsTzRangeArray(),
+            _ => null
+        };
+
     public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
     {
         // This method only ever gets called for value types, and relies on the JIT specializing the method for T by eliding all the

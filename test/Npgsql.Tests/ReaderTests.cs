@@ -2172,7 +2172,7 @@ class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
 {
     readonly bool _safe;
     public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
-    public override TypeHandlerResolver Create(NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
+    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
 
     public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
     public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();

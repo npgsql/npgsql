@@ -2,7 +2,13 @@
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlJsonExtensions
+Npgsql.NpgsqlRangeExtensions
+Npgsql.TypeMapping.TypeMapper
+Npgsql.TypeMapping.TypeMapper.ResolveByClrType(System.Type! type) -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandler!
+Npgsql.TypeMapping.TypeMapper.ResolveByNpgsqlDbType(NpgsqlTypes.NpgsqlDbType npgsqlDbType) -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandler!
+Npgsql.TypeMapping.TypeMapper.ResolveByOID(uint oid) -> Npgsql.Internal.TypeHandling.NpgsqlTypeHandler!
 static Npgsql.NpgsqlJsonExtensions.UseSystemTextJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+static Npgsql.NpgsqlRangeExtensions.UseRange(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
 *REMOVED*static NpgsqlTypes.NpgsqlCircle.Parse(string! s) -> NpgsqlTypes.NpgsqlCircle
 *REMOVED*static NpgsqlTypes.NpgsqlLine.Parse(string! s) -> NpgsqlTypes.NpgsqlLine

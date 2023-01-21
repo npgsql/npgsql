@@ -1,4 +1,5 @@
 using System;
+using NpgsqlTypes;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandling;
@@ -13,6 +14,11 @@ public abstract class TypeHandlerResolver
     /// </summary>
     /// <remarks>See <see href="https://www.postgresql.org/docs/current/catalog-pg-type.html" />.</remarks>
     public abstract NpgsqlTypeHandler? ResolveByDataTypeName(string typeName);
+
+    /// <summary>
+    /// Resolves a type handler for a given NpgsqlDbType.
+    /// </summary>
+    public virtual NpgsqlTypeHandler? ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType) => null;
 
     /// <summary>
     /// Resolves a type handler given a .NET CLR type.
