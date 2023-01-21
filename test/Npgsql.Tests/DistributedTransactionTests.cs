@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Transactions;
-using Npgsql.Internal;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
