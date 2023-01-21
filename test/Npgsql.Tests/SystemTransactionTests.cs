@@ -1,24 +1,26 @@
 using System;
 using System.Data;
+using System.Threading;
 using System.Transactions;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
 // This test suite contains ambient transaction tests, except those involving distributed transactions which are only
 // supported on .NET Framework / Windows. Distributed transaction tests are in DistributedTransactionTests.
-[NonParallelizable]
 public class SystemTransactionTests : TestBase
 {
     [Test, Description("Single connection enlisting explicitly, committing")]
     public void Explicit_enlist()
     {
-        using var conn = new NpgsqlConnection(ConnectionStringEnlistOff);
-        conn.Open();
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.OpenConnection();
         using (var scope = new TransactionScope())
         {
             conn.EnlistTransaction(Transaction.Current);
-            Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             scope.Complete();
@@ -27,7 +29,7 @@ public class SystemTransactionTests : TestBase
         AssertNoPreparedTransactions();
         using (var tx = conn.BeginTransaction())
         {
-            Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Unexpected data count");
+            Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(1), "Unexpected data count");
             tx.Rollback();
         }
     }
@@ -35,18 +37,20 @@ public class SystemTransactionTests : TestBase
     [Test, Description("Single connection enlisting implicitly, committing")]
     public void Implicit_enlist()
     {
-        using var conn = new NpgsqlConnection(ConnectionStringEnlistOn);
+        var dataSource = EnlistOnDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.CreateConnection();
         using (var scope = new TransactionScope())
         {
             conn.Open();
-            Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             scope.Complete();
         }
         using (var tx = conn.BeginTransaction())
         {
-            Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Unexpected data count");
+            Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(1), "Unexpected data count");
             tx.Rollback();
         }
     }
@@ -54,37 +58,41 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Enlist_Off()
     {
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using (new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             Assert.That(conn1.EnlistedTransaction, Is.Null);
-            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
-            Assert.That(conn2.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Unexpected data count");
+            Assert.That(conn1.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn2.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(1), "Unexpected data count");
         }
 
         // Scope disposed and not completed => rollback, but no enlistment, so changes should still be there.
-        using (var conn3 = OpenConnection(ConnectionStringEnlistOff))
+        using (var conn3 = dataSource.OpenConnection())
         {
-            Assert.That(conn3.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1), "Insert unexpectedly rollback-ed");
+            Assert.That(conn3.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(1), "Insert unexpectedly rollback-ed");
         }
     }
 
     [Test, Description("Single connection enlisting explicitly, rollback")]
     public void Rollback_explicit_enlist()
     {
-        using var conn = OpenConnection();
+        using var dataSource = CreateDataSource();
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.OpenConnection();
         using (new TransactionScope())
         {
             conn.EnlistTransaction(Transaction.Current);
-            Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             // No commit
         }
         AssertNoDistributedIdentifier();
         AssertNoPreparedTransactions();
         using (var tx = conn.BeginTransaction())
         {
-            Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0), "Unexpected data count");
+            Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0), "Unexpected data count");
             tx.Rollback();
         }
     }
@@ -93,36 +101,36 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/2408")]
     public void Rollback_implicit_enlist([Values(true, false)] bool pooling)
     {
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling
-        }.ToString();
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
+        var tableName = CreateTempTable(dataSource, "name TEXT");
 
         using (new TransactionScope())
-        using (var conn = OpenConnection(connectionString))
+        using (var conn = dataSource.OpenConnection())
         {
-            Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             // No commit
         }
 
-        AssertNumberOfRows(0);
+        AssertNumberOfRows(0, tableName);
     }
 
     [Test]
     public void Two_consecutive_connections()
     {
+        var dataSource = EnlistOnDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using (var scope = new TransactionScope())
         {
-            using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+            using (var conn1 = dataSource.OpenConnection())
             {
-                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                Assert.That(conn1.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
             }
 
-            using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+            using (var conn2 = dataSource.OpenConnection())
             {
-                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
+                Assert.That(conn2.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
             }
 
             // Consecutive connections used in same scope should not promote the transaction to distributed.
@@ -130,65 +138,66 @@ public class SystemTransactionTests : TestBase
             AssertNoPreparedTransactions();
             scope.Complete();
         }
-        AssertNumberOfRows(2);
+        AssertNumberOfRows(2, tableName);
     }
 
     [Test]
     public void Close_connection()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            ApplicationName = nameof(Close_connection),
-        }.ToString();
+        // We assert the number of idle connections below
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using (var scope = new TransactionScope())
-        using (var conn = OpenConnection(connString))
+        using (var conn = dataSource.OpenConnection())
         {
-            Assert.That(conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
+            Assert.That(conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test')"), Is.EqualTo(1), "Unexpected insert rowcount");
             conn.Close();
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
             scope.Complete();
         }
-        AssertNumberOfRows(1);
-        Assert.True(PoolManager.Pools.TryGetValue(connString, out var pool));
-        Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
-
-        using (var conn = new NpgsqlConnection(connString))
-            NpgsqlConnection.ClearPool(conn);
+        AssertNumberOfRows(1, tableName);
+        Assert.That(dataSource.Statistics.Idle, Is.EqualTo(1));
     }
 
     [Test]
     public void Enlist_to_two_transactions()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.OpenConnection();
         var ctx = new CommittableTransaction();
         conn.EnlistTransaction(ctx);
         Assert.That(() => conn.EnlistTransaction(new CommittableTransaction()), Throws.Exception.TypeOf<InvalidOperationException>());
         ctx.Rollback();
 
         using var tx = conn.BeginTransaction();
-        Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
         tx.Rollback();
     }
 
     [Test]
     public void Enlist_twice_to_same_transaction()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.OpenConnection();
         var ctx = new CommittableTransaction();
         conn.EnlistTransaction(ctx);
         conn.EnlistTransaction(ctx);
         ctx.Rollback();
 
         using var tx = conn.BeginTransaction();
-        Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+        Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
         tx.Rollback();
     }
 
     [Test]
     public void Scope_after_scope()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using var conn = dataSource.OpenConnection();
         using (new TransactionScope())
             conn.EnlistTransaction(Transaction.Current);
         using (new TransactionScope())
@@ -196,7 +205,7 @@ public class SystemTransactionTests : TestBase
 
         using (var tx = conn.BeginTransaction())
         {
-            Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
             tx.Rollback();
         }
     }
@@ -204,49 +213,57 @@ public class SystemTransactionTests : TestBase
     [Test]
     public void Reuse_connection()
     {
+        // We check the ProcessID below
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using (var scope = new TransactionScope())
-        using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.CreateConnection())
         {
             conn.Open();
             var processId = conn.ProcessID;
-            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+            conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test1')");
             conn.Close();
 
             conn.Open();
             Assert.That(conn.ProcessID, Is.EqualTo(processId));
-            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
+            conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test2')");
             conn.Close();
 
             scope.Complete();
         }
-        AssertNumberOfRows(2);
+        AssertNumberOfRows(2, tableName);
     }
 
     [Test]
     public void Reuse_connection_rollback()
     {
+        // We check the ProcessID below
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using (new TransactionScope())
-        using (var conn = new NpgsqlConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.CreateConnection())
         {
             conn.Open();
             var processId = conn.ProcessID;
-            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+            conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test1')");
             conn.Close();
 
             conn.Open();
             Assert.That(conn.ProcessID, Is.EqualTo(processId));
-            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')");
+            conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test2')");
             conn.Close();
 
             // No commit
         }
-        AssertNumberOfRows(0);
+        AssertNumberOfRows(0, tableName);
     }
 
     [Test, Ignore("Timeout doesn't seem to fire on .NET Core / Linux")]
     public void Timeout_triggers_rollback_while_busy()
     {
-        using (var conn = OpenConnection(ConnectionStringEnlistOff))
+        var dataSource = EnlistOffDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
+        using (var conn = dataSource.OpenConnection())
         {
             using (new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromSeconds(1)))
             {
@@ -258,15 +275,17 @@ public class SystemTransactionTests : TestBase
 
             }
         }
-        AssertNumberOfRows(0);
+        AssertNumberOfRows(0, tableName);
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1579")]
     public void Schema_connection_should_not_enlist()
     {
+        var dataSource = EnlistOnDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using var tran = new TransactionScope();
-        using var conn = OpenConnection(ConnectionStringEnlistOn);
-        using var cmd = new NpgsqlCommand("SELECT * FROM data", conn);
+        using var conn = dataSource.OpenConnection();
+        using var cmd = new NpgsqlCommand($"SELECT * FROM {tableName}", conn);
         using var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo);
         reader.GetColumnSchema();
         AssertNoDistributedIdentifier();
@@ -277,16 +296,14 @@ public class SystemTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
     public void Single_unpooled_connection()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            Enlist = true
-        };
-
-
+            csb.Pooling = false;
+            csb.Enlist = true;
+        });
         using var scope = new TransactionScope();
 
-        using (var conn = OpenConnection(csb))
+        using (var conn = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             cmd.ExecuteNonQuery();
 
@@ -297,13 +314,9 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_rollback([Values] bool pooling)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling,
-        };
-
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
         using var scope = new TransactionScope();
-        var conn = OpenConnection(csb);
+        var conn = dataSource.OpenConnection();
 
         conn.ExecuteNonQuery("SELECT 1");
         conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_rollback)));
@@ -313,15 +326,11 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_commit([Values] bool pooling)
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionStringEnlistOn)
-        {
-            Pooling = pooling,
-        };
-
+        using var dataSource = CreateDataSource(csb => csb.Pooling = pooling);
         var ex = Assert.Throws<TransactionInDoubtException>(() =>
         {
             using var scope = new TransactionScope();
-            var conn = OpenConnection(csb);
+            var conn = dataSource.OpenConnection();
 
             conn.ExecuteNonQuery("SELECT 1");
             conn.Connector!.Break(new Exception(nameof(Break_connector_while_in_transaction_scope_with_commit)));
@@ -337,11 +346,7 @@ public class SystemTransactionTests : TestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/4085")]
     public void Open_connection_with_enlist_and_aborted_TransactionScope()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Enlist = true
-        };
-
+        var dataSource = EnlistOnDataSource;
         for (var i = 0; i < 2; i++)
         {
             using var outerScope = new TransactionScope();
@@ -355,7 +360,7 @@ public class SystemTransactionTests : TestBase
             {
             }
 
-            var ex = Assert.Throws<TransactionException>(() => OpenConnection(csb))!;
+            var ex = Assert.Throws<TransactionException>(() => dataSource.OpenConnection())!;
             Assert.That(ex.Message, Is.EqualTo("The operation is not valid for the state of the transaction."));
         }
     }
@@ -363,16 +368,18 @@ public class SystemTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1594")]
     public void Bug1594()
     {
+        var dataSource = EnlistOnDataSource;
+        var tableName = CreateTempTable(dataSource, "name TEXT");
         using var outerScope = new TransactionScope();
 
-        using (var conn = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn = dataSource.OpenConnection())
         using (var innerScope1 = new TransactionScope())
         {
-            conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
+            conn.ExecuteNonQuery(@$"INSERT INTO {tableName} (name) VALUES ('test1')");
             innerScope1.Complete();
         }
 
-        using (OpenConnection(ConnectionStringEnlistOn))
+        using (dataSource.OpenConnection())
         using (new TransactionScope())
         {
             // Don't complete, triggering rollback
@@ -386,61 +393,56 @@ public class SystemTransactionTests : TestBase
 
     int GetNumberOfPreparedTransactions()
     {
-        using var conn = OpenConnection(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
+        using var conn = dataSource.OpenConnection();
         using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn);
         cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
         return (int)(long)cmd.ExecuteScalar()!;
     }
 
-    void AssertNumberOfRows(int expected)
-        => Assert.That(_controlConn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(expected), "Unexpected data count");
+    void AssertNumberOfRows(int expected, string tableName)
+    {
+        using var conn = OpenConnection();
+        Assert.That(conn.ExecuteScalar(@$"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(expected), "Unexpected data count");
+    }
 
     static void AssertNoDistributedIdentifier()
         => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.EqualTo(Guid.Empty), "Distributed identifier found");
-
-    public readonly string ConnectionStringEnlistOn;
-    public readonly string ConnectionStringEnlistOff;
 
     #endregion Utilities
 
     #region Setup
 
-    public SystemTransactionTests()
-    {
-        ConnectionStringEnlistOn = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
-        ConnectionStringEnlistOff = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
-    }
+    NpgsqlDataSource EnlistOnDataSource { get; set; } = default!;
 
-    NpgsqlConnection _controlConn = default!;
+    NpgsqlDataSource EnlistOffDataSource { get; set; } = default!;
 
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
-        _controlConn = OpenConnection();
-
-        // All tests in this fixture should have exclusive access to the database they're running on.
-        // If we run these tests in parallel (i.e. two builds in parallel) they will interfere.
-        // Solve this by taking a PostgreSQL advisory lock for the lifetime of the fixture.
-        _controlConn.ExecuteNonQuery("SELECT pg_advisory_lock(666)");
-
-        _controlConn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
-        _controlConn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+        EnlistOnDataSource = CreateDataSource(csb => csb.Enlist = true);
+        EnlistOffDataSource = CreateDataSource(csb => csb.Enlist = false);
     }
 
-    [SetUp]
-    public void SetUp()
-    {
-        _controlConn.ExecuteNonQuery("TRUNCATE data");
-    }
-
-#pragma warning disable CS8625
     [OneTimeTearDown]
-    public void OneTimeTearDown()
+    public void OnTimeTearDown()
     {
-        _controlConn?.Close();
-        _controlConn = null;
+        EnlistOnDataSource?.Dispose();
+        EnlistOnDataSource = null!;
+        EnlistOffDataSource?.Dispose();
+        EnlistOffDataSource = null!;
     }
-#pragma warning restore CS8625
+
+    internal static string CreateTempTable(NpgsqlDataSource dataSource, string columns)
+    {
+        var tableName = "temp_table" + Interlocked.Increment(ref _tempTableCounter);
+        dataSource.ExecuteNonQuery(@$"
+START TRANSACTION; SELECT pg_advisory_xact_lock(0);
+DROP TABLE IF EXISTS {tableName} CASCADE;
+COMMIT;
+CREATE TABLE {tableName} ({columns})");
+        return tableName;
+    }
 
     #endregion
 }

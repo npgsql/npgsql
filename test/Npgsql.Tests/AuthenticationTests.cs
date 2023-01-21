@@ -18,22 +18,18 @@ public class AuthenticationTests : MultiplexingTestBase
     [NonParallelizable] // Sets environment variable
     public async Task Connect_UserNameFromEnvironment_Succeeds()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        using var _ = SetEnvironmentVariable("PGUSER", builder.Username);
-        builder.Username = null;
-        using var __ = CreateTempPool(builder.ConnectionString, out var connectionString);
-        using var ___ = await OpenConnectionAsync(connectionString);
+        using var _ = SetEnvironmentVariable("PGUSER", new NpgsqlConnectionStringBuilder(ConnectionString).Username);
+        await using var dataSource = CreateDataSource(csb => csb.Username = null);
+        await using var __ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
     [NonParallelizable] // Sets environment variable
     public async Task Connect_PasswordFromEnvironment_Succeeds()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        using var _ = SetEnvironmentVariable("PGPASSWORD", builder.Password);
-        builder.Password = null;
-        using var __ = CreateTempPool(builder.ConnectionString, out var connectionString);
-        using var ___ = await OpenConnectionAsync(connectionString);
+        using var _ = SetEnvironmentVariable("PGPASSWORD", new NpgsqlConnectionStringBuilder(ConnectionString).Password);
+        await using var dataSource = CreateDataSource(csb => csb.Passfile = null);
+        await using var __ = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
@@ -142,18 +138,17 @@ public class AuthenticationTests : MultiplexingTestBase
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-
-        var password = builder.Password;
-        builder.Password = null;
-
         var passFile = Path.GetTempFileName();
-        File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
-        builder.Passfile = passFile;
+        File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{builder.Password}");
 
         try
         {
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(csb =>
+            {
+                csb.Passfile = null;
+                csb.Passfile = passFile;
+            });
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -167,18 +162,14 @@ public class AuthenticationTests : MultiplexingTestBase
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-
-        var password = builder.Password;
-        builder.Password = null;
-
         var passFile = Path.GetTempFileName();
-        File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+        File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{builder.Password}");
         using var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile);
 
         try
         {
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            await using var dataSource = CreateDataSource(csb => csb.Password = null);
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -191,10 +182,6 @@ public class AuthenticationTests : MultiplexingTestBase
     public async Task Use_pgpass_from_homedir()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-
-        var password = builder.Password;
-        builder.Password = null;
 
         string? dirToDelete = null;
         string passFile;
@@ -222,9 +209,10 @@ public class AuthenticationTests : MultiplexingTestBase
 
         try
         {
-            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var conn = await OpenConnectionAsync(connectionString);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{builder.Password}");
+            await using var dataSource = CreateDataSource(csb => csb.Passfile = null);
+            await using var conn = await dataSource.OpenConnectionAsync();
         }
         finally
         {
@@ -243,8 +231,8 @@ public class AuthenticationTests : MultiplexingTestBase
     public void Password_source_precedence()
     {
         using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
+        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
         var password = builder.Password;
         var passwordBad = password + "_bad";
 
@@ -257,51 +245,66 @@ public class AuthenticationTests : MultiplexingTestBase
         File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
         File.WriteAllText(passFileBad, $"*:*:*:{builder.Username}:{passwordBad}");
 
-        using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFileBad))
+        using (SetEnvironmentVariable("PGPASSFILE", passFileBad))
         {
             // Password from the connection string goes first
-            using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", passwordBad))
-                Assert.That(OpenConnection(password, passFileBad), Throws.Nothing);
+            using (SetEnvironmentVariable("PGPASSWORD", passwordBad))
+            {
+                using var dataSource1 = CreateDataSource(csb =>
+                {
+                    csb.Password = password;
+                    csb.Passfile = passFileBad;
+                });
+
+                Assert.That(() => dataSource1.OpenConnection(), Throws.Nothing);
+            }
 
             // Password from the environment variable goes second
-            using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", password))
-                Assert.That(OpenConnection(password: null, passFileBad), Throws.Nothing);
+            using (SetEnvironmentVariable("PGPASSWORD", password))
+            {
+                using var dataSource2 = CreateDataSource(csb =>
+                {
+                    csb.Password = null;
+                    csb.Passfile = passFileBad;
+                });
+
+                Assert.That(() => dataSource2.OpenConnection(), Throws.Nothing);
+            }
 
             // Passfile from the connection string goes third
-            Assert.That(OpenConnection(password: null, passFile: passFile), Throws.Nothing);
+            using var dataSource3 = CreateDataSource(csb =>
+            {
+                csb.Password = null;
+                csb.Passfile = passFile;
+            });
+
+            Assert.That(() => dataSource3.OpenConnection(), Throws.Nothing);
         }
 
         // Passfile from the environment variable goes fourth
-        using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile))
-            Assert.That(OpenConnection(password: null, passFile: null), Throws.Nothing);
-
-        Func<ValueTask> OpenConnection(string? password, string? passFile) => async () =>
+        using (SetEnvironmentVariable("PGPASSFILE", passFile))
         {
-            builder.Password = password;
-            builder.Passfile = passFile;
-            builder.ApplicationName = $"{nameof(Password_source_precedence)}:{Guid.NewGuid()}";
+            using var dataSource4 = CreateDataSource(csb =>
+            {
+                csb.Password = null;
+                csb.Passfile = null;
+            });
 
-            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var connection = await OpenConnectionAsync(connectionString);
-        };
+            Assert.That(() => dataSource4.OpenConnection(), Throws.Nothing);
+        }
     }
 
     [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
     public void Authentication_failure()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Password = "bad"
-        };
-        using (CreateTempPool(builder, out var connectionString))
-        using (var conn = new NpgsqlConnection(connectionString))
-        {
-            Assert.That(() => conn.OpenAsync(), Throws.Exception
-                .TypeOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).StartsWith("28")
-            );
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
-        }
+        using var dataSource = CreateDataSource(csb => csb.Password = "bad");
+        using var conn = dataSource.CreateConnection();
+
+        Assert.That(() => conn.OpenAsync(), Throws.Exception
+            .TypeOf<PostgresException>()
+            .With.Property(nameof(PostgresException.SqlState)).StartsWith("28")
+        );
+        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
     }
 
     [Test, Description("Simulates a timeout during the authentication phase")]
@@ -310,13 +313,13 @@ public class AuthenticationTests : MultiplexingTestBase
     {
         var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
         await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-
-        var __ = postmasterMock.AcceptServer();
+        _ = postmasterMock.AcceptServer();
 
         // The server will accept a connection from the client, but will not respond to the client's authentication
         // request. This should trigger a timeout
-        Assert.That(async () => await OpenConnectionAsync(connectionString),
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var connection = dataSource.CreateConnection();
+        Assert.That(async () => await connection.OpenAsync(),
             Throws.Exception.TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>());
     }
@@ -344,7 +347,7 @@ public class AuthenticationTests : MultiplexingTestBase
             Username = null,
             Password = null
         });
-        await using var c = await  dataSource.OpenConnectionAsync();
+        await using var c = await dataSource.OpenConnectionAsync();
         Assert.That(c.State, Is.EqualTo(ConnectionState.Open));
     }
 

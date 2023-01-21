@@ -16,16 +16,15 @@ public class ExceptionTests : TestBase
     [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
     public void Basic()
     {
-        using var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            // Make sure messages are in English
-            Options = "-c lc_messages=en_US.UTF-8"
-        });
-        conn.ExecuteNonQuery(@"
-                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
-                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
-                     LANGUAGE 'plpgsql';
-                ");
+        // Make sure messages are in English
+        using var dataSource = CreateDataSource(csb => csb.Options = "-c lc_messages=en_US.UTF-8");
+        using var conn = dataSource.OpenConnection();
+        conn.ExecuteNonQuery(
+"""
+CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
+   'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
+LANGUAGE 'plpgsql';
+""");
 
         PostgresException ex = null!;
         try
@@ -93,9 +92,8 @@ $$ LANGUAGE 'plpgsql';");
     [Test]
     public async Task IncludeErrorDetail()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { IncludeErrorDetail = true };
-        using var _ = CreateTempPool(builder, out var connectionStringWithDetails);
-        await using var conn = await OpenConnectionAsync(connectionStringWithDetails);
+        await using var dataSource = CreateDataSource(csb => csb.IncludeErrorDetail = true);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var raiseExceptionFunc = await GetTempFunctionName(conn);
         var raiseNoticeFunc = await GetTempFunctionName(conn);
 

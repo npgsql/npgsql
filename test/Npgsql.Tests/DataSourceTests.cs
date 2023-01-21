@@ -11,7 +11,7 @@ namespace Npgsql.Tests;
 public class DataSourceTests : TestBase
 {
     [Test]
-    public async Task CreateConnection()
+    public new async Task CreateConnection()
     {
         await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
         await using var connection = dataSource.CreateConnection();

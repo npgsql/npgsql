@@ -365,11 +365,8 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task GetDataTypeName_enum()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        };
-        await using var conn = await OpenConnectionAsync(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS ENUM ('one')");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
@@ -383,11 +380,8 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
     [Test]
     public async Task GetDataTypeName_domain()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            MaxPoolSize = 1
-        };
-        await using var conn = await OpenConnectionAsync(csb);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var typeName = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE DOMAIN {typeName} AS VARCHAR(10)");
         await Task.Yield(); // TODO: fix multiplexing deadlock bug
@@ -530,8 +524,8 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         var startReaderClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         var continueReaderClosedTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        await using var conn1 = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource();
+        await using var conn1 = await dataSource.OpenConnectionAsync();
         var connID = conn1.Connector!.Id;
         var readerCloseTask = Task.Run(async () =>
         {
@@ -546,7 +540,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         });
 
         await startReaderClosedTcs.Task;
-        await using var conn2 = await OpenConnectionAsync(connectionString);
+        await using var conn2 = await dataSource.OpenConnectionAsync();
         Assert.That(conn2.Connector!.Id, Is.EqualTo(connID));
         using var cmd = conn2.CreateCommand();
         cmd.CommandText = "SELECT 1";
@@ -851,7 +845,7 @@ LANGUAGE 'plpgsql'");
         command.CommandText = $"INSERT INTO {table} (name) VALUES ('foo'); SELECT * FROM {table}";
         if (prepare == PrepareOrNot.Prepared)
             command.Prepare();
-        using (var reader = await command.ExecuteReaderAsync())
+        using (var reader = await command.ExecuteReaderAsync(Behavior))
         {
             Assert.That(reader.HasRows, Is.True);
             reader.Read();
@@ -927,14 +921,14 @@ LANGUAGE plpgsql VOLATILE";
         using var conn = await OpenConnectionAsync();
         // Chunking type handler
         using (var cmd = new NpgsqlCommand("SELECT 'foo'", conn))
-        using (var reader = await cmd.ExecuteReaderAsync())
+        using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             reader.Read();
             Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
         }
         // Simple type handler
         using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-        using (var reader = await cmd.ExecuteReaderAsync())
+        using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             reader.Read();
             Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
@@ -947,7 +941,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand($"SELECT generate_series(1, {conn.Settings.ReadBufferSize})", conn);
-        using var reader = await cmd.ExecuteReaderAsync();
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
         for (var i = 1; i <= conn.Settings.ReadBufferSize; i++)
         {
             Assert.That(reader.Read(), Is.True);
@@ -959,6 +953,10 @@ LANGUAGE plpgsql VOLATILE";
     [Test]
     public async Task Nullable_scalar()
     {
+        // We read the same column multiple times
+        if (IsSequential)
+            return;
+
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
         var p1 = new NpgsqlParameter { ParameterName = "p1", Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Smallint };
@@ -967,7 +965,7 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(p2.DbType, Is.EqualTo(DbType.Int16));
         cmd.Parameters.Add(p1);
         cmd.Parameters.Add(p2);
-        using var reader = await cmd.ExecuteReaderAsync();
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
         reader.Read();
 
         for (var i = 0; i < cmd.Parameters.Count; i++)
@@ -1107,14 +1105,12 @@ LANGUAGE plpgsql VOLATILE";
     [Test]
     public async Task Unbound_reader_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = 1,
-            MaxPoolSize = 1,
-        };
-        using var _ = CreateTempPool(csb.ToString(), out var connectionString);
-
-        await using var conn1 = await OpenConnectionAsync(connectionString);
+            csb.MinPoolSize = 1;
+            csb.MaxPoolSize = 1;
+        });
+        await using var conn1 = await dataSource.OpenConnectionAsync();
         using var cmd1 = conn1.CreateCommand();
         cmd1.CommandText = "SELECT 1";
         var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
@@ -1127,7 +1123,7 @@ LANGUAGE plpgsql VOLATILE";
             await conn1.CloseAsync();
         }
 
-        await using var conn2 = await OpenConnectionAsync(connectionString);
+        await using var conn2 = await dataSource.OpenConnectionAsync();
         using var cmd2 = conn2.CreateCommand();
         cmd2.CommandText = "SELECT 2";
         var reader2 = await cmd2.ExecuteReaderAsync(Behavior);
@@ -1141,7 +1137,7 @@ LANGUAGE plpgsql VOLATILE";
             await conn2.CloseAsync();
         }
 
-        await using var conn3 = await OpenConnectionAsync(connectionString);
+        await using var conn3 = await dataSource.OpenConnectionAsync();
         using var cmd3 = conn3.CreateCommand();
         cmd3.CommandText = "SELECT 3";
         var reader3 = await cmd3.ExecuteReaderAsync(Behavior);
@@ -1163,8 +1159,8 @@ LANGUAGE plpgsql VOLATILE";
             return;
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         var pgMock = await postmasterMock.WaitForServerConnection();
         pgMock
@@ -1210,8 +1206,8 @@ LANGUAGE plpgsql VOLATILE";
     public async Task Dispose_does_not_swallow_exceptions([Values(true, false)] bool async)
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var pgMock = await postmasterMock.WaitForServerConnection();
 
         // Write responses for the query, but break the connection before sending CommandComplete/ReadyForQuery
@@ -1223,7 +1219,7 @@ LANGUAGE plpgsql VOLATILE";
             .FlushAsync();
 
         using var cmd = new NpgsqlCommand("SELECT 1", conn);
-        using var reader = await cmd.ExecuteReaderAsync();
+        using var reader = await cmd.ExecuteReaderAsync(Behavior);
         await reader.ReadAsync();
 
         pgMock.Close();
@@ -1552,7 +1548,7 @@ LANGUAGE plpgsql VOLATILE";
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT ''";
 
-        await using var reader = await cmd.ExecuteReaderAsync();
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
         Assert.IsTrue(await reader.ReadAsync());
 
         using var textReader = reader.GetTextReader(0);
@@ -1707,8 +1703,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1720,7 +1716,7 @@ LANGUAGE plpgsql VOLATILE";
             .FlushAsync();
 
         using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
-        await using (var reader = await cmd.ExecuteReaderAsync())
+        await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             // Successfully read the first row
             Assert.True(await reader.ReadAsync());
@@ -1756,8 +1752,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1769,7 +1765,7 @@ LANGUAGE plpgsql VOLATILE";
             .FlushAsync();
 
         using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
-        await using (var reader = await cmd.ExecuteReaderAsync())
+        await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             // Successfully read the first row
             Assert.True(await reader.ReadAsync());
@@ -1807,8 +1803,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, only for the first resultset (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1821,7 +1817,7 @@ LANGUAGE plpgsql VOLATILE";
             .FlushAsync();
 
         using var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn);
-        await using (var reader = await cmd.ExecuteReaderAsync())
+        await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             // Successfully read the first resultset
             Assert.True(await reader.ReadAsync());
@@ -1859,8 +1855,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1903,8 +1899,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1951,8 +1947,8 @@ LANGUAGE plpgsql VOLATILE";
             return;
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -1989,8 +1985,8 @@ LANGUAGE plpgsql VOLATILE";
             return;
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -2023,8 +2019,8 @@ LANGUAGE plpgsql VOLATILE";
         if (!IsMultiplexing)
             return;
 
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        await using var conn = await OpenConnectionAsync(connString);
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT generate_series(1, 100); SELECT generate_series(1, 100)", conn);
         await using var reader = await cmd.ExecuteReaderAsync(Behavior);
         var cancelledToken = new CancellationToken(canceled: true);
@@ -2048,13 +2044,15 @@ LANGUAGE plpgsql VOLATILE";
         if (!IsSequential)
             return;
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-        csb.CommandTimeout = 3;
-        csb.CancellationTimeout = 15000;
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            CommandTimeout = 3,
+            CancellationTimeout = 15000
+        };
 
         await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -2086,13 +2084,15 @@ LANGUAGE plpgsql VOLATILE";
         if (!IsSequential)
             return;
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-        csb.CommandTimeout = 3;
-        csb.CancellationTimeout = 15000;
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            CommandTimeout = 3,
+            CancellationTimeout = 15000
+        };
 
         await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
         var pgMock = await postmasterMock.WaitForServerConnection();
@@ -2122,8 +2122,8 @@ LANGUAGE plpgsql VOLATILE";
             return; // Multiplexing, cancellation
 
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         var pgMock = await postmasterMock.WaitForServerConnection();
         await pgMock

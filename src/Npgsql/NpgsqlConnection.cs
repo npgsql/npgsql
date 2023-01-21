@@ -434,7 +434,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Gets the time (in seconds) to wait while trying to execute a command
     /// before terminating the attempt and generating an error.
     /// </summary>
-    /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
+    /// <value>The time (in seconds) to wait for a command to complete. The default value is 30 seconds.</value>
     public int CommandTimeout => Settings.CommandTimeout;
 
     ///<summary>

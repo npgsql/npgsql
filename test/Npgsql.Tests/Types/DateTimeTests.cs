@@ -419,13 +419,13 @@ public class DateTimeTests : TestBase
 
     #endregion
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
+    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
     {
-        var conn = await base.OpenConnectionAsync(connectionString);
+        var conn = await base.OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
         return conn;
     }
 
-    protected override NpgsqlConnection OpenConnection(string? connectionString = null)
+    protected override NpgsqlConnection OpenConnection()
         => throw new NotSupportedException();
 }

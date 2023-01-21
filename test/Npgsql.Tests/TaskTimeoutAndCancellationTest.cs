@@ -6,6 +6,7 @@ using Npgsql.Util;
 
 namespace Npgsql.Tests;
 
+[NonParallelizable] // To make sure unobserved tasks from other tests do not leak
 public class TaskTimeoutAndCancellationTest : TestBase
 {
     const int TestResultValue = 777;
@@ -88,6 +89,11 @@ public class TaskTimeoutAndCancellationTest : TestBase
 
     static async Task RunDelayedFaultedTaskTestAsync(Func<Func<Exception?>, Task> test)
     {
+        // Run the garbage collector to collect unobserved Tasks from other tests.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
         Exception? unobservedTaskException = null;
 
         // Subscribe to UnobservedTaskException event to store the Exception, if any.

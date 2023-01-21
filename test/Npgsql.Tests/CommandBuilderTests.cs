@@ -80,9 +80,9 @@ class CommandBuilderTests : TestBase
     {
         const string query = "SELECT @p::integer";
         const int answer = 42;
-        using var _ = CreateTempPool(ConnectionString, out var connString);
-        using var conn = await OpenConnectionAsync(connString);
-        using var cmd = new NpgsqlCommand(query, conn);
+        await using var dataSource = CreateDataSource();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
         cmd.Prepare();
         Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
@@ -102,8 +102,6 @@ class CommandBuilderTests : TestBase
         Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
         cmd.Parameters["@p"].Value = answer;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(answer));
-
-        conn.UnprepareAll();
     }
 
     [Test, Description("Tests parameter derivation for array parameters in parameterized queries (CommandType.Text)")]

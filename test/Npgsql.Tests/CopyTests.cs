@@ -1089,8 +1089,8 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
     {
         // Run in a separate pool to protect other queries in multiplexing
         // because we're going to break the connection on CopyInResponse
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource();
+        using var conn = await dataSource.OpenConnectionAsync();
         var table = await CreateTempTable(conn, "foo INT");
 
         Assert.That(() => conn.ExecuteNonQuery($@"COPY {table} (foo) FROM stdin"), Throws.Exception.TypeOf<NotSupportedException>());
