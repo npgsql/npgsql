@@ -625,7 +625,7 @@ Start formatting event queue, going to sleep a bit for late events
     }
 
     [OneTimeTearDown]
-    void OnTimeTearDown()
+    public void OnTimeTearDown()
     {
         EnlistOnDataSource?.Dispose();
         EnlistOnDataSource = null!;
