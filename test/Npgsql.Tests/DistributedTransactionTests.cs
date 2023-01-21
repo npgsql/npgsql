@@ -22,7 +22,7 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+        var dataSource = EnlistOnDataSource;
 
         using (new TransactionScope())
         using (var conn1 = dataSource.OpenConnection())
@@ -46,7 +46,7 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
 
         using (var conn1 = dataSource.OpenConnection())
         using (var conn2 = dataSource.OpenConnection())
@@ -73,7 +73,7 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+        var dataSource = EnlistOnDataSource;
 
         using (var scope = new TransactionScope())
         using (var conn1 = dataSource.OpenConnection())
@@ -97,7 +97,7 @@ public class DistributedTransactionTests : TestBase
     public void Two_connections_with_failure()
     {
         // Use our own data source since this test breaks the connection with a critical failure, affecting database state tracking.
-        using var dataSource = NpgsqlDataSource.Create(ConnectionStringEnlistOn);
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
         using var adminConn = dataSource.OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
@@ -155,7 +155,7 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOn);
+        var dataSource = EnlistOnDataSource;
 
         for (var i = 1; i <= 100; i++)
         {
@@ -229,7 +229,7 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
 
         for (var i = 1; i <= 100; i++)
         {
@@ -283,7 +283,7 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
 
         for (var i = 1; i <= 100; i++)
         {
@@ -338,7 +338,7 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
 
         for (var i = 1; i <= 100; i++)
         {
@@ -441,7 +441,7 @@ Exception {2}",
 
     int GetNumberOfPreparedTransactions()
     {
-        using var dataSource = CreateDataSource(ConnectionStringEnlistOff);
+        var dataSource = EnlistOffDataSource;
         using (var conn = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
         {
@@ -459,11 +459,9 @@ Exception {2}",
     static void AssertHasDistributedIdentifier()
         => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.Not.EqualTo(Guid.Empty), "Distributed identifier not found");
 
-    public string ConnectionStringEnlistOn
-        => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
+    NpgsqlDataSource EnlistOnDataSource { get; set; } = default!;
 
-    public string ConnectionStringEnlistOff
-        => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+    NpgsqlDataSource EnlistOffDataSource { get; set; } = default!;
 
     static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
     {
@@ -621,6 +619,18 @@ Start formatting event queue, going to sleep a bit for late events
         }
         foreach (var xactGid in lingeringTransactions)
             connection.ExecuteNonQuery($"ROLLBACK PREPARED '{xactGid}'");
+
+        EnlistOnDataSource = CreateDataSource(csb => csb.Enlist = true);
+        EnlistOffDataSource = CreateDataSource(csb => csb.Enlist = false);
+    }
+
+    [OneTimeTearDown]
+    void OnTimeTearDown()
+    {
+        EnlistOnDataSource?.Dispose();
+        EnlistOnDataSource = null!;
+        EnlistOffDataSource?.Dispose();
+        EnlistOffDataSource = null!;
     }
 
     [SetUp]
