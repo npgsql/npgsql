@@ -76,6 +76,9 @@ jobs:
       - name: Run
         run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
 
+      - name: Dump mstat
+        run: dotnet run test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat"
+
       - name: Assert binary size
         run: |
           ls -lh test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
