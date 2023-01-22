@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <PublishAot>true</PublishAot>
+	<TargetFrameworks>net7.0</TargetFrameworks>
+	<IlcGenerateMstatFile>true</IlcGenerateMstatFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Remove="GitHubActionsTestLogger" />
+  </ItemGroup>
+</Project>
