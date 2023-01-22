@@ -63,7 +63,8 @@ jobs:
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
 
-          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'; CREATE DATABASE npgsql_tests"
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests"
 
           sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
 
