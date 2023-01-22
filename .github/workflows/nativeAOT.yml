@@ -46,7 +46,7 @@ jobs:
         shell: bash
 
       - name: Build
-        run: dotnet publish -r linux-x64 -c Release -f net7.0
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net7.0
         shell: bash
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
