@@ -23,13 +23,16 @@ namespace MStatDumper
             var typesByModules = typeStats.GroupBy(x => x.Type.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size) }).ToList();
             if (markDownStyleOutput)
             {
-                Console.WriteLine($"Types Total Size {typeSize:n0}");
+                Console.WriteLine("<details>");
+                Console.WriteLine($"<summary>Types Total Size {typeSize:n0}</summary>");
+                Console.WriteLine("<br>");
                 Console.WriteLine("| Name | Size |");
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
                 {
                     Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
                 }
+                Console.WriteLine("</details>");
             }
             else
             {
