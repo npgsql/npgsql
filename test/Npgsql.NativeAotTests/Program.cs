@@ -11,10 +11,8 @@ await conn.OpenAsync();
 await using var cmd = new NpgsqlCommand("SELECT 'Hello World'", conn);
 await using var reader = await cmd.ExecuteReaderAsync();
 if (!await reader.ReadAsync())
-	throw new Exception("Got nothing from the database");
+    throw new Exception("Got nothing from the database");
 
 var value = reader.GetFieldValue<string>(0);
 if (value != "Hello World")
-	throw new Exception($"Got {value} instead of the expected 'Hello World'");
-
-Console.WriteLine("Success");
+    throw new Exception($"Got {value} instead of the expected 'Hello World'");
