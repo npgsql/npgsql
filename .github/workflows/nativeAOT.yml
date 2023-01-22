@@ -75,3 +75,7 @@ jobs:
 
       - name: Run
         run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
+
+      - name: Assert binary size
+        run: |
+          ls -l test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests

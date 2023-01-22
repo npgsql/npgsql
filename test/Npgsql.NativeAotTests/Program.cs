@@ -17,5 +17,4 @@ var value = reader.GetFieldValue<string>(0);
 if (value != "Hello World")
 	throw new Exception($"Got {value} instead of the expected 'Hello World'");
 
-throw new Exception("Success");
-//Console.WriteLine("Success");
+Console.WriteLine("Success");
