@@ -4,7 +4,6 @@
     <PublishAot>true</PublishAot>
     <TargetFrameworks>net7.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
-    <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
