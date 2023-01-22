@@ -49,29 +49,16 @@ jobs:
         run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net7.0
         shell: bash
 
-      - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          # First uninstall any PostgreSQL installed on the image
-          dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
-
-          # Import the repository signing key
-          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main ${{ matrix.pg_major }}" >> /etc/apt/sources.list.d/pgdg.list'
-          sudo apt-get update -qq
-          sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
-          export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
-
-          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
-          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests"
-
-          sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
-
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
       #- uses: actions/checkout@v3
       #- name: Setup tmate session
       #  uses: mxschmitt/action-tmate@v3
+
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
 
       - name: Run
         run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
