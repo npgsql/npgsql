@@ -77,7 +77,7 @@ jobs:
         run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" >> $GITHUB_STEP_SUMMARY
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Assert binary size
         run: |

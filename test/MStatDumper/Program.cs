@@ -12,6 +12,8 @@ namespace MStatDumper
                 throw new Exception("Must provide the path to mstat file. It's in {project}/obj/Release/{TFM}/{os}/native/{project}.mstat");
             }
 
+            var markDownStyleOutput = args.Length > 1 && args[1] == "md";
+
             var asm = AssemblyDefinition.ReadAssembly(args[0]);
             var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
 
@@ -19,12 +21,25 @@ namespace MStatDumper
             var typeStats = GetTypes(types).ToList();
             var typeSize = typeStats.Sum(x => x.Size);
             var typesByModules = typeStats.GroupBy(x => x.Type.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size) }).ToList();
-            Console.WriteLine($"// ********** Types Total Size {typeSize:n0}");
-            foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
+            if (markDownStyleOutput)
             {
-                Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
+                Console.WriteLine($"Types Total Size {typeSize:n0}");
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
+                foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                }
             }
-            Console.WriteLine($"// **********");
+            else
+            {
+                Console.WriteLine($"// ********** Types Total Size {typeSize:n0}");
+                foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
+                }
+                Console.WriteLine("// **********");
+            }
 
             Console.WriteLine();
 
@@ -32,12 +47,25 @@ namespace MStatDumper
             var methodStats = GetMethods(methods).ToList();
             var methodSize = methodStats.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize);
             var methodsByModules = methodStats.GroupBy(x => x.Method.DeclaringType.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) }).ToList();
-            Console.WriteLine($"// ********** Methods Total Size {methodSize:n0}");
-            foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
+            if (markDownStyleOutput)
             {
-                Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
+                Console.WriteLine($"Methods Total Size {methodSize:n0}");
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
+                foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                }
             }
-            Console.WriteLine($"// **********");
+            else
+            {
+                Console.WriteLine($"// ********** Methods Total Size {methodSize:n0}");
+                foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
+                }
+                Console.WriteLine("// **********");
+            }
 
             Console.WriteLine();
 
@@ -61,12 +89,25 @@ namespace MStatDumper
             }
 
             var methodsByNamespace = methodStats.Select(x => new TypeStats { Type = x.Method.DeclaringType, Size = x.Size + x.GcInfoSize + x.EhInfoSize }).Concat(typeStats).GroupBy(x => FindNamespace(x.Type)).Select(x => new { x.Key, Sum = x.Sum(x => x.Size) }).ToList();
-            Console.WriteLine($"// ********** Size By Namespace");
-            foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
+            if (markDownStyleOutput)
             {
-                Console.WriteLine($"{m.Key,-70} {m.Sum,9:n0}");
+                Console.WriteLine("Size By Namespace");
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
+                foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"| {m.Key.Replace("`", "\\`")} | {m.Sum:n0} |");
+                }
             }
-            Console.WriteLine($"// **********");
+            else
+            {
+                Console.WriteLine("// ********** Size By Namespace");
+                foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
+                {
+                    Console.WriteLine($"{m.Key,-70} {m.Sum,9:n0}");
+                }
+                Console.WriteLine("// **********");
+            }
 
             Console.WriteLine();
 
@@ -78,7 +119,7 @@ namespace MStatDumper
             {
                 Console.WriteLine($"{m.Name,-70} {m.Size,9:n0}");
             }
-            Console.WriteLine($"// **********");
+            Console.WriteLine("// **********");
         }
 
         public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
