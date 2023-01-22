@@ -22,7 +22,7 @@ namespace MStatDumper
             Console.WriteLine($"// ********** Types Total Size {typeSize:n0}");
             foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
             {
-                Console.WriteLine($"{m.Name,-70} {m.Sum,8:n0}");
+                Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
             }
             Console.WriteLine($"// **********");
 
@@ -35,7 +35,7 @@ namespace MStatDumper
             Console.WriteLine($"// ********** Methods Total Size {methodSize:n0}");
             foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
             {
-                Console.WriteLine($"{m.Name,-70} {m.Sum,8:n0}");
+                Console.WriteLine($"{m.Name,-70} {m.Sum,9:n0}");
             }
             Console.WriteLine($"// **********");
 
@@ -64,7 +64,7 @@ namespace MStatDumper
             Console.WriteLine($"// ********** Size By Namespace");
             foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
             {
-                Console.WriteLine($"{m.Key,-70} {m.Sum,8:n0}");
+                Console.WriteLine($"{m.Key,-70} {m.Sum,9:n0}");
             }
             Console.WriteLine($"// **********");
 
@@ -76,7 +76,7 @@ namespace MStatDumper
             Console.WriteLine($"// ********** Blobs Total Size {blobSize:n0}");
             foreach (var m in blobStats.OrderByDescending(x => x.Size))
             {
-                Console.WriteLine($"{m.Name,-70} {m.Size,8:n0}");
+                Console.WriteLine($"{m.Name,-70} {m.Size,9:n0}");
             }
             Console.WriteLine($"// **********");
         }
