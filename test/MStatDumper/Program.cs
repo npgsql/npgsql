@@ -114,12 +114,25 @@ namespace MStatDumper
             var blobs = globalType.Methods.First(x => x.Name == "Blobs");
             var blobStats = GetBlobs(blobs).ToList();
             var blobSize = blobStats.Sum(x => x.Size);
-            Console.WriteLine($"// ********** Blobs Total Size {blobSize:n0}");
-            foreach (var m in blobStats.OrderByDescending(x => x.Size))
+            if (markDownStyleOutput)
             {
-                Console.WriteLine($"{m.Name,-70} {m.Size,9:n0}");
+                Console.WriteLine($"Blobs Total Size {blobSize:n0}");
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
+                foreach (var m in blobStats.OrderByDescending(x => x.Size))
+                {
+                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                }
             }
-            Console.WriteLine("// **********");
+            else
+            {
+                Console.WriteLine($"// ********** Blobs Total Size {blobSize:n0}");
+                foreach (var m in blobStats.OrderByDescending(x => x.Size))
+                {
+                    Console.WriteLine($"{m.Name,-70} {m.Size,9:n0}");
+                }
+                Console.WriteLine("// **********");
+            }
         }
 
         public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
