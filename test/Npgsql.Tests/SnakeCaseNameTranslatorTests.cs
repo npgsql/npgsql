@@ -5,7 +5,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-[TestFixture]
 public class SnakeCaseNameTranslatorTests
 {
     [Test, TestCaseSource(typeof(SnakeCaseNameTranslatorTests), nameof(TestCases))]
@@ -47,6 +46,6 @@ public class SnakeCaseNameTranslatorTests
     }.SelectMany(x => new[]
     {
         new TestCaseData(x.value, true).Returns(x.legacyResult),
-        new TestCaseData(x.value, false).Returns(x.result), 
+        new TestCaseData(x.value, false).Returns(x.result),
     });
 }

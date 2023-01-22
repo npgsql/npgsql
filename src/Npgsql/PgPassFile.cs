@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Npgsql;
 
@@ -56,8 +56,6 @@ sealed class PgPassFile
     /// </summary>
     internal sealed class Entry
     {
-        const string PgPassWildcard = "*";
-
         #region Fields and Properties
 
         /// <summary>
@@ -110,24 +108,53 @@ sealed class PgPassFile
         /// <exception cref="FormatException">Entry is not formatted as hostname:port:database:username:password or non-wildcard port is not a number</exception>
         internal static Entry Parse(string serializedEntry)
         {
-            var parts = Regex.Split(serializedEntry, @"(?<!\\):"); // split on any colons that aren't preceded by a \ (\ indicates that the colon is part of the content and not a separator)
-            if (parts is null || parts.Length != 5)
+            var parts = new List<string?>(5);
+
+            var builder = new StringBuilder();
+            for (var pos = 0; pos < serializedEntry.Length; pos++)
+            {
+                var c = serializedEntry[pos];
+
+                switch (c)
+                {
+                case '\\' when pos < serializedEntry.Length - 1:
+                    // Strip backslash before colon or backslash, otherwise preserve it
+                    c = serializedEntry[++pos];
+                    if (c is not (':' or '\\'))
+                    {
+                        builder.Append('\\');
+                    }
+
+                    builder.Append(c);
+                    continue;
+
+                case ':':
+                    var part = builder.ToString();
+                    parts.Add(part == "*" ? null : part);
+                    builder.Clear();
+                    continue;
+
+                default:
+                    builder.Append(c);
+                    continue;
+                }
+            }
+
+            var lastPart = builder.ToString();
+            parts.Add(lastPart == "*" ? null : lastPart);
+
+            if (parts.Count != 5)
                 throw new FormatException("pgpass entry was not well-formed. Please ensure all non-comment entries are formatted as hostname:port:database:username:password. If colon is included, it must be escaped like \\:.");
 
-            var processedParts = parts
-                .Select(part => part.Replace("\\:", ":").Replace("\\\\", "\\")) // unescape any escaped characters
-                .Select(part => part == PgPassWildcard ? null : part)
-                .ToArray();
-
             int? port = null;
-            if (processedParts[1] != null)
+            if (parts[1] != null)
             {
-                if (!int.TryParse(processedParts[1], out var tempPort))
+                if (!int.TryParse(parts[1], out var tempPort))
                     throw new FormatException("pgpass entry was not formatted correctly. Port must be a valid integer.");
                 port = tempPort;
             }
 
-            return new Entry(processedParts[0], port, processedParts[2], processedParts[3], processedParts[4]);
+            return new Entry(parts[0], port, parts[2], parts[3], parts[4]);
         }
 
         #endregion
