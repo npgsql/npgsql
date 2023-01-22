@@ -4,7 +4,6 @@
     <PublishAot>true</PublishAot>
     <TargetFrameworks>net7.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
