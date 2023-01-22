@@ -4,7 +4,11 @@
     <PublishAot>true</PublishAot>
     <TargetFrameworks>net7.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
-    <PublishTrimmed>true</PublishTrimmed>
+    <StaticallyLinked>true</StaticallyLinked>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <StaticOpenSslLinking>true</StaticOpenSslLinking>
+    <StaticExecutable>true</StaticExecutable>
+    <StripSymbols>true</StripSymbols>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
