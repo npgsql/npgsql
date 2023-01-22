@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <PublishAot>true</PublishAot>
+    <TargetFrameworks>net7.0</TargetFrameworks>
+    <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
+    <StaticallyLinked>true</StaticallyLinked>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <StaticOpenSslLinking>true</StaticOpenSslLinking>
+    <StaticExecutable>true</StaticExecutable>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Remove="GitHubActionsTestLogger" />
+  </ItemGroup>
+</Project>
