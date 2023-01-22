@@ -55,13 +55,19 @@ namespace MStatDumper
             var methodsByModules = methodStats.GroupBy(x => x.Method.DeclaringType.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) }).ToList();
             if (markDownStyleOutput)
             {
-                Console.WriteLine($"Methods Total Size {methodSize:n0}");
+                Console.WriteLine("<details>");
+                Console.WriteLine($"<summary>Methods Total Size {methodSize:n0}</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
                 Console.WriteLine("| Name | Size |");
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
                 {
                     Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
                 }
+                Console.WriteLine();
+                Console.WriteLine("</details>");
             }
             else
             {
@@ -97,13 +103,19 @@ namespace MStatDumper
             var methodsByNamespace = methodStats.Select(x => new TypeStats { Type = x.Method.DeclaringType, Size = x.Size + x.GcInfoSize + x.EhInfoSize }).Concat(typeStats).GroupBy(x => FindNamespace(x.Type)).Select(x => new { x.Key, Sum = x.Sum(x => x.Size) }).ToList();
             if (markDownStyleOutput)
             {
-                Console.WriteLine("Size By Namespace");
+                Console.WriteLine("<details>");
+                Console.WriteLine("<summary>Size By Namespace</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
                 Console.WriteLine("| Name | Size |");
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
                 {
                     Console.WriteLine($"| {m.Key.Replace("`", "\\`")} | {m.Sum:n0} |");
                 }
+                Console.WriteLine();
+                Console.WriteLine("</details>");
             }
             else
             {
@@ -122,13 +134,19 @@ namespace MStatDumper
             var blobSize = blobStats.Sum(x => x.Size);
             if (markDownStyleOutput)
             {
-                Console.WriteLine($"Blobs Total Size {blobSize:n0}");
+                Console.WriteLine("<details>");
+                Console.WriteLine($"<summary>Blobs Total Size {blobSize:n0}</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
                 Console.WriteLine("| Name | Size |");
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in blobStats.OrderByDescending(x => x.Size))
                 {
                     Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
                 }
+                Console.WriteLine();
+                Console.WriteLine("</details>");
             }
             else
             {
