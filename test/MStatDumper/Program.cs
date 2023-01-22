@@ -25,13 +25,16 @@ namespace MStatDumper
             {
                 Console.WriteLine("<details>");
                 Console.WriteLine($"<summary>Types Total Size {typeSize:n0}</summary>");
+                Console.WriteLine();
                 Console.WriteLine("<br>");
+                Console.WriteLine();
                 Console.WriteLine("| Name | Size |");
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
                 {
                     Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
                 }
+                Console.WriteLine();
                 Console.WriteLine("</details>");
             }
             else
