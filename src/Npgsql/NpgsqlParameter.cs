@@ -496,7 +496,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     /// <summary>
     /// The PostgreSQL data type, such as int4 or text, as discovered from pg_type.
     /// This property is automatically set if parameters have been derived via
-    /// <see cref="NpgsqlCommandOrigBuilder.DeriveParameters"/> and can be used to
+    /// <see cref="NpgsqlCommandBuilder.DeriveParameters"/> and can be used to
     /// acquire additional information about the parameters' data type.
     /// </summary>
     public PostgresType? PostgresType { get; internal set; }

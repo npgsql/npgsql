@@ -149,7 +149,7 @@ public class DataAdapterTests : TestBase
 
         var cmd = conn.CreateCommand();
         var da = new NpgsqlDataAdapter($"select * from {table}", conn);
-        var cb = new NpgsqlCommandOrigBuilder(da);
+        var cb = new NpgsqlCommandBuilder(da);
         var ds = new DataSet();
         da.Fill(ds);
 
@@ -342,7 +342,7 @@ public class DataAdapterTests : TestBase
 
         var ds = new DataSet();
         var da = new NpgsqlDataAdapter($"select * from {table}", conn);
-        var cb = new NpgsqlCommandOrigBuilder(da);
+        var cb = new NpgsqlCommandBuilder(da);
         Assert.IsNotNull(cb);
 
         da.Fill(ds);
@@ -373,7 +373,7 @@ public class DataAdapterTests : TestBase
 
         var ds = new DataSet();
         var da = new NpgsqlDataAdapter($"select * from {table}", conn);
-        var builder = new NpgsqlCommandOrigBuilder(da);
+        var builder = new NpgsqlCommandBuilder(da);
         Assert.IsNotNull(builder);
 
         da.Fill(ds);
@@ -461,7 +461,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         var table = await SetupTempTable(conn);
 
         var da = new NpgsqlDataAdapter($"SELECT field_pk,field_int4 FROM {table}", conn);
-        var builder = new NpgsqlCommandOrigBuilder(da);
+        var builder = new NpgsqlCommandBuilder(da);
         var ds = new DataSet();
         da.Fill(ds);
 
@@ -485,7 +485,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
     [Test]
     public void Command_builder_quoting()
     {
-        var cb = new NpgsqlCommandOrigBuilder();
+        var cb = new NpgsqlCommandBuilder();
         const string orig = "some\"column";
         var quoted = cb.QuoteIdentifier(orig);
         Assert.That(quoted, Is.EqualTo("\"some\"\"column\""));
@@ -501,7 +501,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
         var table = await SetupTempTable(conn);
 
         using var da = new NpgsqlDataAdapter($"SELECT field_pk, field_int4 FROM {table}", conn);
-        using var cb = new NpgsqlCommandOrigBuilder(da);
+        using var cb = new NpgsqlCommandBuilder(da);
         var updateCommand = cb.GetUpdateCommand(true);
         da.UpdateCommand = updateCommand;
 

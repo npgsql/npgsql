@@ -920,7 +920,7 @@ $$ LANGUAGE plpgsql;";
         var command = new NpgsqlCommandOrig($"SELECT * FROM {table}", conn);
         Assert.AreEqual(UpdateRowSource.Both, command.UpdatedRowSource);
 
-        var cmdBuilder = new NpgsqlCommandOrigBuilder();
+        var cmdBuilder = new NpgsqlCommandBuilder();
         var da = new NpgsqlDataAdapter(command);
         cmdBuilder.DataAdapter = da;
         Assert.IsNotNull(da.SelectCommand);

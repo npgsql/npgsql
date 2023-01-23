@@ -11,24 +11,24 @@ namespace Npgsql;
 /// This class creates database commands for automatic insert, update and delete operations.
 ///</summary>
 [System.ComponentModel.DesignerCategory("")]
-public sealed class NpgsqlCommandOrigBuilder : DbCommandBuilder
+public sealed class NpgsqlCommandBuilder : DbCommandBuilder
 {
     // Commented out because SetRowUpdatingHandler() is commented, and causes an "is never used" warning
     // private NpgsqlRowUpdatingEventHandler rowUpdatingHandler;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommandOrigBuilder"/> class.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
     /// </summary>
-    public NpgsqlCommandOrigBuilder()
+    public NpgsqlCommandBuilder()
         : this(null)
     {
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="NpgsqlCommandOrigBuilder"/> class.
+    /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
     /// </summary>
     /// <param name="adapter">The adapter.</param>
-    public NpgsqlCommandOrigBuilder(NpgsqlDataAdapter? adapter)
+    public NpgsqlCommandBuilder(NpgsqlDataAdapter? adapter)
     {
         DataAdapter = adapter;
         QuotePrefix = "\"";
@@ -246,7 +246,7 @@ public sealed class NpgsqlCommandOrigBuilder : DbCommandBuilder
         => GetParameterName(parameterOrdinal);
 
     /// <summary>
-    /// Registers the <see cref="NpgsqlCommandOrigBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
+    /// Registers the <see cref="NpgsqlCommandBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
     /// </summary>
     /// <param name="adapter">The <see cref="System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
     protected override void SetRowUpdatingHandler(DbDataAdapter adapter)

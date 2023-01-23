@@ -350,15 +350,15 @@ Npgsql.NpgsqlCommandOrig.UnknownResultTypeList.get -> bool[]?
 Npgsql.NpgsqlCommandOrig.UnknownResultTypeList.set -> void
 Npgsql.NpgsqlCommandOrig.Unprepare() -> void
 Npgsql.NpgsqlCommandOrig.UnprepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Npgsql.NpgsqlCommandOrigBuilder
-Npgsql.NpgsqlCommandOrigBuilder.GetDeleteCommand() -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.GetDeleteCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.GetInsertCommand() -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.GetInsertCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.GetUpdateCommand() -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.GetUpdateCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
-Npgsql.NpgsqlCommandOrigBuilder.NpgsqlCommandOrigBuilder() -> void
-Npgsql.NpgsqlCommandOrigBuilder.NpgsqlCommandOrigBuilder(Npgsql.NpgsqlDataAdapter? adapter) -> void
+Npgsql.NpgsqlCommandBuilder
+Npgsql.NpgsqlCommandBuilder.GetDeleteCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.GetDeleteCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.GetInsertCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.GetInsertCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.GetUpdateCommand() -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.GetUpdateCommand(bool useColumnsForParameterNames) -> Npgsql.NpgsqlCommandOrig!
+Npgsql.NpgsqlCommandBuilder.NpgsqlCommandBuilder() -> void
+Npgsql.NpgsqlCommandBuilder.NpgsqlCommandBuilder(Npgsql.NpgsqlDataAdapter? adapter) -> void
 Npgsql.NpgsqlConnection
 Npgsql.NpgsqlConnection.BeginBinaryExport(string! copyToCommand) -> Npgsql.NpgsqlBinaryExporter!
 Npgsql.NpgsqlConnection.BeginBinaryExportAsync(string! copyToCommand, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Npgsql.NpgsqlBinaryExporter!>!
@@ -1535,12 +1535,12 @@ override Npgsql.NpgsqlCommandOrig.Prepare() -> void
 override Npgsql.NpgsqlCommandOrig.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Npgsql.NpgsqlCommandOrig.UpdatedRowSource.get -> System.Data.UpdateRowSource
 override Npgsql.NpgsqlCommandOrig.UpdatedRowSource.set -> void
-override Npgsql.NpgsqlCommandOrigBuilder.QuoteIdentifier(string! unquotedIdentifier) -> string!
-override Npgsql.NpgsqlCommandOrigBuilder.QuotePrefix.get -> string!
-override Npgsql.NpgsqlCommandOrigBuilder.QuotePrefix.set -> void
-override Npgsql.NpgsqlCommandOrigBuilder.QuoteSuffix.get -> string!
-override Npgsql.NpgsqlCommandOrigBuilder.QuoteSuffix.set -> void
-override Npgsql.NpgsqlCommandOrigBuilder.UnquoteIdentifier(string! quotedIdentifier) -> string!
+override Npgsql.NpgsqlCommandBuilder.QuoteIdentifier(string! unquotedIdentifier) -> string!
+override Npgsql.NpgsqlCommandBuilder.QuotePrefix.get -> string!
+override Npgsql.NpgsqlCommandBuilder.QuotePrefix.set -> void
+override Npgsql.NpgsqlCommandBuilder.QuoteSuffix.get -> string!
+override Npgsql.NpgsqlCommandBuilder.QuoteSuffix.set -> void
+override Npgsql.NpgsqlCommandBuilder.UnquoteIdentifier(string! quotedIdentifier) -> string!
 override Npgsql.NpgsqlConnection.CanCreateBatch.get -> bool
 override Npgsql.NpgsqlConnection.ChangeDatabase(string! dbName) -> void
 override Npgsql.NpgsqlConnection.Close() -> void
@@ -1837,7 +1837,7 @@ override sealed Npgsql.NpgsqlParameter.SourceColumnNullMapping.set -> void
 override sealed Npgsql.NpgsqlParameter.SourceVersion.get -> System.Data.DataRowVersion
 override sealed Npgsql.NpgsqlParameter.SourceVersion.set -> void
 static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name) -> string!
-static Npgsql.NpgsqlCommandOrigBuilder.DeriveParameters(Npgsql.NpgsqlCommandOrig! command) -> void
+static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommandOrig! command) -> void
 static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!

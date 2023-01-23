@@ -177,7 +177,7 @@ END;
 $$ LANGUAGE plpgsql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
@@ -213,7 +213,7 @@ $$ LANGUAGE plpgsql");
             $@"CREATE FUNCTION {function}(IN param1 INT, IN param2 INT) RETURNS int AS 'SELECT param1 + param2' LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -231,7 +231,7 @@ $$ LANGUAGE plpgsql");
         await conn.ExecuteNonQueryAsync($@"CREATE FUNCTION {function}() RETURNS int AS 'SELECT 4' LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Is.Empty);
     }
 
@@ -245,7 +245,7 @@ $$ LANGUAGE plpgsql");
         try
         {
             await using var command = new NpgsqlCommandOrig(@"""FunctionCaseSensitive""", conn) { CommandType = CommandType.StoredProcedure };
-            NpgsqlCommandOrigBuilder.DeriveParameters(command);
+            NpgsqlCommandBuilder.DeriveParameters(command);
             Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
             Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
         }
@@ -265,7 +265,7 @@ $$ LANGUAGE plpgsql");
         try
         {
             await using var command = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-            NpgsqlCommandOrigBuilder.DeriveParameters(command);
+            NpgsqlCommandBuilder.DeriveParameters(command);
             Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
             Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
         }
@@ -285,7 +285,7 @@ $$ LANGUAGE plpgsql");
         try
         {
             await using var command = new NpgsqlCommandOrig(@"""My.Dotted.Function""", conn) { CommandType = CommandType.StoredProcedure };
-            NpgsqlCommandOrigBuilder.DeriveParameters(command);
+            NpgsqlCommandBuilder.DeriveParameters(command);
             Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
             Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
         }
@@ -304,7 +304,7 @@ $$ LANGUAGE plpgsql");
         await conn.ExecuteNonQueryAsync(
             $"CREATE FUNCTION {function}(x int, y int, out sum int, out product int) AS 'SELECT $1 + $2, $1 * $2' LANGUAGE sql");
         await using var command = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(command);
+        NpgsqlCommandBuilder.DeriveParameters(command);
         Assert.AreEqual("x", command.Parameters[0].ParameterName);
         Assert.AreEqual("y", command.Parameters[1].ParameterName);
     }
@@ -314,7 +314,7 @@ $$ LANGUAGE plpgsql");
     {
         await using var conn = await OpenConnectionAsync();
         var invalidCommandName = new NpgsqlCommandOrig("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
-        Assert.That(() => NpgsqlCommandOrigBuilder.DeriveParameters(invalidCommandName),
+        Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
             Throws.Exception.TypeOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
@@ -331,7 +331,7 @@ $$ LANGUAGE plpgsql");
             $"CREATE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS 'SELECT in1, in1+1' LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
@@ -354,7 +354,7 @@ CREATE FUNCTION {schema1}.redundantfunc() RETURNS int AS 'SELECT 1' LANGUAGE sql
 CREATE FUNCTION {schema2}.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS 'SELECT param1 + param2' LANGUAGE sql;
 SET search_path TO {schema2};");
         await using var command = new NpgsqlCommandOrig("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(command);
+        NpgsqlCommandBuilder.DeriveParameters(command);
         Assert.That(command.Parameters, Has.Count.EqualTo(2));
         Assert.That(command.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(command.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -373,7 +373,7 @@ SET search_path TO {schema2};");
 CREATE FUNCTION {schema}.schema1func() RETURNS int AS 'SELECT 1' LANGUAGE sql;
 RESET search_path;");
         await using var command = new NpgsqlCommandOrig("schema1func", conn) { CommandType = CommandType.StoredProcedure };
-        Assert.That(() => NpgsqlCommandOrigBuilder.DeriveParameters(command),
+        Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFunction));
     }
@@ -391,7 +391,7 @@ CREATE FUNCTION {schema1}.redundantfunc() RETURNS int AS 'SELECT 1' LANGUAGE sql
 CREATE FUNCTION {schema1}.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS 'SELECT param1 + param2' LANGUAGE sql;
 SET search_path TO {schema1}, {schema2};");
         var command = new NpgsqlCommandOrig("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
-        Assert.That(() => NpgsqlCommandOrigBuilder.DeriveParameters(command),
+        Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
             Throws.Exception.TypeOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.AmbiguousFunction));
     }
@@ -416,7 +416,7 @@ CREATE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
 $$ LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
@@ -445,7 +445,7 @@ CREATE FUNCTION {function}(int) RETURNS TABLE(fooid int, foosubid int, fooname t
 $$ LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
@@ -474,7 +474,7 @@ CREATE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname tex
 $$ LANGUAGE sql");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
         Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
@@ -500,7 +500,7 @@ CREATE FUNCTION {function}() RETURNS SETOF {table} AS 'SELECT * FROM {table}' LA
 ALTER TABLE {table} DROP t2;");
 
         await using var cmd = new NpgsqlCommandOrig(function, conn) { CommandType = CommandType.StoredProcedure };
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
         Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Output));
         Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));

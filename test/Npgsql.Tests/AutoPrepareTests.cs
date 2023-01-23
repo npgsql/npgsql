@@ -336,7 +336,7 @@ public class AutoPrepareTests : TestBase
         Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
 
         // Derive parameters for the already autoprepared statement
-        NpgsqlCommandOrigBuilder.DeriveParameters(cmd);
+        NpgsqlCommandBuilder.DeriveParameters(cmd);
         Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
         Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
 
