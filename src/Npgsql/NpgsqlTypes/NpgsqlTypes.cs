@@ -1,13 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
-using Npgsql.Util;
 
 #pragma warning disable 1591
 
@@ -22,8 +19,6 @@ namespace NpgsqlTypes;
 /// </remarks>
 public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
 {
-    static readonly Regex Regex = new(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-
     public double X { get; set; }
     public double Y { get; set; }
 
@@ -46,17 +41,7 @@ public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
     public static bool operator !=(NpgsqlPoint x, NpgsqlPoint y) => !(x == y);
 
     public override int GetHashCode()
-        => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
-
-    public static NpgsqlPoint Parse(string s)
-    {
-        var m = Regex.Match(s);
-        if (!m.Success) {
-            throw new FormatException("Not a valid point: " + s);
-        }
-        return new NpgsqlPoint(double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat));
-    }
+        => HashCode.Combine(X, Y);
 
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "({0},{1})", X, Y);
@@ -70,8 +55,6 @@ public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
 /// </remarks>
 public struct NpgsqlLine : IEquatable<NpgsqlLine>
 {
-    static readonly Regex Regex = new(@"\{(-?\d+.?\d*),(-?\d+.?\d*),(-?\d+.?\d*)\}");
-
     public double A { get; set; }
     public double B { get; set; }
     public double C { get; set; }
@@ -84,24 +67,14 @@ public struct NpgsqlLine : IEquatable<NpgsqlLine>
         C = c;
     }
 
-    public static NpgsqlLine Parse(string s)
-    {
-        var m = Regex.Match(s);
-        if (!m.Success)
-            throw new FormatException("Not a valid line: " + s);
-        return new NpgsqlLine(
-            double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
-        );
-    }
-
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "{{{0},{1},{2}}}", A, B, C);
 
-    public override int GetHashCode() => A.GetHashCode() * B.GetHashCode() * C.GetHashCode();
+    public override int GetHashCode()
+        => HashCode.Combine(A, B, C);
 
-    public bool Equals(NpgsqlLine other) => A == other.A && B == other.B && C == other.C;
+    public bool Equals(NpgsqlLine other)
+        => A == other.A && B == other.B && C == other.C;
 
     public override bool Equals(object? obj)
         => obj is NpgsqlLine line && Equals(line);
@@ -115,8 +88,6 @@ public struct NpgsqlLine : IEquatable<NpgsqlLine>
 /// </summary>
 public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 {
-    static readonly Regex Regex = new(@"\[\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)\]");
-
     public NpgsqlPoint Start { get; set; }
     public NpgsqlPoint End { get; set; }
 
@@ -130,34 +101,17 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
     public NpgsqlLSeg(double startx, double starty, double endx, double endy) : this()
     {
         Start = new NpgsqlPoint(startx, starty);
-        End   = new NpgsqlPoint(endx,   endy);
-    }
-
-    public static NpgsqlLSeg Parse(string s)
-    {
-        var m = Regex.Match(s);
-        if (!m.Success) {
-            throw new FormatException("Not a valid line: " + s);
-        }
-        return new NpgsqlLSeg(
-            double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
-        );
-
+        End = new NpgsqlPoint(endx,   endy);
     }
 
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "[{0},{1}]", Start, End);
 
     public override int GetHashCode()
-        => Start.X.GetHashCode() ^
-           PGUtil.RotateShift(Start.Y.GetHashCode(), PGUtil.BitsInInt / 4) ^
-           PGUtil.RotateShift(End.X.GetHashCode(), PGUtil.BitsInInt / 2) ^
-           PGUtil.RotateShift(End.Y.GetHashCode(), PGUtil.BitsInInt * 3 / 4);
+        => HashCode.Combine(Start.X, Start.Y, End.X, End.Y);
 
-    public bool Equals(NpgsqlLSeg other) => Start == other.Start && End == other.End;
+    public bool Equals(NpgsqlLSeg other)
+        => Start == other.Start && End == other.End;
 
     public override bool Equals(object? obj)
         => obj is NpgsqlLSeg seg && Equals(seg);
@@ -174,8 +128,6 @@ public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
 /// </remarks>
 public struct NpgsqlBox : IEquatable<NpgsqlBox>
 {
-    static readonly Regex Regex = new(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
-
     public NpgsqlPoint UpperRight { get; set; }
     public NpgsqlPoint LowerLeft { get; set; }
 
@@ -197,7 +149,8 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
 
     public bool IsEmpty => Width == 0 || Height == 0;
 
-    public bool Equals(NpgsqlBox other) => UpperRight == other.UpperRight && LowerLeft == other.LowerLeft;
+    public bool Equals(NpgsqlBox other)
+        => UpperRight == other.UpperRight && LowerLeft == other.LowerLeft;
 
     public override bool Equals(object? obj)
         => obj is NpgsqlBox box && Equals(box);
@@ -207,22 +160,8 @@ public struct NpgsqlBox : IEquatable<NpgsqlBox>
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "{0},{1}", UpperRight, LowerLeft);
 
-    public static NpgsqlBox Parse(string s)
-    {
-        var m = Regex.Match(s);
-        return new NpgsqlBox(
-            new NpgsqlPoint(double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)),
-            new NpgsqlPoint(double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-                double.Parse(m.Groups[4].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat))
-        );
-    }
-
     public override int GetHashCode()
-        => Top.GetHashCode() ^
-           PGUtil.RotateShift(Right.GetHashCode(), PGUtil.BitsInInt / 4) ^
-           PGUtil.RotateShift(Bottom.GetHashCode(), PGUtil.BitsInInt / 2) ^
-           PGUtil.RotateShift(LowerLeft.GetHashCode(), PGUtil.BitsInInt * 3 / 4);
+        => HashCode.Combine(Top, Right, Bottom, LowerLeft);
 }
 
 /// <summary>
@@ -297,15 +236,16 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 
     public override int GetHashCode()
     {
-        var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+        var hashCode = new HashCode();
+        hashCode.Add(Open);
+
         foreach (var point in this)
         {
-            //The ideal amount to shift each value is one that would evenly spread it throughout
-            //the resultant bytes. Using the current result % 32 is essentially using a random value
-            //but one that will be the same on subsequent calls.
-            ret ^= PGUtil.RotateShift(point.GetHashCode(), ret % PGUtil.BitsInInt);
+            hashCode.Add(point.X);
+            hashCode.Add(point.Y);
         }
-        return Open ? ret : -ret;
+
+        return hashCode.ToHashCode();
     }
 
     public override string ToString()
@@ -323,28 +263,6 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
         sb.Append(Open ? ']' : ')');
         return sb.ToString();
     }
-
-    public static NpgsqlPath Parse(string s)
-    {
-        var open = s[0] switch
-        {
-            '[' => true,
-            '(' => false,
-            _   => throw new Exception("Invalid path string: " + s)
-        };
-        Debug.Assert(s[s.Length - 1] == (open ? ']' : ')'));
-        var result = new NpgsqlPath(open);
-        var i = 1;
-        while (true)
-        {
-            var i2 = s.IndexOf(')', i);
-            result.Add(NpgsqlPoint.Parse(s.Substring(i, i2 - i + 1)));
-            if (s[i2 + 1] != ',')
-                break;
-            i = i2 + 2;
-        }
-        return result;
-    }
 }
 
 /// <summary>
@@ -355,16 +273,12 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
     readonly List<NpgsqlPoint> _points;
 
     public NpgsqlPolygon(IEnumerable<NpgsqlPoint> points)
-    {
-        _points = new List<NpgsqlPoint>(points);
-    }
+        => _points = new List<NpgsqlPoint>(points);
 
     public NpgsqlPolygon(params NpgsqlPoint[] points) : this ((IEnumerable<NpgsqlPoint>) points) {}
 
     public NpgsqlPolygon(int capacity)
-    {
-        _points = new List<NpgsqlPoint>(capacity);
-    }
+        => _points = new List<NpgsqlPoint>(capacity);
 
     public NpgsqlPoint this[int index]
     {
@@ -407,30 +321,15 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 
     public override int GetHashCode()
     {
-        var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
+        var hashCode = new HashCode();
+
         foreach (var point in this)
         {
-            //The ideal amount to shift each value is one that would evenly spread it throughout
-            //the resultant bytes. Using the current result % 32 is essentially using a random value
-            //but one that will be the same on subsequent calls.
-            ret ^= PGUtil.RotateShift(point.GetHashCode(), ret % PGUtil.BitsInInt);
+            hashCode.Add(point.X);
+            hashCode.Add(point.Y);
         }
-        return ret;
-    }
 
-    public static NpgsqlPolygon Parse(string s)
-    {
-        var points = new List<NpgsqlPoint>();
-        var i = 1;
-        while (true)
-        {
-            var i2 = s.IndexOf(')', i);
-            points.Add(NpgsqlPoint.Parse(s.Substring(i, i2 - i + 1)));
-            if (s[i2 + 1] != ',')
-                break;
-            i = i2 + 2;
-        }
-        return new NpgsqlPolygon(points);
+        return hashCode.ToHashCode();
     }
 
     public override string ToString()
@@ -456,8 +355,6 @@ public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 /// </summary>
 public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
 {
-    static readonly Regex Regex = new(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
-
     public double X { get; set; }
     public double Y { get; set; }
     public double Radius { get; set; }
@@ -480,11 +377,7 @@ public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
     public NpgsqlPoint Center
     {
         get => new(X, Y);
-        set
-        {
-            X = value.X;
-            Y = value.Y;
-        }
+        set => (X, Y) = (value.X, value.Y);
     }
 
     // ReSharper disable CompareOfFloatsByEqualityOperator
@@ -495,19 +388,6 @@ public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
     public override bool Equals(object? obj)
         => obj is NpgsqlCircle circle && Equals(circle);
 
-    public static NpgsqlCircle Parse(string s)
-    {
-        var m = Regex.Match(s);
-        if (!m.Success)
-            throw new FormatException("Not a valid circle: " + s);
-
-        return new NpgsqlCircle(
-            double.Parse(m.Groups[1].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[2].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat),
-            double.Parse(m.Groups[3].ToString(), NumberStyles.Any, CultureInfo.InvariantCulture.NumberFormat)
-        );
-    }
-
     public override string ToString()
         => string.Format(CultureInfo.InvariantCulture, "<({0},{1}),{2}>", X, Y, Radius);
 
@@ -515,7 +395,7 @@ public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
     public static bool operator !=(NpgsqlCircle x, NpgsqlCircle y) => !(x == y);
 
     public override int GetHashCode()
-        => X.GetHashCode() * Y.GetHashCode() * Radius.GetHashCode();
+        => HashCode.Combine(X, Y, Radius);
 }
 
 /// <summary>
@@ -554,9 +434,11 @@ public struct NpgsqlInet : IEquatable<NpgsqlInet>
         if (addr.IndexOf('/') > 0)
         {
             var addrbits = addr.Split('/');
-            if (addrbits.GetUpperBound(0) != 1) {
+            if (addrbits.GetUpperBound(0) != 1)
+            {
                 throw new FormatException("Invalid number of parts in CIDR specification");
             }
+
             Address = IPAddress.Parse(addrbits[0]);
             Netmask = int.Parse(addrbits[1]);
         }
@@ -569,11 +451,12 @@ public struct NpgsqlInet : IEquatable<NpgsqlInet>
 
     public override string ToString()
     {
-        if ((Address.AddressFamily == AddressFamily.InterNetwork   && Netmask == 32) ||
+        if ((Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
             (Address.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128))
         {
             return Address.ToString();
         }
+
         return $"{Address}/{Netmask}";
     }
 
@@ -589,7 +472,6 @@ public struct NpgsqlInet : IEquatable<NpgsqlInet>
 
     public static NpgsqlInet ToNpgsqlInet(IPAddress? ip)
         => ip is null ? default : new NpgsqlInet(ip);
-    //=> ReferenceEquals(ip, null) ? default : new NpgsqlInet(ip);
 
     public static implicit operator NpgsqlInet(IPAddress ip) => ToNpgsqlInet(ip);
 
@@ -605,7 +487,7 @@ public struct NpgsqlInet : IEquatable<NpgsqlInet>
         => obj is NpgsqlInet inet && Equals(inet);
 
     public override int GetHashCode()
-        => PGUtil.RotateShift(Address.GetHashCode(), Netmask%32);
+        => HashCode.Combine(Address, Netmask);
 
     public static bool operator ==(NpgsqlInet x, NpgsqlInet y) => x.Equals(y);
     public static bool operator !=(NpgsqlInet x, NpgsqlInet y) => !(x == y);

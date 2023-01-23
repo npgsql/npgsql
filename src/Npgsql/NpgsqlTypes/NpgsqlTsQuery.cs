@@ -253,18 +253,27 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
         if (pos >= value.Length)
             goto Finish;
         ch = value[pos];
-        if (ch == '*')
+        switch (ch)
+        {
+        case '*':
             ((NpgsqlTsQueryLexeme)valStack.Peek()).IsPrefixSearch = true;
-        else if (ch == 'a' || ch == 'A')
+            break;
+        case 'a' or 'A':
             ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.A;
-        else if (ch == 'b' || ch == 'B')
+            break;
+        case 'b' or 'B':
             ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.B;
-        else if (ch == 'c' || ch == 'C')
+            break;
+        case 'c' or 'C':
             ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.C;
-        else if (ch == 'd' || ch == 'D')
+            break;
+        case 'd' or 'D':
             ((NpgsqlTsQueryLexeme)valStack.Peek()).Weights |= NpgsqlTsQueryLexeme.Weight.D;
-        else
+            break;
+        default:
             goto PushedVal;
+        }
+
         pos++;
         goto InWeightInfo;
 
@@ -338,12 +347,12 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     }
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        throw new NotImplementedException();
+    public override int GetHashCode()
+        => throw new NotSupportedException("Must be overridden");
 
     /// <inheritdoc/>
-    public override bool Equals(object? obj) =>
-        obj is NpgsqlTsQuery query && query.Equals(this);
+    public override bool Equals(object? obj)
+        => obj is NpgsqlTsQuery query && query.Equals(this);
 
     /// <summary>
     /// Returns a value indicating whether this instance and a specified <see cref="NpgsqlTsQuery"/> object represent the same value.
@@ -358,9 +367,8 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     /// <param name="left">The first object to compare.</param>
     /// <param name="right">The second object to compare.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are equal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator ==(NpgsqlTsQuery? left, NpgsqlTsQuery? right) =>
-        left is null ? right is null : left.Equals(right);
-
+    public static bool operator ==(NpgsqlTsQuery? left, NpgsqlTsQuery? right)
+        => left is null ? right is null : left.Equals(right);
 
     /// <summary>
     /// Indicates whether the values of two specified <see cref="NpgsqlTsQuery"/> objects are not equal.
@@ -368,8 +376,8 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     /// <param name="left">The first object to compare.</param>
     /// <param name="right">The second object to compare.</param>
     /// <returns><see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are not equal; otherwise, <see langword="false"/>.</returns>
-    public static bool operator !=(NpgsqlTsQuery? left, NpgsqlTsQuery? right) =>
-        left is null ? right is not null : !left.Equals(right);
+    public static bool operator !=(NpgsqlTsQuery? left, NpgsqlTsQuery? right)
+        => left is null ? right is not null : !left.Equals(right);
 }
 
 readonly struct NpgsqlTsQueryOperator
@@ -506,15 +514,15 @@ public sealed class NpgsqlTsQueryLexeme : NpgsqlTsQuery
     }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryLexeme lexeme &&
-        lexeme.Text == Text &&
-        lexeme.Weights == Weights &&
-        lexeme.IsPrefixSearch == IsPrefixSearch;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryLexeme lexeme &&
+           lexeme.Text == Text &&
+           lexeme.Weights == Weights &&
+           lexeme.IsPrefixSearch == IsPrefixSearch;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        HashCode.Combine(Text, Weights, IsPrefixSearch);
+    public override int GetHashCode()
+        => HashCode.Combine(Text, Weights, IsPrefixSearch);
 }
 
 /// <summary>
@@ -555,13 +563,12 @@ public sealed class NpgsqlTsQueryNot : NpgsqlTsQuery
     }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryNot not &&
-        not.Child == Child;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryNot not && not.Child == Child;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        Child?.GetHashCode() ?? 0;
+    public override int GetHashCode()
+        => Child?.GetHashCode() ?? 0;
 }
 
 /// <summary>
@@ -611,14 +618,12 @@ public sealed class NpgsqlTsQueryAnd : NpgsqlTsQueryBinOp
     }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryAnd and &&
-        and.Left == Left &&
-        and.Right == Right;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryAnd and && and.Left == Left && and.Right == Right;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        HashCode.Combine(Left, Right);
+    public override int GetHashCode()
+        => HashCode.Combine(Left, Right);
 }
 
 /// <summary>
@@ -649,14 +654,12 @@ public sealed class NpgsqlTsQueryOr : NpgsqlTsQueryBinOp
     }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryOr or &&
-        or.Left == Left &&
-        or.Right == Right;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryOr or && or.Left == Left && or.Right == Right;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        HashCode.Combine(Left, Right);
+    public override int GetHashCode()
+        => HashCode.Combine(Left, Right);
 }
 
 /// <summary>
@@ -708,15 +711,15 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
     }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryFollowedBy followedBy &&
-        followedBy.Left == Left &&
-        followedBy.Right == Right &&
-        followedBy.Distance == Distance;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryFollowedBy followedBy &&
+           followedBy.Left == Left &&
+           followedBy.Right == Right &&
+           followedBy.Distance == Distance;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        HashCode.Combine(Left, Right, Distance);
+    public override int GetHashCode()
+        => HashCode.Combine(Left, Right, Distance);
 }
 
 /// <summary>
@@ -732,10 +735,10 @@ public sealed class NpgsqlTsQueryEmpty : NpgsqlTsQuery
     internal override void WriteCore(StringBuilder sb, bool first = false) { }
 
     /// <inheritdoc/>
-    public override bool Equals(NpgsqlTsQuery? other) =>
-        other is NpgsqlTsQueryEmpty;
+    public override bool Equals(NpgsqlTsQuery? other)
+        => other is NpgsqlTsQueryEmpty;
 
     /// <inheritdoc/>
-    public override int GetHashCode() =>
-        Kind.GetHashCode();
+    public override int GetHashCode()
+        => Kind.GetHashCode();
 }

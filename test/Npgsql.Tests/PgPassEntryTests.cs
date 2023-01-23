@@ -4,7 +4,6 @@ using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests;
 
-[TestFixture]
 public class PgPassEntryTests
 {
     [Test]
