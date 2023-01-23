@@ -46,11 +46,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Github", "Github", "{BA7B6F
 		.github\dependabot.yml = .github\dependabot.yml
 		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
 		.github\workflows\rich-code-nav.yml = .github\workflows\rich-code-nav.yml
+		.github\workflows\native-aot.yml = .github\workflows\native-aot.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.DependencyInjection", "src\Npgsql.DependencyInjection\Npgsql.DependencyInjection.csproj", "{B58E12EB-E43D-4D77-894E-5157D2269836}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.DependencyInjection.Tests", "test\Npgsql.DependencyInjection.Tests\Npgsql.DependencyInjection.Tests.csproj", "{EB2530FC-69F7-4DCB-A8B3-3671A157ED32}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.NativeAotTests", "test\Npgsql.NativeAotTests\Npgsql.NativeAotTests.csproj", "{20F2E9D6-A69E-4BAE-9236-574B0AA59139}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -172,6 +175,14 @@ Global
 		{EB2530FC-69F7-4DCB-A8B3-3671A157ED32}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EB2530FC-69F7-4DCB-A8B3-3671A157ED32}.Release|x86.ActiveCfg = Release|Any CPU
 		{EB2530FC-69F7-4DCB-A8B3-3671A157ED32}.Release|x86.Build.0 = Release|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Debug|x86.Build.0 = Debug|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Release|x86.ActiveCfg = Release|Any CPU
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -192,6 +203,7 @@ Global
 		{BA7B6F53-D24D-45AC-927A-266857EA8D1E} = {004A2E0F-D34A-44D4-8DF0-D2BC63B57073}
 		{B58E12EB-E43D-4D77-894E-5157D2269836} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{EB2530FC-69F7-4DCB-A8B3-3671A157ED32} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
+		{20F2E9D6-A69E-4BAE-9236-574B0AA59139} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}
