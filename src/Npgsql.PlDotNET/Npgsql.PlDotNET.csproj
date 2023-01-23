@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- <ProjectReference Include="FSharp\FSharpCompiler.fsproj" />
+    <ProjectReference Include="TypeHandlers\PlDotNETHandlers.csproj" /> -->
+    <ProjectReference Include="..\..\..\TypeHandlers\PlDotNET.Handlers.csproj" />
+  </ItemGroup>
+
+</Project>
