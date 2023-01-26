@@ -1434,9 +1434,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     TraceCommandStart(connector);
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                    lock (connector.CancelLock)
-                    {
-                    }
+                    connector.ResetCancellation();
 
                     // We do not wait for the entire send to complete before proceeding to reading -
                     // the sending continues in parallel with the user's reading. Waiting for the

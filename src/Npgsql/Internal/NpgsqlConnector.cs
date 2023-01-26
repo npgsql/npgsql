@@ -147,6 +147,13 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// </summary>
     internal int PendingPrependedResponses { get; set; }
 
+    /// <summary>
+    /// A ManualResetEventSlim used to make sure a cancellation request doesn't run
+    /// while we're reading responses for the prepended query
+    /// as we can't gracefully handle their cancellation.
+    /// </summary>
+    readonly ManualResetEventSlim readingPrependedMessagesMRE = new(initialState: true);
+
     internal NpgsqlDataReader? CurrentReader;
 
     internal PreparedStatementManager PreparedStatementManager { get; }
@@ -218,7 +225,20 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// cancellation is delivered. This reduces the chance that a cancellation meant for a previous
     /// command will accidentally cancel a later one, see #615.
     /// </summary>
-    internal object CancelLock { get; }
+    object CancelLock { get; } = new();
+
+    /// <summary>
+    /// A lock that's taken to make sure no other concurrent operation is running.
+    /// Break takes it to set the state of the connector.
+    /// Anyone else should immediately check the state and exit
+    /// if the connector is closed.
+    /// </summary>
+    object SingleUseLock { get; } = new();
+
+    /// <summary>
+    /// A lock that's used to wait for the Cleanup to complete while breaking the connection.
+    /// </summary>
+    object CleanupLock { get; } = new();
 
     readonly bool _isKeepAliveEnabled;
     readonly Timer? _keepAliveTimer;
@@ -352,8 +372,6 @@ public sealed partial class NpgsqlConnector : IDisposable
         TransactionStatus = TransactionStatus.Idle;
         Settings = dataSource.Settings;
         PostgresParameters = new Dictionary<string, string>();
-
-        CancelLock = new object();
 
         _isKeepAliveEnabled = Settings.KeepAlive > 0;
         if (_isKeepAliveEnabled)
@@ -511,7 +529,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 // Start the keep alive mechanism to work by scheduling the timer.
                 // Otherwise, it doesn't work for cases when no query executed during
                 // the connection lifetime in case of a new connector.
-                lock (this)
+                lock (SingleUseLock)
                 {
                     var keepAlive = Settings.KeepAlive * 1000;
                     _keepAliveTimer!.Change(keepAlive, keepAlive);
@@ -1292,9 +1310,14 @@ public sealed partial class NpgsqlConnector : IDisposable
                     connector.ReadBuffer.Timeout = TimeSpan.FromMilliseconds(connector.InternalCommandTimeout);
                     for (; connector.PendingPrependedResponses > 0; connector.PendingPrependedResponses--)
                         await ReadMessageLong(connector, async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true);
+                    // We've read all the prepended response.
+                    // Allow cancellation to proceed.
+                    connector.readingPrependedMessagesMRE.Set();
                 }
-                catch (PostgresException e)
+                catch (Exception e)
                 {
+                    // Prepended queries should never fail.
+                    // If they do, we're not even going to attempt to salvage the connector.
                     throw connector.Break(e);
                 }
             }
@@ -1671,18 +1694,37 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     #region Cancel
 
+    internal void ResetCancellation()
+    {
+        // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+        lock (CancelLock) { }
+        if (PendingPrependedResponses > 0)
+            readingPrependedMessagesMRE.Reset();
+        Debug.Assert(readingPrependedMessagesMRE.IsSet || PendingPrependedResponses > 0);
+    }
+
     internal void PerformUserCancellation()
     {
         var connection = Connection;
         if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
             return;
 
-        // There's a subtle race condition where cancellation may be happening just as Break is called. Break takes the connector lock, and
-        // then ends the user action; this disposes the cancellation token registration, which waits until the cancellation callback
-        // completes. But the callback needs to take the connector lock below, which led to a deadlock (#4654).
-        // As a result, Break takes CancelLock, and we abort the cancellation attempt immediately if we can't get it here.
-        if (!Monitor.TryEnter(CancelLock))
-            return;
+        // Take the lock first to make sure there is no concurrent Break.
+        // We should be safe to take it as Break only take it to set the state.
+        lock (SingleUseLock)
+        {
+            // The connector is dead, exit gracefully.
+            if (!IsConnected)
+                return;
+            // The connector is still alive, take the CancelLock before exiting SingleUseLock.
+            // If a break will happen after, it's going to wait for the cancellation to complete.
+            Monitor.Enter(CancelLock);
+        }
+
+        // Wait before we've read all responses for the prepended queries
+        // as we can't gracefully handle their cancellation.
+        // Break makes sure that it's going to be set even if we fail while reading them.
+        readingPrependedMessagesMRE.Wait();
 
         try
         {
@@ -1695,28 +1737,18 @@ public sealed partial class NpgsqlConnector : IDisposable
                 {
                     if (cancellationTimeout > 0)
                     {
-                        lock (this)
-                        {
-                            if (!IsConnected)
-                                return;
-                            UserTimeout = cancellationTimeout;
-                            ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                            ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                        }
+                        UserTimeout = cancellationTimeout;
+                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
                     }
 
                     return;
                 }
             }
 
-            lock (this)
-            {
-                if (!IsConnected)
-                    return;
-                UserTimeout = -1;
-                ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-                ReadBuffer.Cts.Cancel();
-            }
+            UserTimeout = -1;
+            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+            ReadBuffer.Cts.Cancel();
         }
         finally
         {
@@ -1791,7 +1823,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
         finally
         {
-            lock (this)
+            lock (CleanupLock)
                 FullCleanup();
         }
     }
@@ -1898,7 +1930,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     // very unlikely to block (plus locking would need to be worked out)
     internal void Close()
     {
-        lock (this)
+        lock (SingleUseLock)
         {
             if (IsReady)
             {
@@ -1927,9 +1959,11 @@ public sealed partial class NpgsqlConnector : IDisposable
             }
 
             State = ConnectorState.Closed;
-            FullCleanup();
-            LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
         }
+
+        lock (CleanupLock)
+            FullCleanup();
+        LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
     }
 
     internal bool TryRemovePendingEnlistedConnector(Transaction transaction)
@@ -1958,13 +1992,42 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         Debug.Assert(!IsClosed);
 
-        // See PerformUserCancellation on why we take CancelLock
-        lock (CancelLock)
-        lock (this)
-        {
-            if (State == ConnectorState.Broken)
-                return reason;
+        Monitor.Enter(SingleUseLock);
 
+        if (State == ConnectorState.Broken)
+        {
+            // We're already broken.
+            // Exit SingleUseLock to unblock other threads (like cancellation).
+            Monitor.Exit(SingleUseLock);
+            // Wait for the break to complete before going forward.
+            lock (CleanupLock) { }
+            return reason;
+        }
+
+        try
+        {
+            // If we're broken while reading prepended messages
+            // the cancellation request might still be waiting on the MRE.
+            // Unblock it.
+            readingPrependedMessagesMRE.Set();
+
+            LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
+
+            // Note that we may be reading and writing from the same connector concurrently, so safely set
+            // the original reason for the break before actually closing the socket etc.
+            Interlocked.CompareExchange(ref _breakReason, reason, null);
+            State = ConnectorState.Broken;
+            // Take the CleanupLock while in SingleUseLock to make sure concurrent Break doesn't take it first.
+            Monitor.Enter(CleanupLock);
+        }
+        finally
+        {
+            // Unblock other threads (like cancellation) to proceed and exit gracefully.
+            Monitor.Exit(SingleUseLock);
+        }
+
+        try
+        {
             // Note we only set the cluster to offline and clear the pool if the connection is being broken (we're in this method),
             // *and* the exception indicates that the PG cluster really is down; the latter includes any IO/timeout issue,
             // but does not include e.g. authentication failure or timeouts with disabled cancellation.
@@ -1976,12 +2039,8 @@ public sealed partial class NpgsqlConnector : IDisposable
                 DataSource.Clear();
             }
 
-            LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
-
-            // Note that we may be reading and writing from the same connector concurrently, so safely set
-            // the original reason for the break before actually closing the socket etc.
-            Interlocked.CompareExchange(ref _breakReason, reason, null);
-            State = ConnectorState.Broken;
+            // Make sure there is no concurrent cancellation in process
+            lock (CancelLock) { }
 
             var connection = Connection;
 
@@ -2012,11 +2071,15 @@ public sealed partial class NpgsqlConnector : IDisposable
 
             return reason;
         }
+        finally
+        {
+            Monitor.Exit(CleanupLock);
+        }
     }
         
     void FullCleanup()
     {
-        Debug.Assert(Monitor.IsEntered(this));
+        Debug.Assert(Monitor.IsEntered(CleanupLock));
 
         if (Settings.Multiplexing)
         {
@@ -2039,6 +2102,8 @@ public sealed partial class NpgsqlConnector : IDisposable
             _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
             _keepAliveTimer.Dispose();
         }
+
+        readingPrependedMessagesMRE.Dispose();
     }
 
     /// <summary>
@@ -2330,7 +2395,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command,
             CancellationToken cancellationToken, bool attemptPgCancellation)
         {
-            lock (this)
+            lock (SingleUseLock)
             {
                 if (!IsConnected)
                 {
@@ -2368,7 +2433,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (_isKeepAliveEnabled)
         {
-            lock (this)
+            lock (SingleUseLock)
             {
                 if (IsReady || !IsConnected)
                     return;
@@ -2410,10 +2475,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     void PerformKeepAlive(object? state)
     {
         Debug.Assert(_isKeepAliveEnabled);
-
-        // SemaphoreSlim.Dispose() isn't thread-safe - it may be in progress so we shouldn't try to wait on it;
-        // we need a standard lock to protect it.
-        if (!Monitor.TryEnter(this))
+        if (!Monitor.TryEnter(SingleUseLock))
             return;
 
         try
@@ -2446,7 +2508,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
         finally
         {
-            Monitor.Exit(this);
+            Monitor.Exit(SingleUseLock);
         }
     }
 #pragma warning restore CA1801 // Review unused parameters
