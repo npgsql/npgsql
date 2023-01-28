@@ -1416,5 +1416,79 @@ LANGUAGE 'plpgsql' VOLATILE;";
         Assert.ThrowsAsync<NpgsqlException>(async () => await queryTask);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4906")]
+    [Description("Make sure we don't cancel a prepended query (and do not deadlock in case of a failure)")]
+    public async Task Not_cancel_prepended_query([Values] bool failPrependedQuery)
+    {
+        if (IsMultiplexing)
+            return;
+
+        await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+        var csb = new NpgsqlConnectionStringBuilder(postmasterMock.ConnectionString)
+        {
+            NoResetOnClose = false
+        };
+        using var _ = CreateTempPool(csb, out var connectionString);
+        await using var conn = await OpenConnectionAsync(connectionString);
+        // reopen connection to append prepended query
+        await conn.CloseAsync();
+        await conn.OpenAsync();
+
+        using var cts = new CancellationTokenSource();
+        var queryTask = conn.ExecuteNonQueryAsync("SELECT 1", cancellationToken: cts.Token);
+
+        var server = await postmasterMock.WaitForServerConnection();
+        await server.ExpectSimpleQuery("DISCARD ALL");
+        await server.ExpectExtendedQuery();
+
+        var cancelTask = Task.Run(cts.Cancel);
+        var cancellationRequestTask = postmasterMock.WaitForCancellationRequest().AsTask();
+        // Give 1 second to make sure we didn't send cancellation request
+        await Task.Delay(1000);
+        Assert.IsFalse(cancelTask.IsCompleted);
+        Assert.IsFalse(cancellationRequestTask.IsCompleted);
+
+        if (failPrependedQuery)
+        {
+            await server
+                .WriteErrorResponse(PostgresErrorCodes.SyntaxError)
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            await cancelTask;
+            await cancellationRequestTask;
+
+            Assert.ThrowsAsync<PostgresException>(async () => await queryTask);
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            return;
+        }
+
+        await server
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        await cancelTask;
+        await cancellationRequestTask;
+
+        await server
+            .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+            .WriteReadyForQuery()
+            .FlushAsync();
+
+        Assert.ThrowsAsync<OperationCanceledException>(async () => await queryTask);
+
+        queryTask = conn.ExecuteNonQueryAsync("SELECT 1");
+        await server.ExpectExtendedQuery();
+        await server
+            .WriteParseComplete()
+            .WriteBindComplete()
+            .WriteNoData()
+            .WriteCommandComplete()
+            .WriteReadyForQuery()
+            .FlushAsync();
+        await queryTask;
+    }
+
     public CommandTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }
