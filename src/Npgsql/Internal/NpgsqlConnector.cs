@@ -1823,8 +1823,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
         finally
         {
-            lock (CleanupLock)
-                FullCleanup();
+            FullCleanup();
         }
     }
 
@@ -1961,8 +1960,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             State = ConnectorState.Closed;
         }
 
-        lock (CleanupLock)
-            FullCleanup();
+        FullCleanup();
         LogMessages.ClosedPhysicalConnection(ConnectionLogger, Host, Port, Database, UserFacingConnectionString, Id);
     }
 
@@ -2080,31 +2078,32 @@ public sealed partial class NpgsqlConnector : IDisposable
         
     void FullCleanup()
     {
-        Debug.Assert(Monitor.IsEntered(CleanupLock));
-
-        if (Settings.Multiplexing)
+        lock (CleanupLock)
         {
-            FlagAsNotWritableForMultiplexing();
+            if (Settings.Multiplexing)
+            {
+                FlagAsNotWritableForMultiplexing();
 
-            // Note that in multiplexing, this could be called from the read loop, while the write loop is
-            // writing into the channel. To make sure this race condition isn't a problem, the channel currently
-            // isn't set up with SingleWriter (since at this point it doesn't do anything).
-            CommandsInFlightWriter!.Complete();
+                // Note that in multiplexing, this could be called from the read loop, while the write loop is
+                // writing into the channel. To make sure this race condition isn't a problem, the channel currently
+                // isn't set up with SingleWriter (since at this point it doesn't do anything).
+                CommandsInFlightWriter!.Complete();
 
-            // The connector's read loop has a continuation to observe and log any exception coming out
-            // (see Open)
+                // The connector's read loop has a continuation to observe and log any exception coming out
+                // (see Open)
+            }
+
+            ConnectionLogger.LogTrace("Cleaning up connector", Id);
+            Cleanup();
+
+            if (_isKeepAliveEnabled)
+            {
+                _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
+                _keepAliveTimer.Dispose();
+            }
+
+            ReadingPrependedMessagesMRE.Dispose();
         }
-
-        ConnectionLogger.LogTrace("Cleaning up connector", Id);
-        Cleanup();
-
-        if (_isKeepAliveEnabled)
-        {
-            _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
-            _keepAliveTimer.Dispose();
-        }
-
-        ReadingPrependedMessagesMRE.Dispose();
     }
 
     /// <summary>
