@@ -1419,8 +1419,8 @@ $$ LANGUAGE plpgsql;";
         {
             NoResetOnClose = false
         };
-        await using var dataSource = CreateDataSource(csb.ConnectionString);
-        await using var conn = await dataSource.OpenConnectionAsync();
+        using var _ = CreateTempPool(csb, out var connectionString);
+        await using var conn = await OpenConnectionAsync(connectionString);
         // reopen connection to append prepended query
         await conn.CloseAsync();
         await conn.OpenAsync();
