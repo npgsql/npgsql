@@ -1697,10 +1697,12 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal void ResetCancellation()
     {
         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-        lock (CancelLock) { }
-        if (PendingPrependedResponses > 0)
-            ReadingPrependedMessagesMRE.Reset();
-        Debug.Assert(ReadingPrependedMessagesMRE.IsSet || PendingPrependedResponses > 0);
+        lock (CancelLock)
+        {
+            if (PendingPrependedResponses > 0)
+                ReadingPrependedMessagesMRE.Reset();
+            Debug.Assert(ReadingPrependedMessagesMRE.IsSet || PendingPrependedResponses > 0);
+        }
     }
 
     internal void PerformUserCancellation()
