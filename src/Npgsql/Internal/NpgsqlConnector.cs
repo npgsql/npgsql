@@ -152,7 +152,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// while we're reading responses for the prepended query
     /// as we can't gracefully handle their cancellation.
     /// </summary>
-    readonly ManualResetEventSlim readingPrependedMessagesMRE = new(initialState: true);
+    readonly ManualResetEventSlim ReadingPrependedMessagesMRE = new(initialState: true);
 
     internal NpgsqlDataReader? CurrentReader;
 
@@ -1312,7 +1312,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                         await ReadMessageLong(connector, async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true);
                     // We've read all the prepended response.
                     // Allow cancellation to proceed.
-                    connector.readingPrependedMessagesMRE.Set();
+                    connector.ReadingPrependedMessagesMRE.Set();
                 }
                 catch (Exception e)
                 {
@@ -1699,8 +1699,8 @@ public sealed partial class NpgsqlConnector : IDisposable
         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
         lock (CancelLock) { }
         if (PendingPrependedResponses > 0)
-            readingPrependedMessagesMRE.Reset();
-        Debug.Assert(readingPrependedMessagesMRE.IsSet || PendingPrependedResponses > 0);
+            ReadingPrependedMessagesMRE.Reset();
+        Debug.Assert(ReadingPrependedMessagesMRE.IsSet || PendingPrependedResponses > 0);
     }
 
     internal void PerformUserCancellation()
@@ -1724,7 +1724,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         // Wait before we've read all responses for the prepended queries
         // as we can't gracefully handle their cancellation.
         // Break makes sure that it's going to be set even if we fail while reading them.
-        readingPrependedMessagesMRE.Wait();
+        ReadingPrependedMessagesMRE.Wait();
 
         try
         {
@@ -2009,7 +2009,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             // If we're broken while reading prepended messages
             // the cancellation request might still be waiting on the MRE.
             // Unblock it.
-            readingPrependedMessagesMRE.Set();
+            ReadingPrependedMessagesMRE.Set();
 
             LogMessages.BreakingConnection(ConnectionLogger, Id, reason);
 
@@ -2104,7 +2104,7 @@ public sealed partial class NpgsqlConnector : IDisposable
             _keepAliveTimer.Dispose();
         }
 
-        readingPrependedMessagesMRE.Dispose();
+        ReadingPrependedMessagesMRE.Dispose();
     }
 
     /// <summary>
