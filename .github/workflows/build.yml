@@ -38,7 +38,7 @@ jobs:
             config: Release
             test_tfm: netcoreapp3.1
           - os: macos-12
-            pg_major: 14
+            pg_major: 15
             config: Release
             test_tfm: net7.0
 #          - os: ubuntu-22.04
