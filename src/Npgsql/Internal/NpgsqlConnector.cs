@@ -233,7 +233,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// Anyone else should immediately check the state and exit
     /// if the connector is closed.
     /// </summary>
-    object SingleUseLock { get; } = new();
+    object SyncObj { get; } = new();
 
     /// <summary>
     /// A lock that's used to wait for the Cleanup to complete while breaking the connection.
@@ -529,7 +529,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                 // Start the keep alive mechanism to work by scheduling the timer.
                 // Otherwise, it doesn't work for cases when no query executed during
                 // the connection lifetime in case of a new connector.
-                lock (SingleUseLock)
+                lock (SyncObj)
                 {
                     var keepAlive = Settings.KeepAlive * 1000;
                     _keepAliveTimer!.Change(keepAlive, keepAlive);
@@ -1711,7 +1711,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         // Take the lock first to make sure there is no concurrent Break.
         // We should be safe to take it as Break only take it to set the state.
-        lock (SingleUseLock)
+        lock (SyncObj)
         {
             // The connector is dead, exit gracefully.
             if (!IsConnected)
@@ -1930,7 +1930,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     // very unlikely to block (plus locking would need to be worked out)
     internal void Close()
     {
-        lock (SingleUseLock)
+        lock (SyncObj)
         {
             if (IsReady)
             {
@@ -1992,13 +1992,13 @@ public sealed partial class NpgsqlConnector : IDisposable
     {
         Debug.Assert(!IsClosed);
 
-        Monitor.Enter(SingleUseLock);
+        Monitor.Enter(SyncObj);
 
         if (State == ConnectorState.Broken)
         {
             // We're already broken.
             // Exit SingleUseLock to unblock other threads (like cancellation).
-            Monitor.Exit(SingleUseLock);
+            Monitor.Exit(SyncObj);
             // Wait for the break to complete before going forward.
             lock (CleanupLock) { }
             return reason;
@@ -2023,7 +2023,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         finally
         {
             // Unblock other threads (like cancellation) to proceed and exit gracefully.
-            Monitor.Exit(SingleUseLock);
+            Monitor.Exit(SyncObj);
         }
 
         try
@@ -2396,7 +2396,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         UserAction DoStartUserActionWithKeepAlive(ConnectorState newState, NpgsqlCommand? command,
             CancellationToken cancellationToken, bool attemptPgCancellation)
         {
-            lock (SingleUseLock)
+            lock (SyncObj)
             {
                 if (!IsConnected)
                 {
@@ -2434,7 +2434,7 @@ public sealed partial class NpgsqlConnector : IDisposable
 
         if (_isKeepAliveEnabled)
         {
-            lock (SingleUseLock)
+            lock (SyncObj)
             {
                 if (IsReady || !IsConnected)
                     return;
@@ -2476,7 +2476,7 @@ public sealed partial class NpgsqlConnector : IDisposable
     void PerformKeepAlive(object? state)
     {
         Debug.Assert(_isKeepAliveEnabled);
-        if (!Monitor.TryEnter(SingleUseLock))
+        if (!Monitor.TryEnter(SyncObj))
             return;
 
         try
@@ -2509,7 +2509,7 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
         finally
         {
-            Monitor.Exit(SingleUseLock);
+            Monitor.Exit(SyncObj);
         }
     }
 #pragma warning restore CA1801 // Review unused parameters
