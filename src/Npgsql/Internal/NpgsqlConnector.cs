@@ -1284,17 +1284,17 @@ public sealed partial class NpgsqlConnector : IDisposable
         if (len > ReadBuffer.ReadBytesLeft)
         {
             ReadBuffer.ReadPosition -= 5;
-            return ReadMessageLong( async, dataRowLoadingMode, readingNotifications: false)!;
+            return ReadMessageLong(async, dataRowLoadingMode, readingNotifications: false)!;
         }
 
         return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false))!;
     }
 
     async ValueTask<IBackendMessage?> ReadMessageLong(
-            bool async,
-            DataRowLoadingMode dataRowLoadingMode,
-            bool readingNotifications,
-            bool isReadingPrependedMessage = false)
+        bool async,
+        DataRowLoadingMode dataRowLoadingMode,
+        bool readingNotifications,
+        bool isReadingPrependedMessage = false)
     {
         // First read the responses of any prepended messages.
         if (PendingPrependedResponses > 0 && !isReadingPrependedMessage)
