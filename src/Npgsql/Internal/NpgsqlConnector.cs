@@ -31,7 +31,7 @@ namespace Npgsql.Internal;
 /// Represents a connection to a PostgreSQL backend. Unlike NpgsqlConnection objects, which are
 /// exposed to users, connectors are internal to Npgsql and are recycled by the connection pool.
 /// </summary>
-public sealed partial class NpgsqlConnector : IDisposable
+public sealed partial class NpgsqlConnector
 {
     #region Fields and Properties
 
@@ -1970,9 +1970,6 @@ public sealed partial class NpgsqlConnector : IDisposable
         => DataSource.TryRemovePendingEnlistedConnector(this, transaction);
 
     internal void Return() => DataSource.Return(this);
-
-    /// <inheritdoc />
-    public void Dispose() => Close();
 
     /// <summary>
     /// Called when an unexpected message has been received during an action. Breaks the
