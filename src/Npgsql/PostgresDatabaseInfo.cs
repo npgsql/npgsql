@@ -299,7 +299,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         }
         await conn.Flush(async);
         var byOID = new Dictionary<uint, PostgresType>();
-        var buf = conn.ReadBuffer;
 
         // First read the PostgreSQL version
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -307,6 +306,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         // We read the message in non-sequential mode which buffers the whole message.
         // There is no need to ensure data within the message boundaries
         Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
+        var buf = conn.ReadBuffer;
         buf.Skip(2); // Column count
         LongVersion = ReadNonNullableString(buf);
         Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
@@ -322,6 +322,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
+            // We might have allocated an oversize buffer, read it again
+            buf = conn.ReadBuffer;
             buf.Skip(2); // Column count
             var nspname = ReadNonNullableString(buf);
             var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
@@ -436,6 +438,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
+            // We might have allocated an oversize buffer, read it again
+            buf = conn.ReadBuffer;
             buf.Skip(2); // Column count
             var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
             var attname = ReadNonNullableString(buf);
@@ -498,6 +502,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
+                // We might have allocated an oversize buffer, read it again
+                buf = conn.ReadBuffer;
                 buf.Skip(2); // Column count
                 var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
                 var enumlabel = ReadNonNullableString(buf);
