@@ -218,8 +218,12 @@ public class NotificationTests : TestBase
     {
         await using var adminConn = await OpenConnectionAsync();
         // Max notification payload is 8000
-        await using var dataSource = CreateDataSource(csb => csb.ReadBufferSize = 4096);
-        await using var conn = await dataSource.OpenConnectionAsync();
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            ReadBufferSize = 4096
+        };
+        using var _ = CreateTempPool(csb, out var connString);
+        await using var conn = await OpenConnectionAsync(connString);
 
         var notify = GetUniqueIdentifier(nameof(Big_notice_while_loading_types));
         await conn.ExecuteNonQueryAsync($"LISTEN {notify}");
