@@ -212,4 +212,20 @@ public class NotificationTests : TestBase
         Assert.That(pgEx.SqlState, Is.EqualTo(PostgresErrorCodes.AdminShutdown));
         Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
     }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4911")]
+    public async Task Big_notice_while_loading_types()
+    {
+        await using var adminConn = await OpenConnectionAsync();
+        // Max notification payload is 8000
+        await using var dataSource = CreateDataSource(csb => csb.ReadBufferSize = 4096);
+        await using var conn = await dataSource.OpenConnectionAsync();
+
+        var notify = GetUniqueIdentifier(nameof(Big_notice_while_loading_types));
+        await conn.ExecuteNonQueryAsync($"LISTEN {notify}");
+        var payload = new string('a', 5000);
+        await adminConn.ExecuteNonQueryAsync($"NOTIFY {notify}, '{payload}'");
+
+        await conn.ReloadTypesAsync();
+    }
 }

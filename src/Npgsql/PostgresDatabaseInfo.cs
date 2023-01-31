@@ -299,7 +299,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         }
         await conn.Flush(async);
         var byOID = new Dictionary<uint, PostgresType>();
-        var buf = conn.ReadBuffer;
 
         // First read the PostgreSQL version
         Expect<RowDescriptionMessage>(await conn.ReadMessage(async), conn);
@@ -307,8 +306,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
         // We read the message in non-sequential mode which buffers the whole message.
         // There is no need to ensure data within the message boundaries
         Expect<DataRowMessage>(await conn.ReadMessage(async), conn);
-        buf.Skip(2); // Column count
-        LongVersion = ReadNonNullableString(buf);
+        // Note that here and below we don't assign ReadBuffer to a variable
+        // because we might allocate oversize buffer
+        conn.ReadBuffer.Skip(2); // Column count
+        LongVersion = ReadNonNullableString(conn.ReadBuffer);
         Expect<CommandCompleteMessage>(await conn.ReadMessage(async), conn);
         if (isReplicationConnection)
             Expect<ReadyForQueryMessage>(await conn.ReadMessage(async), conn);
@@ -322,15 +323,15 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
-            buf.Skip(2); // Column count
-            var nspname = ReadNonNullableString(buf);
-            var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+            conn.ReadBuffer.Skip(2); // Column count
+            var nspname = ReadNonNullableString(conn.ReadBuffer);
+            var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
             Debug.Assert(oid != 0);
-            var typname = ReadNonNullableString(buf);
-            var typtype = ReadNonNullableString(buf)[0];
-            var typnotnull = ReadNonNullableString(buf)[0] == 't';
-            var len = buf.ReadInt32();
-            var elemtypoid = len == -1 ? 0 : uint.Parse(buf.ReadString(len), NumberFormatInfo.InvariantInfo);
+            var typname = ReadNonNullableString(conn.ReadBuffer);
+            var typtype = ReadNonNullableString(conn.ReadBuffer)[0];
+            var typnotnull = ReadNonNullableString(conn.ReadBuffer)[0] == 't';
+            var len = conn.ReadBuffer.ReadInt32();
+            var elemtypoid = len == -1 ? 0 : uint.Parse(conn.ReadBuffer.ReadString(len), NumberFormatInfo.InvariantInfo);
 
             switch (typtype)
             {
@@ -436,10 +437,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
             if (msg is not DataRowMessage)
                 break;
 
-            buf.Skip(2); // Column count
-            var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-            var attname = ReadNonNullableString(buf);
-            var atttypid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
+            conn.ReadBuffer.Skip(2); // Column count
+            var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
+            var attname = ReadNonNullableString(conn.ReadBuffer);
+            var atttypid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
 
             if (oid != currentOID)
             {
@@ -498,9 +499,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};";
                 if (msg is not DataRowMessage)
                     break;
 
-                buf.Skip(2); // Column count
-                var oid = uint.Parse(ReadNonNullableString(buf), NumberFormatInfo.InvariantInfo);
-                var enumlabel = ReadNonNullableString(buf);
+                conn.ReadBuffer.Skip(2); // Column count
+                var oid = uint.Parse(ReadNonNullableString(conn.ReadBuffer), NumberFormatInfo.InvariantInfo);
+                var enumlabel = ReadNonNullableString(conn.ReadBuffer);
                 if (oid != currentOID)
                 {
                     currentOID = oid;
