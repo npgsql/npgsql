@@ -260,4 +260,24 @@ public class DataSourceTests : TestBase
             ? await command.ExecuteScalarAsync()
             : command.ExecuteScalar(), Is.EqualTo(1));
     }
+
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4840")]
+    public async Task Multiplexing_connectionless_command_open_connection()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Multiplexing = true
+        };
+        await using var dataSource = NpgsqlDataSource.Create(csb.ConnectionString);
+
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var _ = await conn.BeginTransactionAsync();
+
+        await using var command = dataSource.CreateCommand();
+        command.CommandText = "SELECT 1";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(reader.Read());
+        Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+    }
 }

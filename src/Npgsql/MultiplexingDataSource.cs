@@ -98,7 +98,7 @@ sealed class MultiplexingDataSource : PoolingDataSource
                     }
 
                     connector = await OpenNewConnector(
-                        command.Connection!,
+                        command.InternalConnection!,
                         new NpgsqlTimeout(TimeSpan.FromSeconds(Settings.Timeout)),
                         async: true,
                         CancellationToken.None);
