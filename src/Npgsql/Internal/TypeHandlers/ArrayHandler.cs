@@ -417,7 +417,7 @@ public class ArrayHandler<TElement> : ArrayHandler
     // us (need to handle many types of T, e.g. int[], int[,]...)
     /// <inheritdoc />
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-        => value is null || value is DBNull
+        => value is null || value == DBNull.Value
             ? WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
             : WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
