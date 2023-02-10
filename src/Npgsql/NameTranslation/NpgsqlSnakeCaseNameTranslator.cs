@@ -9,7 +9,7 @@ namespace Npgsql.NameTranslation;
 /// A name translator which converts standard CLR names (e.g. SomeClass) to snake-case database
 /// names (some_class)
 /// </summary>
-public class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
+public sealed class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
 {
     /// <summary>
     /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.

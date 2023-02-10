@@ -25,7 +25,7 @@ static class Statics
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
-    
+
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
     {
         if (msg.GetType() != typeof(T))

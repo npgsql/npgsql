@@ -40,7 +40,7 @@ sealed class AuthenticationMD5PasswordMessage  : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationMD5Password;
 
-    internal byte[] Salt { get; private set; }
+    internal byte[] Salt { get; }
 
     internal static AuthenticationMD5PasswordMessage Load(NpgsqlReadBuffer buf)
     {
@@ -75,7 +75,7 @@ sealed class AuthenticationGSSContinueMessage : AuthenticationRequestMessage
 {
     internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationGSSContinue;
 
-    internal byte[] AuthenticationData { get; private set; }
+    internal byte[] AuthenticationData { get; }
 
     internal static AuthenticationGSSContinueMessage Load(NpgsqlReadBuffer buf, int len)
     {

@@ -43,7 +43,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
-    internal NpgsqlDatabaseInfo DatabaseInfo { get; set; } = null!; // Initialized at bootstrapping
+    internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }

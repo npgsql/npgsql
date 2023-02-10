@@ -372,7 +372,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
             }
             catch (PostgresException e)
             {
-                _connector.EndUserAction();
                 Cleanup();
 
                 if (e.SqlState != PostgresErrorCodes.QueryCanceled)
@@ -442,7 +441,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         }
         finally
         {
-            _connector.EndUserAction();
             Cleanup();
         }
     }
@@ -452,6 +450,7 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
     {
         Debug.Assert(!_isDisposed);
         LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
+        _connector.EndUserAction();
         _connector.CurrentCopyOperation = null;
         _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
         _connector = null;
