@@ -322,15 +322,15 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache ??= new NpgsqlLengthCache(1);
         if (lengthCache.IsPopulated)
             return lengthCache.Get();
-        if (value is ICollection<TElement> generic)
-            return ValidateAndGetLengthGeneric(generic, ref lengthCache);
-        if (value is ICollection nonGeneric)
-            return ValidateAndGetLengthNonGeneric(nonGeneric, ref lengthCache);
+        if (value is ICollection<TElement> genericCollection)
+            return ValidateAndGetLengthGeneric(genericCollection, ref lengthCache);
+        if (value is ICollection nonGenericCollection)
+            return ValidateAndGetLengthNonGeneric(nonGenericCollection, ref lengthCache);
         throw CantWriteTypeException(typeof(TAny));
     }
 
     // Handle single-dimensional arrays and generic ICollection<T>
-    int ValidateAndGetLengthGeneric(ICollection<TElement> value, ref NpgsqlLengthCache lengthCache)
+    int ValidateAndGetLengthGeneric(ICollection<TElement> collection, ref NpgsqlLengthCache lengthCache)
     {
         // Leave empty slot for the entire array length, and go ahead an populate the element slots
         var pos = lengthCache.Position;
@@ -339,20 +339,20 @@ public class ArrayHandler<TElement> : ArrayHandler
             4 +              // has_nulls (unused)
             4 +              // type OID
             1 * 8 +          // number of dimensions (1) * (length + lower bound)
-            4 * value.Count; // sum of element lengths
+            4 * collection.Count; // sum of element lengths
 
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
         if (typeof(TElement).IsValueType)
         {
-            len += value.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+            len += collection.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
         }
         else
         {
             try
             {
-                foreach (var element in value)
+                foreach (var element in collection)
                 {
                     if (element is null)
                         continue;
@@ -371,9 +371,9 @@ public class ArrayHandler<TElement> : ArrayHandler
     }
 
     // Take care of multi-dimensional arrays and non-generic ICollection, we have no choice but to box/unbox
-    int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache lengthCache)
+    int ValidateAndGetLengthNonGeneric(ICollection collection, ref NpgsqlLengthCache lengthCache)
     {
-        var asMultidimensional = value as Array;
+        var asMultidimensional = collection as Array;
         var dimensions = asMultidimensional?.Rank ?? 1;
 
         // Leave empty slot for the entire array length, and go ahead an populate the element slots
@@ -383,12 +383,12 @@ public class ArrayHandler<TElement> : ArrayHandler
             4 +              // has_nulls (unused)
             4 +              // type OID
             dimensions * 8 + // number of dimensions * (length + lower bound)
-            4 * value.Count; // sum of element lengths
+            4 * collection.Count; // sum of element lengths
 
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        foreach (var element in value)
+        foreach (var element in collection)
         {
             if (element is null)
                 continue;
