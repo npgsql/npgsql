@@ -322,13 +322,54 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache ??= new NpgsqlLengthCache(1);
         if (lengthCache.IsPopulated)
             return lengthCache.Get();
+        if (value is ReadOnlyMemory<TElement> readOnlyMemory)
+            return ValidateAndGetLengthGeneric(readOnlyMemory, ref lengthCache);
         if (value is ICollection<TElement> genericCollection)
             return ValidateAndGetLengthGeneric(genericCollection, ref lengthCache);
         if (value is ICollection nonGenericCollection)
             return ValidateAndGetLengthNonGeneric(nonGenericCollection, ref lengthCache);
         throw CantWriteTypeException(typeof(TAny));
     }
+    // Handle single-dimensional arrays and generic ReadOnlyMemory<T>
+    int ValidateAndGetLengthGeneric(ReadOnlyMemory<TElement> readOnlyMemory, ref NpgsqlLengthCache lengthCache)
+    {
+        // Leave empty slot for the entire array length, and go ahead an populate the element slots
+        var pos = lengthCache.Position;
+        var len =
+            4 +              // dimensions
+            4 +              // has_nulls (unused)
+            4 +              // type OID
+            1 * 8 +          // number of dimensions (1) * (length + lower bound)
+            4 * readOnlyMemory.Length; // sum of element lengths
 
+        lengthCache.Set(0);
+        var elemLengthCache = lengthCache;
+
+        if (typeof(TElement).IsValueType)
+        {
+            len += readOnlyMemory.Length * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+        }
+        else
+        {
+            try
+            {
+                foreach (var element in readOnlyMemory.Span)
+                {
+                    if (element is null)
+                        continue;
+
+                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                }
+            }
+            catch (Exception e)
+            {
+                throw MixedTypesOrJaggedArrayException(e);
+            }
+        }
+
+        lengthCache.Lengths[pos] = len;
+        return len;
+    }
     // Handle single-dimensional arrays and generic ICollection<T>
     int ValidateAndGetLengthGeneric(ICollection<TElement> collection, ref NpgsqlLengthCache lengthCache)
     {
