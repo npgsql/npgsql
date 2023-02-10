@@ -344,14 +344,21 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        foreach (var element in value)
+        if (typeof(TElement).IsValueType)
         {
-            if (element is null)
-                continue;
-
+            len += value.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+        }
+        else
+        {
             try
             {
-                len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                foreach (var element in value)
+                {
+                    if (element is null)
+                        continue;
+
+                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                }
             }
             catch (Exception e)
             {
