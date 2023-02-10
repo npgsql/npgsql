@@ -326,6 +326,8 @@ public class ArrayHandler<TElement> : ArrayHandler
             return ValidateAndGetLengthGeneric(readOnlyMemory, ref lengthCache);
         if (value is ICollection<TElement> genericCollection)
             return ValidateAndGetLengthGeneric(genericCollection, ref lengthCache);
+        if (value is IReadOnlyCollection<TElement> readOnlyCollection)
+            return ValidateAndGetLengthGeneric(readOnlyCollection, ref lengthCache);
         if (value is ICollection nonGenericCollection)
             return ValidateAndGetLengthNonGeneric(nonGenericCollection, ref lengthCache);
         throw CantWriteTypeException(typeof(TAny));
@@ -410,6 +412,46 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Lengths[pos] = len;
         return len;
     }
+    // Handle single-dimensional arrays and generic IReadOnlyCollection<T>
+    int ValidateAndGetLengthGeneric(IReadOnlyCollection<TElement> readOnlyCollection, ref NpgsqlLengthCache lengthCache)
+    {
+        // Leave empty slot for the entire array length, and go ahead an populate the element slots
+        var pos = lengthCache.Position;
+        var len =
+            4 +              // dimensions
+            4 +              // has_nulls (unused)
+            4 +              // type OID
+            1 * 8 +          // number of dimensions (1) * (length + lower bound)
+            4 * readOnlyCollection.Count; // sum of element lengths
+
+        lengthCache.Set(0);
+        var elemLengthCache = lengthCache;
+
+        if (typeof(TElement).IsValueType)
+        {
+            len += readOnlyCollection.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+        }
+        else
+        {
+            try
+            {
+                foreach (var element in readOnlyCollection)
+                {
+                    if (element is null)
+                        continue;
+
+                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                }
+            }
+            catch (Exception e)
+            {
+                throw MixedTypesOrJaggedArrayException(e);
+            }
+        }
+
+        lengthCache.Lengths[pos] = len;
+        return len;
+    }
 
     // Take care of multi-dimensional arrays and non-generic ICollection, we have no choice but to box/unbox
     int ValidateAndGetLengthNonGeneric(ICollection collection, ref NpgsqlLengthCache lengthCache)
@@ -453,13 +495,12 @@ public class ArrayHandler<TElement> : ArrayHandler
         buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
         if (value is ReadOnlyMemory<TElement> readOnlyMemory)
             return WriteGeneric(readOnlyMemory, buf, lengthCache, async, cancellationToken);
-
         if (value is ICollection<TElement> genericCollection)
             return WriteGeneric(genericCollection, buf, lengthCache, async, cancellationToken);
-
+        if (value is IReadOnlyCollection<TElement> readOnlyCollection)
+            return WriteGeneric(readOnlyCollection, buf, lengthCache, async, cancellationToken);
         if (value is ICollection nonGenericCollection)
             return WriteNonGeneric(nonGenericCollection, buf, lengthCache, async, cancellationToken);
-
         throw CantWriteTypeException(value.GetType());
     }
 
@@ -471,27 +512,6 @@ public class ArrayHandler<TElement> : ArrayHandler
             ? WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
             : WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
 
-    async Task WriteGeneric(ICollection<TElement> collection, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
-    {
-        const int len = 4 +    // dimensions
-                        4 +    // has_nulls (unused)
-                        4 +    // type OID
-                        1 * 8; // number of dimensions (1) * (length + lower bound)
-        if (buf.WriteSpaceLeft < len)
-        {
-            await buf.Flush(async, cancellationToken);
-            Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
-        }
-
-        buf.WriteInt32(1);
-        buf.WriteInt32(1); // has_nulls = 1. Not actually used by the backend.
-        buf.WriteUInt32(ElementHandler.PostgresType.OID);
-        buf.WriteInt32(collection.Count);
-        buf.WriteInt32(LowerBound); // We don't map .NET lower bounds to PG
-
-        foreach (var element in collection)
-            await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
-    }
     async Task WriteGeneric(ReadOnlyMemory<TElement> readOnlyMemory, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
     {
         const int len = 4 +    // dimensions
@@ -516,6 +536,49 @@ public class ArrayHandler<TElement> : ArrayHandler
             await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken); 
         }
     }
+    async Task WriteGeneric(IReadOnlyCollection<TElement> readOnlyCollection, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
+    {
+        const int len = 4 +    // dimensions
+                        4 +    // has_nulls (unused)
+                        4 +    // type OID
+                        1 * 8; // number of dimensions (1) * (length + lower bound)
+        if (buf.WriteSpaceLeft < len)
+        {
+            await buf.Flush(async, cancellationToken);
+            Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
+        }
+
+        buf.WriteInt32(1);
+        buf.WriteInt32(1); // has_nulls = 1. Not actually used by the backend.
+        buf.WriteUInt32(ElementHandler.PostgresType.OID);
+        buf.WriteInt32(readOnlyCollection.Count);
+        buf.WriteInt32(LowerBound); // We don't map .NET lower bounds to PG
+
+        foreach (var element in readOnlyCollection)
+            await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
+    }
+    async Task WriteGeneric(ICollection<TElement> collection, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
+    {
+        const int len = 4 +    // dimensions
+                        4 +    // has_nulls (unused)
+                        4 +    // type OID
+                        1 * 8; // number of dimensions (1) * (length + lower bound)
+        if (buf.WriteSpaceLeft < len)
+        {
+            await buf.Flush(async, cancellationToken);
+            Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
+        }
+
+        buf.WriteInt32(1);
+        buf.WriteInt32(1); // has_nulls = 1. Not actually used by the backend.
+        buf.WriteUInt32(ElementHandler.PostgresType.OID);
+        buf.WriteInt32(collection.Count);
+        buf.WriteInt32(LowerBound); // We don't map .NET lower bounds to PG
+
+        foreach (var element in collection)
+            await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
+    }
+
     async Task WriteNonGeneric(ICollection collection, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
     {
         var asArray = collection as Array;
