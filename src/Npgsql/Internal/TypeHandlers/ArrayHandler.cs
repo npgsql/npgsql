@@ -315,9 +315,9 @@ public class ArrayHandler<TElement> : ArrayHandler
     public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value is null || value == DBNull.Value
             ? 0
-            : ValidateAndGetLength(value!, ref lengthCache);
+            : ValidateAndGetLength(value, ref lengthCache);
 
-    int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache)
+    int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache)
     {
         lengthCache ??= new NpgsqlLengthCache(1);
         if (lengthCache.IsPopulated)
@@ -326,7 +326,7 @@ public class ArrayHandler<TElement> : ArrayHandler
             return ValidateAndGetLengthGeneric(generic, ref lengthCache);
         if (value is ICollection nonGeneric)
             return ValidateAndGetLengthNonGeneric(nonGeneric, ref lengthCache);
-        throw CantWriteTypeException(value.GetType());
+        throw CantWriteTypeException(typeof(TAny));
     }
 
     // Handle single-dimensional arrays and generic ICollection<T>
