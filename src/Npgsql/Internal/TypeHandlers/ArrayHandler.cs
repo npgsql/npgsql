@@ -379,7 +379,7 @@ public class ArrayHandler<TElement> : ArrayHandler
             4 * value.Count; // sum of element lengths
 
         lengthCache.Set(0);
-        NpgsqlLengthCache? elemLengthCache = lengthCache;
+        var elemLengthCache = lengthCache;
 
         foreach (var element in value)
         {
