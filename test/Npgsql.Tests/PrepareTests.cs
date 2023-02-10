@@ -758,6 +758,19 @@ public class PrepareTests: TestBase
         Assert.False(command.IsPrepared);
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4920")]
+    public async Task Explicit_prepare_unprepare_many_queries()
+    {
+        // Set a specific buffer's size to trigger #4920
+        await using var dataSource = CreateDataSource(csb => csb.WriteBufferSize = 5002);
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+
+        cmd.CommandText = string.Join(';', Enumerable.Range(1, 500).Select(x => $"SELECT {x}"));
+        await cmd.PrepareAsync();
+        await cmd.UnprepareAsync();
+    }
+
     NpgsqlConnection OpenConnectionAndUnprepare()
     {
         var conn = OpenConnection();
