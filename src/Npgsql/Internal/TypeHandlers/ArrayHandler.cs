@@ -349,7 +349,7 @@ public class ArrayHandler<TElement> : ArrayHandler
 
         if (typeof(TElement).IsValueType)
         {
-            len += readOnlyMemory.Length * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+            len += readOnlyMemory.Length * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
         }
         else
         {
@@ -389,7 +389,7 @@ public class ArrayHandler<TElement> : ArrayHandler
 
         if (typeof(TElement).IsValueType)
         {
-            len += collection.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+            len += collection.Count * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
         }
         else
         {
@@ -429,7 +429,7 @@ public class ArrayHandler<TElement> : ArrayHandler
 
         if (typeof(TElement).IsValueType)
         {
-            len += readOnlyCollection.Count * ElementHandler.ValidateAndGetLength(default(TElement), ref elemLengthCache, null);
+            len += readOnlyCollection.Count * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
         }
         else
         {
