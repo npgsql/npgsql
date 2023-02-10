@@ -251,7 +251,7 @@ partial class NpgsqlConnector
                   sizeof(byte) +               // Statement or portal
                   name.Length + sizeof(byte);  // Statement or portal name plus null terminator
 
-        if (WriteBuffer.WriteSpaceLeft < 10)
+        if (WriteBuffer.WriteSpaceLeft < len)
             return FlushAndWrite(len, type, name, async, cancellationToken);
 
         Write(len, type, name);
