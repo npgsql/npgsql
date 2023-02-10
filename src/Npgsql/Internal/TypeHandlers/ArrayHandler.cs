@@ -329,7 +329,7 @@ public class ArrayHandler<TElement> : ArrayHandler
         throw CantWriteTypeException(value.GetType());
     }
 
-    // Handle single-dimensional arrays and generic IList<T>
+    // Handle single-dimensional arrays and generic ICollection<T>
     int ValidateAndGetLengthGeneric(ICollection<TElement> value, ref NpgsqlLengthCache lengthCache)
     {
         // Leave empty slot for the entire array length, and go ahead an populate the element slots
@@ -363,7 +363,7 @@ public class ArrayHandler<TElement> : ArrayHandler
         return len;
     }
 
-    // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to box/unbox
+    // Take care of multi-dimensional arrays and non-generic ICollection, we have no choice but to box/unbox
     int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache lengthCache)
     {
         var asMultidimensional = value as Array;
@@ -450,7 +450,7 @@ public class ArrayHandler<TElement> : ArrayHandler
         var dimensions = asArray?.Rank ?? 1;
 
         var len =
-            4 +               // ndim
+            4 +               // dimensions
             4 +               // has_nulls
             4 +               // element_oid
             dimensions * 8;   // dim (4) + lBound (4)
