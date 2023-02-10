@@ -471,11 +471,10 @@ public class ArrayHandler<TElement> : ArrayHandler
 
     async Task WriteGeneric(ICollection<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
     {
-        var len =
-            4 +    // dimensions
-            4 +    // has_nulls (unused)
-            4 +    // type OID
-            1 * 8; // number of dimensions (1) * (length + lower bound)
+        const int len = 4 +    // dimensions
+                        4 +    // has_nulls (unused)
+                        4 +    // type OID
+                        1 * 8; // number of dimensions (1) * (length + lower bound)
         if (buf.WriteSpaceLeft < len)
         {
             await buf.Flush(async, cancellationToken);
