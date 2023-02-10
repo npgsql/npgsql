@@ -471,19 +471,19 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        foreach (var element in collection)
+        try
         {
-            if (element is null)
-                continue;
-
-            try
+            foreach (var element in collection)
             {
+                if (element is null)
+                    continue;
+
                 len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
             }
-            catch (Exception e)
-            {
-                throw MixedTypesOrJaggedArrayException(e);
-            }
+        }
+        catch (Exception e)
+        {
+            throw MixedTypesOrJaggedArrayException(e);
         }
 
         lengthCache.Lengths[pos] = len;
