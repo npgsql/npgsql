@@ -199,7 +199,8 @@ namespace MStatDumper
                     Console.WriteLine("| Name | Size |");
                     Console.WriteLine("| --- | --- |");
                     foreach (var m in g
-                                 .Select(x => new { Name = x.Method.FullName, Size = x.Size + x.GcInfoSize + x.EhInfoSize})
+                                 .GroupBy(x => GetMethodName(x.Method))
+                                 .Select(x => new { Name = x.Key, Size = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)})
                                  .OrderByDescending(x => x.Size))
                     {
                         Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
@@ -208,6 +209,16 @@ namespace MStatDumper
                     Console.WriteLine("</details>");
                     Console.WriteLine();
                     Console.WriteLine("<br>");
+
+                    static string GetMethodName(MethodReference methodReference)
+                    {
+                        if (methodReference.DeclaringType.DeclaringType is null)
+                        {
+                            return methodReference.Name;
+                        }
+
+                        return methodReference.DeclaringType.Name;
+                    }
                 }
 
                 Console.WriteLine();
