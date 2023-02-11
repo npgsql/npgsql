@@ -13,6 +13,7 @@ namespace MStatDumper
             }
 
             var markDownStyleOutput = args.Length > 1 && args[1] == "md";
+            var methodsFilePath = args.Length > 2 ? args[2] : string.Empty;
 
             var asm = AssemblyDefinition.ReadAssembly(args[0]);
             var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
@@ -86,7 +87,7 @@ namespace MStatDumper
                 var current = type;
                 while (true)
                 {
-                    if (!String.IsNullOrEmpty(current.Namespace))
+                    if (!string.IsNullOrEmpty(current.Namespace))
                     {
                         return current.Namespace;
                     }
@@ -157,13 +158,61 @@ namespace MStatDumper
                 }
                 Console.WriteLine("// **********");
             }
+
+            if (!string.IsNullOrEmpty(methodsFilePath))
+            {
+                var methodsByClass = methodStats
+                    .Where(x => x.Method.DeclaringType.Scope.Name == "Npgsql")
+                    .GroupBy(x => (x.Method.DeclaringType.DeclaringType ?? x.Method.DeclaringType).Name)
+                    .ToList();
+
+                using var file = File.Create(methodsFilePath);
+                using var sw = new StreamWriter(file);
+
+                sw.WriteLine("<details>");
+                sw.WriteLine("<summary>Methods Size By Class</summary>");
+                sw.WriteLine();
+                sw.WriteLine("<br>");
+                sw.WriteLine();
+                sw.WriteLine("| Name | Size |");
+                sw.WriteLine("| --- | --- |");
+                foreach (var m in methodsByClass
+                             .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) })
+                             .OrderByDescending(x => x.Sum))
+                {
+                    sw.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                }
+
+                foreach (var g in methodsByClass)
+                {
+                    sw.WriteLine();
+                    sw.WriteLine("<details>");
+                    sw.WriteLine($"<summary>\"{g.Key}\" Methods</summary>");
+                    sw.WriteLine();
+                    sw.WriteLine("<br>");
+                    sw.WriteLine();
+                    sw.WriteLine("| Name | Size |");
+                    sw.WriteLine("| --- | --- |");
+                    foreach (var m in g
+                                 .Select(x => new { x.Method.Name, Size = x.Size + x.GcInfoSize + x.EhInfoSize})
+                                 .OrderByDescending(x => x.Size))
+                    {
+                        sw.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                    }
+                    sw.WriteLine();
+                    sw.WriteLine("</details>");
+                }
+
+                sw.WriteLine();
+                sw.WriteLine("</details>");
+            }
         }
 
         public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
         {
             types.Body.SimplifyMacros();
             var il = types.Body.Instructions;
-            for (int i = 0; i + 2 < il.Count; i += 2)
+            for (var i = 0; i + 2 < il.Count; i += 2)
             {
                 var type = (TypeReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
@@ -179,7 +228,7 @@ namespace MStatDumper
         {
             methods.Body.SimplifyMacros();
             var il = methods.Body.Instructions;
-            for (int i = 0; i + 4 < il.Count; i += 4)
+            for (var i = 0; i + 4 < il.Count; i += 4)
             {
                 var method = (MethodReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
@@ -199,7 +248,7 @@ namespace MStatDumper
         {
             blobs.Body.SimplifyMacros();
             var il = blobs.Body.Instructions;
-            for (int i = 0; i + 2 < il.Count; i += 2)
+            for (var i = 0; i + 2 < il.Count; i += 2)
             {
                 var name = (string)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
