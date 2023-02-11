@@ -13,7 +13,6 @@ namespace MStatDumper
             }
 
             var markDownStyleOutput = args.Length > 1 && args[1] == "md";
-            var methodsFilePath = args.Length > 2 ? args[2] : string.Empty;
 
             var asm = AssemblyDefinition.ReadAssembly(args[0]);
             var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
@@ -159,52 +158,54 @@ namespace MStatDumper
                 Console.WriteLine("// **********");
             }
 
-            if (!string.IsNullOrEmpty(methodsFilePath))
+            if (markDownStyleOutput)
             {
                 var methodsByClass = methodStats
                     .Where(x => x.Method.DeclaringType.Scope.Name == "Npgsql")
                     .GroupBy(x => (x.Method.DeclaringType.DeclaringType ?? x.Method.DeclaringType).Name)
                     .ToList();
 
-                using var file = File.Create(methodsFilePath);
-                using var sw = new StreamWriter(file);
-
-                sw.WriteLine("<details>");
-                sw.WriteLine("<summary>Methods Size By Class</summary>");
-                sw.WriteLine();
-                sw.WriteLine("<br>");
-                sw.WriteLine();
-                sw.WriteLine("| Name | Size |");
-                sw.WriteLine("| --- | --- |");
+                Console.WriteLine("<details>");
+                Console.WriteLine("<summary>Methods Size By Class</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByClass
                              .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) })
                              .OrderByDescending(x => x.Sum))
                 {
-                    sw.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
                 }
+
+                Console.WriteLine();
+                Console.WriteLine("<br>");
 
                 foreach (var g in methodsByClass)
                 {
-                    sw.WriteLine();
-                    sw.WriteLine("<details>");
-                    sw.WriteLine($"<summary>\"{g.Key}\" Methods</summary>");
-                    sw.WriteLine();
-                    sw.WriteLine("<br>");
-                    sw.WriteLine();
-                    sw.WriteLine("| Name | Size |");
-                    sw.WriteLine("| --- | --- |");
+                    Console.WriteLine();
+                    Console.WriteLine("<details>");
+                    Console.WriteLine($"<summary>`{g.Key}` Methods</summary>");
+                    Console.WriteLine();
+                    Console.WriteLine("<br>");
+                    Console.WriteLine();
+                    Console.WriteLine("| Name | Size |");
+                    Console.WriteLine("| --- | --- |");
                     foreach (var m in g
                                  .Select(x => new { x.Method.Name, Size = x.Size + x.GcInfoSize + x.EhInfoSize})
                                  .OrderByDescending(x => x.Size))
                     {
-                        sw.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                        Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
                     }
-                    sw.WriteLine();
-                    sw.WriteLine("</details>");
+                    Console.WriteLine();
+                    Console.WriteLine("</details>");
+                    Console.WriteLine();
+                    Console.WriteLine("<br>");
                 }
 
-                sw.WriteLine();
-                sw.WriteLine("</details>");
+                Console.WriteLine();
+                Console.WriteLine("</details>");
             }
         }
 

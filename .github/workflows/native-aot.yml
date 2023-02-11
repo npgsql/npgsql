@@ -69,13 +69,7 @@ jobs:
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md "methods.md" >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload methods by class
-        uses: actions/upload-artifact@v3
-        with:
-          name: methods-by-class
-          path: methods.md
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Assert binary size
         run: |
