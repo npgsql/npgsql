@@ -171,7 +171,7 @@ namespace MStatDumper
                     => (methodReference.DeclaringType.DeclaringType ?? methodReference.DeclaringType).Name;
 
                 Console.WriteLine("<details>");
-                Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Siz</summary>");
+                Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Size</summary>");
                 Console.WriteLine();
                 Console.WriteLine("<br>");
                 Console.WriteLine();
