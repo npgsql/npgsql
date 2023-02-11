@@ -32,7 +32,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -64,7 +69,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -112,7 +122,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Key.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Key
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -143,7 +158,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in blobStats.OrderByDescending(x => x.Size))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Size:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -181,7 +201,12 @@ namespace MStatDumper
                              .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) })
                              .OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
 
                 Console.WriteLine();
