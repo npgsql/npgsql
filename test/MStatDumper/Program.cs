@@ -162,7 +162,7 @@ namespace MStatDumper
             {
                 var methodsByClass = methodStats
                     .Where(x => x.Method.DeclaringType.Scope.Name == "Npgsql")
-                    .GroupBy(x => (x.Method.DeclaringType.DeclaringType ?? x.Method.DeclaringType).Name)
+                    .GroupBy(x => (x.Method.DeclaringType.DeclaringType ?? x.Method.DeclaringType).FullName)
                     .OrderByDescending(x => x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize))
                     .Take(30)
                     .ToList();
@@ -189,7 +189,7 @@ namespace MStatDumper
                 {
                     Console.WriteLine();
                     Console.WriteLine("<details>");
-                    Console.WriteLine($"<summary>`{g.Key}` Methods</summary>");
+                    Console.WriteLine($"<summary>`{g.Key}` Methods ({g.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)} bytes)</summary>");
                     Console.WriteLine();
                     Console.WriteLine("<br>");
                     Console.WriteLine();
