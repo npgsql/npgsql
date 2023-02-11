@@ -203,7 +203,11 @@ namespace MStatDumper
                                  .Select(x => new { Name = x.Key, Size = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)})
                                  .OrderByDescending(x => x.Size))
                     {
-                        Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                        var methodName = m.Name
+                            .Replace("`", "\\`")
+                            .Replace("<", "&#60;")
+                            .Replace(">", "&#62;");
+                        Console.WriteLine($"| {methodName} | {m.Size:n0} |");
                     }
                     Console.WriteLine();
                     Console.WriteLine("</details>");
