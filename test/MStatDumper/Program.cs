@@ -171,7 +171,7 @@ namespace MStatDumper
                     => (methodReference.DeclaringType.DeclaringType ?? methodReference.DeclaringType).Name;
 
                 Console.WriteLine("<details>");
-                Console.WriteLine("<summary>Top 20 Npgsql Methods Size By Class</summary>");
+                Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Siz</summary>");
                 Console.WriteLine();
                 Console.WriteLine("<br>");
                 Console.WriteLine();
@@ -192,7 +192,7 @@ namespace MStatDumper
                 {
                     Console.WriteLine();
                     Console.WriteLine("<details>");
-                    Console.WriteLine($"<summary>`{g.Key}` Methods ({g.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize):n0} bytes)</summary>");
+                    Console.WriteLine($"<summary>\"{g.Key}\" Methods ({g.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize):n0} bytes)</summary>");
                     Console.WriteLine();
                     Console.WriteLine("<br>");
                     Console.WriteLine();
