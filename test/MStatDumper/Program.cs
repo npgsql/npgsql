@@ -168,7 +168,7 @@ namespace MStatDumper
                     .ToList();
 
                 Console.WriteLine("<details>");
-                Console.WriteLine("<summary>Top 30 Methods Size By Class</summary>");
+                Console.WriteLine("<summary>Top 30 Npgsql Methods Size By Class</summary>");
                 Console.WriteLine();
                 Console.WriteLine("<br>");
                 Console.WriteLine();
@@ -196,7 +196,7 @@ namespace MStatDumper
                     Console.WriteLine("| Name | Size |");
                     Console.WriteLine("| --- | --- |");
                     foreach (var m in g
-                                 .Select(x => new { x.Method.Name, Size = x.Size + x.GcInfoSize + x.EhInfoSize})
+                                 .Select(x => new { Name = x.Method.FullName, Size = x.Size + x.GcInfoSize + x.EhInfoSize})
                                  .OrderByDescending(x => x.Size))
                     {
                         Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
