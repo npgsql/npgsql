@@ -32,7 +32,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in typesByModules.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -64,7 +69,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByModules.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -86,7 +96,7 @@ namespace MStatDumper
                 var current = type;
                 while (true)
                 {
-                    if (!String.IsNullOrEmpty(current.Namespace))
+                    if (!string.IsNullOrEmpty(current.Namespace))
                     {
                         return current.Namespace;
                     }
@@ -112,7 +122,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in methodsByNamespace.OrderByDescending(x => x.Sum))
                 {
-                    Console.WriteLine($"| {m.Key.Replace("`", "\\`")} | {m.Sum:n0} |");
+                    var name = m.Key
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -143,7 +158,12 @@ namespace MStatDumper
                 Console.WriteLine("| --- | --- |");
                 foreach (var m in blobStats.OrderByDescending(x => x.Size))
                 {
-                    Console.WriteLine($"| {m.Name.Replace("`", "\\`")} | {m.Size:n0} |");
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Size:n0} |");
                 }
                 Console.WriteLine();
                 Console.WriteLine("</details>");
@@ -157,13 +177,93 @@ namespace MStatDumper
                 }
                 Console.WriteLine("// **********");
             }
+
+            if (markDownStyleOutput)
+            {
+                var methodsByClass = methodStats
+                    .Where(x => x.Method.DeclaringType.Scope.Name == "Npgsql")
+                    .GroupBy(x => GetClassName(x.Method))
+                    .OrderByDescending(x => x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize))
+                    .Take(20)
+                    .ToList();
+
+                static string GetClassName(MethodReference methodReference)
+                {
+                    var type = methodReference.DeclaringType.DeclaringType ?? methodReference.DeclaringType;
+                    return type.Namespace + "." + type.Name;
+                }
+
+                Console.WriteLine("<details>");
+                Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Size</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
+                Console.WriteLine("| Name | Size |");
+                Console.WriteLine("| --- | --- |");
+                foreach (var m in methodsByClass
+                             .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) })
+                             .OrderByDescending(x => x.Sum))
+                {
+                    var name = m.Name
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+
+                foreach (var g in methodsByClass
+                             .OrderByDescending(x => x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)))
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("<details>");
+                    Console.WriteLine($"<summary>\"{g.Key}\" Methods ({g.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize):n0} bytes)</summary>");
+                    Console.WriteLine();
+                    Console.WriteLine("<br>");
+                    Console.WriteLine();
+                    Console.WriteLine("| Name | Size |");
+                    Console.WriteLine("| --- | --- |");
+                    foreach (var m in g
+                                 .GroupBy(x => GetMethodName(x.Method))
+                                 .Select(x => new { Name = x.Key, Size = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)})
+                                 .OrderByDescending(x => x.Size))
+                    {
+                        var methodName = m.Name
+                            .Replace("`", "\\`")
+                            .Replace("<", "&#60;")
+                            .Replace(">", "&#62;")
+                            .Replace("|", "\\|");
+                        Console.WriteLine($"| {methodName} | {m.Size:n0} |");
+                    }
+                    Console.WriteLine();
+                    Console.WriteLine("</details>");
+                    Console.WriteLine();
+                    Console.WriteLine("<br>");
+
+                    static string GetMethodName(MethodReference methodReference)
+                    {
+                        if (methodReference.DeclaringType.DeclaringType is null)
+                        {
+                            return methodReference.Name;
+                        }
+
+                        return methodReference.DeclaringType.Name;
+                    }
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("</details>");
+            }
         }
 
         public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
         {
             types.Body.SimplifyMacros();
             var il = types.Body.Instructions;
-            for (int i = 0; i + 2 < il.Count; i += 2)
+            for (var i = 0; i + 2 < il.Count; i += 2)
             {
                 var type = (TypeReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
@@ -179,7 +279,7 @@ namespace MStatDumper
         {
             methods.Body.SimplifyMacros();
             var il = methods.Body.Instructions;
-            for (int i = 0; i + 4 < il.Count; i += 4)
+            for (var i = 0; i + 4 < il.Count; i += 4)
             {
                 var method = (MethodReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
@@ -199,7 +299,7 @@ namespace MStatDumper
         {
             blobs.Body.SimplifyMacros();
             var il = blobs.Body.Instructions;
-            for (int i = 0; i + 2 < il.Count; i += 2)
+            for (var i = 0; i + 2 < il.Count; i += 2)
             {
                 var name = (string)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
