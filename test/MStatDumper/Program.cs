@@ -188,7 +188,10 @@ namespace MStatDumper
                     .ToList();
 
                 static string GetClassName(MethodReference methodReference)
-                    => (methodReference.DeclaringType.DeclaringType ?? methodReference.DeclaringType).Name;
+                {
+                    var type = methodReference.DeclaringType.DeclaringType ?? methodReference.DeclaringType;
+                    return type.Namespace + "." + type.Name;
+                }
 
                 Console.WriteLine("<details>");
                 Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Size</summary>");
