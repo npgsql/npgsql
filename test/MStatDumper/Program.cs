@@ -206,7 +206,8 @@ namespace MStatDumper
                         var methodName = m.Name
                             .Replace("`", "\\`")
                             .Replace("<", "&#60;")
-                            .Replace(">", "&#62;");
+                            .Replace(">", "&#62;")
+                            .Replace("|", "\\|");
                         Console.WriteLine($"| {methodName} | {m.Size:n0} |");
                     }
                     Console.WriteLine();
