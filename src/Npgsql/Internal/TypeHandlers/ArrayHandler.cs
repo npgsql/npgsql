@@ -347,26 +347,21 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        if (typeof(TElement).IsValueType)
+        try
         {
-            len += readOnlyMemory.Length * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
-        }
-        else
-        {
-            try
+            foreach (var element in readOnlyMemory.Span)
             {
-                foreach (var element in readOnlyMemory.Span)
+                if (element is null)
                 {
-                    if (element is null)
-                        continue;
-
-                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                    continue;
                 }
+
+                len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
             }
-            catch (Exception e)
-            {
-                throw MixedTypesOrJaggedArrayException(e);
-            }
+        }
+        catch (Exception e)
+        {
+            throw MixedTypesOrJaggedArrayException(e);
         }
 
         lengthCache.Lengths[pos] = len;
@@ -387,26 +382,19 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        if (typeof(TElement).IsValueType)
+        try
         {
-            len += collection.Count * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
-        }
-        else
-        {
-            try
+            foreach (var element in collection)
             {
-                foreach (var element in collection)
-                {
-                    if (element is null)
-                        continue;
+                if (element is null)
+                    continue;
 
-                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
-                }
+                len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
             }
-            catch (Exception e)
-            {
-                throw MixedTypesOrJaggedArrayException(e);
-            }
+        }
+        catch (Exception e)
+        {
+            throw MixedTypesOrJaggedArrayException(e);
         }
 
         lengthCache.Lengths[pos] = len;
@@ -427,26 +415,19 @@ public class ArrayHandler<TElement> : ArrayHandler
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        if (typeof(TElement).IsValueType)
+        try
         {
-            len += readOnlyCollection.Count * ElementHandler.ValidateAndGetLength(default(TElement)!, ref elemLengthCache, null);
-        }
-        else
-        {
-            try
+            foreach (var element in readOnlyCollection)
             {
-                foreach (var element in readOnlyCollection)
-                {
-                    if (element is null)
-                        continue;
+                if (element is null)
+                    continue;
 
-                    len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
-                }
+                len += ElementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
             }
-            catch (Exception e)
-            {
-                throw MixedTypesOrJaggedArrayException(e);
-            }
+        }
+        catch (Exception e)
+        {
+            throw MixedTypesOrJaggedArrayException(e);
         }
 
         lengthCache.Lengths[pos] = len;
