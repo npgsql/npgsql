@@ -1,4 +1,12 @@
 ﻿#nullable enable
+Npgsql.NpgsqlBinaryImporter.Write<T>(T? value) -> void
+Npgsql.NpgsqlBinaryImporter.Write<T>(T? value, NpgsqlTypes.NpgsqlDbType npgsqlDbType) -> void
+Npgsql.NpgsqlBinaryImporter.Write<T>(T? value, string! dataTypeName) -> void
+Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T? value, NpgsqlTypes.NpgsqlDbType npgsqlDbType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T? value, string! dataTypeName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T? value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
+Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!
 Npgsql.NpgsqlJsonExtensions
 static Npgsql.NpgsqlJsonExtensions.UseSystemTextJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 *REMOVED*static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
@@ -8,3 +16,9 @@ static Npgsql.NpgsqlJsonExtensions.UseSystemTextJson(this Npgsql.TypeMapping.INp
 *REMOVED*static NpgsqlTypes.NpgsqlPath.Parse(string! s) -> NpgsqlTypes.NpgsqlPath
 *REMOVED*static NpgsqlTypes.NpgsqlPoint.Parse(string! s) -> NpgsqlTypes.NpgsqlPoint
 *REMOVED*static NpgsqlTypes.NpgsqlPolygon.Parse(string! s) -> NpgsqlTypes.NpgsqlPolygon
+*REMOVED*Npgsql.NpgsqlBinaryImporter.Write<T>(T value, string! dataTypeName) -> void
+*REMOVED*Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T value, NpgsqlTypes.NpgsqlDbType npgsqlDbType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T value, string! dataTypeName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Npgsql.NpgsqlBinaryImporter.WriteAsync<T>(T value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRow(params object![]! values) -> void
+*REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object![]! values) -> System.Threading.Tasks.Task!
