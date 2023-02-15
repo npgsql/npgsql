@@ -3,7 +3,7 @@
     <VersionPrefix>5.0.16</VersionPrefix>
 
     <!-- Packing -->
-    <Copyright>Copyright 2022 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2023 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
