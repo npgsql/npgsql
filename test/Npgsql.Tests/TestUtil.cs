@@ -117,10 +117,6 @@ public static class TestUtil
             conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
 
         conn.ReloadTypes();
-
-        // Multiplexing doesn't really support reloading types, since each connector uses its own connector type mapper when reading,
-        // which is different from the pool-wise connector mapper (which is used when writing).
-        NpgsqlConnection.ClearPool(conn);
     }
 
     /// <summary>
@@ -370,8 +366,8 @@ CREATE TABLE {tableName} ({columns});");
         NpgsqlCommand.EnableSqlRewriting = false;
         return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
 #else
-            Assert.Ignore("Cannot disable SQL rewriting in RELEASE builds");
-            throw new NotSupportedException("Cannot disable SQL rewriting in RELEASE builds");
+        Assert.Ignore("Cannot disable SQL rewriting in RELEASE builds");
+        throw new NotSupportedException("Cannot disable SQL rewriting in RELEASE builds");
 #endif
     }
 
