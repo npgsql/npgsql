@@ -158,8 +158,16 @@ public class NpgsqlBatch : DbBatch
         => Command.ExecuteScalar();
 
     /// <inheritdoc />
+    public T? ExecuteScalar<T>()
+        => Command.ExecuteScalar<T>();
+
+    /// <inheritdoc />
     public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
         => Command.ExecuteScalarAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task<T?> ExecuteScalarAsync<T>(CancellationToken cancellationToken = default)
+        => Command.ExecuteScalarAsync<T>(cancellationToken);
 
     /// <inheritdoc />
     public override void Prepare()

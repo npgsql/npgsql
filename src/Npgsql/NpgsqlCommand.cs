@@ -1203,7 +1203,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// </summary>
     /// <returns>The first column of the first row in the result set,
     /// or a null reference if the result set is empty.</returns>
-    public override object? ExecuteScalar() => ExecuteScalar(false, CancellationToken.None).GetAwaiter().GetResult();
+    public override object? ExecuteScalar() => ExecuteScalar<object?>(false, CancellationToken.None).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Executes the query, and returns the first column of the first row
+    /// in the result set returned by the query. Extra columns or rows are ignored.
+    /// </summary>
+    /// <returns>The first column of the first row in the result set,
+    /// or a default if the result set is empty.</returns>
+    public T? ExecuteScalar<T>() => ExecuteScalar<T?>(false, CancellationToken.None).GetAwaiter().GetResult();
 
     /// <summary>
     /// Asynchronous version of <see cref="ExecuteScalar()"/>
@@ -1212,15 +1220,29 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>A task representing the asynchronous operation, with the first column of the
-    /// first row in the result set, or a null reference if the result set is empty.</returns>
+    /// first row in the result set, or a default if the result set is empty.</returns>
     public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
     {
         using (NoSynchronizationContextScope.Enter())
-            return ExecuteScalar(true, cancellationToken).AsTask();
+            return ExecuteScalar<object?>(true, cancellationToken).AsTask();
+    }
+
+    /// <summary>
+    /// Asynchronous version of <see cref="ExecuteScalar{T}()"/>
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+    /// </param>
+    /// <returns>A task representing the asynchronous operation, with the first column of the
+    /// first row in the result set, or a default if the result set is empty.</returns>
+    public Task<T?> ExecuteScalarAsync<T>(CancellationToken cancellationToken)
+    {
+        using (NoSynchronizationContextScope.Enter())
+            return ExecuteScalar<T?>(true, cancellationToken).AsTask();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
+    async ValueTask<T?> ExecuteScalar<T>(bool async, CancellationToken cancellationToken)
     {
         var behavior = CommandBehavior.SingleRow;
         if (IsWrappedByBatch || !Parameters.HasOutputParameters)
@@ -1230,9 +1252,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         try
         {
             var read = async ? await reader.ReadAsync(cancellationToken) : reader.Read();
-            var value = read && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            var value = read && reader.FieldCount != 0 ? reader.GetFieldValue<T>(0) : default;
             // We read the whole result set to trigger any errors
-            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult());
             return value;
         }
         finally

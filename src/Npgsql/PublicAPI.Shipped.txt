@@ -1488,6 +1488,8 @@ override Npgsql.NpgsqlBatch.ExecuteNonQuery() -> int
 override Npgsql.NpgsqlBatch.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 override Npgsql.NpgsqlBatch.ExecuteScalar() -> object?
 override Npgsql.NpgsqlBatch.ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<object?>!
+Npgsql.NpgsqlBatch.ExecuteScalar<T>() -> T?
+Npgsql.NpgsqlBatch.ExecuteScalarAsync<T>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
 override Npgsql.NpgsqlBatch.Prepare() -> void
 override Npgsql.NpgsqlBatch.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Npgsql.NpgsqlBatch.Timeout.get -> int
@@ -1531,6 +1533,8 @@ override Npgsql.NpgsqlCommand.ExecuteNonQuery() -> int
 override Npgsql.NpgsqlCommand.ExecuteNonQueryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
 override Npgsql.NpgsqlCommand.ExecuteScalar() -> object?
 override Npgsql.NpgsqlCommand.ExecuteScalarAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<object?>!
+Npgsql.NpgsqlCommand.ExecuteScalar<T>() -> T?
+Npgsql.NpgsqlCommand.ExecuteScalarAsync<T>(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T?>!
 override Npgsql.NpgsqlCommand.Prepare() -> void
 override Npgsql.NpgsqlCommand.PrepareAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Npgsql.NpgsqlCommand.UpdatedRowSource.get -> System.Data.UpdateRowSource
