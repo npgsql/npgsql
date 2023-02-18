@@ -416,7 +416,7 @@ public class ConnectionTests : MultiplexingTestBase
             "localhost:5432",
             "localhost:5432"
         })]
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802"), NonParallelizable]
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3802")]
     public string[] ConnectionString_Host(string host)
     {
         var dataSourceBuilder = new NpgsqlDataSourceBuilder
@@ -1049,7 +1049,6 @@ LANGUAGE 'plpgsql'");
     }
 
     [Test]
-    [NonParallelizable] // Anyone can reload DatabaseInfo between us opening a connection
     public async Task DatabaseInfo_is_shared()
     {
         if (IsMultiplexing)

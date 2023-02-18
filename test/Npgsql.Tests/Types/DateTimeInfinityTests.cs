@@ -9,8 +9,8 @@ namespace Npgsql.Tests.Types;
 [TestFixture(true)]
 #if DEBUG
 [TestFixture(false)]
-#endif
 [NonParallelizable]
+#endif
 public class DateTimeInfinityTests : TestBase, IDisposable
 {
     [Test]

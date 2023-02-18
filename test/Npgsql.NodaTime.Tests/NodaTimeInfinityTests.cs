@@ -12,8 +12,8 @@ namespace Npgsql.NodaTime.Tests;
 [TestFixture(false)]
 #if DEBUG
 [TestFixture(true)]
-#endif
 [NonParallelizable]
+#endif
 public class NodaTimeInfinityTests : TestBase
 {
     [Test] // #4715

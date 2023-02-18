@@ -20,7 +20,6 @@ using TransactionStatus = Npgsql.Internal.TransactionStatus;
 
 namespace Npgsql.Tests;
 
-[NonParallelizable]
 public class MultipleHostsTests : TestBase
 {
     static readonly object[] MyCases =
