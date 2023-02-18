@@ -351,7 +351,7 @@ jobs:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Pack
-        run: dotnet pack Npgsql.sln --configuration Release --output nupkgs --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
+        run: dotnet pack Npgsql.sln --configuration Release --property:PackageOutputPath="$PWD/nupkgs" --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}" -p:ContinuousIntegrationBuild=true
 
       - name: Upload artifacts (nupkg)
         uses: actions/upload-artifact@v3
