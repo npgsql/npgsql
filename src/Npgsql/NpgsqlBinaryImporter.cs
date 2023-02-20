@@ -157,7 +157,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public void Write<T>([AllowNull] T value) => Write(value, false).GetAwaiter().GetResult();
+    public void Write<T>(T value) => Write(value, false).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes a single column in the current row.
@@ -171,7 +171,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
     /// specify the type.
     /// </typeparam>
-    public Task WriteAsync<T>([AllowNull] T value, CancellationToken cancellationToken = default)
+    public Task WriteAsync<T>(T value, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
@@ -179,7 +179,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             return Write(value, true, cancellationToken);
     }
 
-    Task Write<T>([AllowNull] T value, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(T value, bool async, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
 
@@ -206,7 +206,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-    public void Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType) =>
+    public void Write<T>(T value, NpgsqlDbType npgsqlDbType) =>
         Write(value, npgsqlDbType, false).GetAwaiter().GetResult();
 
     /// <summary>
@@ -223,7 +223,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-    public Task WriteAsync<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
+    public Task WriteAsync<T>(T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
@@ -231,7 +231,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             return Write(value, npgsqlDbType, true, cancellationToken);
     }
 
-    Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(T value, NpgsqlDbType npgsqlDbType, bool async, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
 
@@ -260,7 +260,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// the database. This parameter and be used to unambiguously specify the type.
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-    public void Write<T>([AllowNull] T value, string dataTypeName) =>
+    public void Write<T>(T value, string dataTypeName) =>
         Write(value, dataTypeName, false).GetAwaiter().GetResult();
 
     /// <summary>
@@ -275,7 +275,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-    public Task WriteAsync<T>([AllowNull] T value, string dataTypeName, CancellationToken cancellationToken = default)
+    public Task WriteAsync<T>(T value, string dataTypeName, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
@@ -283,7 +283,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             return Write(value, dataTypeName, true, cancellationToken);
     }
 
-    Task Write<T>([AllowNull] T value, string dataTypeName, bool async, CancellationToken cancellationToken = default)
+    Task Write<T>(T value, string dataTypeName, bool async, CancellationToken cancellationToken = default)
     {
         CheckColumnIndex();
 
@@ -303,7 +303,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         return Write(value, p, async, cancellationToken);
     }
 
-    async Task Write<T>([AllowNull] T value, NpgsqlParameter param, bool async, CancellationToken cancellationToken = default)
+    async Task Write<T>(T value, NpgsqlParameter param, bool async, CancellationToken cancellationToken = default)
     {
         CheckReady();
         if (_column == -1)
@@ -372,7 +372,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// on each value.
     /// </summary>
     /// <param name="values">An array of column values to be written as a single row</param>
-    public void WriteRow(params object[] values) => WriteRow(false, CancellationToken.None, values).GetAwaiter().GetResult();
+    public void WriteRow(params object?[] values) => WriteRow(false, CancellationToken.None, values).GetAwaiter().GetResult();
 
     /// <summary>
     /// Writes an entire row of columns.
@@ -383,7 +383,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <param name="values">An array of column values to be written as a single row</param>
-    public Task WriteRowAsync(CancellationToken cancellationToken = default, params object[] values)
+    public Task WriteRowAsync(CancellationToken cancellationToken = default, params object?[] values)
     {
         if (cancellationToken.IsCancellationRequested)
             return Task.FromCanceled(cancellationToken);
@@ -391,7 +391,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             return WriteRow(true, cancellationToken, values);
     }
 
-    async Task WriteRow(bool async, CancellationToken cancellationToken = default, params object[] values)
+    async Task WriteRow(bool async, CancellationToken cancellationToken = default, params object?[] values)
     {
         await StartRow(async, cancellationToken);
         foreach (var value in values)
