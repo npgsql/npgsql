@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
@@ -20,7 +21,11 @@ public abstract class TestBase
     /// </summary>
     public virtual string ConnectionString => TestUtil.ConnectionString;
 
-    static SemaphoreSlim DatabaseCreationLock = new(1);
+    static readonly SemaphoreSlim DatabaseCreationLock = new(1);
+
+    static readonly object dataSourceLockObject = new();
+
+    static ConcurrentDictionary<string, NpgsqlDataSource> DataSources = new(StringComparer.Ordinal);
 
     #region Type testing
 
@@ -348,10 +353,36 @@ public abstract class TestBase
     protected static readonly NpgsqlDataSource SharedDataSource = NpgsqlDataSource.Create(TestUtil.ConnectionString);
 
     protected virtual NpgsqlDataSourceBuilder CreateDataSourceBuilder()
-        => new(TestUtil.ConnectionString);
+        => new(ConnectionString);
 
     protected virtual NpgsqlDataSource CreateDataSource()
-        => NpgsqlDataSource.Create(TestUtil.ConnectionString);
+        => CreateDataSource(ConnectionString);
+
+    protected virtual NpgsqlDataSource CreateDataSource(string connectionString)
+        => NpgsqlDataSource.Create(connectionString);
+
+    protected virtual NpgsqlDataSource CreateDataSource(Action<NpgsqlConnectionStringBuilder> connectionStringBuilderAction)
+    {
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
+        connectionStringBuilderAction(connectionStringBuilder);
+        return NpgsqlDataSource.Create(connectionStringBuilder);
+    }
+
+    protected static NpgsqlDataSource GetDataSource(string connectionString)
+    {
+        if (!DataSources.TryGetValue(connectionString, out var dataSource))
+        {
+            lock (dataSourceLockObject)
+            {
+                if (!DataSources.TryGetValue(connectionString, out dataSource))
+                {
+                    DataSources[connectionString] = dataSource = NpgsqlDataSource.Create(connectionString);
+                }
+            }
+        }
+
+        return dataSource;
+    }
 
     protected virtual NpgsqlDataSource CreateLoggingDataSource(
         out ListLoggerProvider listLoggerProvider,
@@ -372,55 +403,55 @@ public abstract class TestBase
         return builder.Build();
     }
 
-    protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
-        => new(connectionString ?? ConnectionString);
+    protected virtual NpgsqlConnection CreateConnection()
+        => GetDataSource(ConnectionString).CreateConnection();
 
-    protected virtual NpgsqlConnection CreateConnection(Action<NpgsqlConnectionStringBuilder> builderAction)
+    protected virtual NpgsqlConnection OpenConnection()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        builderAction(builder);
-        return new NpgsqlConnection(builder.ConnectionString);
+        var connection = CreateConnection();
+        try
+        {
+            OpenConnection(connection, async: false).GetAwaiter().GetResult();
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
-    protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
-        => OpenConnection(connectionString, async: false).GetAwaiter().GetResult();
-
-    protected virtual NpgsqlConnection OpenConnection(Action<NpgsqlConnectionStringBuilder> builderAction)
+    protected virtual async ValueTask<NpgsqlConnection> OpenConnectionAsync()
     {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        builderAction(builder);
-        return OpenConnection(builder.ConnectionString, async: false).GetAwaiter().GetResult();
+        var connection = CreateConnection();
+        try
+        {
+            await OpenConnection(connection, async: true);
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
-    protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
-        => OpenConnection(connectionString, async: true);
-
-    protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(
-        Action<NpgsqlConnectionStringBuilder> builderAction)
-    {
-        var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        builderAction(builder);
-        return OpenConnection(builder.ConnectionString, async: true);
-    }
-
-    ValueTask<NpgsqlConnection> OpenConnection(string? connectionString, bool async)
+    static Task OpenConnection(NpgsqlConnection conn, bool async)
     {
         return OpenConnectionInternal(hasLock: false);
 
-        async ValueTask<NpgsqlConnection> OpenConnectionInternal(bool hasLock)
+        async Task OpenConnectionInternal(bool hasLock)
         {
-            var conn = CreateConnection(connectionString);
             try
             {
                 if (async)
                     await conn.OpenAsync();
                 else
                     conn.Open();
-                return conn;
             }
             catch (PostgresException e)
             {
-                if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == TestUtil.DefaultConnectionString)
+                if (e.SqlState == PostgresErrorCodes.InvalidPassword)
                     throw new Exception("Please create a user npgsql_tests as follows: CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER");
 
                 if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
@@ -430,7 +461,7 @@ public abstract class TestBase
                         DatabaseCreationLock.Wait();
                         try
                         {
-                            return await OpenConnectionInternal(hasLock: true);
+                            await OpenConnectionInternal(hasLock: true);
                         }
                         finally
                         {
@@ -439,7 +470,7 @@ public abstract class TestBase
                     }
 
                     // Database does not exist and we have the lock, proceed to creation
-                    var builder = new NpgsqlConnectionStringBuilder(connectionString ?? ConnectionString)
+                    var builder = new NpgsqlConnectionStringBuilder(TestUtil.ConnectionString)
                     {
                         Pooling = false,
                         Multiplexing = false,
@@ -456,19 +487,13 @@ public abstract class TestBase
                         await conn.OpenAsync();
                     else
                         conn.Open();
-                    return conn;
+                    return;
                 }
 
                 throw;
             }
         }
     }
-
-    protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
-        => OpenConnection(csb.ToString());
-
-    protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(NpgsqlConnectionStringBuilder csb)
-        => OpenConnectionAsync(csb.ToString());
 
     // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
     // how to transfer that. So cast to text server-side.

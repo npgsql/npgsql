@@ -11,7 +11,6 @@ namespace Npgsql.Tests;
 /// <summary>
 /// Tests NpgsqlTypes.* independent of a database
 /// </summary>
-[TestFixture]
 public class TypesTests
 {
     [Test]

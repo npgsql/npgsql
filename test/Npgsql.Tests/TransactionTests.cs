@@ -180,13 +180,13 @@ public class TransactionTests : MultiplexingTestBase
     [Test, Description("Disposes an empty transaction")]
     public async Task Empty_Dispose()
     {
-        using var _ = CreateTempPool(ConnectionString, out var connString);
+        await using var dataSource = CreateDataSource();
 
-        using (var conn = await OpenConnectionAsync(connString))
+        using (var conn = await dataSource.OpenConnectionAsync())
         using (conn.BeginTransaction())
         { }
 
-        using (var conn = await OpenConnectionAsync(connString))
+        using (var conn = await dataSource.OpenConnectionAsync())
         {
             // Make sure the pending BEGIN TRANSACTION didn't leak from the previous open
             Assert.That(async () => await conn.ExecuteNonQueryAsync("SAVEPOINT foo"),
@@ -325,12 +325,9 @@ public class TransactionTests : MultiplexingTestBase
     [IssueLink("https://github.com/npgsql/npgsql/issues/719")]
     public async Task Failed_transaction_on_close_with_custom_timeout()
     {
-        var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = true
-        }.ToString();
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = true);
 
-        await using var conn = await OpenConnectionAsync(connString);
+        await using var conn = await dataSource.OpenConnectionAsync();
 
         conn.BeginTransaction();
         var backendProcessId = conn.ProcessID;
@@ -427,8 +424,8 @@ public class TransactionTests : MultiplexingTestBase
     public async Task Savepoint_prepends()
     {
         await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-        using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-        await using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource(postmasterMock.ConnectionString);
+        await using var conn = await dataSource.OpenConnectionAsync();
         var pgMock = await postmasterMock.WaitForServerConnection();
 
         using var tx = conn.BeginTransaction();
@@ -500,6 +497,7 @@ public class TransactionTests : MultiplexingTestBase
     [Parallelizable(ParallelScope.None)]
     public async Task Transaction_not_supported()
     {
+        // TODO: rewrite to DataSource
         if (IsMultiplexing)
             Assert.Ignore("Need to rethink/redo dummy transaction mode");
 
@@ -511,7 +509,8 @@ public class TransactionTests : MultiplexingTestBase
         NpgsqlDatabaseInfo.RegisterFactory(new NoTransactionDatabaseInfoFactory());
         try
         {
-            using var conn = await OpenConnectionAsync(connString);
+            using var conn = new NpgsqlConnection(connString);
+            await conn.OpenAsync();
             using var tx = conn.BeginTransaction();
 
             // Detect that we're not really in a transaction
@@ -527,19 +526,23 @@ public class TransactionTests : MultiplexingTestBase
             NpgsqlDatabaseInfo.ResetFactories();
         }
 
-        using (var conn = await OpenConnectionAsync(connString))
+        using (var conn = new NpgsqlConnection(connString))
         {
+            await conn.OpenAsync();
             NpgsqlConnection.ClearPool(conn);
             conn.ReloadTypes();
         }
 
         // Check that everything is back to normal
-        using (var conn = await OpenConnectionAsync(connString))
-        using (var tx = conn.BeginTransaction())
+        using (var conn = new NpgsqlConnection(connString))
         {
-            var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
-            var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
-            Assert.That(nextTxId, Is.EqualTo(prevTxId));
+            await conn.OpenAsync();
+            using (var tx = conn.BeginTransaction())
+            {
+                var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
+                var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
+                Assert.That(nextTxId, Is.EqualTo(prevTxId));
+            }
         }
     }
 
@@ -552,7 +555,7 @@ public class TransactionTests : MultiplexingTestBase
             return;
 
         using var conn = await OpenConnectionAsync();
-        await using (var tx = conn.BeginTransaction())
+        await using (var tx = await conn.BeginTransactionAsync())
         {
             Assert.That(conn.Connector, Is.Not.Null);
             Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),
@@ -618,17 +621,16 @@ public class TransactionTests : MultiplexingTestBase
     [Test]
     public async Task Unbound_transaction_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        await using var dataSource = CreateDataSource(csb =>
         {
-            MinPoolSize = 1,
-            MaxPoolSize = 1,
-        };
-        using var __ = CreateTempPool(csb.ToString(), out var connectionString);
+            csb.MinPoolSize = 1;
+            csb.MaxPoolSize = 1;
+        });
 
         await using var conn = await OpenConnectionAsync();
         var table = await CreateTempTable(conn, "name TEXT");
 
-        await using var conn1 = await OpenConnectionAsync(connectionString);
+        await using var conn1 = await dataSource.OpenConnectionAsync();
         var tx1 = conn1.BeginTransaction();
         await using (var ___ = tx1)
         {
@@ -645,7 +647,7 @@ public class TransactionTests : MultiplexingTestBase
             await conn1.CloseAsync();
         }
 
-        await using var conn2 = await OpenConnectionAsync(connectionString);
+        await using var conn2 = await dataSource.OpenConnectionAsync();
         var tx2 = conn2.BeginTransaction();
         await using (var ___ = tx2)
         {
@@ -663,7 +665,7 @@ public class TransactionTests : MultiplexingTestBase
             await conn2.CloseAsync();
         }
 
-        await using var conn3 = await OpenConnectionAsync(connectionString);
+        await using var conn3 = await dataSource.OpenConnectionAsync();
         var tx3 = conn3.BeginTransaction();
         await using (var ___ = tx3)
         {
@@ -688,12 +690,8 @@ public class TransactionTests : MultiplexingTestBase
         if (IsMultiplexing)
             return;
 
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false
-        };
-
-        await using var conn = await OpenConnectionAsync(csb);
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
         await conn.ExecuteNonQueryAsync("SELECT 1", tx);
         await tx.CommitAsync();

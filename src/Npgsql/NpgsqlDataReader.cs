@@ -281,7 +281,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case ReaderState.Disposed:
                 return false;
             default:
-                throw new ArgumentOutOfRangeException();
+                ThrowHelper.ThrowArgumentOutOfRangeException();
+                return false;
             }
 
             var msg = await ReadMessage(async);
@@ -410,7 +411,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case ReaderState.Disposed:
                 return false;
             default:
-                throw new ArgumentOutOfRangeException();
+                ThrowHelper.ThrowArgumentOutOfRangeException();
+                return false;
             }
 
             Debug.Assert(State == ReaderState.BetweenResults);
@@ -478,8 +480,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next statement
-
-                    msg = await ReadMessage(async);
+                    // No need to read sequentially as it's not a DataRow
+                    msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.CommandComplete:
@@ -679,7 +681,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             case ReaderState.Disposed:
                 return false;
             default:
-                throw new ArgumentOutOfRangeException();
+                ThrowHelper.ThrowArgumentOutOfRangeException();
+                return false;
             }
 
             for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)

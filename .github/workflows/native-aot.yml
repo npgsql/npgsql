@@ -1,0 +1,82 @@
+name: NativeAOT
+
+on:
+  push:
+    branches:
+      - main
+      - 'hotfix/**'
+    tags:
+      - '*'
+  pull_request:
+
+env:
+  dotnet_sdk_version: '7.0.102'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04]
+        pg_major: [15]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: NuGet Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v3.0.3
+        with:
+          dotnet-version: |
+            ${{ env.dotnet_sdk_version }}
+
+      - name: Setup Native AOT prerequisites
+        run: sudo apt-get install clang zlib1g-dev
+        shell: bash
+
+      - name: Build
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net7.0
+        shell: bash
+
+      # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
+      #- uses: actions/checkout@v3
+      #- name: Setup tmate session
+      #  uses: mxschmitt/action-tmate@v3
+
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+      - name: Run
+        run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
+
+      - name: Write binary size to summary
+        run: |
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Dump mstat
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
+
+      - name: Assert binary size
+        run: |
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
+
+          if (( size > 36700160 )); then
+            echo "Binary size exceeds 35mb threshold"
+            exit 1
+          fi

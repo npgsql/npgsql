@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Transactions;
-using Npgsql.Internal;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 
@@ -22,9 +21,11 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOnDataSource;
+
         using (new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
             conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
@@ -44,8 +45,10 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
+        var dataSource = EnlistOffDataSource;
+
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         using (new TransactionScope())
         {
             conn1.EnlistTransaction(Transaction.Current);
@@ -69,9 +72,11 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOnDataSource;
+
         using (var scope = new TransactionScope())
-        using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-        using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
+        using (var conn1 = dataSource.OpenConnection())
+        using (var conn2 = dataSource.OpenConnection())
         {
             conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
             conn2.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test2')");
@@ -91,7 +96,7 @@ public class DistributedTransactionTests : TestBase
     public void Two_connections_with_failure()
     {
         // Use our own data source since this test breaks the connection with a critical failure, affecting database state tracking.
-        using var dataSource = NpgsqlDataSource.Create(ConnectionStringEnlistOn);
+        using var dataSource = CreateDataSource(csb => csb.Enlist = true);
         using var adminConn = dataSource.OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
@@ -114,24 +119,24 @@ public class DistributedTransactionTests : TestBase
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
     public void Multiple_unpooled_connections_do_not_reuse()
     {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        using var dataSource = CreateDataSource(csb =>
         {
-            Pooling = false,
-            Enlist = true
-        };
+            csb.Pooling = false;
+            csb.Enlist = true;
+        });
 
         using var scope = new TransactionScope();
 
         int processId;
 
-        using (var conn1 = OpenConnection(csb))
+        using (var conn1 = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
         {
             processId = conn1.ProcessID;
             cmd.ExecuteNonQuery();
         }
 
-        using (var conn2 = OpenConnection(csb))
+        using (var conn2 = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
         {
             // The connection reuse optimization isn't implemented for unpooled connections (though it could be)
@@ -149,13 +154,15 @@ public class DistributedTransactionTests : TestBase
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOnDataSource;
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
                 using (var tx = new TransactionScope())
-                using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
+                using (var conn1 = dataSource.OpenConnection())
                 {
                     eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
                     conn1.ExecuteNonQuery($"INSERT INTO {table} (name) VALUES ('test1')");
@@ -221,12 +228,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOffDataSource;
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (var scope = new TransactionScope())
                 {
@@ -273,12 +282,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOffDataSource;
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (new TransactionScope())
                 {
@@ -326,12 +337,14 @@ Exception {2}",
         using var adminConn = OpenConnection();
         var table = CreateTempTable(adminConn, "name TEXT");
 
+        var dataSource = EnlistOffDataSource;
+
         for (var i = 1; i <= 100; i++)
         {
             var eventQueue = new ConcurrentQueue<TransactionEvent>();
             try
             {
-                using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                using var conn1 = dataSource.OpenConnection();
 
                 using (var scope = new TransactionScope())
                 {
@@ -427,7 +440,8 @@ Exception {2}",
 
     int GetNumberOfPreparedTransactions()
     {
-        using (var conn = OpenConnection(ConnectionStringEnlistOff))
+        var dataSource = EnlistOffDataSource;
+        using (var conn = dataSource.OpenConnection())
         using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
         {
             cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
@@ -444,11 +458,9 @@ Exception {2}",
     static void AssertHasDistributedIdentifier()
         => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.Not.EqualTo(Guid.Empty), "Distributed identifier not found");
 
-    public string ConnectionStringEnlistOn
-        => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
+    NpgsqlDataSource EnlistOnDataSource { get; set; } = default!;
 
-    public string ConnectionStringEnlistOff
-        => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+    NpgsqlDataSource EnlistOffDataSource { get; set; } = default!;
 
     static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
     {
@@ -606,6 +618,18 @@ Start formatting event queue, going to sleep a bit for late events
         }
         foreach (var xactGid in lingeringTransactions)
             connection.ExecuteNonQuery($"ROLLBACK PREPARED '{xactGid}'");
+
+        EnlistOnDataSource = CreateDataSource(csb => csb.Enlist = true);
+        EnlistOffDataSource = CreateDataSource(csb => csb.Enlist = false);
+    }
+
+    [OneTimeTearDown]
+    public void OnTimeTearDown()
+    {
+        EnlistOnDataSource?.Dispose();
+        EnlistOnDataSource = null!;
+        EnlistOffDataSource?.Dispose();
+        EnlistOffDataSource = null!;
     }
 
     [SetUp]

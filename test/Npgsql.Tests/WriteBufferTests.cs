@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests;
 
-[NonParallelizable] // Parallel access to a single buffer
+[FixtureLifeCycle(LifeCycle.InstancePerTestCase)] // Parallel access to a single buffer
 class WriteBufferTests
 {
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1275")]

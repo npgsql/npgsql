@@ -150,8 +150,8 @@ CREATE TYPE {schema2}.my_enum AS ENUM ('alpha');");
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
     public async Task GetPostgresType()
     {
-        using var _ = CreateTempPool(ConnectionString, out var connectionString);
-        using var conn = await OpenConnectionAsync(connectionString);
+        await using var dataSource = CreateDataSource();
+        using var conn = await dataSource.OpenConnectionAsync();
         var type = await GetTempTypeName(conn);
         await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
         conn.ReloadTypes();
