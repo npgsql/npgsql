@@ -38,7 +38,15 @@ namespace Npgsql
             switch (keyword)
             {
             {{ for kv in properties_by_keyword }}
+            {{
+                if (!kv.value.is_main)
+                    continue
+                end
+            }}
             case "{{ kv.key }}":
+            {{ for alternative in kv.value.alternatives }}
+            case "{{ alternative }}":
+            {{ end }}
             {{ p = kv.value }}
             {{ if p.is_enum }}
             {
@@ -64,7 +72,15 @@ namespace Npgsql
             switch (keyword)
             {
             {{ for kv in properties_by_keyword }}
+            {{
+                if (!kv.value.is_main)
+                    continue
+                end
+            }}
             case "{{ kv.key }}":
+            {{ for alternative in kv.value.alternatives }}
+            case "{{ alternative }}":
+            {{ end }}
             {{ p = kv.value }}
                 value = (object){{ p.name }} ?? "";
                 return true;
@@ -90,7 +106,15 @@ namespace Npgsql
             switch (keyword)
             {
             {{ for kv in properties_by_keyword }}
+            {{
+                if (!kv.value.is_main)
+                    continue
+                end
+            }}
             case "{{ kv.key }}":
+            {{ for alternative in kv.value.alternatives }}
+            case "{{ alternative }}":
+            {{ end }}
             {
                 {{ p = kv.value }}
                 var removed = base.ContainsKey("{{ p.canonical_name }}");
