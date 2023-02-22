@@ -89,11 +89,24 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
 
             propertiesByKeyword[displayName.ToUpperInvariant()] = propertyDetails;
             if (property.Name != displayName)
-                propertiesByKeyword[property.Name.ToUpperInvariant()] = propertyDetails;
+            {
+                var propertyName = property.Name.ToUpperInvariant();
+                propertiesByKeyword[propertyName] = propertyDetails.Clone();
+                propertyDetails.Alternatives.Add(propertyName);
+            }
+
             if (propertyAttribute.ConstructorArguments.Length == 1)
+            {
                 foreach (var synonymArg in propertyAttribute.ConstructorArguments[0].Values)
+                {
                     if (synonymArg.Value is string synonym)
-                        propertiesByKeyword[synonym.ToUpperInvariant()] = propertyDetails;
+                    {
+                        var synonymName = synonym.ToUpperInvariant();
+                        propertiesByKeyword[synonymName] = propertyDetails.Clone();
+                        propertyDetails.Alternatives.Add(synonymName);
+                    }
+                }
+            }
         }
 
         var template = Template.Parse(EmbeddedResource.GetContent("NpgsqlConnectionStringBuilder.snbtxt"), "NpgsqlConnectionStringBuilder.snbtxt");
@@ -115,5 +128,21 @@ public class NpgsqlConnectionStringBuilderSourceGenerator : ISourceGenerator
         public bool IsEnum { get; set; }
         public bool IsObsolete { get; set; }
         public object? DefaultValue { get; set; }
+
+        public HashSet<string> Alternatives { get; } = new(StringComparer.Ordinal);
+
+        public bool IsMain { get; private init; } = true;
+
+        public PropertyDetails Clone()
+            => new PropertyDetails
+            {
+                Name = Name,
+                CanonicalName = CanonicalName,
+                TypeName = TypeName,
+                IsEnum = IsEnum,
+                IsObsolete = IsObsolete,
+                DefaultValue = DefaultValue,
+                IsMain = false
+            };
     }
 }
