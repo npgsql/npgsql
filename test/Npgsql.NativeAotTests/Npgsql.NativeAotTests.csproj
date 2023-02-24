@@ -8,8 +8,12 @@
     <StaticallyLinked>true</StaticallyLinked>
     <InvariantGlobalization>true</InvariantGlobalization>
     <StaticOpenSslLinking>true</StaticOpenSslLinking>
-    <StaticExecutable>true</StaticExecutable>
     <StripSymbols>true</StripSymbols>
+    <DebuggerSupport>false</DebuggerSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
