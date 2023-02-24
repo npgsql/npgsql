@@ -7,8 +7,8 @@ To use the NetTopologySuite plugin, simply add a dependency on this package and 
 ```csharp
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
 dataSourceBuilder.UseNetTopologySuite();
-
 var dataSource = dataSourceBuilder.Build();
+
 var conn = await dataSource.OpenConnectionAsync();
 // Do some work
 ```
