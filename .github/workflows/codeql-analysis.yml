@@ -65,7 +65,7 @@ jobs:
         dotnet-version: ${{ env.dotnet_sdk_version }}
 
     - name: Build
-      run: dotnet build
+      run: dotnet build -c Release
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
