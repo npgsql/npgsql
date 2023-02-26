@@ -18,10 +18,7 @@ namespace Npgsql.Internal.TypeHandlers;
 /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
 /// Use it at your own risk.
 /// </remarks>
-public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>, INpgsqlTypeHandler<Stream>
-#if !NETSTANDARD2_0
-    , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
-#endif
+public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>, INpgsqlTypeHandler<Stream>, INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
 {
     public ByteaHandler(PostgresType pgType) : base(pgType) {}
 
@@ -113,7 +110,6 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
     Task Write(Stream value, NpgsqlWriteBuffer buf, int count, bool async, CancellationToken cancellationToken = default) 
         => buf.WriteStreamRaw(value, count, async, cancellationToken);
 
-#if !NETSTANDARD2_0
     /// <inheritdoc />
     public int ValidateAndGetLength(Memory<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => ValidateAndGetLength(value.Length, parameter);
@@ -149,5 +145,4 @@ public partial class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandle
 
     ValueTask<Memory<byte>> INpgsqlTypeHandler<Memory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => throw new NotSupportedException("Only writing Memory<byte> to PostgreSQL bytea is supported, no reading.");
-#endif
 }

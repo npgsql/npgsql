@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '7.0.100'
+  dotnet_sdk_version: '8.0.100-preview.1.23115.2'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Windows comes with PG pre-installed, and defines the PGPASSWORD environment variable. Remove it as it interferes
@@ -27,12 +27,12 @@ jobs:
         os: [ubuntu-22.04, windows-2022]
         pg_major: [15, 14, 13, 12, 11, 10]
         config: [Release]
-        test_tfm: [net7.0]
+        test_tfm: [net8.0]
         include:
           - os: ubuntu-22.04
             pg_major: 15
             config: Debug
-            test_tfm: net7.0
+            test_tfm: net8.0
           - os: ubuntu-22.04
             pg_major: 15
             config: Release
@@ -40,11 +40,11 @@ jobs:
           - os: macos-12
             pg_major: 14
             config: Release
-            test_tfm: net7.0
+            test_tfm: net8.0
 #          - os: ubuntu-22.04
 #            pg_major: 15
 #            config: Release
-#            test_tfm: net7.0
+#            test_tfm: net8.0
 #            pg_prerelease: 'PG Prerelease'
 
     outputs:

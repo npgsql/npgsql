@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '7.0.102'
+  dotnet_sdk_version: '8.0.100-preview.1.23115.2'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
         shell: bash
 
       - name: Build
-        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net7.0
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
@@ -61,19 +61,19 @@ jobs:
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
 
       - name: Run
-        run: test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests
+        run: test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests
 
       - name: Write binary size to summary
         run: |
-          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
       - name: Dump mstat
-        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -- "test/Npgsql.NativeAotTests/obj/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
+        run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
       - name: Assert binary size
         run: |
-          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net7.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
+          size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
 
           if (( size > 36700160 )); then

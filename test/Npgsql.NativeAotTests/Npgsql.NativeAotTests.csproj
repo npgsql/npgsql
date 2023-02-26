@@ -2,7 +2,8 @@
   <PropertyGroup>
     <OutputType>exe</OutputType>
     <PublishAot>true</PublishAot>
-    <TargetFrameworks>net7.0</TargetFrameworks>
+    <!-- We need to override TargetFrameworks here to avoid build failures  -->
+    <TargetFrameworks>net8.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
     <StaticallyLinked>true</StaticallyLinked>
     <InvariantGlobalization>true</InvariantGlobalization>

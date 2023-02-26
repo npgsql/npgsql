@@ -825,7 +825,10 @@ public sealed partial class NpgsqlConnector
                                 cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
                             }
 #else
-                            throw new NotSupportedException("PEM certificates are only supported with .NET 5 and higher");
+                            // Technically PEM certificates are supported as of .NET 5 but we don't build for the net5.0
+                            // TFM anymore since .NET 5 is out of support
+                            // This is a breaking change for .NET 5 as of Npgsql 8!
+                            throw new NotSupportedException("PEM certificates are only supported with .NET 6 and higher");
 #endif
                         }
 
@@ -879,8 +882,8 @@ public sealed partial class NpgsqlConnector
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
                         var sslProtocols = SslProtocols.None;
-                        // On .NET Framework SslProtocols.None can be disabled, see #3718
 #if NETSTANDARD2_0
+                        // On .NET Framework SslProtocols.None can be disabled, see #3718
                         sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
 #endif
 

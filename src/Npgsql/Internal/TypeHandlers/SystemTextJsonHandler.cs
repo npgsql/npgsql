@@ -3,15 +3,12 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-using System.Text.Json.Nodes;
-#endif
 
 namespace Npgsql.Internal.TypeHandlers;
 
@@ -65,7 +62,6 @@ public class SystemTextJsonHandler : JsonTextHandler
             return lengthCache.Set(data.Length + _headerLen);
         }
         
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
         if (typeof(TAny) == typeof(JsonObject) || typeof(TAny) == typeof(JsonArray))
         {
             lengthCache ??= new NpgsqlLengthCache(1);
@@ -77,7 +73,6 @@ public class SystemTextJsonHandler : JsonTextHandler
                 parameter.ConvertedValue = data;
             return lengthCache.Set(data.Length + _headerLen);
         }
-#endif
 
         // User POCO, need to serialize. At least internally ArrayPool buffers are used...
         var s = JsonSerializer.Serialize(value, _serializerOptions);
@@ -113,7 +108,6 @@ public class SystemTextJsonHandler : JsonTextHandler
                 : SerializeJsonDocument((JsonDocument)(object)value);
             await buf.WriteBytesRaw(data, async, cancellationToken);
         }
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
         else if (typeof(TAny) == typeof(JsonObject) || typeof(TAny) == typeof(JsonArray))
         {
             var data = parameter?.ConvertedValue != null
@@ -121,7 +115,6 @@ public class SystemTextJsonHandler : JsonTextHandler
                 : SerializeJsonObject((JsonNode)(object)value);
             await buf.WriteBytesRaw(data, async, cancellationToken);
         }
-#endif
         else
         {
             // User POCO, read serialized representation from the validation phase
@@ -140,10 +133,8 @@ public class SystemTextJsonHandler : JsonTextHandler
             : value switch
             {
                 JsonDocument jsonDocument => ValidateAndGetLengthCustom(jsonDocument, ref lengthCache, parameter),
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
                 JsonObject jsonObject => ValidateAndGetLengthCustom(jsonObject, ref lengthCache, parameter),
                 JsonArray jsonArray => ValidateAndGetLengthCustom(jsonArray, ref lengthCache, parameter),
-#endif
                 _ => ValidateAndGetLengthCustom(value, ref lengthCache, parameter)
             };
 
@@ -154,10 +145,8 @@ public class SystemTextJsonHandler : JsonTextHandler
             : value switch
             {
                 JsonDocument jsonDocument => WriteWithLengthCustom(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
                 JsonObject jsonObject => WriteWithLengthCustom(jsonObject, buf, lengthCache, parameter, async, cancellationToken),
                 JsonArray jsonArray => WriteWithLengthCustom(jsonArray, buf, lengthCache, parameter, async, cancellationToken),
-#endif
                 _ => WriteWithLengthCustom(value, buf, lengthCache, parameter, async, cancellationToken),
             };
 
@@ -207,7 +196,6 @@ public class SystemTextJsonHandler : JsonTextHandler
         return stream.ToArray();
     }
 
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
     byte[] SerializeJsonObject(JsonNode jsonObject)
     {
         // TODO: Writing is currently really inefficient - please don't criticize :)
@@ -218,5 +206,4 @@ public class SystemTextJsonHandler : JsonTextHandler
         writer.Flush();
         return stream.ToArray();
     }
-#endif
 }

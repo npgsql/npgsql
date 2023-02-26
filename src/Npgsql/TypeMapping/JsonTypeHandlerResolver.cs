@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
-
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
-using System.Text.Json.Nodes;
-#endif
 
 namespace Npgsql.TypeMapping;
 
@@ -48,9 +45,7 @@ sealed class JsonTypeHandlerResolver : TypeHandlerResolver
 
     internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string>? clrTypes)
         => type == typeof(JsonDocument)
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
            || type == typeof(JsonObject) || type == typeof(JsonArray)
-#endif
             ? "jsonb"
             : clrTypes is not null && clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
@@ -61,9 +56,7 @@ sealed class JsonTypeHandlerResolver : TypeHandlerResolver
         => dataTypeName switch
         {
             "jsonb" => new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
                 , typeof(JsonObject), typeof(JsonArray)
-#endif
             ),
             "json" => new(NpgsqlDbType.Json,    "json"),
             _ => null
@@ -73,10 +66,8 @@ sealed class JsonTypeHandlerResolver : TypeHandlerResolver
     {
         if (typeof(T) == typeof(JsonDocument))
             return _jsonbHandler;
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NETSTANDARD2_1
         if (typeof(T) == typeof(JsonObject) || typeof(T) == typeof(JsonArray))
             return _jsonbHandler;
-#endif
 
         return null;
     }
