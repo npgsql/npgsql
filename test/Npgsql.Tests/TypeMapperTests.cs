@@ -6,6 +6,7 @@ using Npgsql.TypeMapping;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
+using Npgsql.Internal.TypeMapping;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;

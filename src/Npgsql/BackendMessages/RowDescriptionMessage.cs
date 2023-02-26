@@ -6,6 +6,7 @@ using System.Globalization;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
 using Npgsql.Replication.PgOutput.Messages;
 using Npgsql.TypeMapping;

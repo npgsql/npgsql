@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using Npgsql.Util;

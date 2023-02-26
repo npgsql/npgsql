@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

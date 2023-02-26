@@ -1,6 +1,7 @@
 ﻿using System;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql.TypeMapping;
 

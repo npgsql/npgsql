@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql.TypeMapping;
 

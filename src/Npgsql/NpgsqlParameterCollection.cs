@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

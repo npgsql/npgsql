@@ -4,6 +4,7 @@ using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.NetTopologySuite.Internal;

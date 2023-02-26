@@ -6,14 +6,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeMapping;
+namespace Npgsql.Internal.TypeMapping;
 
 /// <summary>
 /// Type mapper used to map types to type handlers.

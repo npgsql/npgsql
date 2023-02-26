@@ -6,6 +6,7 @@ using System.Reflection;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
 using Npgsql.Properties;
 using Npgsql.Util;
