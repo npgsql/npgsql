@@ -391,96 +391,101 @@ sealed class TypeMapper
         if (_handlersByClrType.TryGetValue(type, out var handler))
             return handler;
 
-        lock (_writeLock)
+        return ResolveLong(type);
+
+        NpgsqlTypeHandler ResolveLong(Type type)
         {
-            foreach (var resolver in _resolvers)
+            lock (_writeLock)
             {
-                try
+                foreach (var resolver in _resolvers)
                 {
-                    if ((handler = resolver.ResolveByClrType(type)) is not null)
-                        return _handlersByClrType[type] = handler;
+                    try
+                    {
+                        if (resolver.ResolveByClrType(type) is { } handler)
+                            return _handlersByClrType[type] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                    }
                 }
-                catch (Exception e)
+
+                // Try to see if it is an array type
+                var arrayElementType = GetArrayListElementType(type);
+                if (arrayElementType is not null)
                 {
-                    _commandLogger.LogError(e, $"Type resolver {resolver.GetType().Name} threw exception while resolving value with type {type}");
+                    // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
+                    if (arrayElementType.IsGenericType &&
+                        arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
+                        DatabaseInfo.Version.IsGreaterOrEqual(14))
+                    {
+                        var subtypeType = arrayElementType.GetGenericArguments()[0];
+
+                        return ResolveByClrType(subtypeType) is
+                            { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } subtypeHandler
+                            ? _handlersByClrType[type] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType)
+                            : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
+                    }
+
+                    if (ResolveByClrType(arrayElementType) is not { } elementHandler)
+                        throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
+
+                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
+                        throw new ArgumentException(
+                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
+
+                    return _handlersByClrType[type] =
+                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
                 }
-            }
 
-            // Try to see if it is an array type
-            var arrayElementType = GetArrayListElementType(type);
-            if (arrayElementType is not null)
-            {
-                // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
-                if (arrayElementType.IsGenericType &&
-                    arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
-                    DatabaseInfo.Version.IsGreaterOrEqual(14))
+                if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
+                    return _handlersByClrType[type] = underlyingHandler;
+
+                if (type.IsEnum)
                 {
-                    var subtypeType = arrayElementType.GetGenericArguments()[0];
+                    return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, _defaultNameTranslator)) is PostgresEnumType pgEnumType
+                        ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, _defaultNameTranslator, Connector.TextEncoding)
+                        : throw new NotSupportedException(
+                            $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
+                            "Consider mapping the enum before usage, refer to the documentation for more details.");
+                }
 
-                    return ResolveByClrType(subtypeType) is
-                        { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } subtypeHandler
-                        ? _handlersByClrType[type] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType)
+                // TODO: We can make the following compatible with reflection-free mode by having NpgsqlRange implement some interface, and
+                // check for that.
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+                {
+                    var subtypeType = type.GetGenericArguments()[0];
+
+                    return ResolveByClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
+                        ? _handlersByClrType[type] = subtypeHandler.CreateRangeHandler(pgRangeType)
                         : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
                 }
 
-                if (ResolveByClrType(arrayElementType) is not { } elementHandler)
-                    throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
+                if (typeof(IEnumerable).IsAssignableFrom(type))
+                    throw new NotSupportedException("IEnumerable parameters are not supported, pass an array or List instead");
 
-                if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                    throw new ArgumentException(
-                        $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                return _handlersByClrType[type] =
-                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
+                throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
+                                                $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
             }
 
-            if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
-                return _handlersByClrType[type] = underlyingHandler;
-
-            if (type.IsEnum)
+            static Type? GetArrayListElementType(Type type)
             {
-                return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, _defaultNameTranslator)) is PostgresEnumType pgEnumType
-                    ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, _defaultNameTranslator, Connector.TextEncoding)
-                    : throw new NotSupportedException(
-                        $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
-                        "Consider mapping the enum before usage, refer to the documentation for more details.");
-            }
+                var typeInfo = type.GetTypeInfo();
+                if (typeInfo.IsArray)
+                    return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
 
-            // TODO: We can make the following compatible with reflection-free mode by having NpgsqlRange implement some interface, and
-            // check for that.
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
-            {
-                var subtypeType = type.GetGenericArguments()[0];
+                var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
+                if (ilist != null)
+                    return GetUnderlyingType(ilist.GetGenericArguments()[0]);
 
-                return ResolveByClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
-                    ? _handlersByClrType[type] = subtypeHandler.CreateRangeHandler(pgRangeType)
-                    : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
-            }
+                if (typeof(IList).IsAssignableFrom(type))
+                    throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
 
-            if (typeof(IEnumerable).IsAssignableFrom(type))
-                throw new NotSupportedException("IEnumerable parameters are not supported, pass an array or List instead");
+                return null;
 
-            throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
-                                            $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
-        }
-
-        static Type? GetArrayListElementType(Type type)
-        {
-            var typeInfo = type.GetTypeInfo();
-            if (typeInfo.IsArray)
-                return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
-
-            var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-            if (ilist != null)
-                return GetUnderlyingType(ilist.GetGenericArguments()[0]);
-
-            if (typeof(IList).IsAssignableFrom(type))
-                throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-
-            return null;
-
-            Type GetUnderlyingType(Type t)
-                => Nullable.GetUnderlyingType(t) ?? t;
+                Type GetUnderlyingType(Type t)
+                    => Nullable.GetUnderlyingType(t) ?? t;
+            }   
         }
     }
 
