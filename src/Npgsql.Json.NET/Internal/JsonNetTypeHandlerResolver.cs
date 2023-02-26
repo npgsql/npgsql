@@ -44,8 +44,8 @@ public class JsonNetTypeHandlerResolver : TypeHandlerResolver
     internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string> clrTypes)
         => clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
+        => DoGetMappingByDataTypeName(type.Name);
 
     internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => dataTypeName switch

@@ -49,8 +49,8 @@ sealed class JsonTypeHandlerResolver : TypeHandlerResolver
             ? "jsonb"
             : clrTypes is not null && clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
+        => DoGetMappingByDataTypeName(type.Name);
 
     internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => dataTypeName switch

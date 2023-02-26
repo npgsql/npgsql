@@ -2187,7 +2187,7 @@ class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) =>
             typeName == "integer" ? new ExplodingTypeHandler(null!, _safe) : null;
         public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
-        public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotImplementedException();
+        public override TypeMappingInfo GetMappingByPostgresType(PostgresType type) => throw new NotImplementedException();
     }
 }
 
