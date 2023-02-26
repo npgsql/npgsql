@@ -313,15 +313,13 @@ public abstract class TestBase
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource);
+    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null)
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName);
 
-    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null)
         where TException : Exception
     {
-        await using var conn = dataSource is not null
-            ? await dataSource.OpenConnectionAsync()
-            : await OpenConnectionAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
