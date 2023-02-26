@@ -301,13 +301,15 @@ public sealed class TypeMapper
                         $"Composite type '{pgCompositeType}' must be mapped with Npgsql before being used, see the docs.")
                     : null;
 
+#pragma warning disable CS0618
             case PostgresRangeType:
             case PostgresMultirangeType:
                 return throwOnError
                     ? throw new NotSupportedException(
-                        $"PostgreSQL type '{pgType}' isn't supported by Npgsql. " +
-                                $"Please call {nameof(NpgsqlRangeExtensions.UseRange)} on {nameof(NpgsqlDataSourceBuilder)} to enable support.")
+                        $"'{pgType}' is a range type; please call {nameof(NpgsqlRangeExtensions.UseRange)} on {nameof(NpgsqlDataSourceBuilder)} or on {nameof(NpgsqlConnection)}.{nameof(NpgsqlConnection.GlobalTypeMapper)} to enable ranges. " +
+                        "See https://www.npgsql.org/doc/types/ranges.html for more information.")
                     : null;
+#pragma warning restore CS0618
 
             default:
                 throw new ArgumentOutOfRangeException($"Unhandled PostgreSQL type type: {pgType.GetType()}");

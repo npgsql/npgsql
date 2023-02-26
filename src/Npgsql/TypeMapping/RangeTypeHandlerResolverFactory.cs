@@ -11,7 +11,7 @@ sealed class RangeTypeHandlerResolverFactory : TypeHandlerResolverFactory
 
     // Here and below we don't resolve anything.
     // Instead BuiltInTypeHandlerResolver will resolve mappings for us.
-    // This is so we don't force to add RangeTypeHandlerResolverFactory to GlobalTypeMapper
+    // This is so we don't need to add RangeTypeHandlerResolverFactory to GlobalTypeMapper
     public override string? GetDataTypeNameByClrType(Type clrType)
         => null;
 
