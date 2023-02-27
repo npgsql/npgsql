@@ -485,30 +485,6 @@ sealed class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
     public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
         : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }
 
-    protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-    {
-        if (ArrayTypeInfo<TRequestedArray>.IsArray)
-        {
-            return ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv)
-                ? (TRequestedArray)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank())
-                : (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
-        }
-
-        // We evaluate List last to better support reflection free mode
-        // https://github.com/dotnet/runtimelab/blob/f2fd03035c1c02a0b904537b6f38906035f14689/docs/using-nativeaot/reflection-free-mode.md
-        if (ListTypeInfo<TRequestedArray>.IsList)
-        {
-            return ListTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv)
-                ? (TRequestedArray)await ReadList<TElementPsv>(buf, async)
-                : (TRequestedArray)await ListTypeInfo<TRequestedArray>.ReadList(this, buf, async);
-        }
-
-        throw new InvalidCastException(fieldDescription == null
-            ? $"Can't cast database type to {typeof(TRequestedArray).Name}"
-            : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TRequestedArray).Name}"
-        );
-    }
-
     internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         => ReadPsvAsObject(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
