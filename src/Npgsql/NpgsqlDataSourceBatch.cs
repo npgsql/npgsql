@@ -32,9 +32,4 @@ sealed class NpgsqlDataSourceBatch : NpgsqlBatch
         get => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceBatch);
         set => throw new NotSupportedException(NpgsqlStrings.NotSupportedOnDataSourceBatch);
     }
-
-    protected override void ClearTransaction()
-    {
-        // Do not clear transaction as it's impossible to set it
-    }
 }

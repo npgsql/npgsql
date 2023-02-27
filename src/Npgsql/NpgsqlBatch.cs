@@ -179,7 +179,7 @@ public class NpgsqlBatch : DbBatch
     /// <inheritdoc />
     public override void Dispose()
     {
-        ClearTransaction();
+        Command.ResetTransaction();
         if (Command.IsCacheable && Connection is not null && Connection.CachedBatch is null)
         {
             BatchCommands.Clear();
@@ -190,11 +190,6 @@ public class NpgsqlBatch : DbBatch
 
         Command.IsCacheable = false;
     }
-
-    /// <summary>
-    /// Clears the current transaction.
-    /// </summary>
-    protected virtual void ClearTransaction() => Transaction = null;
 
     internal static NpgsqlBatch CreateCachedBatch(NpgsqlConnection connection)
     {

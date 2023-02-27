@@ -1604,7 +1604,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        _transaction = null;
+        ResetTransaction();
 
         State = CommandState.Disposed;
 
@@ -1629,6 +1629,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         _allResultTypesAreUnknown = false;
         EnableErrorBarriers = false;
     }
+
+    internal void ResetTransaction() => _transaction = null;
 
     #endregion
 
