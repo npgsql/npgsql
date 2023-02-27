@@ -72,11 +72,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     }
 
     /// <summary>
-    /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
-    /// </summary>
-    internal NpgsqlCommand? CachedCommand { get; set; }
-
-    /// <summary>
     /// Flag used to make sure we never double-close a connection, returning it twice to the pool.
     /// </summary>
     int _closing;
@@ -557,6 +552,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     #region Command / Batch creation
 
     /// <summary>
+    /// A cached command handed out by <see cref="CreateCommand" />, which is returned when disposed. Useful for reducing allocations.
+    /// </summary>
+    internal NpgsqlCommand? CachedCommand { get; set; }
+
+    /// <summary>
     /// Creates and returns a <see cref="System.Data.Common.DbCommand"/>
     /// object associated with the <see cref="System.Data.Common.DbConnection"/>.
     /// </summary>
@@ -582,6 +582,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         return NpgsqlCommand.CreateCachedCommand(this);
     }
 
+    /// <summary>
+    /// A cached batch handed out by <see cref="CreateBatch" />, which is returned when disposed. Useful for reducing allocations.
+    /// </summary>
+    internal NpgsqlBatch? CachedBatch { get; set; }
+
 #if NET6_0_OR_GREATER
     /// <inheritdoc/>
     public override bool CanCreateBatch => true;
@@ -590,7 +595,19 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     protected override DbBatch CreateDbBatch() => CreateBatch();
 
     /// <inheritdoc cref="DbConnection.CreateBatch"/>
-    public new NpgsqlBatch CreateBatch() => new(this);
+    public new NpgsqlBatch CreateBatch()
+    {
+        CheckDisposed();
+
+        var cachedBatch = CachedBatch;
+        if (cachedBatch is not null)
+        {
+            CachedBatch = null;
+            return cachedBatch;
+        }
+
+        return NpgsqlBatch.CreateCachedBatch(this);
+    }
 #else
     /// <summary>
     /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnection"/>.

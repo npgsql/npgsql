@@ -553,10 +553,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
                 // already be using the recycled instance.
-                if (!Command.IsWrappedByBatch)
-                {
-                    Command.IsCached = false;
-                }
+                Command.IsCacheable = false;
 
                 // If the schema of a table changes after a statement is prepared on that table, PostgreSQL errors with
                 // 0A000: cached plan must not change result type. 0A000 seems like a non-specific code, but it's very unlikely the
@@ -758,13 +755,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
                 postgresException.BatchCommand = _statements[StatementIndex];
 
-                // Prevent the command or batch from by recycled (by the connection) when it's disposed. This is important since
+                // Prevent the command or batch from being recycled (by the connection) when it's disposed. This is important since
                 // the exception is very likely to escape the using statement of the command, and by that time some other user may
                 // already be using the recycled instance.
-                if (!Command.IsWrappedByBatch)
-                {
-                    Command.IsCached = false;
-                }
+                Command.IsCacheable = false;
             }
 
             // An error means all subsequent statements were skipped by PostgreSQL.

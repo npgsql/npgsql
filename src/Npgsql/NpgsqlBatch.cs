@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -98,6 +99,7 @@ public class NpgsqlBatch : DbBatch
     /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
     public NpgsqlBatch(NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
+        GC.SuppressFinalize(this);
         Command = new(DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
 
@@ -107,12 +109,14 @@ public class NpgsqlBatch : DbBatch
 
     internal NpgsqlBatch(NpgsqlConnector connector)
     {
+        GC.SuppressFinalize(this);
         Command = new(connector, DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
 
     private protected NpgsqlBatch(NpgsqlDataSourceCommand command)
     {
+        GC.SuppressFinalize(this);
         Command = command;
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
@@ -171,4 +175,26 @@ public class NpgsqlBatch : DbBatch
 
     /// <inheritdoc />
     public override void Cancel() => Command.Cancel();
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        Command.ResetTransaction();
+        if (Command.IsCacheable && Connection is not null && Connection.CachedBatch is null)
+        {
+            BatchCommands.Clear();
+            Command.Reset();
+            Connection.CachedBatch = this;
+            return;
+        }
+
+        Command.IsCacheable = false;
+    }
+
+    internal static NpgsqlBatch CreateCachedBatch(NpgsqlConnection connection)
+    {
+        var batch = new NpgsqlBatch(connection);
+        batch.Command.IsCacheable = true;
+        return batch;
+    }
 }

@@ -70,7 +70,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
     /// <summary>
     /// Whether this command is cached by <see cref="NpgsqlConnection" /> and returned by <see cref="NpgsqlConnection.CreateCommand" />.
     /// </summary>
-    internal bool IsCached { get; set; }
+    internal bool IsCacheable { get; set; }
 
 #if DEBUG
     internal static bool EnableSqlRewriting;
@@ -169,7 +169,7 @@ public class NpgsqlCommand : DbCommand, ICloneable, IComponent
         => _connector = connector;
 
     internal static NpgsqlCommand CreateCachedCommand(NpgsqlConnection connection)
-        => new(null, connection) { IsCached = true };
+        => new(null, connection) { IsCacheable = true };
 
     #endregion Constructors
 
@@ -1604,30 +1604,37 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     /// <inheritdoc />
     protected override void Dispose(bool disposing)
     {
-        _transaction = null;
+        ResetTransaction();
 
         State = CommandState.Disposed;
 
-        if (IsCached && InternalConnection is not null && InternalConnection.CachedCommand is null)
+        if (IsCacheable && InternalConnection is not null && InternalConnection.CachedCommand is null)
         {
-            // TODO: Optimize NpgsqlParameterCollection to recycle NpgsqlParameter instances as well
-            // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
-
-            _commandText = string.Empty;
-            CommandType = CommandType.Text;
-            _parameters.Clear();
+            Reset();
             InternalConnection.CachedCommand = this;
             return;
         }
 
-        IsCached = false;
+        IsCacheable = false;
     }
+
+    internal void Reset()
+    {
+        // TODO: Optimize NpgsqlParameterCollection to recycle NpgsqlParameter instances as well
+        // TODO: Statements isn't cleared/recycled, leaving this for now, since it'll be replaced by the new batching API
+        _commandText = string.Empty;
+        CommandType = CommandType.Text;
+        _parameters.Clear();
+        _timeout = null;
+        _allResultTypesAreUnknown = false;
+        EnableErrorBarriers = false;
+    }
+
+    internal void ResetTransaction() => _transaction = null;
 
     #endregion
 
     #region Tracing
-
-    #endregion Tracing
 
     internal void TraceCommandStart(NpgsqlConnector connector)
     {
@@ -1661,6 +1668,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CurrentActivity = null;
         }
     }
+
+    #endregion Tracing
 
     #region Misc
 
