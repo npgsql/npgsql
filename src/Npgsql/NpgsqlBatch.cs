@@ -180,6 +180,7 @@ public class NpgsqlBatch : DbBatch
         if (Command.IsCacheable && Connection is not null && Connection.CachedBatch is null)
         {
             BatchCommands.Clear();
+            Command.Reset();
             Connection.CachedBatch = this;
             return;
         }
