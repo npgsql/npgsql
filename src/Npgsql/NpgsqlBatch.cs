@@ -99,6 +99,7 @@ public class NpgsqlBatch : DbBatch
     /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
     public NpgsqlBatch(NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
+        GC.SuppressFinalize(this);
         Command = new(DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
 
@@ -108,12 +109,14 @@ public class NpgsqlBatch : DbBatch
 
     internal NpgsqlBatch(NpgsqlConnector connector)
     {
+        GC.SuppressFinalize(this);
         Command = new(connector, DefaultBatchCommandsSize);
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
 
     private protected NpgsqlBatch(NpgsqlDataSourceCommand command)
     {
+        GC.SuppressFinalize(this);
         Command = command;
         BatchCommands = new NpgsqlBatchCommandCollection(Command.InternalBatchCommands);
     }
@@ -186,7 +189,6 @@ public class NpgsqlBatch : DbBatch
         }
 
         Command.IsCacheable = false;
-        GC.SuppressFinalize(this);
     }
 
     /// <summary>
