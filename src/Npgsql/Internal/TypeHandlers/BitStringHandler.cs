@@ -266,6 +266,39 @@ public class BitStringArrayHandler : ArrayHandler<BitArray>
     public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
         : base(postgresType, elementHandler, arrayNullabilityMode) {}
 
+    /// <inheritdoc />
+    protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    {
+        if (ArrayTypeInfo<TRequestedArray>.IsArray)
+        {
+            if(ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
+                return (TRequestedArray)await ReadArray<BitArray>(buf, async);
+
+            if(ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
+                return (TRequestedArray)await ReadArray<bool>(buf, async);
+
+            return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
+        }
+
+        // We evaluate List last to better support reflection free mode
+        // https://github.com/dotnet/runtimelab/blob/f2fd03035c1c02a0b904537b6f38906035f14689/docs/using-nativeaot/reflection-free-mode.md
+        if (ListTypeInfo<TRequestedArray>.IsList)
+        {
+            if (ListTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
+                return (TRequestedArray)await ReadList<BitArray>(buf, async);
+
+            if (ListTypeInfo<TRequestedArray>.ElementType == typeof(bool))
+                return (TRequestedArray)await ReadList<bool>(buf, async);
+
+            return (TRequestedArray)await ListTypeInfo<TRequestedArray>.ReadList(this, buf, async);
+        }
+
+        throw new InvalidCastException(fieldDescription == null
+            ? $"Can't cast database type to {typeof(TRequestedArray).Name}"
+            : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TRequestedArray).Name}"
+        );
+    }
+
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => fieldDescription?.TypeModifier == 1
             ? await ReadArray<bool>(buf, async)
