@@ -260,11 +260,8 @@ class RangeTests : MultiplexingTestBase
     [OneTimeTearDown]
     public async Task TearDown()
     {
-        if (DataSourceWithRanges is not null)
-        {
-            await DataSourceWithRanges.DisposeAsync();
-            DataSourceWithRanges = null!;
-        }
+        await DataSourceWithRanges.DisposeAsync();
+        DataSourceWithRanges = null!;
     }
 
     protected override ValueTask<NpgsqlConnection> OpenConnectionAsync()
