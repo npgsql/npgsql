@@ -299,7 +299,7 @@ public class BitStringArrayHandler : ArrayHandler<BitArray>
         );
     }
 
-    internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => fieldDescription?.TypeModifier == 1
             ? await ReadArray<bool>(buf, async)
             : await ReadArray<BitArray>(buf, async);

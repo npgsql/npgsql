@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -8,21 +9,14 @@ namespace Npgsql.Internal.TypeHandling;
 abstract class NullableHandler<T>
 {
     static NullableHandler<T>? _derivedInstance;
-    public static readonly Type? UnderlyingType = Nullable.GetUnderlyingType(typeof(T));
-    public static bool Exists => UnderlyingType != null;
+    public static bool Exists => default(T) is null && typeof(T).IsValueType;
 
     static NullableHandler<T> DerivedInstance
     {
         get
         {
-            return _derivedInstance ?? CreateInstance();
-            static NullableHandler<T> CreateInstance()
-            {
-                if (UnderlyingType is null)
-                    return null!;
-                _derivedInstance = (NullableHandler<T>?)Activator.CreateInstance(typeof(NullableHandler<,>).MakeGenericType(typeof(T), UnderlyingType));
-                return _derivedInstance!;
-            }
+            Debug.Assert(Exists);
+            return _derivedInstance ??= (NullableHandler<T>?)Activator.CreateInstance(typeof(NullableHandler<,>).MakeGenericType(typeof(T), typeof(T).GenericTypeArguments[0]))!;
         }
     }
 

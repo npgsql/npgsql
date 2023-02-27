@@ -58,7 +58,7 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
     protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
     {
         if (ArrayTypeInfo<TRequestedArray>.IsArray)
-            return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
+            return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
 
         if (ListTypeInfo<TRequestedArray>.IsList)
             return (TRequestedArray)await ListTypeInfo<TRequestedArray>.ReadList(this, buf, async);
@@ -303,15 +303,8 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
         {
             get
             {
-                return _derivedInstance ?? CreateInstance();
-                static ArrayTypeInfo<TArray> CreateInstance()
-                {
-                    if (ElementType is null)
-                        return null!;
-
-                    _derivedInstance = (ArrayTypeInfo<TArray>?)Activator.CreateInstance(typeof(ArrayHandler<,>).MakeGenericType(typeof(TArray), ElementType), typeof(TArray).GetArrayRank());
-                    return _derivedInstance!;
-                }
+                Debug.Assert(ElementType is not null);
+                return (_derivedInstance ??= (ArrayTypeInfo<TArray>?)Activator.CreateInstance(typeof(ArrayHandler<,>).MakeGenericType(typeof(TArray), ElementType), typeof(TArray).GetArrayRank()))!;
             }
         }
 
@@ -335,15 +328,8 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
         {
             get
             {
-                return _derivedInstance ?? CreateInstance();
-                static ListTypeInfo<TList> CreateInstance()
-                {
-                    if (ElementType is null)
-                        return null!;
-
-                    _derivedInstance = (ListTypeInfo<TList>?)Activator.CreateInstance(typeof(ListHandler<,>).MakeGenericType(typeof(TList), ElementType));
-                    return _derivedInstance!;
-                }
+                Debug.Assert(ElementType is not null);
+                return _derivedInstance ??= (ListTypeInfo<TList>?)Activator.CreateInstance(typeof(ListHandler<,>).MakeGenericType(typeof(TList), ElementType))!;
             }
         }
 
@@ -503,20 +489,18 @@ sealed class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
     {
         if (ArrayTypeInfo<TRequestedArray>.IsArray)
         {
-            if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
-                return (TRequestedArray)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
-
-            return (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
+            return ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv)
+                ? (TRequestedArray)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank())
+                : (TRequestedArray)await ArrayTypeInfo<TRequestedArray>.ReadArray(this, buf, async);
         }
 
         // We evaluate List last to better support reflection free mode
         // https://github.com/dotnet/runtimelab/blob/f2fd03035c1c02a0b904537b6f38906035f14689/docs/using-nativeaot/reflection-free-mode.md
         if (ListTypeInfo<TRequestedArray>.IsList)
         {
-            if (ListTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
-                return (TRequestedArray)await ReadList<TElementPsv>(buf, async);
-
-            return (TRequestedArray)await ListTypeInfo<TRequestedArray>.ReadList(this, buf, async);
+            return ListTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv)
+                ? (TRequestedArray)await ReadList<TElementPsv>(buf, async)
+                : (TRequestedArray)await ListTypeInfo<TRequestedArray>.ReadList(this, buf, async);
         }
 
         throw new InvalidCastException(fieldDescription == null
