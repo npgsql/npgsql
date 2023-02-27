@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -184,6 +185,7 @@ public class NpgsqlBatch : DbBatch
         }
 
         Command.IsCacheable = false;
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>
