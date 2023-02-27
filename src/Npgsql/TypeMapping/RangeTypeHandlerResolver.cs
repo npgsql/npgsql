@@ -42,22 +42,14 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
         if (_databaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
             return null;
 
-        switch (pgType)
+        return pgType switch
         {
-        case PostgresRangeType pgRangeType:
-        {
-            var subtypeHandler = _typeMapper.ResolveByOID(pgRangeType.Subtype.OID);
-            return subtypeHandler.CreateRangeHandler(pgRangeType);
-        }
-
-        case PostgresMultirangeType pgMultirangeType:
-        {
-            var subtypeHandler = _typeMapper.ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
-            return subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
-        }
-        default:
-            return null;
-        }
+            PostgresRangeType pgRangeType
+                => _typeMapper.ResolveByOID(pgRangeType.Subtype.OID).CreateRangeHandler(pgRangeType),
+            PostgresMultirangeType pgMultirangeType
+                => _typeMapper.ResolveByOID(pgMultirangeType.Subrange.Subtype.OID).CreateMultirangeHandler(pgMultirangeType),
+            _ => null
+        };
     }
 
     public override NpgsqlTypeHandler? ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
