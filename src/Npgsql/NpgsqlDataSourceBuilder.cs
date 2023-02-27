@@ -26,6 +26,8 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
 
+    Func<X509Certificate2?>? _rootCertificateCallback;
+
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
@@ -149,6 +151,33 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSourceBuilder UseClientCertificatesCallback(Action<X509CertificateCollection>? clientCertificatesCallback)
     {
         _clientCertificatesCallback = clientCertificatesCallback;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the <see cref="X509Certificate2" /> that will be used validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificate">The CA certificate.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    public NpgsqlDataSourceBuilder UseRootCertificate(X509Certificate2? rootCertificate)
+        => rootCertificate is null
+            ? UseRootCertificateCallback(null)
+            : UseRootCertificateCallback(() => rootCertificate);
+
+    /// <summary>
+    /// Specifies a callback that will be used to validate SSL certificate, received from the server.
+    /// </summary>
+    /// <param name="rootCertificateCallback">The callback to get CA certificate.</param>
+    /// <returns>The same builder instance so that multiple calls can be chained.</returns>
+    /// <remarks>
+    /// This overload, which accepts a callback, is suitable for scenarios where the certificate rotates
+    /// and might change during the lifetime of the application.
+    /// When that's not the case, use the overload which directly accepts the certificate.
+    /// </remarks>
+    public NpgsqlDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2>? rootCertificateCallback)
+    {
+        _rootCertificateCallback = rootCertificateCallback;
 
         return this;
     }
@@ -389,7 +418,8 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _userTypeMappings,
             DefaultNameTranslator,
             _syncConnectionInitializer,
-            _asyncConnectionInitializer);
+            _asyncConnectionInitializer,
+            _rootCertificateCallback);
     }
 
     void ValidateMultiHost()

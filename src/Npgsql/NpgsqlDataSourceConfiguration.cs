@@ -20,4 +20,5 @@ sealed record NpgsqlDataSourceConfiguration(
     Dictionary<string, IUserTypeMapping> UserTypeMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
-    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);
+    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync,
+    Func<X509Certificate2?>? RootCertificateCallback);
