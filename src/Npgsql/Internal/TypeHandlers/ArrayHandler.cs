@@ -281,9 +281,6 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
         => new("While trying to write an array, one of its elements failed validation. " +
                "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
 
-    protected static InvalidCastException CantWriteTypeException(Type type, Type arrayType)
-        => new($"Can't write type '{type}' as an array of {arrayType}");
-
     #endregion Write
 
     #region Static generic caching helpers
@@ -383,6 +380,9 @@ public class ArrayHandler<TElement> : ArrayHandler
 
     #region Write
 
+    static InvalidCastException CantWriteTypeException(Type type)
+        => new($"Can't write type '{type}' as an array of {typeof(TElement)}");
+
     // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
     // we must use the bang operator here to tell the compiler that a null value will never be returned.
 
@@ -405,7 +405,7 @@ public class ArrayHandler<TElement> : ArrayHandler
             return ValidateAndGetLengthGeneric(generic, ref lengthCache);
         if (value is ICollection nonGeneric)
             return ValidateAndGetLengthNonGeneric(nonGeneric, ref lengthCache);
-        throw CantWriteTypeException(value.GetType(), typeof(TElement));
+        throw CantWriteTypeException(value.GetType());
     }
 
     // Handle single-dimensional arrays and generic IList<T>
@@ -452,7 +452,7 @@ public class ArrayHandler<TElement> : ArrayHandler
         if (value is ICollection nonGeneric)
             return WriteNonGeneric(nonGeneric, buf, lengthCache, async, cancellationToken);
 
-        throw CantWriteTypeException(value.GetType(), typeof(TElement));
+        throw CantWriteTypeException(value.GetType());
     }
 
     // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
