@@ -176,14 +176,14 @@ public class NpgsqlBatch : DbBatch
     public override void Dispose()
     {
         ClearTransaction();
-        if (Command.IsCached && Connection is not null && Connection.CachedBatch is null)
+        if (Command.IsCacheable && Connection is not null && Connection.CachedBatch is null)
         {
             BatchCommands.Clear();
             Connection.CachedBatch = this;
             return;
         }
 
-        Command.IsCached = false;
+        Command.IsCacheable = false;
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public class NpgsqlBatch : DbBatch
     internal static NpgsqlBatch CreateCachedBatch(NpgsqlConnection connection)
     {
         var batch = new NpgsqlBatch(connection);
-        batch.Command.IsCached = true;
+        batch.Command.IsCacheable = true;
         return batch;
     }
 }
