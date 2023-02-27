@@ -40,6 +40,15 @@ class NetworkTypeTests : MultiplexingTestBase
             NpgsqlDbType.Inet,
             isDefaultForReading: false);
 
+    [Test]
+    public Task Inet_v6_array_as_tuple()
+        => AssertType(
+            new[] { (IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24) },
+            "{2001:1db8:85a3:1142:1000:8a2e:1370:7334/24}",
+            "inet[]",
+            NpgsqlDbType.Inet | NpgsqlDbType.Array,
+            isDefaultForReading: false);
+
     [Test, IssueLink("https://github.com/dotnet/corefx/issues/33373")]
     public Task IPAddress_Any()
         => AssertTypeWrite(IPAddress.Any, "0.0.0.0/32", "inet", NpgsqlDbType.Inet);

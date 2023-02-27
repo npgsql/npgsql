@@ -266,30 +266,6 @@ public class BitStringArrayHandler : ArrayHandler<BitArray>
     public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
         : base(postgresType, elementHandler, arrayNullabilityMode) {}
 
-    /// <inheritdoc />
-    protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-    {
-        if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
-        {
-            if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
-
-            if (ArrayTypeInfo<TRequestedArray>.IsList)
-                return (TRequestedArray)(object)await ReadList<BitArray>(buf, async);
-        }
-
-        if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
-        {
-            if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
-
-            if (ArrayTypeInfo<TRequestedArray>.IsList)
-                return (TRequestedArray)(object)await ReadList<bool>(buf, async);
-        }
-
-        return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
-    }
-
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => fieldDescription?.TypeModifier == 1
             ? await ReadArray<bool>(buf, async)

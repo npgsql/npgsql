@@ -200,6 +200,89 @@ public abstract class ArrayHandler : NpgsqlTypeHandler
 
     #endregion Read
 
+    #region Write
+
+    // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to box/unbox
+    protected int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache lengthCache)
+    {
+        var asMultidimensional = value as Array;
+        var dimensions = asMultidimensional?.Rank ?? 1;
+
+        // Leave empty slot for the entire array length, and go ahead an populate the element slots
+        var pos = lengthCache.Position;
+        var len =
+            4 +              // dimensions
+            4 +              // has_nulls (unused)
+            4 +              // type OID
+            dimensions * 8 + // number of dimensions * (length + lower bound)
+            4 * value.Count; // sum of element lengths
+
+        lengthCache.Set(0);
+        NpgsqlLengthCache? elemLengthCache = lengthCache;
+
+        foreach (var element in value)
+        {
+            if (element is null)
+                continue;
+
+            try
+            {
+                len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
+            }
+            catch (Exception e)
+            {
+                throw MixedTypesOrJaggedArrayException(e);
+            }
+        }
+
+        lengthCache.Lengths[pos] = len;
+        return len;
+    }
+
+    protected async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
+    {
+        var asArray = value as Array;
+        var dimensions = asArray?.Rank ?? 1;
+
+        var len =
+            4 +               // ndim
+            4 +               // has_nulls
+            4 +               // element_oid
+            dimensions * 8;   // dim (4) + lBound (4)
+
+        if (buf.WriteSpaceLeft < len)
+        {
+            await buf.Flush(async, cancellationToken);
+            Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
+        }
+
+        buf.WriteInt32(dimensions);
+        buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
+        buf.WriteUInt32(ElementHandler.PostgresType.OID);
+        if (asArray != null)
+        {
+            for (var i = 0; i < dimensions; i++)
+            {
+                buf.WriteInt32(asArray.GetLength(i));
+                buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
+            }
+        }
+        else
+        {
+            buf.WriteInt32(value.Count);
+            buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
+        }
+
+        foreach (var element in value)
+            await ElementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async, cancellationToken);
+    }
+
+    protected static Exception MixedTypesOrJaggedArrayException(Exception innerException)
+        => new("While trying to write an array, one of its elements failed validation. " +
+               "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
+
+    #endregion Write
+
     #region Static generic caching helpers
 
     internal static class ElementTypeInfo<TElement>
@@ -297,12 +380,8 @@ public class ArrayHandler<TElement> : ArrayHandler
 
     #region Write
 
-    static Exception MixedTypesOrJaggedArrayException(Exception innerException)
-        => new("While trying to write an array, one of its elements failed validation. " +
-               "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
-
-    static Exception CantWriteTypeException(Type type)
-        => new InvalidCastException($"Can't write type {type} as an array of {typeof(TElement)}");
+    static InvalidCastException CantWriteTypeException(Type type)
+        => new($"Can't write type '{type}' as an array of {typeof(TElement)}");
 
     // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
     // we must use the bang operator here to tell the compiler that a null value will never be returned.
@@ -363,43 +442,6 @@ public class ArrayHandler<TElement> : ArrayHandler
         return len;
     }
 
-    // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to box/unbox
-    int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache lengthCache)
-    {
-        var asMultidimensional = value as Array;
-        var dimensions = asMultidimensional?.Rank ?? 1;
-
-        // Leave empty slot for the entire array length, and go ahead an populate the element slots
-        var pos = lengthCache.Position;
-        var len =
-            4 +              // dimensions
-            4 +              // has_nulls (unused)
-            4 +              // type OID
-            dimensions * 8 + // number of dimensions * (length + lower bound)
-            4 * value.Count; // sum of element lengths
-
-        lengthCache.Set(0);
-        NpgsqlLengthCache? elemLengthCache = lengthCache;
-
-        foreach (var element in value)
-        {
-            if (element is null)
-                continue;
-
-            try
-            {
-                len += ElementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
-            }
-            catch (Exception e)
-            {
-                throw MixedTypesOrJaggedArrayException(e);
-            }
-        }
-
-        lengthCache.Lengths[pos] = len;
-        return len;
-    }
-
     protected override Task WriteWithLengthCustom<TAny>([DisallowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
     {
         buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
@@ -444,44 +486,6 @@ public class ArrayHandler<TElement> : ArrayHandler
             await ElementHandler.WriteWithLength(element, buf, lengthCache, null, async, cancellationToken);
     }
 
-    async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
-    {
-        var asArray = value as Array;
-        var dimensions = asArray?.Rank ?? 1;
-
-        var len =
-            4 +               // ndim
-            4 +               // has_nulls
-            4 +               // element_oid
-            dimensions * 8;   // dim (4) + lBound (4)
-
-        if (buf.WriteSpaceLeft < len)
-        {
-            await buf.Flush(async, cancellationToken);
-            Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
-        }
-
-        buf.WriteInt32(dimensions);
-        buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
-        buf.WriteUInt32(ElementHandler.PostgresType.OID);
-        if (asArray != null)
-        {
-            for (var i = 0; i < dimensions; i++)
-            {
-                buf.WriteInt32(asArray.GetLength(i));
-                buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
-            }
-        }
-        else
-        {
-            buf.WriteInt32(value.Count);
-            buf.WriteInt32(LowerBound);  // We don't map .NET lower bounds to PG
-        }
-
-        foreach (var element in value)
-            await ElementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async, cancellationToken);
-    }
-
     #endregion
 }
 
@@ -494,19 +498,6 @@ sealed class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
 {
     public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
         : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }
-
-    protected internal override async ValueTask<TRequestedArray> ReadCustom<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-    {
-        if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
-        {
-            if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
-
-            if (ArrayTypeInfo<TRequestedArray>.IsList)
-                return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async);
-        }
-        return await base.ReadCustom<TRequestedArray>(buf, len, async, fieldDescription);
-    }
 
     internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         => ReadPsvAsObject(buf, len, false, fieldDescription).GetAwaiter().GetResult();
