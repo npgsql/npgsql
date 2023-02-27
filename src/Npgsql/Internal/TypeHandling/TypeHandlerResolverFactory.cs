@@ -1,10 +1,12 @@
 using System;
+using Npgsql.Internal.TypeMapping;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.Internal.TypeHandling;
 
 public abstract class TypeHandlerResolverFactory
 {
-    public abstract TypeHandlerResolver Create(NpgsqlConnector connector);
+    public abstract TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector);
 
     public abstract string? GetDataTypeNameByClrType(Type clrType);
     public virtual string? GetDataTypeNameByValueDependentValue(object value) => null;

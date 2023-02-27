@@ -23,6 +23,7 @@ using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 
 namespace Npgsql.Internal;

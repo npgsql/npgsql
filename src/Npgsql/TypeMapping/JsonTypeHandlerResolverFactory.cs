@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Text.Json;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql.TypeMapping;
 
 sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
 {
-    readonly Type[] _jsonbClrTypes;
-    readonly Type[] _jsonClrTypes;
     readonly JsonSerializerOptions _settings;
     readonly Dictionary<Type, string>? _userClrTypes;
 
@@ -18,8 +17,6 @@ sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
         Type[]? jsonClrTypes,
         JsonSerializerOptions? settings)
     {
-        _jsonbClrTypes = jsonbClrTypes ?? Array.Empty<Type>();
-        _jsonClrTypes = jsonClrTypes ?? Array.Empty<Type>();
         _settings = settings ?? new JsonSerializerOptions();
 
         if (jsonbClrTypes is not null)
@@ -39,7 +36,7 @@ sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
         }
     }
 
-    public override TypeHandlerResolver Create(NpgsqlConnector connector)
+    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new JsonTypeHandlerResolver(connector, _userClrTypes, _settings);
 
     public override string? GetDataTypeNameByClrType(Type type)

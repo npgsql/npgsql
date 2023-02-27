@@ -419,9 +419,24 @@ public class DateTimeTests : TestBase
 
     #endregion
 
+    NpgsqlDataSource DataSourceWithRanges { get; set; } = default!;
+
+    [OneTimeSetUp]
+    public void OneTimeSetUp() => DataSourceWithRanges = CreateDataSourceWithRanges();
+
+    [OneTimeTearDown]
+    public async Task TearDown()
+    {
+        if (DataSourceWithRanges is not null)
+        {
+            await DataSourceWithRanges.DisposeAsync();
+            DataSourceWithRanges = null!;
+        }
+    }
+
     protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
     {
-        var conn = await base.OpenConnectionAsync();
+        var conn = await DataSourceWithRanges.OpenConnectionAsync();
         await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
         return conn;
     }

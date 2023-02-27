@@ -368,6 +368,15 @@ public abstract class TestBase
         return NpgsqlDataSource.Create(connectionStringBuilder);
     }
 
+    protected virtual NpgsqlDataSource CreateDataSourceWithRanges(Action<NpgsqlConnectionStringBuilder>? connectionStringBuilderAction = null)
+    {
+        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
+        connectionStringBuilderAction?.Invoke(connectionStringBuilder);
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString);
+        dataSourceBuilder.UseRange();
+        return dataSourceBuilder.Build();
+    }
+
     protected static NpgsqlDataSource GetDataSource(string connectionString)
     {
         if (!DataSources.TryGetValue(connectionString, out var dataSource))

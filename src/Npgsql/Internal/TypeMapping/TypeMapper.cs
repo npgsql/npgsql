@@ -6,18 +6,18 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
-using Npgsql.Properties;
-using Npgsql.Util;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeMapping;
+namespace Npgsql.Internal.TypeMapping;
 
-sealed class TypeMapper
+/// <summary>
+/// Type mapper used to map types to type handlers.
+/// </summary>
+public sealed class TypeMapper
 {
     internal NpgsqlConnector Connector { get; }
     readonly object _writeLock = new();
@@ -70,7 +70,7 @@ sealed class TypeMapper
 
         var resolvers = new TypeHandlerResolver[resolverFactories.Count];
         for (var i = 0; i < resolverFactories.Count; i++)
-            resolvers[i] = resolverFactories[i].Create(Connector);
+            resolvers[i] = resolverFactories[i].Create(this, Connector);
         _resolvers = resolvers;
 
         foreach (var userTypeMapping in userTypeMappings.Values)
@@ -94,7 +94,7 @@ sealed class TypeMapper
     /// </summary>
     /// <param name="oid">A PostgreSQL type OID</param>
     /// <returns>A type handler that can be used to encode and decode values.</returns>
-    internal NpgsqlTypeHandler ResolveByOID(uint oid)
+    public NpgsqlTypeHandler ResolveByOID(uint oid)
         => TryResolveByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
     internal bool TryResolveByOID(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
@@ -132,7 +132,12 @@ sealed class TypeMapper
         }
     }
 
-    internal NpgsqlTypeHandler ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+    /// <summary>
+    /// Looks up a type handler by NpgsqlDbType.
+    /// </summary>
+    /// <param name="npgsqlDbType">Parameter's NpgsqlDbType</param>
+    /// <returns>A type handler that can be used to encode and decode values.</returns>
+    public NpgsqlTypeHandler ResolveByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
     {
         if (_handlersByNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
             return handler;
@@ -161,6 +166,22 @@ sealed class TypeMapper
                     }
                 }
 
+                // Can't find (or translate) PG data type name by NpgsqlDbType.
+                // This might happen because of flags (like Array, Range or Multirange).
+                foreach (var resolver in _resolvers)
+                {
+                    try
+                    {
+                        if (resolver.ResolveByNpgsqlDbType(npgsqlDbType) is { } handler)
+                            return _handlersByNpgsqlDbType[npgsqlDbType] = handler;
+                    }
+                    catch (Exception e)
+                    {
+                        _commandLogger.LogError(e,
+                            $"Type resolver {resolver.GetType().Name} threw exception while resolving NpgsqlDbType {npgsqlDbType}");
+                    }
+                }
+
                 if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
                 {
                     var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
@@ -171,27 +192,6 @@ sealed class TypeMapper
 
                     return _handlersByNpgsqlDbType[npgsqlDbType] =
                         elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-                }
-
-                if (npgsqlDbType.HasFlag(NpgsqlDbType.Range))
-                {
-                    var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
-
-                    if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
-                        throw new ArgumentException(
-                            $"No range type could be found in the database for subtype {subtypeHandler.PostgresType}");
-
-                    return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateRangeHandler(pgRangeType);
-                }
-
-                if (npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
-                {
-                    var subtypeHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
-
-                    if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
-                        throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
-
-                    return _handlersByNpgsqlDbType[npgsqlDbType] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
                 }
 
                 throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
@@ -277,18 +277,6 @@ sealed class TypeMapper
                     elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
             }
 
-            case PostgresRangeType pgRangeType:
-            {
-                var subtypeHandler = ResolveByOID(pgRangeType.Subtype.OID);
-                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateRangeHandler(pgRangeType);
-            }
-
-            case PostgresMultirangeType pgMultirangeType:
-            {
-                var subtypeHandler = ResolveByOID(pgMultirangeType.Subrange.Subtype.OID);
-                return _handlersByDataTypeName[typeName] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
-            }
-
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
@@ -311,6 +299,16 @@ sealed class TypeMapper
                     ? throw new NotSupportedException(
                         $"Composite type '{pgCompositeType}' must be mapped with Npgsql before being used, see the docs.")
                     : null;
+
+#pragma warning disable CS0618
+            case PostgresRangeType:
+            case PostgresMultirangeType:
+                return throwOnError
+                    ? throw new NotSupportedException(
+                        $"'{pgType}' is a range type; please call {nameof(NpgsqlRangeExtensions.UseRange)} on {nameof(NpgsqlDataSourceBuilder)} or on {nameof(NpgsqlConnection)}.{nameof(NpgsqlConnection.GlobalTypeMapper)} to enable ranges. " +
+                        "See https://www.npgsql.org/doc/types/ranges.html for more information.")
+                    : null;
+#pragma warning restore CS0618
 
             default:
                 throw new ArgumentOutOfRangeException($"Unhandled PostgreSQL type type: {pgType.GetType()}");
@@ -386,7 +384,12 @@ sealed class TypeMapper
     }
 
     // TODO: This is needed as a separate method only because of binary COPY, see #3957
-    internal NpgsqlTypeHandler ResolveByClrType(Type type)
+    /// <summary>
+    /// Looks up a type handler by CLR Type.
+    /// </summary>
+    /// <param name="type">Parameter's CLR type</param>
+    /// <returns>A type handler that can be used to encode and decode values.</returns>
+    public NpgsqlTypeHandler ResolveByClrType(Type type)
     {
         if (_handlersByClrType.TryGetValue(type, out var handler))
             return handler;
@@ -414,19 +417,6 @@ sealed class TypeMapper
                 var arrayElementType = GetArrayListElementType(type);
                 if (arrayElementType is not null)
                 {
-                    // With PG14, we map arrays over range types to PG multiranges by default, not to regular arrays over ranges.
-                    if (arrayElementType.IsGenericType &&
-                        arrayElementType.GetGenericTypeDefinition() == typeof(NpgsqlRange<>) &&
-                        DatabaseInfo.Version.IsGreaterOrEqual(14))
-                    {
-                        var subtypeType = arrayElementType.GetGenericArguments()[0];
-
-                        return ResolveByClrType(subtypeType) is
-                            { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } subtypeHandler
-                            ? _handlersByClrType[type] = subtypeHandler.CreateMultirangeHandler(pgMultirangeType)
-                            : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
-                    }
-
                     if (ResolveByClrType(arrayElementType) is not { } elementHandler)
                         throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
 
@@ -448,17 +438,6 @@ sealed class TypeMapper
                         : throw new NotSupportedException(
                             $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
                             "Consider mapping the enum before usage, refer to the documentation for more details.");
-                }
-
-                // TODO: We can make the following compatible with reflection-free mode by having NpgsqlRange implement some interface, and
-                // check for that.
-                if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
-                {
-                    var subtypeType = type.GetGenericArguments()[0];
-
-                    return ResolveByClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
-                        ? _handlersByClrType[type] = subtypeHandler.CreateRangeHandler(pgRangeType)
-                        : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
                 }
 
                 if (typeof(IEnumerable).IsAssignableFrom(type))
@@ -507,28 +486,6 @@ sealed class TypeMapper
             }
 
             break;
-
-        case PostgresRangeType pgRangeType:
-        {
-            if (TryGetMapping(pgRangeType.Subtype, out var subtypeMapping))
-            {
-                mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range, pgType.DisplayName);
-                return true;
-            }
-
-            break;
-        }
-
-        case PostgresMultirangeType pgMultirangeType:
-        {
-            if (TryGetMapping(pgMultirangeType.Subrange.Subtype, out var subtypeMapping))
-            {
-                mapping = new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Multirange, pgType.DisplayName);
-                return true;
-            }
-
-            break;
-        }
 
         case PostgresDomainType pgDomainType:
             if (TryGetMapping(pgDomainType.BaseType, out var baseMapping))

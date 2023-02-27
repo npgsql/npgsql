@@ -72,6 +72,7 @@ public class LegacyNodaTimeTests : TestBase
 
         // Clear any previous cached mappings/handlers in case tests were executed before the legacy flag was set.
         NpgsqlConnection.GlobalTypeMapper.Reset();
+        NpgsqlConnection.GlobalTypeMapper.UseRange();
         NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
         await using var connection = await OpenConnectionAsync();
         await connection.ReloadTypesAsync();

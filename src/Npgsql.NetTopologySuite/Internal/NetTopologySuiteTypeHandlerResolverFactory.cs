@@ -4,6 +4,7 @@ using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal.TypeMapping;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.NetTopologySuite.Internal;
@@ -27,7 +28,7 @@ public class NetTopologySuiteTypeHandlerResolverFactory : TypeHandlerResolverFac
         _geographyAsDefault = geographyAsDefault;
     }
 
-    public override TypeHandlerResolver Create(NpgsqlConnector connector)
+    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
             _geographyAsDefault);
 
