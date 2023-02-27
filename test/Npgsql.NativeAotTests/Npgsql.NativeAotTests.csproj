@@ -6,7 +6,6 @@
     <TargetFrameworks>net8.0</TargetFrameworks>
     <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <StaticOpenSslLinking>true</StaticOpenSslLinking>
     <StripSymbols>true</StripSymbols>
     <DebuggerSupport>false</DebuggerSupport>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
