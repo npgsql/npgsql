@@ -785,7 +785,15 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if (sslMode is SslMode.Prefer or SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
+            var checkSsl = sslMode is SslMode.Prefer or SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull;
+            if (checkSsl && DisableSsl)
+            {
+                if (sslMode != SslMode.Prefer)
+                    throw new NotSupportedException();
+                checkSsl = false;
+            }
+
+            if (checkSsl)
             {
                 WriteSslRequest();
                 await Flush(async, cancellationToken);

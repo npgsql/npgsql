@@ -19,4 +19,7 @@
   <ItemGroup>
     <PackageReference Remove="GitHubActionsTestLogger" />
   </ItemGroup>
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Npgsql.DisableSsl" Value="true" Trim="true" />
+  </ItemGroup>
 </Project>

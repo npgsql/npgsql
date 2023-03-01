@@ -20,12 +20,26 @@ static class Statics
     internal static readonly bool DisableDateTimeInfinityConversions;
 #endif
 
+    static readonly bool disableSsl = GetAppContextData("Npgsql.DisableSsl", false);
+
+    internal static bool DisableSsl => disableSsl;
+
     static Statics()
     {
         LegacyTimestampBehavior = AppContext.TryGetSwitch("Npgsql.EnableLegacyTimestampBehavior", out var enabled) && enabled;
         DisableDateTimeInfinityConversions = AppContext.TryGetSwitch("Npgsql.DisableDateTimeInfinityConversions", out enabled) && enabled;
     }
-    
+
+    static bool GetAppContextData(string name, bool defaultValue)
+    {
+        var data = AppContext.GetData(name);
+        if (data is bool value)
+            return value;
+        if (data is string s && bool.TryParse(s, out var result))
+            return result;
+        return defaultValue;
+    }
+
     internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
     {
         if (msg.GetType() != typeof(T))

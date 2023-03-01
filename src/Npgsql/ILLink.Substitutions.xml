@@ -1,0 +1,10 @@
+<linker>
+    <assembly fullname="Npgsql">
+        <type fullname="Npgsql.Util.Statics" feature="Npgsql.DisableSsl" featurevalue="true">
+            <field name="disableSsl" value="true" />
+        </type>
+        <type fullname="Npgsql.Util.Statics" feature="Npgsql.DisableSsl" featurevalue="false">
+            <field name="disableSsl" value="false" />
+        </type>
+    </assembly>
+</linker>
