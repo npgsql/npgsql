@@ -17,7 +17,6 @@ static class ArrayTypeInfo<TArray>
 {
     // ReSharper disable StaticMemberInGenericType
     public static readonly Type? ElementType = typeof(TArray).IsArray ? typeof(TArray).GetElementType() : null;
-    public static readonly bool IsNullableElementType = ElementType is not null && Nullable.GetUnderlyingType(ElementType) is not null;
     public static readonly int ArrayRank = ElementType is not null ? typeof(TArray).GetArrayRank() : 0;
     // ReSharper restore StaticMemberInGenericType
 
@@ -29,7 +28,6 @@ static class ListTypeInfo<TList>
 {
     // ReSharper disable StaticMemberInGenericType
     public static readonly Type? ElementType = typeof(TList).IsGenericType && typeof(TList).GetGenericTypeDefinition() == typeof(List<>) ? typeof(TList).GetGenericArguments()[0] : null;
-    public static bool IsNullableElementType = ElementType is not null && Nullable.GetUnderlyingType(ElementType) is not null;
     // ReSharper restore StaticMemberInGenericType
 
     [MemberNotNullWhen(true, nameof(ElementType))]
@@ -220,7 +218,7 @@ readonly struct ArrayHandlerOps
         if (dimensions == 0)
             return expectedDimensions > 1
                 ? Array.CreateInstance(returnType, new int[expectedDimensions])
-                : Array.CreateInstance(returnType, 0);
+                : _elementOperations.Create(isArray: true, 0);
 
         if (expectedDimensions > 0 && dimensions != expectedDimensions)
             throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
@@ -232,8 +230,8 @@ readonly struct ArrayHandlerOps
 
             buf.ReadInt32(); // Lower bound
 
-            var oneDimensional = Array.CreateInstance(returnType, arrayLength);
-            for (var i = 0; i < oneDimensional.Length; i++)
+            var oneDimensional = _elementOperations.Create(isArray: true, arrayLength);
+            for (var i = 0; i < arrayLength; i++)
             {
                 await buf.Ensure(4, async);
                 var len = buf.ReadInt32();
@@ -293,7 +291,7 @@ readonly struct ArrayHandlerOps
         buf.ReadUInt32(); // Element OID. Ignored.
 
         if (dimensions == 0)
-            return Activator.CreateInstance(typeof(List<>).MakeGenericType(requestedElement))!;
+            return _elementOperations.Create(isArray: false, 0);
         if (dimensions > 1)
             throw new NotSupportedException($"Can't read multidimensional array as List<{requestedElement.Name}>");
 
@@ -304,7 +302,7 @@ readonly struct ArrayHandlerOps
         var length = buf.ReadInt32();
         buf.ReadInt32(); // We don't care about the lower bounds
 
-        var list = Activator.CreateInstance(typeof(List<>).MakeGenericType(requestedElement), length)!;
+        var list = _elementOperations.Create(isArray: false, length);
         for (var i = 0; i < length; i++)
         {
             var len = buf.ReadInt32();
@@ -454,6 +452,7 @@ readonly struct ArrayHandlerOps
 interface IElementOperations
 {
     NpgsqlTypeHandler ElementHandler { get; }
+    object Create(bool isArray, int capacity);
     ValueTask Read(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null);
     ValueTask Read(Array array, int[] indices, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null);
     int ValidateAndGetLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
@@ -552,6 +551,12 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
     }
 
     NpgsqlTypeHandler IElementOperations.ElementHandler => _elementHandler;
+
+    public object Create(bool isArray, int capacity) => isArray switch
+    {
+        true => capacity is 0 ? Array.Empty<TElement>() : new TElement[capacity],
+        false => new List<TElement>()
+    };
 
     ValueTask IElementOperations.Read(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription)
     {
