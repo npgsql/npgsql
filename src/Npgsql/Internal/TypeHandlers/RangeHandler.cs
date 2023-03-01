@@ -38,7 +38,7 @@ public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler, INpgsqlTypeHand
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-        => new ArrayHandler<NpgsqlRange<TSubtype>>(pgArrayType, this, arrayNullabilityMode);
+        => new ArrayHandler(pgArrayType, this, arrayNullabilityMode);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)

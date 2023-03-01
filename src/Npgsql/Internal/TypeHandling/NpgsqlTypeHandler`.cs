@@ -65,7 +65,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-        => new ArrayHandler<TDefault>(pgArrayType, this, arrayNullabilityMode);
+        => new ArrayHandler(pgArrayType, this, arrayNullabilityMode);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)

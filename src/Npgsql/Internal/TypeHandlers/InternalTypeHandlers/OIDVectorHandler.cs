@@ -1,9 +1,6 @@
-﻿using System;
-using Npgsql.Internal.TypeHandlers.NumericHandlers;
+﻿using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
 
@@ -11,11 +8,11 @@ namespace Npgsql.Internal.TypeHandlers.InternalTypeHandlers;
 /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
 /// be 0 (we send 1 for regular arrays).
 /// </summary>
-sealed class OIDVectorHandler : ArrayHandler<uint>
+sealed class OIDVectorHandler : ArrayHandler
 {
     public OIDVectorHandler(PostgresType oidvectorType, PostgresType oidType)
         : base(oidvectorType, new UInt32Handler(oidType), ArrayNullabilityMode.Never, 0) { }
 
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-        => new ArrayHandler<ArrayHandler<uint>>(pgArrayType, this, arrayNullabilityMode);
+        => new ArrayHandler(pgArrayType, this, arrayNullabilityMode);
 }

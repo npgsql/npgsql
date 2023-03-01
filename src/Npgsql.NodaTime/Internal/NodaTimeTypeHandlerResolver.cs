@@ -232,9 +232,9 @@ public class NodaTimeTypeHandlerResolver : TypeHandlerResolver
 
     NpgsqlTypeHandler TsTzRangeArray()
         => _timestampTzRangeArray ??=
-            new ArrayHandler<Interval>((PostgresArrayType)PgType("tstzrange[]"), TsTzRange(), _arrayNullabilityMode);
+            new ArrayHandler((PostgresArrayType)PgType("tstzrange[]"), TsTzRange(), _arrayNullabilityMode);
 
     NpgsqlTypeHandler DateRangeArray()
         => _dateRangeArray ??=
-            new ArrayHandler<DateInterval>((PostgresArrayType)PgType("daterange[]"), DateRange(), _arrayNullabilityMode);
+            new ArrayHandler((PostgresArrayType)PgType("daterange[]"), DateRange(), _arrayNullabilityMode);
 }

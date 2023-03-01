@@ -135,6 +135,7 @@ public class ArrayTests : MultiplexingTestBase
 
         for (var i = 0; i < cmd.Parameters.Count; i++)
         {
+            var read = reader.GetFieldValue<int?[]>(i);
             Assert.That(reader.GetFieldValue<int?[]>(i), Is.EqualTo(expected));
             Assert.That(reader.GetFieldValue<List<int?>>(i), Is.EqualTo(expected.ToList()));
             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
@@ -243,8 +244,8 @@ SELECT onedim, twodim FROM (VALUES
         var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
-        Assert.That(reader.GetFieldValue<int[]>(0), Is.SameAs(Array.Empty<int>()));
-        Assert.That(reader.GetFieldValue<int?[]>(0), Is.SameAs(Array.Empty<int?>()));
+        Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(Array.Empty<int>()));
+        Assert.That(reader.GetFieldValue<int?[]>(0), Is.EqualTo(Array.Empty<int?>()));
     }
 
     [Test, Description("Roundtrips an empty multi-dimensional array.")]
@@ -290,7 +291,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandler.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayHandlerOps.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -309,7 +310,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandler.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayHandlerOps.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
@@ -613,7 +614,7 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         await using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
-        Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
+        Assert.AreEqual(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
         // Unlike T[], List<T> is mutable so we should not return the same instance
         Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
     }

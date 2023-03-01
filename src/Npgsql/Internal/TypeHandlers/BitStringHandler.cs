@@ -260,14 +260,15 @@ public partial class BitStringHandler : NpgsqlTypeHandler<BitArray>,
 /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
 /// Use it at your own risk.
 /// </remarks>
-public class BitStringArrayHandler : ArrayHandler<BitArray>
+public class BitStringArrayHandler : ArrayHandler
 {
     /// <inheritdoc />
     public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
-        : base(postgresType, elementHandler, arrayNullabilityMode) {}
+        : base(postgresType, elementHandler, arrayNullabilityMode)
+    { }
 
-    public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    public override ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => fieldDescription?.TypeModifier == 1
-            ? await ReadArray<bool>(buf, async)
-            : await ReadArray<BitArray>(buf, async);
+            ? base.ReadAsObject(typeof(bool), buf, len, async, fieldDescription)
+            : base.ReadAsObject(buf, len, async, fieldDescription);
 }
