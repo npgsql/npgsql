@@ -111,37 +111,6 @@ public class DistributedTransactionTests : TestBase
         AssertNumberOfRows(adminConn, table, 0);
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1737")]
-    public void Multiple_unpooled_connections_do_not_reuse()
-    {
-        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-        {
-            Pooling = false,
-            Enlist = true
-        };
-
-        using var scope = new TransactionScope();
-
-        int processId;
-
-        using (var conn1 = OpenConnection(csb))
-        using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
-        {
-            processId = conn1.ProcessID;
-            cmd.ExecuteNonQuery();
-        }
-
-        using (var conn2 = OpenConnection(csb))
-        using (var cmd = new NpgsqlCommand("SELECT 1", conn2))
-        {
-            // The connection reuse optimization isn't implemented for unpooled connections (though it could be)
-            Assert.That(conn2.ProcessID, Is.Not.EqualTo(processId));
-            cmd.ExecuteNonQuery();
-        }
-
-        scope.Complete();
-    }
-
     [Test(Description = "Transaction race, bool distributed")]
     [Explicit("Fails on Appveyor (https://ci.appveyor.com/project/roji/npgsql/build/3.3.0-250)")]
     public void Transaction_race([Values(false, true)] bool distributed)

@@ -293,6 +293,29 @@ public class SystemTransactionTests : TestBase
         scope.Complete();
     }
 
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4963")]
+    public void Single_unpooled_closed_connection()
+    {
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Pooling = false,
+            Enlist = true
+        };
+        using var dataSource = NpgsqlDataSource.Create(csb);
+
+        using (var scope = new TransactionScope())
+        using (var conn = dataSource.OpenConnection())
+        using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+        {
+            cmd.ExecuteNonQuery();
+            conn.Close();
+            Assert.That(dataSource.Statistics.Total, Is.EqualTo(1));
+            scope.Complete();
+        }
+
+        Assert.That(dataSource.Statistics.Total, Is.EqualTo(0));
+    }
+
     [Test]
     [IssueLink("https://github.com/npgsql/npgsql/issues/3863")]
     public void Break_connector_while_in_transaction_scope_with_rollback([Values] bool pooling)
