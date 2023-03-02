@@ -95,14 +95,14 @@ public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler, INpgsqlTypeHand
             {
                 totalLen += 4;
                 if (value.LowerBound is not null)
-                    totalLen += ((INpgsqlTypeHandler<TAnySubtype>)SubtypeHandler).ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
+                    totalLen += SubtypeHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
             }
 
             if (!value.UpperBoundInfinite)
             {
                 totalLen += 4;
                 if (value.UpperBound is not null)
-                    totalLen += ((INpgsqlTypeHandler<TAnySubtype>)SubtypeHandler).ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
+                    totalLen += SubtypeHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
             }
         }
 
@@ -129,10 +129,10 @@ public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler, INpgsqlTypeHand
             return;
 
         if (!value.LowerBoundInfinite)
-            await ((INpgsqlTypeHandler<TAnySubtype>)SubtypeHandler).WriteWithLength(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
+            await SubtypeHandler.WriteWithLength(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
 
         if (!value.UpperBoundInfinite)
-            await ((INpgsqlTypeHandler<TAnySubtype>)SubtypeHandler).WriteWithLength(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
+            await SubtypeHandler.WriteWithLength(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
     }
 
     #endregion
