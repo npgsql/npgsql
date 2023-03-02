@@ -48,13 +48,4 @@ sealed class UnpooledDataSource : NpgsqlDataSource
     }
 
     internal override void Clear() {}
-
-    internal override bool TryRentEnlistedPending(Transaction transaction, NpgsqlConnection connection,
-        [NotNullWhen(true)] out NpgsqlConnector? connector)
-    {
-        connector = null;
-        return false;
-    }
-
-    internal override bool TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction) => false;
 }
