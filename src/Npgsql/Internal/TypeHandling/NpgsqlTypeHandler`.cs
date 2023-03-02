@@ -40,7 +40,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
     // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
     // we must use the bang operator here to tell the compiler that a null value will never returned.
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-        => (await Read<TDefault>(buf, len, async, fieldDescription))!;
+        => (await Read(buf, len, async, fieldDescription))!;
 
     #endregion Read
 
