@@ -178,7 +178,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             return bytes;
         }
     }
-
+    
     ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => throw new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL text is supported, no reading.");
 
@@ -308,8 +308,8 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     public virtual TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         var byteLength = (int)(stream.Length - stream.Position);
-        return buffer.ReadBytesLeft >= byteLength
-            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream)
+        return buffer.ReadBytesLeft >= byteLength 
+            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream) 
             : new StreamReader(stream, _encoding);
     }
 }

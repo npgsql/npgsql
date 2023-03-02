@@ -98,8 +98,8 @@ public class HstoreHandler :
             Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
             IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-            DBNull => WriteNull(buf, async, cancellationToken),
-            null => WriteNull(buf, async, cancellationToken),
+            DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
             _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type BoolHandler")
         };
 

@@ -181,8 +181,8 @@ public class RangeHandler<TSubtype1, TSubtype2> : RangeHandler<TSubtype1>, INpgs
             NpgsqlRange<TSubtype1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype1>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
             NpgsqlRange<TSubtype2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype2>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-            DBNull => WriteNull(buf, async, cancellationToken),
-            null => WriteNull(buf, async, cancellationToken),
+            DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
             _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
         };
 }

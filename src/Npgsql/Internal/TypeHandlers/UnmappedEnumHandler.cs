@@ -81,7 +81,7 @@ sealed class UnmappedEnumHandler : TextHandler
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
         if (value is null || value is DBNull)
-            return WriteNull(buf, async, cancellationToken);
+            return WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
 
         if (buf.WriteSpaceLeft < 4)
             return WriteWithLengthLong(value, buf, lengthCache, parameter, async, cancellationToken);

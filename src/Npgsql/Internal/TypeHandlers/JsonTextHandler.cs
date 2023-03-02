@@ -156,14 +156,14 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value switch
         {
-            null => WriteNull(buf, async, cancellationToken),
-            DBNull => WriteNull(buf, async, cancellationToken),
-            string s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            char[] s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            ArraySegment<char> s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            char s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            byte[] s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            ReadOnlyMemory<byte> s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            null                      => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            DBNull                    => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            string s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            char[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            ArraySegment<char> s      => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            char s                    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            byte[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            ReadOnlyMemory<byte> s    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
 
             _ => throw new InvalidCastException(
                 $"Can't write CLR type {value.GetType()}. " +
