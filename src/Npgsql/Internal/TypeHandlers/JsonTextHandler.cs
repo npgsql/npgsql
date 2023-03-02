@@ -153,28 +153,22 @@ public class JsonTextHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
         };
 
     /// <inheritdoc />
-    public override async Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
-    {
-        // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
-        if (buf.WriteSpaceLeft < 4)
-            await buf.Flush(async, cancellationToken);
-
-        await (value switch
+    public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        => value switch
         {
-            null                      => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-            DBNull                    => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-            string s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            char[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            ArraySegment<char> s      => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            char s                    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            byte[] s                  => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
-            ReadOnlyMemory<byte> s    => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            null => WriteNull(buf, async, cancellationToken),
+            DBNull => WriteNull(buf, async, cancellationToken),
+            string s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            char[] s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            ArraySegment<char> s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            char s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            byte[] s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
+            ReadOnlyMemory<byte> s => WriteWithLengthCustom(s, buf, lengthCache, parameter, async, cancellationToken),
 
             _ => throw new InvalidCastException(
                 $"Can't write CLR type {value.GetType()}. " +
                 "You may need to use the System.Text.Json or Json.NET plugins, see the docs for more information.")
-        });
-    }
+        };
 
     /// <inheritdoc />
     protected internal override async ValueTask<T> ReadCustom<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)

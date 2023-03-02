@@ -50,5 +50,5 @@ class NullableHandler<T, TUnderlying> : NullableHandler<T>
     protected override Task WriteAsyncImpl(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value != null
             ? handler.WriteWithLength(((TUnderlying?)(object)value).Value, buffer, lengthCache, parameter, async, cancellationToken)
-            : handler.WriteWithLength(DBNull.Value, buffer, lengthCache, parameter, async, cancellationToken);
+            : handler.WriteNull(buffer, async, cancellationToken);
 }

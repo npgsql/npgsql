@@ -126,7 +126,7 @@ public partial class MultirangeHandler<TSubtype> : NpgsqlTypeHandler,
         buf.WriteInt32(value.Count);
 
         for (var i = 0; i < value.Count; i++)
-            await RangeHandler.WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
+            await ((INpgsqlTypeHandler<NpgsqlRange<TAnySubtype>>)RangeHandler).WriteWithLength(value[i], buf, lengthCache, parameter: null, async, cancellationToken);
     }
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>[]);
@@ -200,13 +200,13 @@ public class MultirangeHandler<TSubtype1, TSubtype2> : MultirangeHandler<TSubtyp
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value switch
         {
-            NpgsqlRange<TSubtype1>[] converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            NpgsqlRange<TSubtype2>[] converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            List<NpgsqlRange<TSubtype1>> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            List<NpgsqlRange<TSubtype2>> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            NpgsqlRange<TSubtype1>[] converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype1>[]>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            NpgsqlRange<TSubtype2>[] converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype2>[]>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            List<NpgsqlRange<TSubtype1>> converted => ((INpgsqlTypeHandler<List<NpgsqlRange<TSubtype1>>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            List<NpgsqlRange<TSubtype2>> converted => ((INpgsqlTypeHandler<List<NpgsqlRange<TSubtype2>>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-            DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-            null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            DBNull => WriteNull(buf, async, cancellationToken),
+            null => WriteNull(buf, async, cancellationToken),
             _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type RangeHandler<TElement>")
         };
 }

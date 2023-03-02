@@ -34,8 +34,8 @@ sealed class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         => value switch
         {
-            DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-            null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            DBNull => WriteNull(buf, async, cancellationToken),
+            null => WriteNull(buf, async, cancellationToken),
             _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type {nameof(VoidHandler)}")
         };
 }

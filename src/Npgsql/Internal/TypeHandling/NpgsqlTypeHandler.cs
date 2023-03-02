@@ -166,6 +166,14 @@ public abstract class NpgsqlTypeHandler
             : $"Cannot write a value of CLR type '{type}' as database type '{displayName}' for parameter '{parameterName}'.");
     }
 
+    internal async Task WriteNull(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
+    {
+        // TODO: Possibly do a sync path when we don't do I/O (e.g. simple type handler, no flush)
+        if (buf.WriteSpaceLeft < 4)
+            await buf.Flush(async, cancellationToken);
+        buf.WriteInt32(-1);
+    }
+
     /// <summary>
     /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
     /// </summary>
@@ -175,16 +183,14 @@ public abstract class NpgsqlTypeHandler
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public async Task WriteWithLength<TAny>(TAny? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
     {
-        // TODO: Possibly do a sync path when we don't do I/O (e.g. simple type handler, no flush)
-        if (buf.WriteSpaceLeft < 4)
-            await buf.Flush(async, cancellationToken);
-
         if (value is null or DBNull)
         {
-            buf.WriteInt32(-1);
+            await WriteNull(buf, async, cancellationToken);
             return;
         }
 
+        if (buf.WriteSpaceLeft < 4)
+            await buf.Flush(async, cancellationToken);
         switch (this)
         {
         case INpgsqlSimpleTypeHandler<TAny> simpleTypeHandler:

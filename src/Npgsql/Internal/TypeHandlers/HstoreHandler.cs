@@ -54,9 +54,9 @@ public class HstoreHandler :
             totalLen += 8;   // Key length + value length
             if (kv.Key == null)
                 throw new FormatException("HSTORE doesn't support null keys");
-            totalLen += _textHandler.ValidateAndGetLength(kv.Key, ref lengthCache, null);
+            totalLen += ((INpgsqlTypeHandler<string>)_textHandler).ValidateAndGetLength(kv.Key, ref lengthCache, null);
             if (kv.Value != null)
-                totalLen += _textHandler.ValidateAndGetLength(kv.Value!, ref lengthCache, null);
+                totalLen += ((INpgsqlTypeHandler<string>)_textHandler).ValidateAndGetLength(kv.Value!, ref lengthCache, null);
         }
 
         return lengthCache.Lengths[pos] = totalLen;
@@ -94,12 +94,12 @@ public class HstoreHandler :
         CancellationToken cancellationToken = default)
         => value switch
         {
-            ImmutableDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            Dictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            IDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            ImmutableDictionary<string, string?> converted => ((INpgsqlTypeHandler<ImmutableDictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
-            DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
-            null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+            DBNull => WriteNull(buf, async, cancellationToken),
+            null => WriteNull(buf, async, cancellationToken),
             _ => throw new InvalidCastException($"Can't write CLR type {value.GetType()} with handler type BoolHandler")
         };
 
@@ -114,8 +114,8 @@ public class HstoreHandler :
 
         foreach (var kv in value)
         {
-            await _textHandler.WriteWithLength(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
-            await _textHandler.WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
+            await ((INpgsqlTypeHandler<string>)_textHandler).WriteWithLength(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
+            await ((INpgsqlTypeHandler<string>)_textHandler).WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
         }
     }
 
