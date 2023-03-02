@@ -883,13 +883,10 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
                 connector.Connection = null;
 
-                // If pooled, close the connection and disconnect it from the resource manager but leave the
+                // Close the connection and disconnect it from the resource manager but leave the
                 // connector in an enlisted pending list in the pool. If another connection is opened within
                 // the same transaction scope, we will reuse this connector to avoid escalating to a distributed
                 // transaction
-                // If a *non-pooled* connection is being closed but is enlisted in an ongoing
-                // TransactionScope, we do nothing - simply detach the connector from the connection and leave
-                // it open. It will be closed when the TransactionScope is disposed.
                 _pool?.AddPendingEnlistedConnector(connector, EnlistedTransaction);
 
                 EnlistedTransaction = null;
