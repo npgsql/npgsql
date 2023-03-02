@@ -13,27 +13,6 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeHandlers;
 
-static class ArrayTypeInfo<TArray>
-{
-    // ReSharper disable StaticMemberInGenericType
-    public static readonly Type? ElementType = typeof(TArray).IsArray ? typeof(TArray).GetElementType() : null;
-    public static readonly int ArrayRank = ElementType is not null ? typeof(TArray).GetArrayRank() : 0;
-    // ReSharper restore StaticMemberInGenericType
-
-    [MemberNotNullWhen(true, nameof(ElementType))]
-    public static bool IsArray => ElementType is not null;
-}
-
-static class ListTypeInfo<TList>
-{
-    // ReSharper disable StaticMemberInGenericType
-    public static readonly Type? ElementType = typeof(TList).IsGenericType && typeof(TList).GetGenericTypeDefinition() == typeof(List<>) ? typeof(TList).GetGenericArguments()[0] : null;
-    // ReSharper restore StaticMemberInGenericType
-
-    [MemberNotNullWhen(true, nameof(ElementType))]
-    public static bool IsList => ElementType is not null;
-}
-
 /// <summary>
 /// Non-generic base class for all type handlers which handle PostgreSQL arrays.
 /// </summary>
@@ -84,19 +63,27 @@ public class ArrayHandler : NpgsqlTypeHandler
         FieldDescription? fieldDescription = null)
     {
         var handler = _concreteHandlers.GetOrAdd(_psvArrayType, static (_, instance) => instance.CreateHandler(instance.ElementHandler.GetProviderSpecificFieldType()), this);
-        return handler.ReadAsObject(buf, len, async, fieldDescription);
+        return handler.ReadArrayAsObject(buf, async);
     }
 
     /// <inheritdoc />
-    protected internal override async ValueTask<TArray> ReadCustom<TArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-    {
-        if (!ArrayTypeInfo<TArray>.IsArray && !ListTypeInfo<TArray>.IsList)
-            throw new InvalidCastException(fieldDescription == null
-                ? $"Can't cast database type to {typeof(TArray).Name}"
-                : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TArray).Name}"
-            );
+    protected internal override async ValueTask<TArray> ReadCustom<TArray>(NpgsqlReadBuffer buf, int len, bool async,
+        FieldDescription? fieldDescription)
+        => (TArray)await ReadGenericAsObject<TArray>(buf, len, async, fieldDescription);
 
-        return (TArray)await GetOrAddHandler<TArray>().Read<TArray>(buf, len, async, fieldDescription);
+    // Sync helper to keep the code size cost of ReadCustom low.
+    ValueTask<object> ReadGenericAsObject<TArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+    {
+        if (ArrayTypeInfo<TArray>.IsArray)
+            return GetOrAddHandler<TArray>().ReadArray(buf, async, ArrayTypeInfo<TArray>.ArrayRank);
+
+        if (ListTypeInfo<TArray>.IsList)
+            return GetOrAddHandler<TArray>().ReadList(buf, async);
+
+        throw new InvalidCastException(fieldDescription == null
+            ? $"Can't cast database type to {typeof(TArray).Name}"
+            : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TArray).Name}"
+        );
     }
 
     /// <inheritdoc />
@@ -108,10 +95,10 @@ public class ArrayHandler : NpgsqlTypeHandler
         FieldDescription? fieldDescription = null)
     {
         if (!elementType.IsValueType || ArrayNullabilityMode is ArrayNullabilityMode.Never)
-            return await GetOrAddObjectHandler(elementType).ReadAsObject(buf, len, async, fieldDescription);
+            return await GetOrAddObjectHandler(elementType).ReadArrayAsObject(buf, async);
 
         if (ArrayNullabilityMode is ArrayNullabilityMode.Always)
-            return await GetOrAddObjectHandler(typeof(Nullable<>).MakeGenericType(elementType)).ReadAsObject(buf, len, async, fieldDescription);
+            return await GetOrAddObjectHandler(typeof(Nullable<>).MakeGenericType(elementType)).ReadArrayAsObject(buf, async);
 
         // We need to peek at the data to call into the right handler.
         await buf.Ensure(sizeof(int) * 2, async);
@@ -121,8 +108,8 @@ public class ArrayHandler : NpgsqlTypeHandler
         buf.ReadPosition = origPos;
 
         return containsNulls
-            ? await GetOrAddObjectHandler(typeof(Nullable<>).MakeGenericType(elementType)).ReadAsObject(buf, len, async, fieldDescription)
-            : await GetOrAddObjectHandler(elementType).ReadAsObject(buf, len, async, fieldDescription);
+            ? await GetOrAddObjectHandler(typeof(Nullable<>).MakeGenericType(elementType)).ReadArrayAsObject(buf, async)
+            : await GetOrAddObjectHandler(elementType).ReadArrayAsObject(buf, async);
     }
 
     ArrayHandlerCore GetOrAddObjectHandler(Type elementType)
@@ -138,22 +125,29 @@ public class ArrayHandler : NpgsqlTypeHandler
 
     /// <inheritdoc />
     public override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        => GetOrAddObjectHandler(ElementHandler.GetFieldType()).ValidateAndGetLengthAsObject(value, ref lengthCache);
+        => GetOrAddObjectHandler(ElementHandler.GetFieldType()).ValidateAndGetElementLength(value, ref lengthCache);
 
     /// <inheritdoc />
     protected internal override int ValidateAndGetLengthCustom<TArray>([DisallowNull] TArray value, ref NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter)
-        => GetOrAddHandler<TArray>().ValidateAndGetLength(value, ref lengthCache);
+        => GetOrAddHandler<TArray>().ValidateAndGetElementLength(value, ref lengthCache);
 
     /// <inheritdoc />
     public override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async,
         CancellationToken cancellationToken = default)
-        => GetOrAddObjectHandler(ElementHandler.GetFieldType()).WriteAsObject(value, buf, lengthCache, async, cancellationToken);
+    {
+        if (value is null or DBNull)
+        {
+            buf.WriteInt32(-1);
+            return Task.CompletedTask;
+        }
+        return GetOrAddObjectHandler(ElementHandler.GetFieldType()).WriteElementWithLength(value, buf, lengthCache, async, cancellationToken);
+    }
 
     protected override Task WriteWithLengthCustom<TArray>([DisallowNull]TArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async,
         CancellationToken cancellationToken)
-        => GetOrAddHandler<TArray>().Write(value, buf, lengthCache, async, cancellationToken);
+        => GetOrAddHandler<TArray>().WriteElementWithLength(value, buf, lengthCache, async, cancellationToken);
 
     private protected ArrayHandlerCore GetOrAddHandler<TArray>()
         => _concreteHandlers.GetOrAdd(typeof(TArray), static (_, instance) =>
@@ -166,76 +160,116 @@ public class ArrayHandler : NpgsqlTypeHandler
 
             return null!;
         }, this);
+
+    static class ArrayTypeInfo<TArray>
+    {
+        // ReSharper disable StaticMemberInGenericType
+        public static readonly Type? ElementType = typeof(TArray).IsArray ? typeof(TArray).GetElementType() : null;
+        public static readonly int ArrayRank = ElementType is not null ? typeof(TArray).GetArrayRank() : 0;
+        // ReSharper restore StaticMemberInGenericType
+
+        [MemberNotNullWhen(true, nameof(ElementType))]
+        public static bool IsArray => ElementType is not null;
+    }
+
+    static class ListTypeInfo<TList>
+    {
+        // ReSharper disable StaticMemberInGenericType
+        public static readonly Type? ElementType = typeof(TList).IsGenericType && typeof(TList).GetGenericTypeDefinition() == typeof(List<>) ? typeof(TList).GetGenericArguments()[0] : null;
+        // ReSharper restore StaticMemberInGenericType
+
+        [MemberNotNullWhen(true, nameof(ElementType))]
+        public static bool IsList => ElementType is not null;
+    }
 }
 
-readonly struct ArrayHandlerOps
+abstract class ArrayHandlerCore
 {
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage =
         "Cannot read a non-nullable collection of elements because the returned array contains nulls. " +
         "Call GetFieldValue with a nullable array instead.";
 
-    readonly IElementOperations _elementOperations;
     readonly int _lowerBound;
     public ArrayNullabilityMode ArrayNullabilityMode { get; }
 
-    public ArrayHandlerOps(IElementOperations elementOperations, ArrayNullabilityMode arrayNullabilityMode, int lowerBound)
+    protected ArrayHandlerCore(ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
     {
-        _elementOperations = elementOperations;
         ArrayNullabilityMode = arrayNullabilityMode;
         _lowerBound = lowerBound;
     }
 
+    public ValueTask<object> ReadArray(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
+        => ReadArray(buf, async, expectedDimensions, readAsObject: false);
+
+    public ValueTask<object> ReadArrayAsObject(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
+        => ReadArray(buf, async, expectedDimensions, readAsObject: true);
+
+    protected abstract Type ElementType { get; }
+    protected abstract bool IsNonNullable { get; }
+    protected abstract bool IsGenericCollection(object value, out int count);
+    protected abstract NpgsqlTypeHandler ElementHandler { get; }
+    protected abstract object CreateCollection(bool isArray, int capacity);
+    protected abstract ValueTask ReadElement(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async,
+        FieldDescription? fieldDescription = null);
+    protected abstract ValueTask ReadElement(Array array, int[] indices, NpgsqlReadBuffer buf, int length, bool async,
+        FieldDescription? fieldDescription = null);
+    protected abstract int ValidateAndGetElementLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache,
+        NpgsqlParameter? parameter);
+    protected abstract ValueTask WriteElementWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf,
+        NpgsqlLengthCache? lengthCache,
+        NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken);
+
     /// <summary>
     /// Reads an array of element type from the given buffer <paramref name="buf"/>.
     /// </summary>
-    internal async ValueTask<object> ReadArray(Type requestedElement, bool isNonNullable, NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, bool readAsObject = false)
+    async ValueTask<object> ReadArray(NpgsqlReadBuffer buf, bool async, int expectedDimensions, bool readAsObject)
     {
         await buf.Ensure(12, async);
         var dimensions = buf.ReadInt32();
         var containsNulls = buf.ReadInt32() == 1;
         buf.ReadUInt32(); // Element OID. Ignored.
 
-        var nullableElementType = isNonNullable
-            ? typeof(Nullable<>).MakeGenericType(requestedElement)
-            : requestedElement;
+        var nullableElementType = IsNonNullable
+            ? typeof(Nullable<>).MakeGenericType(ElementType)
+            : ElementType;
 
         var returnType = readAsObject
             ? ArrayNullabilityMode switch
             {
-                ArrayNullabilityMode.Never => isNonNullable && containsNulls
+                ArrayNullabilityMode.Never => IsNonNullable && containsNulls
                     ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
-                    : requestedElement,
+                    : ElementType,
                 ArrayNullabilityMode.Always => nullableElementType,
                 ArrayNullabilityMode.PerInstance => containsNulls
                     ? nullableElementType
-                    : requestedElement,
+                    : ElementType,
                 _ => throw new ArgumentOutOfRangeException()
             }
-            : isNonNullable && containsNulls
+            : IsNonNullable && containsNulls
                 ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
-                : requestedElement;
+                : ElementType;
 
         if (dimensions == 0)
             return expectedDimensions > 1
                 ? Array.CreateInstance(returnType, new int[expectedDimensions])
-                : _elementOperations.Create(isArray: true, 0);
+                : CreateCollection(isArray: true, 0);
 
         if (expectedDimensions > 0 && dimensions != expectedDimensions)
             throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
 
-        if (dimensions == 1 && returnType == requestedElement)
+        if (dimensions == 1 && returnType == ElementType)
         {
             await buf.Ensure(8, async);
             var arrayLength = buf.ReadInt32();
 
             buf.ReadInt32(); // Lower bound
 
-            var oneDimensional = _elementOperations.Create(isArray: true, arrayLength);
+            var oneDimensional = CreateCollection(isArray: true, arrayLength);
             for (var i = 0; i < arrayLength; i++)
             {
                 await buf.Ensure(4, async);
                 var len = buf.ReadInt32();
-                await _elementOperations.Read(isArray: true, oneDimensional, i, buf, len, async);
+                await ReadElement(isArray: true, oneDimensional, i, buf, len, async);
             }
             return oneDimensional;
         }
@@ -261,7 +295,7 @@ readonly struct ArrayHandlerOps
             if (len == -1)
                 result.SetValue(null, indices);
             else
-                await _elementOperations.Read(result, indices, buf, len, async);
+                await ReadElement(result, indices, buf, len, async);
 
             // TODO: Overly complicated/inefficient...
             indices[dimensions - 1]++;
@@ -283,7 +317,7 @@ readonly struct ArrayHandlerOps
     /// <summary>
     /// Reads a generic list containing elements from the given buffer <paramref name="buf"/>.
     /// </summary>
-    public async ValueTask<object> ReadList(Type requestedElement, bool isNonNullable, NpgsqlReadBuffer buf, bool async)
+    public async ValueTask<object> ReadList(NpgsqlReadBuffer buf, bool async)
     {
         await buf.Ensure(12, async);
         var dimensions = buf.ReadInt32();
@@ -291,28 +325,28 @@ readonly struct ArrayHandlerOps
         buf.ReadUInt32(); // Element OID. Ignored.
 
         if (dimensions == 0)
-            return _elementOperations.Create(isArray: false, 0);
+            return CreateCollection(isArray: false, 0);
         if (dimensions > 1)
-            throw new NotSupportedException($"Can't read multidimensional array as List<{requestedElement.Name}>");
+            throw new NotSupportedException($"Can't read multidimensional array as List<{ElementType.Name}>");
 
-        if (isNonNullable && containsNulls)
+        if (containsNulls && IsNonNullable)
             throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
         await buf.Ensure(8, async);
         var length = buf.ReadInt32();
         buf.ReadInt32(); // We don't care about the lower bounds
 
-        var list = _elementOperations.Create(isArray: false, length);
+        var list = CreateCollection(isArray: false, length);
         for (var i = 0; i < length; i++)
         {
             var len = buf.ReadInt32();
-            await _elementOperations.Read(isArray: false, list, i, buf, len, async);
+            await ReadElement(isArray: false, list, i, buf, len, async);
         }
         return list;
     }
 
     // Handle single-dimensional arrays and generic IList<T>
-    public int ValidateAndGetLength(object value, int count, ref NpgsqlLengthCache lengthCache)
+    public int ValidateAndGetElementLength(object value, int count, ref NpgsqlLengthCache lengthCache)
     {
         // Leave empty slot for the entire array length, and go ahead an populate the element slots
         var pos = lengthCache.Position;
@@ -331,7 +365,7 @@ readonly struct ArrayHandlerOps
         {
             try
             {
-                len += _elementOperations.ValidateAndGetLength(isArray, value, i, ref elemLengthCache, null);
+                len += ValidateAndGetElementLength(isArray, value, i, ref elemLengthCache, null);
             }
             catch (Exception e)
             {
@@ -360,7 +394,7 @@ readonly struct ArrayHandlerOps
         lengthCache.Set(0);
         var elemLengthCache = lengthCache;
 
-        var elementHandler = _elementOperations.ElementHandler;
+        var elementHandler = ElementHandler;
         foreach (var element in value)
         {
             if (element is null)
@@ -397,7 +431,7 @@ readonly struct ArrayHandlerOps
             Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
         }
 
-        var elementHandler = _elementOperations.ElementHandler;
+        var elementHandler = ElementHandler;
         buf.WriteInt32(dimensions);
         buf.WriteInt32(1);  // HasNulls=1. Not actually used by the backend.
         buf.WriteUInt32(elementHandler.PostgresType.OID);
@@ -432,7 +466,7 @@ readonly struct ArrayHandlerOps
             Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
         }
 
-        var elementHandler = _elementOperations.ElementHandler;
+        var elementHandler = ElementHandler;
         buf.WriteInt32(1);
         buf.WriteInt32(1); // has_nulls = 1. Not actually used by the backend.
         buf.WriteUInt32(elementHandler.PostgresType.OID);
@@ -441,50 +475,14 @@ readonly struct ArrayHandlerOps
 
         var isArray = value is Array;
         for (var i = 0; i < count; i++)
-            await _elementOperations.WriteWithLength(isArray, value, i, buf, lengthCache, null, async, cancellationToken);
+            await WriteElementWithLength(isArray, value, i, buf, lengthCache, null, async, cancellationToken);
     }
 
     static Exception MixedTypesOrJaggedArrayException(Exception innerException)
         => new("While trying to write an array, one of its elements failed validation. " +
                "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
-}
 
-interface IElementOperations
-{
-    NpgsqlTypeHandler ElementHandler { get; }
-    object Create(bool isArray, int capacity);
-    ValueTask Read(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null);
-    ValueTask Read(Array array, int[] indices, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null);
-    int ValidateAndGetLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
-    ValueTask WriteWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
-}
-
-abstract class ArrayHandlerCore
-{
-    protected abstract Type ElementType { get; }
-    protected abstract ArrayHandlerOps ArrayHandlerOps { get; }
-    protected abstract bool IsNonNullable { get; }
-    protected abstract bool TryGenericCollection(object value, out int count);
-
-    public ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-        => ArrayHandlerOps.ReadArray(ElementType, IsNonNullable, buf, async, readAsObject: true);
-
-    public ValueTask<object> Read<TArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-    {
-        if (ArrayTypeInfo<TArray>.IsArray)
-            return ArrayHandlerOps.ReadArray(ElementType, IsNonNullable, buf, async, ArrayTypeInfo<TArray>.ArrayRank, readAsObject: true);
-        if (ListTypeInfo<TArray>.IsList)
-            return ArrayHandlerOps.ReadList(ElementType, IsNonNullable, buf, async);
-
-        throw CantReadTypeException(typeof(TArray));
-        InvalidCastException CantReadTypeException(Type type)
-            => new($"Can't read type '{type}' as an array of {ElementType}");
-    }
-
-    public int ValidateAndGetLengthAsObject(object? value, ref NpgsqlLengthCache? lengthCache)
-        => value is null or DBNull ? 0 : ValidateAndGetLength(value!, ref lengthCache);
-
-    public int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache)
+    public int ValidateAndGetElementLength(object value, ref NpgsqlLengthCache? lengthCache)
     {
         lengthCache ??= new NpgsqlLengthCache(1);
         if (lengthCache.IsPopulated)
@@ -492,30 +490,19 @@ abstract class ArrayHandlerCore
 
         return value switch
         {
-            _ when TryGenericCollection(value, out var count) => ArrayHandlerOps.ValidateAndGetLength(value, count, ref lengthCache),
-            ICollection nonGeneric => ArrayHandlerOps.ValidateAndGetLengthAsObject(nonGeneric, ref lengthCache),
+            _ when IsGenericCollection(value, out var count) => ValidateAndGetElementLength(value, count, ref lengthCache),
+            ICollection nonGeneric => ValidateAndGetLengthAsObject(nonGeneric, ref lengthCache),
             _ => throw CantWriteTypeException(value.GetType())
         };
     }
 
-    public Task WriteAsObject(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
+    public Task WriteElementWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken)
     {
-        if (value is null or DBNull)
-        {
-            buf.WriteInt32(-1);
-            return Task.CompletedTask;
-        }
-
-        return Write(value, buf, lengthCache, async, cancellationToken);
-    }
-
-    public Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken)
-    {
-        buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache));
+        buf.WriteInt32(ValidateAndGetElementLength(value, ref lengthCache));
         return value switch
         {
-            _ when TryGenericCollection(value, out var count) => ArrayHandlerOps.Write(value, count, buf, lengthCache, async, cancellationToken),
-            ICollection nonGeneric => ArrayHandlerOps.WriteAsObject(nonGeneric, buf, lengthCache, async, cancellationToken),
+            _ when IsGenericCollection(value, out var count) => Write(value, count, buf, lengthCache, async, cancellationToken),
+            ICollection nonGeneric => WriteAsObject(nonGeneric, buf, lengthCache, async, cancellationToken),
             _ => throw CantWriteTypeException(value.GetType())
         };
     }
@@ -524,21 +511,18 @@ abstract class ArrayHandlerCore
         => new($"Can't write type '{type}' as an array of {ElementType}");
 }
 
-sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
+sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
 {
     readonly NpgsqlTypeHandler _elementHandler;
 
     public ArrayHandlerCore(NpgsqlTypeHandler nonNullableElementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
-    {
-        _elementHandler = nonNullableElementHandler;
-        ArrayHandlerOps = new ArrayHandlerOps(this, arrayNullabilityMode, lowerBound);
-    }
+        : base(arrayNullabilityMode, lowerBound)
+        => _elementHandler = nonNullableElementHandler;
 
     protected override Type ElementType => typeof(TElement);
-    protected override ArrayHandlerOps ArrayHandlerOps { get; }
     protected override bool IsNonNullable => typeof(TElement).IsValueType && default(TElement) is not null;
 
-    protected override bool TryGenericCollection(object value, out int count)
+    protected override bool IsGenericCollection(object value, out int count)
     {
         if (value is ICollection<TElement> collection)
         {
@@ -550,15 +534,15 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
         return false;
     }
 
-    NpgsqlTypeHandler IElementOperations.ElementHandler => _elementHandler;
+    protected override NpgsqlTypeHandler ElementHandler => _elementHandler;
 
-    public object Create(bool isArray, int capacity) => isArray switch
+    protected override object CreateCollection(bool isArray, int capacity) => isArray switch
     {
         true => capacity is 0 ? Array.Empty<TElement>() : new TElement[capacity],
         false => new List<TElement>()
     };
 
-    ValueTask IElementOperations.Read(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription)
+    protected override ValueTask ReadElement(bool isArray, object values, int index, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null)
     {
         // We want a generic mutation so we unfortunately need the null check on this side.
         if (length == -1)
@@ -590,8 +574,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
         }
     }
 
-    async ValueTask IElementOperations.Read(Array array, int[] indices, NpgsqlReadBuffer buf, int length, bool async,
-        FieldDescription? fieldDescription)
+    protected override async ValueTask ReadElement(Array array, int[] indices, NpgsqlReadBuffer buf, int length, bool async, FieldDescription? fieldDescription = null)
     {
         // Null check is handled in ArrayHandlerOps to reduce code size.
         var result =
@@ -602,7 +585,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
         array.SetValue(result, indices);
     }
 
-    int IElementOperations.ValidateAndGetLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+    protected override int ValidateAndGetElementLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
         var element =
             isArray
@@ -616,7 +599,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore, IElementOperations
                 : _elementHandler.ValidateAndGetLength(element, ref lengthCache, parameter);
     }
 
-    async ValueTask IElementOperations.WriteWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
+    protected override async ValueTask WriteElementWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
     {
         var element =

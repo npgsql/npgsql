@@ -290,7 +290,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerOps.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -309,7 +309,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerOps.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
