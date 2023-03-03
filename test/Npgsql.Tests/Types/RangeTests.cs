@@ -22,6 +22,7 @@ class RangeTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, ReloadTypes");
 
+        await using var dataSource = CreateDataSource(csb => csb.Pooling = false);
         await using var conn = await OpenConnectionAsync();
 
         // Resolve type by NpgsqlDbType
