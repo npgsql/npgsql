@@ -173,9 +173,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     void SetupDataSource()
     {
-        // See Clone() for details on this
-        _cloningInstantiator = new CloningInstantiator();
-
         // Fast path: a pool already corresponds to this exact version of the connection string.
         if (PoolManager.Pools.TryGetValue(_connectionString, out _dataSource))
         {
@@ -221,6 +218,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
         dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
         var newDataSource = dataSourceBuilder.Build();
+
+        // See Clone() on the following line:
+        _cloningInstantiator = new CloningInstantiator();
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
         if (_dataSource == newDataSource)
