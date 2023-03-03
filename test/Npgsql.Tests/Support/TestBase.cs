@@ -283,15 +283,17 @@ public abstract class TestBase
         }
     }
 
-    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string pgTypeName)
+    public async Task AssertTypeUnsupported<T>(T value, string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
     {
-        await AssertTypeUnsupportedRead<T>(sqlLiteral, pgTypeName);
-        await AssertTypeUnsupportedWrite(value, pgTypeName);
+        await AssertTypeUnsupportedRead<T>(sqlLiteral, pgTypeName, dataSource);
+        await AssertTypeUnsupportedWrite(value, pgTypeName, dataSource);
     }
 
-    public async Task AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName)
+    public async Task AssertTypeUnsupportedRead(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
     {
-        await using var conn = await OpenConnectionAsync();
+        dataSource ??= DefaultDataSource;
+
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -299,13 +301,15 @@ public abstract class TestBase
         Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
-    public Task<Exception> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName)
-        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName);
+    public Task<Exception> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName, dataSource);
 
-    public async Task<Exception> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName)
+    public async Task<Exception> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
-        await using var conn = await OpenConnectionAsync();
+        dataSource ??= DefaultDataSource;
+
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT '{sqlLiteral}'::{pgTypeName}", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
@@ -313,13 +317,15 @@ public abstract class TestBase
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName);
+    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource);
 
-    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null)
+    public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
-        await using var conn = await OpenConnectionAsync();
+        dataSource ??= DefaultDataSource;
+
+        await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT $1", conn)
         {
             Parameters = { new() { Value = value } }
@@ -368,15 +374,6 @@ public abstract class TestBase
         return NpgsqlDataSource.Create(connectionStringBuilder);
     }
 
-    protected virtual NpgsqlDataSource CreateDataSourceWithRanges(Action<NpgsqlConnectionStringBuilder>? connectionStringBuilderAction = null)
-    {
-        var connectionStringBuilder = new NpgsqlConnectionStringBuilder(ConnectionString);
-        connectionStringBuilderAction?.Invoke(connectionStringBuilder);
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionStringBuilder.ConnectionString);
-        dataSourceBuilder.UseRange();
-        return dataSourceBuilder.Build();
-    }
-
     protected static NpgsqlDataSource GetDataSource(string connectionString)
     {
         if (!DataSources.TryGetValue(connectionString, out var dataSource))
@@ -412,8 +409,11 @@ public abstract class TestBase
         return builder.Build();
     }
 
+    protected NpgsqlDataSource DefaultDataSource
+        => GetDataSource(ConnectionString);
+
     protected virtual NpgsqlConnection CreateConnection()
-        => GetDataSource(ConnectionString).CreateConnection();
+        => DefaultDataSource.CreateConnection();
 
     protected virtual NpgsqlConnection OpenConnection()
     {

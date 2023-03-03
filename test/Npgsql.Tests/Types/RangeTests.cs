@@ -22,8 +22,7 @@ class RangeTests : MultiplexingTestBase
         if (IsMultiplexing)
             Assert.Ignore("Multiplexing, ReloadTypes");
 
-        await using var dataSource = CreateDataSourceWithRanges(csb => csb.Pooling = false);
-        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Resolve type by NpgsqlDbType
         using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -98,7 +97,7 @@ class RangeTests : MultiplexingTestBase
     [NonParallelizable]
     public async Task Range_with_long_subtype()
     {
-        await using var dataSource = CreateDataSourceWithRanges(csb => csb.MaxPoolSize = 1);
+        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         var typeName = await GetTempTypeName(conn);
@@ -246,26 +245,6 @@ class RangeTests : MultiplexingTestBase
             isDefaultForWriting: !supportsMultirange,
             isNpgsqlDbTypeInferredFromClrType: false);
     }
-
-    NpgsqlDataSource DataSourceWithRanges { get; set; } = default!;
-
-    [OneTimeSetUp]
-    public async Task OneTimeSetUp()
-    {
-        DataSourceWithRanges = CreateDataSourceWithRanges();
-        using var conn = await OpenConnectionAsync();
-        MinimumPgVersion(conn, "9.2.0");
-    }
-
-    [OneTimeTearDown]
-    public async Task TearDown()
-    {
-        await DataSourceWithRanges.DisposeAsync();
-        DataSourceWithRanges = null!;
-    }
-
-    protected override ValueTask<NpgsqlConnection> OpenConnectionAsync()
-        => DataSourceWithRanges.OpenConnectionAsync();
 
     protected override NpgsqlConnection OpenConnection()
         => throw new NotSupportedException();
