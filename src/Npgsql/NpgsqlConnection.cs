@@ -1873,7 +1873,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         public NpgsqlConnection Instantiate(string connectionString);
     }
 
-    class CloningInstantiator : ICloningInstantiator
+    sealed class CloningInstantiator : ICloningInstantiator
     {
         public NpgsqlConnection Instantiate(string connectionString)
             => new(connectionString);
