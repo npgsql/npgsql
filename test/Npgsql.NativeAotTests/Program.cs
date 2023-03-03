@@ -4,7 +4,8 @@ using Npgsql;
 var connectionString = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB")
                        ?? "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
 
-await using var dataSource = NpgsqlDataSource.Create(connectionString);
+var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(connectionString);
+await using var dataSource = dataSourceBuilder.Build();
 
 await using var conn = dataSource.CreateConnection();
 await conn.OpenAsync();

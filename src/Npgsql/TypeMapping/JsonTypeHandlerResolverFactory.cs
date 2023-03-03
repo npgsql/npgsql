@@ -13,9 +13,9 @@ sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
     readonly Dictionary<Type, string>? _userClrTypes;
 
     public JsonTypeHandlerResolverFactory(
-        Type[]? jsonbClrTypes,
-        Type[]? jsonClrTypes,
-        JsonSerializerOptions? settings)
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null,
+        JsonSerializerOptions? settings = null)
     {
         _settings = settings ?? new JsonSerializerOptions();
 

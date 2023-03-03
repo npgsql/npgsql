@@ -193,28 +193,12 @@ public class MultirangeTests : TestBase
         }
     }
 
-    NpgsqlDataSource DataSourceWithRanges { get; set; } = default!;
-
     [OneTimeSetUp]
     public async Task Setup()
     {
-        DataSourceWithRanges = CreateDataSourceWithRanges();
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
     }
-
-    [OneTimeTearDown]
-    public async Task TearDown()
-    {
-        if (DataSourceWithRanges is not null)
-        {
-            await DataSourceWithRanges.DisposeAsync();
-            DataSourceWithRanges = null!;
-        }
-    }
-
-    protected override ValueTask<NpgsqlConnection> OpenConnectionAsync()
-        => DataSourceWithRanges.OpenConnectionAsync();
 
     protected override NpgsqlConnection OpenConnection()
         => throw new NotSupportedException();

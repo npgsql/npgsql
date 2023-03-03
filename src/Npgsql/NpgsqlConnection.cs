@@ -15,10 +15,8 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
-using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql;
@@ -91,6 +89,8 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     [Obsolete("Connection-level type mapping is no longer supported. See the 7.0 release notes for configuring type mapping on NpgsqlDataSource.", true)]
     public INpgsqlTypeMapper TypeMapper
         => throw new NotSupportedException();
+
+    static ICloningInstantiator? _cloningInstantiator;
 
     /// <summary>
     /// The default TCP/IP port for PostgreSQL.
@@ -218,6 +218,9 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
         dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
         var newDataSource = dataSourceBuilder.Build();
+
+        // See Clone() on the following line:
+        _cloningInstantiator = new CloningInstantiator();
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
         if (_dataSource == newDataSource)
@@ -1817,8 +1820,14 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         CheckDisposed();
 
+        // For NativeAOT code size reduction, we avoid instantiating a connection here directly with
+        // `new NpgsqlConnection(_connectionString)`, since that would bring in the default data source builder, and with it various
+        // features which significantly increase binary size (ranges, System.Text.Json...). Instead, we pass through a "cloning
+        // instantiator" abstraction, where the implementation only ever gets set if SetupDataSource above is called (in which case the
+        // default data source is brought in anyway).
+        Debug.Assert(_dataSource is not null || _cloningInstantiator is not null);
         var conn = _dataSource is null
-            ? new NpgsqlConnection(_connectionString)
+            ? _cloningInstantiator!.Instantiate(_connectionString)
             : _dataSource.CreateConnection();
 
         conn.ProvideClientCertificatesCallback = ProvideClientCertificatesCallback;
@@ -1857,6 +1866,17 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ProvidePasswordCallback = ProvidePasswordCallback,
 #pragma warning restore CS0618
         };
+    }
+
+    interface ICloningInstantiator
+    {
+        public NpgsqlConnection Instantiate(string connectionString);
+    }
+
+    sealed class CloningInstantiator : ICloningInstantiator
+    {
+        public NpgsqlConnection Instantiate(string connectionString)
+            => new(connectionString);
     }
 
     /// <summary>

@@ -1144,7 +1144,7 @@ LANGUAGE 'plpgsql'");
     [Test, Description("Some pseudo-PG database don't support pg_type loading, we have a minimal DatabaseInfo for this")]
     public async Task NoTypeLoading()
     {
-        await using var dataSource = CreateDataSourceWithRanges(csb => csb.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading);
+        await using var dataSource = CreateDataSource(csb => csb.ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading);
         await using var conn = await dataSource.OpenConnectionAsync();
 
         Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));

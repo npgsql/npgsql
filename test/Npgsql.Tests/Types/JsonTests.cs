@@ -64,7 +64,6 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_JsonDocument()
         => await AssertType(
-            JsonDataSource,
             JsonDocument.Parse(@"{""K"": ""V""}"),
             IsJsonb ? @"{""K"": ""V""}" : @"{""K"":""V""}",
             PostgresType,
@@ -74,16 +73,20 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_JsonDocument_supported_only_with_SystemTextJson()
-        => await AssertTypeUnsupported(
+    {
+        await using var slimDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString).Build();
+
+        await AssertTypeUnsupported(
             JsonDocument.Parse(@"{""K"": ""V""}"),
             @"{""K"": ""V""}",
-            PostgresType);
+            PostgresType,
+            slimDataSource);
+    }
 
 #if NET6_0_OR_GREATER
     [Test]
     public Task Roundtrip_JsonObject()
         => AssertType(
-            JsonDataSource,
             new JsonObject { ["Bar"] = 8 },
             IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
             PostgresType,
@@ -97,7 +100,6 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public Task Roundtrip_JsonArray()
         => AssertType(
-            JsonDataSource,
             new JsonArray { 1, 2, 3 },
             IsJsonb ? "[1, 2, 3]" : "[1,2,3]",
             PostgresType,
@@ -112,7 +114,6 @@ public class JsonTests : MultiplexingTestBase
     [Test]
     public async Task As_poco()
         => await AssertType(
-            JsonDataSource,
             new WeatherForecast
             {
                 Date = new DateTime(2019, 9, 1),
@@ -133,7 +134,6 @@ public class JsonTests : MultiplexingTestBase
         var bigString = new string('x', Math.Max(conn.Settings.ReadBufferSize, conn.Settings.WriteBufferSize));
 
         await AssertType(
-            JsonDataSource,
             new WeatherForecast
             {
                 Date = new DateTime(2019, 9, 1),
@@ -151,7 +151,10 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_poco_supported_only_with_SystemTextJson()
-        => await AssertTypeUnsupported(
+    {
+        await using var slimDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString).Build();
+
+        await AssertTypeUnsupported(
             new WeatherForecast
             {
                 Date = new DateTime(2019, 9, 1),
@@ -159,7 +162,9 @@ public class JsonTests : MultiplexingTestBase
                 TemperatureC = 10
             },
             @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}",
-            PostgresType);
+            PostgresType,
+            slimDataSource);
+    }
 
     record WeatherForecast
     {
@@ -174,7 +179,7 @@ public class JsonTests : MultiplexingTestBase
     [IssueLink("https://github.com/npgsql/efcore.pg/issues/1082")]
     public async Task Can_read_two_json_documents()
     {
-        await using var conn = await JsonDataSource.OpenConnectionAsync();
+        await using var conn = await OpenConnectionAsync();
 
         JsonDocument car;
         await using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
@@ -203,7 +208,7 @@ public class JsonTests : MultiplexingTestBase
         if (!IsJsonb)
             return;
 
-        await using var conn = await JsonDataSource.OpenConnectionAsync();
+        await using var conn = await OpenConnectionAsync();
         var tableName = await TestUtil.CreateTempTable(conn, "key SERIAL PRIMARY KEY, ingredients json[]");
 
         await using var cmd = new NpgsqlCommand { Connection = conn };
@@ -277,18 +282,6 @@ public class JsonTests : MultiplexingTestBase
             isNpgsqlDbTypeInferredFromClrType: false);
     }
 
-    [OneTimeSetUp]
-    public void SetUp()
-    {
-        var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.UseSystemTextJson();
-        JsonDataSource = dataSourceBuilder.Build();
-    }
-
-    [OneTimeTearDown]
-    public async Task Teardown()
-        => await JsonDataSource.DisposeAsync();
-
     public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
         : base(multiplexingMode)
     {
@@ -300,5 +293,4 @@ public class JsonTests : MultiplexingTestBase
     bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
     string PostgresType => IsJsonb ? "jsonb" : "json";
     readonly NpgsqlDbType NpgsqlDbType;
-    NpgsqlDataSource JsonDataSource = default!;
 }
