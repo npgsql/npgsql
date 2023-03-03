@@ -35,7 +35,7 @@ public interface INpgsqlTypeHandler<T>
     /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
     /// </param>
     /// <returns>The number of bytes required to write the value.</returns>
-    int ValidateAndGetLength([DisallowNull] T value, [NotNullIfNotNull("lengthCache")]ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+    int ValidateAndGetLength([DisallowNull] T value, [NotNullIfNotNull(nameof(lengthCache))]ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
     /// <summary>
     /// Writes a value to the provided buffer.

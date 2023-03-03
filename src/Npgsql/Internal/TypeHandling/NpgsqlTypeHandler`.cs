@@ -49,7 +49,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
     /// <summary>
     /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
     /// </summary>
-    public abstract int ValidateAndGetLength(TDefault value, [NotNullIfNotNull("lengthCache")]ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+    public abstract int ValidateAndGetLength(TDefault value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
     /// <summary>
     /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.

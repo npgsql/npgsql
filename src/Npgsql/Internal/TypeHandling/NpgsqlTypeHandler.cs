@@ -135,7 +135,7 @@ public abstract class NpgsqlTypeHandler
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected internal int ValidateAndGetLength<TAny>(
-        [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        [DisallowNull] TAny value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
         Debug.Assert(value is not DBNull);
 
@@ -148,7 +148,7 @@ public abstract class NpgsqlTypeHandler
     }
 
     protected internal virtual int ValidateAndGetLengthCustom<TAny>(
-        [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+        [DisallowNull] TAny value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
         ValidateAndGetLengthCustomCore(parameter, typeof(TAny), PgDisplayName);
 
     static int ValidateAndGetLengthCustomCore(NpgsqlParameter? parameter, Type type, string displayName)

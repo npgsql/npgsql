@@ -167,8 +167,8 @@ public class RangeHandler<TSubtype1, TSubtype2> : RangeHandler<TSubtype1>, INpgs
     public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value switch
         {
-            NpgsqlRange<TSubtype1> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype1>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-            NpgsqlRange<TSubtype2> converted => ((INpgsqlTypeHandler<NpgsqlRange<TSubtype2>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+            NpgsqlRange<TSubtype1> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
+            NpgsqlRange<TSubtype2> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
 
             DBNull => 0,
             null => 0,

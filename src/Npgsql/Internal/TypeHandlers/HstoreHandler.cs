@@ -54,9 +54,9 @@ public class HstoreHandler :
             totalLen += 8;   // Key length + value length
             if (kv.Key == null)
                 throw new FormatException("HSTORE doesn't support null keys");
-            totalLen += ((INpgsqlTypeHandler<string>)_textHandler).ValidateAndGetLength(kv.Key, ref lengthCache, null);
+            totalLen += _textHandler.ValidateAndGetLength(kv.Key, ref lengthCache, null);
             if (kv.Value != null)
-                totalLen += ((INpgsqlTypeHandler<string>)_textHandler).ValidateAndGetLength(kv.Value!, ref lengthCache, null);
+                totalLen += _textHandler.ValidateAndGetLength(kv.Value!, ref lengthCache, null);
         }
 
         return lengthCache.Lengths[pos] = totalLen;
@@ -75,9 +75,9 @@ public class HstoreHandler :
     public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value switch
         {
-            ImmutableDictionary<string, string?> converted => ((INpgsqlTypeHandler<ImmutableDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-            Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-            IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+            ImmutableDictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
+            Dictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
+            IDictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
 
             DBNull => 0,
             null => 0,

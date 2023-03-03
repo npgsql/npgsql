@@ -69,21 +69,23 @@ public class ArrayHandler : NpgsqlTypeHandler
     /// <inheritdoc />
     protected internal override async ValueTask<TArray> ReadCustom<TArray>(NpgsqlReadBuffer buf, int len, bool async,
         FieldDescription? fieldDescription)
-        => (TArray)await ReadGenericAsObject<TArray>(buf, len, async, fieldDescription);
-
-    // Sync helper to keep the code size cost of ReadCustom low.
-    ValueTask<object> ReadGenericAsObject<TArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
-        if (ArrayTypeInfo<TArray>.IsArray)
-            return GetOrAddHandler<TArray>().ReadArray(buf, async, ArrayTypeInfo<TArray>.ArrayRank);
+        return (TArray)await ReadGenericAsObject(buf, async, fieldDescription);
 
-        if (ListTypeInfo<TArray>.IsList)
-            return GetOrAddHandler<TArray>().ReadList(buf, async);
+        // Sync helper to keep the code size cost of ReadCustom low.
+        ValueTask<object> ReadGenericAsObject(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription)
+        {
+            if (ArrayTypeInfo<TArray>.IsArray)
+                return GetOrAddHandler<TArray>().ReadArray(buf, async, ArrayTypeInfo<TArray>.ArrayRank);
 
-        throw new InvalidCastException(fieldDescription == null
-            ? $"Can't cast database type to {typeof(TArray).Name}"
-            : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TArray).Name}"
-        );
+            if (ListTypeInfo<TArray>.IsList)
+                return GetOrAddHandler<TArray>().ReadList(buf, async);
+
+            throw new InvalidCastException(fieldDescription == null
+                ? $"Can't cast database type to {typeof(TArray).Name}"
+                : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TArray).Name}"
+            );
+        }
     }
 
     /// <inheritdoc />
@@ -567,6 +569,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
 
         static void SetResult(bool isArray, object values, int index, TElement? result)
         {
+            Debug.Assert(isArray ? values is TElement?[] : values is List<TElement?>);
             if (isArray)
                 Unsafe.As<object, TElement?[]>(ref values)[index] = result;
             else
@@ -587,6 +590,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
 
     protected override int ValidateAndGetElementLength(bool isArray, object values, int index, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
+        Debug.Assert(isArray ? values is TElement?[] : values is List<TElement?>);
         var element =
             isArray
                 ? Unsafe.As<object, TElement?[]>(ref values)[index]
@@ -602,6 +606,7 @@ sealed class ArrayHandlerCore<TElement> : ArrayHandlerCore
     protected override async ValueTask WriteElementWithLength(bool isArray, object values, int index, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache,
         NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
     {
+        Debug.Assert(isArray ? values is TElement?[] : values is List<TElement?>);
         var element =
             isArray
                 ? Unsafe.As<object, TElement?[]>(ref values)[index]
