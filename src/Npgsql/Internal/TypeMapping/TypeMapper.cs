@@ -305,7 +305,7 @@ public sealed class TypeMapper
             case PostgresMultirangeType:
                 return throwOnError
                     ? throw new NotSupportedException(
-                        $"'{pgType}' is a range type; please call {nameof(NpgsqlRangeExtensions.UseRange)} on {nameof(NpgsqlDataSourceBuilder)} or on {nameof(NpgsqlConnection)}.{nameof(NpgsqlConnection.GlobalTypeMapper)} to enable ranges. " +
+                        $"'{pgType}' is a range type; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRanges)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable ranges. " +
                         "See https://www.npgsql.org/doc/types/ranges.html for more information.")
                     : null;
 #pragma warning restore CS0618

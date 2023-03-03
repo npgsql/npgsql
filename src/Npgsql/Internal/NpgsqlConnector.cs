@@ -283,7 +283,7 @@ public sealed partial class NpgsqlConnector
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
-    X509Certificate2? _certificate;
+    IDisposable? _certificate;
 
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
@@ -786,8 +786,12 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if (sslMode is SslMode.Prefer or SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
+            if ((sslMode is SslMode.Prefer && DataSource.EncryptionNegotiator is not null) ||
+                sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
+                if (DataSource.EncryptionNegotiator is null)
+                    throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+
                 WriteSslRequest();
                 await Flush(async, cancellationToken);
 
@@ -804,113 +808,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    var clientCertificates = new X509Certificate2Collection();
-                    var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
-
-                    if (certPath != null)
-                    {
-                        var password = Settings.SslPassword;
-
-                        if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
-                        {
-#if NET5_0_OR_GREATER
-                            // It's PEM time
-                            var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                            _certificate = string.IsNullOrEmpty(password)
-                                ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
-                                : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
-                            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                            {
-                                // Windows crypto API has a bug with pem certs
-                                // See #3650
-                                using var previousCert = _certificate;
-                                _certificate = new X509Certificate2(_certificate.Export(X509ContentType.Pkcs12));
-                            }
-#else
-                            // Technically PEM certificates are supported as of .NET 5 but we don't build for the net5.0
-                            // TFM anymore since .NET 5 is out of support
-                            // This is a breaking change for .NET 5 as of Npgsql 8!
-                            throw new NotSupportedException("PEM certificates are only supported with .NET 6 and higher");
-#endif
-                        }
-
-                        _certificate ??= new X509Certificate2(certPath, password);
-                        clientCertificates.Add(_certificate);
-                    }
-
-                    ClientCertificatesCallback?.Invoke(clientCertificates);
-
-                    var checkCertificateRevocation = Settings.CheckCertificateRevocation;
-
-                    RemoteCertificateValidationCallback? certificateValidationCallback;
-                    X509Certificate2? caCert;
-                    string? certRootPath = null;
-
-                    if (UserCertificateValidationCallback is not null)
-                    {
-                        if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
-                            throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
-
-                        if (Settings.RootCertificate is not null)
-                            throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
-
-                        if (DataSource.RootCertificateCallback is not null)
-                            throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
-
-                        certificateValidationCallback = UserCertificateValidationCallback;
-                    }
-                    else if (sslMode is SslMode.Prefer or SslMode.Require)
-                    {
-                        if (isFirstAttempt && sslMode is SslMode.Require && !Settings.TrustServerCertificate)
-                            throw new ArgumentException(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate);
-
-                        certificateValidationCallback = SslTrustServerValidation;
-                        checkCertificateRevocation = false;
-                    }
-                    else if ((caCert = DataSource.RootCertificateCallback?.Invoke()) is not null ||
-                             (certRootPath = Settings.RootCertificate ??
-                                             PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
-                    {
-                        certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCert);
-                    }
-                    else if (sslMode == SslMode.VerifyCA)
-                    {
-                        certificateValidationCallback = SslVerifyCAValidation;
-                    }
-                    else
-                    {
-                        Debug.Assert(sslMode == SslMode.VerifyFull);
-                        certificateValidationCallback = SslVerifyFullValidation;
-                    }
-
-                    timeout.CheckAndApply(this);
-
-                    try
-                    {
-                        var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
-
-                        var sslProtocols = SslProtocols.None;
-#if NETSTANDARD2_0
-                        // On .NET Framework SslProtocols.None can be disabled, see #3718
-                        sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
-#endif
-
-                        if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
-                        else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
-
-                        _stream = sslStream;
-                    }
-                    catch (Exception e)
-                    {
-                        throw new NpgsqlException("Exception while performing SSL handshake", e);
-                    }
-
-                    ReadBuffer.Underlying = _stream;
-                    WriteBuffer.Underlying = _stream;
-                    IsSecure = true;
-                    ConnectionLogger.LogTrace("SSL negotiation successful");
+                    await DataSource.EncryptionNegotiator(this, sslMode, timeout, async, isFirstAttempt);
                     break;
                 }
 
@@ -922,9 +820,6 @@ public sealed partial class NpgsqlConnector
         }
         catch
         {
-            _certificate?.Dispose();
-            _certificate = null;
-
             _stream?.Dispose();
             _stream = null!;
 
@@ -933,6 +828,131 @@ public sealed partial class NpgsqlConnector
 
             _socket?.Dispose();
             _socket = null!;
+
+            throw;
+        }
+    }
+
+    internal async Task NegotiateEncryption(SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
+    {
+        var clientCertificates = new X509Certificate2Collection();
+        var certPath = Settings.SslCertificate ?? PostgresEnvironment.SslCert ?? PostgresEnvironment.SslCertDefault;
+
+        if (certPath != null)
+        {
+            var password = Settings.SslPassword;
+
+            X509Certificate2? cert = null;
+            if (Path.GetExtension(certPath).ToUpperInvariant() != ".PFX")
+            {
+#if NET5_0_OR_GREATER
+                // It's PEM time
+                var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
+                cert = string.IsNullOrEmpty(password)
+                    ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
+                    : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    // Windows crypto API has a bug with pem certs
+                    // See #3650
+                    using var previousCert = cert;
+                    cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                }
+
+#else
+                // Technically PEM certificates are supported as of .NET 5 but we don't build for the net5.0
+                // TFM anymore since .NET 5 is out of support
+                // This is a breaking change for .NET 5 as of Npgsql 8!
+                throw new NotSupportedException("PEM certificates are only supported with .NET 6 and higher");
+#endif
+            }
+
+            cert ??= new X509Certificate2(certPath, password);
+            clientCertificates.Add(cert);
+
+            _certificate = cert;
+        }
+
+        try
+        {
+            ClientCertificatesCallback?.Invoke(clientCertificates);
+
+            var checkCertificateRevocation = Settings.CheckCertificateRevocation;
+
+            RemoteCertificateValidationCallback? certificateValidationCallback;
+            X509Certificate2? caCert;
+            string? certRootPath = null;
+
+            if (UserCertificateValidationCallback is not null)
+            {
+                if (sslMode is SslMode.VerifyCA or SslMode.VerifyFull)
+                    throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
+
+                if (Settings.RootCertificate is not null)
+                    throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
+
+                if (DataSource.RootCertificateCallback is not null)
+                    throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
+
+                certificateValidationCallback = UserCertificateValidationCallback;
+            }
+            else if (sslMode is SslMode.Prefer or SslMode.Require)
+            {
+                if (isFirstAttempt && sslMode is SslMode.Require && !Settings.TrustServerCertificate)
+                    throw new ArgumentException(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate);
+
+                certificateValidationCallback = SslTrustServerValidation;
+                checkCertificateRevocation = false;
+            }
+            else if ((caCert = DataSource.RootCertificateCallback?.Invoke()) is not null ||
+                     (certRootPath = Settings.RootCertificate ??
+                                     PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
+            {
+                certificateValidationCallback = SslRootValidation(sslMode == SslMode.VerifyFull, certRootPath, caCert);
+            }
+            else if (sslMode == SslMode.VerifyCA)
+            {
+                certificateValidationCallback = SslVerifyCAValidation;
+            }
+            else
+            {
+                Debug.Assert(sslMode == SslMode.VerifyFull);
+                certificateValidationCallback = SslVerifyFullValidation;
+            }
+
+            timeout.CheckAndApply(this);
+
+            try
+            {
+                var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
+
+                var sslProtocols = SslProtocols.None;
+#if NETSTANDARD2_0
+                // On .NET Framework SslProtocols.None can be disabled, see #3718
+                sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
+#endif
+
+                if (async)
+                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
+                else
+                    sslStream.AuthenticateAsClient(Host, clientCertificates, sslProtocols, checkCertificateRevocation);
+
+                _stream = sslStream;
+            }
+            catch (Exception e)
+            {
+                throw new NpgsqlException("Exception while performing SSL handshake", e);
+            }
+
+            ReadBuffer.Underlying = _stream;
+            WriteBuffer.Underlying = _stream;
+            IsSecure = true;
+            ConnectionLogger.LogTrace("SSL negotiation successful");
+        }
+        catch
+        {
+            _certificate?.Dispose();
+            _certificate = null;
 
             throw;
         }

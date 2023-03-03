@@ -30,6 +30,9 @@
     <data name="CannotUseTrustServerCertificate" xml:space="preserve">
         <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
     </data>
+    <data name="EncryptionDisabled" xml:space="preserve">
+        <value>NpgsqlSlimDataSourceBuilder is being used, and encryption hasn't been enabled, call EnableEncryption() on NpgsqlSlimDataSourceBuilder to enable it.</value>
+    </data>
     <data name="NoMultirangeTypeFound" xml:space="preserve">
         <value>No multirange type could be found in the database for subtype {0}.</value>
     </data>
