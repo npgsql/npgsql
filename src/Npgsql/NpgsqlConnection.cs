@@ -90,7 +90,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     public INpgsqlTypeMapper TypeMapper
         => throw new NotSupportedException();
 
-    static ICloningInstantiator? _cloningInstantiator;
+    static Func<string, NpgsqlConnection>? _cloningInstantiator;
 
     /// <summary>
     /// The default TCP/IP port for PostgreSQL.
@@ -220,7 +220,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         var newDataSource = dataSourceBuilder.Build();
 
         // See Clone() on the following line:
-        _cloningInstantiator = new CloningInstantiator();
+        _cloningInstantiator = s => new NpgsqlConnection(s);
 
         _dataSource = PoolManager.Pools.GetOrAdd(canonical, newDataSource);
         if (_dataSource == newDataSource)
@@ -1827,7 +1827,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // default data source is brought in anyway).
         Debug.Assert(_dataSource is not null || _cloningInstantiator is not null);
         var conn = _dataSource is null
-            ? _cloningInstantiator!.Instantiate(_connectionString)
+            ? _cloningInstantiator!(_connectionString)
             : _dataSource.CreateConnection();
 
         conn.ProvideClientCertificatesCallback = ProvideClientCertificatesCallback;
@@ -1866,17 +1866,6 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             ProvidePasswordCallback = ProvidePasswordCallback,
 #pragma warning restore CS0618
         };
-    }
-
-    interface ICloningInstantiator
-    {
-        public NpgsqlConnection Instantiate(string connectionString);
-    }
-
-    sealed class CloningInstantiator : ICloningInstantiator
-    {
-        public NpgsqlConnection Instantiate(string connectionString)
-            => new(connectionString);
     }
 
     /// <summary>

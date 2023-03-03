@@ -232,9 +232,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     /// <inheritdoc />
     public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
-        => AddTypeResolverFactory(resolverFactory, replaceIfExists: true);
-
-    internal void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory, bool replaceIfExists)
     {
         var type = resolverFactory.GetType();
 
@@ -242,17 +239,41 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         {
             if (_resolverFactories[i].GetType() == type)
             {
-                if (replaceIfExists)
-                {
-                    _resolverFactories.RemoveAt(i);
-                    break;
-                }
-
-                return;
+                _resolverFactories.RemoveAt(i);
+                break;
             }
         }
 
         _resolverFactories.Insert(0, resolverFactory);
+    }
+
+    internal void AddDefaultTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
+    {
+        // For these "default" resolvers:
+        // 1. If they were already added in the global type mapper, we don't want to replace them (there may be custom user config, e.g.
+        //    for JSON.
+        // 2. They can't be at the start, since then they'd override a user-added resolver in global (e.g. the range handler would override
+        //    NodaTime, but NodaTime has special handling for tstzrange, mapping it to Interval in addition to NpgsqlRange<Instant>).
+        // 3. They also can't be at the end, since then they'd be overridden by builtin (builtin has limited JSON handler, but we want
+        //    the System.Text.Json handler to take precedence.
+        // So we (currently) add these at the end, but before the builtin resolver.
+        var type = resolverFactory.GetType();
+
+        // 1st pass to skip if the resolver already exists from the global type mapper
+        for (var i = 0; i < _resolverFactories.Count; i++)
+            if (_resolverFactories[i].GetType() == type)
+                return;
+
+        for (var i = 0; i < _resolverFactories.Count; i++)
+        {
+            if (_resolverFactories[i] is BuiltInTypeHandlerResolverFactory)
+            {
+                _resolverFactories.Insert(i, resolverFactory);
+                return;
+            }
+        }
+
+        throw new Exception("No built-in resolver factory found");
     }
 
     /// <inheritdoc />

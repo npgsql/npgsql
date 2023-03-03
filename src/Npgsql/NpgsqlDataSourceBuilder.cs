@@ -291,9 +291,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 
     void AddDefaultFeatures()
     {
-        // If a resolver factory is already registered, we don't replace it. This is to allow customized factories (e.g. JSON with
-        // specific settings) to flow from the global type mapper to the data source.
-        _internalBuilder.AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(), replaceIfExists: false);
-        _internalBuilder.AddTypeResolverFactory(new RangeTypeHandlerResolverFactory(), replaceIfExists: false);
+        _internalBuilder.AddDefaultTypeResolverFactory(new JsonTypeHandlerResolverFactory());
+        _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
     }
 }
