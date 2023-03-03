@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -34,7 +35,7 @@ public interface INpgsqlTypeHandler<T>
     /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
     /// </param>
     /// <returns>The number of bytes required to write the value.</returns>
-    int ValidateAndGetLength([DisallowNull] T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+    int ValidateAndGetLength([DisallowNull] T value, [NotNullIfNotNull(nameof(lengthCache))]ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
     /// <summary>
     /// Writes a value to the provided buffer.
@@ -53,4 +54,22 @@ public interface INpgsqlTypeHandler<T>
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     Task Write([DisallowNull] T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
+}
+
+static class INpgsqlTypeHandlerExtensions
+{
+    public static async Task WriteWithLength<T>(this INpgsqlTypeHandler<T> handler, T? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+    {
+        if (buf.WriteSpaceLeft < 4)
+            await buf.Flush(async, cancellationToken);
+
+        if (value is null or DBNull)
+        {
+            buf.WriteInt32(-1);
+            return;
+        }
+
+        buf.WriteInt32(handler.ValidateAndGetLength(value, ref lengthCache, parameter));
+        await handler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
+    }
 }

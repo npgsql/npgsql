@@ -40,7 +40,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
     // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
     // we must use the bang operator here to tell the compiler that a null value will never returned.
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-        => (await Read<TDefault>(buf, len, async, fieldDescription))!;
+        => (await Read(buf, len, async, fieldDescription))!;
 
     #endregion Read
 
@@ -49,7 +49,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
     /// <summary>
     /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
     /// </summary>
-    public abstract int ValidateAndGetLength(TDefault value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
+    public abstract int ValidateAndGetLength(TDefault value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
     /// <summary>
     /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
@@ -65,7 +65,7 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-        => new ArrayHandler<TDefault>(pgArrayType, this, arrayNullabilityMode);
+        => new ArrayHandler(pgArrayType, this, arrayNullabilityMode);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateRangeHandler(PostgresType pgRangeType)

@@ -35,6 +35,12 @@ public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlTypeHandler<TDef
     public sealed override ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         => throw new NotSupportedException();
 
+    public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+    {
+        await buf.Ensure(len, async);
+        return Read(buf, len, fieldDescription)!;
+    }
+
     #region Write
 
     /// <summary>

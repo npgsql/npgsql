@@ -94,9 +94,5 @@ public abstract class NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv> : NpgsqlSim
     public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
         => typeof(TPsv);
 
-    /// <inheeritdoc />
-    public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
-        => new ArrayHandlerWithPsv<TDefault, TPsv>(pgArrayType, this, arrayNullabilityMode);
-
     #endregion Misc
 }

@@ -135,7 +135,7 @@ public abstract class NpgsqlTypeHandler
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected internal int ValidateAndGetLength<TAny>(
-        [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        [DisallowNull] TAny value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
         Debug.Assert(value is not DBNull);
 
@@ -148,7 +148,10 @@ public abstract class NpgsqlTypeHandler
     }
 
     protected internal virtual int ValidateAndGetLengthCustom<TAny>(
-        [DisallowNull] TAny value, [NotNullIfNotNull("lengthCache")] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        [DisallowNull] TAny value, [NotNullIfNotNull(nameof(lengthCache))] ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+        ValidateAndGetLengthCustomCore(parameter, typeof(TAny), PgDisplayName);
+
+    static int ValidateAndGetLengthCustomCore(NpgsqlParameter? parameter, Type type, string displayName)
     {
         var parameterName = parameter is null
             ? null
@@ -159,8 +162,8 @@ public abstract class NpgsqlTypeHandler
                 : parameter.TrimmedName;
 
         throw new InvalidCastException(parameterName is null
-            ? $"Cannot write a value of CLR type '{typeof(TAny)}' as database type '{PgDisplayName}'."
-            : $"Cannot write a value of CLR type '{typeof(TAny)}' as database type '{PgDisplayName}' for parameter '{parameterName}'.");
+            ? $"Cannot write a value of CLR type '{type}' as database type '{displayName}'."
+            : $"Cannot write a value of CLR type '{type}' as database type '{displayName}' for parameter '{parameterName}'.");
     }
 
     /// <summary>

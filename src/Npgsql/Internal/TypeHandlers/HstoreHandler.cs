@@ -75,9 +75,9 @@ public class HstoreHandler :
     public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         => value switch
         {
-            ImmutableDictionary<string, string?> converted => ((INpgsqlTypeHandler<ImmutableDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-            Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
-            IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).ValidateAndGetLength(converted, ref lengthCache, parameter),
+            ImmutableDictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
+            Dictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
+            IDictionary<string, string?> converted => ValidateAndGetLength(converted, ref lengthCache, parameter),
 
             DBNull => 0,
             null => 0,
@@ -94,9 +94,9 @@ public class HstoreHandler :
         CancellationToken cancellationToken = default)
         => value switch
         {
-            ImmutableDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            Dictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
-            IDictionary<string, string?> converted => WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            ImmutableDictionary<string, string?> converted => ((INpgsqlTypeHandler<ImmutableDictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            Dictionary<string, string?> converted => ((INpgsqlTypeHandler<Dictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
+            IDictionary<string, string?> converted => ((INpgsqlTypeHandler<IDictionary<string, string?>>)this).WriteWithLength(converted, buf, lengthCache, parameter, async, cancellationToken),
 
             DBNull => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
             null => WriteWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
@@ -114,8 +114,8 @@ public class HstoreHandler :
 
         foreach (var kv in value)
         {
-            await _textHandler.WriteWithLength(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
-            await _textHandler.WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
+            await ((INpgsqlTypeHandler<string>)_textHandler).WriteWithLength(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
+            await ((INpgsqlTypeHandler<string>)_textHandler).WriteWithLength(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
         }
     }
 

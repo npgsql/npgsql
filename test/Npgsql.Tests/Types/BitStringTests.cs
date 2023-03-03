@@ -99,6 +99,24 @@ public class BitStringTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task Array_of_single_bits_and_null()
+    {
+        var dataSource = CreateDataSource(builder => builder.ArrayNullabilityMode = ArrayNullabilityMode.Always);
+        using var conn = await dataSource.OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", conn);
+        var expected = new bool?[] { true, false, null };
+        var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Bit) {Value = expected};
+        cmd.Parameters.Add(p);
+        p.Value = expected;
+        using var reader = await cmd.ExecuteReaderAsync();
+        reader.Read();
+        var x = reader.GetValue(0);
+        Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+        Assert.That(reader.GetFieldValue<bool?[]>(0), Is.EqualTo(expected));
+        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+    }
+
+    [Test]
     public Task Write_as_string()
         => AssertTypeWrite("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
 
