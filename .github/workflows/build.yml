@@ -385,7 +385,7 @@ jobs:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Pack
-        run: dotnet pack --configuration Release --output nupkgs -p:ContinuousIntegrationBuild=true
+        run: dotnet pack --configuration Release --property:PackageOutputPath="$PWD/nupkgs" nupkgs -p:ContinuousIntegrationBuild=true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
