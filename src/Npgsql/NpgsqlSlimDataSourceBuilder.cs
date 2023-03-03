@@ -232,7 +232,28 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     /// <inheritdoc />
     public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
-        => _resolverFactories.Insert(0, resolverFactory);
+        => AddTypeResolverFactory(resolverFactory, replaceIfExists: true);
+
+    internal void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory, bool replaceIfExists)
+    {
+        var type = resolverFactory.GetType();
+
+        for (var i = 0; i < _resolverFactories.Count; i++)
+        {
+            if (_resolverFactories[i].GetType() == type)
+            {
+                if (replaceIfExists)
+                {
+                    _resolverFactories.RemoveAt(i);
+                    break;
+                }
+
+                return;
+            }
+        }
+
+        _resolverFactories.Insert(0, resolverFactory);
+    }
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)

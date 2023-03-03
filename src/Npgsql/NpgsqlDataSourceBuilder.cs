@@ -41,8 +41,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     {
         _internalBuilder = new(connectionString);
 
-        _internalBuilder.UseSystemTextJson();
-        _internalBuilder.UseRange();
+        AddDefaultFeatures();
     }
 
     /// <summary>
@@ -241,7 +240,11 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         => _internalBuilder.UnmapComposite(clrType, pgName, nameTranslator);
 
     void INpgsqlTypeMapper.Reset()
-        => ((INpgsqlTypeMapper)_internalBuilder).Reset();
+    {
+        ((INpgsqlTypeMapper)_internalBuilder).Reset();
+
+        AddDefaultFeatures();
+    }
 
     #endregion Type mapping
 
@@ -285,4 +288,12 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
         => _internalBuilder.BuildMultiHost();
+
+    void AddDefaultFeatures()
+    {
+        // If a resolver factory is already registered, we don't replace it. This is to allow customized factories (e.g. JSON with
+        // specific settings) to flow from the global type mapper to the data source.
+        _internalBuilder.AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(), replaceIfExists: false);
+        _internalBuilder.AddTypeResolverFactory(new RangeTypeHandlerResolverFactory(), replaceIfExists: false);
+    }
 }
