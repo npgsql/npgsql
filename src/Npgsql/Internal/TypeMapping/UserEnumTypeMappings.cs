@@ -9,24 +9,18 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeMapping;
 
-public interface IUserEnumTypeMapping : IUserTypeMapping
-{
-    INpgsqlNameTranslator NameTranslator { get; }
-}
-
-sealed class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
+sealed class UserEnumTypeMapping<TEnum> : IUserTypeMapping
     where TEnum : struct, Enum
 {
     public string PgTypeName { get; }
     public Type ClrType => typeof(TEnum);
-    public INpgsqlNameTranslator NameTranslator { get; }
 
     readonly Dictionary<TEnum, string> _enumToLabel = new();
     readonly Dictionary<string, TEnum> _labelToEnum = new();
 
     public UserEnumTypeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
     {
-        (PgTypeName, NameTranslator) = (pgTypeName, nameTranslator);
+        PgTypeName = pgTypeName;
 
         foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
         {

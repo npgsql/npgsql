@@ -5,16 +5,11 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeMapping;
 
-public interface IUserCompositeTypeMapping : IUserTypeMapping
+sealed class UserCompositeTypeMapping<T> : IUserTypeMapping
 {
     INpgsqlNameTranslator NameTranslator { get; }
-}
-
-sealed class UserCompositeTypeMapping<T> : IUserCompositeTypeMapping
-{
     public string PgTypeName { get; }
     public Type ClrType => typeof(T);
-    public INpgsqlNameTranslator NameTranslator { get; }
 
     public UserCompositeTypeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
         => (PgTypeName, NameTranslator) = (pgTypeName, nameTranslator);
