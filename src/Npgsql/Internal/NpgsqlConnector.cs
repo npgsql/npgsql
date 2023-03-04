@@ -282,6 +282,8 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal bool AttemptPostgresCancellation { get; private set; }
     static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
+    X509Certificate2? _certificate;
+
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
     internal ILogger ConnectionLogger { get; }
@@ -756,7 +758,6 @@ public sealed partial class NpgsqlConnector : IDisposable
 
     async Task RawOpen(SslMode sslMode, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken, bool isFirstAttempt = true)
     {
-        var cert = default(X509Certificate2?);
         try
         {
             if (async)
@@ -815,23 +816,23 @@ public sealed partial class NpgsqlConnector : IDisposable
 #if NET5_0_OR_GREATER
                             // It's PEM time
                             var keyPath = Settings.SslKey ?? PostgresEnvironment.SslKey ?? PostgresEnvironment.SslKeyDefault;
-                            cert = string.IsNullOrEmpty(password)
+                            _certificate = string.IsNullOrEmpty(password)
                                 ? X509Certificate2.CreateFromPemFile(certPath, keyPath)
                                 : X509Certificate2.CreateFromEncryptedPemFile(certPath, password, keyPath);
                             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                             {
                                 // Windows crypto API has a bug with pem certs
                                 // See #3650
-                                using var previousCert = cert;
-                                cert = new X509Certificate2(cert.Export(X509ContentType.Pkcs12));
+                                using var previousCert = _certificate;
+                                _certificate = new X509Certificate2(_certificate.Export(X509ContentType.Pkcs12));
                             }
 #else
                             throw new NotSupportedException("PEM certificates are only supported with .NET 5 and higher");
 #endif
                         }
 
-                        cert ??= new X509Certificate2(certPath, password);
-                        clientCertificates.Add(cert);
+                        _certificate ??= new X509Certificate2(certPath, password);
+                        clientCertificates.Add(_certificate);
                     }
 
                     ClientCertificatesCallback?.Invoke(clientCertificates);
@@ -846,7 +847,7 @@ public sealed partial class NpgsqlConnector : IDisposable
                             throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslVerifyWithUserCallback, sslMode));
 
                         if (Settings.RootCertificate is not null)
-                            throw new ArgumentException(string.Format(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback));
+                            throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
 
                         certificateValidationCallback = UserCertificateValidationCallback;
                     }
@@ -912,7 +913,8 @@ public sealed partial class NpgsqlConnector : IDisposable
         }
         catch
         {
-            cert?.Dispose();
+            _certificate?.Dispose();
+            _certificate = null;
 
             _stream?.Dispose();
             _stream = null!;
@@ -2160,6 +2162,12 @@ public sealed partial class NpgsqlConnector : IDisposable
         Connection = null;
         PostgresParameters.Clear();
         _currentCommand = null;
+
+        if (_certificate is not null)
+        {
+            _certificate.Dispose();
+            _certificate = null;
+        }
     }
 
     void GenerateResetMessage()
