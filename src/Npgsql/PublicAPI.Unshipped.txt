@@ -1,4 +1,5 @@
 ﻿#nullable enable
+Npgsql.NpgsqlRecordExtensions
 override Npgsql.NpgsqlBatch.Dispose() -> void
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!
@@ -48,3 +49,4 @@ Npgsql.NpgsqlSlimDataSourceBuilder.UseUserCertificateValidationCallback(System.N
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValue(int ordinal) -> object!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValues(object![]! values) -> int
+static Npgsql.NpgsqlRecordExtensions.UseRecord(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
