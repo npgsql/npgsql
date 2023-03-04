@@ -36,7 +36,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
     readonly List<TypeHandlerResolverFactory> _resolverFactories = new();
-    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings = new();
 
     /// <inheritdoc />
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
@@ -276,6 +275,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         throw new Exception("No built-in resolver factory found");
     }
 
+    void AddUserMappingResolver(IUserTypeMapping userMapping)
+    {
+        RemoveUserMappingResolver(userMapping.PgTypeName);
+        var factory = new UserMappedTypeHandlerResolverFactory(userMapping);
+        _resolverFactories.Insert(0, factory);
+    }
+
+    bool RemoveUserMappingResolver(string pgName)
+    {
+        for (var i = 0; i < _resolverFactories.Count; i++)
+        {
+            if (_resolverFactories[i] is UserMappedTypeHandlerResolverFactory { } resolverFactory && resolverFactory.Mapping.PgTypeName == pgName)
+            {
+                _resolverFactories.RemoveAt(i);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
@@ -286,7 +306,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         nameTranslator ??= DefaultNameTranslator;
         pgName ??= GetPgName(typeof(TEnum), nameTranslator);
 
-        _userTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
+        var userMapping = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
+        AddUserMappingResolver(userMapping);
         return this;
     }
 
@@ -300,7 +321,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         nameTranslator ??= DefaultNameTranslator;
         pgName ??= GetPgName(typeof(TEnum), nameTranslator);
 
-        return _userTypeMappings.Remove(pgName);
+        return RemoveUserMappingResolver(pgName);
     }
 
     /// <inheritdoc />
@@ -313,7 +334,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         nameTranslator ??= DefaultNameTranslator;
         pgName ??= GetPgName(typeof(T), nameTranslator);
 
-        _userTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
+        var userMapping = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
+        AddUserMappingResolver(userMapping);
         return this;
     }
 
@@ -343,7 +365,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         nameTranslator ??= DefaultNameTranslator;
         pgName ??= GetPgName(clrType, nameTranslator);
 
-        return _userTypeMappings.Remove(pgName);
+        return RemoveUserMappingResolver(pgName);
     }
 
     void INpgsqlTypeMapper.Reset()
@@ -358,10 +380,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _resolverFactories.Clear();
             foreach (var resolverFactory in globalMapper.ResolverFactories)
                 _resolverFactories.Add(resolverFactory);
-
-            _userTypeMappings.Clear();
-            foreach (var kv in globalMapper.UserTypeMappings)
-                _userTypeMappings[kv.Key] = kv.Value;
         }
         finally
         {
@@ -462,7 +480,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             _resolverFactories,
-            _userTypeMappings,
             DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer,

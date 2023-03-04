@@ -33,7 +33,6 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
     readonly List<TypeHandlerResolverFactory> _resolverFactories;
-    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings;
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
     internal TypeMapper TypeMapper { get; private set; } = null!; // Initialized at bootstrapping
@@ -95,7 +94,6 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 _resolverFactories,
-                _userTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync,
@@ -236,7 +234,7 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             DatabaseInfo = databaseInfo;
             connector.DatabaseInfo = databaseInfo;
-            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
+            typeMapper.Initialize(databaseInfo, _resolverFactories);
             TypeMapper = typeMapper;
 
             _isBootstrapped = true;

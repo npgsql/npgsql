@@ -5,7 +5,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandling;
 
-public class TypeMappingInfo
+public sealed class TypeMappingInfo
 {
     public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, string? dataTypeName, Type clrType)
         => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, new[] { clrType });

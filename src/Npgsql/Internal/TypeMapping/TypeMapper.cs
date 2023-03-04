@@ -43,7 +43,6 @@ public sealed class TypeMapper
     readonly ConcurrentDictionary<Type, NpgsqlTypeHandler> _handlersByClrType = new();
     readonly ConcurrentDictionary<string, NpgsqlTypeHandler> _handlersByDataTypeName = new();
 
-    readonly Dictionary<uint, TypeMappingInfo> _userTypeMappings = new();
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
     readonly ILogger _commandLogger;
@@ -63,8 +62,7 @@ public sealed class TypeMapper
 
     internal void Initialize(
         NpgsqlDatabaseInfo databaseInfo,
-        List<TypeHandlerResolverFactory> resolverFactories,
-        Dictionary<string, IUserTypeMapping> userTypeMappings)
+        List<TypeHandlerResolverFactory> resolverFactories)
     {
         _databaseInfo = databaseInfo;
 
@@ -72,19 +70,6 @@ public sealed class TypeMapper
         for (var i = 0; i < resolverFactories.Count; i++)
             resolvers[i] = resolverFactories[i].Create(this, Connector);
         _resolvers = resolvers;
-
-        foreach (var userTypeMapping in userTypeMappings.Values)
-        {
-            if (DatabaseInfo.TryGetPostgresTypeByName(userTypeMapping.PgTypeName, out var pgType))
-            {
-                _handlersByOID[pgType.OID] =
-                    _handlersByDataTypeName[pgType.FullName] =
-                        _handlersByDataTypeName[pgType.Name] =
-                            _handlersByClrType[userTypeMapping.ClrType] = userTypeMapping.CreateHandler(pgType, Connector);
-
-                _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, pgType.Name, userTypeMapping.ClrType);
-            }
-        }
     }
 
     #region Type handler lookup
@@ -495,9 +480,6 @@ public sealed class TypeMapper
             }
 
             break;
-
-        case PostgresEnumType or PostgresCompositeType:
-            return _userTypeMappings.TryGetValue(pgType.OID, out mapping);
         }
 
         mapping = null;

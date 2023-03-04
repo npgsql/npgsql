@@ -21,7 +21,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = new NpgsqlSnakeCaseNameTranslator();
 
     internal List<TypeHandlerResolverFactory> ResolverFactories { get; } = new();
-    public ConcurrentDictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
     readonly ConcurrentDictionary<Type, TypeMappingInfo> _mappingsByClrType = new();
 
@@ -48,8 +47,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Lock.EnterWriteLock();
         try
         {
-            UserTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
-            RecordChange();
+            AddUserMappingResolver(new UserEnumTypeMapping<TEnum>(pgName, nameTranslator));
             return this;
         }
         finally
@@ -70,13 +68,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Lock.EnterWriteLock();
         try
         {
-            if (UserTypeMappings.TryRemove(pgName, out _))
-            {
-                RecordChange();
-                return true;
-            }
-
-            return false;
+            return RemoveUserMappingResolver(pgName);
         }
         finally
         {
@@ -96,8 +88,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Lock.EnterWriteLock();
         try
         {
-            UserTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
-            RecordChange();
+            AddUserMappingResolver(new UserCompositeTypeMapping<T>(pgName, nameTranslator));
             return this;
         }
         finally
@@ -132,13 +123,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         Lock.EnterWriteLock();
         try
         {
-            if (UserTypeMappings.TryRemove(pgName, out _))
-            {
-                RecordChange();
-                return true;
-            }
-
-            return false;
+            return RemoveUserMappingResolver(pgName);
         }
         finally
         {
@@ -174,6 +159,29 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
+    void AddUserMappingResolver(IUserTypeMapping userMapping)
+    {
+        RemoveUserMappingResolver(userMapping.PgTypeName);
+        var factory = new UserMappedTypeHandlerResolverFactory(userMapping);
+        ResolverFactories.Insert(0, factory);
+        RecordChange();
+    }
+
+    bool RemoveUserMappingResolver(string pgName)
+    {
+        for (var i = 0; i < ResolverFactories.Count; i++)
+        {
+            if (ResolverFactories[i] is UserMappedTypeHandlerResolverFactory { } resolverFactory && resolverFactory.Mapping.PgTypeName == pgName)
+            {
+                ResolverFactories.RemoveAt(i);
+                RecordChange();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void Reset()
     {
         Lock.EnterWriteLock();
@@ -181,8 +189,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         {
             ResolverFactories.Clear();
             ResolverFactories.Add(new BuiltInTypeHandlerResolverFactory());
-
-            UserTypeMappings.Clear();
 
             RecordChange();
         }
