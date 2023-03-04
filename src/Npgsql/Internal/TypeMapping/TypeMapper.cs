@@ -35,7 +35,8 @@ public sealed class TypeMapper
         }
     }
 
-    volatile TypeHandlerResolver[] _resolvers;
+    volatile TypeHandlerResolver[] _handlerResolvers;
+    volatile TypeMapperResolver[] _mapperResolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
     readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -55,7 +56,8 @@ public sealed class TypeMapper
         Connector = connector;
         _defaultNameTranslator = defaultNameTranslator;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector.TextEncoding);
-        _resolvers = Array.Empty<TypeHandlerResolver>();
+        _handlerResolvers = Array.Empty<TypeHandlerResolver>();
+        _mapperResolvers = Array.Empty<TypeMapperResolver>();
         _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }
 
@@ -69,9 +71,26 @@ public sealed class TypeMapper
         _databaseInfo = databaseInfo;
 
         var resolvers = new TypeHandlerResolver[resolverFactories.Count];
+        var mapperResolvers = new List<TypeMapperResolver>(resolverFactories.Count);
         for (var i = 0; i < resolverFactories.Count; i++)
+        {
             resolvers[i] = resolverFactories[i].Create(this, Connector);
-        _resolvers = resolvers;
+            var mapperResolver = resolverFactories[i].CreateMapperResolver();
+            if (mapperResolver is not null)
+                mapperResolvers.Add(mapperResolver);
+        }
+
+        // Add global mapper resolvers in backwards because they're inserted in the beginning
+        for (var i = resolverFactories.Count - 1; i >= 0; i--)
+        {
+            
+            var globalMapperResolver = resolverFactories[i].CreateGlobalMapperResolver();
+            if (globalMapperResolver is not null)
+                GlobalTypeMapper.Instance.TryAddMapperResolver(globalMapperResolver);
+        }
+
+        _handlerResolvers = resolvers;
+        _mapperResolvers = mapperResolvers.ToArray();
 
         foreach (var userTypeMapping in userTypeMappings.Values)
         {
@@ -151,7 +170,7 @@ public sealed class TypeMapper
                 // First, try to resolve as a base type; translate the NpgsqlDbType to a PG data type name and look that up.
                 if (GlobalTypeMapper.NpgsqlDbTypeToDataTypeName(npgsqlDbType) is { } dataTypeName)
                 {
-                    foreach (var resolver in _resolvers)
+                    foreach (var resolver in _handlerResolvers)
                     {
                         try
                         {
@@ -168,7 +187,7 @@ public sealed class TypeMapper
 
                 // Can't find (or translate) PG data type name by NpgsqlDbType.
                 // This might happen because of flags (like Array, Range or Multirange).
-                foreach (var resolver in _resolvers)
+                foreach (var resolver in _handlerResolvers)
                 {
                     try
                     {
@@ -214,7 +233,7 @@ public sealed class TypeMapper
         {
             lock (_writeLock)
             {
-                foreach (var resolver in _resolvers)
+                foreach (var resolver in _handlerResolvers)
                 {
                     try
                     {
@@ -243,7 +262,7 @@ public sealed class TypeMapper
         {
             lock (_writeLock)
             {
-                foreach (var resolver in _resolvers)
+                foreach (var resolver in _handlerResolvers)
                 {
                     try
                     {
@@ -327,7 +346,7 @@ public sealed class TypeMapper
             // do a dictionary lookup (the JIT elides type checks in generic methods for value types)
             NpgsqlTypeHandler? handler;
 
-            foreach (var resolver in _resolvers)
+            foreach (var resolver in _handlerResolvers)
             {
                 try
                 {
@@ -364,7 +383,7 @@ public sealed class TypeMapper
 
         NpgsqlTypeHandler ResolveLong(object value, Type type)
         {
-            foreach (var resolver in _resolvers)
+            foreach (var resolver in _handlerResolvers)
             {
                 try
                 {
@@ -400,7 +419,7 @@ public sealed class TypeMapper
         {
             lock (_writeLock)
             {
-                foreach (var resolver in _resolvers)
+                foreach (var resolver in _handlerResolvers)
                 {
                     try
                     {
@@ -472,8 +491,8 @@ public sealed class TypeMapper
 
     internal bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out TypeMappingInfo? mapping)
     {
-        foreach (var resolver in _resolvers)
-            if ((mapping = resolver.GetMappingByPostgresType(pgType)) is not null)
+        foreach (var resolver in _mapperResolvers)
+            if ((mapping = resolver.GetMappingByPostgresType(this, pgType)) is not null)
                 return true;
 
         switch (pgType)

@@ -17,9 +17,5 @@ public class GeoJSONTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new GeoJSONTypeHandlerResolver(connector, _options, _geographyAsDefault);
 
-    public override string? GetDataTypeNameByClrType(Type type)
-        => GeoJSONTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
-
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => GeoJSONTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMapperResolver CreateMapperResolver() => new GeoJSONTypeMapperResolver(_geographyAsDefault);
 }

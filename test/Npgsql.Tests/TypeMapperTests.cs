@@ -167,10 +167,6 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
             => new CitextToStringTypeHandlerResolver(connector);
 
-        public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-        public override string GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
-        public override string GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
-
         class CitextToStringTypeHandlerResolver : TypeHandlerResolver
         {
             readonly NpgsqlConnector _connector;
@@ -185,8 +181,6 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
             public override NpgsqlTypeHandler? ResolveByClrType(Type type)
                 => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
             public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
-
-            public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type) => throw new NotSupportedException();
         }
     }
 

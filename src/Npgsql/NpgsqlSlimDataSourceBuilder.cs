@@ -359,7 +359,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         try
         {
             _resolverFactories.Clear();
-            foreach (var resolverFactory in globalMapper.ResolverFactories)
+            foreach (var resolverFactory in globalMapper.HandlerResolverFactories)
                 _resolverFactories.Add(resolverFactory);
 
             _userTypeMappings.Clear();
@@ -404,7 +404,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 

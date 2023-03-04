@@ -47,27 +47,9 @@ public class NetTopologySuiteTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
+        => NetTopologySuiteTypeMapperResolver.ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
             ? handler
             : null;
-
-    internal static string? ClrTypeToDataTypeName(Type type, bool geographyAsDefault)
-        => type != typeof(Geometry) && type.BaseType != typeof(Geometry) && type.BaseType != typeof(GeometryCollection)
-            ? null
-            : geographyAsDefault
-                ? "geography"
-                : "geometry";
-
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
-    internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
-        => dataTypeName switch
-        {
-            "geometry"  => new(NpgsqlDbType.Geometry,  "geometry"),
-            "geography" => new(NpgsqlDbType.Geography, "geography"),
-            _ => null
-        };
 
     PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
 }

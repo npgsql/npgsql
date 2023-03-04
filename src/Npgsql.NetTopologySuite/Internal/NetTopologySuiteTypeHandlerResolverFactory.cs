@@ -1,11 +1,8 @@
-using System;
-using System.Data;
 using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.NetTopologySuite.Internal;
 
@@ -32,9 +29,5 @@ public class NetTopologySuiteTypeHandlerResolverFactory : TypeHandlerResolverFac
         => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
             _geographyAsDefault);
 
-    public override string? GetDataTypeNameByClrType(Type type)
-        => NetTopologySuiteTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);
-
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => NetTopologySuiteTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMapperResolver CreateMapperResolver() => new NetTopologySuiteTypeMapperResolver(_geographyAsDefault);
 }

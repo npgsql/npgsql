@@ -130,34 +130,6 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
         }
     }
 
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
-    {
-        switch (type)
-        {
-        case PostgresRangeType pgRangeType:
-        {
-            if (_typeMapper.TryGetMapping(pgRangeType.Subtype, out var subtypeMapping))
-            {
-                return new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range, type.DisplayName);
-            }
-
-            break;
-        }
-
-        case PostgresMultirangeType pgMultirangeType:
-        {
-            if (_typeMapper.TryGetMapping(pgMultirangeType.Subrange.Subtype, out var subtypeMapping))
-            {
-                return new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Multirange, type.DisplayName);
-            }
-
-            break;
-        }
-        }
-
-        return null;
-    }
-
     public override NpgsqlTypeHandler? ResolveValueDependentValue(object value)
     {
         // In LegacyTimestampBehavior, DateTime isn't value-dependent, and handled above in ClrTypeToDataTypeNameTable like other types

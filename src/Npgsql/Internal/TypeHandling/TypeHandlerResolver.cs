@@ -34,10 +34,4 @@ public abstract class TypeHandlerResolver
     public virtual NpgsqlTypeHandler? ResolveValueDependentValue(object value) => null;
 
     public virtual NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value) => null;
-
-    /// <summary>
-    /// Gets type mapping information for a given PostgreSQL type.
-    /// Invoked in scenarios when mapping information is required, rather than a type handler for reading or writing.
-    /// </summary>
-    public abstract TypeMappingInfo? GetMappingByPostgresType(PostgresType type);
 }

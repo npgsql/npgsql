@@ -2175,10 +2175,6 @@ class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
 
-    public override TypeMappingInfo GetMappingByDataTypeName(string dataTypeName) => throw new NotSupportedException();
-    public override string? GetDataTypeNameByClrType(Type clrType) => throw new NotSupportedException();
-    public override string? GetDataTypeNameByValueDependentValue(object value) => throw new NotSupportedException();
-
     class ExplodingTypeHandlerResolver : TypeHandlerResolver
     {
         readonly bool _safe;
@@ -2188,7 +2184,6 @@ class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
         public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) =>
             typeName == "integer" ? new ExplodingTypeHandler(null!, _safe) : null;
         public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
-        public override TypeMappingInfo GetMappingByPostgresType(PostgresType type) => throw new NotImplementedException();
     }
 }
 
