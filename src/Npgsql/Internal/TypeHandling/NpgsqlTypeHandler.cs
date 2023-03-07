@@ -92,24 +92,6 @@ public abstract class NpgsqlTypeHandler
     }
 
     /// <summary>
-    /// Reads a column as the type handler's provider-specific type. If it is not already entirely in
-    /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
-    /// </summary>
-    internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-        => ReadAsObject(buf, len, async, fieldDescription);
-
-    /// <summary>
-    /// Version of <see cref="ReadPsvAsObject(NpgsqlReadBuffer,int,bool,FieldDescription?)"/> that's called when we know the entire value
-    /// is already buffered in memory (i.e. in non-sequential mode).
-    /// </summary>
-    internal virtual object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-    {
-        Debug.Assert(buf.ReadBytesLeft >= len);
-
-        return ReadPsvAsObject(buf, len, async: false, fieldDescription).Result;
-    }
-
-    /// <summary>
     /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
     /// If the length is -1 (null), this method will return the default value.
     /// </summary>
@@ -259,7 +241,6 @@ public abstract class NpgsqlTypeHandler
     #region Misc
 
     public abstract Type GetFieldType(FieldDescription? fieldDescription = null);
-    public abstract Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null);
 
     internal virtual bool PreferTextWrite => false;
 

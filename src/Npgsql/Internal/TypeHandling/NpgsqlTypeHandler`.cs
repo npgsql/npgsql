@@ -61,7 +61,6 @@ public abstract class NpgsqlTypeHandler<TDefault> : NpgsqlTypeHandler, INpgsqlTy
     #region Misc
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)

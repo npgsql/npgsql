@@ -349,35 +349,6 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     }
 
     /// <inheritdoc />
-    public override Type GetProviderSpecificFieldType(int ordinal)
-    {
-        var column = CheckRowAndColumn(ordinal);
-        return column.TypeHandler.GetProviderSpecificFieldType();
-    }
-
-    /// <inheritdoc />
-    public override object GetProviderSpecificValue(int ordinal)
-    {
-        var column = CheckRowAndColumnAndSeek(ordinal);
-        if (column.Length == -1)
-            return DBNull.Value;
-        return column.Handler.ReadPsvAsObject(Buffer, column.Length);
-    }
-
-    /// <inheritdoc />
-    public override int GetProviderSpecificValues(object[] values)
-    {
-        if (values == null)
-            throw new ArgumentNullException(nameof(values));
-        CheckOnRow();
-
-        var count = Math.Min(FieldCount, values.Length);
-        for (var i = 0; i < count; i++)
-            values[i] = GetProviderSpecificValue(i);
-        return count;
-    }
-
-    /// <inheritdoc />
     public override bool Read()
     {
         CheckResultSet();

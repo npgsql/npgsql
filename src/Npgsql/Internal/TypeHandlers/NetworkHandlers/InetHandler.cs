@@ -21,7 +21,8 @@ namespace Npgsql.Internal.TypeHandlers.NetworkHandlers;
 /// should be considered somewhat unstable, and may change in breaking ways, including in non-major releases.
 /// Use it at your own risk.
 /// </remarks>
-public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IPAddress Address, int Subnet)>,
+public partial class InetHandler : NpgsqlSimpleTypeHandler<IPAddress>,
+    INpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>,
     INpgsqlSimpleTypeHandler<NpgsqlInet>
 {
     // ReSharper disable InconsistentNaming
@@ -58,7 +59,8 @@ public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IP
 #pragma warning restore CA1801 // Review unused parameters
 
     /// <inheritdoc />
-    protected override (IPAddress Address, int Subnet) ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+    (IPAddress Address, int Subnet) INpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>.Read(
+        NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         => DoRead(buf, len, fieldDescription, false);
 
     NpgsqlInet INpgsqlSimpleTypeHandler<NpgsqlInet>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
@@ -76,7 +78,7 @@ public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IP
         => GetLength(value);
 
     /// <inheritdoc />
-    public override int ValidateAndGetLength((IPAddress Address, int Subnet) value, NpgsqlParameter? parameter)
+    public int ValidateAndGetLength((IPAddress Address, int Subnet) value, NpgsqlParameter? parameter)
         => GetLength(value.Address);
 
     /// <inheritdoc />
@@ -88,7 +90,7 @@ public partial class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IP
         => DoWrite(value, -1, buf, false);
 
     /// <inheritdoc />
-    public override void Write((IPAddress Address, int Subnet) value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+    public void Write((IPAddress Address, int Subnet) value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         => DoWrite(value.Address, value.Subnet, buf, false);
 
     /// <inheritdoc />

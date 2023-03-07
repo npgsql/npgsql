@@ -16,7 +16,6 @@ public partial class TimestampTzRangeHandler : RangeHandler<Instant>,
     INpgsqlTypeHandler<NpgsqlRange<DateTime>>, INpgsqlTypeHandler<NpgsqlRange<DateTimeOffset>>
 {
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Interval);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Interval);
 
     public TimestampTzRangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler subtypeHandler)
         : base(rangePostgresType, subtypeHandler)
