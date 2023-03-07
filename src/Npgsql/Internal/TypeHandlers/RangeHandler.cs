@@ -34,7 +34,6 @@ public partial class RangeHandler<TSubtype> : NpgsqlTypeHandler, INpgsqlTypeHand
         => SubtypeHandler = subtypeHandler;
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TSubtype>);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)

@@ -1836,51 +1836,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Gets the value of the specified column as an instance of <see cref="object"/>.
     /// </summary>
-    /// <param name="ordinal">The zero-based column ordinal.</param>
-    /// <returns>The value of the specified column.</returns>
-    public override object GetProviderSpecificValue(int ordinal)
-    {
-        var fieldDescription = CheckRowAndGetField(ordinal);
-
-        if (_isSequential)
-        {
-            SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
-            CheckColumnStart();
-        }
-        else
-            SeekToColumnNonSequential(ordinal);
-
-        if (ColumnLen == -1)
-            return DBNull.Value;
-
-        var position = Buffer.ReadPosition;
-        try
-        {
-            return _isSequential
-                ? fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, fieldDescription).GetAwaiter().GetResult()
-                : fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription);
-        }
-        catch
-        {
-            if (Connector.State != ConnectorState.Broken)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-            }
-            throw;
-        }
-        finally
-        {
-            // Important: position must still be updated
-            PosInColumn += ColumnLen;
-        }
-    }
-
-    /// <summary>
-    /// Gets the value of the specified column as an instance of <see cref="object"/>.
-    /// </summary>
     /// <param name="name">The name of the column.</param>
     /// <returns>The value of the specified column.</returns>
     public override object this[string name] => GetValue(GetOrdinal(name));
@@ -1987,39 +1942,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     public override Type GetFieldType(int ordinal)
         => Command.ObjectResultTypes?[ordinal]
            ?? GetField(ordinal).FieldType;
-
-    /// <summary>
-    /// Returns the provider-specific field type of the specified column.
-    /// </summary>
-    /// <param name="ordinal">The zero-based column ordinal.</param>
-    /// <returns>The Type object that describes the data type of the specified column.</returns>
-    public override Type GetProviderSpecificFieldType(int ordinal)
-    {
-        var fieldDescription = GetField(ordinal);
-        return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
-    }
-
-    /// <summary>
-    /// Gets all provider-specific attribute columns in the collection for the current row.
-    /// </summary>
-    /// <param name="values">An array of Object into which to copy the attribute columns.</param>
-    /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
-    public override int GetProviderSpecificValues(object[] values)
-    {
-        if (values == null)
-            throw new ArgumentNullException(nameof(values));
-        if (State != ReaderState.InResult)
-        {
-            throw State == ReaderState.Disposed
-                ? new ObjectDisposedException(nameof(NpgsqlDataReader))
-                : new InvalidOperationException("No row is available");
-        }
-
-        var count = Math.Min(FieldCount, values.Length);
-        for (var i = 0; i < count; i++)
-            values[i] = GetProviderSpecificValue(i);
-        return count;
-    }
 
     /// <summary>
     /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.

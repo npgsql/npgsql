@@ -22,7 +22,6 @@ public partial class TimestampTzMultirangeHandler : MultirangeHandler<Instant>,
     readonly INpgsqlTypeHandler<Interval> _intervalHandler;
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Interval[]);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Interval[]);
 
     public TimestampTzMultirangeHandler(PostgresMultirangeType pgMultirangeType, TimestampTzRangeHandler rangeHandler)
         : base(pgMultirangeType, rangeHandler)

@@ -42,3 +42,9 @@ static Npgsql.NpgsqlRangeExtensions.UseRange(this Npgsql.TypeMapping.INpgsqlType
 *REMOVED*static NpgsqlTypes.NpgsqlPolygon.Parse(string! s) -> NpgsqlTypes.NpgsqlPolygon
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRow(params object![]! values) -> void
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object![]! values) -> System.Threading.Tasks.Task!
+*REMOVED*override Npgsql.NpgsqlDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
+*REMOVED*override Npgsql.NpgsqlDataReader.GetProviderSpecificValue(int ordinal) -> object!
+*REMOVED*override Npgsql.NpgsqlDataReader.GetProviderSpecificValues(object![]! values) -> int
+*REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
+*REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValue(int ordinal) -> object!
+*REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValues(object![]! values) -> int

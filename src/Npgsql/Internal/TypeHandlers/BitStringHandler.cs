@@ -32,9 +32,6 @@ public partial class BitStringHandler : NpgsqlTypeHandler<BitArray>,
     public override Type GetFieldType(FieldDescription? fieldDescription = null)
         => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
-        => GetFieldType(fieldDescription);
-
     // BitString requires a special array handler which returns bool or BitArray
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)

@@ -24,7 +24,6 @@ public partial class DateRangeHandler : RangeHandler<LocalDate>, INpgsqlTypeHand
     }
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(DateInterval);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(DateInterval);
 
     public override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async,
         FieldDescription? fieldDescription = null)

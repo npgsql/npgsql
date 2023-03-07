@@ -26,7 +26,6 @@ namespace Npgsql.Internal.TypeHandlers;
 public class ArrayHandler : NpgsqlTypeHandler
 {
     readonly Type _defaultArrayType;
-    readonly Type _psvArrayType;
     readonly ConcurrentDictionary<Type, ArrayHandlerCore> _concreteHandlers = new();
     protected int LowerBound { get; }
     protected NpgsqlTypeHandler ElementHandler { get; }
@@ -37,12 +36,10 @@ public class ArrayHandler : NpgsqlTypeHandler
         LowerBound = lowerBound;
         ElementHandler = elementHandler;
         ArrayNullabilityMode = arrayNullabilityMode;
-        _psvArrayType = elementHandler.GetProviderSpecificFieldType().MakeArrayType();
         _defaultArrayType = elementHandler.GetFieldType().MakeArrayType();
     }
 
     public override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
-    public override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
     /// <inheritdoc />
     public override NpgsqlTypeHandler CreateArrayHandler(PostgresArrayType pgArrayType, ArrayNullabilityMode arrayNullabilityMode)
@@ -58,13 +55,6 @@ public class ArrayHandler : NpgsqlTypeHandler
 
     ArrayHandlerCore CreateHandler(Type elementType)
         => (ArrayHandlerCore)Activator.CreateInstance(typeof(ArrayHandlerCore<>).MakeGenericType(elementType), ElementHandler, ArrayNullabilityMode, LowerBound)!;
-
-    internal override ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async,
-        FieldDescription? fieldDescription = null)
-    {
-        var handler = _concreteHandlers.GetOrAdd(_psvArrayType, static (_, instance) => instance.CreateHandler(instance.ElementHandler.GetProviderSpecificFieldType()), this);
-        return handler.ReadArrayAsObject(buf, async);
-    }
 
     /// <inheritdoc />
     protected internal override async ValueTask<TArray> ReadCustom<TArray>(NpgsqlReadBuffer buf, int len, bool async,
