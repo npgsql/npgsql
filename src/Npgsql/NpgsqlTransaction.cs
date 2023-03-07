@@ -357,7 +357,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     }
 
     /// <summary>
-    /// Indicates whether or not SavePoints are supported in this transaction
+    /// Indicates whether this transaction supports database savepoints.
     /// </summary>
 #if NET5_0_OR_GREATER
     public override bool SupportsSavepoints
@@ -365,7 +365,7 @@ public sealed class NpgsqlTransaction : DbTransaction
     public bool SupportsSavepoints
 #endif
     {
-        get { return _connector.DatabaseInfo.SupportsTransactions; }
+        get => _connector.DatabaseInfo.SupportsTransactions;
     }
 
     #endregion
