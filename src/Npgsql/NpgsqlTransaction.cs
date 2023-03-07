@@ -355,6 +355,18 @@ public sealed class NpgsqlTransaction : DbTransaction
             return Release(name, true, cancellationToken);
     }
 
+    /// <summary>
+    /// Indicates whether this transaction supports database savepoints.
+    /// </summary>
+#if NET5_0_OR_GREATER
+    public override bool SupportsSavepoints
+#else
+    public bool SupportsSavepoints
+#endif
+    {
+        get => _connector.DatabaseInfo.SupportsTransactions;
+    }
+
     #endregion
 
     #region Dispose
