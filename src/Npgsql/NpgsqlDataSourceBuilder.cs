@@ -2,11 +2,13 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql;
 
@@ -200,6 +202,25 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
         => _internalBuilder.AddTypeResolverFactory(resolverFactory);
 
+    /// <summary>
+    /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    public NpgsqlDataSourceBuilder UseSystemTextJson(
+        JsonSerializerOptions? serializerOptions = null,
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null)
+    {
+        AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        return this;
+    }
+
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         where TEnum : struct, Enum
@@ -291,6 +312,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 
     void AddDefaultFeatures()
     {
+        _internalBuilder.EnableEncryption();
         _internalBuilder.AddDefaultTypeResolverFactory(new JsonTypeHandlerResolverFactory());
         _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
     }

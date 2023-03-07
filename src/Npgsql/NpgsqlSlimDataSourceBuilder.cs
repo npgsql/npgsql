@@ -4,13 +4,16 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -27,9 +30,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
+    Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? _encryptionNegotiator;
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
-
     Func<X509Certificate2?>? _rootCertificateCallback;
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
@@ -375,6 +378,50 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     #endregion Type mapping
 
+    #region Optional opt-ins
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>range</c> and <c>multirange</c> types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableRanges()
+    {
+        AddTypeResolverFactory(new RangeTypeHandlerResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
+    /// </summary>
+    /// <param name="serializerOptions">Options to customize JSON serialization and deserialization.</param>
+    /// <param name="jsonbClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>jsonb</c> (no need to specify <see cref="NpgsqlDbType.Jsonb" />).
+    /// </param>
+    /// <param name="jsonClrTypes">
+    /// A list of CLR types to map to PostgreSQL <c>json</c> (no need to specify <see cref="NpgsqlDbType.Json" />).
+    /// </param>
+    public NpgsqlSlimDataSourceBuilder UseSystemTextJson(
+        JsonSerializerOptions? serializerOptions = null,
+        Type[]? jsonbClrTypes = null,
+        Type[]? jsonClrTypes = null)
+    {
+        AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        return this;
+    }
+
+    /// <summary>
+    /// Enables the possibility to use TLS/SSl encryption for connections to PostgreSQL. This does not guarantee that encryption will
+    /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableEncryption()
+    {
+        _encryptionNegotiator = static (connector, sslMode, timeout, async, isFirstAttempt)
+            => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
+
+        return this;
+    }
+
+    #endregion Optional opt-ins
+
     /// <summary>
     /// Register a connection initializer, which allows executing arbitrary commands when a physical database connection is first opened.
     /// </summary>
@@ -446,6 +493,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 
+        if (_encryptionNegotiator is null && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
+        {
+            throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+        }
+
         if (_periodicPasswordProvider is not null &&
             (ConnectionStringBuilder.Password is not null || ConnectionStringBuilder.Passfile is not null))
         {
@@ -456,6 +508,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
+            _encryptionNegotiator,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
             _periodicPasswordProvider,
