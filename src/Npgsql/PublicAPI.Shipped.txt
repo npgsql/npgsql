@@ -1741,6 +1741,7 @@ override Npgsql.NpgsqlTransaction.RollbackAsync(string! name, System.Threading.C
 override Npgsql.NpgsqlTransaction.RollbackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Npgsql.NpgsqlTransaction.Save(string! name) -> void
 override Npgsql.NpgsqlTransaction.SaveAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Npgsql.NpgsqlTransaction.SupportsSavepoints.get -> bool
 override Npgsql.PostgresException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Npgsql.PostgresException.IsTransient.get -> bool
 override Npgsql.PostgresException.SqlState.get -> string!
