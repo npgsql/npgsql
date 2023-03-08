@@ -15,7 +15,7 @@ class SlimDataSourceTests : TestBase
     {
         const string unsupportedMessage =
             "Records aren't supported; please call EnableRecord on NpgsqlSlimDataSourceBuilder to enable records.";
-        Constraint assertExpr = withMappings
+        Func<IResolveConstraint> assertExpr = () => withMappings
             ? Throws.Nothing
             : Throws.Exception
                 .TypeOf<NotSupportedException>()
@@ -30,8 +30,8 @@ class SlimDataSourceTests : TestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Assert.That(() => reader.GetValue(0), assertExpr);
-        Assert.That(() => reader.GetFieldValue<object[]>(0), assertExpr);
+        Assert.That(() => reader.GetValue(0), assertExpr());
+        Assert.That(() => reader.GetFieldValue<object[]>(0), assertExpr());
     }
 
     [OneTimeSetUp]
