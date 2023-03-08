@@ -308,12 +308,6 @@ public sealed class TypeMapper
                         $"'{pgType}' is a range type; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRanges)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable ranges. " +
                         "See https://www.npgsql.org/doc/types/ranges.html for more information.")
                     : null;
-
-            case PostgresType when pgType.Name == "record":
-                return throwOnError
-                    ? throw new NotSupportedException(
-                        $"'{pgType}' is a record type; please call {nameof(NpgsqlRecordExtensions.UseRecord)} on {nameof(NpgsqlSlimDataSourceBuilder)} or on {nameof(NpgsqlConnection)}.{nameof(NpgsqlConnection.GlobalTypeMapper)} to enable records.")
-                    : null;
 #pragma warning restore CS0618
 
             default:
