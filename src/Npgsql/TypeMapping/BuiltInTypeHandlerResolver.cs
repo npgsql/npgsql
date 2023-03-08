@@ -343,7 +343,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "pg_lsn"     => PgLsnHandler(),
             "tid"        => TidHandler(),
             "char"       => InternalCharHandler(),
-            "record"     => new UnsupportedHandler(PgType("record"), $"Records aren't supported; please call {nameof(NpgsqlRecordExtensions.UseRecord)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable records."),
+            "record"     => new UnsupportedHandler(PgType("record"), $"Records aren't supported; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRecord)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable records."),
             "void"       => VoidHandler(),
 
             "unknown"    => UnknownHandler(),
