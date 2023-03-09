@@ -510,6 +510,10 @@ public class ConnectionTests : MultiplexingTestBase
         conn.ConnectionString = csb.ConnectionString;
         Assert.That(conn.DataSource, Is.EqualTo($"tcp://{csb.Host}:{csb.Port}"));
 
+        // Multiplexing isn't supported with multiple hosts
+        if (IsMultiplexing)
+            return;
+
         csb.Host = "127.0.0.1, 127.0.0.2";
         conn.ConnectionString = csb.ConnectionString;
         Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
