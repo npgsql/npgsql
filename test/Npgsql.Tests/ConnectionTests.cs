@@ -500,17 +500,23 @@ public class ConnectionTests : MultiplexingTestBase
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
-    public async Task DataSource_property()
+    public void DataSource_property()
     {
         using var conn = new NpgsqlConnection();
         Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
 
-        conn.ConnectionString = ConnectionString;
-        Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
 
-        await conn.OpenAsync();
-        await using var _ = await conn.BeginTransactionAsync();
-        Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
+        conn.ConnectionString = csb.ConnectionString;
+        Assert.That(conn.DataSource, Is.EqualTo($"tcp://{csb.Host}:{csb.Port}"));
+
+        // Multiplexing isn't supported with multiple hosts
+        if (IsMultiplexing)
+            return;
+
+        csb.Host = "127.0.0.1, 127.0.0.2";
+        conn.ConnectionString = csb.ConnectionString;
+        Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
     }
 
     #region Server version

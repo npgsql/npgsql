@@ -27,9 +27,9 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     /// </summary>
     string? _dataSourceCached;
 
-    internal string DataSourceCached
-        => _dataSourceCached ??= _host is null
-            ? string.Empty
+    internal string? DataSourceCached
+        => _dataSourceCached ??= _host is null || _host.Contains(',')
+            ? null
             : IsUnixSocket(_host, _port, out var socketPath, replaceForAbstract: false)
                 ? socketPath
                 : $"tcp://{_host}:{_port}";
