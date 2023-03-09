@@ -449,7 +449,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// The name of the database server (host and port). If the connection uses a Unix-domain socket,
     /// the path to that socket is returned. The default value is the empty string.
     /// </value>
-    public override string DataSource => Connector?.Settings.DataSourceCached ?? string.Empty;
+    public override string DataSource => Connector?.Settings.DataSourceCached ?? _dataSource?.Settings.DataSourceCached ?? string.Empty;
 
     /// <summary>
     /// Whether to use Windows integrated security to log in.
