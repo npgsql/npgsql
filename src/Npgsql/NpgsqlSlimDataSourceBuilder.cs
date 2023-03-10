@@ -411,7 +411,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// Sets up mappings for the PostgreSQL <c>record</c> type.
     /// </summary>
-    public NpgsqlSlimDataSourceBuilder EnableRecord()
+    public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
         AddTypeResolverFactory(new RecordTypeHandlerResolverFactory());
         return this;

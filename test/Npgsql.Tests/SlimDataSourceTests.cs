@@ -40,7 +40,7 @@ class SlimDataSourceTests : TestBase
         _slimWithoutMappingsDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString)
             .Build();
         _slimWithMappingsDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString)
-            .EnableRecord()
+            .EnableRecords()
             .Build();
     }
 
