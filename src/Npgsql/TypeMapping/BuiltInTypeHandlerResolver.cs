@@ -228,7 +228,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     UuidHandler? _uuidHandler;
     BitStringHandler? _bitVaryingHandler;
     BitStringHandler? _bitHandler;
-    RecordHandler? _recordHandler;
     VoidHandler? _voidHandler;
     HstoreHandler? _hstoreHandler;
 
@@ -344,7 +343,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "pg_lsn"     => PgLsnHandler(),
             "tid"        => TidHandler(),
             "char"       => InternalCharHandler(),
-            "record"     => RecordHandler(),
+            "record"     => new UnsupportedHandler(PgType("record"), $"Records aren't supported; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable records."),
             "void"       => VoidHandler(),
 
             "unknown"    => UnknownHandler(),
@@ -715,7 +714,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler PgLsnHandler()        => _pgLsnHandler ??= new PgLsnHandler(PgType("pg_lsn"));
     NpgsqlTypeHandler TidHandler()          => _tidHandler ??= new TidHandler(PgType("tid"));
     NpgsqlTypeHandler InternalCharHandler() => _internalCharHandler ??= new InternalCharHandler(PgType("char"));
-    NpgsqlTypeHandler RecordHandler()       => _recordHandler ??= new RecordHandler(PgType("record"), _connector.TypeMapper);
     NpgsqlTypeHandler VoidHandler()         => _voidHandler ??= new VoidHandler(PgType("void"));
 
     NpgsqlTypeHandler UnknownHandler() => _unknownHandler ??= new UnknownTypeHandler(_connector.TextEncoding);
