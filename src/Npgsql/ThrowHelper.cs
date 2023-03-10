@@ -103,4 +103,8 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowTimeoutException()
         => throw new TimeoutException();
+
+    [DoesNotReturn]
+    internal static void ThrowNpgsqlExceptionWithInnerTimeoutException(string message)
+        => throw new NpgsqlException(message, new TimeoutException());
 }
