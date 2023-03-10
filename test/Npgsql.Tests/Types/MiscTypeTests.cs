@@ -139,7 +139,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Records_supported_only_with_EnableRecords([Values] bool withMappings)
     {
         const string unsupportedMessage =
-            "Records aren't supported; please call EnableRecord on NpgsqlSlimDataSourceBuilder to enable records.";
+            "Records aren't supported; please call EnableRecords on NpgsqlSlimDataSourceBuilder to enable records.";
         Func<IResolveConstraint> assertExpr = () => withMappings
             ? Throws.Nothing
             : Throws.Exception
