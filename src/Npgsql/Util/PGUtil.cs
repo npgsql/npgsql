@@ -182,7 +182,7 @@ public readonly struct NpgsqlTimeout
     internal void Check()
     {
         if (HasExpired)
-            ThrowHelper.ThrowTimeoutException();
+            ThrowHelper.ThrowNpgsqlExceptionWithInnerTimeoutException("The operation has timed out");
     }
 
     internal void CheckAndApply(NpgsqlConnector connector)
