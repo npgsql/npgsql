@@ -12,9 +12,6 @@ namespace Npgsql.Tests.Types;
 /// </summary>
 class MiscTypeTests : MultiplexingTestBase
 {
-    NpgsqlDataSource _slimWithoutMappingsDataSource = null!;
-    NpgsqlDataSource _slimWithMappingsDataSource = null!;
-
     [Test]
     public async Task Boolean()
     {
@@ -146,7 +143,10 @@ class MiscTypeTests : MultiplexingTestBase
                 .TypeOf<NotSupportedException>()
                 .With.Property("Message").EqualTo(unsupportedMessage);
 
-        var dataSource = withMappings ? _slimWithMappingsDataSource : _slimWithoutMappingsDataSource;
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        if (withMappings)
+            dataSourceBuilder.EnableRecords();
+        var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
 
@@ -260,23 +260,6 @@ class MiscTypeTests : MultiplexingTestBase
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
         Assert.That(() => cmd.Parameters.Add(new NpgsqlParameter("p", DbType.UInt32) { Value = 8u }),
             Throws.Exception.TypeOf<NotSupportedException>());
-    }
-
-    [OneTimeSetUp]
-    public void SetUp()
-    {
-        _slimWithoutMappingsDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString)
-            .Build();
-        _slimWithMappingsDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString)
-            .EnableRecords()
-            .Build();
-    }
-
-    [OneTimeTearDown]
-    public void TearDown()
-    {
-        _slimWithoutMappingsDataSource.Dispose();
-        _slimWithMappingsDataSource.Dispose();
     }
 
     public MiscTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
