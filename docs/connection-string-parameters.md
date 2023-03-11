@@ -54,8 +54,8 @@ Internal Command Timeout | The time to wait (in seconds) while trying to execute
 Cancellation Timeout     | The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error. -1 skips the wait, 0 means infinite wait. Introduced in 5.0. | 2000
 Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | 0 (disabled)
 Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | false
-Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | 0 (disabled)
-Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. `Tcp KeepAlive Time` must be non-zero as well. Supported only on Windows. | value of `Tcp Keepalive Time`
+Tcp Keepalive Time       | The number of seconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. | 0 (disabled)
+Tcp Keepalive Interval   | The interval, in seconds, between when successive keep-alive packets are sent if no acknowledgement is received. `Tcp KeepAlive Time` must be non-zero as well. | value of `Tcp Keepalive Time`
 
 ## Performance
 
