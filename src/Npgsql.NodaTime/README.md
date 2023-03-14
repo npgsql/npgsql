@@ -2,9 +2,11 @@ Npgsql is the open source .NET data provider for PostgreSQL. It allows you to co
 
 This package is an Npgsql plugin which allows you to use the [NodaTime](https://nodatime.org) date/time library when interacting with PostgreSQL; this provides a better and safer API for dealing with date and time data. 
 
-To use the NodaTime plugin, simply add a dependency on this package and set it up at program startup. Once this is done, you can simply use NodaTime types when interacting with PostgreSQL, just as you would use e.g. `DateTime`:
+To use the NodaTime plugin,  add a dependency on this package and create a NpgsqlDataSource. Once this is done, you can use NodaTime types when interacting with PostgreSQL, just as you would use e.g. `DateTime`:
 
 ```csharp
+using Npgsql;
+
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
 
 dataSourceBuilder.UseNodaTime();
