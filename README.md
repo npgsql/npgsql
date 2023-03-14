@@ -17,6 +17,8 @@ For the full documentation, please visit [the Npgsql website](https://www.npgsql
 Here's a basic code snippet to get you started:
 
 ```csharp
+using Npgsql;
+
 var connString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
