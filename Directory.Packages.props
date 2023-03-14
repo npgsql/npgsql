@@ -49,7 +49,7 @@
     <PackageVersion Include="System.Text.Json" Version="7.0.2" />
     <PackageVersion Include="System.Threading.Channels" Version="7.0.0" />
     <PackageVersion Include="System.Collections.Immutable" Version="7.0.0" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="6.0.0" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="7.0.2" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net6.0' ">
