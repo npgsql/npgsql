@@ -1307,8 +1307,6 @@ public sealed partial class NpgsqlConnector
         case BackendMessageCode.ErrorResponse:
             ReadBuffer.ReadPosition--;
             return ReadMessageLong(async, dataRowLoadingMode, readingNotifications: false)!;
-        case BackendMessageCode.ReadyForQuery:
-            break;
         }
 
         PGUtil.ValidateBackendMessageCode(messageCode);
@@ -1444,10 +1442,6 @@ public sealed partial class NpgsqlConnector
         }
         catch (PostgresException e)
         {
-            // TODO: move it up the stack, like #3126 did (relevant for non-command-execution scenarios, like COPY)
-            if (CurrentReader is null)
-                EndUserAction();
-
             if (e.SqlState == PostgresErrorCodes.QueryCanceled && PostgresCancellationPerformed)
             {
                 // The query could be canceled because of a user cancellation or a timeout - raise the proper exception.

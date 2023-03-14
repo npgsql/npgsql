@@ -5,7 +5,7 @@ namespace Npgsql.NameTranslation;
 /// <summary>
 /// A name translator which preserves CLR names (e.g. SomeClass) when mapping names to the database.
 /// </summary>
-public class NpgsqlNullNameTranslator : INpgsqlNameTranslator
+public sealed class NpgsqlNullNameTranslator : INpgsqlNameTranslator
 {
     /// <summary>
     /// Given a CLR type name (e.g class, struct, enum), translates its name to a database type name.

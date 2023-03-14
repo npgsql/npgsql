@@ -551,7 +551,6 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             throw new Exception("Invalid state: " + _state);
         }
 
-        _connector.EndUserAction();
         Cleanup();
     }
 
@@ -566,8 +565,9 @@ public sealed class NpgsqlBinaryImporter : ICancelable
 
         if (connector != null)
         {
+            connector.EndUserAction();
             connector.CurrentCopyOperation = null;
-            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
+            connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
             _connector = null;
         }
 
