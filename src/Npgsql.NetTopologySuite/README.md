@@ -9,9 +9,10 @@ using Npgsql;
 using NetTopologySuite.Geometries;
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
-dataSourceBuilder.UseNetTopologySuite();
-var dataSource = dataSourceBuilder.Build();
 
+dataSourceBuilder.UseNetTopologySuite();
+
+var dataSource = dataSourceBuilder.Build();
 var conn = await dataSource.OpenConnectionAsync();
 
 var point = new Point(new Coordinate(1d, 1d));
