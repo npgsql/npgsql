@@ -360,7 +360,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (Value is not null) // Infer from value
             {
                 return GlobalTypeMapper.Instance.TryResolveMappingByValue(Value, out var mapping)
-                    ? mapping.NpgsqlDbType ?? NpgsqlDbType.Unknown
+                    ? mapping.NpgsqlDbType
                     : throw new NotSupportedException("Can't infer NpgsqlDbType for type " + Value.GetType());
             }
 

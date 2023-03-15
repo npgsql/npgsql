@@ -572,8 +572,7 @@ FROM pg_constraint c
 
             if (mapping.ClrTypes.Length > 0)
                 row["DataType"] = mapping.ClrTypes[0].FullName;
-            if (mapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+            row["ProviderDbType"] = (int)mapping.NpgsqlDbType;
         }
 
         foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
@@ -592,8 +591,7 @@ FROM pg_constraint c
             row["CreateFormat"] += "[]";
             if (elementMapping.ClrTypes.Length > 0)
                 row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
-            if (elementMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
+            row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType | NpgsqlDbType.Array);
         }
 
         foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
@@ -612,8 +610,7 @@ FROM pg_constraint c
             row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
             if (subtypeMapping.ClrTypes.Length > 0)
                 row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range);
         }
 
         foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
@@ -633,8 +630,7 @@ FROM pg_constraint c
             row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
             if (subtypeMapping.ClrTypes.Length > 0)
                 row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range);
         }
 
         foreach (var domainType in connector.DatabaseInfo.DomainTypes)
@@ -654,8 +650,7 @@ FROM pg_constraint c
 
             if (baseMapping.ClrTypes.Length > 0)
                 row["DataType"] = baseMapping.ClrTypes[0].FullName;
-            if (baseMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType;
         }
 
         return table;

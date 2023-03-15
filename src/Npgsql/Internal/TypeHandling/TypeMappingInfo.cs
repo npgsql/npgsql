@@ -7,16 +7,15 @@ namespace Npgsql.Internal.TypeHandling;
 
 public sealed class TypeMappingInfo
 {
-    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, string? dataTypeName, Type clrType)
+    public TypeMappingInfo(NpgsqlDbType npgsqlDbType, string? dataTypeName, Type clrType)
         => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, new[] { clrType });
 
-    public TypeMappingInfo(NpgsqlDbType? npgsqlDbType, string? dataTypeName, params Type[] clrTypes)
+    public TypeMappingInfo(NpgsqlDbType npgsqlDbType, string? dataTypeName, params Type[] clrTypes)
         => (NpgsqlDbType, DataTypeName, ClrTypes) = (npgsqlDbType, dataTypeName, clrTypes);
 
-    public NpgsqlDbType? NpgsqlDbType { get; }
+    public NpgsqlDbType NpgsqlDbType { get; }
     // Note that we can't cache the result due to nullable's assignment not being thread safe
-    public DbType DbType
-        => NpgsqlDbType is null ? DbType.Object : GlobalTypeMapper.NpgsqlDbTypeToDbType(NpgsqlDbType.Value);
+    public DbType DbType => GlobalTypeMapper.NpgsqlDbTypeToDbType(NpgsqlDbType);
     public string? DataTypeName { get; }
     public Type[] ClrTypes { get; }
 }
