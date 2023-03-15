@@ -39,7 +39,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
 
     public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
     {
-        if (_databaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
+        if (!_databaseInfo.TryGetPostgresTypeByName(typeName, out var pgType))
             return null;
 
         return pgType switch

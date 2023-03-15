@@ -284,8 +284,7 @@ public sealed class TypeMapper
     {
         lock (_writeLock)
         {
-            if (DatabaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
-                throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
+            var pgType = DatabaseInfo.GetPostgresTypeByName(typeName);
 
             switch (pgType)
             {
@@ -452,7 +451,8 @@ public sealed class TypeMapper
 
                 if (type.IsEnum)
                 {
-                    return DatabaseInfo.GetPostgresTypeByName(GetPgName(type, _defaultNameTranslator)) is PostgresEnumType pgEnumType
+                    return DatabaseInfo.TryGetPostgresTypeByName(GetPgName(type, _defaultNameTranslator), out var pgType)
+                           && pgType is PostgresEnumType pgEnumType
                         ? _handlersByClrType[type] = new UnmappedEnumHandler(pgEnumType, _defaultNameTranslator, Connector.TextEncoding)
                         : throw new NotSupportedException(
                             $"Could not find a PostgreSQL enum type corresponding to {type.Name}. " +
