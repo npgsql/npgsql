@@ -101,7 +101,7 @@ public sealed class TypeMapper
                         _handlersByDataTypeName[pgType.Name] =
                             _handlersByClrType[userTypeMapping.ClrType] = userTypeMapping.CreateHandler(pgType, Connector);
 
-                _userTypeMappings[pgType.OID] = new(NpgsqlDbType.Unknown, pgType.Name, userTypeMapping.ClrType);
+                _userTypeMappings[pgType.OID] = new(npgsqlDbType: null, pgType.Name, userTypeMapping.ClrType);
             }
         }
     }
