@@ -2,15 +2,19 @@ Npgsql is the open source .NET data provider for PostgreSQL. It allows you to co
 
 This package is an Npgsql plugin which allows you to interact with spatial data provided by the PostgreSQL [PostGIS extension](https://postgis.net); PostGIS is a mature, standard extension considered to provide top-of-the-line database spatial features. On the .NET side, the plugin adds support for the types from the [NetTopologySuite library](https://github.com/NetTopologySuite/NetTopologySuite), allowing you to read and write them directly to PostgreSQL. 
 
-To use the NetTopologySuite plugin, simply add a dependency on this package and set it up at program startup:
+To use the NetTopologySuite plugin, add a dependency on this package and create a NpgsqlDataSource.
 
 ```csharp
-NpgsqlConnection.GlobalTypeMapper.UseNetTopologySuite();
-```
+using Npgsql;
+using NetTopologySuite.Geometries;
 
-Once this is done, you can simply use NetTopologySuite types when interacting with PostgreSQL:
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
 
-```csharp
+dataSourceBuilder.UseNetTopologySuite();
+
+var dataSource = dataSourceBuilder.Build();
+var conn = await dataSource.OpenConnectionAsync();
+
 var point = new Point(new Coordinate(1d, 1d));
 conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY)");
 using (var cmd = new NpgsqlCommand("INSERT INTO data (geom) VALUES (@p)", conn))

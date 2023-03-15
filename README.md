@@ -17,10 +17,14 @@ For the full documentation, please visit [the Npgsql website](https://www.npgsql
 Here's a basic code snippet to get you started:
 
 ```csharp
+using Npgsql;
+
 var connString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
 
-await using var conn = new NpgsqlConnection(connString);
-await conn.OpenAsync();
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connString);
+var dataSource = dataSourceBuilder.Build();
+
+var conn = await dataSource.OpenConnectionAsync();
 
 // Insert some data
 await using (var cmd = new NpgsqlCommand("INSERT INTO data (some_field) VALUES (@p)", conn))
