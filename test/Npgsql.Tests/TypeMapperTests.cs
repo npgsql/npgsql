@@ -40,7 +40,7 @@ public class TypeMapperTests : TestBase
 
             // But they do affect on new data sources
             await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+            Assert.ThrowsAsync<NotSupportedException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
         }
         finally
         {
@@ -73,7 +73,7 @@ public class TypeMapperTests : TestBase
 
             // But they do affect on new data sources
             await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+            Assert.ThrowsAsync<NotSupportedException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
         }
         finally
         {
