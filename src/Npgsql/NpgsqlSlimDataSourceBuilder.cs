@@ -50,7 +50,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
     /// </summary>
-    public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; private set; }
+    public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; }
 
     /// <summary>
     /// Returns the connection string, as currently configured on the builder.
@@ -496,7 +496,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
         ValidateMultiHost();
 
-        return new(ConnectionStringBuilder, config);
+        return new(ConnectionStringBuilder.Clone(), config);
     }
 
     NpgsqlDataSourceConfiguration PrepareConfiguration()
