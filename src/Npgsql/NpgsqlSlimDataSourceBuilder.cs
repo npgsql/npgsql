@@ -50,7 +50,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// <summary>
     /// A connection string builder that can be used to configured the connection string on the builder.
     /// </summary>
-    public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; }
+    public NpgsqlConnectionStringBuilder ConnectionStringBuilder { get; private set; }
 
     /// <summary>
     /// Returns the connection string, as currently configured on the builder.
@@ -471,19 +471,20 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSource Build()
     {
         var config = PrepareConfiguration();
+        var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
             ValidateMultiHost();
 
-            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
+            return new NpgsqlMultiHostDataSource(connectionStringBuilder, config);
         }
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, config)
+            ? new MultiplexingDataSource(connectionStringBuilder, config)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, config)
-                : new UnpooledDataSource(ConnectionStringBuilder, config);
+                ? new PoolingDataSource(connectionStringBuilder, config)
+                : new UnpooledDataSource(connectionStringBuilder, config);
     }
 
     /// <summary>
