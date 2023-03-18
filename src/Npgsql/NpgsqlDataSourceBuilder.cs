@@ -339,19 +339,20 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlDataSource Build()
     {
         var config = PrepareConfiguration();
+        var connectionStringBuilder = ConnectionStringBuilder.Clone();
 
         if (ConnectionStringBuilder.Host!.Contains(","))
         {
             ValidateMultiHost();
 
-            return new NpgsqlMultiHostDataSource(ConnectionStringBuilder, config);
+            return new NpgsqlMultiHostDataSource(connectionStringBuilder, config);
         }
 
         return ConnectionStringBuilder.Multiplexing
-            ? new MultiplexingDataSource(ConnectionStringBuilder, config)
+            ? new MultiplexingDataSource(connectionStringBuilder, config)
             : ConnectionStringBuilder.Pooling
-                ? new PoolingDataSource(ConnectionStringBuilder, config)
-                : new UnpooledDataSource(ConnectionStringBuilder, config);
+                ? new PoolingDataSource(connectionStringBuilder, config)
+                : new UnpooledDataSource(connectionStringBuilder, config);
     }
 
     /// <summary>
@@ -363,7 +364,7 @@ public class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 
         ValidateMultiHost();
 
-        return new(ConnectionStringBuilder, config);
+        return new(ConnectionStringBuilder.Clone(), config);
     }
 
     NpgsqlDataSourceConfiguration PrepareConfiguration()

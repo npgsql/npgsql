@@ -280,4 +280,17 @@ public class DataSourceTests : TestBase
         Assert.True(reader.Read());
         Assert.That(reader.GetInt32(0), Is.EqualTo(1));
     }
+
+    [Test]
+    public async Task Connection_string_builder_settings_are_frozen_on_Build()
+    {
+        var builder = CreateDataSourceBuilder();
+        builder.ConnectionStringBuilder.ApplicationName = "foo";
+        await using var dataSource = builder.Build();
+
+        builder.ConnectionStringBuilder.ApplicationName = "bar";
+
+        await using var command = dataSource.CreateCommand("SHOW application_name");
+        Assert.That(await command.ExecuteScalarAsync(), Is.EqualTo("foo"));
+    }
 }
