@@ -184,7 +184,7 @@ namespace MStatDumper
                     .Where(x => x.Method.DeclaringType.Scope.Name == "Npgsql")
                     .GroupBy(x => GetClassName(x.Method))
                     .OrderByDescending(x => x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize))
-                    .Take(20)
+                    .Take(100)
                     .ToList();
 
                 static string GetClassName(MethodReference methodReference)
@@ -194,14 +194,14 @@ namespace MStatDumper
                 }
 
                 Console.WriteLine("<details>");
-                Console.WriteLine("<summary>Top 20 Npgsql Classes By Methods Size</summary>");
+                Console.WriteLine("<summary>Top 100 Npgsql Classes By Methods Size</summary>");
                 Console.WriteLine();
                 Console.WriteLine("<br>");
                 Console.WriteLine();
-                Console.WriteLine("| Name | Size |");
-                Console.WriteLine("| --- | --- |");
+                Console.WriteLine("| Name | Size | Total Instantiations |");
+                Console.WriteLine("| --- | --- | --- |");
                 foreach (var m in methodsByClass
-                             .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) })
+                             .Select(x => new { Name = x.Key, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize), Count = x.Count() })
                              .OrderByDescending(x => x.Sum))
                 {
                     var name = m.Name
@@ -209,7 +209,7 @@ namespace MStatDumper
                         .Replace("<", "&#60;")
                         .Replace(">", "&#62;")
                         .Replace("|", "\\|");
-                    Console.WriteLine($"| {name} | {m.Sum:n0} |");
+                    Console.WriteLine($"| {name} | {m.Sum:n0} | {m.Count} |");
                 }
 
                 Console.WriteLine();
@@ -224,11 +224,11 @@ namespace MStatDumper
                     Console.WriteLine();
                     Console.WriteLine("<br>");
                     Console.WriteLine();
-                    Console.WriteLine("| Name | Size |");
-                    Console.WriteLine("| --- | --- |");
+                    Console.WriteLine("| Name | Size | Instantiations |");
+                    Console.WriteLine("| --- | --- | --- |");
                     foreach (var m in g
                                  .GroupBy(x => GetMethodName(x.Method))
-                                 .Select(x => new { Name = x.Key, Size = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize)})
+                                 .Select(x => new { Name = x.Key, Size = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize), Count = x.Count()})
                                  .OrderByDescending(x => x.Size))
                     {
                         var methodName = m.Name
@@ -236,7 +236,7 @@ namespace MStatDumper
                             .Replace("<", "&#60;")
                             .Replace(">", "&#62;")
                             .Replace("|", "\\|");
-                        Console.WriteLine($"| {methodName} | {m.Size:n0} |");
+                        Console.WriteLine($"| {methodName} | {m.Size:n0} | {m.Count} |");
                     }
                     Console.WriteLine();
                     Console.WriteLine("</details>");
@@ -256,6 +256,33 @@ namespace MStatDumper
 
                 Console.WriteLine();
                 Console.WriteLine("</details>");
+
+                var filteredTypeStats = GetTypes(types)
+                    .Where(x => x.Type.Scope.Name == "Npgsql")
+                    .GroupBy(x => x.Type.Name)
+                    .OrderByDescending(x => x.Sum(x => x.Size))
+                    .Take(100)
+                    .ToList();
+                Console.WriteLine("<details>");
+                Console.WriteLine($"<summary>Top 100 Npgsql Types By Size</summary>");
+                Console.WriteLine();
+                Console.WriteLine("<br>");
+                Console.WriteLine();
+                Console.WriteLine("| Name | Size | Instantiations |");
+                Console.WriteLine("| --- | --- | --- |");
+                foreach (var m in filteredTypeStats)
+                {
+                    var name = m.Key
+                        .Replace("`", "\\`")
+                        .Replace("<", "&#60;")
+                        .Replace(">", "&#62;")
+                        .Replace("|", "\\|");
+                    Console.WriteLine($"| {name} | {m.Sum(x => x.Size):n0} | {m.Count()} |");
+                }
+                Console.WriteLine();
+                Console.WriteLine("</details>");
+
+                Console.WriteLine();
             }
         }
 
