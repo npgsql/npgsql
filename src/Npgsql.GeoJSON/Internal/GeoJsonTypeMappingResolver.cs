@@ -6,11 +6,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.GeoJSON.Internal;
 
-public class GeoJSONTypeMapperResolver : TypeMapperResolver
+public class GeoJsonTypeMappingResolver : TypeMappingResolver
 {
     readonly bool _geographyAsDefault;
 
-    public GeoJSONTypeMapperResolver(bool geographyAsDefault) => _geographyAsDefault = geographyAsDefault;
+    public GeoJsonTypeMappingResolver(bool geographyAsDefault) => _geographyAsDefault = geographyAsDefault;
 
     public override string? GetDataTypeNameByClrType(Type type)
         => GeoJSONTypeHandlerResolver.ClrTypeToDataTypeName(type, _geographyAsDefault);

@@ -73,7 +73,7 @@ public class NodaTimeTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => NodaTimeTypeMapperResolver.ClrTypeToDataTypeName(type) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
+        => NodaTimeTypeMappingResolver.ClrTypeToDataTypeName(type) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
             ? handler
             : null;
 

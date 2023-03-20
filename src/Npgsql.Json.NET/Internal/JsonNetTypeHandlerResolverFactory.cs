@@ -39,5 +39,5 @@ public class JsonNetTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new JsonNetTypeHandlerResolver(connector, _byType, _settings);
 
-    public override TypeMapperResolver CreateMapperResolver() => new JsonNetTypeMapperResolver(_byType);
+    public override TypeMappingResolver CreateMappingResolver() => new JsonNetTypeMappingResolver(_byType);
 }

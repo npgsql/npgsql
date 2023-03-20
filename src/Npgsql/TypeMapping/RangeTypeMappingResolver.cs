@@ -8,7 +8,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping;
 
-sealed class RangeTypeMapperResolver : TypeMapperResolver
+sealed class RangeTypeMappingResolver : TypeMappingResolver
 {
     static readonly Dictionary<string, TypeMappingInfo> Mappings = new()
     {

@@ -4,7 +4,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.TypeMapping;
 
-public abstract class TypeMapperResolver
+public abstract class TypeMappingResolver
 {
     public abstract string? GetDataTypeNameByClrType(Type clrType);
     public virtual string? GetDataTypeNameByValueDependentValue(object value) => null;

@@ -29,5 +29,5 @@ public class NetTopologySuiteTypeHandlerResolverFactory : TypeHandlerResolverFac
         => new NetTopologySuiteTypeHandlerResolver(connector, _coordinateSequenceFactory, _precisionModel, _handleOrdinates,
             _geographyAsDefault);
 
-    public override TypeMapperResolver CreateMapperResolver() => new NetTopologySuiteTypeMapperResolver(_geographyAsDefault);
+    public override TypeMappingResolver CreateMappingResolver() => new NetTopologySuiteTypeMappingResolver(_geographyAsDefault);
 }

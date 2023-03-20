@@ -9,11 +9,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
-sealed class SystemTextJsonTypeMapperResolver : TypeMapperResolver
+sealed class SystemTextJsonTypeMappingResolver : TypeMappingResolver
 {
     readonly Dictionary<Type, string>? _userClrTypes;
 
-    public SystemTextJsonTypeMapperResolver(Dictionary<Type, string>? userClrTypes) => _userClrTypes = userClrTypes;
+    public SystemTextJsonTypeMappingResolver(Dictionary<Type, string>? userClrTypes) => _userClrTypes = userClrTypes;
 
     public override string? GetDataTypeNameByClrType(Type type)
         => ClrTypeToDataTypeName(type, _userClrTypes);

@@ -9,7 +9,7 @@ public class NodaTimeTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new NodaTimeTypeHandlerResolver(connector);
 
-    public override TypeMapperResolver CreateMapperResolver() => new NodaTimeTypeMapperResolver();
+    public override TypeMappingResolver CreateMappingResolver() => new NodaTimeTypeMappingResolver();
 
-    public override TypeMapperResolver CreateGlobalMapperResolver() => new NodaTimeTypeMapperResolver();
+    public override TypeMappingResolver CreateGlobalMappingResolver() => new NodaTimeTypeMappingResolver();
 }

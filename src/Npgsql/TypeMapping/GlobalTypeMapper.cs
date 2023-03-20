@@ -21,7 +21,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = new NpgsqlSnakeCaseNameTranslator();
 
     internal List<TypeHandlerResolverFactory> HandlerResolverFactories { get; } = new();
-    List<TypeMapperResolver> MapperResolvers { get; } = new();
+    List<TypeMappingResolver> MappingResolvers { get; } = new();
     public ConcurrentDictionary<string, IUserTypeMapping> UserTypeMappings { get; } = new();
 
     readonly ConcurrentDictionary<Type, TypeMappingInfo> _mappingsByClrType = new();
@@ -167,9 +167,9 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                 HandlerResolverFactories.Insert(0, resolverFactory);
             }
 
-            var mapperResolver = resolverFactory.CreateMapperResolver();
-            if (mapperResolver is not null)
-                AddMapperResolver(mapperResolver, overwrite: true);
+            var mappingResolver = resolverFactory.CreateMappingResolver();
+            if (mappingResolver is not null)
+                AddMappingResolver(mappingResolver, overwrite: true);
 
             RecordChange();
         }
@@ -179,7 +179,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal void TryAddMapperResolver(TypeMapperResolver resolver)
+    internal void TryAddMappingResolver(TypeMappingResolver resolver)
     {
         Lock.EnterWriteLock();
         try
@@ -189,7 +189,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             // The only exception is whenever a user adds a resolver factory to global type mapper specifically.
             // In that case we create a local mapper resolver and always overwrite the one we already have
             // as it can have settings (e.g. json serialization)
-            if (AddMapperResolver(resolver, overwrite: false))
+            if (AddMappingResolver(resolver, overwrite: false))
                 RecordChange();
         }
         finally
@@ -198,32 +198,32 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    bool AddMapperResolver(TypeMapperResolver resolver, bool overwrite)
+    bool AddMappingResolver(TypeMappingResolver resolver, bool overwrite)
     {
         // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapped.UseNodaTime,
         // we replace an existing resolver of the same CLR type.
         var type = resolver.GetType();
 
-        if (MapperResolvers[0].GetType() == type)
+        if (MappingResolvers[0].GetType() == type)
         {
             if (!overwrite)
                 return false;
-            MapperResolvers[0] = resolver;
+            MappingResolvers[0] = resolver;
         }
         else
         {
-            for (var i = 0; i < MapperResolvers.Count; i++)
+            for (var i = 0; i < MappingResolvers.Count; i++)
             {
-                if (MapperResolvers[i].GetType() == type)
+                if (MappingResolvers[i].GetType() == type)
                 {
                     if (!overwrite)
                         return false;
-                    MapperResolvers.RemoveAt(i);
+                    MappingResolvers.RemoveAt(i);
                     break;
                 }
             }
 
-            MapperResolvers.Insert(0, resolver);
+            MappingResolvers.Insert(0, resolver);
         }
 
         return true;
@@ -237,8 +237,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             HandlerResolverFactories.Clear();
             HandlerResolverFactories.Add(new BuiltInTypeHandlerResolverFactory());
 
-            MapperResolvers.Clear();
-            MapperResolvers.Add(new BuiltInTypeMapperResolver());
+            MappingResolvers.Clear();
+            MappingResolvers.Add(new BuiltInTypeMappingResolver());
 
             UserTypeMappings.Clear();
 
@@ -277,7 +277,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             if (_mappingsByClrType.TryGetValue(type, out typeMapping))
                 return true;
 
-            foreach (var resolver in MapperResolvers)
+            foreach (var resolver in MappingResolvers)
                 if ((typeMapping = resolver.GetMappingByValueDependentValue(value)) is not null)
                     return true;
 
@@ -293,7 +293,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             if (_mappingsByClrType.TryGetValue(clrType, out typeMapping))
                 return true;
 
-            foreach (var resolver in MapperResolvers)
+            foreach (var resolver in MappingResolvers)
             {
                 if ((typeMapping = resolver.GetMappingByClrType(clrType)) is not null)
                 {

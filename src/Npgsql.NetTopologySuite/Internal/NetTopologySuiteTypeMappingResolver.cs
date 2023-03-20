@@ -7,11 +7,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.NetTopologySuite.Internal;
 
-public class NetTopologySuiteTypeMapperResolver : TypeMapperResolver
+public class NetTopologySuiteTypeMappingResolver : TypeMappingResolver
 {
     readonly bool _geographyAsDefault;
 
-    public NetTopologySuiteTypeMapperResolver(bool geographyAsDefault) => _geographyAsDefault = geographyAsDefault;
+    public NetTopologySuiteTypeMappingResolver(bool geographyAsDefault) => _geographyAsDefault = geographyAsDefault;
 
     public override string? GetDataTypeNameByClrType(Type type)
         => ClrTypeToDataTypeName(type, _geographyAsDefault);

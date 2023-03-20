@@ -9,7 +9,7 @@ sealed class RangeTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new RangeTypeHandlerResolver(typeMapper, connector);
 
-    public override TypeMapperResolver CreateMapperResolver() => new RangeTypeMapperResolver();
+    public override TypeMappingResolver CreateMappingResolver() => new RangeTypeMappingResolver();
 
-    public override TypeMapperResolver CreateGlobalMapperResolver() => new RangeTypeMapperResolver();
+    public override TypeMappingResolver CreateGlobalMappingResolver() => new RangeTypeMappingResolver();
 }

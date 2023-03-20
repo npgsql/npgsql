@@ -220,7 +220,7 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
     {
-        if (BuiltInTypeMapperResolver.ClrTypeToDataTypeName(type) is not { } dataTypeName)
+        if (BuiltInTypeMappingResolver.ClrTypeToDataTypeName(type) is not { } dataTypeName)
         {
             if (!type.IsSubclassOf(typeof(Stream)))
                 return null;

@@ -38,7 +38,7 @@ sealed class SystemTextJsonTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => SystemTextJsonTypeMapperResolver.ClrTypeToDataTypeName(type, _userClrTypes) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
+        => SystemTextJsonTypeMappingResolver.ClrTypeToDataTypeName(type, _userClrTypes) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
             ? handler
             : null;
 

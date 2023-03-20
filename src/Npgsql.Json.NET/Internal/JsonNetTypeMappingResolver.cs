@@ -7,11 +7,11 @@ using NpgsqlTypes;
 
 namespace Npgsql.Json.NET.Internal;
 
-public class JsonNetTypeMapperResolver : TypeMapperResolver
+public class JsonNetTypeMappingResolver : TypeMappingResolver
 {
     readonly Dictionary<Type, string> _byType;
 
-    public JsonNetTypeMapperResolver(Dictionary<Type, string> byType) => _byType = byType;
+    public JsonNetTypeMappingResolver(Dictionary<Type, string> byType) => _byType = byType;
 
     public override string? GetDataTypeNameByClrType(Type type)
         => JsonNetTypeHandlerResolver.ClrTypeToDataTypeName(type, _byType);

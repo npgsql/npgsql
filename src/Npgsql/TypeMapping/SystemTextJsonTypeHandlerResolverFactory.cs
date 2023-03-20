@@ -39,7 +39,7 @@ sealed class SystemTextJsonTypeHandlerResolverFactory : TypeHandlerResolverFacto
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new SystemTextJsonTypeHandlerResolver(connector, _userClrTypes, _settings);
 
-    public override TypeMapperResolver CreateMapperResolver() => new SystemTextJsonTypeMapperResolver(_userClrTypes);
+    public override TypeMappingResolver CreateMappingResolver() => new SystemTextJsonTypeMappingResolver(_userClrTypes);
 
-    public override TypeMapperResolver CreateGlobalMapperResolver() => new SystemTextJsonTypeMapperResolver(userClrTypes: null);
+    public override TypeMappingResolver CreateGlobalMappingResolver() => new SystemTextJsonTypeMappingResolver(userClrTypes: null);
 }

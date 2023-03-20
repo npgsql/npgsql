@@ -47,7 +47,7 @@ public class NetTopologySuiteTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => NetTopologySuiteTypeMapperResolver.ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
+        => NetTopologySuiteTypeMappingResolver.ClrTypeToDataTypeName(type, _geographyAsDefault) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
             ? handler
             : null;
 

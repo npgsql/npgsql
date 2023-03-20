@@ -36,7 +36,7 @@ public sealed class TypeMapper
     }
 
     volatile TypeHandlerResolver[] _handlerResolvers;
-    volatile TypeMapperResolver[] _mappingResolvers;
+    volatile TypeMappingResolver[] _mappingResolvers;
     internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
     readonly ConcurrentDictionary<uint, NpgsqlTypeHandler> _handlersByOID = new();
@@ -57,7 +57,7 @@ public sealed class TypeMapper
         _defaultNameTranslator = defaultNameTranslator;
         UnrecognizedTypeHandler = new UnknownTypeHandler(Connector.TextEncoding);
         _handlerResolvers = Array.Empty<TypeHandlerResolver>();
-        _mappingResolvers = Array.Empty<TypeMapperResolver>();
+        _mappingResolvers = Array.Empty<TypeMappingResolver>();
         _commandLogger = connector.LoggingConfiguration.CommandLogger;
     }
 
@@ -71,11 +71,11 @@ public sealed class TypeMapper
         _databaseInfo = databaseInfo;
 
         var handlerResolvers = new TypeHandlerResolver[resolverFactories.Count];
-        var mappingResolvers = new List<TypeMapperResolver>(resolverFactories.Count);
+        var mappingResolvers = new List<TypeMappingResolver>(resolverFactories.Count);
         for (var i = 0; i < resolverFactories.Count; i++)
         {
             handlerResolvers[i] = resolverFactories[i].Create(this, Connector);
-            var mappingResolver = resolverFactories[i].CreateMapperResolver();
+            var mappingResolver = resolverFactories[i].CreateMappingResolver();
             if (mappingResolver is not null)
                 mappingResolvers.Add(mappingResolver);
         }
@@ -83,9 +83,9 @@ public sealed class TypeMapper
         // Add global mapper resolvers in backwards because they're inserted in the beginning
         for (var i = resolverFactories.Count - 1; i >= 0; i--)
         {
-            var globalMapperResolver = resolverFactories[i].CreateGlobalMapperResolver();
-            if (globalMapperResolver is not null)
-                GlobalTypeMapper.Instance.TryAddMapperResolver(globalMapperResolver);
+            var globalMappingResolver = resolverFactories[i].CreateGlobalMappingResolver();
+            if (globalMappingResolver is not null)
+                GlobalTypeMapper.Instance.TryAddMappingResolver(globalMappingResolver);
         }
 
         _handlerResolvers = handlerResolvers;

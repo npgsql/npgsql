@@ -14,7 +14,7 @@ using static Npgsql.Util.Statics;
 
 namespace Npgsql.TypeMapping;
 
-sealed class BuiltInTypeMapperResolver : TypeMapperResolver
+sealed class BuiltInTypeMappingResolver : TypeMappingResolver
 {
     static readonly Type ReadOnlyIPAddressType = IPAddress.Loopback.GetType();
 
@@ -149,7 +149,7 @@ sealed class BuiltInTypeMapperResolver : TypeMapperResolver
 
     static readonly Dictionary<Type, string> ClrTypeToDataTypeNameTable;
 
-    static BuiltInTypeMapperResolver()
+    static BuiltInTypeMappingResolver()
     {
         ClrTypeToDataTypeNameTable = new()
         {

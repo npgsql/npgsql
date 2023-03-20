@@ -9,5 +9,5 @@ sealed class BuiltInTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
         => new BuiltInTypeHandlerResolver(connector);
 
-    public override TypeMapperResolver CreateMapperResolver() => new BuiltInTypeMapperResolver();
+    public override TypeMappingResolver CreateMappingResolver() => new BuiltInTypeMappingResolver();
 }

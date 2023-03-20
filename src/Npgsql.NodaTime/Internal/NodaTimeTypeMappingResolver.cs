@@ -9,7 +9,7 @@ using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class NodaTimeTypeMapperResolver : TypeMapperResolver
+public class NodaTimeTypeMappingResolver : TypeMappingResolver
 {
     public override string? GetDataTypeNameByClrType(Type type)
         => ClrTypeToDataTypeName(type);
