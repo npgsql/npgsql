@@ -15,13 +15,10 @@ public abstract class TypeMapperResolver
     /// Invoked in scenarios when mapping information is required, rather than a type handler for reading or writing.
     /// </summary>
     public abstract TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type);
-}
 
-static class TypeMapperResolverExtensions
-{
-    internal static TypeMappingInfo? GetMappingByClrType(this TypeMapperResolver typeMapper, Type clrType)
-        => typeMapper.GetDataTypeNameByClrType(clrType) is { } dataTypeName ? typeMapper.GetMappingByDataTypeName(dataTypeName) : null;
+    internal TypeMappingInfo? GetMappingByValueDependentValue(object value)
+        => GetDataTypeNameByValueDependentValue(value) is { } dataTypeName ? GetMappingByDataTypeName(dataTypeName) : null;
 
-    internal static TypeMappingInfo? GetMappingByValueDependentValue(this TypeMapperResolver typeMapper, object value)
-        => typeMapper.GetDataTypeNameByValueDependentValue(value) is { } dataTypeName ? typeMapper.GetMappingByDataTypeName(dataTypeName) : null;
+    internal TypeMappingInfo? GetMappingByClrType(Type clrType)
+        => GetDataTypeNameByClrType(clrType) is { } dataTypeName ? GetMappingByDataTypeName(dataTypeName) : null;
 }
