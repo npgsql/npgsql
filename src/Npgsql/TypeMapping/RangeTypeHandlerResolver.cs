@@ -39,7 +39,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
 
     public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
     {
-        if (_databaseInfo.GetPostgresTypeByName(typeName) is not { } pgType)
+        if (!_databaseInfo.TryGetPostgresTypeByName(typeName, out var pgType))
             return null;
 
         return pgType switch
@@ -128,34 +128,6 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
             Type GetUnderlyingType(Type t)
                 => Nullable.GetUnderlyingType(t) ?? t;
         }
-    }
-
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
-    {
-        switch (type)
-        {
-        case PostgresRangeType pgRangeType:
-        {
-            if (_typeMapper.TryGetMapping(pgRangeType.Subtype, out var subtypeMapping))
-            {
-                return new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Range, type.DisplayName);
-            }
-
-            break;
-        }
-
-        case PostgresMultirangeType pgMultirangeType:
-        {
-            if (_typeMapper.TryGetMapping(pgMultirangeType.Subrange.Subtype, out var subtypeMapping))
-            {
-                return new(subtypeMapping.NpgsqlDbType | NpgsqlDbType.Multirange, type.DisplayName);
-            }
-
-            break;
-        }
-        }
-
-        return null;
     }
 
     public override NpgsqlTypeHandler? ResolveValueDependentValue(object value)

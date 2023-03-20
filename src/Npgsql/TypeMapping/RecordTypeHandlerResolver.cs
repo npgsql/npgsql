@@ -25,7 +25,5 @@ sealed class RecordTypeHandlerResolver : TypeHandlerResolver
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
 
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type) => null;
-    
     NpgsqlTypeHandler GetHandler() => _recordHandler ??= new RecordHandler(_databaseInfo.GetPostgresTypeByName("record"), _typeMapper);
 }

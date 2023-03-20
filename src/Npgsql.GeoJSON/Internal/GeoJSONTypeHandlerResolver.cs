@@ -76,16 +76,5 @@ public class GeoJSONTypeHandlerResolver : TypeHandlerResolver
                 ? "geography"
                 : "geometry";
 
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
-    internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
-        => dataTypeName switch
-        {
-            "geometry" => new(NpgsqlDbType.Geometry, "geometry"),
-            "geography" => new(NpgsqlDbType.Geography, "geography"),
-            _ => null
-        };
-
     PostgresType? PgType(string pgTypeName) => _databaseInfo.TryGetPostgresTypeByName(pgTypeName, out var pgType) ? pgType : null;
 }

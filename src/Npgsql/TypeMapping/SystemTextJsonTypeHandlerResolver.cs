@@ -6,18 +6,17 @@ using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
-sealed class JsonTypeHandlerResolver : TypeHandlerResolver
+sealed class SystemTextJsonTypeHandlerResolver : TypeHandlerResolver
 {
     readonly NpgsqlDatabaseInfo _databaseInfo;
     readonly SystemTextJsonHandler? _jsonbHandler; // Note that old version of PG (and Redshift) don't have jsonb
     readonly SystemTextJsonHandler? _jsonHandler;
     readonly Dictionary<Type, string>? _userClrTypes;
 
-    internal JsonTypeHandlerResolver(
+    internal SystemTextJsonTypeHandlerResolver(
         NpgsqlConnector connector,
         Dictionary<Type, string>? userClrTypes,
         JsonSerializerOptions serializerOptions)
@@ -39,28 +38,9 @@ sealed class JsonTypeHandlerResolver : TypeHandlerResolver
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-        => ClrTypeToDataTypeName(type, _userClrTypes) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
+        => SystemTextJsonTypeMappingResolver.ClrTypeToDataTypeName(type, _userClrTypes) is { } dataTypeName && ResolveByDataTypeName(dataTypeName) is { } handler
             ? handler
             : null;
-
-    internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string>? clrTypes)
-        => type == typeof(JsonDocument)
-           || type == typeof(JsonObject) || type == typeof(JsonArray)
-            ? "jsonb"
-            : clrTypes is not null && clrTypes.TryGetValue(type, out var dataTypeName) ? dataTypeName : null;
-
-    public override TypeMappingInfo? GetMappingByPostgresType(PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
-    internal static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
-        => dataTypeName switch
-        {
-            "jsonb" => new(NpgsqlDbType.Jsonb,     "jsonb", typeof(JsonDocument)
-                , typeof(JsonObject), typeof(JsonArray)
-            ),
-            "json" => new(NpgsqlDbType.Json,    "json"),
-            _ => null
-        };
 
     public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
     {

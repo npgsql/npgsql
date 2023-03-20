@@ -217,7 +217,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeResolverFactory(new JsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 
@@ -313,7 +313,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     void AddDefaultFeatures()
     {
         _internalBuilder.EnableEncryption();
-        _internalBuilder.AddDefaultTypeResolverFactory(new JsonTypeHandlerResolverFactory());
+        _internalBuilder.AddDefaultTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory());
         _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
         _internalBuilder.AddDefaultTypeResolverFactory(new RecordTypeHandlerResolverFactory());
     }

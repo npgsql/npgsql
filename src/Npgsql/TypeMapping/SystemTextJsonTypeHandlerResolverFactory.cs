@@ -7,12 +7,12 @@ using Npgsql.Internal.TypeMapping;
 
 namespace Npgsql.TypeMapping;
 
-sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
+sealed class SystemTextJsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
 {
     readonly JsonSerializerOptions _settings;
     readonly Dictionary<Type, string>? _userClrTypes;
 
-    public JsonTypeHandlerResolverFactory(
+    public SystemTextJsonTypeHandlerResolverFactory(
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null,
         JsonSerializerOptions? settings = null)
@@ -37,11 +37,9 @@ sealed class JsonTypeHandlerResolverFactory : TypeHandlerResolverFactory
     }
 
     public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
-        => new JsonTypeHandlerResolver(connector, _userClrTypes, _settings);
+        => new SystemTextJsonTypeHandlerResolver(connector, _userClrTypes, _settings);
 
-    public override string? GetDataTypeNameByClrType(Type type)
-        => JsonTypeHandlerResolver.ClrTypeToDataTypeName(type, _userClrTypes);
+    public override TypeMappingResolver CreateMappingResolver() => new SystemTextJsonTypeMappingResolver(_userClrTypes);
 
-    public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
-        => JsonTypeHandlerResolver.DoGetMappingByDataTypeName(dataTypeName);
+    public override TypeMappingResolver CreateGlobalMappingResolver() => new SystemTextJsonTypeMappingResolver(userClrTypes: null);
 }
