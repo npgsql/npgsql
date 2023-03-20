@@ -71,20 +71,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
         { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   "timestamp without time zone[]") },
         { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, "timestamp with time zone[]") },
 
-        { "int4range",                     new(NpgsqlDbType.IntegerRange,     "int4range") },
-        { "int8range",                     new(NpgsqlDbType.BigIntRange,      "int8range") },
-        { "numrange",                      new(NpgsqlDbType.NumericRange,     "numrange") },
-        { "daterange",                     new(NpgsqlDbType.DateRange,        "daterange") },
-        { "tsrange",                       new(NpgsqlDbType.TimestampRange,   "tsrange") },
-        { "tstzrange",                     new(NpgsqlDbType.TimestampTzRange, "tstzrange") },
-
-        { "int4multirange",                new(NpgsqlDbType.IntegerMultirange,     "int4range") },
-        { "int8multirange",                new(NpgsqlDbType.BigIntMultirange,      "int8range") },
-        { "nummultirange",                 new(NpgsqlDbType.NumericMultirange,     "numrange") },
-        { "datemultirange",                new(NpgsqlDbType.DateMultirange,        "datemultirange") },
-        { "tsmultirange",                  new(NpgsqlDbType.TimestampMultirange,   "tsmultirange") },
-        { "tstzmultirange",                new(NpgsqlDbType.TimestampTzMultirange, "tstzmultirange") },
-
         // Network types
         { "cidr",      new(NpgsqlDbType.Cidr,     "cidr") },
 #pragma warning disable 618
