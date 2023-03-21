@@ -19,16 +19,14 @@ partial class NpgsqlConnector
 {
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        var authenticated = false;
-        while (!authenticated)
+        while (true)
         {
             timeout.CheckAndApply(this);
             var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
             switch (msg.AuthRequestType)
             {
             case AuthenticationRequestType.AuthenticationOk:
-                authenticated = true;
-                break;
+                return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
                 await AuthenticateCleartext(username, async, cancellationToken);
@@ -45,8 +43,7 @@ partial class NpgsqlConnector
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
                 await AuthenticateGSS(async);
-                authenticated = true;
-                break;
+                return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
                 throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
