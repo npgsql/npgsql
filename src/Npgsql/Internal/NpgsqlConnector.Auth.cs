@@ -19,35 +19,38 @@ partial class NpgsqlConnector
 {
     async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
     {
-        timeout.CheckAndApply(this);
-        var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
-        switch (msg.AuthRequestType)
+        while (true)
         {
-        case AuthenticationRequestType.AuthenticationOk:
-            return;
+            timeout.CheckAndApply(this);
+            var msg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
+            switch (msg.AuthRequestType)
+            {
+            case AuthenticationRequestType.AuthenticationOk:
+                return;
 
-        case AuthenticationRequestType.AuthenticationCleartextPassword:
-            await AuthenticateCleartext(username, async, cancellationToken);
-            return;
+            case AuthenticationRequestType.AuthenticationCleartextPassword:
+                await AuthenticateCleartext(username, async, cancellationToken);
+                break;
 
-        case AuthenticationRequestType.AuthenticationMD5Password:
-            await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
-            return;
+            case AuthenticationRequestType.AuthenticationMD5Password:
+                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                break;
 
-        case AuthenticationRequestType.AuthenticationSASL:
-            await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async, cancellationToken);
-            return;
+            case AuthenticationRequestType.AuthenticationSASL:
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async, cancellationToken);
+                break;
 
-        case AuthenticationRequestType.AuthenticationGSS:
-        case AuthenticationRequestType.AuthenticationSSPI:
-            await AuthenticateGSS(async);
-            return;
+            case AuthenticationRequestType.AuthenticationGSS:
+            case AuthenticationRequestType.AuthenticationSSPI:
+                await AuthenticateGSS(async);
+                return;
 
-        case AuthenticationRequestType.AuthenticationGSSContinue:
-            throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
+            case AuthenticationRequestType.AuthenticationGSSContinue:
+                throw new NpgsqlException("Can't start auth cycle with AuthenticationGSSContinue");
 
-        default:
-            throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
+            default:
+                throw new NotSupportedException($"Authentication method not supported (Received: {msg.AuthRequestType})");
+            }
         }
     }
 
@@ -62,7 +65,6 @@ partial class NpgsqlConnector
 
         await WritePassword(encoded, async, cancellationToken);
         await Flush(async, cancellationToken);
-        ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
     }
 
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
@@ -204,10 +206,6 @@ partial class NpgsqlConnector
         if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
             throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
-        var okMsg = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
-        if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
-            throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
-
 
         static string GetNonce()
         {
@@ -281,7 +279,6 @@ partial class NpgsqlConnector
 
         await WritePassword(result, async, cancellationToken);
         await Flush(async, cancellationToken);
-        ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
     }
 
 #if NET7_0_OR_GREATER
