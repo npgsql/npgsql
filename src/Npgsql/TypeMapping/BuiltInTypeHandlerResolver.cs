@@ -99,18 +99,12 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     HstoreHandler? _hstoreHandler;
 
     // Internal types
-    Int2VectorHandler? _int2VectorHandler;
-    OIDVectorHandler? _oidVectorHandler;
     PgLsnHandler? _pgLsnHandler;
     TidHandler? _tidHandler;
     InternalCharHandler? _internalCharHandler;
 
     // Special types
     UnknownTypeHandler? _unknownHandler;
-
-    // Complex type handlers over timestamp/timestamptz (because DateTime is value-dependent)
-    NpgsqlTypeHandler? _timestampArrayHandler;
-    NpgsqlTypeHandler? _timestampTzArrayHandler;
 
     #endregion Cached handlers
 
@@ -205,8 +199,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "hstore"                  => HstoreHandler(),
 
             // Internal types
-            "int2vector" => Int2VectorHandler(),
-            "oidvector"  => OidVectorHandler(),
             "pg_lsn"     => PgLsnHandler(),
             "tid"        => TidHandler(),
             "char"       => InternalCharHandler(),
@@ -241,19 +233,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         {
             DateTime dateTime => dateTime.Kind == DateTimeKind.Utc ? _timestampTzHandler : _timestampHandler,
 
-            // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
-            // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
-            IList<DateTime> array => ArrayHandler(array.Count == 0 ? DateTimeKind.Unspecified : array[0].Kind),
-
             _ => null
         };
-
-        NpgsqlTypeHandler ArrayHandler(DateTimeKind kind)
-            => kind == DateTimeKind.Utc
-                ? _timestampTzArrayHandler ??= _timestampTzHandler.CreateArrayHandler(
-                    (PostgresArrayType)PgType("timestamp with time zone[]"), _connector.Settings.ArrayNullabilityMode)
-                : _timestampArrayHandler ??= _timestampHandler.CreateArrayHandler(
-                    (PostgresArrayType)PgType("timestamp without time zone[]"), _connector.Settings.ArrayNullabilityMode);
     }
 
     public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
@@ -417,8 +398,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         : null;
 
     // Internal types
-    NpgsqlTypeHandler Int2VectorHandler()   => _int2VectorHandler ??= new Int2VectorHandler(PgType("int2vector"), PgType("smallint"));
-    NpgsqlTypeHandler OidVectorHandler()    => _oidVectorHandler ??= new OIDVectorHandler(PgType("oidvector"), PgType("oid"));
     NpgsqlTypeHandler PgLsnHandler()        => _pgLsnHandler ??= new PgLsnHandler(PgType("pg_lsn"));
     NpgsqlTypeHandler TidHandler()          => _tidHandler ??= new TidHandler(PgType("tid"));
     NpgsqlTypeHandler InternalCharHandler() => _internalCharHandler ??= new InternalCharHandler(PgType("char"));

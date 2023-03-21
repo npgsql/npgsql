@@ -418,6 +418,15 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up mappings for the arrays.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableArrays()
+    {
+        AddTypeResolverFactory(new ArrayTypeHandlerResolverFactory());
+        return this;
+    }
+
+    /// <summary>
     /// Enables the possibility to use TLS/SSl encryption for connections to PostgreSQL. This does not guarantee that encryption will
     /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
     /// </summary>

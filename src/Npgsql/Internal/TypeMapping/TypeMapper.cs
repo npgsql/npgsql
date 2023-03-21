@@ -200,18 +200,6 @@ public sealed class TypeMapper
                     }
                 }
 
-                if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
-                {
-                    var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
-
-                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                        throw new ArgumentException(
-                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                    return _handlersByNpgsqlDbType[npgsqlDbType] =
-                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-                }
-
                 throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                           "You may need to install an extension or upgrade to a newer version.");
             }
@@ -287,13 +275,6 @@ public sealed class TypeMapper
 
             switch (pgType)
             {
-            case PostgresArrayType pgArrayType:
-            {
-                var elementHandler = ResolveByOID(pgArrayType.Element.OID);
-                return _handlersByDataTypeName[typeName] =
-                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-            }
-
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
@@ -430,21 +411,6 @@ public sealed class TypeMapper
                     }
                 }
 
-                // Try to see if it is an array type
-                var arrayElementType = GetArrayListElementType(type);
-                if (arrayElementType is not null)
-                {
-                    if (ResolveByClrType(arrayElementType) is not { } elementHandler)
-                        throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
-
-                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                        throw new ArgumentException(
-                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                    return _handlersByClrType[type] =
-                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-                }
-
                 if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
                     return _handlersByClrType[type] = underlyingHandler;
 
@@ -464,25 +430,6 @@ public sealed class TypeMapper
                 throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
                                                 $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
             }
-
-            static Type? GetArrayListElementType(Type type)
-            {
-                var typeInfo = type.GetTypeInfo();
-                if (typeInfo.IsArray)
-                    return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
-
-                var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-                if (ilist != null)
-                    return GetUnderlyingType(ilist.GetGenericArguments()[0]);
-
-                if (typeof(IList).IsAssignableFrom(type))
-                    throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-
-                return null;
-
-                Type GetUnderlyingType(Type t)
-                    => Nullable.GetUnderlyingType(t) ?? t;
-            }   
         }
     }
 

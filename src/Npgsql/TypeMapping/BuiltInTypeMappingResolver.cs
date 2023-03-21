@@ -68,9 +68,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
         { "timetz",                      new(NpgsqlDbType.TimeTz,      "time with time zone") },
         { "interval",                    new(NpgsqlDbType.Interval,    "interval", typeof(TimeSpan)) },
 
-        { "timestamp without time zone[]", new(NpgsqlDbType.Array | NpgsqlDbType.Timestamp,   "timestamp without time zone[]") },
-        { "timestamp with time zone[]",    new(NpgsqlDbType.Array | NpgsqlDbType.TimestampTz, "timestamp with time zone[]") },
-
         // Network types
         { "cidr",      new(NpgsqlDbType.Cidr,     "cidr") },
 #pragma warning disable 618
@@ -123,8 +120,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
         { "hstore",      new(NpgsqlDbType.Hstore,  "hstore", typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>), typeof(ImmutableDictionary<string, string?>)) },
 
         // Internal types
-        { "int2vector",  new(NpgsqlDbType.Int2Vector,   "int2vector") },
-        { "oidvector",   new(NpgsqlDbType.Oidvector,    "oidvector") },
         { "pg_lsn",      new(NpgsqlDbType.PgLsn,        "pg_lsn", typeof(NpgsqlLogSequenceNumber)) },
         { "tid",         new(NpgsqlDbType.Tid,          "tid", typeof(NpgsqlTid)) },
         { "char",        new(NpgsqlDbType.InternalChar, "char") },
@@ -238,12 +233,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
         return value switch
         {
             DateTime dateTime => dateTime.Kind == DateTimeKind.Utc ? "timestamp with time zone" : "timestamp without time zone",
-
-            // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
-            // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
-            IList<DateTime> array => array.Count == 0
-                ? "timestamp without time zone[]"
-                : array[0].Kind == DateTimeKind.Utc ? "timestamp with time zone[]" : "timestamp without time zone[]",
 
             _ => null
         };
