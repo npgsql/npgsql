@@ -63,10 +63,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     MacaddrHandler? _macaddrHandler;
     MacaddrHandler? _macaddr8Handler;
 
-    // Full-text search types
-    TsQueryHandler? _tsQueryHandler;
-    TsVectorHandler? _tsVectorHandler;
-
     // Geometry types
     BoxHandler? _boxHandler;
     CircleHandler? _circleHandler;
@@ -169,10 +165,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "inet"     => InetHandler(),
             "macaddr"  => MacaddrHandler(),
             "macaddr8" => Macaddr8Handler(),
-
-            // Full-text search types
-            "tsquery"  => TsQueryHandler(),
-            "tsvector" => TsVectorHandler(),
 
             // Geometry types
             "box"     => BoxHandler(),
@@ -374,10 +366,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler InetHandler()     => _inetHandler ??= new InetHandler(PgType("inet"));
     NpgsqlTypeHandler MacaddrHandler()  => _macaddrHandler ??= new MacaddrHandler(PgType("macaddr"));
     NpgsqlTypeHandler Macaddr8Handler() => _macaddr8Handler ??= new MacaddrHandler(PgType("macaddr8"));
-
-    // Full-text search types
-    NpgsqlTypeHandler TsQueryHandler()  => _tsQueryHandler ??= new TsQueryHandler(PgType("tsquery"));
-    NpgsqlTypeHandler TsVectorHandler() => _tsVectorHandler ??= new TsVectorHandler(PgType("tsvector"));
 
     // Geometry types
     NpgsqlTypeHandler BoxHandler()         => _boxHandler ??= new BoxHandler(PgType("box"));

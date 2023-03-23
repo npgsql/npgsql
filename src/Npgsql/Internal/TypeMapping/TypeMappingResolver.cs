@@ -14,7 +14,8 @@ public abstract class TypeMappingResolver
     /// Gets type mapping information for a given PostgreSQL type.
     /// Invoked in scenarios when mapping information is required, rather than a type handler for reading or writing.
     /// </summary>
-    public abstract TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type);
+    public virtual TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type)
+        => GetMappingByDataTypeName(type.Name);
 
     internal TypeMappingInfo? GetMappingByValueDependentValue(object value)
         => GetDataTypeNameByValueDependentValue(value) is { } dataTypeName ? GetMappingByDataTypeName(dataTypeName) : null;

@@ -19,9 +19,6 @@ public class NetTopologySuiteTypeMappingResolver : TypeMappingResolver
     public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
         => DoGetMappingByDataTypeName(dataTypeName);
 
-    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
     internal static string? ClrTypeToDataTypeName(Type type, bool geographyAsDefault)
         => type != typeof(Geometry) && type.BaseType != typeof(Geometry) && type.BaseType != typeof(GeometryCollection)
             ? null

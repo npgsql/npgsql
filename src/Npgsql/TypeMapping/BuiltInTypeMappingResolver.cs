@@ -8,7 +8,6 @@ using System.Net.NetworkInformation;
 using System.Numerics;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -78,13 +77,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
 #pragma warning restore 618
         { "macaddr",   new(NpgsqlDbType.MacAddr,  "macaddr", typeof(PhysicalAddress)) },
         { "macaddr8",  new(NpgsqlDbType.MacAddr8, "macaddr8") },
-
-        // Full-text search types
-        { "tsquery",   new(NpgsqlDbType.TsQuery,  "tsquery",
-            typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
-            typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp)
-        ) },
-        { "tsvector",  new(NpgsqlDbType.TsVector, "tsvector", typeof(NpgsqlTsVector)) },
 
         // Geometry types
         { "box",      new(NpgsqlDbType.Box,     "box",     typeof(NpgsqlBox)) },
@@ -176,15 +168,6 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
 #pragma warning restore 618
             { typeof(PhysicalAddress),                 "macaddr" },
 
-            // Full-text types
-            { typeof(NpgsqlTsVector),          "tsvector" },
-            { typeof(NpgsqlTsQueryLexeme),     "tsquery" },
-            { typeof(NpgsqlTsQueryAnd),        "tsquery" },
-            { typeof(NpgsqlTsQueryOr),         "tsquery" },
-            { typeof(NpgsqlTsQueryNot),        "tsquery" },
-            { typeof(NpgsqlTsQueryEmpty),      "tsquery" },
-            { typeof(NpgsqlTsQueryFollowedBy), "tsquery" },
-
             // Geometry types
             { typeof(NpgsqlBox),     "box" },
             { typeof(NpgsqlCircle),  "circle" },
@@ -251,7 +234,4 @@ sealed class BuiltInTypeMappingResolver : TypeMappingResolver
 
     public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
         => Mappings.TryGetValue(dataTypeName, out var mapping) ? mapping : null;
-
-    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type)
-        => GetMappingByDataTypeName(type.Name);
 }

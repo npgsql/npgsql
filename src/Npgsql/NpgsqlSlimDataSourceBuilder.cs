@@ -417,6 +417,15 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>tsquery</c> and <c>tsvector</c> types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
+    {
+        AddTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
+        return this;
+    }
+
+    /// <summary>
     /// Enables the possibility to use TLS/SSl encryption for connections to PostgreSQL. This does not guarantee that encryption will
     /// actually be used; see <see href="https://www.npgsql.org/doc/security.html"/> for more details.
     /// </summary>
