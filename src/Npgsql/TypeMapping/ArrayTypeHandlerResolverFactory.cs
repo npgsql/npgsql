@@ -12,4 +12,6 @@ sealed class ArrayTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeMappingResolver CreateMappingResolver() => new ArrayTypeMappingResolver();
 
     public override TypeMappingResolver CreateGlobalMappingResolver() => new ArrayTypeMappingResolver();
+
+    public override TypeHandlerResolverFactoryPosition Position => TypeHandlerResolverFactoryPosition.End;
 }

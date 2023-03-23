@@ -85,7 +85,7 @@ public sealed class TypeMapper
         {
             var globalMappingResolver = resolverFactories[i].CreateGlobalMappingResolver();
             if (globalMappingResolver is not null)
-                GlobalTypeMapper.Instance.TryAddMappingResolver(globalMappingResolver);
+                GlobalTypeMapper.Instance.TryAddMappingResolver(globalMappingResolver, resolverFactories[i].Position);
         }
 
         _handlerResolvers = handlerResolvers;

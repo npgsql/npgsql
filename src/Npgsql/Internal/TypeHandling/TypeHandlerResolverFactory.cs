@@ -9,4 +9,6 @@ public abstract class TypeHandlerResolverFactory
     public virtual TypeMappingResolver? CreateMappingResolver() => null;
 
     public virtual TypeMappingResolver? CreateGlobalMappingResolver() => null;
+
+    public virtual TypeHandlerResolverFactoryPosition Position => TypeHandlerResolverFactoryPosition.Beginning;
 }

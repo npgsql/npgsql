@@ -22,7 +22,7 @@ sealed class ArrayTypeMappingResolver : TypeMappingResolver
 
     public override string? GetDataTypeNameByClrType(Type clrType) => null;
 
-    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type) => null;
+    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper typeMapper, PostgresType type) => GetMappingByDataTypeName(type.Name);
 
     public override string? GetDataTypeNameByValueDependentValue(object value)
     {

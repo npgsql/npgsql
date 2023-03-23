@@ -247,7 +247,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             }
         }
 
-        _resolverFactories.Insert(0, resolverFactory);
+        if (resolverFactory.Position == TypeHandlerResolverFactoryPosition.End)
+            _resolverFactories.Add(resolverFactory);
+        else
+            _resolverFactories.Insert(0, resolverFactory);
     }
 
     internal void AddDefaultTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
@@ -266,6 +269,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         for (var i = 0; i < _resolverFactories.Count; i++)
             if (_resolverFactories[i].GetType() == type)
                 return;
+
+        if (resolverFactory.Position == TypeHandlerResolverFactoryPosition.End)
+        {
+            _resolverFactories.Add(resolverFactory);
+            return;
+        }
 
         for (var i = 0; i < _resolverFactories.Count; i++)
         {

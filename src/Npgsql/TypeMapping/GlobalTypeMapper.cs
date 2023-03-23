@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -157,19 +158,25 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             var type = resolverFactory.GetType();
 
             if (HandlerResolverFactories[0].GetType() == type)
+            {
+                Debug.Assert(resolverFactory.Position == TypeHandlerResolverFactoryPosition.Beginning);
                 HandlerResolverFactories[0] = resolverFactory;
+            }
             else
             {
                 for (var i = 0; i < HandlerResolverFactories.Count; i++)
                     if (HandlerResolverFactories[i].GetType() == type)
                         HandlerResolverFactories.RemoveAt(i);
 
-                HandlerResolverFactories.Insert(0, resolverFactory);
+                if (resolverFactory.Position == TypeHandlerResolverFactoryPosition.End)
+                    HandlerResolverFactories.Add(resolverFactory);
+                else
+                    HandlerResolverFactories.Insert(0, resolverFactory);
             }
 
             var mappingResolver = resolverFactory.CreateMappingResolver();
             if (mappingResolver is not null)
-                AddMappingResolver(mappingResolver, overwrite: true);
+                AddMappingResolver(mappingResolver, resolverFactory.Position, overwrite: true);
 
             RecordChange();
         }
@@ -179,7 +186,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal void TryAddMappingResolver(TypeMappingResolver resolver)
+    internal void TryAddMappingResolver(TypeMappingResolver resolver, TypeHandlerResolverFactoryPosition position)
     {
         Lock.EnterWriteLock();
         try
@@ -189,7 +196,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             // The only exception is whenever a user adds a resolver factory to global type mapper specifically.
             // In that case we create a local mapper resolver and always overwrite the one we already have
             // as it can have settings (e.g. json serialization)
-            if (AddMappingResolver(resolver, overwrite: false))
+            if (AddMappingResolver(resolver, position, overwrite: false))
                 RecordChange();
         }
         finally
@@ -198,7 +205,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    bool AddMappingResolver(TypeMappingResolver resolver, bool overwrite)
+    bool AddMappingResolver(TypeMappingResolver resolver, TypeHandlerResolverFactoryPosition position, bool overwrite)
     {
         // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapped.UseNodaTime,
         // we replace an existing resolver of the same CLR type.
@@ -208,6 +215,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         {
             if (!overwrite)
                 return false;
+            Debug.Assert(position == TypeHandlerResolverFactoryPosition.Beginning);
             MappingResolvers[0] = resolver;
         }
         else
@@ -223,7 +231,10 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                 }
             }
 
-            MappingResolvers.Insert(0, resolver);
+            if (position == TypeHandlerResolverFactoryPosition.End)
+                MappingResolvers.Add(resolver);
+            else
+                MappingResolvers.Insert(0, resolver);
         }
 
         return true;
