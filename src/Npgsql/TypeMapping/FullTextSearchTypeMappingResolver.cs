@@ -34,5 +34,8 @@ sealed class FullTextSearchTypeMappingResolver : TypeMappingResolver
         };
 
     public override string? GetDataTypeNameByClrType(Type clrType)
+        => ClrTypeToDataTypeName(clrType);
+
+    internal static string? ClrTypeToDataTypeName(Type clrType)
         => ClrTypeToDataTypeNameTable.TryGetValue(clrType, out var dataTypeName) ? dataTypeName : null;
 }

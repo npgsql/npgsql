@@ -24,7 +24,8 @@ sealed class FullTextSearchTypeHandlerResolver : TypeHandlerResolver
             _ => null
         };
 
-    public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
+    public override NpgsqlTypeHandler? ResolveByClrType(Type type)
+        => FullTextSearchTypeMappingResolver.ClrTypeToDataTypeName(type) is { } dataTypeName ? ResolveByDataTypeName(dataTypeName) : null;
 
     NpgsqlTypeHandler TsQueryHandler()  => _tsQueryHandler ??= new TsQueryHandler(PgType("tsquery"));
     NpgsqlTypeHandler TsVectorHandler() => _tsVectorHandler ??= new TsVectorHandler(PgType("tsvector"));
