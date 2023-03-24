@@ -180,13 +180,6 @@ namespace NpgsqlTypes
         /// </code>
         /// </example>
         public double UrCoord(int n) => _upperRight[n - 1];
-
-        /// <summary>
-        /// Returns the distance between two cubes. If both cubes are points, this is the normal distance function.	
-        /// </summary>
-        /// <param name="other">The other cube to compare.</param>
-        /// <returns>The distance between the two cubes.</returns>
-        public double Distance(NpgsqlCube other) => throw new NotImplementedException();
         
         /// <summary>
         /// Makes a new cube from an existing cube, using a list of dimension indexes from an array.
@@ -215,37 +208,6 @@ namespace NpgsqlTypes
             return new NpgsqlCube(lowerLeft, upperRight);
         }
         
-        /// <summary>
-        /// Produces the union of two cubes.	
-        /// </summary>
-        /// <param name="other">The other cube.</param>
-        /// <returns>The resulting cube.</returns>
-        public NpgsqlCube Union(NpgsqlCube other) => throw new NotImplementedException();
-        
-        /// <summary>
-        /// Produces the intersection of two cubes.	
-        /// </summary>
-        /// <param name="other">The other cube.</param>
-        /// <returns>The resulting cube.</returns>
-        public NpgsqlCube Intersection(NpgsqlCube other) => throw new NotImplementedException();
-        
-        /// <summary>
-        /// Increases the size of the cube by the specified radius r in at least n dimensions.
-        /// </summary>
-        /// <remarks>
-        /// If the radius is negative the cube is shrunk instead. All defined dimensions are changed by the radius r.
-        /// Lower-left coordinates are decreased by r and upper-right coordinates are increased by r.
-        /// If a lower-left coordinate is increased to more than the corresponding upper-right coordinate
-        /// (this can only happen when r &lt; 0) than both coordinates are set to their average.
-        /// If n is greater than the number of defined dimensions and the cube is being enlarged (r > 0),
-        /// then extra dimensions are added to make n altogether; 0 is used as the initial value for the extra coordinates.
-        /// This function is useful for creating bounding boxes around a point for searching for nearby points.
-        /// </remarks>
-        /// <param name="r">The radius.</param>
-        /// <param name="n">The total dimensions.</param>
-        /// <returns>The resulting cube.</returns>
-        public NpgsqlCube Enlarge(double r, int n) => throw new NotImplementedException();
-
         /// <inheritdoc />
         public bool Equals(NpgsqlCube other)
         {
