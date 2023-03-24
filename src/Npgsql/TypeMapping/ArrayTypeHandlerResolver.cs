@@ -53,10 +53,8 @@ sealed class ArrayTypeHandlerResolver : TypeHandlerResolver
 
         var elementHandler = _typeMapper.ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
 
-        // TODO: return an unsupported handler???
         if (elementHandler.PostgresType.Array is not { } pgArrayType)
-            throw new ArgumentException(
-                $"No array type could be found in the database for element {elementHandler.PostgresType}");
+            return null;
 
         return elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
     }
@@ -85,13 +83,11 @@ sealed class ArrayTypeHandlerResolver : TypeHandlerResolver
         if (arrayElementType is null)
             return null;
 
-        // TODO: return an unsupported handler???
         if (_typeMapper.ResolveByClrType(arrayElementType) is not { } elementHandler)
-            throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
+            return null;
 
         if (elementHandler.PostgresType.Array is not { } pgArrayType)
-            throw new ArgumentException(
-                $"No array type could be found in the database for element {elementHandler.PostgresType}");
+            return null;
 
         return elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
     }
@@ -103,13 +99,7 @@ sealed class ArrayTypeHandlerResolver : TypeHandlerResolver
             return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
 
         var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-        if (ilist != null)
-            return GetUnderlyingType(ilist.GetGenericArguments()[0]);
-
-        if (typeof(IList).IsAssignableFrom(type))
-            throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-
-        return null;
+        return ilist != null ? GetUnderlyingType(ilist.GetGenericArguments()[0]) : null;
 
         Type GetUnderlyingType(Type t)
             => Nullable.GetUnderlyingType(t) ?? t;
