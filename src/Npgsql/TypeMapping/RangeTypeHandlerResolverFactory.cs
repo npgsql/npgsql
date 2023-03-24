@@ -12,4 +12,6 @@ sealed class RangeTypeHandlerResolverFactory : TypeHandlerResolverFactory
     public override TypeMappingResolver CreateMappingResolver() => new RangeTypeMappingResolver();
 
     public override TypeMappingResolver CreateGlobalMappingResolver() => new RangeTypeMappingResolver();
+
+    public override TypeHandlerResolverFactoryPosition Position => TypeHandlerResolverFactoryPosition.End;
 }
