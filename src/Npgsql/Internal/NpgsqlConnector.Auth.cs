@@ -37,7 +37,8 @@ partial class NpgsqlConnector
                 break;
 
             case AuthenticationRequestType.AuthenticationSASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async, cancellationToken);
+                await DataSource.EncryptionHandler.AuthenticateSASL(this, ((AuthenticationSASLMessage)msg).Mechanisms, username, async,
+                    cancellationToken);
                 break;
 
             case AuthenticationRequestType.AuthenticationGSS:
@@ -67,7 +68,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken);
     }
 
-    async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
+    internal async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
         var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");

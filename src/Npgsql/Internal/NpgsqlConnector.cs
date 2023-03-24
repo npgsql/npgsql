@@ -786,12 +786,9 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if ((sslMode is SslMode.Prefer && DataSource.EncryptionNegotiator is not null) ||
+            if ((sslMode is SslMode.Prefer && DataSource.EncryptionHandler.SupportEncryption) ||
                 sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
-                if (DataSource.EncryptionNegotiator is null)
-                    throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
-
                 WriteSslRequest();
                 await Flush(async, cancellationToken);
 
@@ -808,7 +805,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.EncryptionNegotiator(this, sslMode, timeout, async, isFirstAttempt);
+                    await DataSource.EncryptionHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt);
                     break;
                 }
 

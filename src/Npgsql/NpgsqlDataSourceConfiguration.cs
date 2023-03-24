@@ -13,7 +13,7 @@ namespace Npgsql;
 
 sealed record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? EncryptionNegotiator,
+    IEncryptionHandler EncryptionHandler,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,

@@ -43,7 +43,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
-    internal Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? EncryptionNegotiator { get; }
+    internal IEncryptionHandler EncryptionHandler { get; }
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
@@ -90,7 +90,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         Configuration = dataSourceConfig;
 
         (LoggingConfiguration,
-                EncryptionNegotiator,
+                EncryptionHandler,
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
                 _periodicPasswordProvider,

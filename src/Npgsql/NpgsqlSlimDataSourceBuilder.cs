@@ -30,7 +30,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
-    Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? _encryptionNegotiator;
+    IEncryptionHandler _encryptionHandler = new EmptyEncryptionHandler();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
     Func<X509Certificate2?>? _rootCertificateCallback;
@@ -423,8 +423,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableEncryption()
     {
-        _encryptionNegotiator = static (connector, sslMode, timeout, async, isFirstAttempt)
-            => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
+        _encryptionHandler = new EncryptionHandler();
 
         return this;
     }
@@ -503,7 +502,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder.PostProcessAndValidate();
 
-        if (_encryptionNegotiator is null && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
+        if (!_encryptionHandler.SupportEncryption && (_userCertificateValidationCallback is not null || _clientCertificatesCallback is not null))
         {
             throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
         }
@@ -518,7 +517,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),
-            _encryptionNegotiator,
+            _encryptionHandler,
             _userCertificateValidationCallback,
             _clientCertificatesCallback,
             _periodicPasswordProvider,
