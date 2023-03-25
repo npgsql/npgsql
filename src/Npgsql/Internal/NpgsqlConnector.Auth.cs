@@ -171,54 +171,53 @@ partial class NpgsqlConnector
         if (sslStream.RemoteCertificate is null)
         {
             ConnectionLogger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
+            return;
+        }
+
+        using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
+        // Checking for hashing algorithms
+        HashAlgorithm? hashAlgorithm = null;
+        var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
+        if (algorithmName is null)
+        {
+            ConnectionLogger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
+        }
+        else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
+                 algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
+                 algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA256.Create();
+        }
+        else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA384.Create();
+        }
+        else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA512.Create();
         }
         else
         {
-            using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
-            // Checking for hashing algorithms
-            HashAlgorithm? hashAlgorithm = null;
-            var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
-            if (algorithmName is null)
-            {
-                ConnectionLogger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
-            }
-            else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
-                     algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
-                     algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
-            {
-                hashAlgorithm = SHA256.Create();
-            }
-            else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
-            {
-                hashAlgorithm = SHA384.Create();
-            }
-            else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
-            {
-                hashAlgorithm = SHA512.Create();
-            }
-            else
-            {
-                ConnectionLogger.LogWarning(
-                    $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
-            }
+            ConnectionLogger.LogWarning(
+                $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
+        }
 
-            if (hashAlgorithm != null)
-            {
-                using var _ = hashAlgorithm;
+        if (hashAlgorithm != null)
+        {
+            using var _ = hashAlgorithm;
 
-                // RFC 5929
-                mechanism = "SCRAM-SHA-256-PLUS";
-                // PostgreSQL only supports tls-server-end-point binding
-                cbindFlag = "p=tls-server-end-point";
-                // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
-                var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
+            // RFC 5929
+            mechanism = "SCRAM-SHA-256-PLUS";
+            // PostgreSQL only supports tls-server-end-point binding
+            cbindFlag = "p=tls-server-end-point";
+            // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
+            var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
 
-                var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-                var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
-                cbind = Convert.ToBase64String(cbindBytes);
-                successfulBind = true;
-                IsScramPlus = true;
-            }
+            var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+            var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+            cbind = Convert.ToBase64String(cbindBytes);
+            successfulBind = true;
+            IsScramPlus = true;
         }
     }
 
