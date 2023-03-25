@@ -13,8 +13,8 @@ interface IEncryptionHandler
 
     Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt);
 
-    Task AuthenticateSASL(NpgsqlConnector connector, List<string> mechanisms, string username, bool async,
-        CancellationToken cancellationToken);
+    void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
+        ref bool successfulBind);
 }
 
 sealed class EncryptionHandler : IEncryptionHandler
@@ -24,9 +24,9 @@ sealed class EncryptionHandler : IEncryptionHandler
     public Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
         => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
 
-    public Task AuthenticateSASL(NpgsqlConnector connector, List<string> mechanisms, string username, bool async,
-        CancellationToken cancellationToken)
-        => connector.AuthenticateSASL(mechanisms, username, async, cancellationToken);
+    public void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
+            ref bool successfulBind)
+        => connector.AuthenticateSASLSha256Plus(ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 }
 
 sealed class EmptyEncryptionHandler : IEncryptionHandler
@@ -36,7 +36,7 @@ sealed class EmptyEncryptionHandler : IEncryptionHandler
     public Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
         => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
 
-    public Task AuthenticateSASL(NpgsqlConnector connector, List<string> mechanisms, string username, bool async,
-        CancellationToken cancellationToken)
+    public void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
+        ref bool successfulBind)
         => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
 }
