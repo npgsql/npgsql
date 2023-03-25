@@ -7,13 +7,12 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.Util;
 
 namespace Npgsql;
 
 sealed record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? EncryptionNegotiator,
+    EncryptionHandler EncryptionHandler,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
@@ -23,5 +22,4 @@ sealed record NpgsqlDataSourceConfiguration(
     Dictionary<string, IUserTypeMapping> UserTypeMappings,
     INpgsqlNameTranslator DefaultNameTranslator,
     Action<NpgsqlConnection>? ConnectionInitializer,
-    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync,
-    Func<X509Certificate2?>? RootCertificateCallback);
+    Func<NpgsqlConnection, Task>? ConnectionInitializerAsync);

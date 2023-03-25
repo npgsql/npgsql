@@ -43,7 +43,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
-    internal Func<NpgsqlConnector, SslMode, NpgsqlTimeout, bool, bool, Task>? EncryptionNegotiator { get; }
+    internal EncryptionHandler EncryptionHandler { get; }
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 
@@ -90,7 +90,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         Configuration = dataSourceConfig;
 
         (LoggingConfiguration,
-                EncryptionNegotiator,
+                EncryptionHandler,
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
                 _periodicPasswordProvider,
@@ -100,8 +100,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _userTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
-                ConnectionInitializerAsync,
-                RootCertificateCallback)
+                ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
@@ -302,8 +301,6 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion Password management
-    
-    internal Func<X509Certificate2?>? RootCertificateCallback { get; }
 
     internal abstract ValueTask<NpgsqlConnector> Get(
         NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken);

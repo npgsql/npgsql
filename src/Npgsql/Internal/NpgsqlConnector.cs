@@ -786,12 +786,9 @@ public sealed partial class NpgsqlConnector
 
             IsSecure = false;
 
-            if ((sslMode is SslMode.Prefer && DataSource.EncryptionNegotiator is not null) ||
+            if ((sslMode is SslMode.Prefer && DataSource.EncryptionHandler.SupportEncryption) ||
                 sslMode is SslMode.Require or SslMode.VerifyCA or SslMode.VerifyFull)
             {
-                if (DataSource.EncryptionNegotiator is null)
-                    throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
-
                 WriteSslRequest();
                 await Flush(async, cancellationToken);
 
@@ -808,7 +805,7 @@ public sealed partial class NpgsqlConnector
                         throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                     break;
                 case 'S':
-                    await DataSource.EncryptionNegotiator(this, sslMode, timeout, async, isFirstAttempt);
+                    await DataSource.EncryptionHandler.NegotiateEncryption(this, sslMode, timeout, async, isFirstAttempt);
                     break;
                 }
 
@@ -891,7 +888,7 @@ public sealed partial class NpgsqlConnector
                 if (Settings.RootCertificate is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
 
-                if (DataSource.RootCertificateCallback is not null)
+                if (DataSource.EncryptionHandler.RootCertificateCallback is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
 
                 certificateValidationCallback = UserCertificateValidationCallback;
@@ -904,7 +901,7 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if ((caCert = DataSource.RootCertificateCallback?.Invoke()) is not null ||
+            else if ((caCert = DataSource.EncryptionHandler.RootCertificateCallback?.Invoke()) is not null ||
                      (certRootPath = Settings.RootCertificate ??
                                      PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
             {

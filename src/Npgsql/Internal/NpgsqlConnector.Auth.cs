@@ -37,7 +37,8 @@ partial class NpgsqlConnector
                 break;
 
             case AuthenticationRequestType.AuthenticationSASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async, cancellationToken);
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async,
+                    cancellationToken);
                 break;
 
             case AuthenticationRequestType.AuthenticationGSS:
@@ -67,7 +68,7 @@ partial class NpgsqlConnector
         await Flush(async, cancellationToken);
     }
 
-    async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
+    async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
         var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
@@ -82,61 +83,7 @@ partial class NpgsqlConnector
         var successfulBind = false;
 
         if (supportsSha256Plus)
-        {
-            var sslStream = (SslStream)_stream;
-            if (sslStream.RemoteCertificate is null)
-            {
-                ConnectionLogger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
-            }
-            else
-            {
-                using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
-                // Checking for hashing algorithms
-                HashAlgorithm? hashAlgorithm = null;
-                var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
-                if (algorithmName is null)
-                {
-                    ConnectionLogger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
-                }
-                else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
-                         algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
-                         algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
-                {
-                    hashAlgorithm = SHA256.Create();
-                }
-                else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
-                {
-                    hashAlgorithm = SHA384.Create();
-                }
-                else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
-                {
-                    hashAlgorithm = SHA512.Create();
-                }
-                else
-                {
-                    ConnectionLogger.LogWarning(
-                        $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
-                }
-
-                if (hashAlgorithm != null)
-                {
-                    using var _ = hashAlgorithm;
-
-                    // RFC 5929
-                    mechanism = "SCRAM-SHA-256-PLUS";
-                    // PostgreSQL only supports tls-server-end-point binding
-                    cbindFlag = "p=tls-server-end-point";
-                    // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
-                    var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
-
-                    var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
-                    cbind = Convert.ToBase64String(cbindBytes);
-                    successfulBind = true;
-                    IsScramPlus = true;
-                }
-            }
-        }
+            DataSource.EncryptionHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
         if (!successfulBind && supportsSha256)
         {
@@ -214,6 +161,63 @@ partial class NpgsqlConnector
 
             rncProvider.GetBytes(nonceBytes);
             return Convert.ToBase64String(nonceBytes);
+        }
+    }
+
+    internal void AuthenticateSASLSha256Plus(ref string mechanism, ref string cbindFlag, ref string cbind,
+        ref bool successfulBind)
+    {
+        var sslStream = (SslStream)_stream;
+        if (sslStream.RemoteCertificate is null)
+        {
+            ConnectionLogger.LogWarning("Remote certificate null, falling back to SCRAM-SHA-256");
+            return;
+        }
+
+        using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
+        // Checking for hashing algorithms
+        HashAlgorithm? hashAlgorithm = null;
+        var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
+        if (algorithmName is null)
+        {
+            ConnectionLogger.LogWarning("Signature algorithm was null, falling back to SCRAM-SHA-256");
+        }
+        else if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
+                 algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
+                 algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA256.Create();
+        }
+        else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA384.Create();
+        }
+        else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
+        {
+            hashAlgorithm = SHA512.Create();
+        }
+        else
+        {
+            ConnectionLogger.LogWarning(
+                $"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
+        }
+
+        if (hashAlgorithm != null)
+        {
+            using var _ = hashAlgorithm;
+
+            // RFC 5929
+            mechanism = "SCRAM-SHA-256-PLUS";
+            // PostgreSQL only supports tls-server-end-point binding
+            cbindFlag = "p=tls-server-end-point";
+            // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
+            var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
+
+            var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+            var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+            cbind = Convert.ToBase64String(cbindBytes);
+            successfulBind = true;
+            IsScramPlus = true;
         }
     }
 
