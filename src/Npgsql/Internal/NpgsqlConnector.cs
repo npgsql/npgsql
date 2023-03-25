@@ -888,7 +888,7 @@ public sealed partial class NpgsqlConnector
                 if (Settings.RootCertificate is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseSslRootCertificateWithUserCallback);
 
-                if (DataSource.RootCertificateCallback is not null)
+                if (DataSource.EncryptionHandler.RootCertificateCallback is not null)
                     throw new ArgumentException(NpgsqlStrings.CannotUseValidationRootCertificateCallbackWithUserCallback);
 
                 certificateValidationCallback = UserCertificateValidationCallback;
@@ -901,7 +901,7 @@ public sealed partial class NpgsqlConnector
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }
-            else if ((caCert = DataSource.RootCertificateCallback?.Invoke()) is not null ||
+            else if ((caCert = DataSource.EncryptionHandler.RootCertificateCallback?.Invoke()) is not null ||
                      (certRootPath = Settings.RootCertificate ??
                                      PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is not null)
             {

@@ -33,7 +33,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     IEncryptionHandler _encryptionHandler = new EmptyEncryptionHandler();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
-    Func<X509Certificate2?>? _rootCertificateCallback;
 
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
@@ -185,7 +184,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </remarks>
     public NpgsqlSlimDataSourceBuilder UseRootCertificateCallback(Func<X509Certificate2>? rootCertificateCallback)
     {
-        _rootCertificateCallback = rootCertificateCallback;
+        _encryptionHandler.RootCertificateCallback = rootCertificateCallback;
 
         return this;
     }
@@ -527,8 +526,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _userTypeMappings,
             DefaultNameTranslator,
             _syncConnectionInitializer,
-            _asyncConnectionInitializer,
-            _rootCertificateCallback);
+            _asyncConnectionInitializer);
     }
 
     void ValidateMultiHost()
