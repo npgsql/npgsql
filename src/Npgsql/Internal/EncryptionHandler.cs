@@ -6,46 +6,34 @@ using Npgsql.Util;
 
 namespace Npgsql.Internal;
 
-interface IEncryptionHandler
+class EncryptionHandler
 {
-    bool SupportEncryption { get; }
+    public virtual bool SupportEncryption => false;
 
-    Func<X509Certificate2?>? RootCertificateCallback { get; set; }
-
-    Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt);
-
-    void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
-        ref bool successfulBind);
-}
-
-sealed class EncryptionHandler : IEncryptionHandler
-{
-    public bool SupportEncryption => true;
-
-    public Func<X509Certificate2?>? RootCertificateCallback { get; set; }
-
-    public Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
-        => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
-
-    public void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
-            ref bool successfulBind)
-        => connector.AuthenticateSASLSha256Plus(ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
-}
-
-sealed class EmptyEncryptionHandler : IEncryptionHandler
-{
-    public bool SupportEncryption => false;
-
-    public Func<X509Certificate2?>? RootCertificateCallback
+    public virtual Func<X509Certificate2?>? RootCertificateCallback
     {
         get => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
         set => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
     }
 
-    public Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
+    public virtual Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
         => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
 
-    public void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
+    public virtual void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
         ref bool successfulBind)
         => throw new InvalidOperationException(NpgsqlStrings.EncryptionDisabled);
+}
+
+sealed class RealEncryptionHandler : EncryptionHandler
+{
+    public override bool SupportEncryption => true;
+
+    public override Func<X509Certificate2?>? RootCertificateCallback { get; set; }
+
+    public override Task NegotiateEncryption(NpgsqlConnector connector, SslMode sslMode, NpgsqlTimeout timeout, bool async, bool isFirstAttempt)
+        => connector.NegotiateEncryption(sslMode, timeout, async, isFirstAttempt);
+
+    public override void AuthenticateSASLSha256Plus(NpgsqlConnector connector, ref string mechanism, ref string cbindFlag, ref string cbind,
+            ref bool successfulBind)
+        => connector.AuthenticateSASLSha256Plus(ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 }

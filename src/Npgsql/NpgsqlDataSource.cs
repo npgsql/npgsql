@@ -43,7 +43,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; } = null!; // Initialized at bootstrapping
 
-    internal IEncryptionHandler EncryptionHandler { get; }
+    internal EncryptionHandler EncryptionHandler { get; }
     internal RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; }
     internal Action<X509CertificateCollection>? ClientCertificatesCallback { get; }
 

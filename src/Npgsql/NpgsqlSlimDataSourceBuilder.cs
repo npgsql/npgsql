@@ -30,7 +30,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
-    IEncryptionHandler _encryptionHandler = new EmptyEncryptionHandler();
+    EncryptionHandler _encryptionHandler = new();
     RemoteCertificateValidationCallback? _userCertificateValidationCallback;
     Action<X509CertificateCollection>? _clientCertificatesCallback;
 
@@ -422,7 +422,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableEncryption()
     {
-        _encryptionHandler = new EncryptionHandler();
+        _encryptionHandler = new RealEncryptionHandler();
 
         return this;
     }

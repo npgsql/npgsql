@@ -7,13 +7,12 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.Util;
 
 namespace Npgsql;
 
 sealed record NpgsqlDataSourceConfiguration(
     NpgsqlLoggingConfiguration LoggingConfiguration,
-    IEncryptionHandler EncryptionHandler,
+    EncryptionHandler EncryptionHandler,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,
     Action<X509CertificateCollection>? ClientCertificatesCallback,
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? PeriodicPasswordProvider,
