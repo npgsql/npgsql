@@ -22,7 +22,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// </param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
-    /// Defaults to <see cref="ServiceLifetime.Scoped" />.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
     /// </param>
     /// <param name="dataSourceLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
@@ -44,7 +44,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
-    /// Defaults to <see cref="ServiceLifetime.Scoped" />.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
     /// </param>
     /// <param name="dataSourceLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
@@ -69,7 +69,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// </param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
-    /// Defaults to <see cref="ServiceLifetime.Scoped" />.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
     /// </param>
     /// <param name="dataSourceLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
@@ -93,7 +93,7 @@ public static class NpgsqlServiceCollectionExtensions
     /// <param name="connectionString">An Npgsql connection string.</param>
     /// <param name="connectionLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlConnection" /> in the container.
-    /// Defaults to <see cref="ServiceLifetime.Scoped" />.
+    /// Defaults to <see cref="ServiceLifetime.Transient" />.
     /// </param>
     /// <param name="dataSourceLifetime">
     /// The lifetime with which to register the <see cref="NpgsqlDataSource" /> service in the container.
