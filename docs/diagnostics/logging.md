@@ -64,7 +64,7 @@ Note that you must call `InitializeLogging` at the start of your program, before
 
 ## Parameter logging
 
-By default, when logging SQL statements, Npgsql does not log parameter values, since these may contain sensitive information. You can turn on parameter logging by setting `NpgsqlLogManager.IsParameterLoggingEnabled` to true.
+By default, when logging SQL statements, Npgsql does not log parameter values, since these may contain sensitive information. You can opt into parameter logging when debugging your application:
 
 ### [Console Program](#tab/console)
 
