@@ -304,9 +304,10 @@ partial class NpgsqlConnector
             if (gssMsg == null)
                 throw new NpgsqlException($"Received unexpected authentication request message {response.AuthRequestType}");
             data = authContext.GetOutgoingBlob(gssMsg.AuthenticationData.AsSpan(), out statusCode)!;
-            if (statusCode == NegotiateAuthenticationStatusCode.Completed)
+            // We might get NegotiateAuthenticationStatusCode.Completed but the data will not be null
+            // This can happen if it's the first cycle, in which case we have to send that data to complete handshake
+            if (statusCode == NegotiateAuthenticationStatusCode.Completed && data is null)
                 continue;
-            Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
             await WritePassword(data, 0, data.Length, async, UserCancellationToken);
             await Flush(async, UserCancellationToken);
         }
