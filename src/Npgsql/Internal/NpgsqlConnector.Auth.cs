@@ -300,13 +300,15 @@ partial class NpgsqlConnector
             var response = ExpectAny<AuthenticationRequestMessage>(await ReadMessage(async), this);
             if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                 break;
-            var gssMsg = response as AuthenticationGSSContinueMessage;
-            if (gssMsg == null)
+            if (response is not AuthenticationGSSContinueMessage gssMsg)
                 throw new NpgsqlException($"Received unexpected authentication request message {response.AuthRequestType}");
             data = authContext.GetOutgoingBlob(gssMsg.AuthenticationData.AsSpan(), out statusCode)!;
-            if (statusCode == NegotiateAuthenticationStatusCode.Completed)
+            if (statusCode is not NegotiateAuthenticationStatusCode.Completed and not NegotiateAuthenticationStatusCode.ContinueNeeded)
+                throw new NpgsqlException($"Error while authenticating GSS/SSPI: {statusCode}");
+            // We might get NegotiateAuthenticationStatusCode.Completed but the data will not be null
+            // This can happen if it's the first cycle, in which case we have to send that data to complete handshake (#4888)
+            if (data is null)
                 continue;
-            Debug.Assert(statusCode == NegotiateAuthenticationStatusCode.ContinueNeeded);
             await WritePassword(data, 0, data.Length, async, UserCancellationToken);
             await Flush(async, UserCancellationToken);
         }
