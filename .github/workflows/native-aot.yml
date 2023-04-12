@@ -83,7 +83,7 @@ jobs:
           size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)"
 
-          if (( size > 15728640 )); then
-            echo "Binary size exceeds 15mb threshold"
+          if (( size > 7340032 )); then
+            echo "Binary size exceeds 7mb threshold"
             exit 1
           fi
