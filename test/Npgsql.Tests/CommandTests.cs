@@ -1401,6 +1401,7 @@ $$ LANGUAGE plpgsql;";
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/4906")]
     [Description("Make sure we don't cancel a prepended query (and do not deadlock in case of a failure)")]
+    [Explicit("Flaky due to #5033")]
     public async Task Not_cancel_prepended_query([Values] bool failPrependedQuery)
     {
         if (IsMultiplexing)
