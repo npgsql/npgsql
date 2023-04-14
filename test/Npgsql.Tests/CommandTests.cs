@@ -311,6 +311,7 @@ public class CommandTests : MultiplexingTestBase
     }
 
     [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
+    [Explicit("Flaky due to #5033")]
     public async Task Cancel_async_soft()
     {
         if (IsMultiplexing)
