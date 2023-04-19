@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
@@ -37,7 +37,7 @@
     <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.5" />
 
     <!-- NativeAOT -->
-    <PackageVersion Include="Mono.Cecil" Version="0.11.4" />
+    <PackageVersion Include="Mono.Cecil" Version="0.11.5" />
   </ItemGroup>
 
   <!-- Compatibility -->
