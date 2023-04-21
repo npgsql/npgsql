@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -525,7 +526,8 @@ FROM pg_constraint c
 
     static DataTable GetDataTypes(NpgsqlConnection conn)
     {
-        using var _ = conn.StartTemporaryBindingScope(out var connector);
+        var connector = conn.Connector;
+        Debug.Assert(connector is not null);
 
         var table = new DataTable("DataTypes");
 

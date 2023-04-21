@@ -452,7 +452,6 @@ public sealed class NpgsqlRawCopyStream : Stream, ICancelable
         LogMessages.CopyOperationCompleted(_copyLogger, _connector.Id);
         _connector.EndUserAction();
         _connector.CurrentCopyOperation = null;
-        _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
         _connector = null;
         _readBuf = null;
         _writeBuf = null;
