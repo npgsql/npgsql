@@ -1734,7 +1734,7 @@ public sealed partial class NpgsqlConnector
     internal void PerformUserCancellation()
     {
         var connection = Connection;
-        if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+        if (connection is null || connection.ConnectorBindingScope == ConnectorBindingScope.Reader || UserCancellationRequested)
             return;
 
         // Take the lock first to make sure there is no concurrent Break.
@@ -1749,13 +1749,17 @@ public sealed partial class NpgsqlConnector
             Monitor.Enter(CancelLock);
         }
 
-        // Wait before we've read all responses for the prepended queries
-        // as we can't gracefully handle their cancellation.
-        // Break makes sure that it's going to be set even if we fail while reading them.
-        ReadingPrependedMessagesMRE.Wait();
-
         try
         {
+            // Wait before we've read all responses for the prepended queries
+            // as we can't gracefully handle their cancellation.
+            // Break makes sure that it's going to be set even if we fail while reading them.
+
+            // We don't wait indefinitely to avoid deadlocks from synchronous CancellationToken.Register
+            // See #5032
+            if (!ReadingPrependedMessagesMRE.Wait(0))
+                return;
+
             _userCancellationRequested = true;
 
             if (AttemptPostgresCancellation && SupportsPostgresCancellation)
