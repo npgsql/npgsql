@@ -121,17 +121,15 @@ CREATE TYPE {type2} AS ENUM ('value1', 'value2');");
     [Test]
     public async Task Unmapped_unknown_enum_as_int()
     {
-        await using var connection = await OpenConnectionAsync();
-
         await AssertTypeWrite(UnmappedEnum.Happy, "2", "integer", NpgsqlDbType.Integer, DbType.Int32, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedEnum>("2", "integer");
     }
 
     [Test]
     public async Task Unmapped_unknown_enum_as_string()
     {
-        await using var connection = await OpenConnectionAsync();
-
         await AssertTypeWrite(UnmappedEnum.Happy, "Happy", "text", NpgsqlDbType.Text, DbType.String, isDefault: false, isNpgsqlDbTypeInferredFromClrType: false);
+        await AssertTypeUnsupportedRead<UnmappedEnum>("Happy", "text");
     }
 
     enum UnmappedEnum { Sad, Ok, Happy }
