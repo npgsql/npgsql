@@ -1,6 +1,5 @@
 using System;
 using Npgsql;
-using Npgsql.TypeMapping;
 
 #pragma warning disable CA1720
 
@@ -631,6 +630,16 @@ public enum NpgsqlDbType
     /// See https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     Multirange = 0x20000000,
+
+    #endregion
+
+    #region Cube
+
+    /// <summary>
+    /// The PostgreSQL cube type, each value is a multidimensional cube.
+    /// </summary>
+    /// <remarks>See http://www.postgresql.org/docs/current/static/cube.html</remarks>
+    Cube = 63
 
     #endregion
 }

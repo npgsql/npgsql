@@ -1,5 +1,28 @@
 ﻿#nullable enable
+const NpgsqlTypes.NpgsqlCube.MaxDimensions = 100 -> int
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableRecords() -> Npgsql.NpgsqlSlimDataSourceBuilder!
+NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.Dimensions.get -> int
+NpgsqlTypes.NpgsqlCube.Distance(NpgsqlTypes.NpgsqlCube other) -> double
+NpgsqlTypes.NpgsqlCube.Enlarge(double r, int n) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.Equals(NpgsqlTypes.NpgsqlCube other) -> bool
+NpgsqlTypes.NpgsqlCube.Intersection(NpgsqlTypes.NpgsqlCube other) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.LlCoord(int n) -> double
+NpgsqlTypes.NpgsqlCube.LowerLeft.get -> System.Collections.Generic.IReadOnlyList<double>!
+NpgsqlTypes.NpgsqlCube.NpgsqlCube() -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(double coord) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(double lowerLeft, double upperRight) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double coord) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(NpgsqlTypes.NpgsqlCube cube, double lowerLeft, double upperRight) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! coords) -> void
+NpgsqlTypes.NpgsqlCube.NpgsqlCube(System.Collections.Generic.IEnumerable<double>! lowerLeft, System.Collections.Generic.IEnumerable<double>! upperRight) -> void
+NpgsqlTypes.NpgsqlCube.Point.get -> bool
+NpgsqlTypes.NpgsqlCube.Subset(params int[]! indexes) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.Union(NpgsqlTypes.NpgsqlCube other) -> NpgsqlTypes.NpgsqlCube
+NpgsqlTypes.NpgsqlCube.UpperRight.get -> System.Collections.Generic.IReadOnlyList<double>!
+NpgsqlTypes.NpgsqlCube.UrCoord(int n) -> double
+NpgsqlTypes.NpgsqlCube.Write(System.Text.StringBuilder! stringBuilder) -> void
+NpgsqlTypes.NpgsqlDbType.Cube = 63 -> NpgsqlTypes.NpgsqlDbType
 override Npgsql.NpgsqlBatch.Dispose() -> void
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
 Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object?[]! values) -> System.Threading.Tasks.Task!
@@ -49,3 +72,8 @@ Npgsql.NpgsqlSlimDataSourceBuilder.UseUserCertificateValidationCallback(System.N
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValue(int ordinal) -> object!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValues(object![]! values) -> int
+override NpgsqlTypes.NpgsqlCube.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlCube.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlCube.ToString() -> string!
+static NpgsqlTypes.NpgsqlCube.operator !=(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.NpgsqlCube y) -> bool
+static NpgsqlTypes.NpgsqlCube.operator ==(NpgsqlTypes.NpgsqlCube x, NpgsqlTypes.NpgsqlCube y) -> bool
