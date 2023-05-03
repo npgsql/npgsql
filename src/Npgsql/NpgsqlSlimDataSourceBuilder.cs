@@ -13,7 +13,6 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
