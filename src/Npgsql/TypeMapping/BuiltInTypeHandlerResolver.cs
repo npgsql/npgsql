@@ -16,6 +16,7 @@ using Npgsql.Internal.TypeHandlers.NetworkHandlers;
 using Npgsql.Internal.TypeHandlers.NumericHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -62,10 +63,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     InetHandler? _inetHandler;
     MacaddrHandler? _macaddrHandler;
     MacaddrHandler? _macaddr8Handler;
-
-    // Full-text search types
-    TsQueryHandler? _tsQueryHandler;
-    TsVectorHandler? _tsVectorHandler;
 
     // Geometry types
     BoxHandler? _boxHandler;
@@ -170,10 +167,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "macaddr"  => MacaddrHandler(),
             "macaddr8" => Macaddr8Handler(),
 
-            // Full-text search types
-            "tsquery"  => TsQueryHandler(),
-            "tsvector" => TsVectorHandler(),
-
             // Geometry types
             "box"     => BoxHandler(),
             "circle"  => CircleHandler(),
@@ -210,25 +203,40 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
             "pg_lsn"     => PgLsnHandler(),
             "tid"        => TidHandler(),
             "char"       => InternalCharHandler(),
-            "record"     => new UnsupportedHandler(PgType("record"), $"Records aren't supported; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRecords)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable records."),
             "void"       => VoidHandler(),
 
             "unknown"    => UnknownHandler(),
+
+            // Types that are unsupported by default when using NpgsqlSlimDataSourceBuilder
+            "record" => UnsupportedRecordHandler(),
+            "tsvector" => UnsupportedTsVectorHandler(),
+            "tsquery" => UnsupportedTsQueryHandler(),
 
             _ => null
         };
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
     {
-        if (BuiltInTypeMappingResolver.ClrTypeToDataTypeName(type) is not { } dataTypeName)
+        if (BuiltInTypeMappingResolver.ClrTypeToDataTypeName(type) is { } dataTypeName)
+            return ResolveByDataTypeName(dataTypeName);
+
+        if (type.IsSubclassOf(typeof(Stream)))
+            return ResolveByDataTypeName("bytea");
+
+        switch (type.FullName)
         {
-            if (!type.IsSubclassOf(typeof(Stream)))
-                return null;
+        case "NpgsqlTypes.NpgsqlTsVector":
+        case "NpgsqlTypes.NpgsqlTsQueryLexeme":
+        case "NpgsqlTypes.NpgsqlTsQueryAnd":
+        case "NpgsqlTypes.NpgsqlTsQueryOr":
+        case "NpgsqlTypes.NpgsqlTsQueryNot":
+        case "NpgsqlTypes.NpgsqlTsQueryEmpty":
+        case "NpgsqlTypes.NpgsqlTsQueryFollowedBy":
+            return UnsupportedTsQueryHandler();
 
-            dataTypeName = "bytea";
+        default:
+            return null;
         }
-
-        return ResolveByDataTypeName(dataTypeName);
     }
 
     public override NpgsqlTypeHandler? ResolveValueDependentValue(object value)
@@ -375,10 +383,6 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler MacaddrHandler()  => _macaddrHandler ??= new MacaddrHandler(PgType("macaddr"));
     NpgsqlTypeHandler Macaddr8Handler() => _macaddr8Handler ??= new MacaddrHandler(PgType("macaddr8"));
 
-    // Full-text search types
-    NpgsqlTypeHandler TsQueryHandler()  => _tsQueryHandler ??= new TsQueryHandler(PgType("tsquery"));
-    NpgsqlTypeHandler TsVectorHandler() => _tsVectorHandler ??= new TsVectorHandler(PgType("tsvector"));
-
     // Geometry types
     NpgsqlTypeHandler BoxHandler()         => _boxHandler ??= new BoxHandler(PgType("box"));
     NpgsqlTypeHandler CircleHandler()      => _circleHandler ??= new CircleHandler(PgType("circle"));
@@ -423,6 +427,18 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     NpgsqlTypeHandler TidHandler()          => _tidHandler ??= new TidHandler(PgType("tid"));
     NpgsqlTypeHandler InternalCharHandler() => _internalCharHandler ??= new InternalCharHandler(PgType("char"));
     NpgsqlTypeHandler VoidHandler()         => _voidHandler ??= new VoidHandler(PgType("void"));
+
+    // Types that are unsupported by default when using NpgsqlSlimDataSourceBuilder
+    NpgsqlTypeHandler UnsupportedRecordHandler() => new UnsupportedHandler(PgType("record"), string.Format(
+        NpgsqlStrings.RecordsNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRecords), nameof(NpgsqlSlimDataSourceBuilder)));
+
+    NpgsqlTypeHandler UnsupportedTsVectorHandler() => new UnsupportedHandler(PgType("tsvector"), string.Format(
+        NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch),
+        nameof(NpgsqlSlimDataSourceBuilder)));
+
+    NpgsqlTypeHandler UnsupportedTsQueryHandler() => new UnsupportedHandler(PgType("tsquery"), string.Format(
+        NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch),
+        nameof(NpgsqlSlimDataSourceBuilder)));
 
     NpgsqlTypeHandler UnknownHandler() => _unknownHandler ??= new UnknownTypeHandler(_connector.TextEncoding);
 

@@ -146,5 +146,17 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseValidationRootCertificateCallbackWithUserCallback", resourceCulture);
             }
         }
+        
+        internal static string RecordsNotEnabled {
+            get {
+                return ResourceManager.GetString("RecordsNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string FullTextSearchNotEnabled {
+            get {
+                return ResourceManager.GetString("FullTextSearchNotEnabled", resourceCulture);
+            }
+        }
     }
 }

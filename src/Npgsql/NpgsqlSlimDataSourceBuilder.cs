@@ -13,7 +13,6 @@ using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -413,6 +412,15 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
         AddTypeResolverFactory(new RecordTypeHandlerResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>tsquery</c> and <c>tsvector</c> types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
+    {
+        AddTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
         return this;
     }
 

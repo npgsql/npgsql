@@ -69,4 +69,10 @@
     <data name="CannotUseValidationRootCertificateCallbackWithUserCallback" xml:space="preserve">
         <value>ValidationRootCertificateCallback cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
+    <data name="RecordsNotEnabled" xml:space="preserve">
+        <value>Records aren't enabled; please call {0} on {1} to enable records.</value>
+    </data>
+    <data name="FullTextSearchNotEnabled" xml:space="preserve">
+        <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
+    </data>
 </root>

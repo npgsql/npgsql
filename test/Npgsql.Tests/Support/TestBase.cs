@@ -301,10 +301,10 @@ public abstract class TestBase
         Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
-    public Task<Exception> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName, dataSource);
 
-    public async Task<Exception> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+    public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
     {
         dataSource ??= DefaultDataSource;

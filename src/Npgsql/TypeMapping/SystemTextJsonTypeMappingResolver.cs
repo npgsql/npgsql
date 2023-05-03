@@ -21,9 +21,6 @@ sealed class SystemTextJsonTypeMappingResolver : TypeMappingResolver
     public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
         => DoGetMappingByDataTypeName(dataTypeName);
 
-    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper mapper, PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
     internal static string? ClrTypeToDataTypeName(Type type, Dictionary<Type, string>? clrTypes)
         => type == typeof(JsonDocument)
            || type == typeof(JsonObject) || type == typeof(JsonArray)

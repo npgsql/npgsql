@@ -18,9 +18,6 @@ public class GeoJsonTypeMappingResolver : TypeMappingResolver
     public override TypeMappingInfo? GetMappingByDataTypeName(string dataTypeName)
         => DoGetMappingByDataTypeName(dataTypeName);
 
-    public override TypeMappingInfo? GetMappingByPostgresType(TypeMapper mapper, PostgresType type)
-        => DoGetMappingByDataTypeName(type.Name);
-
     static TypeMappingInfo? DoGetMappingByDataTypeName(string dataTypeName)
         => dataTypeName switch
         {
