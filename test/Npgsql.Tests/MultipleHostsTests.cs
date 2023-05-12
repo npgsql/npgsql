@@ -958,7 +958,6 @@ public class MultipleHostsTests : TestBase
     public async Task Multiple_hosts_with_disabled_sql_rewriting()
     {
         using var _ = DisableSqlRewriting();
-        PoolManager.Reset();
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString)
         {
