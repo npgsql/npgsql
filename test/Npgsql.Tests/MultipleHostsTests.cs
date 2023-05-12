@@ -891,7 +891,6 @@ public class MultipleHostsTests : TestBase
         Assert.That(secondDataSource.GetDatabaseState(), Is.EqualTo(DatabaseState.PrimaryReadWrite));
     }
 
-    // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
     [Test, NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
@@ -951,6 +950,26 @@ public class MultipleHostsTests : TestBase
                 Interlocked.Increment(ref queriesDone);
             }
         }
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/5055")]
+    [NonParallelizable] // Disables sql rewriting
+    public async Task Multiple_hosts_with_disabled_sql_rewriting()
+    {
+        using var _ = DisableSqlRewriting();
+
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString)
+        {
+            ConnectionStringBuilder =
+            {
+                Host = "localhost,127.0.0.1",
+                Pooling = true,
+                HostRecheckSeconds = 0
+            }
+        };
+        await using var dataSource = dataSourceBuilder.BuildMultiHost();
+        await using var conn = await dataSource.OpenConnectionAsync();
     }
 
     [Test]
