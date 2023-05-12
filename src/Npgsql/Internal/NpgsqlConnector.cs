@@ -637,10 +637,12 @@ public sealed partial class NpgsqlConnector : IDisposable
     internal async ValueTask<DatabaseState> QueryDatabaseState(
         NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
     {
-        using var cmd = CreateCommand("select pg_is_in_recovery(); SHOW default_transaction_read_only");
-        cmd.CommandTimeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
+        using var batch = CreateBatch();
+        batch.BatchCommands.Add(new NpgsqlBatchCommand("select pg_is_in_recovery()"));
+        batch.BatchCommands.Add(new NpgsqlBatchCommand("SHOW default_transaction_read_only"));
+        batch.Timeout = (int)timeout.CheckAndGetTimeLeft().TotalSeconds;
 
-        var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
+        var reader = async ? await batch.ExecuteReaderAsync(cancellationToken) : batch.ExecuteReader();
         try
         {
             if (async)
@@ -2640,6 +2642,12 @@ public sealed partial class NpgsqlConnector : IDisposable
     /// <param name="cmdText">The text of the query.</param>
     /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
     public NpgsqlCommand CreateCommand(string? cmdText = null) => new(cmdText, this);
+
+    /// <summary>
+    /// Creates and returns a <see cref="NpgsqlBatch"/> object associated with the <see cref="NpgsqlConnector"/>.
+    /// </summary>
+    /// <returns>A <see cref="NpgsqlBatch"/> object.</returns>
+    public NpgsqlBatch CreateBatch() => new NpgsqlBatch(this);
 
     void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
     {
