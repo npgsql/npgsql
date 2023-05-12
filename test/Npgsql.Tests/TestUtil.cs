@@ -342,6 +342,9 @@ public static class TestUtil
     internal static IDisposable DisableSqlRewriting()
     {
 #if DEBUG
+        // We clear the pools to make sure we don't accidentally reuse a pool
+        // Since EnableSqlRewriting is a global change
+        PoolManager.Reset();
         NpgsqlCommand.EnableSqlRewriting = false;
         return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
 #else

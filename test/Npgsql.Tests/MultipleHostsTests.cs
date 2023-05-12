@@ -880,7 +880,6 @@ public class MultipleHostsTests : TestBase
             Is.EqualTo(ClusterState.PrimaryReadWrite));
     }
 
-    // This is the only test in this class which actually connects to PostgreSQL (the others use the PostgreSQL mock)
     [Test, Timeout(10000), NonParallelizable]
     public void IntegrationTest([Values] bool loadBalancing, [Values] bool alwaysCheckHostState)
     {
@@ -944,6 +943,22 @@ public class MultipleHostsTests : TestBase
                 Interlocked.Increment(ref queriesDone);
             }
         }
+    }
+
+    [Test]
+    [IssueLink("https://github.com/npgsql/npgsql/issues/5055")]
+    [NonParallelizable] // Disables sql rewriting
+    public async Task Multiple_hosts_with_disabled_sql_rewriting()
+    {
+        using var _ = DisableSqlRewriting();
+
+        var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+        {
+            Host = "localhost,127.0.0.1",
+            Pooling = true,
+            HostRecheckSeconds = 0
+        };
+        await using var conn = await OpenConnectionAsync(csb);
     }
 
     static string MultipleHosts(params PgPostmasterMock[] postmasters)
