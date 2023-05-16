@@ -293,7 +293,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
     {
         var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
 
-        users.Columns.AddRange(new[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(int)) });
+        users.Columns.AddRange(new[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(uint)) });
 
         var getUsers = new StringBuilder();
 
