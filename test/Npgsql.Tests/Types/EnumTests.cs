@@ -30,6 +30,23 @@ public class EnumTests : MultiplexingTestBase
     }
 
     [Test]
+    public async Task Data_source_unmap()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum<Mood>(type);
+
+        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum<Mood>(type);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        Assert.IsTrue(isUnmapSuccessful);
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
+    }
+
+    [Test]
     public async Task Data_source_mapping_non_generic()
     {
         await using var adminConnection = await OpenConnectionAsync();
@@ -40,14 +57,23 @@ public class EnumTests : MultiplexingTestBase
         dataSourceBuilder.MapEnum(typeof(Mood), type);
         await using var dataSource = dataSourceBuilder.Build();
         await AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null);
+    }
 
-        // Mapping changes have no effect on already-built data sources
-        dataSourceBuilder.UnmapEnum(typeof(Mood), type);
-        await AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null);
+    [Test]
+    public async Task Data_source_unmap_non_generic()
+    {
+        await using var adminConnection = await OpenConnectionAsync();
+        var type = await GetTempTypeName(adminConnection);
+        await adminConnection.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
 
-        // But they do affect new data sources
-        await using var dataSource2 = dataSourceBuilder.Build();
-        Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+        var dataSourceBuilder = CreateDataSourceBuilder();
+        dataSourceBuilder.MapEnum(typeof(Mood), type);
+
+        var isUnmapSuccessful = dataSourceBuilder.UnmapEnum(typeof(Mood), type);
+        await using var dataSource = dataSourceBuilder.Build();
+
+        Assert.IsTrue(isUnmapSuccessful);
+        Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource, Mood.Happy, "happy", type, npgsqlDbType: null));
     }
 
     [Test]

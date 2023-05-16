@@ -65,7 +65,7 @@ public class GlobalTypeMapperTests : TestBase
 
             // But they do affect new data sources
             await using var dataSource2 = CreateDataSource();
-            Assert.ThrowsAsync<ArgumentException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
+            Assert.ThrowsAsync<InvalidCastException>(() => AssertType(dataSource2, Mood.Happy, "happy", type, npgsqlDbType: null));
         }
         finally
         {
