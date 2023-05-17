@@ -71,7 +71,9 @@ jobs:
       - name: Dump mstat
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
+      # Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376
       - name: Upload mstat
+        if: ${{ false }}
         uses: actions/upload-artifact@v3.1.2
         with:
           name: npgsql.mstat
