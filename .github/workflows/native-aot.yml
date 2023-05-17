@@ -74,7 +74,7 @@ jobs:
         shell: bash
 
       - name: Build
-        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0 -p:OptimizationPreference=Size
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
