@@ -29,11 +29,13 @@ env:
         <packageSourceMapping>
             <packageSource key="nuget.org">
                 <package pattern="*" />
-                <package pattern="Microsoft.TestPlatform.*" />
             </packageSource>
             <packageSource key="dotnet8">
                 <package pattern="runtime.*" />
-                <package pattern="Microsoft.*" />
+                <package pattern="Microsoft.NETCore.App.Runtime.*" />
+                <package pattern="Microsoft.AspNetCore.App.Runtime.*" />
+                <package pattern="Microsoft.NET.ILLink.Tasks" />
+                <package pattern="Microsoft.DotNet.ILCompiler" />
             </packageSource>
         </packageSourceMapping>
 
