@@ -26,6 +26,11 @@ on:
   schedule:
     - cron: '21 0 * * 4'
 
+# Cancel previous PR branch commits (head_ref is only defined on PRs)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   dotnet_sdk_version: '8.0.100-preview.4.23260.5'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
