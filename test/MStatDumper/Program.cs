@@ -17,8 +17,10 @@ namespace MStatDumper
             var asm = AssemblyDefinition.ReadAssembly(args[0]);
             var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
 
+            var versionMajor = asm.Name.Version.Major;
+
             var types = globalType.Methods.First(x => x.Name == "Types");
-            var typeStats = GetTypes(types).ToList();
+            var typeStats = GetTypes(versionMajor, types).ToList();
             var typeSize = typeStats.Sum(x => x.Size);
             var typesByModules = typeStats.GroupBy(x => x.Type.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size) }).ToList();
             if (markDownStyleOutput)
@@ -55,7 +57,7 @@ namespace MStatDumper
             Console.WriteLine();
 
             var methods = globalType.Methods.First(x => x.Name == "Methods");
-            var methodStats = GetMethods(methods).ToList();
+            var methodStats = GetMethods(versionMajor, methods).ToList();
             var methodSize = methodStats.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize);
             var methodsByModules = methodStats.GroupBy(x => x.Method.DeclaringType.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) }).ToList();
             if (markDownStyleOutput)
@@ -257,7 +259,7 @@ namespace MStatDumper
                 Console.WriteLine();
                 Console.WriteLine("</details>");
 
-                var filteredTypeStats = GetTypes(types)
+                var filteredTypeStats = GetTypes(versionMajor, types)
                     .Where(x => x.Type.Scope.Name == "Npgsql")
                     .GroupBy(x => x.Type.Name)
                     .OrderByDescending(x => x.Sum(x => x.Size))
@@ -286,11 +288,13 @@ namespace MStatDumper
             }
         }
 
-        public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
+        public static IEnumerable<TypeStats> GetTypes(int formatVersion, MethodDefinition types)
         {
+            var entrySize = formatVersion == 1 ? 2 : 3;
+
             types.Body.SimplifyMacros();
             var il = types.Body.Instructions;
-            for (var i = 0; i + 2 < il.Count; i += 2)
+            for (var i = 0; i + entrySize < il.Count; i += entrySize)
             {
                 var type = (TypeReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
@@ -302,11 +306,13 @@ namespace MStatDumper
             }
         }
 
-        public static IEnumerable<MethodStats> GetMethods(MethodDefinition methods)
+        public static IEnumerable<MethodStats> GetMethods(int formatVersion, MethodDefinition methods)
         {
+            var entrySize = formatVersion == 1 ? 4 : 5;
+
             methods.Body.SimplifyMacros();
             var il = methods.Body.Instructions;
-            for (var i = 0; i + 4 < il.Count; i += 4)
+            for (var i = 0; i + entrySize < il.Count; i += entrySize)
             {
                 var method = (MethodReference)il[i + 0].Operand;
                 var size = (int)il[i + 1].Operand;
