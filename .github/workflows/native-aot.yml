@@ -9,10 +9,35 @@ on:
       - '*'
   pull_request:
 
-env:
-  dotnet_sdk_version: '8.0.100-preview.4.23260.5'
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+# Cancel previous PR branch commits (head_ref is only defined on PRs)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
+env:
+  dotnet_sdk_version: '8.0.100-preview.5.23266.8'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  nuget_config: |
+    <?xml version="1.0" encoding="utf-8"?>
+    <configuration>
+
+        <packageSources>
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
+        </packageSources>
+
+        <packageSourceMapping>
+            <packageSource key="nuget.org">
+                <package pattern="*" />
+                <package pattern="Microsoft.TestPlatform.*" />
+            </packageSource>
+            <packageSource key="dotnet8">
+                <package pattern="runtime.*" />
+                <package pattern="Microsoft.*" />
+            </packageSource>
+        </packageSourceMapping>
+
+    </configuration>
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -41,12 +66,15 @@ jobs:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
 
+      - name: Setup nuget config
+        run: echo "$nuget_config" > NuGet.config
+
       - name: Setup Native AOT prerequisites
         run: sudo apt-get install clang zlib1g-dev
         shell: bash
 
       - name: Build
-        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0
+        run: dotnet publish test/Npgsql.NativeAotTests/Npgsql.NativeAotTests.csproj -r linux-x64 -c Release -f net8.0 -p:OptimizationPreference=Size
         shell: bash
 
       # Uncomment the following to SSH into the agent running the build (https://github.com/mxschmitt/action-tmate)
@@ -68,14 +96,10 @@ jobs:
           size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
-      # Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376
       - name: Dump mstat
-        if: ${{ false }}
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
-      # Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376
       - name: Upload mstat
-        if: ${{ false }}
         uses: actions/upload-artifact@v3.1.2
         with:
           name: npgsql.mstat
