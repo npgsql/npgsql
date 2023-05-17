@@ -41,6 +41,12 @@ jobs:
           dotnet-version: |
             ${{ env.dotnet_sdk_version }}
 
+      - name: Setup preview source
+        run: dotnet nuget add source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json
+
+      - name: List sources
+        run: dotnet nuget list source
+
       - name: Setup Native AOT prerequisites
         run: sudo apt-get install clang zlib1g-dev
         shell: bash
