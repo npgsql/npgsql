@@ -4,7 +4,8 @@
     <PublishAot>true</PublishAot>
     <!-- We need to override TargetFrameworks here to avoid build failures  -->
     <TargetFrameworks>net8.0</TargetFrameworks>
-    <IlcGenerateMstatFile>true</IlcGenerateMstatFile>
+    <!-- Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376 -->
+    <IlcGenerateMstatFile>false</IlcGenerateMstatFile>
     <InvariantGlobalization>true</InvariantGlobalization>
     <StripSymbols>true</StripSymbols>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>

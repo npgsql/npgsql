@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  dotnet_sdk_version: '8.0.100-preview.3.23178.7'
+  dotnet_sdk_version: '8.0.100-preview.4.23260.5'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
@@ -68,10 +68,14 @@ jobs:
           size="$(ls -l test/Npgsql.NativeAotTests/bin/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests | cut -d ' ' -f 5)"
           echo "Binary size is $size bytes ($((size / (1024 * 1024))) mb)" >> $GITHUB_STEP_SUMMARY
 
+      # Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376
       - name: Dump mstat
+        if: ${{ false }}
         run: dotnet run --project test/MStatDumper/MStatDumper.csproj -c release -f net8.0 -- "test/Npgsql.NativeAotTests/obj/Release/net8.0/linux-x64/native/Npgsql.NativeAotTests.mstat" md >> $GITHUB_STEP_SUMMARY
 
+      # Temporarily disabled due to NativeAOT bug, see dotnet/runtime#86376
       - name: Upload mstat
+        if: ${{ false }}
         uses: actions/upload-artifact@v3.1.2
         with:
           name: npgsql.mstat

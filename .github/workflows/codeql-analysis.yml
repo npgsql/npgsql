@@ -27,7 +27,8 @@ on:
     - cron: '21 0 * * 4'
 
 env:
-  dotnet_sdk_version: '8.0.100-preview.3.23178.7'
+  dotnet_sdk_version: '8.0.100-preview.4.23260.5'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
 jobs:
   analyze:
