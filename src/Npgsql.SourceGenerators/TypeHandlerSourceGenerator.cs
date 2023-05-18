@@ -63,8 +63,8 @@ sealed class TypeHandlerSourceGenerator : ISourceGenerator
                     "System.Threading.Tasks",
                     "Npgsql.Internal"
                 }.Concat(classDeclarationSyntax.SyntaxTree.GetCompilationUnitRoot().Usings
-                    .Where(u => u.Alias is null && u.StaticKeyword.IsKind(SyntaxKind.None))
-                    .Select(u => u.Name.ToString())));
+                    .Where(u => u.Name is not null && u.Alias is null && u.StaticKeyword.IsKind(SyntaxKind.None))
+                    .Select(u => u.Name!.ToString())));
 
             var interfaces = typeSymbol.AllInterfaces
                 .Where(i => i.OriginalDefinition.Equals(isSimple ? simpleTypeHandlerInterfaceSymbol : typeHandlerInterfaceSymbol,
