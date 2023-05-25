@@ -231,6 +231,9 @@ public sealed class PostgresException : NpgsqlException
             case PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection:
             case PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection:
             case PostgresErrorCodes.TransactionResolutionUnknown:
+            case PostgresErrorCodes.AdminShutdown:
+            case PostgresErrorCodes.CrashShutdown:
+            case PostgresErrorCodes.IdleSessionTimeout:
                 return true;
             default:
                 return false;
