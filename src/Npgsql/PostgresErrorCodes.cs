@@ -390,6 +390,7 @@ public static class PostgresErrorCodes
     public const string CrashShutdown = "57P02";
     public const string CannotConnectNow = "57P03";
     public const string DatabaseDropped = "57P04";
+    public const string IdleSessionTimeout = "57P05";
 
     #endregion Class 57 - Operator Intervention
 
