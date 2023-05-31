@@ -1180,7 +1180,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
-        if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
+        if (!IsValidCopyCommand(copyFromCommand))
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
@@ -1234,7 +1234,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
-        if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
+        if (!IsValidCopyCommand(copyToCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
@@ -1294,7 +1294,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         if (copyFromCommand == null)
             throw new ArgumentNullException(nameof(copyFromCommand));
-        if (!copyFromCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
+        if (!IsValidCopyCommand(copyFromCommand))
             throw new ArgumentException("Must contain a COPY FROM STDIN command!", nameof(copyFromCommand));
 
         CheckReady();
@@ -1355,7 +1355,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         if (copyToCommand == null)
             throw new ArgumentNullException(nameof(copyToCommand));
-        if (!copyToCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
+        if (!IsValidCopyCommand(copyToCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT command!", nameof(copyToCommand));
 
         CheckReady();
@@ -1416,7 +1416,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         if (copyCommand == null)
             throw new ArgumentNullException(nameof(copyCommand));
-        if (!copyCommand.TrimStart().ToUpper().StartsWith("COPY", StringComparison.Ordinal))
+        if (!IsValidCopyCommand(copyCommand))
             throw new ArgumentException("Must contain a COPY TO STDOUT OR COPY FROM STDIN command!", nameof(copyCommand));
 
         CheckReady();
@@ -1446,6 +1446,14 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         }
     }
 
+    static bool IsValidCopyCommand(string copyCommand)
+    {
+    #if NET6_0_OR_GREATER || NETSTANDARD2_1
+        return copyCommand.AsSpan().TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
+    #else
+        return copyCommand.TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
+    #endif
+    }
     #endregion
 
     #region Wait
