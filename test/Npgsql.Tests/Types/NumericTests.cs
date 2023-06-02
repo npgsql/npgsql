@@ -19,6 +19,7 @@ public class NumericTests : MultiplexingTestBase
         new object[] { "0.000000000001::numeric", 0.000000000001M },
         new object[] { "0.00000001::numeric", 0.00000001M },
         new object[] { "0.0001::numeric", 0.0001M },
+        new object[] { "0.123456000000000100000000::numeric", 0.123456000000000100000000M },
         new object[] { "1::numeric", 1M },
         new object[] { "10000::numeric", 10000M },
         new object[] { "100000000::numeric", 100000000M },
@@ -44,6 +45,7 @@ public class NumericTests : MultiplexingTestBase
         new object[] { "1E+24::numeric", 1000000000000000000000000M },
         new object[] { "1E+28::numeric", 10000000000000000000000000000M },
 
+        new object[] { "1.2222333344445555666677778888::numeric", 1.2222333344445555666677778888M },
         new object[] { "11.222233334444555566667777888::numeric", 11.222233334444555566667777888M },
         new object[] { "111.22223333444455556666777788::numeric", 111.22223333444455556666777788M },
         new object[] { "1111.2222333344445555666677778::numeric", 1111.2222333344445555666677778M },
@@ -89,9 +91,8 @@ public class NumericTests : MultiplexingTestBase
     {
         using var conn = await OpenConnectionAsync();
         using var cmd = new NpgsqlCommand("SELECT " + query, conn);
-        Assert.That(
-            decimal.GetBits((decimal)(await cmd.ExecuteScalarAsync())!),
-            Is.EqualTo(decimal.GetBits(expected)));
+        var value = (decimal)(await cmd.ExecuteScalarAsync())!;
+        Assert.That(decimal.GetBits(value), Is.EqualTo(decimal.GetBits(expected)));
     }
 
     [Test]
@@ -150,15 +151,19 @@ public class NumericTests : MultiplexingTestBase
     [TestCaseSource(nameof(ReadWriteCases))]
     public async Task Read_BigInteger(string query, decimal expected)
     {
+        var bigInt = new BigInteger(expected);
+        using var conn = await OpenConnectionAsync();
+        using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+        using var rdr = await cmd.ExecuteReaderAsync();
+        await rdr.ReadAsync();
+
         if (decimal.Floor(expected) == expected)
-        {
-            var bigInt = new BigInteger(expected);
-            using var conn = await OpenConnectionAsync();
-            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
-            using var rdr = await cmd.ExecuteReaderAsync();
-            await rdr.ReadAsync();
             Assert.That(rdr.GetFieldValue<BigInteger>(0), Is.EqualTo(bigInt));
-        }
+        else
+            Assert.That(() => rdr.GetFieldValue<BigInteger>(0),
+                Throws.Exception
+                    .With.TypeOf<InvalidCastException>()
+                    .With.Message.EqualTo("Numeric value with non-zero fractional digits not supported by BigInteger"));
     }
 
     [Test]
