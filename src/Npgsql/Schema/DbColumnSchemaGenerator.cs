@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandlers.CompositeHandlers;
 using Npgsql.Util;
 
 namespace Npgsql.Schema;
@@ -115,18 +113,18 @@ ORDER BY attnum";
                 .Where(f => f.TableOID != 0)  // Only column fields
                 .Select(c => $"(attr.attrelid={c.TableOID} AND attr.attnum={c.ColumnAttributeNumber})")
                 .Join(" OR ");
-				
+
             if (columnFieldFilter != string.Empty)
             {
                 var query = oldQueryMode
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
-	
+
                 using var scope = new TransactionScope(
                     TransactionScopeOption.Suppress,
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
-	
+
                 await connection.Open(async, cancellationToken);
 
                 using var cmd = new NpgsqlCommand(query, connection);
@@ -255,7 +253,7 @@ ORDER BY attnum";
     {
         var typeMapper = _connection.Connector!.TypeMapper;
 
-        column.NpgsqlDbType = typeMapper.GetTypeInfoByOid(column.TypeOID).npgsqlDbType;
+        column.NpgsqlDbType = typeMapper.GetTypeInfo(column.TypeOID).npgsqlDbType;
         column.DataType = typeMapper.TryResolveByOID(column.TypeOID, out var handler)
             ? handler.GetFieldType()
             : null;

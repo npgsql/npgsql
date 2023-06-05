@@ -12,7 +12,6 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
@@ -37,15 +36,13 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected  string _sourceColumn;
 
     internal string TrimmedName { get; private protected set; } = PositionalName;
-    internal const string PositionalName = ""; 
-        
+    internal const string PositionalName = "";
+
     /// <summary>
     /// Can be used to communicate a value from the validation phase to the writing phase.
     /// To be used by type handlers only.
     /// </summary>
     public object? ConvertedValue { get; set; }
-
-    internal NpgsqlLengthCache? LengthCache { get; set; }
 
     internal NpgsqlTypeHandler? Handler { get; set; }
 
@@ -250,7 +247,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             if (Collection is not null)
                 Collection.ChangeParameterName(this, value);
-            else 
+            else
                 ChangeParameterName(value);
         }
     }
@@ -545,14 +542,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (_value == null)
             ThrowHelper.ThrowInvalidCastException("Parameter {0} must be set", ParameterName);
 
-        var lengthCache = LengthCache;
-        var len = Handler!.ValidateObjectAndGetLength(_value, ref lengthCache, this);
-        LengthCache = lengthCache;
-        return len;
+        throw new NotImplementedException();
     }
 
     internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
-        => Handler!.WriteObjectWithLength(_value!, buf, LengthCache, this, async, cancellationToken);
+        => throw new NotImplementedException();
 
     /// <inheritdoc />
     public override void ResetDbType()

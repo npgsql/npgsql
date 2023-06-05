@@ -4,12 +4,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
 using Npgsql.Replication.PgOutput.Messages;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 
 namespace Npgsql.BackendMessages;
@@ -244,7 +241,6 @@ public sealed class FieldDescription
         TypeSize = source.TypeSize;
         TypeModifier = source.TypeModifier;
         FormatCode = source.FormatCode;
-        Handler = source.Handler;
     }
 
     internal void Populate(
@@ -260,8 +256,6 @@ public sealed class FieldDescription
         TypeSize = typeSize;
         TypeModifier = typeModifier;
         FormatCode = formatCode;
-
-        ResolveHandler();
     }
 
     /// <summary>
@@ -303,36 +297,21 @@ public sealed class FieldDescription
 
     internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
 
-    /// <summary>
-    /// The Npgsql type handler assigned to handle this field.
-    /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
-    /// </summary>
-    internal NpgsqlTypeHandler Handler { get; private set; }
 
+    PostgresType _postgresType;
     internal PostgresType PostgresType
-        => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
-            ? postgresType
-            : UnknownBackendType.Instance;
-
-    internal Type FieldType => Handler.GetFieldType(this);
-
-    internal void ResolveHandler()
-        => Handler = IsBinaryFormat ? _typeMapper.ResolveByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
+        => _postgresType ??= _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType) ? postgresType : UnknownBackendType.Instance;
 
     TypeMapper _typeMapper;
-
-    internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
-    internal bool IsTextFormat => FormatCode == FormatCode.Text;
 
     internal FieldDescription Clone()
     {
         var field =  new FieldDescription(this);
-        field.ResolveHandler();
         return field;
     }
 
     /// <summary>
     /// Returns a string that represents the current object.
     /// </summary>
-    public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
+    public override string ToString() => Name + $"({PostgresType.DisplayName})";
 }
