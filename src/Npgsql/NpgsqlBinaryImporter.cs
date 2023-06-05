@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -331,9 +329,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         }
         param.ResolveHandler(_connector.TypeMapper);
         param.ValidateAndGetLength();
-        param.LengthCache?.Rewind();
         await param.WriteWithLength(_buf, async, cancellationToken);
-        param.LengthCache?.Clear();
         _column++;
     }
 
@@ -465,8 +461,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public void Dispose() => Close();
 
@@ -476,8 +472,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public ValueTask DisposeAsync()
     {
@@ -513,8 +509,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="Complete()" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public void Close() => CloseAsync(false).GetAwaiter().GetResult();
 
@@ -524,8 +520,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     /// </para>
     /// <para>
     /// Note that if <see cref="CompleteAsync" /> hasn't been invoked before calling this, the import will be cancelled and all changes will
-    /// be reverted. 
-    /// </para> 
+    /// be reverted.
+    /// </para>
     /// </summary>
     public ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {

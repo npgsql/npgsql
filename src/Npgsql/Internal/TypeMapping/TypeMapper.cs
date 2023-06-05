@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
@@ -482,7 +481,7 @@ public sealed class TypeMapper
 
                 Type GetUnderlyingType(Type t)
                     => Nullable.GetUnderlyingType(t) ?? t;
-            }   
+            }
         }
     }
 
@@ -522,10 +521,21 @@ public sealed class TypeMapper
         return false;
     }
 
-    internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfoByOid(uint oid)
+    internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfo(uint oid)
     {
         if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
             ThrowHelper.ThrowInvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
+
+        if (TryGetMapping(pgType, out var mapping))
+            return (mapping.NpgsqlDbType, pgType);
+
+        return (null, pgType);
+    }
+
+    internal (NpgsqlDbType? npgsqlDbType, PostgresType postgresType) GetTypeInfo(string datatypename)
+    {
+        if (!DatabaseInfo.TryGetPostgresTypeByName(datatypename, out var pgType))
+            ThrowHelper.ThrowInvalidOperationException($"Couldn't find PostgreSQL type with name {datatypename}");
 
         if (TryGetMapping(pgType, out var mapping))
             return (mapping.NpgsqlDbType, pgType);

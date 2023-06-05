@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -42,5 +41,5 @@ sealed class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
     }
 
     public NpgsqlTypeHandler CreateHandler(PostgresType postgresType, NpgsqlConnector connector)
-        => new EnumHandler<TEnum>((PostgresEnumType)postgresType, _enumToLabel, _labelToEnum);
+        => throw new NotImplementedException();
 }

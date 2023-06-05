@@ -1,8 +1,6 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -184,7 +182,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         var field = CheckRowAndColumnAndSeek(ordinal);
         var handler = field.Handler;
         if (!(handler is ByteaHandler))
-            throw new InvalidCastException("GetBytes() not supported for type " + field.Handler.PgDisplayName);
+            throw new InvalidCastException("GetBytes() not supported for type " + field.PostgresType.DisplayName);
 
         if (field.Length == -1)
             throw new InvalidCastException("field is null");

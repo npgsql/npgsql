@@ -11,7 +11,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using static Npgsql.Util.Statics;
 using Npgsql.Util;
 
@@ -501,7 +500,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     await buf.EnsureAsync(24);
                     var startLsn = buf.ReadUInt64();
                     var endLsn = buf.ReadUInt64();
-                    var sendTime = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
+                    var sendTime = PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
 
                     if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
@@ -532,7 +531,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
                     if (ReplicationLogger.IsEnabled(LogLevel.Trace))
                     {
                         var endLsn = new NpgsqlLogSequenceNumber(end);
-                        var timestamp = DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
+                        var timestamp = PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc);
                         LogMessages.ReceivedReplicationPrimaryKeepalive(ReplicationLogger, endLsn, timestamp, Connector.Id);
                     }
                     else
@@ -679,7 +678,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             buf.WriteInt64(lastReceivedLsn);
             buf.WriteInt64(lastFlushedLsn);
             buf.WriteInt64(lastAppliedLsn);
-            buf.WriteInt64(DateTimeUtils.EncodeTimestamp(timestamp));
+            buf.WriteInt64(PgDateTime.EncodeTimestamp(timestamp));
             buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
             await connector.Flush(async: true, cancellationToken);

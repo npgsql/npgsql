@@ -489,7 +489,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var param = new NpgsqlParameter();
 
-            var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfoByOid(types[i]);
+            var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfo(types[i]);
 
             param.DataTypeName = postgresType.DisplayName;
             param.PostgresType = postgresType;

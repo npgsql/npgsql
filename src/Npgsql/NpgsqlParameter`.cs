@@ -4,9 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using static Npgsql.Util.Statics;
 
 namespace Npgsql;
 
@@ -86,14 +84,11 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         if (TypedValue is null or DBNull)
             return 0;
 
-        var lengthCache = LengthCache;
-        var len = Handler!.ValidateAndGetLength(TypedValue, ref lengthCache, this);
-        LengthCache = lengthCache;
-        return len;
+        throw new NotImplementedException();
     }
 
     internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
-        => Handler!.WriteWithLength(TypedValue, buf, LengthCache, this, async, cancellationToken);
+        => throw new NotImplementedException();
 
     private protected override NpgsqlParameter CloneCore() =>
         // use fields instead of properties

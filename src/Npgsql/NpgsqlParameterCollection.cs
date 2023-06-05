@@ -5,9 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Npgsql.Internal.TypeMapping;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -741,7 +739,6 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
 
             if (validateValues)
             {
-                p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
             }
         }

@@ -176,7 +176,6 @@ partial class NpgsqlConnector
         {
             var param = parameters[paramIndex];
             formatCodesSum += (int)param.FormatCode;
-            param.LengthCache?.Rewind();
             paramsLength += param.ValidateAndGetLength();
         }
 
@@ -223,7 +222,6 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            param.LengthCache?.Rewind();
             await param.WriteWithLength(WriteBuffer, async, cancellationToken).ConfigureAwait(false);
         }
 

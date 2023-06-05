@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using Npgsql.Replication.Internal;
 using Npgsql.Replication.PgOutput.Messages;
 using Npgsql.Util;
@@ -104,7 +103,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 await buf.EnsureAsync(20);
                 yield return _beginMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                     transactionFinalLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionCommitTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32());
                 continue;
             }
@@ -141,7 +140,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     (CommitMessage.CommitFlags)buf.ReadByte(),
                     commitLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc));
+                    transactionCommitTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc));
                 continue;
             }
             case BackendReplicationMessageCode.Origin:
@@ -397,7 +396,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 yield return _streamCommitMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                     transactionXid: buf.ReadUInt32(), flags: buf.ReadByte(), commitLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     transactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc));
+                    transactionCommitTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc));
                 continue;
             }
             case BackendReplicationMessageCode.StreamAbort:
@@ -413,7 +412,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 yield return _beginPrepareMessage.Populate(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock,
                     prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
                     transactionGid: buf.ReadNullTerminatedString());
                 continue;
@@ -425,7 +424,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     flags: (PrepareMessage.PrepareFlags)buf.ReadByte(),
                     prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
                     transactionGid: buf.ReadNullTerminatedString());
                 continue;
@@ -437,7 +436,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     flags: (CommitPreparedMessage.CommitPreparedFlags)buf.ReadByte(),
                     commitPreparedLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     commitPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionCommitTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionCommitTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
                     transactionGid: buf.ReadNullTerminatedString());
                 continue;
@@ -449,8 +448,8 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     flags: (RollbackPreparedMessage.RollbackPreparedFlags)buf.ReadByte(),
                     preparedTransactionEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     rollbackPreparedEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
-                    transactionRollbackTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionRollbackTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
                     transactionGid: buf.ReadNullTerminatedString());
                 continue;
@@ -462,7 +461,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                     flags: (StreamPrepareMessage.StreamPrepareFlags)buf.ReadByte(),
                     prepareLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                     prepareEndLsn: new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                    transactionPrepareTimestamp: DateTimeUtils.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
+                    transactionPrepareTimestamp: PgDateTime.DecodeTimestamp(buf.ReadInt64(), DateTimeKind.Utc),
                     transactionXid: buf.ReadUInt32(),
                     transactionGid: buf.ReadNullTerminatedString());
                 continue;

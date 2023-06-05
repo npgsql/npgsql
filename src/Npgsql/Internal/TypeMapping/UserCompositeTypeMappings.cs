@@ -1,5 +1,4 @@
 using System;
-using Npgsql.Internal.TypeHandlers.CompositeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 
@@ -20,5 +19,5 @@ sealed class UserCompositeTypeMapping<T> : IUserCompositeTypeMapping
         => (PgTypeName, NameTranslator) = (pgTypeName, nameTranslator);
 
     public NpgsqlTypeHandler CreateHandler(PostgresType pgType, NpgsqlConnector connector)
-        => new CompositeHandler<T>((PostgresCompositeType)pgType, connector.TypeMapper, NameTranslator);
+        => throw new NotImplementedException();
 }
