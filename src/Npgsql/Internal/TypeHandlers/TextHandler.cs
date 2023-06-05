@@ -1,6 +1,5 @@
-﻿using System;
-using System.Data;
-using System.Diagnostics;
+using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -57,10 +56,46 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             // Bad case: the string's byte representation doesn't fit in our buffer.
             // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
             // entire row is in memory). Tweaking the buffer length via the connection string can
-            // help avoid this.
 
-            // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
-            var tempBuf = new byte[byteLen];
+            var tempBuf = ArrayPool<byte>.Shared.Rent(byteLen);
+
+            try
+            {
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(tempBuf, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return buf.TextEncoding.GetString(tempBuf, 0, byteLen);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(tempBuf);
+            }
+        }
+    }
+
+    async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
+    {
+        if (byteLen <= buf.Size)
+        {
+            // The string's byte representation can fit in our read buffer, read it.
+            await buf.Ensure(byteLen, async);
+            return buf.ReadChars(byteLen);
+        }
+
+        var tempBuf = ArrayPool<byte>.Shared.Rent(byteLen);
+
+        try
+        {
             var pos = 0;
             while (true)
             {
@@ -74,35 +109,12 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
                 }
                 break;
             }
-            return buf.TextEncoding.GetString(tempBuf);
+            return buf.TextEncoding.GetChars(tempBuf, 0, byteLen);
         }
-    }
-
-    async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
-    {
-        if (byteLen <= buf.Size)
+        finally
         {
-            // The string's byte representation can fit in our read buffer, read it.
-            await buf.Ensure(byteLen, async);
-            return buf.ReadChars(byteLen);
+            ArrayPool<byte>.Shared.Return(tempBuf);
         }
-
-        // TODO: The following can be optimized with Decoder - no need to allocate a byte[]
-        var tempBuf = new byte[byteLen];
-        var pos = 0;
-        while (true)
-        {
-            var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
-            buf.ReadBytes(tempBuf, pos, len);
-            pos += len;
-            if (pos < byteLen)
-            {
-                await buf.ReadMore(async);
-                continue;
-            }
-            break;
-        }
-        return buf.TextEncoding.GetChars(tempBuf);
     }
 
     async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
