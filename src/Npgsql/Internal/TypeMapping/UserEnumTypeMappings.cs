@@ -20,9 +20,9 @@ sealed class UserEnumTypeMapping<TEnum> : IUserEnumTypeMapping
     public string PgTypeName { get; }
     public Type ClrType => typeof(TEnum);
     public INpgsqlNameTranslator NameTranslator { get; }
-    readonly Dictionary<string, TEnum> _labelToEnum;
+
     readonly Dictionary<TEnum, string> _enumToLabel;
-    
+    readonly Dictionary<string, TEnum> _labelToEnum;
 
     public UserEnumTypeMapping(string pgTypeName, INpgsqlNameTranslator nameTranslator)
     {
