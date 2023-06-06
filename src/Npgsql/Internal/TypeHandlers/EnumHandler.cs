@@ -1,13 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using NpgsqlTypes;
 
 namespace Npgsql.Internal.TypeHandlers;
 
@@ -46,12 +44,11 @@ sealed partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumH
     public override TEnum Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
     {
         var str = buf.ReadString(len);
-        var success = _labelToEnum.TryGetValue(str, out var value);
+        
+        return _labelToEnum.TryGetValue(str, out var value)
+            ? value:
+            ThrowHelper.ThrowInvalidCastException<TEnum>($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}");
 
-        if (!success)
-            throw new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}");
-
-        return value;
     }
 
     #endregion
@@ -61,12 +58,15 @@ sealed partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumH
     public override int ValidateAndGetLength(TEnum value, NpgsqlParameter? parameter)
         => _enumToLabel.TryGetValue(value, out var str)
             ? Encoding.UTF8.GetByteCount(str)
-            : throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+            : ThrowHelper.ThrowInvalidCastException<int>($"Can't write value {value} as enum {typeof(TEnum)}");
 
     public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
     {
-        if (!_enumToLabel.TryGetValue(value, out var str))
-            throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+        if (_enumToLabel.TryGetValue(value, out var str) is false)
+        {
+            ThrowHelper.ThrowInvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+        }
+
         buf.WriteString(str);
     }
 

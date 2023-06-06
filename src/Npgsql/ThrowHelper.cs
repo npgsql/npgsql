@@ -1,4 +1,4 @@
-﻿using Npgsql.BackendMessages;
+using Npgsql.BackendMessages;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -44,6 +44,14 @@ static class ThrowHelper
     internal static void ThrowObjectDisposedException(string objectName, Exception? innerException)
         => throw new ObjectDisposedException(objectName, innerException);
 
+    [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message)
+        => throw new InvalidCastException(message);
+
+    [DoesNotReturn]
+    internal static T ThrowInvalidCastException<T>(string message)
+        => throw new InvalidCastException(message);
+    
     [DoesNotReturn]
     internal static void ThrowInvalidCastException(string message, object argument)
         => throw new InvalidCastException(string.Format(message, argument));
