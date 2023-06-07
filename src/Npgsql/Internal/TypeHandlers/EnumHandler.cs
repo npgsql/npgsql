@@ -44,11 +44,12 @@ sealed partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumH
     public override TEnum Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
     {
         var str = buf.ReadString(len);
-        
-        return _labelToEnum.TryGetValue(str, out var value)
-            ? value:
-            ThrowHelper.ThrowInvalidCastException<TEnum>($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}");
 
+        if (_labelToEnum.TryGetValue(str, out var value) is false)
+        {
+            ThrowHelper.ThrowInvalidCastException("Received enum value '{0}' from database which wasn't found on enum {1}", str, typeof(TEnum));
+        }
+        return value;
     }
 
     #endregion
@@ -56,15 +57,20 @@ sealed partial class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumH
     #region Write
 
     public override int ValidateAndGetLength(TEnum value, NpgsqlParameter? parameter)
-        => _enumToLabel.TryGetValue(value, out var str)
-            ? Encoding.UTF8.GetByteCount(str)
-            : ThrowHelper.ThrowInvalidCastException<int>($"Can't write value {value} as enum {typeof(TEnum)}");
+    {
+        if (_enumToLabel.TryGetValue(value, out var str) is false)
+        {
+            ThrowHelper.ThrowInvalidCastException("Can't write value {0} as enum {1}", value, typeof(TEnum));
+        }
+
+        return Encoding.UTF8.GetByteCount(str);
+    }
 
     public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
     {
         if (_enumToLabel.TryGetValue(value, out var str) is false)
         {
-            ThrowHelper.ThrowInvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+            ThrowHelper.ThrowInvalidCastException("Can't write value {0} as enum {1}", value, typeof(TEnum));
         }
 
         buf.WriteString(str);

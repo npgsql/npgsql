@@ -45,16 +45,12 @@ static class ThrowHelper
         => throw new ObjectDisposedException(objectName, innerException);
 
     [DoesNotReturn]
-    internal static void ThrowInvalidCastException(string message)
-        => throw new InvalidCastException(message);
-
-    [DoesNotReturn]
-    internal static T ThrowInvalidCastException<T>(string message)
-        => throw new InvalidCastException(message);
-    
-    [DoesNotReturn]
     internal static void ThrowInvalidCastException(string message, object argument)
         => throw new InvalidCastException(string.Format(message, argument));
+
+    [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message, object argument, object argument1)
+        => throw new InvalidCastException(string.Format(message, argument, argument1));
 
     [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue(FieldDescription field) =>
