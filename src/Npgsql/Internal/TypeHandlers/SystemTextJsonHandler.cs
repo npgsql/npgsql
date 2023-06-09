@@ -61,7 +61,7 @@ public class SystemTextJsonHandler : JsonTextHandler
                 parameter.ConvertedValue = data;
             return lengthCache.Set(data.Length + _headerLen);
         }
-        
+
         if (typeof(TAny) == typeof(JsonObject) || typeof(TAny) == typeof(JsonArray))
         {
             lengthCache ??= new NpgsqlLengthCache(1);
@@ -202,7 +202,7 @@ public class SystemTextJsonHandler : JsonTextHandler
         // We need to implement one-pass writing to serialize directly to the buffer (or just switch to pipelines).
         using var stream = new MemoryStream();
         using var writer = new Utf8JsonWriter(stream);
-        jsonObject.WriteTo(writer);
+        jsonObject.WriteTo(writer, _serializerOptions);
         writer.Flush();
         return stream.ToArray();
     }
