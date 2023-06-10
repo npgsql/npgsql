@@ -320,8 +320,18 @@ public abstract class ReplicationConnection : IAsyncDisposable
         async Task<ReplicationSystemIdentification> IdentifySystemInternal(CancellationToken cancellationToken)
         {
             var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
+
+            var timeline = row[1] switch
+            {
+                ulong t => t, // PG 16 and above
+                uint t => t, // PG 15 and below
+
+                _ => throw new NpgsqlException(
+                    $"Unknown type '{row[1].GetType().Name}' received for timeline in a response for IDENTIFY_SYSTEM")
+            };
+
             return new ReplicationSystemIdentification(
-                (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
+                (string)row[0], timeline, NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
         }
     }
 
@@ -356,12 +366,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The timeline history file for timeline tli</returns>
-    public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
+    public Task<TimelineHistoryFile> TimelineHistory(ulong tli, CancellationToken cancellationToken = default)
     {
         using (NoSynchronizationContextScope.Enter())
             return TimelineHistoryInternal(tli, cancellationToken);
 
-        async Task<TimelineHistoryFile> TimelineHistoryInternal(uint tli, CancellationToken cancellationToken)
+        async Task<TimelineHistoryFile> TimelineHistoryInternal(ulong tli, CancellationToken cancellationToken)
         {
             var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
             return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
