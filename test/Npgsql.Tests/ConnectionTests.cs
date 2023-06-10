@@ -1210,9 +1210,16 @@ CREATE TABLE record ()");
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         await using var adminConn = await OpenConnectionAsync();
+
         // Create the database with server encoding sql-ascii
+        // Starting with PG16, the default locale provider is icu, which does not support encoding sql_ascii. Specify libc explicitly as the
+        // locale provider (except for older versions where specifying explicitly isn't supported, and libc is the only possibility).
         await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
-        await adminConn.ExecuteNonQueryAsync("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+        await adminConn.ExecuteNonQueryAsync(
+            adminConn.PostgreSqlVersion >= new Version(15, 0)
+                ? "CREATE DATABASE sqlascii ENCODING 'sql_ascii' LOCALE_PROVIDER libc TEMPLATE template0"
+                : "CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+
         try
         {
             // Insert some win1252 data
