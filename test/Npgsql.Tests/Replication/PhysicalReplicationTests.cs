@@ -53,7 +53,7 @@ public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicat
                 await using var reader = await cmd.ExecuteReaderAsync();
                 Assert.That(reader.Read, Is.EqualTo(createSlot));
                 var expectedSlotName = createSlot ? reader.GetFieldValue<string>(reader.GetOrdinal("slot_name")) : null;
-                var expectedTli = createSlot ? unchecked((ulong?)reader.GetFieldValue<long?>(reader.GetOrdinal("timeline_id"))) : null;
+                var expectedTli = createSlot ? (uint?)reader.GetFieldValue<long?>(reader.GetOrdinal("timeline_id")) : null;
                 var expectedRestartLsn = createSlot ? reader.GetFieldValue<NpgsqlLogSequenceNumber?>(reader.GetOrdinal("restart_lsn")) : null;
                 Assert.That(reader.Read, Is.False);
                 await using var rc = await OpenReplicationConnectionAsync();

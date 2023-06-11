@@ -17,7 +17,7 @@ public class PhysicalReplicationSlot : ReplicationSlot
     /// <param name="slotName">The name of the existing replication slot</param>
     /// <param name="restartLsn">The replication slot's <c>restart_lsn</c></param>
     /// <param name="restartTimeline">The timeline ID associated to <c>restart_lsn</c>, following the current timeline history.</param>
-    public PhysicalReplicationSlot(string slotName, NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null)
+    public PhysicalReplicationSlot(string slotName, NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null)
         : base(slotName)
     {
         RestartLsn = restartLsn;
@@ -32,5 +32,5 @@ public class PhysicalReplicationSlot : ReplicationSlot
     /// <summary>
     /// The timeline ID associated to <c>restart_lsn</c>, following the current timeline history.
     /// </summary>
-    public ulong? RestartTimeline { get; }
+    public uint? RestartTimeline { get; }
 }

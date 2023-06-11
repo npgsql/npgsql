@@ -320,18 +320,8 @@ public abstract class ReplicationConnection : IAsyncDisposable
         async Task<ReplicationSystemIdentification> IdentifySystemInternal(CancellationToken cancellationToken)
         {
             var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
-
-            var timeline = row[1] switch
-            {
-                ulong t => t, // PG 16 and above
-                uint t => t, // PG 15 and below
-
-                _ => throw new NpgsqlException(
-                    $"Unknown type '{row[1].GetType().Name}' received for timeline in a response for IDENTIFY_SYSTEM")
-            };
-
             return new ReplicationSystemIdentification(
-                (string)row[0], timeline, NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
+                (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
         }
     }
 
@@ -366,12 +356,12 @@ public abstract class ReplicationConnection : IAsyncDisposable
     /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
     /// </param>
     /// <returns>The timeline history file for timeline tli</returns>
-    public Task<TimelineHistoryFile> TimelineHistory(ulong tli, CancellationToken cancellationToken = default)
+    public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
     {
         using (NoSynchronizationContextScope.Enter())
             return TimelineHistoryInternal(tli, cancellationToken);
 
-        async Task<TimelineHistoryFile> TimelineHistoryInternal(ulong tli, CancellationToken cancellationToken)
+        async Task<TimelineHistoryFile> TimelineHistoryInternal(uint tli, CancellationToken cancellationToken)
         {
             var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
             return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
@@ -426,7 +416,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         {
             case "physical":
                 var restartLsn = (string?)result[1];
-                var restartTli = (ulong?)result[2];
+                var restartTli = (uint?)result[2];
                 return new PhysicalReplicationSlot(
                     slotName.ToLowerInvariant(),
                     restartLsn == null ? null : NpgsqlLogSequenceNumber.Parse(restartLsn),
@@ -833,23 +823,19 @@ public abstract class ReplicationConnection : IAsyncDisposable
             case "text":
                 results[i] = buf.ReadString(len);
                 continue;
+            // Currently in all instances where ReadSingleRow gets called, we expect unsigned integer values only, since that's always
+            // TimeLineID which is a uint32 in PostgreSQL that is sent as integer up to PG 15 and as bigint as of PG 16
+            // (https://github.com/postgres/postgres/blob/57d0051706b897048063acc14c2c3454200c488f/src/include/access/xlogdefs.h#L59 and
+            // https://github.com/postgres/postgres/commit/ec40f3422412cfdc140b5d3f67db7fd2dac0f1e2).
+            // Because of this, it is safe to always parse the values we get as unit although, according to the row description message
+            // we formally could also get a signed int or long value.
+            // Whenever ReadSingleRow gets used in a new context we have to check, whether this contract is still
+            // valid in that context and if it isn't, adjust the method accordingly (e.g. by switching on the command).
             case "integer":
-            {
-                var str = buf.ReadString(len);
-                if (!uint.TryParse(str, NumberStyles.None, null, out var num))
-                {
-                    throw Connector.Break(
-                        new NpgsqlException(
-                            $"Could not parse '{str}' as unsigned integer in field {field.Name}"));
-                }
-
-                results[i] = num;
-                continue;
-            }
             case "bigint":
             {
                 var str = buf.ReadString(len);
-                if (!ulong.TryParse(str, NumberStyles.None, null, out var num))
+                if (!uint.TryParse(str, NumberStyles.None, null, out var num))
                 {
                     throw Connector.Break(
                         new NpgsqlException(
