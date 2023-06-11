@@ -119,7 +119,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
         NpgsqlLogSequenceNumber walLocation,
         CancellationToken cancellationToken,
-        ulong timeline = default)
+        uint timeline = default)
     {
         using (NoSynchronizationContextScope.Enter())
             return StartPhysicalReplication(slot, walLocation, cancellationToken, timeline);
@@ -127,7 +127,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
         async IAsyncEnumerable<XLogDataMessage> StartPhysicalReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
             [EnumeratorCancellation] CancellationToken cancellationToken,
-            ulong timeline)
+            uint timeline)
         {
             var builder = new StringBuilder("START_REPLICATION");
             if (slot != null)
@@ -162,7 +162,7 @@ public sealed class PhysicalReplicationConnection : ReplicationConnection
     /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
     /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
     public IAsyncEnumerable<XLogDataMessage> StartReplication(
-        NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, ulong timeline = default)
+        NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
         => StartReplication(slot: null, walLocation: walLocation, timeline: timeline, cancellationToken: cancellationToken);
 
     /// <summary>

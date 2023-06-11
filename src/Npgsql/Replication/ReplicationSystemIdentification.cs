@@ -7,7 +7,7 @@ namespace Npgsql.Replication;
 /// </summary>
 public class ReplicationSystemIdentification
 {
-    internal ReplicationSystemIdentification(string systemId, ulong timeline, NpgsqlLogSequenceNumber xLogPos, string dbName)
+    internal ReplicationSystemIdentification(string systemId, uint timeline, NpgsqlLogSequenceNumber xLogPos, string dbName)
     {
         SystemId = systemId;
         Timeline = timeline;
@@ -24,7 +24,7 @@ public class ReplicationSystemIdentification
     /// <summary>
     /// Current timeline ID. Also useful to check that the standby is consistent with the master.
     /// </summary>
-    public ulong Timeline { get; }
+    public uint Timeline { get; }
 
     /// <summary>
     /// Current WAL flush location. Useful to get a known location in the write-ahead log where streaming can start.
