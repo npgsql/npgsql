@@ -764,6 +764,7 @@ namespace Npgsql.Replication
                 case "text":
                     results[i] = buf.ReadString(len);
                     continue;
+                case "bigint":
                 case "integer":
                     var str = buf.ReadString(len);
                     if (!uint.TryParse(str, NumberStyles.None, null, out var num))
