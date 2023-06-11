@@ -416,7 +416,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
         {
             case "physical":
                 var restartLsn = (string?)result[1];
-                var restartTli = (ulong?)result[2];
+                var restartTli = (ulong?)(uint?)result[2];
                 return new PhysicalReplicationSlot(
                     slotName.ToLowerInvariant(),
                     restartLsn == null ? null : NpgsqlLogSequenceNumber.Parse(restartLsn),
@@ -824,22 +824,10 @@ public abstract class ReplicationConnection : IAsyncDisposable
                 results[i] = buf.ReadString(len);
                 continue;
             case "integer":
-            {
-                var str = buf.ReadString(len);
-                if (!uint.TryParse(str, NumberStyles.None, null, out var num))
-                {
-                    throw Connector.Break(
-                        new NpgsqlException(
-                            $"Could not parse '{str}' as unsigned integer in field {field.Name}"));
-                }
-
-                results[i] = num;
-                continue;
-            }
             case "bigint":
             {
                 var str = buf.ReadString(len);
-                if (!ulong.TryParse(str, NumberStyles.None, null, out var num))
+                if (!uint.TryParse(str, NumberStyles.None, null, out var num))
                 {
                     throw Connector.Break(
                         new NpgsqlException(
