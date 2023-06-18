@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -120,24 +121,24 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         // Make sure we have enough bytes in the buffer for a single character
-        var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
-        await buf.Ensure(maxBytes, async);
+        await buf.Ensure(len, async);
 
         return ReadCharCore();
 
-        unsafe char ReadCharCore()
+        char ReadCharCore()
         {
             var decoder = buf.TextEncoding.GetDecoder();
 
 #if NETSTANDARD2_0
             var singleCharArray = new char[1];
-            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer, buf.ReadPosition, len, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
 #else
             Span<char> singleCharArray = stackalloc char[1];
-            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, len), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
 #endif
 
-            buf.Skip(len - bytesUsed);
+            Debug.Assert(bytesUsed == len);
+            buf.Skip(len);
 
             if (charsUsed < 1)
                 throw new NpgsqlException("Could not read char - string was empty");
@@ -190,7 +191,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             return bytes;
         }
     }
-    
+
     ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         => throw new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL text is supported, no reading.");
 
@@ -320,8 +321,8 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     public virtual TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         var byteLength = (int)(stream.Length - stream.Position);
-        return buffer.ReadBytesLeft >= byteLength 
-            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream) 
+        return buffer.ReadBytesLeft >= byteLength
+            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream)
             : new StreamReader(stream, _encoding);
     }
 }
