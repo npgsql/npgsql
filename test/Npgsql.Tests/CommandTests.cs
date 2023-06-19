@@ -280,6 +280,7 @@ public class CommandTests : MultiplexingTestBase
     #region Cancel
 
     [Test, Description("Basic cancellation scenario")]
+    [Ignore("Flaky, see https://github.com/npgsql/npgsql/issues/5070")]
     public async Task Cancel()
     {
         if (IsMultiplexing)

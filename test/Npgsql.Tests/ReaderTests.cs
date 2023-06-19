@@ -1234,6 +1234,24 @@ LANGUAGE plpgsql VOLATILE";
             Assert.ThrowsAsync<NpgsqlException>(async () => await reader.DisposeAsync());
     }
 
+    [Test]
+    public async Task Read_string_as_char()
+    {
+        await using var conn = await OpenConnectionAsync();
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT 'abcdefgh', 'ijklmnop'";
+
+        await using var reader = await cmd.ExecuteReaderAsync(Behavior);
+        Assert.IsTrue(await reader.ReadAsync());
+        Assert.That(reader.GetChar(0), Is.EqualTo('a'));
+        if (Behavior == CommandBehavior.SequentialAccess)
+            Assert.Throws<InvalidOperationException>(() => reader.GetChar(0));
+        else
+            Assert.That(reader.GetChar(0), Is.EqualTo('a'));
+        Assert.That(reader.GetChar(1), Is.EqualTo('i'));
+    }
+
     #region GetBytes / GetStream
 
     [Test]

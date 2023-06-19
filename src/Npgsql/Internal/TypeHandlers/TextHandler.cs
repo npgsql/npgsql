@@ -110,25 +110,31 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         // Make sure we have enough bytes in the buffer for a single character
+        // We can get here a much bigger length in case it's a string
+        // while we want to read only its first character
         var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
         while (buf.ReadBytesLeft < maxBytes)
             await buf.ReadMore(async);
 
-        return ReadCharCore();
+        var character = ReadCharCore();
 
-        unsafe char ReadCharCore()
+        // We've been requested to read 'len' bytes, which is why we're going to skip them
+        // This is important for NpgsqlDataReader with CommandBehavior.SequentialAccess
+        // which tracks how many bytes it has to skip for the next column
+        await buf.Skip(len, async);
+        return character;
+
+        char ReadCharCore()
         {
             var decoder = buf.TextEncoding.GetDecoder();
 
 #if NETSTANDARD2_0
             var singleCharArray = new char[1];
-            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out _, out var charsUsed, out _);
 #else
             Span<char> singleCharArray = stackalloc char[1];
-            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out _, out var charsUsed, out _);
 #endif
-
-            buf.Skip(len - bytesUsed);
 
             if (charsUsed < 1)
                 throw new NpgsqlException("Could not read char - string was empty");
@@ -300,8 +306,8 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     public virtual TextReader GetTextReader(Stream stream, NpgsqlReadBuffer buffer)
     {
         var byteLength = (int)(stream.Length - stream.Position);
-        return buffer.ReadBytesLeft >= byteLength 
-            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream) 
+        return buffer.ReadBytesLeft >= byteLength
+            ? buffer.GetPreparedTextReader(_encoding.GetString(buffer.Buffer, buffer.ReadPosition, byteLength), stream)
             : new StreamReader(stream, _encoding);
     }
 }
