@@ -266,6 +266,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Basic cancellation scenario")]
         [Timeout(6000)]
+        [Ignore("Flaky, see https://github.com/npgsql/npgsql/issues/5070")]
         public async Task Cancel()
         {
             if (IsMultiplexing)
