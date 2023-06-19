@@ -234,7 +234,10 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
     public bool Open { get; set; }
 
     public NpgsqlPath()
-        => _points = new();
+    {
+        _points = new();
+        Open = false;
+    }
 
     public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
     {
