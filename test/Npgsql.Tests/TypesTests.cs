@@ -186,6 +186,14 @@ public class TypesTests
     }
 
     [Test]
+    public void NpgsqlPath_empty()
+        => Assert.That(new NpgsqlPath { new(1, 2) }, Is.EqualTo(new NpgsqlPath(new NpgsqlPoint(1, 2))));
+
+    [Test]
+    public void NpgsqlPolygon_empty()
+        => Assert.That(new NpgsqlPolygon { new(1, 2) }, Is.EqualTo(new NpgsqlPolygon(new NpgsqlPoint(1, 2))));
+
+    [Test]
     public void Bug1011018()
     {
         var p = new NpgsqlParameter();
