@@ -121,9 +121,18 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         // Make sure we have enough bytes in the buffer for a single character
-        await buf.Ensure(len, async);
+        // We can get here a much bigger length in case it's a string
+        // while we want to read only its first character
+        var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
+        await buf.Ensure(maxBytes, async);
 
-        return ReadCharCore();
+        var character = ReadCharCore();
+
+        // We've been requested to read 'len' bytes, which is why we're going to skip them
+        // This is important for NpgsqlDataReader with CommandBehavior.SequentialAccess
+        // which tracks how many bytes it has to skip for the next column
+        await buf.Skip(len, async);
+        return character;
 
         char ReadCharCore()
         {
@@ -134,11 +143,8 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
             decoder.Convert(buf.Buffer, buf.ReadPosition, len, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
 #else
             Span<char> singleCharArray = stackalloc char[1];
-            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, len), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
 #endif
-
-            Debug.Assert(bytesUsed == len);
-            buf.Skip(len);
 
             if (charsUsed < 1)
                 throw new NpgsqlException("Could not read char - string was empty");
