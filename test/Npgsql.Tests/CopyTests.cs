@@ -781,7 +781,7 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
     public async Task Binary_copy_read_char_column()
     {
         await using var conn = await OpenConnectionAsync();
-        var tableName = await CreateTempTable(conn, "id serial, value char");
+        await using var _ = await CreateTempTable(conn, "id serial, value char", out var tableName);
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"INSERT INTO {tableName}(value) VALUES ('d'), ('s')";
