@@ -115,13 +115,17 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
     {
         // Make sure we have enough bytes in the buffer for a single character
+        // We can get here a much bigger length in case it's a string
+        // while we want to read only its first character
         var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
-        while (buf.ReadBytesLeft < maxBytes)
-            await buf.ReadMore(async);
+        await buf.Ensure(maxBytes, async);
 
         var decoder = buf.TextEncoding.GetDecoder();
         decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
-        buf.Skip(len - bytesUsed);
+        // We've been requested to read 'len' bytes, which is why we're going to skip them
+        // This is important for NpgsqlDataReader with CommandBehavior.SequentialAccess
+        // which tracks how many bytes it has to skip for the next column
+        await buf.Skip(len, async);
 
         if (charsUsed < 1)
             throw new NpgsqlException("Could not read char - string was empty");
