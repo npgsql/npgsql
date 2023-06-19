@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
-// ReSharper disable VariableHidesOuterVariable
 
 namespace Npgsql.Internal;
 
@@ -141,7 +140,7 @@ partial class NpgsqlConnector
             if (WriteBuffer.WriteSpaceLeft < 4)
                 await Flush(async, cancellationToken).ConfigureAwait(false);
 
-            WriteBuffer.WriteInt32((int)p.Handler!.PostgresType.OID);
+            WriteBuffer.WriteUInt32(DatabaseInfo.GetOid(p.ConverterInfo.GetValueOrDefault().PgTypeId).Value);
         }
     }
 
@@ -175,8 +174,10 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            formatCodesSum += (int)param.FormatCode;
-            paramsLength += param.ValidateAndGetLength();
+            param.BindFormatAndLength();
+            // TODO this is where we would do SizeKind.Unknown buffered writing to get the length, the bytes would then be written later down below.
+            paramsLength += param.SizeResult?.Value ?? 0;
+            formatCodesSum += (int)param.Format;
         }
 
         var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == parameters.Count ? 1 : parameters.Count;
@@ -210,7 +211,7 @@ partial class NpgsqlConnector
             {
                 if (WriteBuffer.WriteSpaceLeft < 2)
                     await Flush(async, cancellationToken).ConfigureAwait(false);
-                WriteBuffer.WriteInt16((short)parameters[paramIndex].FormatCode);
+                WriteBuffer.WriteInt16((short)parameters[paramIndex].Format);
             }
         }
 
@@ -222,7 +223,20 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            await param.WriteWithLength(WriteBuffer, async, cancellationToken).ConfigureAwait(false);
+            switch (param.SizeResult)
+            {
+            case { Kind: SizeKind.Exact } size:
+                WriteBuffer.WriteInt32(size.Value);
+                await param.Write(async, WriteBuffer.PgWriter, cancellationToken).ConfigureAwait(false);
+                break;
+            case { Kind: SizeKind.Unknown }:
+                // TODO this is where we would pick up the byte buffer for this previously buffered value and copy it into WriteBuffer.
+                Debug.Fail("Should not end up here, yet");
+                break;
+            default:
+                WriteBuffer.WriteInt32(-1);
+                break;
+            }
         }
 
         if (unknownResultTypeList != null)

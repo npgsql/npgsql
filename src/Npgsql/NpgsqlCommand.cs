@@ -17,6 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.PostgresTypes;
 using Npgsql.Properties;
 
 namespace Npgsql;
@@ -483,14 +484,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw new InvalidOperationException($"{CommandText} does not exist in pg_proc");
         }
 
-        var typeMapper = c.InternalConnection!.Connector!.TypeMapper;
+        var serializerOptions = c.InternalConnection!.Connector!.SerializerOptions;
 
         for (var i = 0; i < types.Length; i++)
         {
             var param = new NpgsqlParameter();
 
-            var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfo(types[i]);
-
+            var postgresType = serializerOptions.GetPgType((Oid)types[i]);
+            var npgsqlDbType = postgresType.DataTypeName.ToNpgsqlDbType() is var value and not NpgsqlDbType.Unknown ? value : (NpgsqlDbType?)null;
             param.DataTypeName = postgresType.DisplayName;
             param.PostgresType = postgresType;
             if (npgsqlDbType.HasValue)
@@ -560,8 +561,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             var param = batchCommand.PositionalParameters[i];
                             var paramOid = paramTypeOIDs[i];
 
-                            var (npgsqlDbType, postgresType) = connector.TypeMapper.GetTypeInfoByOid(paramOid);
-
+                            var postgresType = connector.SerializerOptions.GetPgType((Oid)paramOid);
+                            var npgsqlDbType = postgresType.DataTypeName.ToNpgsqlDbType() is var value and not NpgsqlDbType.Unknown ? value : (NpgsqlDbType?)null;
                             if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
                                 throw new NpgsqlException(
                                     "The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
@@ -649,7 +650,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             foreach (var batchCommand in InternalBatchCommands)
             {
-                batchCommand.Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
+                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                 needToPrepare = batchCommand.ExplicitPrepare(connector) || needToPrepare;
@@ -660,7 +661,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
         else
         {
-            Parameters.ProcessParameters(connector.TypeMapper, validateValues: false, CommandType);
+            Parameters.ProcessParameters(connector.SerializerOptions, validateValues: false, CommandType);
             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
             foreach (var batchCommand in InternalBatchCommands)
@@ -1346,7 +1347,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (connector is not null)
             {
-                var dataSource = connector.DataSource;
                 var logger = connector.CommandLogger;
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1378,7 +1378,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     goto case false;
                                 }
 
-                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                             }
                         }
                         else
@@ -1391,7 +1391,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 ResetPreparation();
                                 goto case false;
                             }
-                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                         }
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
@@ -1407,7 +1407,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var batchCommand = InternalBatchCommands[i];
 
-                                batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                                batchCommand.Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                                 ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand);
 
                                 if (connector.Settings.MaxAutoPrepare > 0 && batchCommand.TryAutoPrepare(connector))
@@ -1419,7 +1419,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                         else
                         {
-                            Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
+                            Parameters.ProcessParameters(connector.SerializerOptions, validateParameterValues, CommandType);
                             ProcessRawQuery(connector.SqlQueryParser, connector.UseConformingStrings, batchCommand: null);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
@@ -1513,13 +1513,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     foreach (var batchCommand in InternalBatchCommands)
                     {
-                        batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
+                        batchCommand.Parameters.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
                         ProcessRawQuery(null, standardConformingStrings: true, batchCommand);
                     }
                 }
                 else
                 {
-                    Parameters.ProcessParameters(dataSource.TypeMapper, validateValues: true, CommandType);
+                    Parameters.ProcessParameters(dataSource.SerializerOptions, validateValues: true, CommandType);
                     ProcessRawQuery(null, standardConformingStrings: true, batchCommand: null);
                 }
 
@@ -1736,7 +1736,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
                 ? FormatCode.Text
                 : FormatCode.Binary;
-            field.ResolveHandler();
         }
     }
 
@@ -1818,7 +1817,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
     {
         var clone = new NpgsqlCommand(CommandText, InternalConnection, Transaction)
         {
-            CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList
+            CommandTimeout = CommandTimeout,
+            CommandType = CommandType,
+            DesignTimeVisible = DesignTimeVisible,
+            _allResultTypesAreUnknown = _allResultTypesAreUnknown,
+            _unknownResultTypeList = _unknownResultTypeList
         };
         _parameters.CloneTo(clone._parameters);
         return clone;

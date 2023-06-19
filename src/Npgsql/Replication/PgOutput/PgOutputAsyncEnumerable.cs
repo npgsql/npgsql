@@ -192,7 +192,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 }
 
                 msg.RowDescription = RowDescriptionMessage.CreateForReplication(
-                    _connection.Connector.TypeMapper, relationId, formatCode, columns);
+                    _connection.Connector.SerializerOptions, relationId, formatCode, columns);
 
                 yield return msg;
                 continue;

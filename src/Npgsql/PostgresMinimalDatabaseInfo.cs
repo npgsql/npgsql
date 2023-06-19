@@ -59,4 +59,10 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
         HasIntegerDateTimes = !conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) ||
                               intDateTimes == "on";
     }
+
+    // TODO, split database info and type catalog.
+    internal PostgresMinimalDatabaseInfo()
+        : base("minimal", 5432, "minimal", "11")
+    {
+    }
 }

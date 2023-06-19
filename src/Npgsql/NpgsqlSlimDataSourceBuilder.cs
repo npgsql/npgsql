@@ -1,16 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
-using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -36,11 +32,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     Func<NpgsqlConnectionStringBuilder, CancellationToken, ValueTask<string>>? _periodicPasswordProvider;
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
-    readonly List<TypeHandlerResolverFactory> _resolverFactories = new();
-    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings = new();
-
-    /// <inheritdoc />
-    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
+    readonly List<IPgTypeInfoResolver> _resolverChain = new();
+    readonly UserTypeMapper _userTypeMapper = new();
 
     Action<NpgsqlConnection>? _syncConnectionInitializer;
     Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
@@ -237,23 +230,66 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
-    public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
+    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = GlobalTypeMapper.Instance.DefaultNameTranslator;
+
+    /// <inheritdoc />
+    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
     {
-        var type = resolverFactory.GetType();
-
-        for (var i = 0; i < _resolverFactories.Count; i++)
-        {
-            if (_resolverFactories[i].GetType() == type)
-            {
-                _resolverFactories.RemoveAt(i);
-                break;
-            }
-        }
-
-        _resolverFactories.Insert(0, resolverFactory);
+        _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+        return this;
     }
 
-    internal void AddDefaultTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
+    /// <inheritdoc />
+    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        where TEnum : struct, Enum
+        => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
+
+    /// <inheritdoc />
+    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        _userTypeMapper.MapComposite<T>(pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        => _userTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
+
+    /// <inheritdoc />
+    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+    {
+        _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
+
+    /// <summary>
+    /// Adds a type info resolver which can add or modify support for PostgreSQL types.
+    /// Typically used by plugins.
+    /// </summary>
+    /// <param name="resolver">The type resolver to be added.</param>
+    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
+    {
+        var type = resolver.GetType();
+
+        for (var i = 0; i < _resolverChain.Count; i++)
+            if (_resolverChain[i].GetType() == type)
+            {
+                _resolverChain.RemoveAt(i);
+                break;
+            }
+
+        _resolverChain.Insert(0, resolver);
+    }
+
+    void INpgsqlTypeMapper.Reset()
+        => ResetTypeMappings();
+
+    internal void AddDefaultTypeInfoResolver(IPgTypeInfoResolver resolver)
     {
         // For these "default" resolvers:
         // 1. If they were already added in the global type mapper, we don't want to replace them (there may be custom user config, e.g.
@@ -263,121 +299,44 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         // 3. They also can't be at the end, since then they'd be overridden by builtin (builtin has limited JSON handler, but we want
         //    the System.Text.Json handler to take precedence.
         // So we (currently) add these at the end, but before the builtin resolver.
-        var type = resolverFactory.GetType();
+        var type = resolver.GetType();
 
         // 1st pass to skip if the resolver already exists from the global type mapper
-        for (var i = 0; i < _resolverFactories.Count; i++)
-            if (_resolverFactories[i].GetType() == type)
+        for (var i = 0; i < _resolverChain.Count; i++)
+            if (_resolverChain[i].GetType() == type)
                 return;
 
-        for (var i = 0; i < _resolverFactories.Count; i++)
+        for (var i = 0; i < _resolverChain.Count; i++)
         {
-            if (_resolverFactories[i] is BuiltInTypeHandlerResolverFactory)
+            if (_resolverChain[i] is AdoTypeInfoResolver)
             {
-                _resolverFactories.Insert(i, resolverFactory);
+                _resolverChain.Insert(i, resolver);
                 return;
             }
         }
 
-        throw new Exception("No built-in resolver factory found");
+        throw new Exception("No built-in resolver found");
     }
 
-    /// <inheritdoc />
-    public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        where TEnum : struct, Enum
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
-
-        _userTypeMappings[pgName] = new UserEnumTypeMapping<TEnum>(pgName, nameTranslator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        where TEnum : struct, Enum
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(TEnum), nameTranslator);
-
-        return _userTypeMappings.Remove(pgName);
-    }
-
-    /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(typeof(T), nameTranslator);
-
-        _userTypeMappings[pgName] = new UserCompositeTypeMapping<T>(pgName, nameTranslator);
-        return this;
-    }
-
-    /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        var openMethod = typeof(NpgsqlSlimDataSourceBuilder).GetMethod(nameof(MapComposite), new[] { typeof(string), typeof(INpgsqlNameTranslator) })!;
-        var method = openMethod.MakeGenericMethod(clrType);
-        method.Invoke(this, new object?[] { pgName, nameTranslator });
-
-        return this;
-    }
-
-    /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        => UnmapComposite(typeof(T), pgName, nameTranslator);
-
-    /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
-    public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        if (pgName != null && pgName.Trim() == "")
-            throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-        nameTranslator ??= DefaultNameTranslator;
-        pgName ??= GetPgName(clrType, nameTranslator);
-
-        return _userTypeMappings.Remove(pgName);
-    }
-
-    void INpgsqlTypeMapper.Reset()
-        => ResetTypeMappings();
-
-    void ResetTypeMappings()
+    internal void ResetTypeMappings()
     {
         var globalMapper = GlobalTypeMapper.Instance;
         globalMapper.Lock.EnterReadLock();
         try
         {
-            _resolverFactories.Clear();
-            foreach (var resolverFactory in globalMapper.HandlerResolverFactories)
-                _resolverFactories.Add(resolverFactory);
+            _resolverChain.Clear();
+            foreach (var resolver in globalMapper.TypeInfoResolverChain)
+                _resolverChain.Add(resolver);
 
-            _userTypeMappings.Clear();
-            foreach (var kv in globalMapper.UserTypeMappings)
-                _userTypeMappings[kv.Key] = kv.Value;
+            _userTypeMapper.Items.Clear();
+            foreach (var item in globalMapper.UserTypeMapper.Items)
+                _userTypeMapper.Items.Add(item);
         }
         finally
         {
             globalMapper.Lock.ExitReadLock();
         }
     }
-
-    static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
-        => clrType.GetCustomAttribute<PgNameAttribute>()?.PgName
-           ?? nameTranslator.TranslateTypeName(clrType.Name);
 
     #endregion Type mapping
 
@@ -388,7 +347,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableRanges()
     {
-        AddTypeResolverFactory(new RangeTypeHandlerResolverFactory());
+        // AddTypeInfoResolver(new RangeTypeInfoResolver());
         return this;
     }
 
@@ -407,7 +366,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        // AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 
@@ -416,7 +375,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
-        AddTypeResolverFactory(new RecordTypeHandlerResolverFactory());
+        // AddTypeInfoResolver(new RecordTypeInfoResolver());
         return this;
     }
 
@@ -425,7 +384,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
     {
-        AddTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
+        // AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
         return this;
     }
 
@@ -536,8 +495,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
-            _resolverFactories,
-            _userTypeMappings,
+            _resolverChain,
+            _userTypeMapper.Items,
             DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);

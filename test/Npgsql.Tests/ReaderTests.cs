@@ -10,8 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
 using Npgsql.TypeMapping;
@@ -28,6 +26,9 @@ namespace Npgsql.Tests;
 [TestFixture(MultiplexingMode.Multiplexing, CommandBehavior.SequentialAccess)]
 public class ReaderTests : MultiplexingTestBase
 {
+    static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
+    static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
+
     [Test]
     public async Task Seek_columns()
     {
@@ -1167,7 +1168,7 @@ LANGUAGE plpgsql VOLATILE";
         pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4), new FieldDescription(PostgresTypeOIDs.Bytea));
+            .WriteRowDescription(new FieldDescription(Int4Oid), new FieldDescription(ByteaOid));
 
         var intValue = new byte[] { 0, 0, 0, 1 };
         var byteValue = new byte[] { 1, 2, 3, 4 };
@@ -1215,7 +1216,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .FlushAsync();
 
@@ -1728,7 +1729,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
-        dataSourceBuilder.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: true));
+        dataSourceBuilder.AddTypeInfoResolver(new ExplodingTypeHandlerResolver(safe: true));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -1745,7 +1746,7 @@ LANGUAGE plpgsql VOLATILE";
     {
         var dataSourceBuilder = CreateDataSourceBuilder();
         // Temporarily reroute integer to go to a type handler which generates some exception
-        dataSourceBuilder.AddTypeResolverFactory(new ExplodingTypeHandlerResolverFactory(safe: false));
+        dataSourceBuilder.AddTypeInfoResolver(new ExplodingTypeHandlerResolver(safe: false));
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -1774,7 +1775,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .FlushAsync();
 
@@ -1823,7 +1824,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .FlushAsync();
 
@@ -1874,7 +1875,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .WriteCommandComplete()
             .FlushAsync();
@@ -1926,7 +1927,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .FlushAsync();
 
@@ -1970,7 +1971,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
             .WriteCommandComplete()
             .FlushAsync();
@@ -2018,7 +2019,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRowWithFlush(new byte[10000]);
 
         using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
@@ -2056,7 +2057,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea), new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(ByteaOid), new FieldDescription(Int4Oid))
             .WriteDataRowWithFlush(new byte[10000], new byte[4]);
 
         using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
@@ -2122,7 +2123,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRowWithFlush(new byte[10000]);
 
         using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
@@ -2162,7 +2163,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea), new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(ByteaOid), new FieldDescription(Int4Oid))
             .WriteDataRowWithFlush(new byte[10000], new byte[4]);
 
         using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
@@ -2192,7 +2193,7 @@ LANGUAGE plpgsql VOLATILE";
         await pgMock
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+            .WriteRowDescription(new FieldDescription(Int4Oid))
             .WriteDataRow(new byte[4])
             .FlushAsync();
 
@@ -2231,52 +2232,39 @@ LANGUAGE plpgsql VOLATILE";
 
 #region Mock Type Handlers
 
-class ExplodingTypeHandlerResolverFactory : TypeHandlerResolverFactory
+class ExplodingTypeHandlerResolver : IPgTypeInfoResolver
 {
     readonly bool _safe;
-    public ExplodingTypeHandlerResolverFactory(bool safe) => _safe = safe;
-    public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector) => new ExplodingTypeHandlerResolver(_safe);
+    public ExplodingTypeHandlerResolver(bool safe) => _safe = safe;
 
-    class ExplodingTypeHandlerResolver : TypeHandlerResolver
+    public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        readonly bool _safe;
+        if (dataTypeName == DataTypeNames.Int4 || type == typeof(int))
+            PgTypeInfo.CreateDefault(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
 
-        public ExplodingTypeHandlerResolver(bool safe) => _safe = safe;
-
-        public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) =>
-            typeName == "integer" ? new ExplodingTypeHandler(null!, _safe) : null;
-        public override NpgsqlTypeHandler? ResolveByClrType(Type type) => null;
+        return null;
     }
 }
 
-class ExplodingTypeHandler : NpgsqlSimpleTypeHandler<int>
+class ExplodingTypeHandler : PgBufferedConverter<int>
 {
     readonly bool _safe;
 
-    internal ExplodingTypeHandler(PostgresType postgresType, bool safe) : base(postgresType) => _safe = safe;
+    internal ExplodingTypeHandler(bool safe) => _safe = safe;
 
-    public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+    public override Size GetSize(SizeContext context, int value, ref object? writeState)
+        => throw new NotSupportedException();
+    protected override void WriteCore(PgWriter writer, int value)
+        => throw new NotSupportedException();
+
+    protected override int ReadCore(PgReader reader)
     {
-        buf.ReadInt32();
+        reader.ReadInt32();
 
         throw _safe
             ? new Exception("Safe read exception as requested")
-            : buf.Connector.Break(new Exception("Non-safe read exception as requested"));
+            : reader.BreakConnection(new Exception("Non-safe read exception as requested"));
     }
-
-    public override int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => throw new NotSupportedException();
-    public override int ValidateObjectAndGetLength(object? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        => throw new NotSupportedException();
-    public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => throw new NotSupportedException();
-
-    public override Task WriteObjectWithLength(
-        object? value,
-        NpgsqlWriteBuffer buf,
-        NpgsqlLengthCache? lengthCache,
-        NpgsqlParameter? parameter,
-        bool async,
-        CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
 }
 
 #endregion

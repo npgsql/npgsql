@@ -11,12 +11,15 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.PostgresTypes;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
 public class CommandTests : MultiplexingTestBase
 {
+    static uint Int4Oid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Int4].Value;
+
     #region Legacy batching
 
     [Test]
@@ -402,7 +405,7 @@ public class CommandTests : MultiplexingTestBase
             await serverMock
                 .WriteParseComplete()
                 .WriteBindComplete()
-                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteRowDescription(new FieldDescription(Int4Oid))
                 .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
                 .WriteCommandComplete()
                 .WriteReadyForQuery()

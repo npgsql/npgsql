@@ -5,7 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Npgsql.Internal.TypeHandlers;
+using Npgsql.Internal.Converters;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -290,7 +290,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
 
@@ -309,7 +309,7 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
             Throws.Exception.TypeOf<InvalidOperationException>()
-                .With.Message.EqualTo(ArrayHandlerCore.ReadNonNullableCollectionWithNullsExceptionMessage));
+                .With.Message.EqualTo(ArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
     [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]

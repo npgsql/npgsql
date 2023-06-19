@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -10,9 +11,8 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -32,11 +32,11 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
-    readonly List<TypeHandlerResolverFactory> _resolverFactories;
-    readonly Dictionary<string, IUserTypeMapping> _userTypeMappings;
+    readonly List<IPgTypeInfoResolver> _resolverChain;
+    readonly Dictionary<string, UserTypeMapping> _userTypeMappings;
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
-    internal TypeMapper TypeMapper { get; private set; } = null!; // Initialized at bootstrapping
+    internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
@@ -100,14 +100,15 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
-                _resolverFactories,
-                _userTypeMappings,
+                _resolverChain,
+                var userTypeMappings,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
+        _userTypeMappings = userTypeMappings.ToDictionary(x => x.PgTypeName);
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -127,11 +128,11 @@ public abstract class NpgsqlDataSource : DbDataSource
         MetricsReporter = new MetricsReporter(this);
     }
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.CreateConnection" />
     public new NpgsqlConnection CreateConnection()
         => NpgsqlConnection.FromDataSource(this);
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.OpenConnection" />
     public new NpgsqlConnection OpenConnection()
     {
         var connection = CreateConnection();
@@ -152,7 +153,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     protected override DbConnection OpenDbConnection()
         => OpenConnection();
 
-    /// <inheritdoc />
+    /// <inheritdoc cref="DbDataSource.OpenConnectionAsync" />
     public new async ValueTask<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
     {
         var connection = CreateConnection();
@@ -233,19 +234,27 @@ public abstract class NpgsqlDataSource : DbDataSource
                 return;
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
-            // empty). So we set up here, and then later inject the DatabaseInfo.
-            var typeMapper = new TypeMapper(connector, _defaultNameTranslator);
-            connector.TypeMapper = typeMapper;
+            // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
+            connector.SerializerOptions =
+                new(new PostgresMinimalDatabaseInfo(connector))
+                {
+                    TextEncoding = connector.TextEncoding,
+                    TypeInfoResolver = new AdoTypeInfoResolver()
+                };
 
             NpgsqlDatabaseInfo databaseInfo;
 
             using (connector.StartUserAction(ConnectorState.Executing, cancellationToken))
                 databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
 
-            DatabaseInfo = databaseInfo;
-            connector.DatabaseInfo = databaseInfo;
-            typeMapper.Initialize(databaseInfo, _resolverFactories, _userTypeMappings);
-            TypeMapper = typeMapper;
+            connector.DatabaseInfo = DatabaseInfo = databaseInfo;
+            connector.SerializerOptions = SerializerOptions = new(databaseInfo)
+            {
+                ArrayNullabilityMode = Settings.ArrayNullabilityMode,
+                EnableDateTimeInfinityConversions = true,
+                TextEncoding = connector.TextEncoding,
+                TypeInfoResolver = _resolverChain.Count is 0 ? _resolverChain[0] : new TypeInfoResolverChain(_resolverChain)
+            };
 
             _isBootstrapped = true;
         }
@@ -478,7 +487,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         // While the TimeStamp is not strictly required, it does lower the risk of overwriting the current state with an old value
         internal readonly DateTime TimeStamp;
 
-        public DatabaseStateInfo() : this(default, default, default) {}
+        public DatabaseStateInfo() : this(default, default, default) { }
 
         public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
             => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);

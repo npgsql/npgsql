@@ -1,5 +1,7 @@
 ﻿#nullable enable
 const Npgsql.PostgresErrorCodes.IdleSessionTimeout = "57P05" -> string!
+Npgsql.NpgsqlDataSourceBuilder.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.NpgsqlSlimDataSourceBuilder.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
 Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Disable = 0 -> Npgsql.ChannelBinding
 Npgsql.ChannelBinding.Prefer = 1 -> Npgsql.ChannelBinding
@@ -17,7 +19,6 @@ Npgsql.NpgsqlDataSourceBuilder.UseRootCertificate(System.Security.Cryptography.X
 Npgsql.NpgsqlDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlDataSourceBuilder.UseSystemTextJson(System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder
-Npgsql.NpgsqlSlimDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlSlimDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
 Npgsql.NpgsqlSlimDataSourceBuilder.ConnectionString.get -> string!
@@ -50,6 +51,46 @@ Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replica
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null) -> void
 Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> uint?
+Npgsql.PostgresTypes.DataTypeName
+Npgsql.PostgresTypes.DataTypeName.DataTypeName() -> void
+Npgsql.PostgresTypes.DataTypeName.DataTypeName(string! fullyQualifiedDataTypeName) -> void
+Npgsql.PostgresTypes.DataTypeName.DisplayName.get -> string!
+Npgsql.PostgresTypes.DataTypeName.IsDefault.get -> bool
+Npgsql.PostgresTypes.DataTypeName.Schema.get -> string!
+Npgsql.PostgresTypes.DataTypeName.ToArrayName() -> Npgsql.PostgresTypes.DataTypeName
+Npgsql.PostgresTypes.DataTypeName.ToMultiRangeName() -> Npgsql.PostgresTypes.DataTypeName
+Npgsql.PostgresTypes.DataTypeName.UnqualifiedDisplayName.get -> string!
+Npgsql.PostgresTypes.DataTypeName.Value.get -> string!
+Npgsql.PostgresTypes.Oid
+Npgsql.PostgresTypes.Oid.Oid() -> void
+Npgsql.PostgresTypes.Oid.Oid(uint Value) -> void
+Npgsql.PostgresTypes.Oid.Value.get -> uint
+Npgsql.PostgresTypes.Oid.Value.init -> void
+Npgsql.PostgresTypes.PgTypeId
+Npgsql.PostgresTypes.PgTypeId.DataTypeName.get -> Npgsql.PostgresTypes.DataTypeName
+Npgsql.PostgresTypes.PgTypeId.Equals(Npgsql.PostgresTypes.PgTypeId other) -> bool
+Npgsql.PostgresTypes.PgTypeId.IsDataTypeName.get -> bool
+Npgsql.PostgresTypes.PgTypeId.IsOid.get -> bool
+Npgsql.PostgresTypes.PgTypeId.Oid.get -> Npgsql.PostgresTypes.Oid
+Npgsql.PostgresTypes.PgTypeId.PgTypeId() -> void
+Npgsql.PostgresTypes.PgTypeId.PgTypeId(Npgsql.PostgresTypes.DataTypeName name) -> void
+Npgsql.PostgresTypes.PgTypeId.PgTypeId(Npgsql.PostgresTypes.Oid oid) -> void
+Npgsql.TypeMapping.GlobalTypeMapper
+Npgsql.TypeMapping.GlobalTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
+Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.set -> void
+Npgsql.TypeMapping.GlobalTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+Npgsql.TypeMapping.GlobalTypeMapper.Reset() -> void
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.GlobalTypeMapper.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
+Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
+Npgsql.TypeMapping.INpgsqlTypeMapper.Reset() -> void
+Npgsql.TypeMapping.UserTypeMapping
+Npgsql.TypeMapping.UserTypeMapping.ClrType.get -> System.Type!
+Npgsql.TypeMapping.UserTypeMapping.PgTypeName.get -> string!
 override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
 *REMOVED*static NpgsqlTypes.NpgsqlCircle.Parse(string! s) -> NpgsqlTypes.NpgsqlCircle
@@ -70,3 +111,12 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
+override Npgsql.PostgresTypes.PgTypeId.GetHashCode() -> int
+override Npgsql.PostgresTypes.PgTypeId.ToString() -> string!
+static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
+static Npgsql.PostgresTypes.DataTypeName.explicit operator string!(Npgsql.PostgresTypes.DataTypeName value) -> string!
+static Npgsql.PostgresTypes.DataTypeName.FromDisplayName(string! displayDataTypeName) -> Npgsql.PostgresTypes.DataTypeName
+static Npgsql.PostgresTypes.Oid.explicit operator uint(Npgsql.PostgresTypes.Oid oid) -> uint
+static Npgsql.PostgresTypes.Oid.implicit operator Npgsql.PostgresTypes.Oid(uint oid) -> Npgsql.PostgresTypes.Oid
+static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTypeId(Npgsql.PostgresTypes.DataTypeName name) -> Npgsql.PostgresTypes.PgTypeId
+static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTypeId(Npgsql.PostgresTypes.Oid id) -> Npgsql.PostgresTypes.PgTypeId

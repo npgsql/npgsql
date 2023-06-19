@@ -1,9 +1,7 @@
-﻿using System;
-using System.Data;
+﻿using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -34,7 +32,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
     /// <summary>
     /// Initializes a new instance of <see cref="NpgsqlParameter{T}" />.
     /// </summary>
-    public NpgsqlParameter() {}
+    public NpgsqlParameter() { }
 
     /// <summary>
     /// Initializes a new instance of <see cref="NpgsqlParameter{T}" /> with a parameter name and value.
@@ -65,30 +63,30 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    internal override void ResolveHandler(TypeMapper typeMapper)
+    private protected override PgConverterInfo BindValue(PgTypeInfo typeInfo)
+        => typeInfo.BindAsObject(Format, TypedValue);
+
+    private protected override ValueTask WriteValue(PgWriter writer, PgConverterInfo info, bool async, CancellationToken cancellationToken)
     {
-        if (Handler is not null)
-            return;
+        if (!async)
+        {
+            if (writer.ShouldFlush(info.BufferRequirement))
+                writer.Flush();
+            info.GetConverter<T>().Write(writer, TypedValue!);
+            return new();
+        }
 
-        // TODO: Better exceptions in case of cast failure etc.
-        if (_npgsqlDbType.HasValue)
-            Handler = typeMapper.ResolveByNpgsqlDbType(_npgsqlDbType.Value);
-        else if (_dataTypeName is not null)
-            Handler = typeMapper.ResolveByDataTypeName(_dataTypeName);
-        else
-            Handler = typeMapper.ResolveByValue(TypedValue);
+        return Core(writer, info, cancellationToken);
+
+        // TODO we can optimize this to just a single state machine for all T's
+        async ValueTask Core(PgWriter writer, PgConverterInfo info, CancellationToken cancellationtoken)
+        {
+            if (writer.ShouldFlush(info.BufferRequirement))
+                await writer.FlushAsync(cancellationtoken);
+
+            await info.GetConverter<T>().WriteAsync(writer, TypedValue!, cancellationtoken);
+        }
     }
-
-    internal override int ValidateAndGetLength()
-    {
-        if (TypedValue is null or DBNull)
-            return 0;
-
-        throw new NotImplementedException();
-    }
-
-    internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
-        => throw new NotImplementedException();
 
     private protected override NpgsqlParameter CloneCore() =>
         // use fields instead of properties
