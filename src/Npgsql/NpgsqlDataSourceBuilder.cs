@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -6,7 +7,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal.TypeHandling;
+using Npgsql.Internal;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -208,8 +209,12 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     #region Type mapping
 
     /// <inheritdoc />
-    public void AddTypeResolverFactory(TypeHandlerResolverFactory resolverFactory)
-        => _internalBuilder.AddTypeResolverFactory(resolverFactory);
+    public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
+        => _internalBuilder.AddTypeInfoResolver(resolver);
+
+    /// <inheritdoc />
+    void INpgsqlTypeMapper.Reset()
+        => _internalBuilder.ResetTypeMappings();
 
     /// <summary>
     /// Sets up System.Text.Json mappings for the PostgreSQL <c>json</c> and <c>jsonb</c> types.
@@ -226,7 +231,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 
@@ -268,13 +273,6 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _internalBuilder.UnmapComposite(clrType, pgName, nameTranslator);
-
-    void INpgsqlTypeMapper.Reset()
-    {
-        ((INpgsqlTypeMapper)_internalBuilder).Reset();
-
-        AddDefaultFeatures();
-    }
 
     #endregion Type mapping
 
@@ -322,9 +320,9 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     void AddDefaultFeatures()
     {
         _internalBuilder.EnableEncryption();
-        _internalBuilder.AddDefaultTypeResolverFactory(new SystemTextJsonTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new RecordTypeHandlerResolverFactory());
-        _internalBuilder.AddDefaultTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
+        _internalBuilder.AddDefaultTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
+        _internalBuilder.AddDefaultTypeInfoResolver(new RangeTypeInfoResolver());
+        _internalBuilder.AddDefaultTypeInfoResolver(new RecordTypeInfoResolver());
+        _internalBuilder.AddDefaultTypeInfoResolver(new FullTextSearchTypeInfoResolver());
     }
 }

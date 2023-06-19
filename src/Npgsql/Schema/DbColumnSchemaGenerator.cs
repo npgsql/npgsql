@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.PostgresTypes;
 using Npgsql.Util;
+using NpgsqlTypes;
 
 namespace Npgsql.Schema;
 
@@ -133,7 +135,7 @@ ORDER BY attnum";
                 {
                     while (async ? await reader.ReadAsync(cancellationToken) : reader.Read())
                     {
-                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.DatabaseInfo, oldQueryMode);
                         for (var ordinal = 0; ordinal < numFields; ordinal++)
                         {
                             var field = _rowDescription[ordinal];
@@ -251,19 +253,19 @@ ORDER BY attnum";
     /// </summary>
     void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
     {
-        var typeMapper = _connection.Connector!.TypeMapper;
+        var serializerOptions = _connection.Connector!.SerializerOptions;
 
-        column.NpgsqlDbType = typeMapper.GetTypeInfo(column.TypeOID).npgsqlDbType;
-        column.DataType = typeMapper.TryResolveByOID(column.TypeOID, out var handler)
-            ? handler.GetFieldType()
-            : null;
+        var npgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
+        if (npgsqlDbType is not NpgsqlDbType.Unknown)
+            column.NpgsqlDbType = npgsqlDbType;
 
-        if (column.DataType != null)
+        if (serializerOptions.GetDefaultTypeInfo(column.PostgresType) is { } typeInfo)
         {
-            column.IsLong = handler is ByteaHandler;
+            column.DataType = typeInfo.Type;
+            column.IsLong = column.PostgresType.DataTypeName == DataTypeNames.Bytea;
 
-            if (handler is ICompositeHandler)
-                column.UdtAssemblyQualifiedName = column.DataType.AssemblyQualifiedName;
+            if (column.PostgresType is PostgresCompositeType)
+                column.UdtAssemblyQualifiedName = typeInfo.Type.AssemblyQualifiedName;
         }
 
         var facets = column.PostgresType.GetFacets(typeModifier);

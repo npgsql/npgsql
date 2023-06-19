@@ -562,7 +562,7 @@ FROM pg_constraint c
                      .Concat(connector.DatabaseInfo.EnumTypes)
                      .Concat(connector.DatabaseInfo.CompositeTypes))
         {
-            if (!connector.TypeMapper.TryGetMapping(baseType, out var mapping))
+            if (connector.SerializerOptions.GetDefaultTypeInfo(baseType) is not { } info)
                 continue;
 
             var row = table.Rows.Add();
@@ -570,15 +570,14 @@ FROM pg_constraint c
             PopulateDefaultDataTypeInfo(row, baseType);
             PopulateHardcodedDataTypeInfo(row, baseType);
 
-            if (mapping.ClrTypes.Length > 0)
-                row["DataType"] = mapping.ClrTypes[0].FullName;
-            if (mapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+            row["DataType"] = info.Type.FullName;
+            if (baseType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+                row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
         foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
         {
-            if (!connector.TypeMapper.TryGetMapping(arrayType.Element, out var elementMapping))
+            if (connector.SerializerOptions.GetDefaultTypeInfo(arrayType) is not { } info)
                 continue;
 
             var row = table.Rows.Add();
@@ -590,15 +589,14 @@ FROM pg_constraint c
             row["TypeName"] = arrayType.DisplayName;
             row["OID"] = arrayType.OID;
             row["CreateFormat"] += "[]";
-            if (elementMapping.ClrTypes.Length > 0)
-                row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
-            if (elementMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
+            row["DataType"] = info.Type.FullName;
+            if (arrayType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+                row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
         foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
         {
-            if (!connector.TypeMapper.TryGetMapping(rangeType.Subtype, out var subtypeMapping))
+            if (connector.SerializerOptions.GetDefaultTypeInfo(rangeType) is not { } info)
                 continue;
 
             var row = table.Rows.Add();
@@ -610,16 +608,15 @@ FROM pg_constraint c
             row["TypeName"] = rangeType.DisplayName;
             row["OID"] = rangeType.OID;
             row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            row["DataType"] = info.Type.FullName;
+            if (rangeType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+                row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
         foreach (var multirangeType in connector.DatabaseInfo.MultirangeTypes)
         {
             var subtypeType = multirangeType.Subrange.Subtype;
-            if (!connector.TypeMapper.TryGetMapping(subtypeType, out var subtypeMapping))
+            if (connector.SerializerOptions.GetDefaultTypeInfo(multirangeType) is not { } info)
                 continue;
 
             var row = table.Rows.Add();
@@ -631,16 +628,16 @@ FROM pg_constraint c
             row["TypeName"] = multirangeType.DisplayName;
             row["OID"] = multirangeType.OID;
             row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
-            if (subtypeMapping.ClrTypes.Length > 0)
-                row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(subtypeMapping.ClrTypes[0]).FullName;
-            if (subtypeMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)(subtypeMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            row["DataType"] = info.Type.FullName;
+            if (multirangeType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+                row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
         foreach (var domainType in connector.DatabaseInfo.DomainTypes)
         {
-            if (!connector.TypeMapper.TryGetMapping(domainType, out var baseMapping))
+            if (connector.SerializerOptions.GetDefaultTypeInfo(domainType) is not { } info)
                 continue;
+
 
             var row = table.Rows.Add();
 
@@ -652,10 +649,9 @@ FROM pg_constraint c
             // A domain is never the best match, since its underlying base type is
             row["IsBestMatch"] = false;
 
-            if (baseMapping.ClrTypes.Length > 0)
-                row["DataType"] = baseMapping.ClrTypes[0].FullName;
-            if (baseMapping.NpgsqlDbType.HasValue)
-                row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            row["DataType"] = info.Type.FullName;
+            if (domainType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+                row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
         return table;

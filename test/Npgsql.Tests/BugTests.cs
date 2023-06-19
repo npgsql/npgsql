@@ -9,12 +9,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
+using Npgsql.PostgresTypes;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
 
 public class BugTests : TestBase
 {
+    static uint ByteaOid => DefaultPgTypes.DataTypeNameMap[DataTypeNames.Bytea].Value;
+
     #region Sequential reader bugs
 
     [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
@@ -1370,7 +1373,7 @@ $$;");
         await server
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRowWithFlush(data);
 
         var otherData = new byte[10];
@@ -1379,7 +1382,7 @@ $$;");
             .WriteReadyForQuery()
             .WriteParseComplete()
             .WriteBindComplete()
-            .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+            .WriteRowDescription(new FieldDescription(ByteaOid))
             .WriteDataRow(otherData)
             .WriteCommandComplete()
             .WriteReadyForQuery()

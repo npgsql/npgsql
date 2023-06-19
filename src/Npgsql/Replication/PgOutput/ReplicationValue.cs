@@ -1,12 +1,11 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.Replication.PgOutput.Messages;
 
 namespace Npgsql.Replication.PgOutput;
 
@@ -95,11 +94,13 @@ public class ReplicationValue
     {
         CheckAndMarkConsumed();
 
+        var info = _fieldDescription.GetOrAddConverterInfo(typeof(T));
+
         switch (Kind)
         {
         case TupleDataKind.Null:
             // When T is a Nullable<T> (and only in that case), we support returning null
-            if (NullableHandler<T>.Exists)
+            if (default(T) is null && typeof(T).IsValueType)
                 return default!;
 
             if (typeof(T) == typeof(object))
@@ -126,11 +127,11 @@ public class ReplicationValue
 
             try
             {
-                return NullableHandler<T>.Exists
-                    ? await NullableHandler<T>.ReadAsync(_fieldDescription.Handler, _readBuffer, Length, async: true, _fieldDescription)
-                    : typeof(T) == typeof(object)
-                        ? (T)await _fieldDescription.Handler.ReadAsObject(_readBuffer, Length, async: true, _fieldDescription)
-                        : await _fieldDescription.Handler.Read<T>(_readBuffer, Length, async: true, _fieldDescription);
+                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.Format);
+                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+                return info.AsObject
+                    ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
+                    : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
             }
             catch
             {
@@ -158,6 +159,8 @@ public class ReplicationValue
     {
         CheckAndMarkConsumed();
 
+        var info = _fieldDescription.ObjectOrDefaultInfo;
+
         switch (Kind)
         {
         case TupleDataKind.Null:
@@ -181,7 +184,9 @@ public class ReplicationValue
 
             try
             {
-                return await _fieldDescription.Handler.ReadAsObject(_readBuffer, Length, async: true, _fieldDescription);
+                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.Format);
+                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+                return await info.Converter.ReadAsObjectAsync(reader, cancellationToken);
             }
             catch
             {
@@ -223,10 +228,12 @@ public class ReplicationValue
     /// Retrieves data as a <see cref="TextReader"/>.
     /// </summary>
     public TextReader GetTextReader()
-        => _fieldDescription.Handler is ITextReaderHandler handler
-            ? handler.GetTextReader(GetStream(), _readBuffer)
-            : throw new InvalidCastException(
-                $"The GetTextReader method is not supported for type {_fieldDescription.Handler.PgDisplayName}");
+    {
+        var info = _fieldDescription.GetOrAddConverterInfo(typeof(TextReader));
+        var reader = _readBuffer.PgReader.Init(GetStream(), Length);
+        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
+        return (TextReader)info.Converter.ReadAsObject(reader);
+    }
 
     internal async Task Consume(CancellationToken cancellationToken)
     {

@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
@@ -79,6 +80,10 @@ class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     internal PostgresDatabaseInfo(NpgsqlConnector conn)
         : base(conn.Host!, conn.Port, conn.Database!, conn.PostgresParameters["server_version"])
         => _connectionLogger = conn.LoggingConfiguration.ConnectionLogger;
+
+    private protected PostgresDatabaseInfo(string host, int port, string databaseName, string serverVersion)
+        : base(host, port, databaseName, serverVersion)
+        => _connectionLogger = NullLogger.Instance;
 
     /// <summary>
     /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.

@@ -1,14 +1,14 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
-using Npgsql.Internal.TypeMapping;
+using Npgsql.Internal.Descriptors;
 
 namespace Npgsql;
 
@@ -32,22 +32,35 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     readonly List<ColumnInfo> _columns = new();
 
-    readonly struct ColumnInfo
+    struct ColumnInfo
     {
-        public readonly uint TypeOid;
-        public readonly int BufferPos;
-        public readonly NpgsqlTypeHandler TypeHandler;
+        public PostgresType PostgresType { get; }
+        public int BufferPos { get; }
+        public Type? LastConverterInfoType { get; private set; }
+        public PgConverterInfo LastConverterInfo { get; private set; }
 
-        public ColumnInfo(uint typeOid, int bufferPos, NpgsqlTypeHandler typeHandler)
+        public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
+        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(DataFormat.Binary, Field);
+
+        Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
+
+        public ColumnInfo SetConverterInfo(PgTypeInfo typeInfo) =>
+            this with
+            {
+                LastConverterInfoType = typeInfo.Type,
+                LastConverterInfo = typeInfo.Bind(DataFormat.Binary, Field)
+            };
+
+        public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo)
         {
-            TypeOid = typeOid;
+            PostgresType = postgresType;
             BufferPos = bufferPos;
-            TypeHandler = typeHandler;
+            ObjectOrDefaultTypeInfo = objectOrDefaultTypeInfo;
         }
     }
 
     NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
-    TypeMapper TypeMapper => _outermostReader.Connector.TypeMapper;
+    PgSerializerOptions SerializerOptions => _outermostReader.Connector.SerializerOptions;
 
     internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
         ulong uniqueOutermostReaderRowId, int depth, PostgresCompositeType? compositeType)
@@ -179,26 +192,28 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
-        var field = CheckRowAndColumnAndSeek(ordinal);
-        var handler = field.Handler;
-        if (!(handler is ByteaHandler))
-            throw new InvalidCastException("GetBytes() not supported for type " + field.PostgresType.DisplayName);
+        var columnLen = CheckRowAndColumnAndSeek(ordinal, out var column);
+        var info = GetOrAddConverterInfo(typeof(byte[]), column, ordinal);
+        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
 
-        if (field.Length == -1)
-            throw new InvalidCastException("field is null");
+        if (columnLen is -1)
+            ThrowHelper.ThrowInvalidCastException_NoValue();
+
+        if (buffer is null)
+            return columnLen;
 
         var dataOffset2 = (int)dataOffset;
-        if (dataOffset2 >= field.Length)
-            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), field.Length);
+        if (dataOffset2 >= columnLen)
+            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), columnLen);
 
         Buffer.ReadPosition += dataOffset2;
-
-        length = Math.Min(length, field.Length - dataOffset2);
-
-        if (buffer == null)
-            return length;
-
-        return Buffer.Read(new Span<byte>(buffer, bufferOffset, length));
+        length = Math.Min(length, columnLen - dataOffset2);
+        var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen);
+        var result = info.AsObject
+            ? (byte[])info.Converter.ReadAsObject(reader)!
+            : info.GetConverter<byte[]>().Read(reader);
+        Debug.Assert(ReferenceEquals(buffer, result));
+        return length;
     }
     /// <inheritdoc />
     public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
@@ -215,15 +230,15 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <returns>A data reader.</returns>
     public new NpgsqlNestedDataReader GetData(int ordinal)
     {
-        var field = CheckRowAndColumnAndSeek(ordinal);
-        var type = field.Handler.PostgresType;
+        var valueLength = CheckRowAndColumnAndSeek(ordinal, out var column);
+        var type = column.PostgresType;
         var isArray = type is PostgresArrayType;
         var elementType = isArray ? ((PostgresArrayType)type).Element : type;
         var compositeType = elementType as PostgresCompositeType;
         if (elementType.InternalName != "record" && compositeType == null)
             throw new InvalidCastException("GetData() not supported for type " + type.DisplayName);
 
-        if (field.Length == -1)
+        if (valueLength == -1)
             throw new InvalidCastException("field is null");
 
         var reader = _cachedFreeNestedDataReader;
@@ -247,7 +262,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     public override string GetDataTypeName(int ordinal)
     {
         var column = CheckRowAndColumn(ordinal);
-        return column.TypeHandler.PgDisplayName;
+        return column.PostgresType.DisplayName;
     }
 
     /// <inheritdoc />
@@ -286,16 +301,19 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     public override Type GetFieldType(int ordinal)
     {
         var column = CheckRowAndColumn(ordinal);
-        return column.TypeHandler.GetFieldType();
+        return column.ObjectOrDefaultTypeInfo.Type;
     }
 
     /// <inheritdoc />
     public override object GetValue(int ordinal)
     {
-        var column = CheckRowAndColumnAndSeek(ordinal);
-        if (column.Length == -1)
+        var columnLength = CheckRowAndColumnAndSeek(ordinal, out var column);
+        var info = column.ObjectOrDefaultInfo;
+        if (columnLength == -1)
             return DBNull.Value;
-        return column.Handler.ReadAsObject(Buffer, column.Length);
+        var reader = Buffer.PgReader.Init(columnLength);
+        reader.BufferData(info.BufferRequirement);
+        return info.Converter.ReadAsObject(reader);
     }
 
     /// <inheritdoc />
@@ -313,7 +331,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     /// <inheritdoc />
     public override bool IsDBNull(int ordinal)
-        => CheckRowAndColumnAndSeek(ordinal).Length == -1;
+        => CheckRowAndColumnAndSeek(ordinal, out _) == -1;
 
     /// <inheritdoc />
     public override T GetFieldValue<T>(int ordinal)
@@ -324,25 +342,26 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (typeof(T) == typeof(TextReader))
             return (T)(object)GetTextReader(ordinal);
 
-        var field = CheckRowAndColumnAndSeek(ordinal);
+        var columnLength = CheckRowAndColumnAndSeek(ordinal, out var column);
+        var info = GetOrAddConverterInfo(typeof(T), column, ordinal);
 
-        if (field.Length == -1)
+        if (columnLength == -1)
         {
             // When T is a Nullable<T> (and only in that case), we support returning null
-            if (NullableHandler<T>.Exists)
+            if (default(T) is null && typeof(T).IsValueType)
                 return default!;
 
             if (typeof(T) == typeof(object))
                 return (T)(object)DBNull.Value;
 
-            throw new InvalidCastException("field is null");
+            ThrowHelper.ThrowInvalidCastException_NoValue();
         }
 
-        return NullableHandler<T>.Exists
-            ? NullableHandler<T>.Read(field.Handler, Buffer, field.Length, fieldDescription: null)
-            : typeof(T) == typeof(object)
-                ? (T)field.Handler.ReadAsObject(Buffer, field.Length, fieldDescription: null)
-                : field.Handler.Read<T>(Buffer, field.Length, fieldDescription: null);
+        var reader = Buffer.PgReader.Init(columnLength);
+        reader.BufferData(info.BufferRequirement);
+        return info.AsObject
+            ? (T)info.Converter.ReadAsObject(reader)!
+            : info.GetConverter<T>().Read(reader);
     }
 
     /// <inheritdoc />
@@ -367,10 +386,17 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             var typeOid = Buffer.ReadUInt32();
             var bufferPos = Buffer.ReadPosition;
             if (i >= _columns.Count)
-                _columns.Add(new ColumnInfo(typeOid, bufferPos, TypeMapper.ResolveByOID(typeOid)));
+            {
+                var pgType = SerializerOptions.GetPgType((Oid)typeOid);
+                _columns.Add(new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType)));
+            }
             else
-                _columns[i] = new ColumnInfo(typeOid, bufferPos,
-                    _columns[i].TypeOid == typeOid ? _columns[i].TypeHandler : TypeMapper.ResolveByOID(typeOid));
+            {
+                var pgType = _columns[i].PostgresType.OID == typeOid
+                    ? _columns[i].PostgresType
+                    : SerializerOptions.GetPgType((Oid)typeOid);
+                _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType));
+            }
 
             var columnLen = Buffer.ReadInt32();
             if (columnLen >= 0)
@@ -463,12 +489,37 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         return _columns[column];
     }
 
-    (NpgsqlTypeHandler Handler, int Length) CheckRowAndColumnAndSeek(int ordinal)
+    int CheckRowAndColumnAndSeek(int ordinal, out ColumnInfo column)
     {
-        var column = CheckRowAndColumn(ordinal);
+        column = CheckRowAndColumn(ordinal);
         Buffer.ReadPosition = column.BufferPos;
-        var len = Buffer.ReadInt32();
-        return (column.TypeHandler, len);
+        return Buffer.ReadInt32();
+    }
+
+    PgConverterInfo GetOrAddConverterInfo(Type type, ColumnInfo column, int ordinal)
+    {
+        PgConverterInfo info;
+        if (column.LastConverterInfoType == type)
+            info = column.LastConverterInfo;
+        else
+        {
+            var columnInfo = column.SetConverterInfo(GetTypeInfo(type, column.PostgresType));
+            _columns[ordinal] = columnInfo;
+            info = columnInfo.LastConverterInfo;
+        }
+        return info;
+    }
+
+    PgTypeInfo GetObjectOrDefaultTypeInfo(PostgresType postgresType) =>
+        SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
+        ?? throw new InvalidCastException($"Reading is not supported for postgres type {postgresType.DisplayName}");
+
+    PgTypeInfo GetTypeInfo(Type type, PostgresType postgresType)
+    {
+        if ((typeof(object) == type ? SerializerOptions.GetObjectOrDefaultTypeInfo(postgresType) : SerializerOptions.GetTypeInfo(type, postgresType)) is not { } info)
+            throw new InvalidCastException($"Reading as {type} is not supported for postgres type {postgresType.DisplayName}");
+
+        return info;
     }
 
     enum ReaderState

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -80,7 +81,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         switch (msg.Code)
         {
         case BackendMessageCode.CopyInResponse:
-            copyInResponse = (CopyInResponseMessage) msg;
+            copyInResponse = (CopyInResponseMessage)msg;
             if (!copyInResponse.IsBinary)
             {
                 throw _connector.Break(
@@ -327,9 +328,20 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             }
             typedParam.TypedValue = value;
         }
-        param.ResolveHandler(_connector.TypeMapper);
-        param.ValidateAndGetLength();
-        await param.WriteWithLength(_buf, async, cancellationToken);
+        param.Bind(_connector.SerializerOptions);
+        param.BindFormatAndLength();
+        switch (param.SizeResult)
+        {
+        case { Kind: SizeKind.Exact } size:
+            _buf.WriteInt32(size.Value);
+            await param.Write(async, _buf.PgWriter, cancellationToken);
+            break;
+        case { Kind: SizeKind.Unknown }:
+            // TODO this is where we would create the byte buffer and copy it into WriteBuffer.
+            Debug.Fail("Should not end up here, yet");
+            break;
+        }
+
         _column++;
     }
 

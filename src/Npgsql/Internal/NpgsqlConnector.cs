@@ -18,12 +18,10 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 using System.Transactions;
 using Microsoft.Extensions.Logging;
-using Npgsql.Internal.TypeMapping;
 using Npgsql.Properties;
 
 namespace Npgsql.Internal;
@@ -115,12 +113,12 @@ public sealed partial class NpgsqlConnector
     /// </summary>
     internal int Id => BackendProcessId;
 
+    internal PgSerializerOptions SerializerOptions { get; set; } = default!;
+
     /// <summary>
     /// Information about PostgreSQL and PostgreSQL-like databases (e.g. type definitions, capabilities...).
     /// </summary>
     public NpgsqlDatabaseInfo DatabaseInfo { get; internal set; } = default!;
-
-    internal TypeMapper TypeMapper { get; set; } = default!;
 
     /// <summary>
     /// The current transaction status for this connector.
@@ -500,9 +498,8 @@ public sealed partial class NpgsqlConnector
 
             await DataSource.Bootstrap(this, timeout, forceReload: false, async, cancellationToken);
 
-            Debug.Assert(DataSource.TypeMapper is not null);
+            Debug.Assert(DataSource.SerializerOptions is not null);
             Debug.Assert(DataSource.DatabaseInfo is not null);
-            TypeMapper = DataSource.TypeMapper;
             DatabaseInfo = DataSource.DatabaseInfo;
 
             if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
@@ -1466,7 +1463,7 @@ public sealed partial class NpgsqlConnector
         switch (code)
         {
         case BackendMessageCode.RowDescription:
-            return _rowDescriptionMessage.Load(buf, TypeMapper);
+            return _rowDescriptionMessage.Load(buf, SerializerOptions);
         case BackendMessageCode.DataRow:
             return _dataRowMessage.Load(len);
         case BackendMessageCode.CommandComplete:

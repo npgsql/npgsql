@@ -87,7 +87,7 @@ sealed class PreparedStatement
 
         HandlerParamTypes = new Type[parameters.Count];
         for (var i = 0; i < parameters.Count; i++)
-            HandlerParamTypes[i] = parameters[i].Handler!.GetType();
+            HandlerParamTypes[i] = parameters[i].TypeInfo!.GetType();
     }
 
     internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
@@ -96,7 +96,7 @@ sealed class PreparedStatement
             return false;
 
         for (var i = 0; i < HandlerParamTypes.Length; i++)
-            if (HandlerParamTypes[i] != parameters[i].Handler!.GetType())
+            if (HandlerParamTypes[i] != parameters[i].TypeInfo!.GetType())
                 return false;
 
         return true;

@@ -1,12 +1,9 @@
 ﻿using Npgsql.Internal;
-using Npgsql.Internal.TypeHandlers;
-using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeMapping;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
-using Npgsql.Internal.TypeMapping;
+using Npgsql.Internal.Converters;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
@@ -121,7 +118,7 @@ public class TypeMapperTests : TestBase
         await EnsureExtensionAsync(adminConnection, "citext");
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.AddTypeResolverFactory(new CitextToStringTypeHandlerResolverFactory());
+        dataSourceBuilder.AddTypeInfoResolver(new CitextToStringTypeHandlerResolverFactory());
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection = await dataSource.OpenConnectionAsync();
 
@@ -162,25 +159,14 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
 
     #region Support
 
-    class CitextToStringTypeHandlerResolverFactory : TypeHandlerResolverFactory
+    class CitextToStringTypeHandlerResolverFactory : IPgTypeInfoResolver
     {
-        public override TypeHandlerResolver Create(TypeMapper typeMapper, NpgsqlConnector connector)
-            => new CitextToStringTypeHandlerResolver(connector);
-
-        class CitextToStringTypeHandlerResolver : TypeHandlerResolver
+        public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
-            readonly NpgsqlConnector _connector;
-            readonly PostgresType _pgCitextType;
+            if (type == typeof(string) || dataTypeName == DataTypeNames.CiText)
+                return PgTypeInfo.CreateDefault(options, new StringTextConverter(options.TextEncoding), DataTypeNames.CiText);
 
-            public CitextToStringTypeHandlerResolver(NpgsqlConnector connector)
-            {
-                _connector = connector;
-                _pgCitextType = connector.DatabaseInfo.GetPostgresTypeByName("citext");
-            }
-
-            public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-                => type == typeof(string) ? new TextHandler(_pgCitextType, _connector.TextEncoding) : null;
-            public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName) => null;
+            return null;
         }
     }
 

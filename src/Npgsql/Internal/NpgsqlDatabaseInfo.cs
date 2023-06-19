@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -179,6 +178,11 @@ public abstract class NpgsqlDatabaseInfo
         Version = ParseServerVersion(serverVersion);
     }
 
+    public PostgresType GetPostgresTypeByOid(uint oid)
+        => ByOID.TryGetValue(oid, out var pgType)
+            ? pgType
+            : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the database");
+
     public PostgresType GetPostgresTypeByName(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
             ? pgType
@@ -326,4 +330,20 @@ public abstract class NpgsqlDatabaseInfo
         };
 
     #endregion Factory management
+
+    internal Oid GetOid(PgTypeId pgTypeId, bool validate = false)
+    {
+        if (pgTypeId.IsOid)
+            return validate ? GetPostgresTypeByOid(pgTypeId.Oid.Value).OID : pgTypeId.Oid;
+
+        return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName.Value).OID : ByFullName[pgTypeId.DataTypeName.Value].OID;
+    }
+
+    internal DataTypeName GetDataTypeName(PgTypeId pgTypeId, bool validate = false)
+    {
+        if (pgTypeId.IsDataTypeName)
+            return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName.Value).DataTypeName : pgTypeId.DataTypeName;
+
+        return validate ? GetPostgresTypeByOid(pgTypeId.Oid.Value).DataTypeName : ByOID[pgTypeId.Oid.Value].DataTypeName;
+    }
 }

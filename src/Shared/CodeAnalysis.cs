@@ -5,6 +5,20 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace System.Diagnostics.CodeAnalysis
 {
+#if !NET7_0_OR_GREATER
+    [AttributeUsage(AttributeTargets.Constructor, AllowMultiple = false, Inherited = false)]
+    sealed class SetsRequiredMembersAttribute : Attribute
+    {
+    }
+    [AttributeUsageAttribute(AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    sealed class UnscopedRefAttribute : Attribute
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UnscopedRefAttribute"/> class.
+        /// </summary>
+        public UnscopedRefAttribute() { }
+    }
+#endif
 #if NETSTANDARD2_0
     [AttributeUsageAttribute(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property)]
     sealed class AllowNullAttribute : Attribute
@@ -167,9 +181,43 @@ namespace System.Diagnostics.CodeAnalysis
 #endif
 }
 
-#if !NET5_0_OR_GREATER
 namespace System.Runtime.CompilerServices
 {
-    internal static class IsExternalInit {}
-}
+#if !NET5_0_OR_GREATER
+    static class IsExternalInit {}
 #endif
+#if !NET7_0_OR_GREATER
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+    sealed class RequiredMemberAttribute : Attribute
+    { }
+
+    [AttributeUsage(AttributeTargets.All, AllowMultiple = true, Inherited = false)]
+    sealed class CompilerFeatureRequiredAttribute : Attribute
+    {
+        public CompilerFeatureRequiredAttribute(string featureName)
+        {
+            FeatureName = featureName;
+        }
+
+        /// <summary>
+        /// The name of the compiler feature.
+        /// </summary>
+        public string FeatureName { get; }
+
+        /// <summary>
+        /// If true, the compiler can choose to allow access to the location where this attribute is applied if it does not understand <see cref="FeatureName"/>.
+        /// </summary>
+        public bool IsOptional { get; init; }
+
+        /// <summary>
+        /// The <see cref="FeatureName"/> used for the ref structs C# feature.
+        /// </summary>
+        public const string RefStructs = nameof(RefStructs);
+
+        /// <summary>
+        /// The <see cref="FeatureName"/> used for the required members C# feature.
+        /// </summary>
+        public const string RequiredMembers = nameof(RequiredMembers);
+    }
+#endif
+}

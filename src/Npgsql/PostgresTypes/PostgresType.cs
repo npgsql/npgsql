@@ -23,7 +23,7 @@ public abstract class PostgresType
     /// <param name="name">The data type's name.</param>
     /// <param name="oid">The data type's OID.</param>
     protected PostgresType(string ns, string name, uint oid)
-        : this(ns, name, name, oid) {}
+        : this(ns, name, name, oid) { }
 
     /// <summary>
     /// Constructs a representation of a PostgreSQL data type.
@@ -36,7 +36,7 @@ public abstract class PostgresType
     {
         Namespace = ns;
         Name = name;
-        FullName = Namespace + '.' + Name;
+        DataTypeName = DataTypeName.ValidatedName(Namespace + '.' + Name);
         InternalName = internalName;
         OID = oid;
     }
@@ -67,7 +67,9 @@ public abstract class PostgresType
     /// <summary>
     /// The full name of the backend type, including its namespace.
     /// </summary>
-    public string FullName { get; }
+    public string FullName => DataTypeName.Value;
+
+    internal DataTypeName DataTypeName { get; }
 
     /// <summary>
     /// A display name for this backend type, including the namespace unless it is pg_catalog (the namespace

@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.Internal.TypeHandling;
-using Npgsql.Internal.TypeMapping;
-using Npgsql.TypeMapping;
+using Npgsql.Internal.Descriptors;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
@@ -20,11 +19,11 @@ namespace Npgsql;
 /// </summary>
 public sealed class NpgsqlBinaryExporter : ICancelable
 {
+
     #region Fields and Properties
 
     NpgsqlConnector _connector;
     NpgsqlReadBuffer _buf;
-    TypeMapper _typeMapper;
     bool _isConsumed, _isDisposed;
     int _leftToReadInDataMsg, _columnLen;
 
@@ -36,7 +35,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     /// </summary>
     internal int NumColumns { get; private set; }
 
-    NpgsqlTypeHandler?[] _typeHandlerCache;
+    PgConverterInfo?[] _resolutionLookup;
 
     readonly ILogger _copyLogger;
 
@@ -61,10 +60,9 @@ public sealed class NpgsqlBinaryExporter : ICancelable
     {
         _connector = connector;
         _buf = connector.ReadBuffer;
-        _typeMapper = connector.TypeMapper;
         _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
         _column = -1;
-        _typeHandlerCache = null!;
+        _resolutionLookup = null!;
         _copyLogger = connector.LoggingConfiguration.CopyLogger;
     }
 
@@ -80,7 +78,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         switch (msg.Code)
         {
         case BackendMessageCode.CopyOutResponse:
-            copyOutResponse = (CopyOutResponseMessage) msg;
+            copyOutResponse = (CopyOutResponseMessage)msg;
             if (!copyOutResponse.IsBinary)
             {
                 throw _connector.Break(
@@ -98,7 +96,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         }
 
         NumColumns = copyOutResponse.NumColumns;
-        _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
+        _resolutionLookup = new PgConverterInfo?[NumColumns];
         _rowsExported = 0;
         await ReadHeader(async);
     }
@@ -219,12 +217,16 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == -1 || _column == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
-        var type = typeof(T);
-        var handler = _typeHandlerCache[_column];
-        if (handler == null)
-            handler = _typeHandlerCache[_column] = _typeMapper.ResolveByClrType(type);
+        return DoRead<T>(_resolutionLookup[_column] ??= CreateConverterInfo(typeof(T)), async, cancellationToken);
+    }
 
-        return DoRead<T>(handler, async, cancellationToken);
+    PgConverterInfo CreateConverterInfo(Type type, NpgsqlDbType? npgsqlDbType = null)
+    {
+        // TODO we probably want a static map to oid as well (so dbType.ToOid()).
+        var pgTypeId = npgsqlDbType is { } dbType ? (PgTypeId?)_connector.SerializerOptions.GetCanonicalTypeId(dbType.ToDataTypeName()) : null;
+        var info = _connector.SerializerOptions.GetTypeInfo(type, pgTypeId) ?? throw new InvalidCastException($"Reading is not supported for type '{type}'");
+        // Binary export has no type info so we only do caller-directed interpretation of data.
+        return info.Bind(new Field("?", info.PgTypeId!.Value, -1), DataFormat.Binary);
     }
 
     /// <summary>
@@ -270,14 +272,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
         if (_column == -1 || _column == NumColumns)
             ThrowHelper.ThrowInvalidOperationException("Not reading a row");
 
-        var handler = _typeHandlerCache[_column];
-        if (handler == null)
-            handler = _typeHandlerCache[_column] = _typeMapper.ResolveByNpgsqlDbType(type);
-
-        return DoRead<T>(handler, async, cancellationToken);
+        return DoRead<T>(_resolutionLookup[_column] ??= CreateConverterInfo(typeof(T), type), async, cancellationToken);
     }
 
-    async ValueTask<T> DoRead<T>(NpgsqlTypeHandler handler, bool async, CancellationToken cancellationToken = default)
+    async ValueTask<T> DoRead<T>(PgConverterInfo info, bool async, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -287,25 +285,31 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
             if (_columnLen == -1)
             {
-#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
                 // When T is a Nullable<T>, we support returning null
-                if (NullableHandler<T>.Exists)
+                if (default(T) is null && typeof(T).IsValueType)
                     return default!;
-#pragma warning restore CS8653
                 throw new InvalidCastException("Column is null");
             }
 
-            // If we know the entire column is already in memory, use the code path without async
-            var result = NullableHandler<T>.Exists
-                ? _columnLen <= _buf.ReadBytesLeft
-                    ? NullableHandler<T>.Read(handler, _buf, _columnLen)
-                    : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async)
-                : _columnLen <= _buf.ReadBytesLeft
-                    ? handler.Read<T>(_buf, _columnLen)
-                    : await handler.Read<T>(_buf, _columnLen, async);
+            var reader = _buf.PgReader.Init(_columnLen);
+            T result;
+            if (async)
+            {
+                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+                result = info.AsObject
+                    ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
+                    : await info.GetConverter<T>().ReadAsync(reader, cancellationToken);
+            }
+            else
+            {
+                reader.BufferData(info.BufferRequirement);
+                result = info.AsObject
+                    ? (T)info.Converter.ReadAsObject(reader)
+                    : info.GetConverter<T>().Read(reader);
+            }
 
             _leftToReadInDataMsg -= _columnLen;
-            _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
+            _columnLen = int.MinValue; // Mark that the (next) column length hasn't been read yet
             _column++;
             return result;
         }
@@ -458,7 +462,6 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             _connector = null;
         }
 
-        _typeMapper = null;
         _buf = null;
         _isDisposed = true;
     }

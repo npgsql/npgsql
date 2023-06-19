@@ -597,7 +597,6 @@ Npgsql.NpgsqlDataSource.OpenConnection() -> Npgsql.NpgsqlConnection!
 Npgsql.NpgsqlDataSource.OpenConnectionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Npgsql.NpgsqlConnection!>
 Npgsql.NpgsqlDataSource.Password.set -> void
 Npgsql.NpgsqlDataSourceBuilder
-Npgsql.NpgsqlDataSourceBuilder.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 Npgsql.NpgsqlDataSourceBuilder.Build() -> Npgsql.NpgsqlDataSource!
 Npgsql.NpgsqlDataSourceBuilder.BuildMultiHost() -> Npgsql.NpgsqlMultiHostDataSource!
 Npgsql.NpgsqlDataSourceBuilder.ConnectionString.get -> string!
@@ -674,8 +673,6 @@ Npgsql.NpgsqlParameter
 Npgsql.NpgsqlParameter.Clone() -> Npgsql.NpgsqlParameter!
 Npgsql.NpgsqlParameter.Collection.get -> Npgsql.NpgsqlParameterCollection?
 Npgsql.NpgsqlParameter.Collection.set -> void
-Npgsql.NpgsqlParameter.ConvertedValue.get -> object?
-Npgsql.NpgsqlParameter.ConvertedValue.set -> void
 Npgsql.NpgsqlParameter.DataTypeName.get -> string?
 Npgsql.NpgsqlParameter.DataTypeName.set -> void
 Npgsql.NpgsqlParameter.NpgsqlDbType.get -> NpgsqlTypes.NpgsqlDbType
@@ -1164,13 +1161,11 @@ Npgsql.StatementType.Select = 1 -> Npgsql.StatementType
 Npgsql.StatementType.Unknown = 0 -> Npgsql.StatementType
 Npgsql.StatementType.Update = 4 -> Npgsql.StatementType
 Npgsql.TypeMapping.INpgsqlTypeMapper
-Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeResolverFactory(Npgsql.Internal.TypeHandling.TypeHandlerResolverFactory! resolverFactory) -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
 Npgsql.TypeMapping.INpgsqlTypeMapper.DefaultNameTranslator.set -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 Npgsql.TypeMapping.INpgsqlTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-Npgsql.TypeMapping.INpgsqlTypeMapper.Reset() -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.INpgsqlTypeMapper.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
@@ -1841,7 +1836,6 @@ static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(s
 static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommand! command) -> void
 static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void
-static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static Npgsql.NpgsqlDataSource.Create(Npgsql.NpgsqlConnectionStringBuilder! connectionStringBuilder) -> Npgsql.NpgsqlDataSource!
 static Npgsql.NpgsqlDataSource.Create(string! connectionString) -> Npgsql.NpgsqlDataSource!
 static Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool parameterLoggingEnabled = false) -> void

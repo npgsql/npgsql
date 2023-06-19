@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -66,6 +65,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     internal Encoding TextEncoding { get; }
 
     public int WriteSpaceLeft => Size - WritePosition;
+    internal PgWriter PgWriter { get; }
 
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
@@ -106,6 +106,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
         TextEncoding = textEncoding;
         _textEncoder = TextEncoding.GetEncoder();
+        PgWriter = new PgWriter(this, connector.DatabaseInfo);
     }
 
     #endregion
