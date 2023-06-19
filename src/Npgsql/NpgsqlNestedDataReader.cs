@@ -174,12 +174,12 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <inheritdoc />
     public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
     {
-        if (dataOffset < 0 || dataOffset > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
+        if (dataOffset is < 0 or > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between 0 and {int.MaxValue}");
         if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
-            throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
+            throw new IndexOutOfRangeException($"bufferOffset must be between 0 and {buffer.Length}");
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-            throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
+            throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var field = CheckRowAndColumnAndSeek(ordinal);
         var handler = field.Handler;
@@ -190,9 +190,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             throw new InvalidCastException("field is null");
 
         var dataOffset2 = (int)dataOffset;
-        if (dataOffset2 > field.Length)
-            throw new ArgumentOutOfRangeException(nameof(dataOffset),
-                $"attempting to read out of bounds from the column data, dataOffset must be between {0} and {field.Length}");
+        if (dataOffset2 >= field.Length)
+            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), field.Length);
 
         Buffer.ReadPosition += dataOffset2;
 

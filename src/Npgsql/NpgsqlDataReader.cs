@@ -130,11 +130,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     NpgsqlReadBuffer.ColumnStream? _columnStream;
 
     /// <summary>
-    /// Used for internal temporary purposes
-    /// </summary>
-    char[]? _tempCharBuf;
-
-    /// <summary>
     /// Used to keep track of every unique row this reader object ever traverses.
     /// This is used to detect whether nested DbDataReaders are still valid.
     /// </summary>
@@ -1417,12 +1412,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>The actual number of bytes read.</returns>
     public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
     {
-        if (dataOffset < 0 || dataOffset > int.MaxValue)
+        if (dataOffset is < 0 or > int.MaxValue)
             throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
         if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
-            throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
+            throw new IndexOutOfRangeException($"bufferOffset must be between 0 and {buffer.Length}");
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-            throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
+            throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var field = CheckRowAndGetField(ordinal);
         var handler = field.Handler;
@@ -1430,10 +1425,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw new InvalidCastException("GetBytes() not supported for type " + field.Name);
 
         SeekToColumn(ordinal, false).GetAwaiter().GetResult();
-        if (ColumnLen == -1)
+        if (ColumnLen is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
-        if (buffer == null)
+        if (buffer is null)
             return ColumnLen;
 
         var dataOffset2 = (int)dataOffset;
@@ -1513,12 +1508,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>The actual number of characters read.</returns>
     public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
     {
-        if (dataOffset < 0 || dataOffset > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
+        if (dataOffset is < 0 or > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between 0 and {int.MaxValue}");
         if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
-            throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
+            throw new IndexOutOfRangeException($"bufferOffset must be between 0 and {buffer.Length}");
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
-            throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
+            throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var field = CheckRowAndGetField(ordinal);
         var handler = field.Handler as TextHandler;
@@ -1570,31 +1565,30 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (length == 0)
             return 0;
 
-        var (bytesRead, charsRead) = DecodeChars(decoder, buffer, bufferOffset, length, ColumnLen - PosInColumn);
+        var (bytesRead, charsRead) = DecodeChars(decoder, buffer.AsSpan(bufferOffset, length), ColumnLen - PosInColumn);
 
         PosInColumn += bytesRead;
         _charPos += charsRead;
         return charsRead;
     }
 
-    (int BytesRead, int CharsRead) DecodeChars(Decoder decoder, char[] output, int outputOffset, int charCount, int byteCount)
+    (int BytesRead, int CharsRead) DecodeChars(Decoder decoder, Span<char> output, int byteCount)
     {
         var (bytesRead, charsRead) = (0, 0);
+        var outputLength = output.Length;
 
         while (true)
         {
             Buffer.Ensure(1); // Make sure we have at least some data
-
             var maxBytes = Math.Min(byteCount - bytesRead, Buffer.ReadBytesLeft);
-            decoder.Convert(Buffer.Buffer, Buffer.ReadPosition, maxBytes, output, outputOffset, charCount - charsRead, false,
-                out var bytesUsed, out var charsUsed, out _);
+            var bytes = Buffer.Buffer.AsSpan(Buffer.ReadPosition, maxBytes);
+            decoder.Convert(bytes, output, false, out var bytesUsed, out var charsUsed, out _);
             Buffer.ReadPosition += bytesUsed;
             bytesRead += bytesUsed;
             charsRead += charsUsed;
-            if (charsRead == charCount || bytesRead == byteCount)
+            if (charsRead == outputLength || bytesRead == byteCount)
                 break;
-            outputOffset += charsUsed;
-            Buffer.Clear();
+            output = output.Slice(charsUsed);
         }
 
         return (bytesRead, charsRead);
@@ -1602,13 +1596,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
     {
-        // TODO: Allocate on the stack with Span
-        if (_tempCharBuf == null)
-            _tempCharBuf = new char[1024];
+        Span<char> tempCharBuf = stackalloc char[1024];
         var (charsSkipped, bytesSkipped) = (0, 0);
         while (charsSkipped < charCount && bytesSkipped < byteCount)
         {
-            var (bytesRead, charsRead) = DecodeChars(decoder, _tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount);
+            var (bytesRead, charsRead) = DecodeChars(decoder, tempCharBuf.Slice(0, Math.Min(charCount, tempCharBuf.Length)), byteCount);
             bytesSkipped += bytesRead;
             charsSkipped += charsRead;
         }
@@ -1649,7 +1641,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             return handler.GetTextReader(stream, Buffer);
         }
 
-        throw new InvalidCastException($"The GetTextReader method is not supported for type {field.Handler.PgDisplayName}");
+        throw new InvalidCastException($"The GetTextReader method is not supported for type {field.PostgresType.DisplayName}");
     }
 
     #endregion
@@ -1790,10 +1782,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         var fieldDescription = CheckRowAndGetField(ordinal);
 
-        if (_isSequential) {
+        if (_isSequential)
+        {
             SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
             CheckColumnStart();
-        } else
+        }
+        else
             SeekToColumnNonSequential(ordinal);
 
         if (ColumnLen == -1)
@@ -2105,7 +2099,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         for (var lastColumnRead = _columns.Count; column >= lastColumnRead; lastColumnRead++)
         {
             int lastColumnLen;
-            (Buffer.ReadPosition, lastColumnLen) = _columns[lastColumnRead-1];
+            (Buffer.ReadPosition, lastColumnLen) = _columns[lastColumnRead - 1];
             if (lastColumnLen != -1)
                 Buffer.ReadPosition += lastColumnLen;
             var len = Buffer.ReadInt32();
@@ -2163,32 +2157,32 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         _column = column;
     }
 
-    Task SeekInColumn(int posInColumn, bool async, CancellationToken cancellationToken = default)
+    Task SeekInColumn(int dataOffset, bool async, CancellationToken cancellationToken = default)
     {
         if (_isSequential)
-            return SeekInColumnSequential(posInColumn, async);
+            return SeekInColumnSequential(dataOffset, async);
 
-        if (posInColumn > ColumnLen)
-            posInColumn = ColumnLen;
+        if (dataOffset >= ColumnLen)
+            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), ColumnLen);
 
-        Buffer.ReadPosition = _columns[_column].Offset + posInColumn;
-        PosInColumn = posInColumn;
+        Buffer.ReadPosition = _columns[_column].Offset + dataOffset;
+        PosInColumn = dataOffset;
         return Task.CompletedTask;
 
-        async Task SeekInColumnSequential(int posInColumn, bool async)
+        async Task SeekInColumnSequential(int dataOffset, bool async)
         {
             Debug.Assert(_column > -1);
 
-            if (posInColumn < PosInColumn)
+            if (dataOffset < PosInColumn)
                 ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-            if (posInColumn > ColumnLen)
-                posInColumn = ColumnLen;
+            if (dataOffset >= ColumnLen)
+                ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), ColumnLen);
 
-            if (posInColumn > PosInColumn)
+            if (dataOffset > PosInColumn)
             {
-                await Buffer.Skip(posInColumn - PosInColumn, async);
-                PosInColumn = posInColumn;
+                await Buffer.Skip(dataOffset - PosInColumn, async);
+                PosInColumn = dataOffset;
             }
         }
     }
