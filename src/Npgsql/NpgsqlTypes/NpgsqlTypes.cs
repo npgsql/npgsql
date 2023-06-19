@@ -172,7 +172,10 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
     readonly List<NpgsqlPoint> _points;
     public bool Open { get; set; }
 
-    public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open) : this()
+    public NpgsqlPath()
+        => _points = new();
+
+    public NpgsqlPath(IEnumerable<NpgsqlPoint> points, bool open)
     {
         _points = new List<NpgsqlPoint>(points);
         Open = open;
@@ -268,14 +271,17 @@ public struct NpgsqlPath : IList<NpgsqlPoint>, IEquatable<NpgsqlPath>
 /// <summary>
 /// Represents a PostgreSQL Polygon type.
 /// </summary>
-public struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
+public readonly struct NpgsqlPolygon : IList<NpgsqlPoint>, IEquatable<NpgsqlPolygon>
 {
     readonly List<NpgsqlPoint> _points;
+
+    public NpgsqlPolygon()
+        => _points = new();
 
     public NpgsqlPolygon(IEnumerable<NpgsqlPoint> points)
         => _points = new List<NpgsqlPoint>(points);
 
-    public NpgsqlPolygon(params NpgsqlPoint[] points) : this ((IEnumerable<NpgsqlPoint>) points) {}
+    public NpgsqlPolygon(params NpgsqlPoint[] points) : this((IEnumerable<NpgsqlPoint>) points) {}
 
     public NpgsqlPolygon(int capacity)
         => _points = new List<NpgsqlPoint>(capacity);
