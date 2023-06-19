@@ -424,13 +424,11 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         WritePosition += TextEncoding.GetBytes(chars, offset, charCount, Buffer, WritePosition);
     }
 
-#if !NETSTANDARD2_0
     internal void WriteChars(ReadOnlySpan<char> chars)
     {
         Debug.Assert(TextEncoding.GetByteCount(chars) <= WriteSpaceLeft);
         WritePosition += TextEncoding.GetBytes(chars, Buffer.AsSpan(WritePosition));
     }
-#endif
 
     public void WriteBytes(ReadOnlySpan<byte> buf)
     {
