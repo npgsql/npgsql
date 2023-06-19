@@ -140,10 +140,10 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
 
 #if NETSTANDARD2_0
             var singleCharArray = new char[1];
-            decoder.Convert(buf.Buffer, buf.ReadPosition, len, singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out _, out var charsUsed, out _);
 #else
             Span<char> singleCharArray = stackalloc char[1];
-            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out var bytesUsed, out var charsUsed, out _);
+            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out _, out var charsUsed, out _);
 #endif
 
             if (charsUsed < 1)
