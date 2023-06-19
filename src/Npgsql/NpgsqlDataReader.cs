@@ -1596,7 +1596,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
     {
-        Span<char> tempCharBuf = stackalloc char[1024];
+        Span<char> tempCharBuf = stackalloc char[512];
         var (charsSkipped, bytesSkipped) = (0, 0);
         while (charsSkipped < charCount && bytesSkipped < byteCount)
         {
