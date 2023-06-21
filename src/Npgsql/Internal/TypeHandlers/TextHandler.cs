@@ -43,9 +43,9 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     {
         return buf.ReadBytesLeft >= byteLen
             ? new ValueTask<string>(buf.ReadString(byteLen))
-            : ReadLong(buf, byteLen, async);
+            : ReadLong(_encoding, buf, byteLen, async);
 
-        static async ValueTask<string> ReadLong(NpgsqlReadBuffer buf, int byteLen, bool async)
+        static async ValueTask<string> ReadLong(Encoding encoding, NpgsqlReadBuffer buf, int byteLen, bool async)
         {
             if (byteLen <= buf.Size)
             {
@@ -75,7 +75,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
                     }
                     break;
                 }
-                return buf.TextEncoding.GetString(tempBuf, 0, byteLen);
+                return encoding.GetString(tempBuf, 0, byteLen);
             }
             finally
             {
@@ -110,7 +110,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
                 }
                 break;
             }
-            return buf.TextEncoding.GetChars(tempBuf, 0, byteLen);
+            return _encoding.GetChars(tempBuf, 0, byteLen);
         }
         finally
         {
@@ -123,7 +123,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
         // Make sure we have enough bytes in the buffer for a single character
         // We can get here a much bigger length in case it's a string
         // while we want to read only its first character
-        var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
+        var maxBytes = Math.Min(_encoding.GetMaxByteCount(1), len);
         await buf.Ensure(maxBytes, async);
 
         var character = ReadCharCore();
@@ -136,20 +136,14 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
 
         char ReadCharCore()
         {
-            var decoder = buf.TextEncoding.GetDecoder();
-
-#if NETSTANDARD2_0
-            var singleCharArray = new char[1];
-            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, singleCharArray, 0, 1, true, out _, out var charsUsed, out _);
-#else
-            Span<char> singleCharArray = stackalloc char[1];
-            decoder.Convert(buf.Buffer.AsSpan(buf.ReadPosition, maxBytes), singleCharArray, true, out _, out var charsUsed, out _);
-#endif
-
-            if (charsUsed < 1)
+            var charSpan = buf.Buffer.AsSpan(buf.ReadPosition, maxBytes);
+            var chars = _encoding.GetCharCount(charSpan);
+            if (chars < 1)
                 throw new NpgsqlException("Could not read char - string was empty");
 
-            return singleCharArray[0];
+            Span<char> destination = stackalloc char[chars];
+            _encoding.GetChars(charSpan, destination);
+            return destination[0];
         }
     }
 
@@ -248,12 +242,7 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
     /// <inheritdoc />
     public int ValidateAndGetLength(char value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
     {
-#if NETSTANDARD2_0
-        var singleCharArray = new char[1];
-#else
         Span<char> singleCharArray = stackalloc char[1];
-#endif
-
         singleCharArray[0] = value;
         return _encoding.GetByteCount(singleCharArray);
     }
@@ -300,15 +289,9 @@ public partial class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler
 
         static unsafe void WriteCharCore(char value, NpgsqlWriteBuffer buf)
         {
-#if NETSTANDARD2_0
-            var singleCharArray = new char[1];
-            singleCharArray[0] = value;
-            buf.WriteChars(singleCharArray, 0, 1);
-#else
             Span<char> singleCharArray = stackalloc char[1];
             singleCharArray[0] = value;
             buf.WriteChars(singleCharArray);
-#endif
         }
     }
 

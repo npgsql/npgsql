@@ -53,6 +53,10 @@ static class ThrowHelper
         throw new InvalidCastException($"Column '{field.Name}' is null.");
 
     [DoesNotReturn]
+    internal static void ThrowArgumentOutOfRange_OutOfColumnBounds(string paramName, int columnLength) =>
+        throw new ArgumentOutOfRangeException(paramName, $"The value is out of bounds from the column data, dataOffset must be between 0 and {columnLength}");
+
+    [DoesNotReturn]
     internal static void ThrowInvalidOperationException_NoPropertyGetter(Type type, MemberInfo property) =>
         throw new InvalidOperationException($"Composite type '{type}' cannot be written because the '{property}' property has no getter.");
 
@@ -75,7 +79,7 @@ static class ThrowHelper
     [DoesNotReturn]
     internal static void ThrowNpgsqlOperationInProgressException(NpgsqlCommand command)
         => throw new NpgsqlOperationInProgressException(command);
-    
+
     [DoesNotReturn]
     internal static void ThrowNpgsqlOperationInProgressException(ConnectorState state)
         => throw new NpgsqlOperationInProgressException(state);
