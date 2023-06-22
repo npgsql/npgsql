@@ -85,13 +85,13 @@ public abstract class PgConverter
 
     internal abstract Size GetSizeAsObject(SizeContext context, object value, ref object? writeState);
 
-    internal object ReadAsObject(PgReader reader) => ReadAsObject(async: false, reader, CancellationToken.None);
+    internal object ReadAsObject(PgReader reader) => ReadAsObject(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
     internal ValueTask<object> ReadAsObjectAsync(PgReader reader, CancellationToken cancellationToken = default) => ReadAsObject(async: true, reader, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.
     private protected abstract ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken);
 
-    internal void WriteAsObject(PgWriter writer, object value) => WriteAsObject(async: false, writer, value, CancellationToken.None);
+    internal void WriteAsObject(PgWriter writer, object value) => WriteAsObject(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
     internal ValueTask WriteAsObjectAsync(PgWriter writer, object value, CancellationToken cancellationToken = default) => WriteAsObject(async: true, writer, value, cancellationToken);
 
     // Shared sync/async abstract to reduce virtual method table size overhead and code size for each NpgsqlConverter<T> instantiation.

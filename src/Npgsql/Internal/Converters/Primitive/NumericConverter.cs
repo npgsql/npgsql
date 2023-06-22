@@ -51,7 +51,7 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         static async ValueTask<T> AsyncCore(bool read, PgReader reader, CancellationToken cancellationToken)
         {
             if (read)
-                await reader.EnsureAtLeastAsync(PgNumeric.GetByteCount(0), cancellationToken);
+                await reader.BufferDataAsync(PgNumeric.GetByteCount(0), cancellationToken);
 
             var digitCount = reader.ReadInt16();
             var digits = new ArraySegment<short>(ArrayPool<short>.Shared.Rent(digitCount), 0, digitCount);
@@ -208,7 +208,7 @@ static class NumericConverter
         foreach (ref var digit in digits)
         {
             if (reader.Remaining < sizeof(short))
-                reader.EnsureAtLeast(sizeof(short));
+                reader.BufferData(sizeof(short));
             digit = reader.ReadInt16();
         }
 
@@ -224,7 +224,7 @@ static class NumericConverter
         for (var i = digits.Offset; i < digits.Count; i++)
         {
             if (reader.Remaining < sizeof(short))
-                await reader.EnsureAtLeastAsync(sizeof(short), cancellationToken);
+                await reader.BufferDataAsync(sizeof(short), cancellationToken);
             array[i] = reader.ReadInt16();
         }
 

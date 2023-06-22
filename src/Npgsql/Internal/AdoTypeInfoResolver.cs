@@ -265,7 +265,8 @@ sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver
     {
         var elementTypeCount = Mappings.Items.Count;
         AddArrayInfos(Mappings);
-        Debug.Assert(elementTypeCount * 2 == Mappings.Items.Count);
+        // Make sure we have at least one mapping for each element type.
+        Debug.Assert(Mappings.Items.Count >= elementTypeCount * 2);
     }
 
     public new static AdoWithArrayTypeInfoResolver Instance { get; } = new();
