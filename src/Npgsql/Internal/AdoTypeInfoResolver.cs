@@ -40,39 +40,39 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Int2
         mappings.AddStructType<short>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int16Converter<short>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<short>()), isDefault: true);
         mappings.AddStructType<int>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int16Converter<int>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<int>()));
         mappings.AddStructType<long>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int16Converter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<long>()));
         mappings.AddStructType<byte>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int16Converter<byte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int16Converter<sbyte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<sbyte>()));
 
         // Int4
         mappings.AddStructType<short>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int32Converter<short>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<short>()));
         mappings.AddStructType<int>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int32Converter<int>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()), isDefault: true);
         mappings.AddStructType<long>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int32Converter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<long>()));
         mappings.AddStructType<byte>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int32Converter<byte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int32Converter<sbyte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<sbyte>()));
 
         // Int8
         mappings.AddStructType<short>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<short>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<short>()));
         mappings.AddStructType<int>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<int>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<int>()));
         mappings.AddStructType<long>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<long>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()), isDefault: true);
         mappings.AddStructType<byte>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<byte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<sbyte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<sbyte>()));
 
         // Float4
         mappings.AddStructType<float>(DataTypeNames.Float4,
@@ -133,7 +133,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 new DateTimeOffsetUtcOnlyConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz),
                     options.EnableDateTimeInfinityConversions)));
         mappings.AddStructType<long>(DataTypeNames.TimestampTz,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
         // Timestamp
         mappings.AddStructType<DateTime>(DataTypeNames.Timestamp,
@@ -141,13 +141,13 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
                     options.EnableDateTimeInfinityConversions), resolvedDataTypeName), isDefault: true);
         mappings.AddStructType<long>(DataTypeNames.Timestamp,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
         // Time
         mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
         mappings.AddStructType<long>(DataTypeNames.Time,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int64Converter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 #if NET6_0_OR_GREATER
         mappings.AddStructType<TimeOnly>(DataTypeNames.Time,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeOnlyTimeConverter()));

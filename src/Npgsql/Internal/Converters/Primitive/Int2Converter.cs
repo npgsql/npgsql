@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class Int64Converter<T> : PgBufferedConverter<T>
+sealed class Int2Converter<T> : PgBufferedConverter<T>
 #if NET7_0_OR_GREATER
     where T : INumberBase<T>
 #endif
@@ -13,21 +13,21 @@ sealed class Int64Converter<T> : PgBufferedConverter<T>
         fixedSize = true;
         return base.CanConvert(format, out bufferingRequirement, out _);
     }
-    public override Size GetSize(SizeContext context, T value, ref object? writeState) => sizeof(long);
+    public override Size GetSize(SizeContext context, T value, ref object? writeState) => sizeof(short);
 
 #if NET7_0_OR_GREATER
-    protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadInt64());
-    protected override void WriteCore(PgWriter writer, T value) => writer.WriteInt64(long.CreateChecked(value));
+    protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadInt16());
+    protected override void WriteCore(PgWriter writer, T value) => writer.WriteInt16(short.CreateChecked(value));
 #else
     protected override T ReadCore(PgReader reader)
     {
-        var value = reader.ReadInt64();
+        var value = reader.ReadInt16();
         if (typeof(short) == typeof(T))
-            return (T)(object)checked((short)value);
-        if (typeof(int) == typeof(T))
-            return (T)(object)checked((int)value);
-        if (typeof(long) == typeof(T))
             return (T)(object)value;
+        if (typeof(int) == typeof(T))
+            return (T)(object)(int)value;
+        if (typeof(long) == typeof(T))
+            return (T)(object)(long)value;
 
         if (typeof(byte) == typeof(T))
             return (T)(object)checked((byte)value);
@@ -47,23 +47,23 @@ sealed class Int64Converter<T> : PgBufferedConverter<T>
     protected override void WriteCore(PgWriter writer, T value)
     {
         if (typeof(short) == typeof(T))
-            writer.WriteInt64((short)(object)value!);
+            writer.WriteInt16((short)(object)value!);
         else if (typeof(int) == typeof(T))
-            writer.WriteInt64((int)(object)value!);
+            writer.WriteInt16(checked((short)(int)(object)value!));
         else if (typeof(long) == typeof(T))
-            writer.WriteInt64((long)(object)value!);
+            writer.WriteInt16(checked((short)(long)(object)value!));
 
         else if (typeof(byte) == typeof(T))
-            writer.WriteInt64((byte)(object)value!);
+            writer.WriteInt16((byte)(object)value!);
         else if (typeof(sbyte) == typeof(T))
-            writer.WriteInt64((sbyte)(object)value!);
+            writer.WriteInt16((sbyte)(object)value!);
 
         else if (typeof(float) == typeof(T))
-            writer.WriteInt64(checked((long)(float)(object)value!));
+            writer.WriteInt16(checked((short)(float)(object)value!));
         else if (typeof(double) == typeof(T))
-            writer.WriteInt64(checked((long)(double)(object)value!));
+            writer.WriteInt16(checked((short)(double)(object)value!));
         else if (typeof(decimal) == typeof(T))
-            writer.WriteInt64((long)(decimal)(object)value!);
+            writer.WriteInt16((short)(decimal)(object)value!);
         else
             throw new NotSupportedException();
     }
