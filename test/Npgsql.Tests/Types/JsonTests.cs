@@ -16,7 +16,7 @@ public class JsonTests : MultiplexingTestBase
 {
     [Test]
     public async Task As_string()
-        => await AssertType(@"{""K"": ""V""}", @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefaultForWriting: false);
+        => await AssertType("""{"K": "V"}""", """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefaultForWriting: false);
 
     [Test]
     public async Task As_string_long()
@@ -36,7 +36,7 @@ public class JsonTests : MultiplexingTestBase
     public async Task As_string_with_GetTextReader()
     {
         await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand($@"SELECT '{{""K"": ""V""}}'::{PostgresType}", conn);
+        await using var cmd = new NpgsqlCommand($$"""SELECT '{"K": "V"}'::{{PostgresType}}""", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         using var textReader = await reader.GetTextReaderAsync(0);
@@ -45,27 +45,27 @@ public class JsonTests : MultiplexingTestBase
 
     [Test]
     public async Task As_char_array()
-        => await AssertType(@"{""K"": ""V""}".ToCharArray(), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertType("""{"K": "V"}""".ToCharArray(), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
     public async Task As_bytes()
-        => await AssertType(@"{""K"": ""V""}"u8.ToArray(), @"{""K"": ""V""}", PostgresType, NpgsqlDbType, isDefault: false);
+        => await AssertType("""{"K": "V"}"""u8.ToArray(), """{"K": "V"}""", PostgresType, NpgsqlDbType, isDefault: false);
 
     [Test]
     public async Task Write_as_ReadOnlyMemory_of_byte()
-        => await AssertTypeWrite(new ReadOnlyMemory<byte>(@"{""K"": ""V""}"u8.ToArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType,
+        => await AssertTypeWrite(new ReadOnlyMemory<byte>("""{"K": "V"}"""u8.ToArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType,
             isDefault: false);
 
     [Test]
     public async Task Write_as_ArraySegment_of_char()
-        => await AssertTypeWrite(new ArraySegment<char>(@"{""K"": ""V""}".ToCharArray()), @"{""K"": ""V""}", PostgresType, NpgsqlDbType,
+        => await AssertTypeWrite(new ArraySegment<char>("""{"K": "V"}""".ToCharArray()), """{"K": "V"}""", PostgresType, NpgsqlDbType,
             isDefault: false);
 
     [Test]
     public async Task As_JsonDocument()
         => await AssertType(
-            JsonDocument.Parse(@"{""K"": ""V""}"),
-            IsJsonb ? @"{""K"": ""V""}" : @"{""K"":""V""}",
+            JsonDocument.Parse("""{"K": "V"}"""),
+            IsJsonb ? """{"K": "V"}""" : """{"K":"V"}""",
             PostgresType,
             NpgsqlDbType,
             isDefault: false,
@@ -77,8 +77,8 @@ public class JsonTests : MultiplexingTestBase
         await using var slimDataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString).Build();
 
         await AssertTypeUnsupported(
-            JsonDocument.Parse(@"{""K"": ""V""}"),
-            @"{""K"": ""V""}",
+            JsonDocument.Parse("""{"K": "V"}"""),
+            """{"K": "V"}""",
             PostgresType,
             slimDataSource);
     }
@@ -88,7 +88,7 @@ public class JsonTests : MultiplexingTestBase
     public Task Roundtrip_JsonObject()
         => AssertType(
             new JsonObject { ["Bar"] = 8 },
-            IsJsonb ? @"{""Bar"": 8}" : @"{""Bar"":8}",
+            IsJsonb ? """{"Bar": 8}""" : """{"Bar":8}""",
             PostgresType,
             NpgsqlDbType,
             // By default we map JsonObject to jsonb
@@ -121,8 +121,8 @@ public class JsonTests : MultiplexingTestBase
                 TemperatureC = 10
             },
             IsJsonb
-                ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}"
-                : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}",
+                ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
+                : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
             isDefault: false);
@@ -142,8 +142,8 @@ public class JsonTests : MultiplexingTestBase
             },
             // Warning: in theory jsonb order and whitespace may change across versions
             IsJsonb
-                ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": """ + bigString + @""", ""TemperatureC"": 10}"
-                : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""" + bigString + @"""}",
+                ? $$"""{"Date": "2019-09-01T00:00:00", "Summary": "{{bigString}}", "TemperatureC": 10}"""
+                : $$"""{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"{{bigString}}"}""",
             PostgresType,
             NpgsqlDbType,
             isDefault: false);
@@ -161,7 +161,7 @@ public class JsonTests : MultiplexingTestBase
                 Summary = "Partly cloudy",
                 TemperatureC = 10
             },
-            @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}",
+            """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}""",
             PostgresType,
             slimDataSource);
     }
@@ -182,14 +182,14 @@ public class JsonTests : MultiplexingTestBase
         await using var conn = await OpenConnectionAsync();
 
         JsonDocument car;
-        await using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
+        await using (var cmd = new NpgsqlCommand("""SELECT '{"key" : "foo"}'::jsonb""", conn))
         await using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
             car = reader.GetFieldValue<JsonDocument>(0);
         }
 
-        await using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
+        await using (var cmd = new NpgsqlCommand("""SELECT '{"key" : "bar"}'::jsonb""", conn))
         await using (var reader = await cmd.ExecuteReaderAsync())
         {
             reader.Read();
@@ -249,8 +249,8 @@ public class JsonTests : MultiplexingTestBase
                 TemperatureC = 10
             },
             IsJsonb
-                ? @"{""date"": ""2019-09-01T00:00:00"", ""summary"": ""Partly cloudy"", ""temperatureC"": 10}"
-                : @"{""date"":""2019-09-01T00:00:00"",""temperatureC"":10,""summary"":""Partly cloudy""}",
+                ? """{"date": "2019-09-01T00:00:00", "summary": "Partly cloudy", "temperatureC": 10}"""
+                : """{"date":"2019-09-01T00:00:00","temperatureC":10,"summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
             isDefault: false);
@@ -275,8 +275,8 @@ public class JsonTests : MultiplexingTestBase
                 TemperatureC = 10
             },
             IsJsonb
-                ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}"
-                : @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}",
+                ? """{"Date": "2019-09-01T00:00:00", "Summary": "Partly cloudy", "TemperatureC": 10}"""
+                : """{"Date":"2019-09-01T00:00:00","TemperatureC":10,"Summary":"Partly cloudy"}""",
             PostgresType,
             NpgsqlDbType,
             isNpgsqlDbTypeInferredFromClrType: false);

@@ -46,7 +46,10 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     TextHandler? _nameHandler;
     TextHandler? _refcursorHandler;
     TextHandler? _citextHandler;
-    JsonTextHandler? _jsonbHandler; // Note that old version of PG (and Redshift) don't have jsonb
+
+    // Note that old versions of PG - as well as some PG-like databases (Redshift, CockroachDB) don't have json/jsonb, so we create
+    // these handlers lazily rather than eagerly.
+    JsonTextHandler? _jsonbHandler;
     JsonTextHandler? _jsonHandler;
     JsonPathHandler? _jsonPathHandler;
 
