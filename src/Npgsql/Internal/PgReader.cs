@@ -22,8 +22,8 @@ public class PgReader
 
     public ref ValueMetadata Current => ref _current;
 
-    public int BufferSize { get; }
-    public int Remaining { get; }
+    public int BufferSize => _buffer.Size;
+    public int Remaining => _buffer.ReadBytesLeft;
 
     internal ArraySegment<byte> UserSuppliedByteArray { get; private set; }
     internal Stream? TextReaderStream { get; private set; }
@@ -56,26 +56,23 @@ public class PgReader
         throw new NotImplementedException();
     }
 
-    public int ReadInt32()
+    public int ReadInt32() => _buffer.ReadInt32();
+    public long ReadInt64() => _buffer.ReadInt64();
+
+    public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
-        throw new NotImplementedException();
+        var array = _pooledArray = ArrayPool.Rent(byteCount);
+        var stream = _buffer.GetStream(Current.Size.Value, canSeek: false);
+        stream.ReadExactly(array, 0, byteCount);
+        return new(array, 0, byteCount);
     }
 
-    public long ReadInt64()
+    public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int byteCount, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
-    }
-
-    public ReadOnlySequence<byte> ReadBytes(Size size)
-    {
-        // ArrayPool.Rent(byteCount);
-        return default;
-    }
-
-    public ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(Size size, CancellationToken cancellationToken = default)
-    {
-        // ArrayPool.Rent(byteCount);
-        return default;
+        var array = _pooledArray = ArrayPool.Rent(byteCount);
+        var stream = _buffer.GetStream(Current.Size.Value, canSeek: false);
+        await stream.ReadExactlyAsync(array, 0, byteCount, cancellationToken);
+        return new(array, 0, byteCount);
     }
 
     public ushort ReadUInt16()
@@ -136,7 +133,7 @@ public class PgReader
 
     internal bool ShouldBuffer(Size bufferRequirement) => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
 
-    internal bool ShouldBuffer(int byteCount)
+    bool ShouldBuffer(int byteCount)
     {
         if (byteCount > BufferSize)
             return ThrowArgumentOutOfRange();

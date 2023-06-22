@@ -113,51 +113,19 @@ public class PgWriter
 
         return new(_buffer.Flush(async: true, cancellationToken));
     }
-    // public abstract void Advance(int count);
-    // public abstract Memory<byte> GetMemory(int sizeHint = 0);
-    // public abstract Span<byte> GetSpan(int sizeHint = 0);
 
-    public void WriteByte(byte value)
-    {
-        // _writer.WriteByte(value);
-    }
+    public void WriteByte(byte value) => _buffer.WriteByte(value);
 
-    //
-    //     public void WriteInt32(short value);
-    public void WriteInt32(int value)
-    {
-        // _writer.WriteInt(value);
-    }
+    public void WriteInt16(short value) => _buffer.WriteInt16(value);
+    public void WriteInt32(int value) => _buffer.WriteInt32(value);
+    public void WriteInt64(long value) => _buffer.WriteInt64(value);
 
-    public void WriteInt64(long value)
-    {
-        throw new NotImplementedException();
-    }
+    public void WriteUInt16(ushort value) => _buffer.WriteUInt16(value);
+    public void WriteUInt32(uint value) => _buffer.WriteUInt32(value);
+    public void WriteUInt64(ulong value) => _buffer.WriteUInt64(value);
 
-    public void WriteFloat(float value)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void WriteDouble(double value)
-    {
-        throw new NotImplementedException();
-    }
-
-    // #if !NETSTANDARD2_0
-    //     public void WriteInt32(Int128 value);
-    // #endif
-    //
-    //     public void WriteUInt32(ushort value);
-    public void WriteUInt32(uint value)
-    {
-        // _writer.WriteUInt(value);
-    }
-    //     public void WriteUInt32(ulong value);
-    // #if !NETSTANDARD2_0
-    //     public void WriteUInt32(UInt128 value)
-    //     
-    // #endif
+    public void WriteFloat(float value) => _buffer.WriteSingle(value);
+    public void WriteDouble(double value) => _buffer.WriteDouble(value);
 
     public void WriteText(string value, Encoding encoding)
     {
@@ -184,16 +152,6 @@ public class PgWriter
     public ValueTask WriteRawAsync(ReadOnlySequence<byte> sequence, CancellationToken cancellationToken = default)
     {
         return new ValueTask();
-    }
-
-    public void WriteInt16(short value)
-    {
-        // _writer.WriteShort(value);
-    }
-
-    public void WriteUInt16(ushort value)
-    {
-        throw new NotImplementedException();
     }
 
     public void EnsureAtLeast(Size valueSize)

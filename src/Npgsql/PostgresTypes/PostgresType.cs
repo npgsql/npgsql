@@ -36,8 +36,8 @@ public abstract class PostgresType
     {
         Namespace = ns;
         Name = name;
-        DataTypeName = DataTypeName.ValidatedName(Namespace + '.' + Name);
         InternalName = internalName;
+        DataTypeName = DataTypeName.ValidatedName(Namespace + '.' + internalName);
         OID = oid;
     }
 
@@ -65,7 +65,7 @@ public abstract class PostgresType
     public string Name { get; }
 
     /// <summary>
-    /// The full name of the backend type, including its namespace.
+    /// The full (internal) name of the backend type, including its namespace.
     /// </summary>
     public string FullName => DataTypeName.Value;
 

@@ -241,6 +241,7 @@ public sealed class FieldDescription
         TypeSize = source.TypeSize;
         TypeModifier = source.TypeModifier;
         FormatCode = source.FormatCode;
+        _postgresType = source.PostgresType;
     }
 
     internal void Populate(
@@ -256,6 +257,7 @@ public sealed class FieldDescription
         TypeSize = typeSize;
         TypeModifier = typeModifier;
         FormatCode = formatCode;
+        _postgresType = null;
     }
 
     /// <summary>
@@ -311,7 +313,9 @@ public sealed class FieldDescription
     PgTypeInfo ObjectOrDefaultTypeInfo => _objectOrDefaultTypeInfo ??= GetObjectOrDefaultConverterInfo(_serializerOptions, PostgresType);
 
     PgConverterInfo? _objectOrDefaultInfo;
-    internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo ??= ObjectOrDefaultTypeInfo.Bind(Field, Format);
+    internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo ??=
+        // Always go through object apis.
+        ObjectOrDefaultTypeInfo.Bind(Field, Format) with { AsObject = true };
 
     PgSerializerOptions _serializerOptions;
     PgTypeInfo? _lastTypeInfo;

@@ -68,24 +68,11 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override ValueTask WriteValue(PgWriter writer, PgConverterInfo info, bool async, CancellationToken cancellationToken)
     {
-        if (!async)
-        {
-            if (writer.ShouldFlush(info.BufferRequirement))
-                writer.Flush();
-            info.GetConverter<T>().Write(writer, TypedValue!);
-            return new();
-        }
+        if (async)
+            return info.GetConverter<T>().WriteAsync(writer, TypedValue!, cancellationToken);
 
-        return Core(writer, info, cancellationToken);
-
-        // TODO we can optimize this to just a single state machine for all T's
-        async ValueTask Core(PgWriter writer, PgConverterInfo info, CancellationToken cancellationtoken)
-        {
-            if (writer.ShouldFlush(info.BufferRequirement))
-                await writer.FlushAsync(cancellationtoken);
-
-            await info.GetConverter<T>().WriteAsync(writer, TypedValue!, cancellationtoken);
-        }
+        info.GetConverter<T>().Write(writer, TypedValue!);
+        return new();
     }
 
     private protected override NpgsqlParameter CloneCore() =>

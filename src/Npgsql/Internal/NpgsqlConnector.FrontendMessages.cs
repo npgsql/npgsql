@@ -177,7 +177,7 @@ partial class NpgsqlConnector
             param.BindFormatAndLength();
             // TODO this is where we would do SizeKind.Unknown buffered writing to get the length, the bytes would then be written later down below.
             paramsLength += param.SizeResult?.Value ?? 0;
-            formatCodesSum += (int)param.Format;
+            formatCodesSum += (int)(param.Format is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text);
         }
 
         var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == parameters.Count ? 1 : parameters.Count;
@@ -201,7 +201,7 @@ partial class NpgsqlConnector
         // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match
         if (formatCodeListLength == 1)
         {
-            if (WriteBuffer.WriteSpaceLeft < 2)
+            if (WriteBuffer.WriteSpaceLeft < sizeof(short))
                 await Flush(async, cancellationToken).ConfigureAwait(false);
             WriteBuffer.WriteInt16((short)FormatCode.Binary);
         }
@@ -215,7 +215,7 @@ partial class NpgsqlConnector
             }
         }
 
-        if (WriteBuffer.WriteSpaceLeft < 2)
+        if (WriteBuffer.WriteSpaceLeft < sizeof(ushort))
             await Flush(async, cancellationToken).ConfigureAwait(false);
 
         WriteBuffer.WriteUInt16((ushort)parameters.Count);
@@ -223,20 +223,7 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            switch (param.SizeResult)
-            {
-            case { Kind: SizeKind.Exact } size:
-                WriteBuffer.WriteInt32(size.Value);
-                await param.Write(async, WriteBuffer.PgWriter, cancellationToken).ConfigureAwait(false);
-                break;
-            case { Kind: SizeKind.Unknown }:
-                // TODO this is where we would pick up the byte buffer for this previously buffered value and copy it into WriteBuffer.
-                Debug.Fail("Should not end up here, yet");
-                break;
-            default:
-                WriteBuffer.WriteInt32(-1);
-                break;
-            }
+            await param.Write(async, WriteBuffer.PgWriter, cancellationToken).ConfigureAwait(false);
         }
 
         if (unknownResultTypeList != null)

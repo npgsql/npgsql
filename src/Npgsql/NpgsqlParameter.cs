@@ -499,15 +499,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             return;
         }
 
-        DataTypeName? dataTypeName = null;
+        PgTypeId? pgTypeId = null;
         if (_npgsqlDbType is { } npgsqlDbType)
-            dataTypeName = npgsqlDbType.ToDataTypeName();
+            pgTypeId = npgsqlDbType.ToDataTypeName();
         else if (_dataTypeName is not null)
-            dataTypeName = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
+            pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
+
+        // TODO we probably want to be able to statically go to (well known) oid too.
+        {
+            if (pgTypeId is { } id)
+                pgTypeId = options.GetCanonicalTypeId(id);
+        }
 
         if (ValueType is null)
         {
-            if (dataTypeName is not { } name)
+            if (pgTypeId is not { } id)
             {
                 var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                 ThrowHelper.ThrowInvalidOperationException(
@@ -515,12 +521,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return;
             }
 
-            TypeInfo = options.GetDefaultTypeInfo(name) ?? throw new NotSupportedException(
+            TypeInfo = options.GetDefaultTypeInfo(id) ?? throw new NotSupportedException(
                 $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
                     ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
         }
         else
-            TypeInfo = options.GetTypeInfo(ValueType, dataTypeName) ?? throw new NotSupportedException(
+            TypeInfo = options.GetTypeInfo(ValueType, pgTypeId) ?? throw new NotSupportedException(
                 $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
                     ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
 
@@ -540,41 +546,58 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         Format = dataFormat;
     }
 
-    internal ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
+    internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         Debug.Assert(TypeInfo is not null);
         Debug.Assert(ConverterInfo is not null);
         Debug.Assert(SizeResult is not null);
-        // Setup the metadata here so it doesn't bloat code size in the generic param impl of WriteValue.
-        writer.Current = new() { Format = Format, Size = SizeResult.GetValueOrDefault(), WriteState = _writeState };
-        var resolution = ConverterInfo.GetValueOrDefault();
-        // Reset resolution for resolver based info's, as the value may be mutable itself, so we can't check for changes to param.Value.
-        // We can keep the info but the resolution is risky to keep across writes.
+        var info = ConverterInfo.GetValueOrDefault();
+        // Reset info for resolver based info's, as the value may be mutable itself, so we can't check for changes to param.Value.
+        // We can keep the type info but the converter is risky to keep across writes.
         if (TypeInfo!.PgTypeId is null)
             ConverterInfo = null;
-        return WriteValue(writer, resolution, async, cancellationToken);
+
+        switch (SizeResult)
+        {
+        case { Kind: SizeKind.Exact } size:
+            writer.Current = new() { Format = Format, Size = size, WriteState = _writeState };
+
+            // TODO do we even need the buffer requirement for the write side? what would it look like?
+            if (writer.ShouldFlush(sizeof(int) + size.Value))
+            {
+                if (async)
+                    await writer.FlushAsync(cancellationToken);
+                else
+                    writer.Flush();
+            }
+
+            writer.WriteInt32(size.Value);
+            await WriteValue(writer, info, async, cancellationToken);
+            break;
+        case { Kind: SizeKind.Unknown }:
+            // TODO this is where we would pick up the byte buffer for this previously buffered value and copy it into WriteBuffer.
+            Debug.Fail("Should not end up here, yet");
+            break;
+        default:
+            if (writer.ShouldFlush(sizeof(int)))
+            {
+                if (async)
+                    await writer.FlushAsync(cancellationToken);
+                else
+                    writer.Flush();
+            }
+            writer.WriteInt32(-1);
+            break;
+        }
     }
 
     private protected virtual ValueTask WriteValue(PgWriter writer, PgConverterInfo info, bool async, CancellationToken cancellationToken)
     {
-        if (!async)
-        {
-            if (writer.ShouldFlush(info.BufferRequirement))
-                writer.Flush();
-            info.Converter.WriteAsObject(writer, _value!);
-            return new();
-        }
+        if (async)
+            return info.Converter.WriteAsObjectAsync(writer, _value!, cancellationToken);
 
-        return Core(writer, info, cancellationToken);
-
-        // TODO we can optimize this to just a single state machine for all T's
-        async ValueTask Core(PgWriter writer, PgConverterInfo info, CancellationToken cancellationtoken)
-        {
-            if (writer.ShouldFlush(info.BufferRequirement))
-                await writer.FlushAsync(cancellationtoken);
-
-            await info.Converter.WriteAsObjectAsync(writer, _value!, cancellationToken);
-        }
+        info.Converter.WriteAsObject(writer, _value!);
+        return new();
     }
 
     /// <inheritdoc />

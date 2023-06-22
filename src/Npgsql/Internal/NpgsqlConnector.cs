@@ -500,6 +500,7 @@ public sealed partial class NpgsqlConnector
 
             Debug.Assert(DataSource.SerializerOptions is not null);
             Debug.Assert(DataSource.DatabaseInfo is not null);
+            SerializerOptions = DataSource.SerializerOptions;
             DatabaseInfo = DataSource.DatabaseInfo;
 
             if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)

@@ -59,12 +59,12 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             return defaultTypeFallback ? defaultInfo : null;
         }
 
-        return AddEntryById(id, infos);
+        return AddEntryById(id, infos, defaultTypeFallback);
 
         PgTypeInfo? AddByType(Type type)
         {
             // We don't pass PgTypeId as we're interested in default converters here.
-            var info = CreateInfo(type, null, _options);
+            var info = CreateInfo(type, null, _options, defaultTypeFallback: false);
             if (info is null)
                 return null;
 
@@ -72,9 +72,9 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             return _cacheByClrType.TryAdd(type, info) ? info : _cacheByClrType[type];
         }
 
-        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, PgTypeInfo[]? infos)
+        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, PgTypeInfo[]? infos, bool defaultTypeFallback)
         {
-            var info = CreateInfo(type, pgTypeId, _options);
+            var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback);
             if (info is null)
                 return null;
 
@@ -99,10 +99,17 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             }
         }
 
-        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? pgtypeid, PgSerializerOptions options)
+        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? pgtypeid, PgSerializerOptions options, bool defaultTypeFallback)
         {
             var typeId = AsPgTypeId(pgtypeid);
-            var info = options.TypeInfoResolver.GetTypeInfo(type, typeId is { } id ? options.TypeCatalog.GetDataTypeName(id, validate: true) : null, options);
+            var dataTypeName = typeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: true) : null;
+            var info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
+            if (info is null && defaultTypeFallback)
+            {
+                type = null;
+                info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
+            }
+
             if (info is null)
                 return null;
 

@@ -8,6 +8,6 @@ class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
 {
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        throw new NotImplementedException();
+        return null;
     }
 }
