@@ -134,18 +134,9 @@ class MiscTypeTests : MultiplexingTestBase
         => AssertTypeUnsupportedWrite<object[], NotSupportedException>(new object[] { 1, "foo" }, "record");
 
     [Test]
-    public async Task Records_supported_only_with_EnableRecords([Values] bool withMappings)
+    public async Task Records_not_supported_by_default_on_NpgsqlSlimSourceBuilder()
     {
-        Func<IResolveConstraint> assertExpr = () => withMappings
-            ? Throws.Nothing
-            : Throws.Exception
-                .TypeOf<NotSupportedException>()
-                .With.Property("Message")
-                .EqualTo(string.Format(NpgsqlStrings.RecordsNotEnabled, "EnableRecords", "NpgsqlSlimDataSourceBuilder"));
-
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        if (withMappings)
-            dataSourceBuilder.EnableRecords();
         await using var dataSource = dataSourceBuilder.Build();
         await using var conn = await dataSource.OpenConnectionAsync();
         await using var cmd = conn.CreateCommand();
@@ -155,8 +146,35 @@ class MiscTypeTests : MultiplexingTestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Assert.That(() => reader.GetValue(0), assertExpr());
-        Assert.That(() => reader.GetFieldValue<object[]>(0), assertExpr());
+        Assert.That(() => reader.GetValue(0), AssertExpr());
+        Assert.That(() => reader.GetFieldValue<object[]>(0), AssertExpr());
+
+        IResolveConstraint AssertExpr() =>
+            Throws.Exception.TypeOf<NotSupportedException>()
+                .With.Property("Message")
+                .EqualTo(
+                    string.Format(
+                        NpgsqlStrings.RecordsNotEnabled,
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableRecords),
+                        nameof(NpgsqlSlimDataSourceBuilder)));
+    }
+
+    [Test]
+    public async Task NpgsqlSlimSourceBuilder_EnableRecords()
+    {
+        var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.EnableRecords();
+        await using var dataSource = dataSourceBuilder.Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        await using var cmd = conn.CreateCommand();
+
+        // RecordHandler doesn't support writing, so we only check for reading
+        cmd.CommandText = "SELECT ('one'::text, 2)";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
+
+        Assert.That(() => reader.GetValue(0), Throws.Nothing);
+        Assert.That(() => reader.GetFieldValue<object[]>(0), Throws.Nothing);
     }
 
     #endregion Record

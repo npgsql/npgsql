@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -164,7 +165,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     if (HandlerResolverFactories[i].GetType() == type)
                         HandlerResolverFactories.RemoveAt(i);
 
-                HandlerResolverFactories.Insert(0, resolverFactory);
+                resolverFactory.InsertInto(HandlerResolverFactories);
             }
 
             var mappingResolver = resolverFactory.CreateMappingResolver();
@@ -223,6 +224,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                 }
             }
 
+            // TODO: In theory the position where we insert needs to correspond to the per-resolver logic in TypeHandlerResolverFactory;
+            // but this is all going away so am leaving as-is for now.
             MappingResolvers.Insert(0, resolver);
         }
 
@@ -235,7 +238,8 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         try
         {
             HandlerResolverFactories.Clear();
-            HandlerResolverFactories.Add(new BuiltInTypeHandlerResolverFactory());
+            new BuiltInTypeHandlerResolverFactory().InsertInto(HandlerResolverFactories);
+            new UnsupportedTypeHandlerResolverFactory().InsertInto(HandlerResolverFactories);
 
             MappingResolvers.Clear();
             MappingResolvers.Add(new BuiltInTypeMappingResolver());
@@ -304,7 +308,11 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
             if (clrType.IsArray)
             {
-                if (TryResolveMappingByClrType(clrType.GetElementType()!, out var elementMapping))
+                var elementType = clrType.GetElementType()!;
+                if (Nullable.GetUnderlyingType(elementType) is Type underlyingType)
+                    elementType = underlyingType;
+
+                if (TryResolveMappingByClrType(elementType, out var elementMapping))
                 {
                     _mappingsByClrType[clrType] = typeMapping = new(
                         NpgsqlDbType.Array | elementMapping.NpgsqlDbType,

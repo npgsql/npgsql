@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Diagnostics;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
@@ -10,4 +12,10 @@ sealed class BuiltInTypeHandlerResolverFactory : TypeHandlerResolverFactory
         => new BuiltInTypeHandlerResolver(connector);
 
     public override TypeMappingResolver CreateMappingResolver() => new BuiltInTypeMappingResolver();
+
+    public override void InsertInto(List<TypeHandlerResolverFactory> factories)
+    {
+        Debug.Assert(factories.Count == 0);
+        factories.Add(this);
+    }
 }

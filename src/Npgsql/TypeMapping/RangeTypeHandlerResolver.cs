@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -8,7 +7,6 @@ using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.Internal.TypeMapping;
 using Npgsql.PostgresTypes;
-using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -59,8 +57,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
             var subtypeHandler = _typeMapper.ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Range);
 
             if (subtypeHandler.PostgresType.Range is not { } pgRangeType)
-                throw new ArgumentException(
-                    $"No range type could be found in the database for subtype {subtypeHandler.PostgresType}");
+                return null;
 
             return subtypeHandler.CreateRangeHandler(pgRangeType);
         }
@@ -70,7 +67,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
             var subtypeHandler = _typeMapper.ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Multirange);
 
             if (subtypeHandler.PostgresType.Range?.Multirange is not { } pgMultirangeType)
-                throw new ArgumentException(string.Format(NpgsqlStrings.NoMultirangeTypeFound, subtypeHandler.PostgresType));
+                return null;
 
             return subtypeHandler.CreateMultirangeHandler(pgMultirangeType);
         }
@@ -95,7 +92,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
                 return _typeMapper.ResolveByClrType(arraySubtypeType) is
                     { PostgresType : { Range : { Multirange: { } pgMultirangeType } } } arraySubtypeHandler
                     ? arraySubtypeHandler.CreateMultirangeHandler(pgMultirangeType)
-                    : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
+                    : null;
             }
         }
 
@@ -108,7 +105,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
 
         return _typeMapper.ResolveByClrType(subtypeType) is { PostgresType : { Range : { } pgRangeType } } subtypeHandler
             ? subtypeHandler.CreateRangeHandler(pgRangeType)
-            : throw new NotSupportedException($"The CLR range type {type} isn't supported by Npgsql or your PostgreSQL.");
+            : null;
 
         static Type? GetArrayListElementType(Type type)
         {
@@ -117,13 +114,7 @@ sealed class RangeTypeHandlerResolver : TypeHandlerResolver
                 return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
 
             var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-            if (ilist != null)
-                return GetUnderlyingType(ilist.GetGenericArguments()[0]);
-
-            if (typeof(IList).IsAssignableFrom(type))
-                throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-
-            return null;
+            return ilist != null ? GetUnderlyingType(ilist.GetGenericArguments()[0]) : null;
 
             Type GetUnderlyingType(Type t)
                 => Nullable.GetUnderlyingType(t) ?? t;

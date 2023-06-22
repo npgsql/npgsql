@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandling;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -200,18 +201,6 @@ public sealed class TypeMapper
                     }
                 }
 
-                if (npgsqlDbType.HasFlag(NpgsqlDbType.Array))
-                {
-                    var elementHandler = ResolveByNpgsqlDbType(npgsqlDbType & ~NpgsqlDbType.Array);
-
-                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                        throw new ArgumentException(
-                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                    return _handlersByNpgsqlDbType[npgsqlDbType] =
-                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-                }
-
                 throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                           "You may need to install an extension or upgrade to a newer version.");
             }
@@ -287,13 +276,6 @@ public sealed class TypeMapper
 
             switch (pgType)
             {
-            case PostgresArrayType pgArrayType:
-            {
-                var elementHandler = ResolveByOID(pgArrayType.Element.OID);
-                return _handlersByDataTypeName[typeName] =
-                    elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-            }
-
             case PostgresEnumType pgEnumType:
             {
                 // A mapped enum would have been registered in _extraHandlersByDataTypeName and bound above - this is unmapped.
@@ -309,6 +291,12 @@ public sealed class TypeMapper
                     ? throw new NotSupportedException($"PostgreSQL type '{pgBaseType}' isn't supported by Npgsql")
                     : null;
 
+            case PostgresArrayType:
+                return throwOnError
+                    ? throw new NotSupportedException(string.Format(NpgsqlStrings.ArraysNotEnabled,
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), nameof(NpgsqlSlimDataSourceBuilder)))
+                    : null;
+
             case PostgresCompositeType pgCompositeType:
                 // We don't support writing unmapped composite types, but we do support reading unmapped composite types.
                 // So when we're invoked from ResolveOID (which is the read path), we don't want to raise an exception.
@@ -317,15 +305,12 @@ public sealed class TypeMapper
                         $"Composite type '{pgCompositeType}' must be mapped with Npgsql before being used, see the docs.")
                     : null;
 
-#pragma warning disable CS0618
             case PostgresRangeType:
             case PostgresMultirangeType:
                 return throwOnError
-                    ? throw new NotSupportedException(
-                        $"'{pgType}' is a range type; please call {nameof(NpgsqlSlimDataSourceBuilder.EnableRanges)} on {nameof(NpgsqlSlimDataSourceBuilder)} to enable ranges. " +
-                        "See https://www.npgsql.org/doc/types/ranges.html for more information.")
+                    ? throw new NotSupportedException(string.Format(NpgsqlStrings.RangesNotEnabled,
+                        nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), nameof(NpgsqlSlimDataSourceBuilder)))
                     : null;
-#pragma warning restore CS0618
 
             default:
                 throw new ArgumentOutOfRangeException($"Unhandled PostgreSQL type type: {pgType.GetType()}");
@@ -430,21 +415,6 @@ public sealed class TypeMapper
                     }
                 }
 
-                // Try to see if it is an array type
-                var arrayElementType = GetArrayListElementType(type);
-                if (arrayElementType is not null)
-                {
-                    if (ResolveByClrType(arrayElementType) is not { } elementHandler)
-                        throw new ArgumentException($"Array type over CLR type {arrayElementType.Name} isn't supported by Npgsql");
-
-                    if (elementHandler.PostgresType.Array is not { } pgArrayType)
-                        throw new ArgumentException(
-                            $"No array type could be found in the database for element {elementHandler.PostgresType}");
-
-                    return _handlersByClrType[type] =
-                        elementHandler.CreateArrayHandler(pgArrayType, Connector.Settings.ArrayNullabilityMode);
-                }
-
                 if (Nullable.GetUnderlyingType(type) is { } underlyingType && ResolveByClrType(underlyingType) is { } underlyingHandler)
                     return _handlersByClrType[type] = underlyingHandler;
 
@@ -464,25 +434,6 @@ public sealed class TypeMapper
                 throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
                                                 $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
             }
-
-            static Type? GetArrayListElementType(Type type)
-            {
-                var typeInfo = type.GetTypeInfo();
-                if (typeInfo.IsArray)
-                    return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
-
-                var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
-                if (ilist != null)
-                    return GetUnderlyingType(ilist.GetGenericArguments()[0]);
-
-                if (typeof(IList).IsAssignableFrom(type))
-                    throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
-
-                return null;
-
-                Type GetUnderlyingType(Type t)
-                    => Nullable.GetUnderlyingType(t) ?? t;
-            }   
         }
     }
 

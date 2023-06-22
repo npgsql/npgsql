@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
+using System.Reflection;
 using Npgsql.Internal;
 using Npgsql.Internal.TypeHandlers;
 using Npgsql.Internal.TypeHandlers.DateTimeHandlers;
@@ -96,18 +98,12 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     HstoreHandler? _hstoreHandler;
 
     // Internal types
-    Int2VectorHandler? _int2VectorHandler;
-    OIDVectorHandler? _oidVectorHandler;
     PgLsnHandler? _pgLsnHandler;
     TidHandler? _tidHandler;
     InternalCharHandler? _internalCharHandler;
 
     // Special types
     UnknownTypeHandler? _unknownHandler;
-
-    // Complex type handlers over timestamp/timestamptz (because DateTime is value-dependent)
-    NpgsqlTypeHandler? _timestampArrayHandler;
-    NpgsqlTypeHandler? _timestampTzArrayHandler;
 
     #endregion Cached handlers
 
@@ -130,114 +126,92 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
     }
 
     public override NpgsqlTypeHandler? ResolveByDataTypeName(string typeName)
-        => typeName switch
+    {
+        return typeName switch
         {
             // Numeric types
-            "smallint"             => _int16Handler,
-            "integer" or "int"     => _int32Handler,
-            "bigint"               => _int64Handler,
-            "real"                 => SingleHandler(),
-            "double precision"     => _doubleHandler,
+            "smallint" => _int16Handler,
+            "integer" or "int" => _int32Handler,
+            "bigint" => _int64Handler,
+            "real" => SingleHandler(),
+            "double precision" => _doubleHandler,
             "numeric" or "decimal" => _numericHandler,
-            "money"                => MoneyHandler(),
+            "money" => MoneyHandler(),
 
             // Text types
-            "text"                           => _textHandler,
-            "xml"                            => XmlHandler(),
+            "text" => _textHandler,
+            "xml" => XmlHandler(),
             "varchar" or "character varying" => VarcharHandler(),
-            "character"                      => CharHandler(),
-            "name"                           => NameHandler(),
-            "refcursor"                      => RefcursorHandler(),
-            "citext"                         => CitextHandler(),
-            "jsonb"                          => JsonbHandler(),
-            "json"                           => JsonHandler(),
-            "jsonpath"                       => JsonPathHandler(),
+            "character" => CharHandler(),
+            "name" => NameHandler(),
+            "refcursor" => RefcursorHandler(),
+            "citext" => CitextHandler(),
+            "jsonb" => JsonbHandler(),
+            "json" => JsonHandler(),
+            "jsonpath" => JsonPathHandler(),
 
             // Date/time types
             "timestamp" or "timestamp without time zone" => _timestampHandler,
-            "timestamptz" or "timestamp with time zone"  => _timestampTzHandler,
-            "date"                                       => _dateHandler,
-            "time without time zone"                     => TimeHandler(),
-            "time with time zone"                        => TimeTzHandler(),
-            "interval"                                   => IntervalHandler(),
+            "timestamptz" or "timestamp with time zone" => _timestampTzHandler,
+            "date" => _dateHandler,
+            "time without time zone" => TimeHandler(),
+            "time with time zone" => TimeTzHandler(),
+            "interval" => IntervalHandler(),
 
             // Network types
-            "cidr"     => CidrHandler(),
-            "inet"     => InetHandler(),
-            "macaddr"  => MacaddrHandler(),
+            "cidr" => CidrHandler(),
+            "inet" => InetHandler(),
+            "macaddr" => MacaddrHandler(),
             "macaddr8" => Macaddr8Handler(),
 
             // Geometry types
-            "box"     => BoxHandler(),
-            "circle"  => CircleHandler(),
-            "line"    => LineHandler(),
-            "lseg"    => LineSegmentHandler(),
-            "path"    => PathHandler(),
-            "point"   => PointHandler(),
+            "box" => BoxHandler(),
+            "circle" => CircleHandler(),
+            "line" => LineHandler(),
+            "lseg" => LineSegmentHandler(),
+            "path" => PathHandler(),
+            "point" => PointHandler(),
             "polygon" => PolygonHandler(),
 
             // LTree types
-            "lquery"    => LQueryHandler(),
-            "ltree"     => LTreeHandler(),
+            "lquery" => LQueryHandler(),
+            "ltree" => LTreeHandler(),
             "ltxtquery" => LTxtHandler(),
 
             // UInt types
-            "oid"       => OidHandler(),
-            "xid"       => XidHandler(),
-            "xid8"      => Xid8Handler(),
-            "cid"       => CidHandler(),
-            "regtype"   => RegtypeHandler(),
+            "oid" => OidHandler(),
+            "xid" => XidHandler(),
+            "xid8" => Xid8Handler(),
+            "cid" => CidHandler(),
+            "regtype" => RegtypeHandler(),
             "regconfig" => RegconfigHandler(),
 
             // Misc types
-            "bool" or "boolean"       => _boolHandler,
-            "bytea"                   => ByteaHandler(),
-            "uuid"                    => UuidHandler(),
+            "bool" or "boolean" => _boolHandler,
+            "bytea" => ByteaHandler(),
+            "uuid" => UuidHandler(),
             "bit varying" or "varbit" => BitVaryingHandler(),
-            "bit"                     => BitHandler(),
-            "hstore"                  => HstoreHandler(),
+            "bit" => BitHandler(),
+            "hstore" => HstoreHandler(),
 
             // Internal types
-            "int2vector" => Int2VectorHandler(),
-            "oidvector"  => OidVectorHandler(),
-            "pg_lsn"     => PgLsnHandler(),
-            "tid"        => TidHandler(),
-            "char"       => InternalCharHandler(),
-            "void"       => VoidHandler(),
+            "pg_lsn" => PgLsnHandler(),
+            "tid" => TidHandler(),
+            "char" => InternalCharHandler(),
+            "void" => VoidHandler(),
 
-            "unknown"    => UnknownHandler(),
-
-            // Types that are unsupported by default when using NpgsqlSlimDataSourceBuilder
-            "record" => UnsupportedRecordHandler(),
-            "tsvector" => UnsupportedTsVectorHandler(),
-            "tsquery" => UnsupportedTsQueryHandler(),
+            "unknown" => UnknownHandler(),
 
             _ => null
         };
+    }
 
     public override NpgsqlTypeHandler? ResolveByClrType(Type type)
-    {
-        if (BuiltInTypeMappingResolver.ClrTypeToDataTypeName(type) is { } dataTypeName)
-            return ResolveByDataTypeName(dataTypeName);
-
-        if (type.IsSubclassOf(typeof(Stream)))
-            return ResolveByDataTypeName("bytea");
-
-        switch (type.FullName)
-        {
-        case "NpgsqlTypes.NpgsqlTsVector":
-        case "NpgsqlTypes.NpgsqlTsQueryLexeme":
-        case "NpgsqlTypes.NpgsqlTsQueryAnd":
-        case "NpgsqlTypes.NpgsqlTsQueryOr":
-        case "NpgsqlTypes.NpgsqlTsQueryNot":
-        case "NpgsqlTypes.NpgsqlTsQueryEmpty":
-        case "NpgsqlTypes.NpgsqlTsQueryFollowedBy":
-            return UnsupportedTsQueryHandler();
-
-        default:
-            return null;
-        }
-    }
+        => BuiltInTypeMappingResolver.ClrTypeToDataTypeName(type) is { } dataTypeName
+            ? ResolveByDataTypeName(dataTypeName)
+            : type.IsSubclassOf(typeof(Stream))
+                ? ResolveByDataTypeName("bytea")
+                : null;
 
     public override NpgsqlTypeHandler? ResolveValueDependentValue(object value)
     {
@@ -249,19 +223,8 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         {
             DateTime dateTime => dateTime.Kind == DateTimeKind.Utc ? _timestampTzHandler : _timestampHandler,
 
-            // For arrays/lists, return timestamp or timestamptz based on the kind of the first DateTime; if the user attempts to
-            // mix incompatible Kinds, that will fail during validation. For empty arrays it doesn't matter.
-            IList<DateTime> array => ArrayHandler(array.Count == 0 ? DateTimeKind.Unspecified : array[0].Kind),
-
             _ => null
         };
-
-        NpgsqlTypeHandler ArrayHandler(DateTimeKind kind)
-            => kind == DateTimeKind.Utc
-                ? _timestampTzArrayHandler ??= _timestampTzHandler.CreateArrayHandler(
-                    (PostgresArrayType)PgType("timestamp with time zone[]"), _connector.Settings.ArrayNullabilityMode)
-                : _timestampArrayHandler ??= _timestampHandler.CreateArrayHandler(
-                    (PostgresArrayType)PgType("timestamp without time zone[]"), _connector.Settings.ArrayNullabilityMode);
     }
 
     public override NpgsqlTypeHandler? ResolveValueTypeGenerically<T>(T value)
@@ -421,24 +384,10 @@ sealed class BuiltInTypeHandlerResolver : TypeHandlerResolver
         : null;
 
     // Internal types
-    NpgsqlTypeHandler Int2VectorHandler()   => _int2VectorHandler ??= new Int2VectorHandler(PgType("int2vector"), PgType("smallint"));
-    NpgsqlTypeHandler OidVectorHandler()    => _oidVectorHandler ??= new OIDVectorHandler(PgType("oidvector"), PgType("oid"));
     NpgsqlTypeHandler PgLsnHandler()        => _pgLsnHandler ??= new PgLsnHandler(PgType("pg_lsn"));
     NpgsqlTypeHandler TidHandler()          => _tidHandler ??= new TidHandler(PgType("tid"));
     NpgsqlTypeHandler InternalCharHandler() => _internalCharHandler ??= new InternalCharHandler(PgType("char"));
     NpgsqlTypeHandler VoidHandler()         => _voidHandler ??= new VoidHandler(PgType("void"));
-
-    // Types that are unsupported by default when using NpgsqlSlimDataSourceBuilder
-    NpgsqlTypeHandler UnsupportedRecordHandler() => new UnsupportedHandler(PgType("record"), string.Format(
-        NpgsqlStrings.RecordsNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRecords), nameof(NpgsqlSlimDataSourceBuilder)));
-
-    NpgsqlTypeHandler UnsupportedTsVectorHandler() => new UnsupportedHandler(PgType("tsvector"), string.Format(
-        NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch),
-        nameof(NpgsqlSlimDataSourceBuilder)));
-
-    NpgsqlTypeHandler UnsupportedTsQueryHandler() => new UnsupportedHandler(PgType("tsquery"), string.Format(
-        NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch),
-        nameof(NpgsqlSlimDataSourceBuilder)));
 
     NpgsqlTypeHandler UnknownHandler() => _unknownHandler ??= new UnknownTypeHandler(_connector.TextEncoding);
 

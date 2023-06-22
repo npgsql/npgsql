@@ -1,5 +1,6 @@
 ﻿#nullable enable
 const Npgsql.PostgresErrorCodes.IdleSessionTimeout = "57P05" -> string!
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableArrays() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableFullTextSearch() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableRecords() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void

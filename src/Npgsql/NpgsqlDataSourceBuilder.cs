@@ -317,5 +317,6 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         _internalBuilder.AddDefaultTypeResolverFactory(new RangeTypeHandlerResolverFactory());
         _internalBuilder.AddDefaultTypeResolverFactory(new RecordTypeHandlerResolverFactory());
         _internalBuilder.AddDefaultTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
+        _internalBuilder.AddDefaultTypeResolverFactory(new ArrayTypeHandlerResolverFactory());
     }
 }

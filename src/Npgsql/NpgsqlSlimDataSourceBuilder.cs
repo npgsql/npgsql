@@ -265,16 +265,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             if (_resolverFactories[i].GetType() == type)
                 return;
 
-        for (var i = 0; i < _resolverFactories.Count; i++)
-        {
-            if (_resolverFactories[i] is BuiltInTypeHandlerResolverFactory)
-            {
-                _resolverFactories.Insert(i, resolverFactory);
-                return;
-            }
-        }
-
-        throw new Exception("No built-in resolver factory found");
+        resolverFactory.InsertInto(_resolverFactories);
     }
 
     /// <inheritdoc />
@@ -421,6 +412,15 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
     {
         AddTypeResolverFactory(new FullTextSearchTypeHandlerResolverFactory());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for the arrays.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableArrays()
+    {
+        AddTypeResolverFactory(new ArrayTypeHandlerResolverFactory());
         return this;
     }
 

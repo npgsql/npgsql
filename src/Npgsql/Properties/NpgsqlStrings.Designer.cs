@@ -158,5 +158,17 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("FullTextSearchNotEnabled", resourceCulture);
             }
         }
+        
+        internal static string RangesNotEnabled {
+            get {
+                return ResourceManager.GetString("RangesNotEnabled", resourceCulture);
+            }
+        }
+        
+        internal static string ArraysNotEnabled {
+            get {
+                return ResourceManager.GetString("ArraysNotEnabled", resourceCulture);
+            }
+        }
     }
 }
