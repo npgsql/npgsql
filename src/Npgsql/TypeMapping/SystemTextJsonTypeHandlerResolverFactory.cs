@@ -42,4 +42,20 @@ sealed class SystemTextJsonTypeHandlerResolverFactory : TypeHandlerResolverFacto
     public override TypeMappingResolver CreateMappingResolver() => new SystemTextJsonTypeMappingResolver(_userClrTypes);
 
     public override TypeMappingResolver CreateGlobalMappingResolver() => new SystemTextJsonTypeMappingResolver(userClrTypes: null);
+
+    public override void InsertInto(List<TypeHandlerResolverFactory> factories)
+    {
+        // Insert the S.T.Json resolver just before the built-in, since the built-in resolver has limited JSON support which we need
+        // to override
+        for (var i = 0; i < factories.Count; i++)
+        {
+            if (factories[i] is BuiltInTypeHandlerResolverFactory)
+            {
+                factories.Insert(i, this);
+                return;
+            }
+        }
+
+        throw new Exception("No built-in resolver factory found");
+    }
 }
