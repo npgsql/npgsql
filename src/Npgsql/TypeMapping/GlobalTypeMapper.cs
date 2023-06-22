@@ -165,7 +165,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     if (HandlerResolverFactories[i].GetType() == type)
                         HandlerResolverFactories.RemoveAt(i);
 
-                resolverFactory.InsertInto(HandlerResolverFactories);
+                HandlerResolverFactories.Insert(0, resolverFactory);
             }
 
             var mappingResolver = resolverFactory.CreateMappingResolver();
