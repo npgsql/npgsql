@@ -183,8 +183,8 @@ sealed class CharTextConverter : PgBufferedConverter<char>
 // Move these out for code size/sharing.
 static class TextConverter
 {
-    public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding) =>
-        encoding.GetByteCount(value.Span);
+    public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding)
+        => encoding.GetByteCount(value.Span);
 
     // Adapted version of GetString(ROSeq) removing the intermediate string allocation to make a contiguous char array.
     public static char[] GetChars(Encoding encoding, ReadOnlySequence<byte> bytes)

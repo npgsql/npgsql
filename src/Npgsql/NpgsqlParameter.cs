@@ -500,23 +500,21 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyBound)
         {
             PgTypeId? pgTypeId = null;
-            if (_npgsqlDbType is { } npgsqlDbType)
-                pgTypeId = npgsqlDbType.ToDataTypeName();
+            if (_npgsqlDbType is not null)
+                pgTypeId = _npgsqlDbType.Value.ToDataTypeName();
             else if (_dataTypeName is not null)
                 pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
 
-            // TODO we probably want to be able to statically go to a (well known) oid too.
-            {
-                if (pgTypeId is { } id)
-                    pgTypeId = options.GetCanonicalTypeId(id);
-            }
+            // TODO we probably want to be able to statically go to (well known) oid too.
+            if (pgTypeId is not null)
+                pgTypeId = options.GetCanonicalTypeId(pgTypeId.Value);
 
             // We treat object typed DBNull values as default info.
             // For ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)
             var valueType = ValueType;
             if (valueType is null || _value is DBNull)
             {
-                if (pgTypeId is not { } id)
+                if (pgTypeId is null)
                 {
                     var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                     ThrowHelper.ThrowInvalidOperationException(
@@ -524,7 +522,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     return;
                 }
 
-                TypeInfo = options.GetDefaultTypeInfo(id) ?? throw new NotSupportedException(
+                TypeInfo = options.GetDefaultTypeInfo(pgTypeId.Value) ?? throw new NotSupportedException(
                     $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
                         ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
             }

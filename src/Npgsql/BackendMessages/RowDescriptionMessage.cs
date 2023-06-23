@@ -366,7 +366,7 @@ public sealed class FieldDescription
         PgConverterInfo info;
         if (ObjectOrDefaultTypeInfo.Type == type)
             info = ObjectOrDefaultInfo;
-        else if (_lastTypeInfo is { } lastTypeInfo && lastTypeInfo.Type == type)
+        else if (_lastTypeInfo?.Type == type)
             info = _lastInfo;
         else
         {

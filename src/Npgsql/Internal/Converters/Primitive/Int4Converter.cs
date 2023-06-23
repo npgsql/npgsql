@@ -13,6 +13,7 @@ sealed class Int4Converter<T> : PgBufferedConverter<T>
         bufferingRequirement = BufferingRequirement.FixedSize;
         return base.CanConvert(format, out _);
     }
+
     public override Size GetSize(SizeContext context, T value, ref object? writeState) => sizeof(int);
 
 #if NET7_0_OR_GREATER

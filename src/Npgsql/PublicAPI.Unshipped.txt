@@ -112,7 +112,6 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
-override Npgsql.PostgresTypes.DataTypeName.ToString() -> string!
 override Npgsql.PostgresTypes.Oid.ToString() -> string!
 override Npgsql.PostgresTypes.PgTypeId.GetHashCode() -> int
 override Npgsql.PostgresTypes.PgTypeId.ToString() -> string!

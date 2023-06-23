@@ -1,15 +1,21 @@
 using System;
+using System.Diagnostics;
 
 namespace Npgsql.PostgresTypes;
 
 /// <summary>
-///
+/// Represented the fully-qualified name of a PostgreSQL type.
 /// </summary>
+[DebuggerDisplay("{DisplayName,nq}")]
 public readonly record struct DataTypeName
 {
-    // This is the maximum length of names in an unmodified Postgres installation.
-    // We need to respect this to get to valid names when deriving them (for multirange/arrays etc)
-    // This does not include the namespace.
+    /// <summary>
+    /// The maximum length of names in an unmodified PostgreSQL installation.
+    /// </summary>
+    /// <remarks>
+    /// We need to respect this to get to valid names when deriving them (for multirange/arrays etc).
+    /// This does not include the namespace.
+    /// </remarks>
     const int NAMEDATALEN = 64 - 1; // Minus null terminator.
 
     readonly string _value;
@@ -24,8 +30,14 @@ public readonly record struct DataTypeName
 
             var typeNameLength = fullyQualifiedDataTypeName.Length - schemaEndIndex + 1;
             if (typeNameLength > NAMEDATALEN)
-                if (fullyQualifiedDataTypeName.EndsWith("[]", StringComparison.Ordinal) && typeNameLength == NAMEDATALEN + "[]".Length - "_".Length)
-                    throw new ArgumentException($"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0, fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
+            {
+                if (fullyQualifiedDataTypeName.EndsWith("[]", StringComparison.Ordinal) &&
+                    typeNameLength == NAMEDATALEN + "[]".Length - "_".Length)
+                {
+                    throw new ArgumentException(
+                        $"Name is too long and would be truncated to: {fullyQualifiedDataTypeName.Substring(0, fullyQualifiedDataTypeName.Length - typeNameLength + NAMEDATALEN)}");
+                }
+            }
         }
 
         _value = fullyQualifiedDataTypeName;
@@ -56,12 +68,10 @@ public readonly record struct DataTypeName
 
     string ValueOrThrowIfDefault()
     {
-        if (_value is not null)
-            return _value;
+        return _value is null ? Throw() : _value;
 
-        return Throw();
-
-        static string Throw() => throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
+        static string Throw() =>
+            throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
     }
 
     internal static DataTypeName CreateFullyQualifiedName(string dataTypeName)
@@ -207,8 +217,6 @@ public readonly record struct DataTypeName
 
         return mappedBaseType;
     }
-
-    public override string ToString() => Value;
 }
 
 

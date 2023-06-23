@@ -20,15 +20,8 @@ public readonly record struct Size
     }
 
     public int Value
-    {
-        get
-        {
-            if (Kind is SizeKind.Unknown)
-                throw new InvalidOperationException();
+        => Kind is SizeKind.Unknown ? throw new InvalidOperationException() : _byteCount;
 
-            return _byteCount;
-        }
-    }
     public SizeKind Kind { get; }
 
     public static Size Create(int byteCount) => new(byteCount, SizeKind.Exact);

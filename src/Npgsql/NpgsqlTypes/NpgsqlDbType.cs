@@ -807,14 +807,18 @@ static class NpgsqlDbTypeExtensions
 
             // Special types
             NpgsqlDbType.Unknown => DataTypeNames.Unknown,
+
             // Unknown cannot be composed
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Unknown)
                    && (npgsqlDbType.HasFlag(NpgsqlDbType.Array) || npgsqlDbType.HasFlag(NpgsqlDbType.Range) || npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
                 => DataTypeNames.Unknown,
 
             // If both multirange and array are set we first remove array, so array is added to the outermost datatypename.
-            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
-            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array)
+                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange)
+                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToMultirangeName(),
+
             _ => null
         };
 

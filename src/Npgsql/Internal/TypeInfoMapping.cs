@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 
@@ -10,9 +12,12 @@ namespace Npgsql.Internal;
 /// </summary>
 /// <param name="options"></param>
 /// <param name="mapping"></param>
-/// <param name="dataTypeNameMatch">Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should match mapping.DataTypeName.</param>
-delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool dataTypeNameMatch);
+/// <param name="resolvedDataTypeName">
+/// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
+/// </param>
+delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
 
+[DebuggerDisplay("{DebuggerDisplay,nq}")]
 readonly struct TypeInfoMapping
 {
     public TypeInfoMapping(Type type, DataTypeName dataTypeName, bool isDefault, TypeInfoFactory factory)
@@ -27,13 +32,30 @@ readonly struct TypeInfoMapping
     public Type Type { get; }
     public DataTypeName DataTypeName { get; }
     public bool IsDefault { get; }
+
+    string DebuggerDisplay
+    {
+        get
+        {
+            var builder = new StringBuilder()
+                .Append(Type.Name)
+                .Append(" <-> ")
+                .Append(DataTypeName.DisplayName);
+
+            if (IsDefault)
+                builder.Append(" (default)");
+
+            return builder.ToString();
+        }
+    }
 }
 
 readonly struct TypeInfoMappingCollection
 {
     readonly List<TypeInfoMapping> _items;
 
-    public TypeInfoMappingCollection(int capacity = 0) => _items = new(capacity);
+    public TypeInfoMappingCollection(int capacity = 0)
+        => _items = new(0);
 
     public TypeInfoMappingCollection() : this(0) { }
 
@@ -122,9 +144,7 @@ readonly struct TypeInfoMappingCollection
         };
 
     public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
-    {
-        _items.Add(new TypeInfoMapping(typeof(T), dataTypeName, isDefault, createInfo));
-    }
+        => _items.Add(new TypeInfoMapping(typeof(T), dataTypeName, isDefault, createInfo));
 
     public void AddArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : class
         => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
@@ -162,11 +182,13 @@ readonly struct TypeInfoMappingCollection
         _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
     }
 
-    void AddStructType(Type type, Type nullableType, DataTypeName dataTypeName, TypeInfoFactory createInfo, Func<PgTypeInfo, PgConverter> nullableConverter, bool isDefault)
+    void AddStructType(Type type, Type nullableType, DataTypeName dataTypeName, TypeInfoFactory createInfo,
+        Func<PgTypeInfo, PgConverter> nullableConverter, bool isDefault)
     {
         TypeInfoMapping mapping;
         _items.Add(mapping = new TypeInfoMapping(type, dataTypeName, isDefault, createInfo));
-        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault, CreateComposedFactory(mapping, nullableConverter, copyPreferredFormat: true)));
+        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault,
+            CreateComposedFactory(mapping, nullableConverter, copyPreferredFormat: true)));
     }
 
     public void AddStructType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct

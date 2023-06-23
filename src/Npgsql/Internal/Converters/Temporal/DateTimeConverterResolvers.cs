@@ -33,19 +33,23 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         if (value.Kind is DateTimeKind.Utc)
         {
             if (expectedPgTypeId == _timestamp)
+            {
                 throw new ArgumentException(
                     "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
                     "consider using 'timestamp with time zone'. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range.", nameof(value));
+            }
 
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return GetDefault(expectedPgTypeId ?? _timestampTz);
         }
 
         if (expectedPgTypeId == _timestampTz)
+        {
             throw new ArgumentException(
                 $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
                 "Note that it's not possible to mix DateTimes with different Kinds in an array/range. ", nameof(value));
+        }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
         return GetDefault(expectedPgTypeId ?? _timestamp);

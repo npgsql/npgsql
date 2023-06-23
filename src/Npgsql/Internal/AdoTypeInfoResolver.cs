@@ -92,7 +92,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Float8
         mappings.AddStructType<double>(DataTypeNames.Float8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter<double>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter()), isDefault: true);
 
         // Numeric
         mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
