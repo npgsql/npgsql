@@ -56,7 +56,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                     defaultInfo = cachedInfo;
                 }
             }
-            return defaultTypeFallback ? defaultInfo : null;
+            return defaultTypeFallback && defaultInfo is not null ? defaultInfo : AddEntryById(id, infos, defaultTypeFallback);
         }
 
         return AddEntryById(id, infos, defaultTypeFallback);

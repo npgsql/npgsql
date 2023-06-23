@@ -140,7 +140,7 @@ partial class NpgsqlConnector
             if (WriteBuffer.WriteSpaceLeft < 4)
                 await Flush(async, cancellationToken).ConfigureAwait(false);
 
-            WriteBuffer.WriteUInt32(DatabaseInfo.GetOid(p.ConverterInfo.GetValueOrDefault().PgTypeId).Value);
+            WriteBuffer.WriteUInt32(DatabaseInfo.GetOid(p.PgTypeId).Value);
         }
     }
 
@@ -176,7 +176,7 @@ partial class NpgsqlConnector
             var param = parameters[paramIndex];
             param.BindFormatAndLength();
             // TODO this is where we would do SizeKind.Unknown buffered writing to get the length, the bytes would then be written later down below.
-            paramsLength += param.SizeResult?.Value ?? 0;
+            paramsLength += param.ConvertedSize?.Value ?? 0;
             formatCodesSum += (int)(param.Format is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text);
         }
 

@@ -242,6 +242,10 @@ public sealed class FieldDescription
         TypeModifier = source.TypeModifier;
         FormatCode = source.FormatCode;
         _postgresType = source.PostgresType;
+        _objectOrDefaultTypeInfo = source._objectOrDefaultTypeInfo;
+        _objectOrDefaultInfo = source._objectOrDefaultInfo;
+        _lastTypeInfo = source._lastTypeInfo;
+        _lastInfo = source._lastInfo;
     }
 
     internal void Populate(
@@ -249,6 +253,7 @@ public sealed class FieldDescription
         uint oid, short typeSize, int typeModifier, FormatCode formatCode
     )
     {
+        Reset();
         _serializerOptions = serializerOptions;
         Name = name;
         TableOID = tableOID;
@@ -257,7 +262,15 @@ public sealed class FieldDescription
         TypeSize = typeSize;
         TypeModifier = typeModifier;
         FormatCode = formatCode;
-        _postgresType = null;
+
+        void Reset()
+        {
+            _postgresType = null;
+            _objectOrDefaultTypeInfo = null;
+            _objectOrDefaultInfo = default;
+            _lastTypeInfo = null;
+            _lastInfo = default;
+        }
     }
 
     /// <summary>
@@ -312,14 +325,15 @@ public sealed class FieldDescription
     PgTypeInfo? _objectOrDefaultTypeInfo;
     PgTypeInfo ObjectOrDefaultTypeInfo => _objectOrDefaultTypeInfo ??= GetObjectOrDefaultConverterInfo(_serializerOptions, PostgresType);
 
-    PgConverterInfo? _objectOrDefaultInfo;
-    internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo ??=
+    PgConverterInfo _objectOrDefaultInfo;
+    internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo.Converter is null
         // Always go through object apis.
-        ObjectOrDefaultTypeInfo.Bind(Field, Format) with { AsObject = true };
+        ? _objectOrDefaultInfo = ObjectOrDefaultTypeInfo.Bind(Field, Format) with { AsObject = true }
+        : _objectOrDefaultInfo;
 
     PgSerializerOptions _serializerOptions;
     PgTypeInfo? _lastTypeInfo;
-    PgConverterInfo _lastConverterInfo;
+    PgConverterInfo _lastInfo;
 
     internal FieldDescription Clone()
     {
@@ -333,12 +347,12 @@ public sealed class FieldDescription
         if (ObjectOrDefaultTypeInfo.Type == type)
             info = ObjectOrDefaultInfo;
         else if (_lastTypeInfo is { } lastTypeInfo && lastTypeInfo.Type == type)
-            info = _lastConverterInfo;
+            info = _lastInfo;
         else
         {
             var typeInfo = GetTypeInfo(_serializerOptions, type, PostgresType);
             _lastTypeInfo = typeInfo;
-            _lastConverterInfo = info = typeInfo.Bind(Field, Format);
+            _lastInfo = info = typeInfo.Bind(Field, Format);
         }
         return info;
     }

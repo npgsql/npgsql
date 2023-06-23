@@ -36,8 +36,8 @@ public abstract class PostgresType
     {
         Namespace = ns;
         Name = name;
-        InternalName = internalName;
         DataTypeName = DataTypeName.ValidatedName(Namespace + '.' + internalName);
+        FullName = ns + "." + name;
         OID = oid;
     }
 
@@ -65,9 +65,9 @@ public abstract class PostgresType
     public string Name { get; }
 
     /// <summary>
-    /// The full (internal) name of the backend type, including its namespace.
+    /// The full name of the backend type, including its namespace.
     /// </summary>
-    public string FullName => DataTypeName.Value;
+    public string FullName { get; }
 
     internal DataTypeName DataTypeName { get; }
 
@@ -81,7 +81,7 @@ public abstract class PostgresType
     /// The data type's internal PostgreSQL name (e.g. <c>_int4</c> not <c>integer[]</c>).
     /// See <see cref="Name"/> for a more user-friendly name.
     /// </summary>
-    public string InternalName { get; }
+    public string InternalName => DataTypeName.UnqualifiedName;
 
     /// <summary>
     /// If a PostgreSQL array type exists for this type, it will be referenced here.

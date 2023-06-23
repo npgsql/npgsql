@@ -36,28 +36,18 @@ public class PgReader
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
-    public byte ReadByte()
-    {
-        throw new NotImplementedException();
-    }
+    public byte ReadByte() => _buffer.ReadByte();
 
-    public short ReadInt16()
-    {
-        throw new NotImplementedException();
-    }
-
-    public float ReadFloat()
-    {
-        throw new NotImplementedException();
-    }
-
-    public float ReadDouble()
-    {
-        throw new NotImplementedException();
-    }
-
+    public short ReadInt16() => _buffer.ReadInt16();
     public int ReadInt32() => _buffer.ReadInt32();
     public long ReadInt64() => _buffer.ReadInt64();
+
+    public ushort ReadUInt16() => _buffer.ReadUInt16();
+    public uint ReadUInt32() => _buffer.ReadUInt32();
+    public ulong ReadUInt64() => _buffer.ReadUInt64();
+
+    public float ReadFloat() => _buffer.ReadSingle();
+    public double ReadDouble() => _buffer.ReadDouble();
 
     public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
@@ -73,16 +63,6 @@ public class PgReader
         var stream = _buffer.GetStream(Current.Size.Value, canSeek: false);
         await stream.ReadExactlyAsync(array, 0, byteCount, cancellationToken);
         return new(array, 0, byteCount);
-    }
-
-    public ushort ReadUInt16()
-    {
-        throw new NotImplementedException();
-    }
-
-    public uint ReadUInt32()
-    {
-        throw new NotImplementedException();
     }
 
     public void Rewind(int count)

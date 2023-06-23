@@ -66,8 +66,15 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
     public override Size GetSize(SizeContext context, T value, ref object? writeState) =>
         PgNumeric.GetByteCount(default(T) switch
         {
-            _ when typeof(decimal) == typeof(T) => PgNumeric.GetDigitCount((decimal)(object)value!),
-            _ when typeof(BigInteger) == typeof(T) => PgNumeric.GetDigitCount((BigInteger)(object)value!),
+            _ when typeof(BigInteger) == typeof(T) => PgNumeric.GetDigitCount((BigInteger)(object)value),
+            _ when typeof(decimal) == typeof(T) => PgNumeric.GetDigitCount((decimal)(object)value),
+            _ when typeof(short) == typeof(T) => PgNumeric.GetDigitCount((decimal)(short)(object)value),
+            _ when typeof(int) == typeof(T) => PgNumeric.GetDigitCount((decimal)(int)(object)value),
+            _ when typeof(long) == typeof(T) => PgNumeric.GetDigitCount((decimal)(long)(object)value),
+            _ when typeof(byte) == typeof(T) => PgNumeric.GetDigitCount((decimal)(byte)(object)value),
+            _ when typeof(sbyte) == typeof(T) => PgNumeric.GetDigitCount((decimal)(sbyte)(object)value),
+            _ when typeof(float) == typeof(T) => PgNumeric.GetDigitCount((decimal)(float)(object)value),
+            _ when typeof(double) == typeof(T) => PgNumeric.GetDigitCount((decimal)(double)(object)value),
             _ => throw new NotSupportedException()
         });
 

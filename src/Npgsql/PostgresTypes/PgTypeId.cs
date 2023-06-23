@@ -41,7 +41,12 @@ public readonly record struct PgTypeId
     public static implicit operator PgTypeId(Oid id) => new(id);
 
     public bool Equals(PgTypeId other)
-        => IsOid ? _oid.Value == other._oid.Value : _dataTypeName.Value == other._dataTypeName.Value;
+        => (this, other) switch
+        {
+            ({ IsOid: true }, { IsOid: true }) => _oid == other._oid,
+            ({ IsDataTypeName: true }, { IsDataTypeName: true }) => _dataTypeName.Equals(other._dataTypeName),
+            _ => false
+        };
 
     public override int GetHashCode() => IsOid ? _oid.GetHashCode() : _dataTypeName.GetHashCode();
 

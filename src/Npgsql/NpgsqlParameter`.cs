@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
@@ -26,6 +27,8 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         get => TypedValue;
         set => TypedValue = (T)value!;
     }
+
+    internal override Type? ValueType => typeof(T);
 
     #region Constructors
 
@@ -63,15 +66,26 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override PgConverterInfo BindValue(PgTypeInfo typeInfo)
-        => typeInfo.BindAsObject(Format, TypedValue);
+    private protected override PgConverterResolution GetResolution(PgTypeInfo typeInfo) => typeInfo.GetResolution(TypedValue);
 
-    private protected override ValueTask WriteValue(PgWriter writer, PgConverterInfo info, bool async, CancellationToken cancellationToken)
+    internal override void BindFormatAndLength()
+    {
+        var value = TypedValue;
+        var info = TypeInfo!.Bind(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
+        if (info?.BufferRequirement.Kind is SizeKind.Unknown)
+            throw new NotImplementedException();
+
+        ConvertedSize = info?.BufferRequirement;
+        AsObject = info?.AsObject ?? false;
+        Format = dataFormat;
+    }
+
+    private protected override ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)
     {
         if (async)
-            return info.GetConverter<T>().WriteAsync(writer, TypedValue!, cancellationToken);
+            return ((PgConverter<T>)converter).WriteAsync(writer, TypedValue!, cancellationToken);
 
-        info.GetConverter<T>().Write(writer, TypedValue!);
+        ((PgConverter<T>)converter).Write(writer, TypedValue!);
         return new();
     }
 

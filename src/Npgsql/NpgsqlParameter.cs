@@ -35,10 +35,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal const string PositionalName = "";
 
     private protected object? _writeState;
-    internal PgConverterInfo? ConverterInfo { get; private set; }
     internal PgTypeInfo? TypeInfo { get; private set; }
-    internal DataFormat Format { get; private set; }
-    internal Size? SizeResult { get; private set; }
+    internal PgTypeId PgTypeId { get; set; }
+    internal PgConverter? Converter { get; private set; }
+    internal Size? ConvertedSize { get; set; }
+    internal bool AsObject { get; private protected set; }
+    internal DataFormat Format { get; private protected set; }
 
     #endregion
 
@@ -269,9 +271,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             if (_value == null || value == null || _value.GetType() != value.GetType())
                 TypeInfo = null;
-            // If we're dealing with a resolver info, make sure to remove the resolution immediately.
-            if (TypeInfo?.PgTypeId is null)
-                ConverterInfo = null;
             _value = value;
         }
     }
@@ -311,8 +310,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_dataTypeName is not null)
                 return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType().ToDbType();
 
-            if (Value is not null) // Infer from value but don't cache
-                return (GlobalTypeMapper.Instance.TryGetDataTypeName(Value.GetType())?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown).ToDbType();
+            // Infer from value but don't cache
+            if (Value is not null)
+                // We pass ValueType here for the generic derived type, where we should always respect T and not the runtime type.
+                return (GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown).ToDbType();
 
             return DbType.Object;
         }
@@ -344,8 +345,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_dataTypeName is not null)
                 return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType();
 
-            if (Value is not null) // Infer from value
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(Value.GetType())?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+            // Infer from value but don't cache
+            if (Value is not null)
+                // We pass ValueType here for the generic derived type (NpgsqlParameter<T>) where we should always respect T and not the runtime type.
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             return NpgsqlDbType.Unknown;
         }
@@ -374,8 +377,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_npgsqlDbType is { } npgsqlDbType)
                 return npgsqlDbType.TryToDataTypeName()?.DisplayName;
 
-            if (Value != null) // Infer from value
-                return GlobalTypeMapper.Instance.TryGetDataTypeName(Value.GetType())?.DisplayName;
+            // Infer from value but don't cache
+            if (Value is not null)
+                // We pass ValueType here for the generic derived type, where we should always respect T and not the runtime type.
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.DisplayName;
 
             return null;
         }
@@ -487,77 +492,71 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal virtual Type? ValueType => _value?.GetType();
 
-    private protected virtual PgConverterInfo BindValue(PgTypeInfo typeInfo)
-        => typeInfo.BindAsObject(Format, _value);
-
     internal void Bind(PgSerializerOptions options)
     {
-        // When we deal with resolver infos their resolution is reset when the parameter value, not its type, changes.
-        if (TypeInfo is not null && ConverterInfo is null)
+        if (TypeInfo is null)
         {
-            ConverterInfo = BindValue(TypeInfo);
-            return;
-        }
+            PgTypeId? pgTypeId = null;
+            if (_npgsqlDbType is { } npgsqlDbType)
+                pgTypeId = npgsqlDbType.ToDataTypeName();
+            else if (_dataTypeName is not null)
+                pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
 
-        PgTypeId? pgTypeId = null;
-        if (_npgsqlDbType is { } npgsqlDbType)
-            pgTypeId = npgsqlDbType.ToDataTypeName();
-        else if (_dataTypeName is not null)
-            pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
-
-        // TODO we probably want to be able to statically go to (well known) oid too.
-        {
-            if (pgTypeId is { } id)
-                pgTypeId = options.GetCanonicalTypeId(id);
-        }
-
-        if (ValueType is null)
-        {
-            if (pgTypeId is not { } id)
+            // TODO we probably want to be able to statically go to (well known) oid too.
             {
-                var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
-                ThrowHelper.ThrowInvalidOperationException(
-                    $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
-                return;
+                if (pgTypeId is { } id)
+                    pgTypeId = options.GetCanonicalTypeId(id);
             }
 
-            TypeInfo = options.GetDefaultTypeInfo(id) ?? throw new NotSupportedException(
-                $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
-                    ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
-        }
-        else
-            TypeInfo = options.GetTypeInfo(ValueType, pgTypeId) ?? throw new NotSupportedException(
-                $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
-                    ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
+            if (ValueType is null)
+            {
+                if (pgTypeId is not { } id)
+                {
+                    var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
+                    ThrowHelper.ThrowInvalidOperationException(
+                        $"Parameter '{parameterName}' must have either its NpgsqlDbType or its DataTypeName or its Value set");
+                    return;
+                }
 
-        ConverterInfo = BindValue(TypeInfo);
+                TypeInfo = options.GetDefaultTypeInfo(id) ?? throw new NotSupportedException(
+                    $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
+                        ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
+            }
+            else
+                TypeInfo = options.GetTypeInfo(ValueType, pgTypeId) ?? throw new NotSupportedException(
+                    $"Couldn't find converter for parameter with value type {ValueType}{(_npgsqlDbType is not null
+                        ? " and NpgsqlDbType '" + _npgsqlDbType + "'" : pgTypeId is not null ? " and DataTypeName '" + _dataTypeName + "'" : "")}.");
+        }
+
+        // This step isn't part of BindFormatAndLength because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
+        // We never reuse resolutions across executions as a mutable value itself may even influence the result.
+        // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
+        var resolution = GetResolution(TypeInfo);
+        Converter = resolution.Converter;
+        PgTypeId = resolution.PgTypeId;
     }
+
+    private protected virtual PgConverterResolution GetResolution(PgTypeInfo typeInfo) => typeInfo.GetResolutionAsObject(_value);
 
     internal virtual void BindFormatAndLength()
     {
         var value = _value;
         if (value is null)
-            ThrowHelper.ThrowInvalidCastException("Parameter {0} must be set", ParameterName);
+            ThrowHelper.ThrowInvalidCastException("Parameter '{0}' must be set", ParameterName);
 
-        SizeResult = TypeInfo!.GetObjectSize(ConverterInfo!.GetValueOrDefault(), value, out _writeState, out var dataFormat);
-        if (SizeResult?.Kind is SizeKind.Unknown)
+        var info = TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
+        if (info?.BufferRequirement.Kind is SizeKind.Unknown)
             throw new NotImplementedException();
 
+        ConvertedSize = info?.BufferRequirement;
+        AsObject = info?.AsObject ?? false;
         Format = dataFormat;
     }
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
         Debug.Assert(TypeInfo is not null);
-        Debug.Assert(ConverterInfo is not null);
-        Debug.Assert(SizeResult is not null);
-        var info = ConverterInfo.GetValueOrDefault();
-        // Reset info for resolver based info's, as the value may be mutable itself, so we can't check for changes to param.Value.
-        // We can keep the type info but the converter is risky to keep across writes.
-        if (TypeInfo!.PgTypeId is null)
-            ConverterInfo = null;
-
-        switch (SizeResult)
+        switch (ConvertedSize)
         {
         case { Kind: SizeKind.Exact } size:
             writer.Current = new() { Format = Format, Size = size, WriteState = _writeState };
@@ -572,12 +571,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
 
             writer.WriteInt32(size.Value);
-            await WriteValue(writer, info, async, cancellationToken);
+            await WriteValue(writer, Converter!, async, cancellationToken);
             break;
         case { Kind: SizeKind.Unknown }:
-            // TODO this is where we would pick up the byte buffer for this previously buffered value and copy it into WriteBuffer.
-            Debug.Fail("Should not end up here, yet");
-            break;
+            throw new NotImplementedException("Should not end up here, yet");
         default:
             if (writer.ShouldFlush(sizeof(int)))
             {
@@ -591,12 +588,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual ValueTask WriteValue(PgWriter writer, PgConverterInfo info, bool async, CancellationToken cancellationToken)
+    private protected virtual ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)
     {
         if (async)
-            return info.Converter.WriteAsObjectAsync(writer, _value!, cancellationToken);
+            return converter.WriteAsObjectAsync(writer, _value!, cancellationToken);
 
-        info.Converter.WriteAsObject(writer, _value!);
+        converter.WriteAsObject(writer, _value!);
         return new();
     }
 
@@ -606,7 +603,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         _npgsqlDbType = null;
         _dataTypeName = null;
         TypeInfo = null;
-        ConverterInfo = null;
+        ResetResolution();
+
+        void ResetResolution()
+        {
+            Converter = null;
+            PgTypeId = default;
+            ConvertedSize = null;
+            AsObject = false;
+        }
     }
 
     internal bool IsInputDirection => Direction == ParameterDirection.InputOutput || Direction == ParameterDirection.Input;
