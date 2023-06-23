@@ -13,26 +13,18 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 {
     public AdoTypeInfoResolver()
     {
-        Mappings = new ConverterInfoMappingCollection();
+        Mappings = new TypeInfoMappingCollection();
         AddInfos(Mappings);
     }
 
     public static AdoTypeInfoResolver Instance { get; } = new();
 
-    protected ConverterInfoMappingCollection Mappings { get; }
+    protected TypeInfoMappingCollection Mappings { get; }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-    {
-        foreach (var mapping in Mappings.Items)
-        {
-            if (mapping.GetConverterInfo(type, dataTypeName, options) is { } info)
-                return info;
-        }
+        => Mappings.TryFind(type, dataTypeName, options);
 
-        return null;
-    }
-
-    static void AddInfos(ConverterInfoMappingCollection mappings)
+    static void AddInfos(TypeInfoMappingCollection mappings)
     {
         // Bool
         mappings.AddStructType<bool>(DataTypeNames.Bool,
@@ -76,13 +68,13 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Float4
         mappings.AddStructType<float>(DataTypeNames.Float4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<float>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<float>()), isDefault: true);
         mappings.AddStructType<double>(DataTypeNames.Float4,
             static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<double>()));
 
         // Float8
         mappings.AddStructType<double>(DataTypeNames.Float8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter<double>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter<double>()), isDefault: true);
 
         // Numeric
         mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
@@ -174,7 +166,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
     }
 
-    protected static void AddArrayInfos(ConverterInfoMappingCollection mappings)
+    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Bool
         mappings.AddStructArrayType<bool>(DataTypeNames.Bool);
@@ -259,10 +251,13 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
     }
 }
 
-sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver
+sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 {
+    new TypeInfoMappingCollection Mappings { get; }
+
     public AdoWithArrayTypeInfoResolver()
     {
+        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
         var elementTypeCount = Mappings.Items.Count;
         AddArrayInfos(Mappings);
         // Make sure we have at least one mapping for each element type.
@@ -270,4 +265,7 @@ sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver
     }
 
     public new static AdoWithArrayTypeInfoResolver Instance { get; } = new();
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.TryFind(type, dataTypeName, options);
 }

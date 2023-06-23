@@ -37,16 +37,17 @@ public readonly record struct DataTypeName
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
-    public string Schema => ValueOrThrowIfDefault().Substring(0, _value.IndexOf('.'));
-    ReadOnlySpan<char> UnqualifiedNameSpan => ValueOrThrowIfDefault().AsSpan().Slice(_value.IndexOf('.') + 1);
+    ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
     public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan);
 
     // Includes schema unless it's pg_catalog.
     public string DisplayName =>
-        ValueOrThrowIfDefault().StartsWith("pg_catalog", StringComparison.Ordinal)
+        Value.StartsWith("pg_catalog", StringComparison.Ordinal)
             ? ToDisplayName(UnqualifiedNameSpan)
             : Schema + "." + ToDisplayName(UnqualifiedNameSpan);
 
+    public string Schema => Value.Substring(0, _value.IndexOf('.'));
+    public string UnqualifiedName => Value.Substring(_value.IndexOf('.') + 1);
     public string Value => ValueOrThrowIfDefault();
 
     public static explicit operator string(DataTypeName value) => value.Value;
@@ -90,7 +91,7 @@ public readonly record struct DataTypeName
             return this;
 
         var unqualifiedName = unqualifiedNameSpan.ToString();
-        var rangeIndex = _value.IndexOf("range", StringComparison.Ordinal);
+        var rangeIndex = unqualifiedName.IndexOf("range", StringComparison.Ordinal);
         if (rangeIndex != -1)
         {
             var str = unqualifiedName.Substring(0, rangeIndex) + "multirange" + unqualifiedName.Substring(rangeIndex + "range".Length);
@@ -112,20 +113,64 @@ public readonly record struct DataTypeName
     // including SQL aliases like 'timestamp without time zone', trailing facet info etc.
     public static DataTypeName FromDisplayName(string displayDataTypeName)
     {
-        // Strip any facet information (length/precision/scale)
-        var parenIndex = displayDataTypeName.IndexOf('(');
-        if (parenIndex > -1)
-            displayDataTypeName = displayDataTypeName.Substring(0, parenIndex);
+        var displayNameSpan = displayDataTypeName.AsSpan().Trim();
 
-        // TODO FromDisplayName
-        return default;
+        // If we have a schema we're done, Postgres doesn't do display name conversions on fully qualified names.
+        if (displayNameSpan.IndexOf('.') != -1)
+            return new(displayDataTypeName);
+
+        // First we strip the schema to get the type name.
+        var schemaIndex = displayNameSpan.IndexOf('.');
+        if (schemaIndex != -1)
+            displayNameSpan = displayNameSpan.Slice(schemaIndex + 1);
+
+        // Then we strip either of the two valid array representations to get the base type name (with or without facets).
+        var isArray = false;
+        if (displayNameSpan.StartsWith("_".AsSpan()))
+        {
+            isArray = true;
+            displayNameSpan = displayNameSpan.Slice(1);
+        }
+        else if (displayNameSpan.EndsWith("[]".AsSpan()))
+        {
+            isArray = true;
+            displayNameSpan = displayNameSpan.Slice(0, displayNameSpan.Length - 2);
+        }
+
+        // Finally we strip the facet info.
+        var parenIndex = displayNameSpan.IndexOf('(');
+        if (parenIndex > -1)
+            displayNameSpan = displayNameSpan.Slice(0, parenIndex);
+
+        // Map any aliases to the internal type name.
+        var mapped = displayNameSpan.ToString() switch
+        {
+            "boolean" => "bool",
+            "character" => "bpchar",
+            "numeric" => "decimal",
+            "real" => "float4",
+            "double precision" => "float8",
+            "smallint" => "int2",
+            "integer" => "int4",
+            "bigint" => "int8",
+            "time without time zone" => "time",
+            "timestamp without time zone" => "timestamp",
+            "time with time zone" => "timetz",
+            "timestamp with time zone" => "timestamptz",
+            "bit varying" => "varbit",
+            "character varying" => "varchar",
+            var value => value
+        };
+
+        // And concat with pg_catalog to get a fully qualified name for our constructor.
+        return new("pg_catalog" + "." + (isArray ? "_" : "") + mapped);
     }
 
     // The type names stored in a DataTypeName are usually the actual typname from the pg_type column.
     // There are some canonical aliases defined in the SQL standard which we take into account.
     // Additionally array types have a '_' prefix while for readability their element type should be postfixed with '[]'.
     // See the table for all the aliases https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
-    // Alternatively the source lives at https://github.com/postgres/postgres/blob/c8e1ba736b2b9e8c98d37a5b77c4ed31baf94147/src/backend/utils/adt/format_type.c#L186
+    // Alternatively some of the source lives at https://github.com/postgres/postgres/blob/c8e1ba736b2b9e8c98d37a5b77c4ed31baf94147/src/backend/utils/adt/format_type.c#L186
     static string ToDisplayName(ReadOnlySpan<char> unqualifiedName)
     {
         var prefixedArrayType = unqualifiedName.IndexOf('_') == 0;
@@ -163,6 +208,8 @@ public readonly record struct DataTypeName
 
         return mappedBaseType;
     }
+
+    public override string ToString() => Value;
 }
 
 

@@ -106,10 +106,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
         TextEncoding = textEncoding;
         _textEncoder = TextEncoding.GetEncoder();
-        // This is to support PregeneratedMessages, which uses this constructor without a connector.
-#pragma warning disable CS8604
-        PgWriter = new PgWriter(this, connector?.DatabaseInfo);
-#pragma warning restore CS8604
+        PgWriter = new PgWriter(this);
     }
 
     #endregion

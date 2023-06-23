@@ -137,7 +137,7 @@ public abstract class NpgsqlDatabaseInfo
     internal Dictionary<uint, PostgresType> ByOID { get; } = new();
 
     /// <summary>
-    /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
+    /// Indexes backend types by their PostgreSQL internal name, including namespace (e.g. pg_catalog.int4).
     /// Only used for enums and composites.
     /// </summary>
     internal Dictionary<string, PostgresType> ByFullName { get; } = new();
@@ -178,10 +178,17 @@ public abstract class NpgsqlDatabaseInfo
         Version = ParseServerVersion(serverVersion);
     }
 
+    internal PostgresType GetPostgresTypeByOid(Oid oid) => GetPostgresTypeByOid(oid.Value);
+
     public PostgresType GetPostgresTypeByOid(uint oid)
         => ByOID.TryGetValue(oid, out var pgType)
             ? pgType
             : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the database");
+
+    internal PostgresType GetPostgresTypeByName(DataTypeName dataTypeName)
+        => ByFullName.TryGetValue(dataTypeName.Value, out var value)
+            ? value
+            : throw new ArgumentException($"A PostgreSQL type with the name '{dataTypeName}' was not found in the database");
 
     public PostgresType GetPostgresTypeByName(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
@@ -221,7 +228,7 @@ public abstract class NpgsqlDatabaseInfo
         foreach (var type in GetTypes())
         {
             ByOID[type.OID] = type;
-            ByFullName[type.FullName] = type;
+            ByFullName[type.DataTypeName.Value] = type;
             // If more than one type exists with the same partial name, we place a null value.
             // This allows us to detect this case later and force the user to use full names only.
             ByName[type.Name] = ByName.ContainsKey(type.Name)
@@ -334,16 +341,16 @@ public abstract class NpgsqlDatabaseInfo
     internal Oid GetOid(PgTypeId pgTypeId, bool validate = false)
     {
         if (pgTypeId.IsOid)
-            return validate ? GetPostgresTypeByOid(pgTypeId.Oid.Value).OID : pgTypeId.Oid;
+            return validate ? GetPostgresTypeByOid(pgTypeId.Oid).OID : pgTypeId.Oid;
 
-        return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName.Value).OID : ByFullName[pgTypeId.DataTypeName.Value].OID;
+        return GetPostgresTypeByName(pgTypeId.DataTypeName).OID;
     }
 
     internal DataTypeName GetDataTypeName(PgTypeId pgTypeId, bool validate = false)
     {
         if (pgTypeId.IsDataTypeName)
-            return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName.Value).DataTypeName : pgTypeId.DataTypeName;
+            return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName;
 
-        return validate ? GetPostgresTypeByOid(pgTypeId.Oid.Value).DataTypeName : ByOID[pgTypeId.Oid.Value].DataTypeName;
+        return GetPostgresTypeByOid(pgTypeId.Oid).DataTypeName;
     }
 }

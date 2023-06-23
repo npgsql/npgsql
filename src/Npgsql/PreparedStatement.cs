@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql;
 
@@ -46,9 +47,7 @@ sealed class PreparedStatement
     /// Contains the handler types for a prepared statement's parameters, for overloaded cases (same SQL, different param types)
     /// Only populated after the statement has been prepared (i.e. null for candidates).
     /// </summary>
-    internal Type[]? HandlerParamTypes { get; private set; }
-
-    static readonly Type[] EmptyParamTypes = Type.EmptyTypes;
+    PgTypeId[]? ConverterParamTypes { get; set; }
 
     internal static PreparedStatement CreateExplicit(
         PreparedStatementManager manager,
@@ -81,22 +80,22 @@ sealed class PreparedStatement
     {
         if (parameters.Count == 0)
         {
-            HandlerParamTypes = EmptyParamTypes;
+            ConverterParamTypes = Array.Empty<PgTypeId>();
             return;
         }
 
-        HandlerParamTypes = new Type[parameters.Count];
+        ConverterParamTypes = new PgTypeId[parameters.Count];
         for (var i = 0; i < parameters.Count; i++)
-            HandlerParamTypes[i] = parameters[i].TypeInfo!.GetType();
+            ConverterParamTypes[i] = parameters[i].PgTypeId;
     }
 
     internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
     {
-        if (HandlerParamTypes!.Length != parameters.Count)
+        if (ConverterParamTypes!.Length != parameters.Count)
             return false;
 
-        for (var i = 0; i < HandlerParamTypes.Length; i++)
-            if (HandlerParamTypes[i] != parameters[i].TypeInfo!.GetType())
+        for (var i = 0; i < ConverterParamTypes.Length; i++)
+            if (ConverterParamTypes[i] != parameters[i].PgTypeId)
                 return false;
 
         return true;

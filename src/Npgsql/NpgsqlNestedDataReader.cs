@@ -40,7 +40,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         public PgConverterInfo LastConverterInfo { get; private set; }
 
         public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
-        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(DataFormat.Binary, Field);
+        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(Field, DataFormat.Binary);
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
@@ -48,7 +48,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             this with
             {
                 LastConverterInfoType = typeInfo.Type,
-                LastConverterInfo = typeInfo.Bind(DataFormat.Binary, Field)
+                LastConverterInfo = typeInfo.Bind(Field, DataFormat.Binary)
             };
 
         public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo)

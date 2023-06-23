@@ -330,18 +330,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         }
         param.Bind(_connector.SerializerOptions);
         param.BindFormatAndLength();
-        switch (param.SizeResult)
-        {
-        case { Kind: SizeKind.Exact } size:
-            _buf.WriteInt32(size.Value);
-            await param.Write(async, _buf.PgWriter, cancellationToken);
-            break;
-        case { Kind: SizeKind.Unknown }:
-            // TODO this is where we would create the byte buffer and copy it into WriteBuffer.
-            Debug.Fail("Should not end up here, yet");
-            break;
-        }
-
+        await param.Write(async, _buf.PgWriter, cancellationToken);
         _column++;
     }
 

@@ -45,15 +45,34 @@ readonly struct TypeInfoMapping
     }
 }
 
-readonly struct ConverterInfoMappingCollection
+readonly struct TypeInfoMappingCollection
 {
-    readonly List<TypeInfoMapping> _items = new();
+    readonly List<TypeInfoMapping> _items;
 
-    public ConverterInfoMappingCollection()
+    public TypeInfoMappingCollection(int capacity = 0)
     {
+        _items = new(0);
+    }
+
+    public TypeInfoMappingCollection() : this(0) { }
+
+    public TypeInfoMappingCollection(IReadOnlyCollection<TypeInfoMapping> items)
+    {
+        _items = new(items);
     }
 
     public IReadOnlyCollection<TypeInfoMapping> Items => _items;
+
+    public PgTypeInfo? TryFind(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        foreach (var mapping in _items)
+        {
+            if (mapping.GetConverterInfo(type, dataTypeName, options) is { } info)
+                return info;
+        }
+
+        return null;
+    }
 
     TypeInfoMapping? TryFindMapping(Type type, DataTypeName dataTypeName)
     {
@@ -81,10 +100,9 @@ readonly struct ConverterInfoMappingCollection
         (options, mapping, resolvedDataTypeName) =>
         {
             var innerInfo = innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
-            if (innerMapping.IsDefault)
-                return PgTypeInfo.CreateDefault(options, mapper(innerInfo), mapping.DataTypeName, copyPreferredFormat ? innerInfo.PreferredFormat : null);
-
-            return PgTypeInfo.Create(options, mapper(innerInfo), mapping.DataTypeName, copyPreferredFormat ? innerInfo.PreferredFormat : null);
+            var converter = mapper(innerInfo);
+            var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
+            return mapping.CreateInfo(options, converter, preferredFormat);
         };
 
     // Helper to eliminate generic display class duplication.
@@ -92,10 +110,13 @@ readonly struct ConverterInfoMappingCollection
         (options, mapping, resolvedDataTypeName) =>
         {
             var innerInfo = (PgTypeResolverInfo)innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
+            var resolver = mapper(innerInfo);
+            var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
+            var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
             if (innerMapping.IsDefault)
-                return PgTypeInfo.CreateDefault(options, mapper(innerInfo), resolvedDataTypeName ? mapping.DataTypeName : null, copyPreferredFormat ? innerInfo.PreferredFormat : null);
+                return PgTypeInfo.CreateDefault(options, resolver, resolvedDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
 
-            return PgTypeInfo.Create(options, mapper(innerInfo), mapping.DataTypeName, copyPreferredFormat ? innerInfo.PreferredFormat : null);
+            return PgTypeInfo.Create(options, resolver, mapping.DataTypeName, preferredFormat, unboxedType);
         };
 
     void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeInfo, PgConverter> converter)
@@ -189,17 +210,19 @@ static class PgTypeInfoHelpers
 {
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool resolvedDataTypeName = true, DataFormat? preferredFormat = null)
     {
+        var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
         if (mapping.IsDefault)
-            return PgTypeInfo.CreateDefault(options, resolver, resolvedDataTypeName ? mapping.DataTypeName : null, preferredFormat);
+            return PgTypeInfo.CreateDefault(options, resolver, resolvedDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
 
-        return PgTypeInfo.Create(options, resolver, mapping.DataTypeName, preferredFormat);
+        return PgTypeInfo.Create(options, resolver, mapping.DataTypeName, preferredFormat, unboxedType);
     }
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null)
     {
+        var unboxedType = converter.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
         if (mapping.IsDefault)
-            return PgTypeInfo.CreateDefault(options, converter, mapping.DataTypeName, preferredFormat);
+            return PgTypeInfo.CreateDefault(options, converter, mapping.DataTypeName, preferredFormat, unboxedType);
 
-        return PgTypeInfo.Create(options, converter, mapping.DataTypeName, preferredFormat);
+        return PgTypeInfo.Create(options, converter, mapping.DataTypeName, preferredFormat, unboxedType);
     }
 }

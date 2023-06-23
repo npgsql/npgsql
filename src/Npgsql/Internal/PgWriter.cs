@@ -18,15 +18,13 @@ enum FlushMode
 public class PgWriter
 {
     readonly NpgsqlWriteBuffer _buffer;
-    readonly NpgsqlDatabaseInfo _typeCatalog;
     bool _flushSuppressed;
     FlushMode _flushMode;
     ValueMetadata _current;
 
-    internal PgWriter(NpgsqlWriteBuffer buffer, NpgsqlDatabaseInfo info)
+    internal PgWriter(NpgsqlWriteBuffer buffer)
     {
         _buffer = buffer;
-        _typeCatalog = info;
     }
 
     internal void Initialize(FlushMode flushMode, NpgsqlDatabaseInfo typeCatalog)
@@ -72,7 +70,7 @@ public class PgWriter
     // Such a mapping (for instance for array element oids) should be done per operation to ensure it is done in the context of a specific backend.
     public void WriteAsOid(PgTypeId pgTypeId)
     {
-        var oid = _typeCatalog.GetOid(pgTypeId);
+        var oid = _buffer.Connector.DatabaseInfo.GetOid(pgTypeId);
         WriteUInt32((uint)oid);
     }
 
@@ -129,24 +127,27 @@ public class PgWriter
 
     public void WriteText(string value, Encoding encoding)
     {
+        throw new NotImplementedException();
         // _writer.WriteEncoded(value.AsSpan(), encoding);
     }
 
     public void WriteText(ReadOnlySpan<char> value, Encoding encoding)
     {
+        throw new NotImplementedException();
         // _writer.WriteEncoded(value, encoding);
     }
 
     public Encoder? WriteTextResumable(ReadOnlySpan<char> value, Encoding encoding, Encoder? encoder = null)
     {
+        throw new NotImplementedException();
         // return _writer.WriteEncodedResumable(value, encoding, encoder);
-        return null;
+        // return null;
     }
 
     // Make sure to loop and flush
     public void WriteRaw(ReadOnlySequence<byte> sequence)
     {
-
+        throw new NotImplementedException();
     }
 
     public ValueTask WriteRawAsync(ReadOnlySequence<byte> sequence, CancellationToken cancellationToken = default)

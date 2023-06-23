@@ -5,7 +5,7 @@ namespace Npgsql.PostgresTypes;
 /// Well-known Postgres data type names.
 // Note: the names are fully qualified in source so the strings are constants and instances will be interned after the first call.
 // Uses an internal constructor bypassing the public DataTypeName constructor validation, as we don't want to store all these names on fields either.
-class DataTypeNames
+static class DataTypeNames
 {
     public static DataTypeName Int2 => ValidatedName("pg_catalog.int2");
     public static DataTypeName Int4 => ValidatedName("pg_catalog.int4");
@@ -74,4 +74,24 @@ class DataTypeNames
     public static DataTypeName Hstore => ValidatedName("pg_catalog.hstore");
     public static DataTypeName Geography => ValidatedName("pg_catalog.geography");
     public static DataTypeName Geometry => ValidatedName("pg_catalog.geometry");
+
+    public static DataTypeName? TryGetRangeName(DataTypeName dataTypeName)
+    {
+        if (Int4 == dataTypeName)
+            return Int4Range;
+
+        if (Int8 == dataTypeName)
+            return Int8Range;
+
+        if (Numeric == dataTypeName)
+            return NumRange;
+
+        if (Timestamp == dataTypeName)
+            return TsRange;
+
+        if (TimestampTz == dataTypeName)
+            return TsTzRange;
+
+        return null;
+    }
 }

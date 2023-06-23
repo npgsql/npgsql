@@ -5,6 +5,7 @@ using System.Threading;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
@@ -20,14 +21,44 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
         TypeInfoResolver = AdoTypeInfoResolver.Instance
     };
 
-    // TODO how to deal with NpgsqlRange and Array/List? pattern matching the type?
-    // Otherwise we need to load more types/infos by default again...
-    internal DataTypeName? TryGetDataTypeName(Type type)
+    // We only load the base types and we do some static pattern matching to figure out arrays and well known ranges.
+    internal DataTypeName? TryGetDataTypeName(Type type, object value)
     {
-        if (MappingSerializerOptions.GetTypeInfo(type) is { } info)
-            return info.GetResolutionOrThrow().PgTypeId.DataTypeName;
+        var isArray = false;
+        if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
+        {
+            isArray = true;
+            type = type.GetElementType() ?? type.GetGenericArguments()[0];
+        }
 
-        return null;
+        var isRange = false;
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
+        {
+            isRange = true;
+            type = type.GetGenericArguments()[0];
+        }
+
+        var typeInfo = MappingSerializerOptions.GetTypeInfo(type);
+        DataTypeName? dataTypeName;
+        if (typeInfo is PgTypeResolverInfo info)
+            dataTypeName = info.GetResolutionAsObject(value, null).PgTypeId.DataTypeName;
+        else
+            dataTypeName = typeInfo?.GetResolutionOrThrow().PgTypeId.DataTypeName;
+
+        if (dataTypeName is { } name)
+        {
+            // If we're both range and array we're actually a multirange.
+            if (isRange)
+            {
+                dataTypeName = DataTypeNames.TryGetRangeName(name);
+                if (isArray)
+                    dataTypeName = dataTypeName?.ToMultiRangeName();
+            }
+            else if (isArray)
+                dataTypeName = name.ToArrayName();
+        }
+
+        return dataTypeName;
     }
 
     internal static GlobalTypeMapper Instance { get; }
