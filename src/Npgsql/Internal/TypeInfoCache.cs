@@ -9,25 +9,31 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 {
     readonly PgSerializerOptions _options;
 
-    // 8ns
-    readonly ConcurrentDictionary<Type, PgTypeInfo> _cacheByClrType = new(); // most used for parameter writing
+    // Mostly used for parameter writing, 8ns
+    readonly ConcurrentDictionary<Type, PgTypeInfo> _cacheByClrType = new();
+
+    // Used for reading, occasionally for parameter writing where a db type was given.
     // 8ns, about 10ns total to scan an array with 6, 7 different clr types under one pg type
-    readonly ConcurrentDictionary<TPgTypeId, (Type? Type, PgTypeInfo Info)[]> _cacheByPgTypeId = new(); // Used for reading, occasionally for parameter writing where a db type was given.
+    readonly ConcurrentDictionary<TPgTypeId, (Type? Type, PgTypeInfo Info)[]> _cacheByPgTypeId = new();
 
-    public TypeInfoCache(PgSerializerOptions options)
+    static TypeInfoCache()
     {
-        _options = options;
-
         if (typeof(TPgTypeId) != typeof(Oid) && typeof(TPgTypeId) != typeof(DataTypeName))
             throw new InvalidOperationException("Cannot use this type argument.");
     }
+
+    public TypeInfoCache(PgSerializerOptions options)
+        => _options = options;
 
     /// <summary>
     ///
     /// </summary>
     /// <param name="type"></param>
     /// <param name="pgTypeId"></param>
-    /// <param name="defaultTypeFallback">When this flag is true, and both type and pgTypeId are non null, a default info for the pgTypeId can be returned if an exact match can't be found.</param>
+    /// <param name="defaultTypeFallback">
+    /// When this flag is true, and both type and pgTypeId are non null, a default info for the pgTypeId can be returned if an exact match
+    /// can't be found.
+    /// </param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
     public PgTypeInfo? GetOrAddInfo(Type? type, TPgTypeId? pgTypeId, bool defaultTypeFallback = false)
@@ -67,11 +73,12 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         {
             // We don't pass PgTypeId as we're interested in default converters here.
             var info = CreateInfo(type, null, _options, defaultTypeFallback: false);
-            if (info is null)
-                return null;
 
-            // We never remove entries so either of these branches will always succeed.
-            return _cacheByClrType.TryAdd(type, info) ? info : _cacheByClrType[type];
+            return info is null
+                ? null
+                : _cacheByClrType.TryAdd(type, info) // We never remove entries so either of these branches will always succeed.
+                    ? info
+                    : _cacheByClrType[type];
         }
 
         PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo Info)[]? infos, bool defaultTypeFallback)
@@ -135,15 +142,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         }
 
         static PgTypeId? AsPgTypeId(TPgTypeId? pgTypeId)
-        {
-            if (pgTypeId is { } id)
-                return (typeof(TPgTypeId) == typeof(DataTypeName)) switch
-                {
-                    true => new PgTypeId(Unsafe.As<TPgTypeId, DataTypeName>(ref id)),
-                    false => new PgTypeId(Unsafe.As<TPgTypeId, Oid>(ref id))
-                };
-
-            return null;
-        }
+            => pgTypeId switch
+            {
+                { } id when typeof(TPgTypeId) == typeof(DataTypeName) => new PgTypeId(Unsafe.As<TPgTypeId, DataTypeName>(ref id)),
+                { } id => new PgTypeId(Unsafe.As<TPgTypeId, Oid>(ref id)),
+                null => null
+            };
     }
 }

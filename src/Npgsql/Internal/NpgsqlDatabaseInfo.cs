@@ -339,18 +339,12 @@ public abstract class NpgsqlDatabaseInfo
     #endregion Factory management
 
     internal Oid GetOid(PgTypeId pgTypeId, bool validate = false)
-    {
-        if (pgTypeId.IsOid)
-            return validate ? GetPostgresTypeByOid(pgTypeId.Oid).OID : pgTypeId.Oid;
-
-        return GetPostgresTypeByName(pgTypeId.DataTypeName).OID;
-    }
+        => pgTypeId.IsOid
+            ? validate ? GetPostgresTypeByOid(pgTypeId.Oid).OID : pgTypeId.Oid
+            : GetPostgresTypeByName(pgTypeId.DataTypeName).OID;
 
     internal DataTypeName GetDataTypeName(PgTypeId pgTypeId, bool validate = false)
-    {
-        if (pgTypeId.IsDataTypeName)
-            return validate ? GetPostgresTypeByName(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName;
-
-        return GetPostgresTypeByOid(pgTypeId.Oid).DataTypeName;
-    }
+        => pgTypeId.IsDataTypeName
+            ? validate ? GetPostgresTypeByName(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName
+            : GetPostgresTypeByOid(pgTypeId.Oid).DataTypeName;
 }

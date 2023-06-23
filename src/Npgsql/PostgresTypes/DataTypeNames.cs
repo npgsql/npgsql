@@ -2,11 +2,14 @@ using static Npgsql.PostgresTypes.DataTypeName;
 
 namespace Npgsql.PostgresTypes;
 
-/// Well-known Postgres data type names.
-// Note: the names are fully qualified in source so the strings are constants and instances will be interned after the first call.
-// Uses an internal constructor bypassing the public DataTypeName constructor validation, as we don't want to store all these names on fields either.
+/// <summary>
+/// Well-known PostgreSQL data type names.
+/// </summary>
 static class DataTypeNames
 {
+    // Note: The names are fully qualified in source so the strings are constants and instances will be interned after the first call.
+    // Uses an internal constructor bypassing the public DataTypeName constructor validation, as we don't want to store all these names on
+    // fields either.
     public static DataTypeName Int2 => ValidatedName("pg_catalog.int2");
     public static DataTypeName Int4 => ValidatedName("pg_catalog.int4");
     public static DataTypeName Int4Range => ValidatedName("pg_catalog.int4range");

@@ -16,26 +16,10 @@ public readonly record struct PgTypeId
     public bool IsOid => _dataTypeName.IsDefault;
 
     public DataTypeName DataTypeName
-    {
-        get
-        {
-            if (!IsDataTypeName)
-                throw new InvalidOperationException("This value does not describe a DataTypeName.");
-
-            return _dataTypeName;
-        }
-    }
+        => IsDataTypeName ? _dataTypeName : throw new InvalidOperationException("This value does not describe a DataTypeName.");
 
     public Oid Oid
-    {
-        get
-        {
-            if (!IsOid)
-                throw new InvalidOperationException("This value does not describe an Oid.");
-
-            return _oid;
-        }
-    }
+        => IsOid ? _oid : throw new InvalidOperationException("This value does not describe an Oid.");
 
     public static implicit operator PgTypeId(DataTypeName name) => new(name);
     public static implicit operator PgTypeId(Oid id) => new(id);

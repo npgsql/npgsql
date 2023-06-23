@@ -129,8 +129,12 @@ public class PgReader
 
         return Remaining < byteCount;
 
-        bool ThrowArgumentOutOfRange() => throw new ArgumentOutOfRangeException(nameof(byteCount), "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
-        bool ThrowArgumentOutOfRangeOfValue() => throw new ArgumentOutOfRangeException(nameof(byteCount), "Buffer requirement is larger than the length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
+        bool ThrowArgumentOutOfRange()
+            => throw new ArgumentOutOfRangeException(nameof(byteCount),
+                "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
+        bool ThrowArgumentOutOfRangeOfValue()
+            => throw new ArgumentOutOfRangeException(nameof(byteCount),
+                "Buffer requirement is larger than the length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
     }
 
     public void BufferData(Size bufferRequirement)

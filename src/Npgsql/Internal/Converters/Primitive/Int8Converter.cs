@@ -22,12 +22,13 @@ sealed class Int8Converter<T> : PgBufferedConverter<T>
     protected override T ReadCore(PgReader reader)
     {
         var value = reader.ReadInt64();
+        if (typeof(long) == typeof(T))
+            return (T)(object)value;
+
         if (typeof(short) == typeof(T))
             return (T)(object)checked((short)value);
         if (typeof(int) == typeof(T))
             return (T)(object)checked((int)value);
-        if (typeof(long) == typeof(T))
-            return (T)(object)value;
 
         if (typeof(byte) == typeof(T))
             return (T)(object)checked((byte)value);

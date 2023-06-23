@@ -28,23 +28,17 @@ public class PgSerializerOptions
 
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
 
+    // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
+    // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a DataTypeName.
+    // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same
+    // pgTypeId. Effectively it should be 'impossible' to get the wrong kind via any PgConverterOptions api which is what this is mainly
+    // for.
     PgTypeInfo? GetTypeInfoCore(Type? type, PgTypeId? pgTypeId, bool defaultTypeFallback)
-    {
-        // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
-        // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a datatypename.
-        // This also makes it easier to realize it should be a cached value if infos for different CLR types are requested for the same pgTypeId.
-        // Effectively it should be 'impossible' to get the wrong kind via any PgConverterOptions api which is what this is mainly for.
-        if (PortableTypeIds)
-        {
-            return Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))
-                .GetOrAddInfo(type, pgTypeId is { } id ? id.DataTypeName : null, defaultTypeFallback);
-        }
-        else
-        {
-            return Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this))
-                .GetOrAddInfo(type, pgTypeId is { } id ? id.Oid : null, defaultTypeFallback);
-        }
-    }
+        => PortableTypeIds
+            ? Unsafe.As<TypeInfoCache<DataTypeName>>(_typeInfoCache ??= new TypeInfoCache<DataTypeName>(this))
+                .GetOrAddInfo(type, pgTypeId is { } id1 ? id1.DataTypeName : null, defaultTypeFallback)
+            : Unsafe.As<TypeInfoCache<Oid>>(_typeInfoCache ??= new TypeInfoCache<Oid>(this))
+                .GetOrAddInfo(type, pgTypeId is { } id2 ? id2.Oid : null, defaultTypeFallback);
 
     public PgTypeInfo? GetDefaultTypeInfo(PostgresType pgType)
         => GetTypeInfoCore(null, PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID, false);
@@ -53,10 +47,10 @@ public class PgSerializerOptions
         => GetTypeInfoCore(null, pgTypeId, false);
 
     public PgTypeInfo? GetTypeInfo(Type type, PostgresType pgType)
-        => GetTypeInfoCore(type ?? throw new ArgumentNullException(nameof(type)), PortableTypeIds ? pgType?.DataTypeName : (Oid?)pgType?.OID, false);
+        => GetTypeInfoCore(type, PortableTypeIds ? pgType?.DataTypeName : (Oid?)pgType?.OID, false);
 
     public PgTypeInfo? GetTypeInfo(Type type, PgTypeId? pgTypeId = null)
-        => GetTypeInfoCore(type ?? throw new ArgumentNullException(nameof(type)), pgTypeId, false);
+        => GetTypeInfoCore(type, pgTypeId, false);
 
     public PgTypeInfo? GetObjectOrDefaultTypeInfo(PostgresType pgType)
         => GetTypeInfoCore(typeof(object), PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID, true);
