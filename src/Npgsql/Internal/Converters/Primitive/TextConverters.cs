@@ -23,9 +23,10 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
         => TextConverter.GetSize(ref context, ConvertTo(value), _encoding);
 
     public override void Write(PgWriter writer, T value)
-        => TextConverter.Write(async: false, writer, ConvertTo(value), _encoding, CancellationToken.None).GetAwaiter().GetResult();
+        => writer.WriteChars(ConvertTo(value).Span, _encoding);
+
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => TextConverter.Write(async: true, writer, ConvertTo(value), _encoding, cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
     {
@@ -77,9 +78,10 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
         => TextConverter.GetSize(ref context, ConvertTo(value), _encoding);
 
     public override void Write(PgWriter writer, T value)
-        => TextConverter.Write(async: false, writer, ConvertTo(value), _encoding, CancellationToken.None).GetAwaiter().GetResult();
+        => writer.WriteChars(ConvertTo(value).AsSpan(), _encoding);
+
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => TextConverter.Write(async: true, writer, ConvertTo(value), _encoding, cancellationToken);
+        => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
     {
@@ -177,7 +179,7 @@ sealed class CharTextConverter : PgBufferedConverter<char>
     protected override void WriteCore(PgWriter writer, char value)
     {
         Span<char> spanValue = stackalloc char[] { value };
-        writer.WriteText(spanValue, _encoding);
+        writer.WriteChars(spanValue, _encoding);
     }
 }
 
@@ -186,23 +188,6 @@ static class TextConverter
 {
     public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding) =>
         encoding.GetByteCount(value.Span);
-
-    public static async ValueTask Write(bool async, PgWriter writer, ReadOnlyMemory<char> value, Encoding encoding, CancellationToken cancellationToken)
-    {
-        const int chunkSize = 8096;
-        var offset = 0;
-        Encoder? encoder = null;
-        while (offset < value.Length)
-        {
-            var nextLength = Math.Min(chunkSize, value.Length - offset);
-            encoder = writer.WriteTextResumable(value.Span.Slice(offset, nextLength), encoding, encoder);
-            offset += nextLength;
-            if (async)
-                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-            else
-                writer.Flush();
-        }
-    }
 
     // Adapted version of GetString(ROSeq) removing the intermediate string allocation to make a contiguous char array.
     public static char[] GetChars(Encoding encoding, ReadOnlySequence<byte> bytes)

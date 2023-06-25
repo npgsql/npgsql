@@ -121,7 +121,7 @@ public abstract class PgConverter
     }
 
     [DoesNotReturn]
-    private protected static void ThrowIORequired() => throw new InvalidOperationException("Fixed sizedness for format not respected, expected no IO to be required.");
+    private protected static void ThrowIORequired() => throw new InvalidOperationException("Buffer requirements for current data format were not respected, expected no IO to be required.");
 }
 
 public abstract class PgConverter<T> : PgConverter
@@ -258,7 +258,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override void Write(PgWriter writer, T value)
     {
         // If Kind is SizeKind.Unknown we're doing a buffering write.
-        if (writer.Current.Size.Kind is SizeKind.Exact && writer.Remaining < writer.Current.Size.Value)
+        if (writer.Current.Size is not { Kind: not SizeKind.Unknown } size || writer.ShouldFlush(size))
             ThrowIORequired();
 
         WriteCore(writer, value);

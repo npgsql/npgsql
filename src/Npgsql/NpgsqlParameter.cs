@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -40,7 +41,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal PgConverter? Converter { get; private set; }
     internal Size? ConvertedSize { get; set; }
     internal bool AsObject { get; private protected set; }
-    internal DataFormat Format { get; private protected set; }
+    internal FormatCode Format { get; private protected set; }
 
     #endregion
 
@@ -508,7 +509,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     pgTypeId = options.GetCanonicalTypeId(id);
             }
 
-            if (ValueType is null)
+            // We treat object typed DBNull values as default info.
+            // For ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)
+            if (ValueType is null || _value is DBNull)
             {
                 if (pgTypeId is not { } id)
                 {
@@ -524,7 +527,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else
                 TypeInfo = options.GetTypeInfo(ValueType, pgTypeId) ?? throw new NotSupportedException(
-                    $"Couldn't find converter for parameter with value type {ValueType}{(_npgsqlDbType is not null
+                    $"Couldn't find converter for parameter of type {ValueType}{(_npgsqlDbType is not null
                         ? " and NpgsqlDbType '" + _npgsqlDbType + "'" : pgTypeId is not null ? " and DataTypeName '" + _dataTypeName + "'" : "")}.");
         }
 
@@ -550,7 +553,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         ConvertedSize = info?.BufferRequirement;
         AsObject = info?.AsObject ?? false;
-        Format = dataFormat;
+        Format = dataFormat is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text;
     }
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
@@ -559,9 +562,8 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         switch (ConvertedSize)
         {
         case { Kind: SizeKind.Exact } size:
-            writer.Current = new() { Format = Format, Size = size, WriteState = _writeState };
+            writer.Current = new() { Format = Format is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text, Size = size, WriteState = _writeState };
 
-            // TODO do we even need the buffer requirement for the write side? what would it look like?
             if (writer.ShouldFlush(sizeof(int) + size.Value))
             {
                 if (async)
@@ -572,6 +574,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             writer.WriteInt32(size.Value);
             await WriteValue(writer, Converter!, async, cancellationToken);
+            writer.Commit();
             break;
         case { Kind: SizeKind.Unknown }:
             throw new NotImplementedException("Should not end up here, yet");
@@ -584,6 +587,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     writer.Flush();
             }
             writer.WriteInt32(-1);
+            writer.Commit();
             break;
         }
     }

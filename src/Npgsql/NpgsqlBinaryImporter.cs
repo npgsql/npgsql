@@ -42,6 +42,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
     NpgsqlParameter?[] _params;
 
     readonly ILogger _copyLogger;
+    PgWriter _pgWriter = null!; // Setup in Init
 
     /// <summary>
     /// Current timeout
@@ -103,6 +104,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         _rowsImported = 0;
         _buf.StartCopyMode();
         WriteHeader();
+        // Only init after header.
+        _pgWriter = _buf.PgWriter.Init(_connector.DatabaseInfo);
     }
 
     void WriteHeader()
@@ -143,6 +146,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken);
         _buf.WriteInt16(NumColumns);
 
+        _pgWriter.Refresh();
         _column = 0;
         _rowsImported++;
     }
@@ -330,7 +334,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         }
         param.Bind(_connector.SerializerOptions);
         param.BindFormatAndLength();
-        await param.Write(async, _buf.PgWriter, cancellationToken);
+        await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
         _column++;
     }
 
@@ -360,6 +364,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             await _buf.Flush(async, cancellationToken);
 
         _buf.WriteInt32(-1);
+        _pgWriter.Refresh();
         _column++;
     }
 

@@ -94,16 +94,14 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
     {
         // If we don't need a flush and can write buffered we delegate to our sync write method which won't flush in such a case.
-        if (writer.CanWriteBuffered(out var flush) && !flush)
+        if (!writer.ShouldFlush(writer.Current.Size))
             Write(writer, value);
 
-        return AsyncCore(flush, writer, value, cancellationToken);
+        return AsyncCore(writer, value, cancellationToken);
 
-        static async ValueTask AsyncCore(bool flush, PgWriter writer, T value, CancellationToken cancellationToken)
+        static async ValueTask AsyncCore(PgWriter writer, T value, CancellationToken cancellationToken)
         {
-            if (flush)
-                await writer.FlushAsync(cancellationToken);
-
+            await writer.FlushAsync(cancellationToken);
             var numeric = ConvertFrom(value, Array.Empty<short>()).Build();
             await NumericConverter.WriteAsync(writer, numeric, cancellationToken);
         }
@@ -247,7 +245,7 @@ static class NumericConverter
 
         foreach (var digit in numeric.Digits)
         {
-            if (writer.Remaining < sizeof(short))
+            if (writer.ShouldFlush(sizeof(short)))
                 writer.Flush();
             writer.WriteInt16(digit);
         }
@@ -262,7 +260,7 @@ static class NumericConverter
 
         foreach (var digit in numeric.Digits)
         {
-            if (writer.Remaining < sizeof(short))
+            if (writer.ShouldFlush(sizeof(short)))
                 await writer.FlushAsync(cancellationToken);
             writer.WriteInt16(digit);
         }

@@ -65,7 +65,16 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     internal Encoding TextEncoding { get; }
 
     public int WriteSpaceLeft => Size - WritePosition;
-    internal PgWriter PgWriter { get; }
+
+    internal PgWriter PgWriter
+    {
+        get
+        {
+            // Make sure we'll refetch from the write buffer.
+            _pgWriter.Reset();
+            return _pgWriter;
+        }
+    }
 
     internal readonly byte[] Buffer;
     readonly Encoder _textEncoder;
@@ -75,6 +84,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     ParameterStream? _parameterStream;
 
     bool _disposed;
+    readonly PgWriter _pgWriter;
 
     /// <summary>
     /// The minimum buffer size possible.
@@ -106,7 +116,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
 
         TextEncoding = textEncoding;
         _textEncoder = TextEncoding.GetEncoder();
-        PgWriter = new PgWriter(this);
+        _pgWriter = new PgWriter(this);
     }
 
     #endregion
