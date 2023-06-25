@@ -177,7 +177,7 @@ partial class NpgsqlConnector
             param.BindFormatAndLength();
             // TODO this is where we would do SizeKind.Unknown buffered writing to get the length, the bytes would then be written later down below.
             paramsLength += param.ConvertedSize?.Value ?? 0;
-            formatCodesSum += (int)(param.Format is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text);
+            formatCodesSum += (int)param.Format;
         }
 
         var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == parameters.Count ? 1 : parameters.Count;
@@ -220,10 +220,11 @@ partial class NpgsqlConnector
 
         WriteBuffer.WriteUInt16((ushort)parameters.Count);
 
+        var writer = WriteBuffer.PgWriter.Init(DatabaseInfo).WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking);
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            await param.Write(async, WriteBuffer.PgWriter, cancellationToken).ConfigureAwait(false);
+            await param.Write(async, writer, cancellationToken).ConfigureAwait(false);
         }
 
         if (unknownResultTypeList != null)

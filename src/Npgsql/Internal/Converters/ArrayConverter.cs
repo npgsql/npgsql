@@ -221,7 +221,6 @@ abstract class ArrayConverter : PgStreamingConverter<object>
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable array type instead.";
 
     readonly PgArrayConverter _pgArrayConverter;
-    readonly Size _elemWriteBufferRequirement;
     readonly Size _elemReadBufferRequirement;
 
     internal ArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
@@ -232,7 +231,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
         if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement, out _))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        (_elemReadBufferRequirement, _elemWriteBufferRequirement) = bufferingRequirement.ToBufferRequirements(elemResolution.Converter);
+        (_elemReadBufferRequirement, _) = bufferingRequirement.ToBufferRequirements(elemResolution.Converter);
     }
 
     public override object Read(PgReader reader) => _pgArrayConverter.Read(async: false, reader).Result;
@@ -292,7 +291,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
 
     protected ValueTask ReadElem(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
     {
-        if (reader.ShouldBuffer(_elemReadBufferRequirement))
+        if (!reader.ShouldBuffer(_elemReadBufferRequirement))
             return ReadElemCore(async, reader, collection, index, cancellationToken);
 
         return Core(async, reader, collection, index, cancellationToken);
@@ -312,7 +311,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
 
     protected ValueTask WriteElem(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
     {
-        if (writer.ShouldFlush(_elemWriteBufferRequirement))
+        if (!writer.ShouldFlush(writer.Current.Size))
             return WriteElemCore(async, writer, collection, index, cancellationToken);
 
         return Core(async, writer, collection, index, cancellationToken);

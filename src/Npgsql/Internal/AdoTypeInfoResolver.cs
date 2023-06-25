@@ -154,16 +154,19 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
 
         // Text
-        mappings.AddType<string>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), DataFormat.Text), isDefault: true);
-        mappings.AddType<char[]>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
-        mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), DataFormat.Text));
-        mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), DataFormat.Text));
-        mappings.AddStructType<char>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
+        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar })
+        {
+            mappings.AddType<string>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), DataFormat.Text), isDefault: true);
+            mappings.AddType<char[]>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), DataFormat.Text));
+            mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), DataFormat.Text));
+            mappings.AddStructType<ArraySegment<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), DataFormat.Text));
+            mappings.AddStructType<char>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
+        }
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)

@@ -3,6 +3,7 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -77,7 +78,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
         ConvertedSize = info?.BufferRequirement;
         AsObject = info?.AsObject ?? false;
-        Format = dataFormat;
+        Format = dataFormat is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text;
     }
 
     private protected override ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)
