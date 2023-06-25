@@ -27,32 +27,13 @@ readonly struct TypeInfoMapping
     public Type Type { get; }
     public DataTypeName DataTypeName { get; }
     public bool IsDefault { get; }
-
-    public PgTypeInfo? GetConverterInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-    {
-        var dataTypeMatch = dataTypeName == DataTypeName;
-        var typeMatch = type == Type;
-
-        if (dataTypeMatch && typeMatch)
-            return Factory(options, this, resolvedDataTypeName: true);
-
-        // We only match as a default if the respective data wasn't passed.
-        if (IsDefault && (dataTypeMatch && type is null || typeMatch && dataTypeName is null))
-            return Factory(options, this, resolvedDataTypeName: dataTypeMatch);
-
-        // Not a match
-        return null;
-    }
 }
 
 readonly struct TypeInfoMappingCollection
 {
     readonly List<TypeInfoMapping> _items;
 
-    public TypeInfoMappingCollection(int capacity = 0)
-    {
-        _items = new(0);
-    }
+    public TypeInfoMappingCollection(int capacity = 0) => _items = new(capacity);
 
     public TypeInfoMappingCollection() : this(0) { }
 
@@ -63,15 +44,39 @@ readonly struct TypeInfoMappingCollection
 
     public IReadOnlyCollection<TypeInfoMapping> Items => _items;
 
+    /// Returns the first default converter or the first converter that matches both type and dataTypeName.
+    /// If just a type was passed and no default was found we return the first converter with a type match.
     public PgTypeInfo? TryFind(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
+        TypeInfoMapping? typeMatch = null;
         foreach (var mapping in _items)
         {
-            if (mapping.GetConverterInfo(type, dataTypeName, options) is { } info)
-                return info;
+            if (!IsMatch(mapping, type, dataTypeName))
+                continue;
+
+            if (mapping.IsDefault || dataTypeName is not null)
+                return mapping.Factory(options, mapping, dataTypeName is not null);
+
+            typeMatch ??= mapping;
         }
 
-        return null;
+        return typeMatch?.Factory(options, typeMatch.Value, dataTypeName is not null);
+
+        static bool IsMatch(TypeInfoMapping mapping, Type? type, DataTypeName? dataTypeName)
+        {
+            var dataTypeMatch = dataTypeName == mapping.DataTypeName;
+            var typeMatch = type == mapping.Type;
+
+            if (typeMatch && dataTypeName is null || typeMatch && dataTypeMatch)
+                return true;
+
+            // We only match as a default if the type wasn't passed.
+            if (mapping.IsDefault && dataTypeMatch && type is null)
+                return true;
+
+            // Not a match
+            return false;
+        }
     }
 
     TypeInfoMapping? TryFindMapping(Type type, DataTypeName dataTypeName)
@@ -88,12 +93,7 @@ readonly struct TypeInfoMappingCollection
     }
 
     TypeInfoMapping FindMapping(Type type, DataTypeName dataTypeName)
-    {
-        if (TryFindMapping(type, dataTypeName) is not { } mapping)
-            throw new InvalidOperationException("Could not find mappings for " + dataTypeName);
-
-        return mapping;
-    }
+        => TryFindMapping(type, dataTypeName) ?? throw new InvalidOperationException("Could not find mapping for " + dataTypeName);
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(TypeInfoMapping innerMapping, Func<PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false) =>
