@@ -36,9 +36,6 @@ public class PgTypeInfo
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConverterResolution? resolution, Type? unboxedType = null)
         : this(options, type, unboxedType)
     {
-        // It should not be possible to create a resolver based info that has IsDefault false without a PgTypeId.
-        IsDefault = PgTypeId is null;
-
         if (resolution is { } res)
         {
             // Resolutions should always be in canonical form already.
@@ -244,8 +241,7 @@ public class PgTypeInfo
     public static PgTypeInfo CreateDefault(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
         => new(options, converter, pgTypeId, unboxedType) { IsDefault = true, PreferredFormat = preferredFormat };
 
-    // It should not be possible to create a resolver based info that has IsDefault false without a PgTypeId.
-    public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId expectedPgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
+    public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
         => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
 
     public static PgTypeResolverInfo CreateDefault(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)

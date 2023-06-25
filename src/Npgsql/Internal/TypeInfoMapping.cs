@@ -10,8 +10,8 @@ namespace Npgsql.Internal;
 /// </summary>
 /// <param name="options"></param>
 /// <param name="mapping"></param>
-/// <param name="resolvedDataTypeName">Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.</param>
-delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
+/// <param name="dataTypeNameMatch">Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should match mapping.DataTypeName.</param>
+delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool dataTypeNameMatch);
 
 readonly struct TypeInfoMapping
 {
@@ -208,13 +208,13 @@ readonly struct TypeInfoMappingCollection
 
 static class PgTypeInfoHelpers
 {
-    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool resolvedDataTypeName = true, DataFormat? preferredFormat = null)
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null)
     {
         var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
         if (mapping.IsDefault)
-            return PgTypeInfo.CreateDefault(options, resolver, resolvedDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
+            return PgTypeInfo.CreateDefault(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
 
-        return PgTypeInfo.Create(options, resolver, mapping.DataTypeName, preferredFormat, unboxedType);
+        return PgTypeInfo.Create(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
     }
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null)
