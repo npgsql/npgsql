@@ -99,10 +99,10 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             }
         }
 
-        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? pgtypeid, PgSerializerOptions options, bool defaultTypeFallback)
+        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? typeId, PgSerializerOptions options, bool defaultTypeFallback)
         {
-            var typeId = AsPgTypeId(pgtypeid);
-            var dataTypeName = typeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: true) : null;
+            var pgTypeId = AsPgTypeId(typeId);
+            var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: true) : null;
             var info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
             if (info is null && defaultTypeFallback)
             {
@@ -113,9 +113,9 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             if (info is null)
                 return null;
 
-            if (typeId is not null)
+            if (pgTypeId is not null)
             {
-                if (info.PgTypeId != typeId)
+                if (info.PgTypeId != pgTypeId)
                     throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
 
                 if (type is null && !info.IsDefault)
@@ -126,9 +126,6 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             {
                 if (info.Type != type)
                     throw new InvalidOperationException("A CLR type was passed but the resolved PgTypeInfo does not have an equal Type.");
-
-                if (typeId is null && !info.IsDefault)
-                    throw new InvalidOperationException("No Postgres type was passed but the resolved PgTypeInfo does not have IsDefault set to true.");
             }
 
             return info;
