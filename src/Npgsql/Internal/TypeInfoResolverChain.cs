@@ -10,9 +10,7 @@ class TypeInfoResolverChain : IPgTypeInfoResolver
     readonly IPgTypeInfoResolver[] _resolvers;
 
     public TypeInfoResolverChain(IEnumerable<IPgTypeInfoResolver> resolvers)
-    {
-        _resolvers = resolvers.ToArray();
-    }
+        => _resolvers = resolvers.ToArray();
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -22,7 +20,7 @@ class TypeInfoResolverChain : IPgTypeInfoResolver
             if (resolver.GetTypeInfo(type, dataTypeName, options) is not { } info)
                 continue;
 
-            if (info.IsDefault || dataTypeName is not null)
+            if (type is null)
                 return info;
 
             typeMatch ??= info;

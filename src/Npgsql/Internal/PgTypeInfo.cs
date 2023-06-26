@@ -54,8 +54,6 @@ public class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    // Whether this TypeInfo maps to the default CLR Type for the DataTypeName given to IPgTypeInfoResolver.GetTypeInfo.
-    public bool IsDefault { get; private set; }
     public DataFormat? PreferredFormat { get; private set; }
 
     PgConverter? Converter { get; }
@@ -211,7 +209,6 @@ public class PgTypeInfo
 
         return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault())
         {
-            IsDefault = isDefault ?? IsDefault,
             PreferredFormat = PreferredFormat
         };
     }
@@ -223,7 +220,6 @@ public class PgTypeInfo
 
         return new(Options, converter, pgTypeId, unboxedType)
         {
-            IsDefault = isDefault ?? IsDefault,
             PreferredFormat = PreferredFormat
         };
     }
@@ -231,21 +227,14 @@ public class PgTypeInfo
     internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool? isDefault = null)
         => new PgTypeResolverInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
-            IsDefault = isDefault ?? IsDefault,
             PreferredFormat = PreferredFormat,
         };
 
     public static PgTypeInfo Create(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
         => new(options, converter, pgTypeId, unboxedType) { PreferredFormat = preferredFormat };
 
-    public static PgTypeInfo CreateDefault(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
-        => new(options, converter, pgTypeId, unboxedType) { IsDefault = true, PreferredFormat = preferredFormat };
-
     public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
         => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
-
-    public static PgTypeResolverInfo CreateDefault(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
-        => new(options, resolver, expectedPgTypeId, unboxedType) { IsDefault = true, PreferredFormat = preferredFormat };
 
     // If we don't have a converter stored we must ask the retrieved one through virtual calls.
     DataFormat ResolveFormat(PgConverter converter, out BufferingRequirement bufferingRequirement, DataFormat? formatPreference = null)

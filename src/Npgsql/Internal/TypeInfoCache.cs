@@ -12,7 +12,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
     // 8ns
     readonly ConcurrentDictionary<Type, PgTypeInfo> _cacheByClrType = new(); // most used for parameter writing
     // 8ns, about 10ns total to scan an array with 6, 7 different clr types under one pg type
-    readonly ConcurrentDictionary<TPgTypeId, PgTypeInfo[]> _cacheByPgTypeId = new(); // Used for reading, occasionally for parameter writing where a db type was given.
+    readonly ConcurrentDictionary<TPgTypeId, (Type? Type, PgTypeInfo Info)[]> _cacheByPgTypeId = new(); // Used for reading, occasionally for parameter writing where a db type was given.
 
     public TypeInfoCache(PgSerializerOptions options)
     {
@@ -23,7 +23,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
     }
 
     /// <summary>
-    /// 
+    ///
     /// </summary>
     /// <param name="type"></param>
     /// <param name="pgTypeId"></param>
@@ -32,34 +32,36 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
     /// <exception cref="InvalidOperationException"></exception>
     public PgTypeInfo? GetOrAddInfo(Type? type, TPgTypeId? pgTypeId, bool defaultTypeFallback = false)
     {
-        if (pgTypeId is null && type is not null)
+        if (pgTypeId is { } id)
         {
+            if (_cacheByPgTypeId.TryGetValue(id, out var infos))
+                if (FindMatch(type, infos, defaultTypeFallback) is { } info)
+                    return info;
+
+            return AddEntryById(id, infos, defaultTypeFallback);
+        }
+
+        if (type is not null)
             // No GetOrAdd as we don't want to cache potential nulls.
             return _cacheByClrType.TryGetValue(type, out var info) ? info : AddByType(type);
-        }
 
-        if (pgTypeId is not { } id)
-            return null;
+        return null;
 
-        if (_cacheByPgTypeId.TryGetValue(id, out var infos))
+        PgTypeInfo? FindMatch(Type? type, (Type? Type, PgTypeInfo Info)[] infos, bool defaultTypeFallback)
         {
             PgTypeInfo? defaultInfo = null;
-            foreach (var cachedInfo in infos)
+            for (var i = 0; i < infos.Length; i++)
             {
-                if (cachedInfo.Type == type)
-                    return cachedInfo;
+                ref var item = ref infos[i];
+                if (item.Type == type)
+                    return item.Info;
 
-                if (cachedInfo.IsDefault)
-                {
-                    if (type is null)
-                        return cachedInfo;
-                    defaultInfo = cachedInfo;
-                }
+                if (defaultTypeFallback && item.Type is null)
+                    defaultInfo = item.Info;
             }
-            return defaultTypeFallback && defaultInfo is not null ? defaultInfo : AddEntryById(id, infos, defaultTypeFallback);
-        }
 
-        return AddEntryById(id, infos, defaultTypeFallback);
+            return defaultInfo;
+        }
 
         PgTypeInfo? AddByType(Type type)
         {
@@ -72,26 +74,36 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             return _cacheByClrType.TryAdd(type, info) ? info : _cacheByClrType[type];
         }
 
-        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, PgTypeInfo[]? infos, bool defaultTypeFallback)
+        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo Info)[]? infos, bool defaultTypeFallback)
         {
             var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback);
             if (info is null)
                 return null;
 
-            if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new[] { info }))
+            if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new[] { (type, info) }))
                 return info;
 
             infos ??= _cacheByPgTypeId[pgTypeId];
             while (true)
             {
-                foreach (var cachedInfo in infos)
-                    if (type is null && cachedInfo.IsDefault || cachedInfo.Type == type)
-                        return cachedInfo;
+                if (FindMatch(type, infos, defaultTypeFallback) is { } newInfo)
+                    return newInfo;
 
                 var oldLength = infos.Length;
                 var oldInfos = infos;
-                Array.Resize(ref infos, infos.Length + 1);
-                infos[oldLength] = info;
+                if (type is null)
+                {
+                    // Also add it by its info type to save a future resolver lookup + resize.
+                    Array.Resize(ref infos, infos.Length + 2);
+                    infos[oldLength] = (type, info);
+                    infos[oldLength + 1] = (info.Type, info);
+                }
+                else
+                {
+                    Array.Resize(ref infos, infos.Length + 1);
+                    infos[oldLength] = (type, info);
+                }
+
                 if (!_cacheByPgTypeId.TryUpdate(pgTypeId, infos, oldInfos))
                     infos = _cacheByPgTypeId[pgTypeId];
                 else
@@ -113,20 +125,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             if (info is null)
                 return null;
 
-            if (pgTypeId is not null)
-            {
-                if (info.PgTypeId != pgTypeId)
-                    throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
+            if (pgTypeId is not null && info.PgTypeId != pgTypeId)
+                throw new InvalidOperationException("A Postgres type was passed but the resolved PgTypeInfo does not have an equal PgTypeId.");
 
-                if (type is null && !info.IsDefault)
-                    throw new InvalidOperationException("No CLR type was passed but the resolved PgTypeInfo does not have IsDefault set to true.");
-            }
-
-            if (type is not null)
-            {
-                if (info.Type != type)
-                    throw new InvalidOperationException("A CLR type was passed but the resolved PgTypeInfo does not have an equal Type.");
-            }
+            if (type is not null && info.Type != type)
+                throw new InvalidOperationException("A CLR type was passed but the resolved PgTypeInfo does not have an equal Type.");
 
             return info;
         }
