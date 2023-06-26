@@ -165,9 +165,9 @@ readonly struct TypeInfoMappingCollection
         _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
         _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, resolvedDataTypeName) => options.ArrayNullabilityMode switch
         {
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectConverterInfo(isDefault: false),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectConverterInfo(isDefault: false),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedConverterInfo(
+            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
+            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
+            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedTypeInfo(
                 new PolymorphicCollectionConverter(
                     arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter,
                     nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter
@@ -194,9 +194,9 @@ readonly struct TypeInfoMappingCollection
         _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, resolvedDataTypeName) => options.ArrayNullabilityMode switch
         {
             // TODO afaik all of this is wrong if the element mapping is a resolver based info.
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectConverterInfo(isDefault: false),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectConverterInfo(isDefault: false),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedConverterInfo(
+            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
+            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
+            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedTypeInfo(
                 new PolymorphicCollectionConverter(
                     arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter,
                     nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter
