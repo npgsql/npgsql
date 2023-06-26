@@ -25,7 +25,7 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
         if (typeof(double) == typeof(T))
             return (T)(object)(double)value;
 
-        throw new InvalidCastException();
+        throw new NotSupportedException();
     }
 
     protected override void WriteCore(PgWriter writer, T value)
@@ -33,7 +33,7 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
         if (typeof(float) == typeof(T))
             writer.WriteDouble((double)(object)value!);
         else
-            throw new InvalidCastException();
+            throw new NotSupportedException();
     }
 #endif
 }

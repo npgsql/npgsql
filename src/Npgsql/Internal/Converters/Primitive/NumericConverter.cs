@@ -132,7 +132,7 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         if (typeof(decimal) == typeof(T))
             return new PgNumeric.Builder((decimal)(object)value!, destination);
 
-        throw new InvalidCastException();
+        throw new NotSupportedException();
 #else
         return new PgNumeric.Builder(decimal.CreateChecked(value), destination);
 #endif
@@ -163,7 +163,7 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         if (typeof(decimal) == typeof(T))
             return (T)(object)numeric.ToDecimal();
 
-        throw new InvalidCastException();
+        throw new NotSupportedException();
 #else
         return T.CreateChecked(numeric.ToDecimal());
 #endif
@@ -194,7 +194,7 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         if (typeof(decimal) == typeof(T))
             return (T)(object)numeric.ToDecimal();
 
-        throw new InvalidCastException();
+        throw new NotSupportedException();
 #else
         return T.CreateChecked(numeric.ToDecimal());
 #endif
