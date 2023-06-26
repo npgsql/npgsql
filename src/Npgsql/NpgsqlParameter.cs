@@ -562,20 +562,31 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         switch (ConvertedSize)
         {
         case { Kind: SizeKind.Exact } size:
-            writer.Current = new() { Format = Format is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text, Size = size, WriteState = _writeState };
-
-            if (writer.ShouldFlush(sizeof(int) + size.Value))
+        {
+            try
             {
-                if (async)
-                    await writer.FlushAsync(cancellationToken);
-                else
-                    writer.Flush();
+                writer.Current = new() { Format = Format is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text, Size = size, WriteState = _writeState };
+
+                if (writer.ShouldFlush(sizeof(int) + size.Value))
+                {
+                    if (async)
+                        await writer.FlushAsync(cancellationToken);
+                    else
+                        writer.Flush();
+                }
+
+                writer.WriteInt32(size.Value);
+                await WriteValue(writer, Converter!, async, cancellationToken);
+                writer.Commit();
+            }
+            finally
+            {
+                if (_writeState is not null)
+                    TypeInfo.DisposeWriteState(_writeState);
             }
 
-            writer.WriteInt32(size.Value);
-            await WriteValue(writer, Converter!, async, cancellationToken);
-            writer.Commit();
             break;
+        }
         case { Kind: SizeKind.Unknown }:
             throw new NotImplementedException("Should not end up here, yet");
         default:

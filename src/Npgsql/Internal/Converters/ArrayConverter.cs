@@ -101,7 +101,7 @@ readonly struct PgArrayConverter
         {
             var stateArray = _statePool.Rent(count);
             elemsSize = GetElemsSize(values, count, stateArray, context.Format);
-            writeState = stateArray;
+            writeState = new RentedArray<(Size, object?)>(stateArray, count, _statePool);
         }
 
         return formatSize.Combine(elemsSize);
@@ -138,7 +138,7 @@ readonly struct PgArrayConverter
     {
         var state = writer.Current.WriteState switch
         {
-            ((Size, object?)[] or null) and var v => ((Size, object?)[]?)v,
+            (RentedArray<(Size, object?)> or null) and var v => (RentedArray<(Size, object?)>?)v,
             _ => throw new InvalidOperationException($"Invalid state, expected {typeof((Size, object?)[]).FullName}.")
         };
 
@@ -169,7 +169,7 @@ readonly struct PgArrayConverter
             }
         }
         else
-            for (var i = 0; i < count && i < state.Length; i++)
+            for (var i = state.Segment.Offset; i < count && i < state.Segment.Count; i++)
             {
                 if (elemTypeDbNullable && _elementOperations.IsDbNullValue(values, i))
                 {
@@ -177,7 +177,7 @@ readonly struct PgArrayConverter
                     continue;
                 }
 
-                var (sizeResult, elemState) = state[i];
+                var (sizeResult, elemState) = state.Segment.Array![i];
                 switch (sizeResult.Kind)
                 {
                 case SizeKind.Exact:
@@ -208,6 +208,23 @@ readonly struct PgArrayConverter
                 current.WriteState = writeState;
             return elementOps.Write(async, writer, values, index, cancellationToken);
         }
+    }
+
+    sealed class RentedArray<T> : IDisposable
+    {
+        readonly T[] _array;
+        readonly int _length;
+        readonly ArrayPool<T>? _pool;
+        public ArraySegment<T> Segment => new(_array, 0, _length);
+
+        public RentedArray(T[] array, int length, ArrayPool<T>? pool = default)
+        {
+            _array = array;
+            _length = length;
+            _pool = pool;
+        }
+
+        public void Dispose() => (_pool ?? ArrayPool<T>.Shared).Return(_array);
     }
 }
 
