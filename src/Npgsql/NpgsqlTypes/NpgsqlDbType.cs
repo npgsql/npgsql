@@ -814,7 +814,7 @@ static class NpgsqlDbTypeExtensions
 
             // If both multirange and array are set we first remove array, so array is added to the outermost datatypename.
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array) => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
-            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToMultiRangeName(),
+            _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange) => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
             _ => null
         };
 

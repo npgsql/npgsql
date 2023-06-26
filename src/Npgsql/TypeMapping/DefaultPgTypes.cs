@@ -18,8 +18,8 @@ static class DefaultPgTypes
             };
             if (group.TypeKind is PgTypeKind.Range)
             {
-                list.Add(new(group.MultiRangeOid!.Value, group.MultiRangeName!.Value));
-                list.Add(new(group.MultiRangeArrayOid!.Value, group.MultiRangeArrayName!.Value));
+                list.Add(new(group.MultirangeOid!.Value, group.MultirangeName!.Value));
+                list.Add(new(group.MultirangeArrayOid!.Value, group.MultirangeArrayName!.Value));
             }
 
             return list;
@@ -39,13 +39,13 @@ static class DefaultPgTypes
         {
             Create(DataTypeNames.Int2, oid: 21, arrayOid: 1005),
             Create(DataTypeNames.Int4, oid: 23, arrayOid: 1007),
-            Create(DataTypeNames.Int4Range, oid: 3904, arrayOid: 3905, multiRangeOid: 4451, multiRangeArrayOid: 6150, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.Int4Range, oid: 3904, arrayOid: 3905, multirangeOid: 4451, multirangeArrayOid: 6150, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.Int8, oid: 20, arrayOid: 1016),
-            Create(DataTypeNames.Int8Range, oid: 3926, arrayOid: 3927, multiRangeOid: 4536, multiRangeArrayOid: 6157, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.Int8Range, oid: 3926, arrayOid: 3927, multirangeOid: 4536, multirangeArrayOid: 6157, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.Float4, oid: 700, arrayOid: 1021),
             Create(DataTypeNames.Float8, oid: 701, arrayOid: 1022),
             Create(DataTypeNames.Numeric, oid: 1700, arrayOid: 1231),
-            Create(DataTypeNames.NumRange, oid: 3906, arrayOid: 3907, multiRangeOid: 4532, multiRangeArrayOid: 6151, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.NumRange, oid: 3906, arrayOid: 3907, multirangeOid: 4532, multirangeArrayOid: 6151, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.Money, oid: 790, arrayOid: 791),
             Create(DataTypeNames.Bool, oid: 16, arrayOid: 1000),
             Create(DataTypeNames.Box, oid: 603, arrayOid: 1020),
@@ -61,12 +61,12 @@ static class DefaultPgTypes
             Create(DataTypeNames.Name, oid: 19, arrayOid: 1003),
             Create(DataTypeNames.Bytea, oid: 17, arrayOid: 1001),
             Create(DataTypeNames.Date, oid: 1082, arrayOid: 1182),
-            Create(DataTypeNames.DateRange, oid: 3912, arrayOid: 3913, multiRangeOid: 4535, multiRangeArrayOid: 6155, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.DateRange, oid: 3912, arrayOid: 3913, multirangeOid: 4535, multirangeArrayOid: 6155, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.Time, oid: 1083, arrayOid: 1183),
             Create(DataTypeNames.Timestamp, oid: 1114, arrayOid: 1115),
-            Create(DataTypeNames.TsRange, oid: 3908, arrayOid: 3909, multiRangeOid: 4533, multiRangeArrayOid: 6152, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.TsRange, oid: 3908, arrayOid: 3909, multirangeOid: 4533, multirangeArrayOid: 6152, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.TimestampTz, oid: 1184, arrayOid: 1185),
-            Create(DataTypeNames.TsTzRange, oid: 3910, arrayOid: 3911, multiRangeOid: 4534, multiRangeArrayOid: 6153, typeKind: PgTypeKind.Range),
+            Create(DataTypeNames.TsTzRange, oid: 3910, arrayOid: 3911, multirangeOid: 4534, multirangeArrayOid: 6153, typeKind: PgTypeKind.Range),
             Create(DataTypeNames.Interval, oid: 1186, arrayOid: 1187),
             Create(DataTypeNames.TimeTz, oid: 1266, arrayOid: 1270),
             Create(DataTypeNames.Inet, oid: 869, arrayOid: 1041),
@@ -124,28 +124,28 @@ readonly struct PgTypeGroup
     public required Oid Oid { get; init; }
     public required DataTypeName ArrayName { get; init; }
     public required Oid ArrayOid { get; init; }
-    public DataTypeName? MultiRangeName { get; init; }
-    public Oid? MultiRangeOid { get; init; }
-    public DataTypeName? MultiRangeArrayName { get; init; }
-    public Oid? MultiRangeArrayOid { get; init; }
+    public DataTypeName? MultirangeName { get; init; }
+    public Oid? MultirangeOid { get; init; }
+    public DataTypeName? MultirangeArrayName { get; init; }
+    public Oid? MultirangeArrayOid { get; init; }
 
-    public static PgTypeGroup Create(DataTypeName name, Oid oid, Oid arrayOid, string? multiRangeName = null, Oid? multiRangeOid = null, Oid? multiRangeArrayOid = null, PgTypeKind typeKind = PgTypeKind.Base)
+    public static PgTypeGroup Create(DataTypeName name, Oid oid, Oid arrayOid, string? multirangeName = null, Oid? multirangeOid = null, Oid? multirangeArrayOid = null, PgTypeKind typeKind = PgTypeKind.Base)
     {
-        DataTypeName? multiRangeDataTypeName = null;
+        DataTypeName? multirangeDataTypeName = null;
         if (typeKind is PgTypeKind.Range)
         {
-            if (multiRangeOid is null)
+            if (multirangeOid is null)
                 throw new ArgumentException("When a range is supplied its multirange oid cannot be omitted.");
-            if (multiRangeArrayOid is null)
+            if (multirangeArrayOid is null)
                 throw new ArgumentException("When a range is supplied its multirange array oid cannot be omitted.");
-            multiRangeDataTypeName = multiRangeName is not null ? DataTypeName.CreateFullyQualifiedName(multiRangeName) : name.ToMultiRangeName();
+            multirangeDataTypeName = multirangeName is not null ? DataTypeName.CreateFullyQualifiedName(multirangeName) : name.ToDefaultMultirangeName();
         }
         else
         {
-            if (multiRangeName is not null || multiRangeOid is not null)
+            if (multirangeName is not null || multirangeOid is not null)
                 throw new ArgumentException("Only range types can have a multirange oid or name.");
 
-            if (multiRangeArrayOid is not null)
+            if (multirangeArrayOid is not null)
                 throw new ArgumentException("Only range types can have a multirange array oid.");
         }
 
@@ -158,10 +158,10 @@ readonly struct PgTypeGroup
             ArrayName = name.ToArrayName(),
             ArrayOid = arrayOid,
 
-            MultiRangeName = multiRangeDataTypeName,
-            MultiRangeOid = multiRangeOid,
-            MultiRangeArrayName = multiRangeDataTypeName?.ToArrayName(),
-            MultiRangeArrayOid = multiRangeArrayOid
+            MultirangeName = multirangeDataTypeName,
+            MultirangeOid = multirangeOid,
+            MultirangeArrayName = multirangeDataTypeName?.ToArrayName(),
+            MultirangeArrayOid = multirangeArrayOid
         };
     }
 }
