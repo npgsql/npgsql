@@ -201,7 +201,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToObjectConverterInfo(bool? isDefault = null)
+    internal PgTypeInfo ToObjectTypeInfo(bool? isDefault = null)
     {
         if (IsResolverInfo)
         {
@@ -216,7 +216,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToComposedConverterInfo(PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null, bool? isDefault = null)
+    internal PgTypeInfo ToComposedTypeInfo(PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null, bool? isDefault = null)
     {
         if (IsResolverInfo)
             throw new InvalidOperationException("Cannot compose a normal converter info on top of a resolver based converter info.");
@@ -228,7 +228,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToComposedConverterInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool? isDefault = null)
+    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool? isDefault = null)
         => new PgTypeResolverInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
             IsDefault = isDefault ?? IsDefault,

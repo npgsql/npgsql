@@ -323,7 +323,7 @@ public sealed class FieldDescription
     internal Type FieldType => ObjectOrDefaultTypeInfo.Type;
 
     PgTypeInfo? _objectOrDefaultTypeInfo;
-    PgTypeInfo ObjectOrDefaultTypeInfo => _objectOrDefaultTypeInfo ??= GetObjectOrDefaultConverterInfo(_serializerOptions, PostgresType);
+    PgTypeInfo ObjectOrDefaultTypeInfo => _objectOrDefaultTypeInfo ??= GetObjectOrDefaultTypeInfo(_serializerOptions, PostgresType);
 
     PgConverterInfo _objectOrDefaultInfo;
     internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo.Converter is null
@@ -358,7 +358,7 @@ public sealed class FieldDescription
     }
 
     // TODO make a fallback to unknown converter
-    static PgTypeInfo GetObjectOrDefaultConverterInfo(PgSerializerOptions options, PostgresType postgresType) =>
+    static PgTypeInfo GetObjectOrDefaultTypeInfo(PgSerializerOptions options, PostgresType postgresType) =>
         options.GetObjectOrDefaultTypeInfo(postgresType)
             ?? throw new InvalidCastException($"Reading is not supported for postgres type {postgresType.DisplayName}");
 
