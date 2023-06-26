@@ -6,7 +6,7 @@ using Npgsql.PostgresTypes;
 namespace Npgsql.Internal;
 
 /// <summary>
-/// 
+///
 /// </summary>
 /// <param name="options"></param>
 /// <param name="mapping"></param>
@@ -112,11 +112,9 @@ readonly struct TypeInfoMappingCollection
             var innerInfo = (PgTypeResolverInfo)innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
             var resolver = mapper(innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
-            if (innerMapping.IsDefault)
-                return PgTypeInfo.CreateDefault(options, resolver, resolvedDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
-
-            return PgTypeInfo.Create(options, resolver, mapping.DataTypeName, preferredFormat, unboxedType);
+            // We include the data type name if the inner info did so as well.
+            // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
+            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, preferredFormat);
         };
 
     void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeInfo, PgConverter> converter)
@@ -211,18 +209,12 @@ static class PgTypeInfoHelpers
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null)
     {
         var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
-        if (mapping.IsDefault)
-            return PgTypeInfo.CreateDefault(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
-
         return PgTypeInfo.Create(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
     }
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null)
     {
         var unboxedType = converter.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
-        if (mapping.IsDefault)
-            return PgTypeInfo.CreateDefault(options, converter, mapping.DataTypeName, preferredFormat, unboxedType);
-
         return PgTypeInfo.Create(options, converter, mapping.DataTypeName, preferredFormat, unboxedType);
     }
 }
