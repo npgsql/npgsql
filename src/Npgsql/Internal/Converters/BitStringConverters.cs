@@ -22,11 +22,12 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
     public override void Write(PgWriter writer, BitArray value)
     {
-        var array = _arrayPool.Rent((value.Length + 7) / 8);
+        var length = (value.Length + 7) / 8;
+        var array = _arrayPool.Rent(length);
         value.CopyTo(array, 0);
 
         writer.WriteInt32(value.Length);
-        writer.WriteRaw(new ReadOnlySequence<byte>(array));
+        writer.WriteRaw(new(array, 0, length));
 
         _arrayPool.Return(array);
     }
@@ -36,11 +37,12 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
     public override async ValueTask WriteAsync(PgWriter writer, BitArray value, CancellationToken cancellationToken = default)
     {
-        var array = _arrayPool.Rent((value.Length + 7) / 8);
+        var length = (value.Length + 7) / 8;
+        var array = _arrayPool.Rent(length);
         value.CopyTo(array, 0);
 
         writer.WriteInt32(value.Length);
-        await writer.WriteRawAsync(new ReadOnlySequence<byte>(array), cancellationToken);
+        await writer.WriteRawAsync(new(array, 0, length), cancellationToken);
 
         _arrayPool.Return(array);
     }
