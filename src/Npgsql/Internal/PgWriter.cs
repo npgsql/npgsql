@@ -268,15 +268,23 @@ public class PgWriter
     public void WriteFloat(float value)
     {
         Ensure(sizeof(float));
+#if NET5_0_OR_GREATER
         BinaryPrimitives.WriteSingleBigEndian(Span, value);
+#else
+        WriteUInt32(Unsafe.As<float, uint>(ref value));
+#endif
         Advance(sizeof(float));
     }
 
     public void WriteDouble(double value)
     {
-        Ensure(sizeof(ulong));
+        Ensure(sizeof(double));
+#if NET5_0_OR_GREATER
         BinaryPrimitives.WriteDoubleBigEndian(Span, value);
-        Advance(sizeof(ulong));
+#else
+        WriteUInt64(Unsafe.As<double, ulong>(ref value));
+#endif
+        Advance(sizeof(double));
     }
 
     public void WriteChars(ReadOnlySpan<char> data, Encoding encoding)
