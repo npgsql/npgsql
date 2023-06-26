@@ -14,10 +14,10 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
         _kind = kind;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out _);
     }
     public override Size GetSize(SizeContext context, DateTime value, ref object? writeState) => sizeof(long);
 
@@ -34,10 +34,10 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     public DateTimeOffsetConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out bufferingRequirement);
     }
     public override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState) => sizeof(long);
 

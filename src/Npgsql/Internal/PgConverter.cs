@@ -19,17 +19,24 @@ public enum BufferingRequirement : byte
     None,
     /// Entire value should be buffered
     Value,
+    /// Fixed size value should be buffered
+    FixedSize,
     /// Custom requirements from GetBufferRequirements
     Custom
 }
 
 public static class BufferingRequirementExtensions
 {
-    public static (Size ReadRequirement, Size WriteRequirement) ToBufferRequirements(this BufferingRequirement bufferingRequirement, PgConverter converter)
+    public static (Size ReadRequirement, Size WriteRequirement) ToBufferRequirements(this BufferingRequirement bufferingRequirement, DataFormat format, PgConverter converter)
     {
         Size read, write;
         if (bufferingRequirement is BufferingRequirement.Custom)
-            converter.GetBufferRequirements(DataFormat.Binary, out read, out write);
+            converter.GetBufferRequirements(format, out read, out write);
+        else if (bufferingRequirement is BufferingRequirement.FixedSize)
+        {
+            object? state = null;
+            read = write = converter.GetSizeAsObject(new(format), null!, ref state);
+        }
         else
             read = write = bufferingRequirement switch
             {
@@ -53,11 +60,8 @@ public abstract class PgConverter
         DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
     }
 
-    /// When <see ref="fixedSize"/> is true GetSize can be called with a default value for the type and the given format without throwing.
-    public virtual bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public virtual bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        // This is a reasonable default but it won't always be correct, it's up to the individual buffering converters to override this.
-        fixedSize = false;
         bufferingRequirement = BufferingRequirement.None;
         return format is DataFormat.Binary;
     }
@@ -157,8 +161,10 @@ public abstract class PgConverter<T> : PgConverter
     public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
     internal sealed override Type TypeToConvert => typeof(T);
+
+    // Make an allowance here for fixed size queries which won't know the default value of T.
     internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
-        => GetSize(context, (T)value, ref writeState);
+        => GetSize(context, ReferenceEquals(value, null) ? default! : (T)value, ref writeState);
 }
 
 // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
@@ -273,10 +279,9 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     private protected sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader)!);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
         bufferingRequirement = BufferingRequirement.Value;
-        fixedSize = false;
         return format is DataFormat.Binary;
     }
 }
@@ -289,8 +294,8 @@ public abstract class PgComposingConverter<T> : PgConverter<T>
         : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
         => EffectiveConverter = effectiveConverter;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
-        => EffectiveConverter.CanConvert(format, out bufferingRequirement, out fixedSize);
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+        => EffectiveConverter.CanConvert(format, out bufferingRequirement);
 
     public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
         => EffectiveConverter.GetBufferRequirements(format, out readRequirement, out writeRequirement);

@@ -4,10 +4,10 @@ namespace Npgsql.Internal.Converters;
 
 sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out _);
     }
     public override Size GetSize(SizeContext context, TimeSpan value, ref object? writeState) => sizeof(long);
     protected override TimeSpan ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
@@ -25,10 +25,10 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 
 sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out _);
     }
     public override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState) => sizeof(long) + sizeof(int);
     protected override DateTimeOffset ReadCore(PgReader reader)
