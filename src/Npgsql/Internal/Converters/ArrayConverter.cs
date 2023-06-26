@@ -15,7 +15,7 @@ interface IElementOperations
     object CreateCollection(int capacity, bool containsNulls);
     int GetCollectionCount(object collection);
 
-    bool HasFixedSize(DataFormat format);
+    Size? GetFixedSize(DataFormat format);
     Size GetSize(SizeContext context, object collection, int index, ref object? state);
     bool IsDbNullValue(object collection, int index);
     ValueTask Read(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken = default);
@@ -41,7 +41,7 @@ readonly struct PgArrayConverter
 
     Size GetElemsSize(object values, int count, (Size, object?)[] elementStates, DataFormat format)
     {
-        Debug.Assert(elementStates.Length == count);
+        Debug.Assert(elementStates.Length >= count);
         var totalSize = Size.Zero;
         var elemTypeNullable = ElemTypeDbNullable;
         var context = new SizeContext(format);
@@ -60,10 +60,8 @@ readonly struct PgArrayConverter
         return totalSize;
     }
 
-    Size GetFixedElemsSize(object values, int count, DataFormat format)
+    Size GetFixedElemsSize(object values, int count, Size elementSize)
     {
-        var state = (object?)null;
-        var fixedSize = _elementOperations.GetSize(new SizeContext(format), values, 0, ref state).Value;
         var nonNullValues = count;
         if (ElemTypeDbNullable)
         {
@@ -77,7 +75,7 @@ readonly struct PgArrayConverter
             nonNullValues -= nulls;
         }
 
-        return Size.Create(nonNullValues * fixedSize);
+        return nonNullValues * elementSize.Value;
     }
 
     public Size GetSize(SizeContext context, object values, ref object? writeState)
@@ -95,9 +93,9 @@ readonly struct PgArrayConverter
             return formatSize;
 
         Size elemsSize;
-        if (_elementOperations.HasFixedSize(context.Format))
+        if (_elementOperations.GetFixedSize(context.Format) is { } size)
         {
-            elemsSize = GetFixedElemsSize(values, count, context.Format);
+            elemsSize = GetFixedElemsSize(values, count, size);
         }
         else
         {
@@ -221,17 +219,18 @@ abstract class ArrayConverter : PgStreamingConverter<object>
     internal const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable array type instead.";
 
     readonly PgArrayConverter _pgArrayConverter;
-    readonly Size _elemReadBufferRequirement;
+    public Size ElemReadBufferRequirement { get; }
+    public Size ElemWriteBufferRequirement { get; }
 
     internal ArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
     {
         ElemResolution = elemResolution;
         ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
         _pgArrayConverter = new PgArrayConverter((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue, elemResolution.PgTypeId, statePool ?? ArrayPool<(Size, object?)>.Shared, pgLowerBound);
-        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement, out _))
+        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        (_elemReadBufferRequirement, _) = bufferingRequirement.ToBufferRequirements(elemResolution.Converter);
+        (ElemReadBufferRequirement, ElemWriteBufferRequirement) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, elemResolution.Converter);
     }
 
     public override object Read(PgReader reader) => _pgArrayConverter.Read(async: false, reader).Result;
@@ -291,7 +290,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
 
     protected ValueTask ReadElem(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
     {
-        if (!reader.ShouldBuffer(_elemReadBufferRequirement))
+        if (!reader.ShouldBuffer(ElemReadBufferRequirement))
             return ReadElemCore(async, reader, collection, index, cancellationToken);
 
         return Core(async, reader, collection, index, cancellationToken);
@@ -299,9 +298,9 @@ abstract class ArrayConverter : PgStreamingConverter<object>
         async ValueTask Core(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
         {
             if (async)
-                await reader.BufferDataAsync(_elemReadBufferRequirement, cancellationToken).ConfigureAwait(false);
+                await reader.BufferDataAsync(ElemReadBufferRequirement, cancellationToken).ConfigureAwait(false);
             else
-                reader.BufferData(_elemReadBufferRequirement);
+                reader.BufferData(ElemReadBufferRequirement);
 
             await ReadElemCore(async, reader, collection, index, cancellationToken).ConfigureAwait(false);
         }
@@ -362,8 +361,8 @@ sealed class ArrayBasedArrayConverter<TElement> : ArrayConverter, IElementOperat
         return Unsafe.As<TElement?[]>(collection).Length;
     }
 
-    bool IElementOperations.HasFixedSize(DataFormat format)
-        => ElemResolution.Converter.CanConvert(format, out _, out var fixedSize) && fixedSize;
+    Size? IElementOperations.GetFixedSize(DataFormat format)
+        => ElemWriteBufferRequirement.Kind is SizeKind.Exact ? ElemWriteBufferRequirement : null;
 
     Size IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);
@@ -442,8 +441,8 @@ sealed class ListBasedArrayConverter<TElement> : ArrayConverter, IElementOperati
         return Unsafe.As<List<TElement?>>(collection).Count;
     }
 
-    bool IElementOperations.HasFixedSize(DataFormat format)
-        => _elemConverter.CanConvert(format, out _, out var fixedSize) && fixedSize;
+    Size? IElementOperations.GetFixedSize(DataFormat format)
+        => ElemWriteBufferRequirement.Kind is SizeKind.Exact ? ElemWriteBufferRequirement : null;
 
     Size IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);

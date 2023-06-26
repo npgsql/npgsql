@@ -29,8 +29,8 @@ public class PgTypeInfo
     {
         Converter = converter;
         PgTypeId = options.GetCanonicalTypeId(pgTypeId);
-        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement, out _);
-        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferingRequirement, out _);
+        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement);
+        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferingRequirement);
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConverterResolution? resolution, Type? unboxedType = null)
@@ -44,8 +44,8 @@ public class PgTypeInfo
 
             PgTypeId = res.PgTypeId;
             Converter = res.Converter;
-            _canBinaryConvert = res.Converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement, out _);
-            _canTextConvert = res.Converter.CanConvert(DataFormat.Text, out _textBufferingRequirement, out _);
+            _canBinaryConvert = res.Converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement);
+            _canTextConvert = res.Converter.CanConvert(DataFormat.Text, out _textBufferingRequirement);
         }
     }
 
@@ -125,19 +125,19 @@ public class PgTypeInfo
 
     PgConverterInfo ValidateFormat(bool isRead, DataFormat format, PgConverter converter, PgTypeId pgTypeId, Type typeToConvert)
     {
-        if (HasCachedInfo(converter) ? !CachedCanConvert(format, out var bufferingRequirement) : !converter.CanConvert(format, out bufferingRequirement, out _))
+        if (HasCachedInfo(converter) ? !CachedCanConvert(format, out var bufferingRequirement) : !converter.CanConvert(format, out bufferingRequirement))
             throw new InvalidOperationException($"Converter {converter.GetType()} does not support {format} format.");
 
         return new()
         {
             Converter = converter,
             AsObject = Type != typeToConvert,
-            BufferRequirement = GetRequirement(isRead),
+            BufferRequirement = GetRequirement(isRead, format),
         };
 
-        Size GetRequirement(bool isRead)
+        Size GetRequirement(bool isRead, DataFormat format)
         {
-            var (readRequirement, writeRequirement) = bufferingRequirement.ToBufferRequirements(converter);
+            var (readRequirement, writeRequirement) = bufferingRequirement.ToBufferRequirements(format, converter);
             return isRead ? readRequirement : writeRequirement;
         }
     }
@@ -253,11 +253,11 @@ public class PgTypeInfo
         switch (formatPreference)
         {
         // The common case, no preference means we default to binary if supported.
-        case null or DataFormat.Binary when HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Binary, out bufferingRequirement) : converter.CanConvert(DataFormat.Binary, out bufferingRequirement, out _):
+        case null or DataFormat.Binary when HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Binary, out bufferingRequirement) : converter.CanConvert(DataFormat.Binary, out bufferingRequirement):
             return DataFormat.Binary;
         // In this case we either prefer text or we have no preference and our converter doesn't support binary.
         case null or DataFormat.Text:
-            var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferingRequirement) : converter.CanConvert(DataFormat.Text, out bufferingRequirement, out _);
+            var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferingRequirement) : converter.CanConvert(DataFormat.Text, out bufferingRequirement);
             if (!canTextConvert)
                 throw new InvalidOperationException("Converter doesn't support any data format.");
             return DataFormat.Text;

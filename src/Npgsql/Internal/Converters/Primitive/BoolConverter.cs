@@ -4,10 +4,10 @@ namespace Npgsql.Internal.Converters;
 
 sealed class BoolConverter : PgBufferedConverter<bool>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out _);
     }
     public override Size GetSize(SizeContext context, bool value, ref object? writeState) => sizeof(byte);
 

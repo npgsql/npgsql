@@ -28,9 +28,8 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = false;
         bufferingRequirement = BufferingRequirement.None;
         return format is DataFormat.Binary or DataFormat.Text;
     }
@@ -83,9 +82,8 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = false;
         bufferingRequirement = BufferingRequirement.None;
         return format is DataFormat.Binary or DataFormat.Text;
     }
@@ -144,11 +142,10 @@ sealed class CharTextConverter : PgBufferedConverter<char>
         _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        bufferingRequirement = BufferingRequirement.Custom;
         // Under different encodings we may end up with different sizes per char.
-        fixedSize = false;
+        bufferingRequirement = BufferingRequirement.Custom;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 

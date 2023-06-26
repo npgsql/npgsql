@@ -8,10 +8,10 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
     where T : INumberBase<T>
 #endif
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
-        fixedSize = true;
-        return base.CanConvert(format, out bufferingRequirement, out _);
+        bufferingRequirement = BufferingRequirement.FixedSize;
+        return base.CanConvert(format, out _);
     }
     public override Size GetSize(SizeContext context, T value, ref object? writeState) => sizeof(double);
 

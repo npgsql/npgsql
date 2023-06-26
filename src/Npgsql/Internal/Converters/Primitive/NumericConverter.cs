@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,10 +16,10 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
 {
     const int StackAllocByteThreshold = 64 * sizeof(uint);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
         bufferingRequirement = typeof(BigInteger) == typeof(T) ? BufferingRequirement.None : BufferingRequirement.Custom;
-        return base.CanConvert(format, out _, out fixedSize);
+        return base.CanConvert(format, out _);
     }
 
     public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
@@ -63,7 +64,7 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         }
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState) =>
+    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState) =>
         PgNumeric.GetByteCount(default(T) switch
         {
             _ when typeof(BigInteger) == typeof(T) => PgNumeric.GetDigitCount((BigInteger)(object)value),

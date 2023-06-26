@@ -18,8 +18,8 @@ sealed class CastingConverter<T> : PgConverter<T>
 
     protected override bool IsDbNull(T? value) => _effectiveConverter.IsDbNullValueAsObject(value);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement, out bool fixedSize)
-        => _effectiveConverter.CanConvert(format, out bufferingRequirement, out fixedSize);
+    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+        => _effectiveConverter.CanConvert(format, out bufferingRequirement);
 
     public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
         => _effectiveConverter.GetBufferRequirements(format, out readRequirement, out writeRequirement);
