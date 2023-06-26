@@ -3,7 +3,7 @@ using System;
 namespace Npgsql.PostgresTypes;
 
 /// <summary>
-/// 
+///
 /// </summary>
 public readonly record struct DataTypeName
 {
@@ -82,9 +82,9 @@ public readonly record struct DataTypeName
         return new(Schema + "._" + unqualifiedName);
     }
 
-    // Static transform as defined by https://www.postgresql.org/docs/current/sql-createtype.html#SQL-CREATETYPE-ARRAY
+    // Static transform as defined by https://www.postgresql.org/docs/current/sql-createtype.html#SQL-CREATETYPE-RANGE
     // Manual testing on PG confirmed it's only the first occurence of 'range' that gets replaced.
-    public DataTypeName ToMultiRangeName()
+    public DataTypeName ToDefaultMultirangeName()
     {
         var unqualifiedNameSpan = UnqualifiedNameSpan;
         if (UnqualifiedNameSpan.IndexOf("multirange".AsSpan(), StringComparison.Ordinal) != -1)

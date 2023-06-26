@@ -52,7 +52,7 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
             {
                 dataTypeName = DataTypeNames.TryGetRangeName(name);
                 if (isArray)
-                    dataTypeName = dataTypeName?.ToMultiRangeName();
+                    dataTypeName = dataTypeName?.ToDefaultMultirangeName();
             }
             else if (isArray)
                 dataTypeName = name.ToArrayName();
