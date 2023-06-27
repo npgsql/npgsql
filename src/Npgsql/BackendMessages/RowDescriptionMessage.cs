@@ -360,12 +360,12 @@ public sealed class FieldDescription
     // TODO make a fallback to unknown converter
     static PgTypeInfo GetObjectOrDefaultTypeInfo(PgSerializerOptions options, PostgresType postgresType) =>
         options.GetObjectOrDefaultTypeInfo(postgresType)
-            ?? throw new InvalidCastException($"Reading is not supported for postgres type {postgresType.DisplayName}");
+            ?? throw new InvalidCastException($"Reading is not supported for postgres type '{postgresType.DisplayName}'");
 
     static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType)
     {
         if ((typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType)) is not { } info)
-            throw new InvalidCastException($"Reading as {type} is not supported for postgres type {postgresType.DisplayName}");
+            throw new InvalidCastException($"Reading as {type} is not supported for postgres type '{postgresType.DisplayName}'");
 
         return info;
     }

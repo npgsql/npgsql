@@ -154,7 +154,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
 
         // Text
-        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar })
+        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar, DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), DataFormat.Text), isDefault: true);
@@ -215,17 +215,17 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<BitArray>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Varbit);
-        mappings.AddArrayType<object>(DataTypeNames.Varbit);
+        mappings.AddResolverArrayType<object>(DataTypeNames.Varbit);
 
         // Bit
         mappings.AddArrayType<BitArray>(DataTypeNames.Bit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Bit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Bit);
-        mappings.AddArrayType<object>(DataTypeNames.Bit);
+        mappings.AddResolverArrayType<object>(DataTypeNames.Bit);
 
         // TimestampTz
         mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-        mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
+        mappings.AddResolverStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
         mappings.AddStructArrayType<long>(DataTypeNames.TimestampTz);
 
         // Timestamp
