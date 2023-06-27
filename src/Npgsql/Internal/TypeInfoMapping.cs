@@ -135,6 +135,18 @@ readonly struct TypeInfoMappingCollection
         => AddArrayType(elementMapping, typeof(TElement[]),
             static innerInfo => new ArrayBasedArrayConverter<TElement>(innerInfo.GetResolutionOrThrow()));
 
+    public void AddResolverArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : class
+        => AddResolverArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
+
+    public void AddResolverArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
+        => AddResolverArrayType(elementMapping, typeof(TElement[]), static elemInfo => new ArrayConverterResolver<TElement>(elemInfo));
+
+    void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeResolverInfo, PgConverterResolver> converter)
+    {
+        var arrayDataTypeName = elementMapping.DataTypeName.ToArrayName();
+        _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
+    }
+
     void AddStructType(Type type, Type nullableType, DataTypeName dataTypeName, TypeInfoFactory createInfo, Func<PgTypeInfo, PgConverter> nullableConverter, bool isDefault)
     {
         TypeInfoMapping mapping;
@@ -161,15 +173,16 @@ readonly struct TypeInfoMappingCollection
         TypeInfoMapping nullableArrayMapping;
         _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
         _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
-        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, resolvedDataTypeName) => options.ArrayNullabilityMode switch
+        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
         {
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedTypeInfo(
+            _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
+            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
                 new PolymorphicCollectionConverter(
-                    arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter,
-                    nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter
-                ), mapping.DataTypeName, isDefault: false),
+                    arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
+                    nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
+                ), mapping.DataTypeName),
             _ => throw new ArgumentOutOfRangeException()
         }));
     }
@@ -189,16 +202,16 @@ readonly struct TypeInfoMappingCollection
         TypeInfoMapping nullableArrayMapping;
         _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
         _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
-        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, resolvedDataTypeName) => options.ArrayNullabilityMode switch
+        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
         {
-            // TODO afaik all of this is wrong if the element mapping is a resolver based info.
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).ToObjectTypeInfo(isDefault: false),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).ToComposedTypeInfo(
+            _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
+            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
                 new PolymorphicCollectionConverter(
-                    arrayMapping.Factory(options, arrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter,
-                    nullableArrayMapping.Factory(options, nullableArrayMapping, resolvedDataTypeName).GetResolutionOrThrow().Converter
-                ), mapping.DataTypeName, isDefault: false),
+                    arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
+                    nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
+                ), mapping.DataTypeName),
             _ => throw new ArgumentOutOfRangeException()
         }));
     }

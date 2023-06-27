@@ -503,7 +503,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             else if (_dataTypeName is not null)
                 pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
 
-            // TODO we probably want to be able to statically go to (well known) oid too.
+            // TODO we probably want to be able to statically go to a (well known) oid too.
             {
                 if (pgTypeId is { } id)
                     pgTypeId = options.GetCanonicalTypeId(id);
@@ -523,12 +523,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
                 TypeInfo = options.GetDefaultTypeInfo(id) ?? throw new NotSupportedException(
                     $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
-                        ? "NpgsqlDbType '" + _npgsqlDbType + "'" : " DataTypeName '" + _dataTypeName + "'")}.");
+                        ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
             }
             else
                 TypeInfo = options.GetTypeInfo(ValueType, pgTypeId) ?? throw new NotSupportedException(
                     $"Couldn't find converter for parameter of type {ValueType}{(_npgsqlDbType is not null
-                        ? " and NpgsqlDbType '" + _npgsqlDbType + "'" : pgTypeId is not null ? " and DataTypeName '" + _dataTypeName + "'" : "")}.");
+                        ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}.");
         }
 
         // This step isn't part of BindFormatAndLength because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
