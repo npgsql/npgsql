@@ -12,14 +12,22 @@ namespace Npgsql.TypeMapping;
 /// <inheritdoc />
 public sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
-    PgSerializerOptions MappingSerializerOptions { get; } = new(new PostgresMinimalDatabaseInfo())
+    PgSerializerOptions MappingSerializerOptions { get; }
+
+    GlobalTypeMapper()
     {
-        // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
-        PortableTypeIds = true,
-        // Irrelevant but required.
-        TextEncoding = PGUtil.UTF8Encoding,
-        TypeInfoResolver = AdoTypeInfoResolver.Instance
-    };
+        var typeCatalog = new PostgresMinimalDatabaseInfo();
+        typeCatalog.ProcessTypes();
+        MappingSerializerOptions = new(typeCatalog)
+        {
+            // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
+            PortableTypeIds = true,
+            // Irrelevant but required.
+            TextEncoding = PGUtil.UTF8Encoding,
+            TypeInfoResolver = AdoTypeInfoResolver.Instance
+        };
+        Reset();
+    }
 
     // We only load the base types and we do some static pattern matching to figure out arrays and well known ranges.
     internal DataTypeName? TryGetDataTypeName(Type type, object value)
@@ -70,9 +78,6 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     static GlobalTypeMapper()
         => Instance = new GlobalTypeMapper();
-
-    GlobalTypeMapper()
-        => Reset();
 
     /// <summary>
     /// Adds a type info resolver which can add or modify support for PostgreSQL types.

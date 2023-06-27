@@ -235,8 +235,10 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
+            var typeCatalog = new PostgresMinimalDatabaseInfo(connector);
+            typeCatalog.ProcessTypes();
             connector.SerializerOptions =
-                new(new PostgresMinimalDatabaseInfo(connector))
+                new(typeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = new AdoTypeInfoResolver()
