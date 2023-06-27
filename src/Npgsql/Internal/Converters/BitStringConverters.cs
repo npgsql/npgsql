@@ -2,27 +2,55 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
+using static Npgsql.Internal.Converters.BitStringHelpers;
 
 namespace Npgsql.Internal.Converters;
+
+static class BitStringHelpers
+{
+    public static int GetByteLengthFromBits(int n)
+    {
+        const int BitShiftPerByte = 3;
+        Debug.Assert(n >= 0);
+        // Due to sign extension, we don't need to special case for n == 0, since ((n - 1) >> 3) + 1 = 0
+        // This doesn't hold true for ((n - 1) / 8) + 1, which equals 1.
+        return (int)((uint)(n - 1 + (1 << BitShiftPerByte)) >> BitShiftPerByte);
+    }
+}
 
 sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 {
     readonly ArrayPool<byte> _arrayPool;
     public BitArrayBitStringConverter(ArrayPool<byte>? arrayPool = null) => _arrayPool = arrayPool ?? ArrayPool<byte>.Shared;
 
-    public static BitArray ReadValue(ReadOnlySequence<byte> bytes)
-        => new(bytes.ToArray());
+    public static BitArray ReadValue(ReadOnlySequence<byte> byteSeq, int bits)
+    {
+        var bytes = byteSeq.ToArray();
+        for (var i = 0; i < bytes.Length; i++)
+        {
+            ref var b = ref bytes[i];
+            // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
+            b = b = (byte)(((b * 0x80200802UL) & 0x0884422110UL) * 0x0101010101UL >> 32);
+        }
 
-    public override BitArray Read(PgReader reader) => ReadValue(reader.ReadBytes((reader.ReadInt32() + 7) / 8));
-    public override Size GetSize(SizeContext context, BitArray value, ref object? writeState) => sizeof(int) + (value.Length + 7) / 8;
+        return new(bytes) { Length = bits };
+    }
+
+    public override BitArray Read(PgReader reader)
+    {
+        var bits = reader.ReadInt32();
+        return ReadValue(reader.ReadBytes(GetByteLengthFromBits(bits)), bits);
+    }
+    public override Size GetSize(SizeContext context, BitArray value, ref object? writeState) => sizeof(int) + GetByteLengthFromBits(value.Length);
 
     public override void Write(PgWriter writer, BitArray value)
     {
-        var length = (value.Length + 7) / 8;
+        var length = GetByteLengthFromBits(value.Length);
         var array = _arrayPool.Rent(length);
         value.CopyTo(array, 0);
 
@@ -33,7 +61,10 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
     }
 
     public override async ValueTask<BitArray> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => ReadValue(await reader.ReadBytesAsync((reader.ReadInt32() + 7) / 8, cancellationToken));
+    {
+        var bits = reader.ReadInt32();
+        return ReadValue(await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken), bits);
+    }
 
     public override async ValueTask WriteAsync(PgWriter writer, BitArray value, CancellationToken cancellationToken = default)
     {
@@ -66,7 +97,15 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
         if (reader.Current.Size.Value > sizeof(int) + sizeof(int))
             throw new InvalidCastException("Can't read a BIT(N) with more than 32 bits to BitVector32, only up to BIT(32).");
 
-        return new(reader.ReadInt32() is 0 ? 0 : reader.ReadInt32());
+        var bits = reader.ReadInt32();
+        return GetByteLengthFromBits(bits) switch
+        {
+            4 => new(reader.ReadInt32()),
+            3 => new((reader.ReadInt16() << 8) + reader.ReadByte()),
+            2 => new(reader.ReadInt16() << 16),
+            1 => new(reader.ReadByte() << 24),
+            _ => new(0)
+        };
     }
 
     public override Size GetSize(SizeContext context, BitVector32 value, ref object? writeState)

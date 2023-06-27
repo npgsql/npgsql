@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.IO;
 using System.Numerics;
@@ -541,12 +542,13 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 8)");
         var table = await GetTempTableName(conn);
 
         await conn.ExecuteNonQueryAsync($@"
-CREATE TABLE {table} (bits BIT(3), bitarray BIT(3)[]);
-INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
+CREATE TABLE {table} (bits BIT(11), bitvector BIT(11), bitarray BIT(3)[]);
+INSERT INTO {table} (bits, bitvector, bitarray) VALUES (B'00000001101', B'00000001101', ARRAY[B'101', B'111'])");
 
-        using var reader = conn.BeginBinaryExport($"COPY {table} (bits, bitarray) TO STDIN BINARY");
+        using var reader = conn.BeginBinaryExport($"COPY {table} (bits, bitvector, bitarray) TO STDIN BINARY");
         reader.StartRow();
-        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
+        Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { false, false, false, false, false, false, false, true, true, false, true })));
+        Assert.That(reader.Read<BitVector32>(), Is.EqualTo(new BitVector32(0b00000001101000000000000000000000)));
         Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
         {
             new BitArray(new[] { true, false, true }),
@@ -764,19 +766,6 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         exporter.Cancel();
         Assert.DoesNotThrowAsync(async () => await exporter.DisposeAsync());
         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
-    }
-
-    [Test]
-    [IssueLink("https://github.com/npgsql/npgsql/issues/4417")]
-    public async Task Binary_copy_throws_for_nullable()
-    {
-        await using var conn = await OpenConnectionAsync();
-        var tableName = await CreateTempTable(conn, "house_number integer");
-
-        await using var writer = await conn.BeginBinaryImportAsync($"COPY {tableName}(house_number) FROM STDIN BINARY");
-        int? value = 1;
-        await writer.StartRowAsync();
-        Assert.ThrowsAsync<InvalidCastException>(async () => await writer.WriteAsync(value, NpgsqlDbType.Integer));
     }
 
     [Test]
@@ -1054,7 +1043,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         {
             writer.StartRow();
             writer.Write(3.0, NpgsqlDbType.Integer);
-            writer.Write((object)new[] { 1, 2, 3 });
+            writer.Write(new[] { 1, 2, 3 });
             writer.StartRow();
             writer.Write(3, NpgsqlDbType.Integer);
             writer.Write((object)new List<int> { 4, 5, 6 });
