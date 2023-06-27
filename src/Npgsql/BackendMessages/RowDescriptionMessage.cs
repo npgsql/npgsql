@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Npgsql.Internal;
 using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
@@ -323,13 +324,33 @@ public sealed class FieldDescription
     internal Type FieldType => ObjectOrDefaultTypeInfo.Type;
 
     PgTypeInfo? _objectOrDefaultTypeInfo;
-    PgTypeInfo ObjectOrDefaultTypeInfo => _objectOrDefaultTypeInfo ??= GetObjectOrDefaultTypeInfo(_serializerOptions, PostgresType);
+
+    PgTypeInfo ObjectOrDefaultTypeInfo
+    {
+        get
+        {
+            if (_objectOrDefaultTypeInfo is not null)
+                return _objectOrDefaultTypeInfo;
+
+            (_objectOrDefaultTypeInfo, _objectOrDefaultInfo) = BindWithTextFallback(GetTypeInfo(_serializerOptions, typeof(object), PostgresType));
+            return _objectOrDefaultTypeInfo;
+        }
+    }
 
     PgConverterInfo _objectOrDefaultInfo;
-    internal PgConverterInfo ObjectOrDefaultInfo => _objectOrDefaultInfo.Converter is null
-        // Always go through object apis.
-        ? _objectOrDefaultInfo = ObjectOrDefaultTypeInfo.Bind(Field, Format) with { AsObject = true }
-        : _objectOrDefaultInfo;
+
+    internal PgConverterInfo ObjectOrDefaultInfo
+    {
+        get
+        {
+            if (_objectOrDefaultTypeInfo is not null)
+                return _objectOrDefaultInfo;
+
+            // This will populate _objectOrDefaultInfo
+            var _ = ObjectOrDefaultTypeInfo;
+            return _objectOrDefaultInfo;
+        }
+    }
 
     PgSerializerOptions _serializerOptions;
     PgTypeInfo? _lastTypeInfo;
@@ -350,24 +371,42 @@ public sealed class FieldDescription
             info = _lastInfo;
         else
         {
-            var typeInfo = GetTypeInfo(_serializerOptions, type, PostgresType);
-            _lastTypeInfo = typeInfo;
-            _lastInfo = info = typeInfo.Bind(Field, Format);
+            (_lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType), type);
+            _lastInfo = info;
         }
         return info;
     }
-
-    // TODO make a fallback to unknown converter
-    static PgTypeInfo GetObjectOrDefaultTypeInfo(PgSerializerOptions options, PostgresType postgresType) =>
-        options.GetObjectOrDefaultTypeInfo(postgresType)
-            ?? throw new InvalidCastException($"Reading is not supported for postgres type '{postgresType.DisplayName}'");
-
     static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType)
     {
         if ((typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType)) is not { } info)
-            throw new InvalidCastException($"Reading as {type} is not supported for postgres type '{postgresType.DisplayName}'");
+            throw new InvalidCastException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for postgres type '{postgresType.DisplayName}'");
 
         return info;
+    }
+
+    (PgTypeInfo, PgConverterInfo) BindWithTextFallback(PgTypeInfo info, Type? expectedType = null)
+    {
+        PgConverterInfo converterInfo;
+        switch (Format)
+        {
+        case DataFormat.Binary:
+            // If we don't support binary we'll just throw.
+            converterInfo = info.Bind(Field, Format);
+            break;
+        default:
+            // For text we'll fall back to any available text converter for the expected clr type or throw.
+            if (!info.TryBind(Field, Format, out converterInfo))
+            {
+                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.TextType);
+                converterInfo = info.Bind(Field, Format);
+            }
+            break;
+        }
+
+        if (expectedType != info.Type && !converterInfo.AsObject)
+            converterInfo = converterInfo with { AsObject = true };
+
+        return (info, converterInfo);
     }
 
     /// <summary>

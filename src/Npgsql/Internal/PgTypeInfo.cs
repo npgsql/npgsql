@@ -76,21 +76,43 @@ public class PgTypeInfo
             disposable.Dispose();
     }
 
-    // Bind for reading.
-    internal PgConverterInfo Bind(Field field, DataFormat format)
+    internal bool TryBind(Field field, DataFormat format, out PgConverterInfo info)
     {
         switch (this)
         {
         case { IsResolverInfo: false }:
             // Type lies when IsBoxing is true.
             var typeToConvert = IsBoxing ? typeof(object) : Type;
-            return ValidateFormat(isRead: true, format, Converter, typeToConvert);
+            if (!CachedCanConvert(format, out var bufferingRequirement))
+            {
+                info = default;
+                return false;
+            }
+            info = CreateConverterInfo(bufferingRequirement, isRead: true, format, Converter, typeToConvert);
+            return true;
         case PgTypeResolverInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
-            return ValidateFormat(isRead: true, format, resolution.Converter, resolution.Converter.TypeToConvert);
+            if (!HasCachedInfo(resolution.Converter)
+                    ? !CachedCanConvert(format, out bufferingRequirement)
+                    : !resolution.Converter.CanConvert(format, out bufferingRequirement))
+            {
+                info = default;
+                return false;
+            }
+            info = CreateConverterInfo(bufferingRequirement, isRead: true, format, resolution.Converter, resolution.Converter.TypeToConvert);
+            return true;
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
         }
+    }
+
+    // Bind for reading.
+    internal PgConverterInfo Bind(Field field, DataFormat format)
+    {
+        if (!TryBind(field, format, out var info))
+            throw new InvalidOperationException($"Resolved converter does not support {format} format.");
+
+        return info;
     }
 
     public PgConverterResolution GetResolution<T>(T? value, PgTypeId? expectedPgTypeId = null)
@@ -120,11 +142,8 @@ public class PgTypeInfo
             _ => throw new NotSupportedException("Should not happen, please file a bug.")
         };
 
-    PgConverterInfo ValidateFormat(bool isRead, DataFormat format, PgConverter converter, Type typeToConvert)
+    PgConverterInfo CreateConverterInfo(BufferingRequirement bufferingRequirement, bool isRead, DataFormat format, PgConverter converter, Type typeToConvert)
     {
-        if (HasCachedInfo(converter) ? !CachedCanConvert(format, out var bufferingRequirement) : !converter.CanConvert(format, out bufferingRequirement))
-            throw new InvalidOperationException($"Converter {converter.GetType()} does not support {format} format.");
-
         return new()
         {
             Converter = converter,
