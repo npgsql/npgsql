@@ -1515,6 +1515,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var field = CheckRowAndGetField(ordinal);
+        // Check whether we can do char[] reads.
+        var info = field.GetOrAddConverterInfo(typeof(char[]));
+        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
+
         SeekToColumn(ordinal, false).GetAwaiter().GetResult();
         if (ColumnLen == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
