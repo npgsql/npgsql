@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Converters;
@@ -507,32 +508,49 @@ sealed class ListBasedArrayConverter<TElement> : ArrayConverter, IElementOperati
 sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 {
     readonly PgTypeResolverInfo _elemTypeInfo;
+    readonly PgTypeId? _arrayTypeId;
     readonly ConcurrentDictionary<PgConverter<TElement>, ArrayBasedArrayConverter<TElement>> _arrayConverters = new(ReferenceEqualityComparer.Instance);
     readonly ConcurrentDictionary<PgConverter<TElement>, ListBasedArrayConverter<TElement>> _listConverters = new(ReferenceEqualityComparer.Instance);
     PgConverterResolution _lastElemResolution;
     PgConverterResolution _lastResolution;
 
-    public ArrayConverterResolver(PgTypeResolverInfo elemTypeInfo) => _elemTypeInfo = elemTypeInfo;
-
-    PgTypeId GetElementId(PgTypeId arrayId)
+    public ArrayConverterResolver(PgTypeResolverInfo elemTypeInfo)
     {
-        // If we can't resolve id we bail here.
-        var options = _elemTypeInfo.Options;
-        return options.GetPgType(arrayId) is PostgresArrayType arrayType
-            ? options.GetCanonicalTypeId(arrayType.Element)
-            : throw new NotSupportedException("Cannot resolve element type id.");
+        _elemTypeInfo = elemTypeInfo;
+        _arrayTypeId = _elemTypeInfo.PgTypeId is { } id ? GetArrayId(id) : null;
     }
+
+    PgSerializerOptions Options => _elemTypeInfo.Options;
+
+    PgTypeId GetArrayId(PgTypeId elemTypeId)
+        => Options.GetCanonicalTypeId(Options.GetPgType(elemTypeId).Array!);
+
+    PgTypeId GetElementId(PgTypeId arrayTypeId) =>
+        Options.GetPgType(arrayTypeId) is PostgresArrayType arrayType
+            ? Options.GetCanonicalTypeId(arrayType.Element)
+            : throw new NotSupportedException("Cannot resolve element type id.");
 
     public override PgConverterResolution GetDefault(PgTypeId pgTypeId)
     {
-        var elemResolution = _elemTypeInfo.GetDefaultResolution(GetElementId(pgTypeId));
+        var elemResolution = _elemTypeInfo.GetDefaultResolution(_elemTypeInfo.PgTypeId ?? GetElementId(pgTypeId));
         return new(GetOrAddArrayBased(elemResolution), pgTypeId);
     }
 
     public override PgConverterResolution Get(object? values, PgTypeId? expectedPgTypeId)
     {
-        var options = _elemTypeInfo.Options;
-        var expectedElemId = expectedPgTypeId is { } id ? (PgTypeId?)GetElementId(id) : null;
+        PgTypeId? expectedElemId = null;
+        if (expectedPgTypeId is { } id)
+        {
+            if (_arrayTypeId is null)
+                // We have an undecided type info which is asked to resolve for a specific type id
+                // we'll unfortunately have to look up the element id, this is rare though.
+                expectedElemId = GetElementId(id);
+            else if (_arrayTypeId == expectedPgTypeId)
+                expectedElemId = _elemTypeInfo.PgTypeId;
+            else
+                throw CreateUnsupportedPgTypeIdException(id);
+        }
+
         ArrayConverter arrayConverter;
         PgConverterResolution expectedResolution;
         switch (values)
@@ -577,7 +595,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
         }
 
         _lastElemResolution = expectedResolution;
-        return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? options.GetCanonicalTypeId(options.GetPgType(expectedResolution.PgTypeId).Array!));
+        return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayId(expectedResolution.PgTypeId));
 
         ListBasedArrayConverter<TElement> GetOrAddListBased()
             => _listConverters.GetOrAdd(expectedResolution.GetConverter<TElement>(),
