@@ -2240,7 +2240,7 @@ class ExplodingTypeHandlerResolver : IPgTypeInfoResolver
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
         if (dataTypeName == DataTypeNames.Int4 || type == typeof(int))
-            PgTypeInfo.CreateDefault(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
+            return new(options, new ExplodingTypeHandler(_safe), DataTypeNames.Int4);
 
         return null;
     }

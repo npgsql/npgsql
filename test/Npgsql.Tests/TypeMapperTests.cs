@@ -164,7 +164,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         {
             if (type == typeof(string) || dataTypeName == DataTypeNames.CiText)
-                return PgTypeInfo.CreateDefault(options, new StringTextConverter(options.TextEncoding), DataTypeNames.CiText);
+                return new(options, new StringTextConverter(options.TextEncoding), DataTypeNames.CiText);
 
             return null;
         }
