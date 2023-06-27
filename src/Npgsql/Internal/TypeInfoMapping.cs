@@ -102,7 +102,8 @@ readonly struct TypeInfoMappingCollection
             var innerInfo = innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
             var converter = mapper(innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            return mapping.CreateInfo(options, converter, preferredFormat);
+            var supportsWriting = innerInfo.SupportsWriting;
+            return mapping.CreateInfo(options, converter, preferredFormat, supportsWriting);
         };
 
     // Helper to eliminate generic display class duplication.
@@ -112,9 +113,10 @@ readonly struct TypeInfoMappingCollection
             var innerInfo = (PgTypeResolverInfo)innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
             var resolver = mapper(innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
+            var supportsWriting = innerInfo.SupportsWriting;
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
-            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, preferredFormat);
+            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, preferredFormat, supportsWriting);
         };
 
     void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeInfo, PgConverter> converter)
@@ -219,15 +221,25 @@ readonly struct TypeInfoMappingCollection
 
 static class PgTypeInfoHelpers
 {
-    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null)
+    public static PgTypeResolverInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
-        var unboxedType = resolver.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
-        return PgTypeInfo.Create(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, preferredFormat, unboxedType);
+        var typeToConvert = resolver.TypeToConvert;
+        var unboxedType = typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
+        return new(options, resolver, includeDataTypeName ? mapping.DataTypeName : null, unboxedType)
+        {
+            PreferredFormat = preferredFormat,
+            SupportsWriting = supportsWriting
+        };
     }
 
-    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null)
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
-        var unboxedType = converter.TypeToConvert is { } type && type == typeof(object) && mapping.Type != type ? mapping.Type : null;
-        return PgTypeInfo.Create(options, converter, mapping.DataTypeName, preferredFormat, unboxedType);
+        var typeToConvert = converter.TypeToConvert;
+        var unboxedType = typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
+        return new(options, converter, mapping.DataTypeName, unboxedType)
+        {
+            PreferredFormat = preferredFormat,
+            SupportsWriting = supportsWriting
+        };
     }
 }
