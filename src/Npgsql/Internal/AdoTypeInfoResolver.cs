@@ -153,7 +153,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
 
-        // Text
+        // Text types
         foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar, DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
@@ -167,6 +167,17 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<char>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
         }
+
+        // UInt internal types
+        foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
+        {
+            mappings.AddStructType<uint>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()), isDefault: true);
+        }
+
+        // Xid8
+        mappings.AddStructType<ulong>(DataTypeNames.Xid8,
+            static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()), isDefault: true);
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -245,12 +256,24 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Interval
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
 
-        // Text
-        mappings.AddArrayType<string>(DataTypeNames.Text);
-        mappings.AddArrayType<char[]>(DataTypeNames.Text);
-        mappings.AddStructArrayType<ReadOnlyMemory<char>>(DataTypeNames.Text);
-        mappings.AddStructArrayType<ArraySegment<char>>(DataTypeNames.Text);
-        mappings.AddStructArrayType<char>(DataTypeNames.Text);
+        // Text types
+        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar, DataTypeNames.Name })
+        {
+            mappings.AddArrayType<string>(dataTypeName);
+            mappings.AddArrayType<char[]>(dataTypeName);
+            mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
+            mappings.AddStructArrayType<ArraySegment<char>>(dataTypeName);
+            mappings.AddStructArrayType<char>(dataTypeName);
+        }
+
+        // UInt internal types
+        foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
+        {
+            mappings.AddStructArrayType<uint>(dataTypeName);
+        }
+
+        // Xid8
+        mappings.AddStructArrayType<ulong>(DataTypeNames.Xid8);
     }
 }
 
