@@ -176,13 +176,12 @@ public readonly record struct DataTypeName
         var prefixedArrayType = unqualifiedName.IndexOf('_') == 0;
         var postfixedArrayType = unqualifiedName.EndsWith("[]".AsSpan(), StringComparison.Ordinal);
         string baseTypeName;
-        string? unqualifiedNameString = null;
         if (prefixedArrayType)
             baseTypeName = unqualifiedName.Slice(1).ToString();
         else if (postfixedArrayType)
             baseTypeName = unqualifiedName.Slice(0, unqualifiedName.Length - 2).ToString();
         else
-            baseTypeName = unqualifiedNameString = unqualifiedName.ToString();
+            baseTypeName = unqualifiedName.ToString();
 
         var mappedBaseType = baseTypeName switch
         {
@@ -200,7 +199,7 @@ public readonly record struct DataTypeName
             "timestamptz" => "timestamp with time zone",
             "varbit" => "bit varying",
             "varchar" => "character varying",
-            _ => unqualifiedNameString ?? unqualifiedName.ToString()
+            _ => baseTypeName
         };
 
         if (prefixedArrayType || postfixedArrayType)
