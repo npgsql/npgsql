@@ -567,6 +567,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             {
                 writer.Current = new() { Format = Format is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text, Size = size, WriteState = _writeState };
 
+                // TODO check write buffer requirement instead of flushing right away for size.Value.
                 if (writer.ShouldFlush(sizeof(int) + size.Value))
                 {
                     if (async)

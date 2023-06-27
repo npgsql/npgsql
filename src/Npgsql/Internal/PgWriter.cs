@@ -165,7 +165,7 @@ public class PgWriter
         if (count > _length - _pos)
             ThrowOutOfRange();
 
-        void ThrowOutOfRange() => throw new ArgumentOutOfRangeException("Coud not ensure enough space in buffer.");
+        void ThrowOutOfRange() => throw new ArgumentOutOfRangeException(nameof(count), "Coud not ensure enough space in buffer.");
         [MethodImpl(MethodImplOptions.NoInlining)]
         void SetBuffer()
         {
@@ -416,5 +416,14 @@ public class PgWriter
         Commit(complete: false);
         ResetBuffer();
         return writer.FlushAsync(cancellationToken);
+    }
+
+    internal ValueTask Flush(bool async, CancellationToken cancellationToken = default)
+    {
+        if (async)
+            return FlushAsync(cancellationToken);
+
+        Flush();
+        return new();
     }
 }

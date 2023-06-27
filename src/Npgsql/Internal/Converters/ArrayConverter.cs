@@ -163,6 +163,9 @@ readonly struct PgArrayConverter
             var length = _elementOperations.GetSize(context, values, 0, ref st).Value;
             for (var i = 0; i < count; i++)
             {
+                if (writer.ShouldFlush(sizeof(int)))
+                    await writer.Flush(async, cancellationToken);
+
                 if (elemTypeDbNullable && _elementOperations.IsDbNullValue(values, i))
                     writer.WriteInt32(-1);
                 else
@@ -172,6 +175,9 @@ readonly struct PgArrayConverter
         else
             for (var i = state.Segment.Offset; i < count && i < state.Segment.Count; i++)
             {
+                if (writer.ShouldFlush(sizeof(int)))
+                    await writer.Flush(async, cancellationToken);
+
                 if (elemTypeDbNullable && _elementOperations.IsDbNullValue(values, i))
                 {
                     writer.WriteInt32(-1);
