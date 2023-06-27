@@ -90,21 +90,18 @@ sealed class NpgsqlBufferWriter : IStreamingWriter<byte>
 public class PgWriter
 {
     readonly IBufferWriter<byte> _writer;
-    readonly int _maxSize;
 
     byte[]? _buffer;
     int _offset;
     int _pos;
     int _length;
 
+    int _totalBytesWritten;
+
     ValueMetadata _current;
     NpgsqlDatabaseInfo? _typeCatalog;
 
-    internal PgWriter(NpgsqlWriteBuffer buffer)
-    {
-        _writer = new NpgsqlBufferWriter(buffer);
-        _maxSize = buffer.Size;
-    }
+    internal PgWriter(NpgsqlWriteBuffer buffer) => _writer = new NpgsqlBufferWriter(buffer);
 
     internal PgWriter Init(NpgsqlDatabaseInfo typeCatalog)
     {
@@ -184,7 +181,6 @@ public class PgWriter
         }
     }
 
-    int MaxSize => _maxSize;
     Span<byte> Span => _buffer.AsSpan(_pos, _length - _pos);
 
     int Remaining
@@ -199,10 +195,21 @@ public class PgWriter
 
     void Advance(int count) => _pos += count;
 
-    internal void Commit()
+    internal void Commit() => Commit(complete: true);
+
+    void Commit(bool complete)
     {
+        _totalBytesWritten += _pos - _offset;
         _writer.Advance(_pos - _offset);
         _offset = _pos;
+
+        if (complete)
+        {
+            if (Current.Size is { Kind: SizeKind.Exact, Value: var size } && _totalBytesWritten < size)
+                throw new InvalidOperationException("Larger value size than there were bytes written.");
+
+            _totalBytesWritten = 0;
+        }
     }
 
     public ref ValueMetadata Current => ref _current;
@@ -389,7 +396,7 @@ public class PgWriter
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(Flush)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
-        Commit();
+        Commit(complete: false);
         ResetBuffer();
         writer.Flush(timeout);
     }
@@ -406,7 +413,7 @@ public class PgWriter
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
-        Commit();
+        Commit(complete: false);
         ResetBuffer();
         return writer.FlushAsync(cancellationToken);
     }
