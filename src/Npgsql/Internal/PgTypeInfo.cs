@@ -83,10 +83,10 @@ public class PgTypeInfo
         case { IsResolverInfo: false }:
             // Type lies when IsBoxing is true.
             var typeToConvert = IsBoxing ? typeof(object) : Type;
-            return ValidateFormat(isRead: true, format, Converter, PgTypeId.GetValueOrDefault(), typeToConvert);
+            return ValidateFormat(isRead: true, format, Converter, typeToConvert);
         case PgTypeResolverInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
-            return ValidateFormat(isRead: true, format, resolution.Converter, resolution.PgTypeId, resolution.Converter.TypeToConvert);
+            return ValidateFormat(isRead: true, format, resolution.Converter, resolution.Converter.TypeToConvert);
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
         }
@@ -112,16 +112,14 @@ public class PgTypeInfo
 
     // Get the default resolution, if there is no PgTypeId we throw.
     internal PgConverterResolution GetResolutionOrThrow()
-    {
-        return this switch
+        => this switch
         {
             { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
             PgTypeResolverInfo resolverInfo => resolverInfo.GetDefaultResolutionOrThrow(),
             _ => throw new NotSupportedException("Should not happen, please file a bug.")
         };
-    }
 
-    PgConverterInfo ValidateFormat(bool isRead, DataFormat format, PgConverter converter, PgTypeId pgTypeId, Type typeToConvert)
+    PgConverterInfo ValidateFormat(bool isRead, DataFormat format, PgConverter converter, Type typeToConvert)
     {
         if (HasCachedInfo(converter) ? !CachedCanConvert(format, out var bufferingRequirement) : !converter.CanConvert(format, out bufferingRequirement))
             throw new InvalidOperationException($"Converter {converter.GetType()} does not support {format} format.");
@@ -199,7 +197,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToObjectTypeInfo(bool? isDefault = null)
+    internal PgTypeInfo ToObjectTypeInfo()
     {
         if (IsResolverInfo)
         {
@@ -213,10 +211,10 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToComposedTypeInfo(PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null, bool? isDefault = null)
+    internal PgTypeInfo ToComposedTypeInfo(PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
     {
-        if (IsResolverInfo)
-            throw new InvalidOperationException("Cannot compose a normal converter info on top of a resolver based converter info.");
+        if (IsResolverInfo && PgTypeId is null)
+            throw new InvalidOperationException("Cannot compose a normal converter info on top of an undecided resolver based type info.");
 
         return new(Options, converter, pgTypeId, unboxedType)
         {
@@ -224,7 +222,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool? isDefault = null)
+    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null)
         => new PgTypeResolverInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
             PreferredFormat = PreferredFormat,
