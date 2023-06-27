@@ -24,7 +24,7 @@ public class PgTypeInfo
         Type = unboxedType ?? type;
     }
 
-    PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
+    public PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)
         : this(options, converter.TypeToConvert, unboxedType)
     {
         Converter = converter;
@@ -54,7 +54,8 @@ public class PgTypeInfo
     public Type Type { get; }
     public PgSerializerOptions Options { get; }
 
-    public DataFormat? PreferredFormat { get; private set; }
+    public bool SupportsWriting { get; init; }
+    public DataFormat? PreferredFormat { get; init; }
 
     PgConverter? Converter { get; }
     [MemberNotNullWhen(false, nameof(Converter))]
@@ -154,6 +155,10 @@ public class PgTypeInfo
     /// When result is null, the value was interpreted to be a SQL NULL.
     public PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
+        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+        if (!SupportsWriting)
+            throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
+
         var converter = resolution.GetConverter<T>();
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
         if (converter.IsDbNullValue(value))
@@ -177,6 +182,10 @@ public class PgTypeInfo
     /// When result is null, the value was interpreted to be a SQL NULL.
     public PgConverterInfo? BindObject(PgConverterResolution resolution, object? value, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
+        // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
+        if (!SupportsWriting)
+            throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
+
         var converter = resolution.Converter;
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
 
@@ -227,12 +236,12 @@ public class PgTypeInfo
         {
             PreferredFormat = PreferredFormat,
         };
-
-    public static PgTypeInfo Create(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
-        => new(options, converter, pgTypeId, unboxedType) { PreferredFormat = preferredFormat };
-
-    public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
-        => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
+    //
+    // public static PgTypeInfo Create(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
+    //     => new(options, converter, pgTypeId, unboxedType) { PreferredFormat = preferredFormat };
+    //
+    // public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
+    //     => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
 
     // If we don't have a converter stored we must ask the retrieved one through virtual calls.
     DataFormat ResolveFormat(PgConverter converter, out BufferingRequirement bufferingRequirement, DataFormat? formatPreference = null)
@@ -256,21 +265,19 @@ public class PgTypeInfo
 
 public sealed class PgTypeResolverInfo : PgTypeInfo
 {
-    internal PgTypeResolverInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
+    readonly PgConverterResolver _converterResolver;
+
+    public PgTypeResolverInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
         : base(options,
             converterResolver.TypeToConvert,
             // We'll always validate the default resolution, the info will be re-used so there is no real downside.
             pgTypeId is { } typeId ? converterResolver.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId)) : null,
             unboxedType)
-    {
-        ConverterResolver = converterResolver;
-    }
-
-    internal PgConverterResolver ConverterResolver { get; }
+        => _converterResolver = converterResolver;
 
     public new PgConverterResolution GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
     {
-        return ConverterResolver is PgConverterResolver<T> resolverT
+        return _converterResolver is PgConverterResolver<T> resolverT
             ? resolverT.GetInternal(this, value, expectedPgTypeId ?? PgTypeId)
             : ThrowNotSupportedType(typeof(T));
 
@@ -281,13 +288,13 @@ public sealed class PgTypeResolverInfo : PgTypeInfo
     }
 
     public new PgConverterResolution GetResolutionAsObject(object? value, PgTypeId? expectedPgTypeId)
-        => ConverterResolver.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
+        => _converterResolver.GetAsObjectInternal(this, value, expectedPgTypeId ?? PgTypeId);
 
     public PgConverterResolution GetResolution(Field field)
-        => ConverterResolver.GetInternal(this, field);
+        => _converterResolver.GetInternal(this, field);
 
     public PgConverterResolution GetDefaultResolution(PgTypeId pgTypeId)
-        => ConverterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId);
+        => _converterResolver.GetDefaultInternal(ValidateResolution, Options.PortableTypeIds, pgTypeId);
 
     public PgConverterResolution GetDefaultResolutionOrThrow()
         => GetDefaultResolution(PgTypeId ?? throw new InvalidOperationException("Cannot get default resolution for undecided type info."));

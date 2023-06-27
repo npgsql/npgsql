@@ -102,7 +102,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new BitVector32BitStringConverter()));
         mappings.AddType<object>(DataTypeNames.Varbit,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit))));
+                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), supportsWriting: false));
 
         // Bit
         mappings.AddType<BitArray>(DataTypeNames.Bit,
@@ -113,7 +113,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new BitVector32BitStringConverter()));
         mappings.AddType<object>(DataTypeNames.Bit,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit))));
+                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
 
         // TimestampTz
         mappings.AddStructType<DateTime>(DataTypeNames.TimestampTz,
