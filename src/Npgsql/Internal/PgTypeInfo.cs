@@ -57,9 +57,10 @@ public class PgTypeInfo
     public bool SupportsWriting { get; init; }
     public DataFormat? PreferredFormat { get; init; }
 
+    // Doubles as the storage for the converter coming from a default resolution (used to confirm whether we can use cached info).
     PgConverter? Converter { get; }
     [MemberNotNullWhen(false, nameof(Converter))]
-    bool IsResolverInfo => Converter is null;
+    bool IsResolverInfo => this is PgResolverTypeInfo;
 
     // TODO pull validate from options + internal exempt for perf?
     internal bool ValidateResolution => true;
@@ -90,7 +91,7 @@ public class PgTypeInfo
             }
             info = CreateConverterInfo(bufferingRequirement, isRead: true, format, Converter, typeToConvert);
             return true;
-        case PgTypeResolverInfo resolverInfo:
+        case PgResolverTypeInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
             if (!HasCachedInfo(resolution.Converter)
                     ? !CachedCanConvert(format, out bufferingRequirement)
@@ -116,7 +117,7 @@ public class PgTypeInfo
     }
 
     public PgConverterResolution GetResolution<T>(T? value, PgTypeId? expectedPgTypeId = null)
-        => this is PgTypeResolverInfo resolverInfo
+        => this is PgResolverTypeInfo resolverInfo
             ? resolverInfo.GetResolution(value, expectedPgTypeId)
             : GetResolutionAsObject(null); // Other cases, to keep binary bloat minimal.
 
@@ -126,7 +127,7 @@ public class PgTypeInfo
         {
         case { IsResolverInfo: false }:
             return new(Converter, PgTypeId.GetValueOrDefault());
-        case PgTypeResolverInfo resolverInfo:
+        case PgResolverTypeInfo resolverInfo:
             return resolverInfo.GetResolutionAsObject(value, expectedPgTypeId);
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
@@ -138,7 +139,7 @@ public class PgTypeInfo
         => this switch
         {
             { IsResolverInfo: false } => new(Converter, PgTypeId.GetValueOrDefault()),
-            PgTypeResolverInfo resolverInfo => resolverInfo.GetDefaultResolutionOrThrow(),
+            PgResolverTypeInfo resolverInfo => resolverInfo.GetDefaultResolutionOrThrow(),
             _ => throw new NotSupportedException("Should not happen, please file a bug.")
         };
 
@@ -254,7 +255,7 @@ public class PgTypeInfo
     }
 
     internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null)
-        => new PgTypeResolverInfo(Options, resolver, expectedPgTypeId, unboxedType)
+        => new PgResolverTypeInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
             PreferredFormat = PreferredFormat,
         };
@@ -285,11 +286,11 @@ public class PgTypeInfo
     }
 }
 
-public sealed class PgTypeResolverInfo : PgTypeInfo
+public sealed class PgResolverTypeInfo : PgTypeInfo
 {
     readonly PgConverterResolver _converterResolver;
 
-    public PgTypeResolverInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
+    public PgResolverTypeInfo(PgSerializerOptions options, PgConverterResolver converterResolver, PgTypeId? pgTypeId, Type? unboxedType = null)
         : base(options,
             converterResolver.TypeToConvert,
             // We'll always validate the default resolution, the info will be re-used so there is no real downside.

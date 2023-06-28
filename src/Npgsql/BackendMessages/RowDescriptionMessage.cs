@@ -397,7 +397,7 @@ public sealed class FieldDescription
             // For text we'll fall back to any available text converter for the expected clr type or throw.
             if (!info.TryBind(Field, Format, out converterInfo))
             {
-                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.TextType);
+                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgTextType);
                 converterInfo = info.Bind(Field, Format);
             }
             break;

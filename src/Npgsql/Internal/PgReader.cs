@@ -123,7 +123,7 @@ public class PgReader
     {
         if (byteCount > BufferSize)
             return ThrowArgumentOutOfRange();
-        if (byteCount > Current.Size.Value)
+        if (byteCount > sizeof(int) + Current.Size.Value)
             return ThrowArgumentOutOfRangeOfValue();
 
         return Remaining < byteCount;
