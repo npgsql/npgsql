@@ -327,11 +327,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
 
         async ValueTask Core(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
         {
-            if (async)
-                await reader.BufferDataAsync(ElemReadBufferRequirement, cancellationToken).ConfigureAwait(false);
-            else
-                reader.BufferData(ElemReadBufferRequirement);
-
+            await reader.BufferData(async, ElemReadBufferRequirement, cancellationToken).ConfigureAwait(false);
             await ReadElemCore(async, reader, collection, index, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -347,11 +343,7 @@ abstract class ArrayConverter : PgStreamingConverter<object>
 
         async ValueTask Core(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
         {
-            if (async)
-                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-            else
-                writer.Flush();
-
+            await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             await WriteElemCore(async, writer, collection, index, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -522,8 +514,8 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 {
     readonly PgResolverTypeInfo _elemResolverTypeInfo;
     readonly PgTypeId? _arrayTypeId;
-    readonly ConcurrentDictionary<PgConverter<TElement>, ArrayBasedArrayConverter<TElement>> _arrayConverters = new(ReferenceEqualityComparer.Instance);
-    readonly ConcurrentDictionary<PgConverter<TElement>, ListBasedArrayConverter<TElement>> _listConverters = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, ArrayConverter> _arrayConverters = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, ArrayConverter> _listConverters = new(ReferenceEqualityComparer.Instance);
     PgConverterResolution _lastElemResolution;
     PgConverterResolution _lastResolution;
 
@@ -599,7 +591,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
             if (ReferenceEquals(expectedResolution.Converter, _lastElemResolution.Converter) && expectedResolution.PgTypeId == _lastElemResolution.PgTypeId)
                 return _lastResolution;
 
-            arrayConverter = GetOrAddListBased();
+            arrayConverter = GetOrAddListBased(expectedResolution);
 
             break;
         }
@@ -610,15 +602,17 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
         _lastElemResolution = expectedResolution;
         return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayId(expectedResolution.PgTypeId));
 
-        ListBasedArrayConverter<TElement> GetOrAddListBased()
-            => _listConverters.GetOrAdd(expectedResolution.GetConverter<TElement>(),
-                static (elemConverter, expectedElemPgTypeId) =>
-                    new ListBasedArrayConverter<TElement>(new(elemConverter, expectedElemPgTypeId)),
-                expectedResolution.PgTypeId);
+
     }
 
-    ArrayBasedArrayConverter<TElement> GetOrAddArrayBased(PgConverterResolution elemResolution)
-        => _arrayConverters.GetOrAdd(elemResolution.GetConverter<TElement>(),
+    ArrayConverter GetOrAddListBased(PgConverterResolution elemResolution)
+        => _listConverters.GetOrAdd(elemResolution.Converter,
+            static (elemConverter, expectedElemPgTypeId) =>
+                new ListBasedArrayConverter<TElement>(new(elemConverter, expectedElemPgTypeId)),
+            elemResolution.PgTypeId);
+
+    ArrayConverter GetOrAddArrayBased(PgConverterResolution elemResolution)
+        => _arrayConverters.GetOrAdd(elemResolution.Converter,
             static (elemConverter, expectedElemPgTypeId) =>
                 new ArrayBasedArrayConverter<TElement>(new(elemConverter, expectedElemPgTypeId)),
             elemResolution.PgTypeId);
