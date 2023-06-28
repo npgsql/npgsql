@@ -312,14 +312,14 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
-        if (value == null || value is DBNull)
-        {
-            await WriteNull(async, cancellationToken);
-            return;
-        }
-
         if (typeof(T) == typeof(object))
         {
+            if (param.GetType() != typeof(NpgsqlParameter))
+            {
+                var newParam = _params[_column] = new NpgsqlParameter();
+                newParam.NpgsqlDbType = param.NpgsqlDbType;
+                param = newParam;
+            }
             param.Value = value;
         }
         else
@@ -334,7 +334,15 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         }
         param.Bind(_connector.SerializerOptions);
         param.BindFormatAndLength();
-        await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
+        try
+        {
+            await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _connector.Break(ex);
+            throw;
+        }
         _column++;
     }
 

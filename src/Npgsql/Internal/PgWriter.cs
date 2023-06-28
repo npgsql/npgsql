@@ -195,20 +195,18 @@ public class PgWriter
 
     void Advance(int count) => _pos += count;
 
-    internal void Commit() => Commit(complete: true);
-
-    void Commit(bool complete)
+    internal void Commit(int? expectedByteCount = null)
     {
         _totalBytesWritten += _pos - _offset;
         _writer.Advance(_pos - _offset);
         _offset = _pos;
 
-        if (complete)
+        if (expectedByteCount is not null)
         {
-            if (Current.Size is { Kind: SizeKind.Exact, Value: var size } && _totalBytesWritten < size)
-                throw new InvalidOperationException("Larger value size than there were bytes written.");
-
+            var totalBytesWritten = _totalBytesWritten;
             _totalBytesWritten = 0;
+            if (totalBytesWritten != expectedByteCount)
+                throw new InvalidOperationException("Bytes written and expected byte count don't match.");
         }
     }
 
@@ -396,7 +394,7 @@ public class PgWriter
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(Flush)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
-        Commit(complete: false);
+        Commit();
         ResetBuffer();
         writer.Flush(timeout);
     }
@@ -413,7 +411,7 @@ public class PgWriter
         if (_writer is not IStreamingWriter<byte> writer)
             throw new NotSupportedException($"Cannot call {nameof(FlushAsync)} on a buffered {nameof(PgWriter)}, {nameof(FlushMode)}.{nameof(FlushMode.None)} should be used to prevent this.");
 
-        Commit(complete: false);
+        Commit();
         ResetBuffer();
         return writer.FlushAsync(cancellationToken);
     }

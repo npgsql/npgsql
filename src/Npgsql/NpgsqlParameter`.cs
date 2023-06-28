@@ -83,6 +83,9 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     private protected override ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)
     {
+        if (AsObject)
+            return base.WriteValue(writer, converter, async, cancellationToken);
+
         if (async)
             return ((PgConverter<T>)converter).WriteAsync(writer, TypedValue!, cancellationToken);
 
