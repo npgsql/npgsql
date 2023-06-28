@@ -22,7 +22,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
     protected TypeInfoMappingCollection Mappings { get; }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.TryFind(type, dataTypeName, options);
+        => Mappings.Find(type, dataTypeName, options);
 
     static void AddInfos(TypeInfoMappingCollection mappings)
     {
@@ -330,5 +330,5 @@ sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoReso
     public new static AdoWithArrayTypeInfoResolver Instance { get; } = new();
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.TryFind(type, dataTypeName, options);
+        => Mappings.Find(type, dataTypeName, options);
 }
