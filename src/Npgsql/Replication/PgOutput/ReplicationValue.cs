@@ -230,7 +230,7 @@ public class ReplicationValue
     public TextReader GetTextReader()
     {
         var info = _fieldDescription.GetOrAddConverterInfo(typeof(TextReader));
-        var reader = _readBuffer.PgReader.Init(GetStream(), Length);
+        var reader = _readBuffer.PgReader.Init(GetStream(), Length, _fieldDescription.Format);
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
         return (TextReader)info.Converter.ReadAsObject(reader);
     }

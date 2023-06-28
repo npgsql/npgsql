@@ -291,7 +291,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 throw new InvalidCastException("Column is null");
             }
 
-            var reader = _buf.PgReader.Init(_columnLen);
+            var reader = _buf.PgReader.Init(_columnLen, DataFormat.Binary);
             T result;
             if (async)
             {

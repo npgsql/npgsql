@@ -51,16 +51,22 @@ public class PgReader
 
     public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
+        var valueSize = Current.Size.Value;
+        if (valueSize < byteCount)
+            throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
         var array = _pooledArray = ArrayPool.Rent(byteCount);
-        var stream = _buffer.GetStream(Current.Size.Value, canSeek: false);
+        var stream = _buffer.GetStream(byteCount, canSeek: false);
         stream.ReadExactly(array, 0, byteCount);
         return new(array, 0, byteCount);
     }
 
     public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int byteCount, CancellationToken cancellationToken = default)
     {
+        var valueSize = Current.Size.Value;
+        if (valueSize < byteCount)
+            throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
         var array = _pooledArray = ArrayPool.Rent(byteCount);
-        var stream = _buffer.GetStream(Current.Size.Value, canSeek: false);
+        var stream = _buffer.GetStream(byteCount, canSeek: false);
         await stream.ReadExactlyAsync(array, 0, byteCount, cancellationToken);
         return new(array, 0, byteCount);
     }
@@ -70,21 +76,21 @@ public class PgReader
         throw new NotImplementedException();
     }
 
-    internal PgReader Init(ArraySegment<byte> userSuppliedByteArray, int byteCount, DataFormat format = DataFormat.Binary)
+    internal PgReader Init(ArraySegment<byte> userSuppliedByteArray, int byteCount, DataFormat format)
     {
         Init(byteCount, format);
         UserSuppliedByteArray = userSuppliedByteArray;
         return this;
     }
 
-    internal PgReader Init(Stream bufferStream, int byteCount, DataFormat format = DataFormat.Binary)
+    internal PgReader Init(Stream bufferStream, int byteCount, DataFormat format)
     {
         Init(byteCount, format);
         TextReaderStream = bufferStream;
         return this;
     }
 
-    internal PgReader Init(int byteCount, DataFormat format = DataFormat.Binary)
+    internal PgReader Init(int byteCount, DataFormat format)
     {
         Reset();
         Current = new() { Format = format, Size = byteCount };
@@ -154,5 +160,14 @@ public class PgReader
             // Make sure PgBufferedConverter sees this windowed value size for its reader.Remaining check.
             Current.Size = byteCount;
         }
+    }
+
+    internal ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
+    {
+        if (async)
+            return BufferDataAsync(bufferRequirement, cancellationToken);
+
+        BufferData(bufferRequirement);
+        return new();
     }
 }
