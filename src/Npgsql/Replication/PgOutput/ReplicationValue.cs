@@ -140,7 +140,7 @@ public class ReplicationValue
                     var writtenBytes = _readBuffer.ReadPosition - position;
                     var remainingBytes = Length - writtenBytes;
                     if (remainingBytes > 0)
-                        _readBuffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
+                        await _readBuffer.Skip(remainingBytes, async: true);
                 }
 
                 throw;
@@ -195,7 +195,7 @@ public class ReplicationValue
                     var writtenBytes = _readBuffer.ReadPosition - position;
                     var remainingBytes = Length - writtenBytes;
                     if (remainingBytes > 0)
-                        _readBuffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
+                        await _readBuffer.Skip(remainingBytes, async: true);
                 }
 
                 throw;
