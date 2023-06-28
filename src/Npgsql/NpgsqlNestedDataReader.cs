@@ -32,15 +32,18 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     readonly List<ColumnInfo> _columns = new();
 
+    DataFormat Format => DataFormat.Binary;
+
     struct ColumnInfo
     {
+        readonly DataFormat _format;
         public PostgresType PostgresType { get; }
         public int BufferPos { get; }
         public Type? LastConverterInfoType { get; private set; }
         public PgConverterInfo LastConverterInfo { get; private set; }
 
         public PgTypeInfo ObjectOrDefaultTypeInfo { get; }
-        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(Field, DataFormat.Binary);
+        public PgConverterInfo ObjectOrDefaultInfo => ObjectOrDefaultTypeInfo.Bind(Field, _format);
 
         Field Field => new("?", ObjectOrDefaultTypeInfo.Options.PortableTypeIds ? PostgresType.DataTypeName : (Oid)PostgresType.OID, -1);
 
@@ -48,11 +51,12 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             this with
             {
                 LastConverterInfoType = typeInfo.Type,
-                LastConverterInfo = typeInfo.Bind(Field, DataFormat.Binary)
+                LastConverterInfo = typeInfo.Bind(Field, _format)
             };
 
-        public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo)
+        public ColumnInfo(PostgresType postgresType, int bufferPos, PgTypeInfo objectOrDefaultTypeInfo, DataFormat format)
         {
+            _format = format;
             PostgresType = postgresType;
             BufferPos = bufferPos;
             ObjectOrDefaultTypeInfo = objectOrDefaultTypeInfo;
@@ -208,7 +212,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
         Buffer.ReadPosition += dataOffset2;
         length = Math.Min(length, columnLen - dataOffset2);
-        var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen);
+        var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen, Format);
         var result = info.AsObject
             ? (byte[])info.Converter.ReadAsObject(reader)!
             : info.GetConverter<byte[]>().Read(reader);
@@ -311,7 +315,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         var info = column.ObjectOrDefaultInfo;
         if (columnLength == -1)
             return DBNull.Value;
-        var reader = Buffer.PgReader.Init(columnLength);
+        var reader = Buffer.PgReader.Init(columnLength, DataFormat.Binary);
         reader.BufferData(info.BufferRequirement);
         return info.Converter.ReadAsObject(reader);
     }
@@ -357,7 +361,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             ThrowHelper.ThrowInvalidCastException_NoValue();
         }
 
-        var reader = Buffer.PgReader.Init(columnLength);
+        var reader = Buffer.PgReader.Init(columnLength, Format);
         reader.BufferData(info.BufferRequirement);
         return info.AsObject
             ? (T)info.Converter.ReadAsObject(reader)!
@@ -388,14 +392,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.GetPgType((Oid)typeOid);
-                _columns.Add(new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType)));
+                _columns.Add(new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format));
             }
             else
             {
                 var pgType = _columns[i].PostgresType.OID == typeOid
                     ? _columns[i].PostgresType
                     : SerializerOptions.GetPgType((Oid)typeOid);
-                _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType));
+                _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format);
             }
 
             var columnLen = Buffer.ReadInt32();
