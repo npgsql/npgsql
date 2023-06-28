@@ -178,6 +178,9 @@ public class PgTypeInfo
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
+        if (IsBoxing)
+            return BindObject(resolution, value, out writeState, out format, formatPreference);
+
         var converter = resolution.GetConverter<T>();
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
         if (converter.IsDbNullValue(value))
@@ -191,7 +194,7 @@ public class PgTypeInfo
         return new()
         {
             Converter = converter,
-            AsObject = Type != typeof(T),
+            AsObject = IsBoxing || Type != typeof(T),
             BufferRequirement = size,
         };
     }
@@ -208,8 +211,8 @@ public class PgTypeInfo
         var converter = resolution.Converter;
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
 
-        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types in this api.
-        if (value is DBNull || converter.IsDbNullValueAsObject(value))
+        // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
+        if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullValueAsObject(value))
         {
             writeState = null;
             return null;
@@ -220,7 +223,7 @@ public class PgTypeInfo
         return new()
         {
             Converter = converter,
-            AsObject = !IsBoxing && Type != typeof(object),
+            AsObject = IsBoxing || Type != typeof(object),
             BufferRequirement = size,
         };
     }
