@@ -134,14 +134,21 @@ readonly struct TypeInfoMappingCollection
         => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
 
     public void AddArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
-        => AddArrayType(elementMapping, typeof(TElement[]),
+    {
+        AddArrayType(elementMapping, typeof(TElement[]),
             static innerInfo => new ArrayBasedArrayConverter<TElement>(innerInfo.GetResolutionOrThrow()));
+        AddArrayType(elementMapping, typeof(List<TElement>),
+            static innerInfo => new ListBasedArrayConverter<TElement>(innerInfo.GetResolutionOrThrow()));
+    }
 
     public void AddResolverArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : class
         => AddResolverArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
 
     public void AddResolverArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
-        => AddResolverArrayType(elementMapping, typeof(TElement[]), static elemInfo => new ArrayConverterResolver<TElement>(elemInfo));
+    {
+        AddResolverArrayType(elementMapping, typeof(TElement[]), static elemInfo => new ArrayConverterResolver<TElement>(elemInfo));
+        AddResolverArrayType(elementMapping, typeof(List<TElement>), static elemInfo => new ArrayConverterResolver<TElement>(elemInfo));
+    }
 
     void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeResolverInfo, PgConverterResolver> converter)
     {
@@ -164,9 +171,14 @@ readonly struct TypeInfoMappingCollection
         => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName));
 
     public void AddStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
-        => AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
+    {
+        AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             static elemInfo => new ArrayBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()),
             static elemInfo => new ArrayBasedArrayConverter<TElement?>(elemInfo.GetResolutionOrThrow()));
+        AddStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
+            static elemInfo => new ListBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()),
+            static elemInfo => new ListBasedArrayConverter<TElement?>(elemInfo.GetResolutionOrThrow()));
+    }
 
     void AddStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType, Func<PgTypeInfo, PgConverter> converter, Func<PgTypeInfo, PgConverter> nullableConverter)
     {
@@ -195,9 +207,15 @@ readonly struct TypeInfoMappingCollection
         => AddResolverStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName));
 
     public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
-        => AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
+    {
+        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             static elemInfo => new ArrayConverterResolver<TElement>(elemInfo),
             static elemInfo => new ArrayConverterResolver<TElement?>(elemInfo));
+
+        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
+            static elemInfo => new ArrayConverterResolver<TElement>(elemInfo),
+            static elemInfo => new ArrayConverterResolver<TElement?>(elemInfo));
+    }
 
     void AddResolverStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType, Func<PgTypeResolverInfo, PgConverterResolver> converter, Func<PgTypeResolverInfo, PgConverterResolver> nullableConverter)
     {

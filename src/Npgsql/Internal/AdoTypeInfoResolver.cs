@@ -41,6 +41,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int2,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<sbyte>()));
+        mappings.AddStructType<float>(DataTypeNames.Int2,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<float>()));
+        mappings.AddStructType<double>(DataTypeNames.Int2,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<double>()));
+        mappings.AddStructType<decimal>(DataTypeNames.Int2,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<decimal>()));
 
         // Int4
         mappings.AddStructType<short>(DataTypeNames.Int4,
@@ -53,6 +59,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int4,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<sbyte>()));
+        mappings.AddStructType<float>(DataTypeNames.Int4,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<float>()));
+        mappings.AddStructType<double>(DataTypeNames.Int4,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<double>()));
+        mappings.AddStructType<decimal>(DataTypeNames.Int4,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<decimal>()));
 
         // Int8
         mappings.AddStructType<short>(DataTypeNames.Int8,
@@ -65,6 +77,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<byte>()));
         mappings.AddStructType<sbyte>(DataTypeNames.Int8,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<sbyte>()));
+        mappings.AddStructType<float>(DataTypeNames.Int8,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<float>()));
+        mappings.AddStructType<double>(DataTypeNames.Int8,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<double>()));
+        mappings.AddStructType<decimal>(DataTypeNames.Int8,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<decimal>()));
 
         // Float4
         mappings.AddStructType<float>(DataTypeNames.Float4,
