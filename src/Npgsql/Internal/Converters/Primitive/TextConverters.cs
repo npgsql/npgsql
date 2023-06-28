@@ -154,7 +154,7 @@ sealed class CharTextConverter : PgBufferedConverter<char>
 
     protected override char ReadCore(PgReader reader)
     {
-        var byteSeq = reader.ReadBytes(_oneCharMaxByteCount.Value);
+        var byteSeq = reader.ReadBytes(reader.Current.Size.Value);
         Debug.Assert(byteSeq.IsSingleSegment);
         var bytes = byteSeq.GetFirstSpan();
 

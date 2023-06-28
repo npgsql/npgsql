@@ -29,9 +29,9 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
     {
         var digitCount = reader.ReadInt16();
         short[]? digitsFromPool = null;
-        var digits = digitCount <= StackAllocByteThreshold / sizeof(short)
+        var digits = (digitCount <= StackAllocByteThreshold / sizeof(short)
             ? stackalloc short[StackAllocByteThreshold / sizeof(short)]
-            : (digitsFromPool = ArrayPool<short>.Shared.Rent(digitCount)).AsSpan().Slice(0, digitCount);
+            : (digitsFromPool = ArrayPool<short>.Shared.Rent(digitCount)).AsSpan()).Slice(0, digitCount);
 
         var value = ConvertTo(NumericConverter.Read(reader, digits));
 
@@ -52,11 +52,11 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
         static async ValueTask<T> AsyncCore(bool read, PgReader reader, CancellationToken cancellationToken)
         {
             if (read)
-                await reader.BufferDataAsync(PgNumeric.GetByteCount(0), cancellationToken);
+                await reader.BufferDataAsync(PgNumeric.GetByteCount(0), cancellationToken).ConfigureAwait(false);
 
             var digitCount = reader.ReadInt16();
             var digits = new ArraySegment<short>(ArrayPool<short>.Shared.Rent(digitCount), 0, digitCount);
-            var value = ConvertTo(await NumericConverter.ReadAsync(reader, digits, cancellationToken));
+            var value = ConvertTo(await NumericConverter.ReadAsync(reader, digits, cancellationToken).ConfigureAwait(false));
 
             ArrayPool<short>.Shared.Return(digits.Array!);
 
@@ -94,17 +94,18 @@ sealed class NumericConverter<T> : PgStreamingConverter<T>
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
     {
-        // If we don't need a flush and can write buffered we delegate to our sync write method which won't flush in such a case.
-        if (!writer.ShouldFlush(writer.Current.Size))
-            Write(writer, value);
+        if (writer.ShouldFlush(writer.Current.Size))
+            return AsyncCore(writer, value, cancellationToken);
 
-        return AsyncCore(writer, value, cancellationToken);
+        // If we don't need a flush and can write buffered we delegate to our sync write method which won't flush in such a case.
+        Write(writer, value);
+        return new();
 
         static async ValueTask AsyncCore(PgWriter writer, T value, CancellationToken cancellationToken)
         {
-            await writer.FlushAsync(cancellationToken);
+            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             var numeric = ConvertFrom(value, Array.Empty<short>()).Build();
-            await NumericConverter.WriteAsync(writer, numeric, cancellationToken);
+            await NumericConverter.WriteAsync(writer, numeric, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -208,6 +209,9 @@ static class NumericConverter
 
     public static PgNumeric.Builder Read(PgReader reader, Span<short> digits)
     {
+        var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
+        if (reader.Remaining < remainingStructureSize)
+            reader.BufferData(remainingStructureSize);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
@@ -223,6 +227,9 @@ static class NumericConverter
 
     public static async ValueTask<PgNumeric> ReadAsync(PgReader reader, ArraySegment<short> digits, CancellationToken cancellationToken)
     {
+        var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
+        if (reader.Remaining < remainingStructureSize)
+            await reader.BufferDataAsync(remainingStructureSize, cancellationToken).ConfigureAwait(false);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
@@ -230,7 +237,7 @@ static class NumericConverter
         for (var i = digits.Offset; i < digits.Count; i++)
         {
             if (reader.Remaining < sizeof(short))
-                await reader.BufferDataAsync(sizeof(short), cancellationToken);
+                await reader.BufferDataAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
             array[i] = reader.ReadInt16();
         }
 
@@ -239,6 +246,8 @@ static class NumericConverter
 
     public static void Write(PgWriter writer, PgNumeric.Builder numeric)
     {
+        if (writer.ShouldFlush(PgNumeric.GetByteCount(0)))
+            writer.Flush();
         writer.WriteInt16((short)numeric.Digits.Length);
         writer.WriteInt16(numeric.Weight);
         writer.WriteInt16(numeric.Sign);
@@ -254,6 +263,8 @@ static class NumericConverter
 
     public static async ValueTask WriteAsync(PgWriter writer, PgNumeric numeric, CancellationToken cancellationToken)
     {
+        if (writer.ShouldFlush(PgNumeric.GetByteCount(0)))
+            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
         writer.WriteInt16((short)numeric.Digits.Count);
         writer.WriteInt16(numeric.Weight);
         writer.WriteInt16(numeric.Sign);
@@ -262,7 +273,7 @@ static class NumericConverter
         foreach (var digit in numeric.Digits)
         {
             if (writer.ShouldFlush(sizeof(short)))
-                await writer.FlushAsync(cancellationToken);
+                await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             writer.WriteInt16(digit);
         }
     }

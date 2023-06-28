@@ -12,7 +12,7 @@ static class AsyncHelpers
     {
         try
         {
-            await task;
+            await task.ConfigureAwait(false);
             continuation.Invoke(task, tcs);
         }
         catch (Exception ex)
