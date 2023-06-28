@@ -99,6 +99,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<BigInteger>()));
         mappings.AddStructType<decimal>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<decimal>()), isDefault: true);
+        mappings.AddStructType<byte>(DataTypeNames.Numeric,
+            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<byte>()));
         mappings.AddStructType<short>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<short>()));
         mappings.AddStructType<int>(DataTypeNames.Numeric,
@@ -172,7 +174,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
 
         // Text types
-        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar, DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Char, DataTypeNames.Varchar, DataTypeNames.Bpchar, DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), DataFormat.Text), isDefault: true);
@@ -234,6 +236,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Numeric
         mappings.AddStructArrayType<BigInteger>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<decimal>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<byte>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<short>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<int>(DataTypeNames.Numeric);
         mappings.AddStructArrayType<long>(DataTypeNames.Numeric);
@@ -275,7 +278,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
 
         // Text types
-        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Bpchar, DataTypeNames.Varchar, DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Char, DataTypeNames.Varchar, DataTypeNames.Bpchar, DataTypeNames.Name })
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddArrayType<char[]>(dataTypeName);

@@ -531,7 +531,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             else
             {
                 var info = options.GetTypeInfo(valueType, pgTypeId);
-                if (info is null && typeof(IEnumerable).IsAssignableFrom(valueType))
+                if (info is null && typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType))
                     throw new NotSupportedException(
                         "IEnumerable parameters are not supported, pass an array or List instead.");
                 TypeInfo = info ?? throw new NotSupportedException(
@@ -543,7 +543,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // This step isn't part of BindFormatAndLength because we need to know the PgTypeId beforehand for things like SchemaOnly with null values.
         // We never reuse resolutions for resolvers across executions as a mutable value itself may even influence the result.
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
-        if (!previouslyBound || TypeInfo is PgTypeResolverInfo)
+        if (!previouslyBound || TypeInfo is PgResolverTypeInfo)
         {
             var resolution = GetResolution(TypeInfo!);
             Converter = resolution.Converter;

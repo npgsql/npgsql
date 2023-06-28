@@ -17,7 +17,7 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
 
 #if NET7_0_OR_GREATER
     protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadDouble());
-    protected override void WriteCore(PgWriter writer, T value) => writer.WriteDouble(float.CreateChecked(value));
+    protected override void WriteCore(PgWriter writer, T value) => writer.WriteDouble(double.CreateChecked(value));
 #else
     protected override T ReadCore(PgReader reader)
     {

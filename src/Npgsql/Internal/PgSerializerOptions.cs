@@ -13,10 +13,10 @@ public class PgSerializerOptions
     internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog)
     {
         TypeCatalog = typeCatalog;
-        TextType = typeCatalog.GetPostgresTypeByName(DataTypeNames.Text);
+        PgTextType = typeCatalog.GetPostgresTypeByName(DataTypeNames.Text);
     }
 
-    public PostgresType TextType { get; set; }
+    public PostgresType PgTextType { get; set; }
 
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }

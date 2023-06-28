@@ -147,7 +147,7 @@ public readonly record struct DataTypeName
         {
             "boolean" => "bool",
             "character" => "bpchar",
-            "numeric" => "decimal",
+            "decimal" => "numeric",
             "real" => "float4",
             "double precision" => "float8",
             "smallint" => "int2",
