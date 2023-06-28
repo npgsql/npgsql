@@ -177,15 +177,15 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Char, DataTypeNames.Varchar, DataTypeNames.Bpchar, DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), DataFormat.Text), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddType<char[]>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ArraySegment<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<char>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
         }
 
         // UInt internal types
@@ -247,13 +247,29 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<BitArray>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Varbit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Varbit);
-        mappings.AddResolverArrayType<object>(DataTypeNames.Varbit);
+        mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
+        {
+            BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
+                () => new ArrayBasedArrayConverter<bool>(resolution),
+                () => new ArrayBasedArrayConverter<bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                options),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray>(resolution),
+            _ => throw new NotSupportedException()
+        });
 
         // Bit
         mappings.AddArrayType<BitArray>(DataTypeNames.Bit);
         mappings.AddStructArrayType<bool>(DataTypeNames.Bit);
         mappings.AddStructArrayType<BitVector32>(DataTypeNames.Bit);
-        mappings.AddResolverArrayType<object>(DataTypeNames.Bit);
+        mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
+        {
+            BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
+                () => new ArrayBasedArrayConverter<bool>(resolution),
+                () => new ArrayBasedArrayConverter<bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                options),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray>(resolution),
+            _ => throw new NotSupportedException()
+        });
 
         // TimestampTz
         mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.TimestampTz);

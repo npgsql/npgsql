@@ -117,7 +117,7 @@ readonly struct PgArrayConverter
             return _elementOperations.CreateCollection(0, containsNulls);
 
         if (dimensions != expectedDimensions)
-            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
+            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension from an array with {dimensions} dimensions");
 
         reader.ReadUInt32(); // Element OID. Ignored.
 
@@ -625,12 +625,12 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 }
 
 // T is object as we only know what type it will be after reading 'contains nulls'.
-sealed class PolymorphicCollectionConverter : PgStreamingConverter<object>
+sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
 {
     readonly PgConverter _structElementCollectionConverter;
     readonly PgConverter _nullableElementCollectionConverter;
 
-    public PolymorphicCollectionConverter(PgConverter structElementCollectionConverter, PgConverter nullableElementCollectionConverter)
+    public PolymorphicArrayConverter(PgConverter structElementCollectionConverter, PgConverter nullableElementCollectionConverter)
     {
         _structElementCollectionConverter = structElementCollectionConverter;
         _nullableElementCollectionConverter = nullableElementCollectionConverter;

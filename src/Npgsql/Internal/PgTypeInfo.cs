@@ -229,7 +229,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToObjectTypeInfo(Type? unboxedType = null)
+    internal PgTypeInfo AsObjectTypeInfo(Type? unboxedType = null)
     {
         if (IsResolverInfo)
         {
@@ -237,9 +237,14 @@ public class PgTypeInfo
             throw new NotImplementedException();
         }
 
+        // No-op in this case.
+        if (IsBoxing || Type == typeof(object))
+            return this;
+
         return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)
         {
-            PreferredFormat = PreferredFormat
+            PreferredFormat = PreferredFormat,
+            SupportsWriting = SupportsWriting
         };
     }
 
@@ -250,7 +255,8 @@ public class PgTypeInfo
 
         return new(Options, converter, pgTypeId, unboxedType)
         {
-            PreferredFormat = PreferredFormat
+            PreferredFormat = PreferredFormat,
+            SupportsWriting = SupportsWriting
         };
     }
 
@@ -258,6 +264,7 @@ public class PgTypeInfo
         => new PgResolverTypeInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
             PreferredFormat = PreferredFormat,
+            SupportsWriting = SupportsWriting
         };
     //
     // public static PgTypeInfo Create(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
