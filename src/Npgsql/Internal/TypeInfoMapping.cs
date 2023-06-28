@@ -46,7 +46,7 @@ readonly struct TypeInfoMappingCollection
 
     /// Returns the first default converter or the first converter that matches both type and dataTypeName.
     /// If just a type was passed and no default was found we return the first converter with a type match.
-    public PgTypeInfo? TryFind(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public PgTypeInfo? Find(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
         TypeInfoMapping? typeMatch = null;
         foreach (var mapping in _items)
@@ -79,21 +79,23 @@ readonly struct TypeInfoMappingCollection
         }
     }
 
-    TypeInfoMapping? TryFindMapping(Type type, DataTypeName dataTypeName)
+    bool TryFindMapping(Type type, DataTypeName dataTypeName, out TypeInfoMapping value)
     {
-        TypeInfoMapping? elementMapping = null;
         foreach (var mapping in _items)
+        {
             if (mapping.Type == type && mapping.DataTypeName == dataTypeName)
             {
-                elementMapping = mapping;
-                break;
+                value = mapping;
+                return true;
             }
+        }
 
-        return elementMapping;
+        value = default;
+        return false;
     }
 
     TypeInfoMapping FindMapping(Type type, DataTypeName dataTypeName)
-        => TryFindMapping(type, dataTypeName) ?? throw new InvalidOperationException("Could not find mapping for " + dataTypeName);
+        => TryFindMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException("Could not find mapping for " + dataTypeName);
 
     // Helper to eliminate generic display class duplication.
     static TypeInfoFactory CreateComposedFactory(TypeInfoMapping innerMapping, Func<PgTypeInfo, PgConverter> mapper, Type? unboxedType = null, bool copyPreferredFormat = false) =>
