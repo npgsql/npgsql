@@ -229,7 +229,7 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToObjectTypeInfo()
+    internal PgTypeInfo ToObjectTypeInfo(Type? unboxedType = null)
     {
         if (IsResolverInfo)
         {
@@ -237,7 +237,7 @@ public class PgTypeInfo
             throw new NotImplementedException();
         }
 
-        return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault())
+        return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)
         {
             PreferredFormat = PreferredFormat
         };
