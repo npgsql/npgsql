@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Converters;
@@ -129,7 +128,14 @@ readonly struct PgArrayConverter
         var collection = _elementOperations.CreateCollection(arrayLength, containsNulls);
         for (var i = 0; i < arrayLength; i++)
         {
-            reader.Current.Size = reader.ReadInt32();
+            if (reader.ShouldBuffer(sizeof(int)))
+                await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+
+            var length = reader.ReadInt32();
+            if (length == -1)
+                continue;
+
+            reader.Current.Size = length;
             await _elementOperations.Read(async, reader, collection, i, cancellationToken).ConfigureAwait(false);
         }
         return collection;
@@ -164,7 +170,7 @@ readonly struct PgArrayConverter
             for (var i = 0; i < count; i++)
             {
                 if (writer.ShouldFlush(sizeof(int)))
-                    await writer.Flush(async, cancellationToken);
+                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 if (elemTypeDbNullable && _elementOperations.IsDbNullValue(values, i))
                     writer.WriteInt32(-1);
@@ -176,7 +182,7 @@ readonly struct PgArrayConverter
             for (var i = state.Segment.Offset; i < count && i < state.Segment.Count; i++)
             {
                 if (writer.ShouldFlush(sizeof(int)))
-                    await writer.Flush(async, cancellationToken);
+                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 if (elemTypeDbNullable && _elementOperations.IsDbNullValue(values, i))
                 {
@@ -386,7 +392,7 @@ sealed class ArrayBasedArrayConverter<TElement> : ArrayConverter, IElementOperat
     }
 
     Size? IElementOperations.GetFixedSize(DataFormat format)
-        => ElemWriteBufferRequirement.Kind is SizeKind.Exact ? ElemWriteBufferRequirement : null;
+        => ElemWriteBufferRequirement is { Kind: SizeKind.Exact, Value: > 0 } ? ElemWriteBufferRequirement : null;
 
     Size IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);
@@ -466,7 +472,7 @@ sealed class ListBasedArrayConverter<TElement> : ArrayConverter, IElementOperati
     }
 
     Size? IElementOperations.GetFixedSize(DataFormat format)
-        => ElemWriteBufferRequirement.Kind is SizeKind.Exact ? ElemWriteBufferRequirement : null;
+        => ElemWriteBufferRequirement is { Kind: SizeKind.Exact, Value: > 0 } ? ElemWriteBufferRequirement : null;
 
     Size IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);

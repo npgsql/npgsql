@@ -175,18 +175,20 @@ readonly struct TypeInfoMappingCollection
         TypeInfoMapping nullableArrayMapping;
         _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
         _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
-        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
-        {
-            _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
-                new PolymorphicCollectionConverter(
-                    arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
-                    nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
-                ), mapping.DataTypeName),
-            _ => throw new ArgumentOutOfRangeException()
-        }));
+        // Don't add the object converter for the list based converter.
+        if (arrayMapping.IsDefault && type.IsArray)
+            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
+            {
+                _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
+                ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+                ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+                ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
+                    new PolymorphicCollectionConverter(
+                        arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
+                        nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
+                    ), mapping.DataTypeName),
+                _ => throw new ArgumentOutOfRangeException()
+            }));
     }
 
     public void AddResolverStructArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : struct
@@ -204,18 +206,20 @@ readonly struct TypeInfoMappingCollection
         TypeInfoMapping nullableArrayMapping;
         _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
         _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
-        _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
-        {
-            _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-            ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
-            ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
-            ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
-                new PolymorphicCollectionConverter(
-                    arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
-                    nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
-                ), mapping.DataTypeName),
-            _ => throw new ArgumentOutOfRangeException()
-        }));
+        // Don't add the object converter for the list based converter.
+        if (arrayMapping.IsDefault && type.IsArray)
+            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
+            {
+                _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
+                ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+                ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).ToObjectTypeInfo(),
+                ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
+                    new PolymorphicCollectionConverter(
+                        arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
+                        nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
+                    ), mapping.DataTypeName),
+                _ => throw new ArgumentOutOfRangeException()
+            }));
     }
 }
 

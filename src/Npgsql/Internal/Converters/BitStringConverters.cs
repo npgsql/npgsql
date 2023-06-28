@@ -63,7 +63,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
     public override async ValueTask<BitArray> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         var bits = reader.ReadInt32();
-        return ReadValue(await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken), bits);
+        return ReadValue(await reader.ReadBytesAsync(GetByteLengthFromBits(bits), cancellationToken).ConfigureAwait(false), bits);
     }
 
     public override async ValueTask WriteAsync(PgWriter writer, BitArray value, CancellationToken cancellationToken = default)
@@ -73,7 +73,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         value.CopyTo(array, 0);
 
         writer.WriteInt32(value.Length);
-        await writer.WriteRawAsync(new(array, 0, length), cancellationToken);
+        await writer.WriteRawAsync(new(array, 0, length), cancellationToken).ConfigureAwait(false);
 
         _arrayPool.Return(array);
     }
