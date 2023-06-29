@@ -30,22 +30,26 @@ public static class BufferingRequirementExtensions
     public static (Size ReadRequirement, Size WriteRequirement) ToBufferRequirements(this BufferingRequirement bufferingRequirement, DataFormat format, PgConverter converter)
     {
         Size read, write;
-        if (bufferingRequirement is BufferingRequirement.Custom)
-            converter.GetBufferRequirements(format, out read, out write);
-        else if (bufferingRequirement is BufferingRequirement.FixedSize)
+        switch (bufferingRequirement)
         {
+        case BufferingRequirement.Custom:
+            converter.GetBufferRequirements(format, out read, out write);
+            break;
+        case BufferingRequirement.FixedSize:
             object? state = null;
             read = write = converter.GetSizeAsObject(new(format), null!, ref state);
-        }
-        else
+            break;
+        default:
             read = write = bufferingRequirement switch
             {
                 BufferingRequirement.None => Size.Zero,
                 BufferingRequirement.Value => Size.Unknown,
                 _ => Size.Unknown
             };
-        return (read, write);
+            break;
+        }
 
+        return (read, write);
     }
 }
 

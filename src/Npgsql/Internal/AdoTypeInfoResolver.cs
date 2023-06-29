@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Net;
+using System.Net.NetworkInformation;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
@@ -157,6 +159,17 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<long>(DataTypeNames.Timestamp,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
+        // Date
+        mappings.AddStructType<DateTime>(DataTypeNames.Date,
+            static (options, mapping, _) =>
+                mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+        mappings.AddStructType<int>(DataTypeNames.Date,
+            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
+#if NET6_0_OR_GREATER
+        mappings.AddStructType<DateOnly>(DataTypeNames.Date,
+            static (options, mapping, _) => mapping.CreateInfo(options, new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions)));
+#endif
+
         // Time
         mappings.AddStructType<TimeSpan>(DataTypeNames.Time,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanTimeConverter()), isDefault: true);
@@ -174,6 +187,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Interval
         mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
+        mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
+            static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
         // Text types
         foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
@@ -200,6 +215,19 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<uint>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()), isDefault: true);
         }
+
+        // TODO: Move out to opt-in resolver
+
+        // macaddr
+        mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
+        mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr8,
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()));
+
+        // inet
+        mappings.AddType<IPAddress>(DataTypeNames.Inet,
+            static (options, mapping, _) => mapping.CreateInfo(options, new InetConverter()), isDefault: true);
+        // TODO: Decide what to do with NpgsqlInet vs. ValueTuple<IPAddress, int> :(
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
