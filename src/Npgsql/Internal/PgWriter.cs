@@ -389,6 +389,31 @@ public class PgWriter
         throw new NotImplementedException();
     }
 
+    // TODO: Make sure to loop and flush
+    public void WriteRaw(ReadOnlySpan<byte> span)
+    {
+        if (span.Length <= Remaining)
+        {
+            span.CopyTo(Span);
+            Advance(span.Length);
+            return;
+        }
+
+        throw new NotImplementedException();
+    }
+
+    public ValueTask WriteRawAsync(ReadOnlySpan<byte> span, CancellationToken cancellationToken = default)
+    {
+        if (span.Length <= Remaining)
+        {
+            span.CopyTo(Span);
+            Advance(span.Length);
+            return default;
+        }
+
+        throw new NotImplementedException();
+    }
+
     public bool ShouldFlush(Size bufferRequirement)
     {
         EnsureInit();
