@@ -34,7 +34,7 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
     public override unsafe ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         // Easy if we have all the data, just go sync and return it.
-        if (reader.Remaining >= reader.Current.Size.Value)
+        if (reader.Remaining >= reader.CurrentSize)
             return new(_effectiveConverter.Read(reader));
 
         // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.

@@ -21,6 +21,7 @@ public class PgReader
     }
 
     public ref ValueMetadata Current => ref _current;
+    public int CurrentSize => Current.Size.Value;
 
     public int BufferSize => _buffer.Size;
     public int Remaining => _buffer.ReadBytesLeft;
@@ -30,8 +31,8 @@ public class PgReader
     public bool CanReadBuffered(out bool requireRead)
     {
         Debug.Assert(Current.Size.Kind is SizeKind.Exact);
-        requireRead = Remaining < Current.Size.Value;
-        return BufferSize >= Current.Size.Value;
+        requireRead = Remaining < CurrentSize;
+        return BufferSize >= CurrentSize;
     }
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
@@ -51,7 +52,7 @@ public class PgReader
 
     public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
-        var valueSize = Current.Size.Value;
+        var valueSize = CurrentSize;
         if (valueSize < byteCount)
             throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
         var array = _pooledArray = ArrayPool.Rent(byteCount);
@@ -62,7 +63,7 @@ public class PgReader
 
     public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int byteCount, CancellationToken cancellationToken = default)
     {
-        var valueSize = Current.Size.Value;
+        var valueSize = CurrentSize;
         if (valueSize < byteCount)
             throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
         var array = _pooledArray = ArrayPool.Rent(byteCount);
@@ -113,8 +114,8 @@ public class PgReader
         => bufferRequirement.Kind switch
         {
             SizeKind.Exact => bufferRequirement.Value,
-            SizeKind.UpperBound => Math.Min(bufferRequirement.Value, Current.Size.Value),
-            _ => Current.Size.Value,
+            SizeKind.UpperBound => Math.Min(bufferRequirement.Value, CurrentSize),
+            _ => CurrentSize,
         };
 
     internal bool ShouldBuffer(Size bufferRequirement) => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
@@ -123,7 +124,7 @@ public class PgReader
     {
         if (byteCount > BufferSize)
             return ThrowArgumentOutOfRange();
-        if (byteCount > sizeof(int) + Current.Size.Value)
+        if (byteCount > sizeof(int) + CurrentSize)
             return ThrowArgumentOutOfRangeOfValue();
 
         return Remaining < byteCount;
