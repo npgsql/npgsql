@@ -198,6 +198,13 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()), isDefault: true);
+
+        // Oidvector
+        mappings.AddType<uint[]>(
+            DataTypeNames.OidVector,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                new ArrayBasedArrayConverter<uint>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.OidVector)), pgLowerBound: 0)),
+            isDefault: true);
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -311,6 +318,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Xid8
         mappings.AddStructArrayType<ulong>(DataTypeNames.Xid8);
+
+        // Oidvector
+        mappings.AddArrayType<uint[]>(DataTypeNames.OidVector);
     }
 }
 
