@@ -250,8 +250,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     async Task<bool> Read(bool async, CancellationToken cancellationToken = default)
     {
-        var registration = Connector.StartNestedCancellableOperation(cancellationToken);
-
+        using var registration = Connector.StartNestedCancellableOperation(cancellationToken);
         try
         {
             switch (State)
@@ -302,12 +301,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
         catch
         {
-            State = ReaderState.Consumed;
+            // Break may have progressed the reader already.
+            if (State is not ReaderState.Closed)
+                State = ReaderState.Consumed;
             throw;
-        }
-        finally
-        {
-            registration.Dispose();
         }
     }
 
@@ -603,7 +600,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 }
             }
 
-            State = ReaderState.Consumed;
+            // Break may have progressed the reader already.
+            if (State is not ReaderState.Closed)
+                State = ReaderState.Consumed;
             throw;
         }
     }
@@ -748,7 +747,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
         catch (Exception e)
         {
-            State = ReaderState.Consumed;
+            // Break may have progressed the reader already.
+            if (State is not ReaderState.Closed)
+                State = ReaderState.Consumed;
 
             // Reference the triggering statement from the exception
             if (e is PostgresException postgresException && StatementIndex >= 0 && StatementIndex < _statements.Count)
@@ -1481,7 +1482,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-        await SeekToColumn(ordinal, async, cancellationToken);
+        await SeekToColumn(ordinal, async);
         if (_isSequential)
             CheckColumnStart();
 
@@ -1716,28 +1717,28 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     async ValueTask<T> GetFieldValueSequential<T>(int column, bool async, CancellationToken cancellationToken = default)
     {
         using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-        var field = CheckRowAndGetField(column);
-        await SeekToColumnSequential(column, async, CancellationToken.None);
-        CheckColumnStart();
-
-        var info = field.GetOrAddConverterInfo(typeof(T));
-
-        if (ColumnLen == -1)
-        {
-            // When T is a Nullable<T> (and only in that case), we support returning null
-            if (default(T) is null && typeof(T).IsValueType)
-                return default!;
-
-            if (typeof(T) == typeof(object))
-                return (T)(object)DBNull.Value;
-
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
-        }
-
         var position = Buffer.ReadPosition;
         try
         {
+            var field = CheckRowAndGetField(column);
+            var info = field.GetOrAddConverterInfo(typeof(T));
+            await SeekToColumnSequential(column, async);
+
+            CheckColumnStart();
+
+            if (ColumnLen == -1)
+            {
+                // When T is a Nullable<T> (and only in that case), we support returning null
+                if (default(T) is null && typeof(T).IsValueType)
+                    return default!;
+
+                if (typeof(T) == typeof(object))
+                    return (T)(object)DBNull.Value;
+
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
+            }
+
+
             var reader = Buffer.PgReader.Init(ColumnLen, field.Format);
             if (async)
             {
@@ -1754,17 +1755,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         }
         catch
         {
-            if (Connector.State != ConnectorState.Broken)
+            var consumedBytes = Buffer.ReadPosition - position;
+            // We don't need to skip if we can still let the user retry the read.
+            if (consumedBytes > 0 && Connector.State != ConnectorState.Broken)
             {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
+                var remainingBytes = ColumnLen - consumedBytes;
                 if (remainingBytes > 0)
+                {
                     await Buffer.Skip(remainingBytes, async);
+                }
             }
             throw;
         }
         finally
         {
+            // If we couldn't get the ColumnLen this will add -1, that's fine as CheckColumnStart only throws on positive values.
             // Important: position must still be updated
             PosInColumn += ColumnLen;
         }
@@ -1876,7 +1881,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         {
             using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-            await SeekToColumn(ordinal, true, cancellationToken);
+            await SeekToColumn(ordinal, true);
             return ColumnLen == -1;
         }
     }
@@ -2072,10 +2077,10 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     #region Seeking
 
-    Task SeekToColumn(int column, bool async, CancellationToken cancellationToken = default)
+    Task SeekToColumn(int column, bool async)
     {
         if (_isSequential)
-            return SeekToColumnSequential(column, async, cancellationToken);
+            return SeekToColumnSequential(column, async);
         SeekToColumnNonSequential(column);
         return Task.CompletedTask;
     }
@@ -2107,7 +2112,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <summary>
     /// Seeks to the given column. The 4-byte length is read and stored in <see cref="ColumnLen"/>.
     /// </summary>
-    async Task SeekToColumnSequential(int column, bool async, CancellationToken cancellationToken = default)
+    async Task SeekToColumnSequential(int column, bool async)
     {
         if (column < 0 || column >= _numColumns)
             throw new IndexOutOfRangeException("Column index out of range");
@@ -2150,7 +2155,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         _column = column;
     }
 
-    Task SeekInColumn(int dataOffset, bool async, CancellationToken cancellationToken = default)
+    Task SeekInColumn(int dataOffset, bool async)
     {
         if (_isSequential)
             return SeekInColumnSequential(dataOffset, async);
@@ -2303,7 +2308,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     void CheckColumnStart()
     {
         Debug.Assert(_isSequential);
-        if (PosInColumn != 0)
+        if (PosInColumn > 0)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
     }
 
