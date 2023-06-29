@@ -222,7 +222,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
             static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
 
         // inet
         mappings.AddType<IPAddress>(DataTypeNames.Inet,

@@ -6,16 +6,8 @@ namespace Npgsql.Internal.Converters;
 
 sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
-    {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
-    }
-
     public override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
-        => value is null // TODO: Remove this
-            ? Size.Zero
-            : value.GetAddressBytes().Length;
+        => value.GetAddressBytes().Length;
 
     protected override PhysicalAddress ReadCore(PgReader reader)
     {
@@ -30,7 +22,6 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
     protected override void WriteCore(PgWriter writer, PhysicalAddress value)
     {
         var bytes = value.GetAddressBytes();
-        // TODO: Should we have an optimized overload that just accepts ReadOnlySpan?
-        writer.WriteRaw(new ReadOnlySequence<byte>(bytes));
+        writer.WriteRaw(bytes);
     }
 }
