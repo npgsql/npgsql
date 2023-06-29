@@ -10,9 +10,9 @@ static class PgTimestamp
     {
         if (dateTimeInfinityConversions)
         {
-            if (value == DateTime.MaxValue)
+            if (value.Ticks == DateTime.MaxValue.Ticks)
                 return long.MaxValue;
-            if (value == DateTime.MinValue)
+            if (value.Ticks == DateTime.MinValue.Ticks)
                 return long.MinValue;
         }
         // Rounding here would cause problems because we would round up DateTime.MaxValue
@@ -27,10 +27,10 @@ static class PgTimestamp
             return value switch
             {
                 long.MaxValue => !dateTimeInfinityConversions
-                    ? throw new InvalidCastException("Cannot read infinity value since EnableDateTimeInfinityConversions is false.")
+                    ? throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true.")
                     : DateTime.MaxValue,
                 long.MinValue => !dateTimeInfinityConversions
-                    ? throw new InvalidCastException("Cannot read infinity value since EnableDateTimeInfinityConversions is false.")
+                    ? throw new InvalidCastException("Cannot read infinity value since DisableDateTimeInfinityConversions is true.")
                     : DateTime.MinValue,
                 _ => new(value * 10 + PostgresTimestampOffsetTicks, kind)
             };

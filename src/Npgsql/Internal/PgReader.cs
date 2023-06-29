@@ -50,6 +50,9 @@ public class PgReader
     public float ReadFloat() => _buffer.ReadSingle();
     public double ReadDouble() => _buffer.ReadDouble();
 
+    public void CopyTo(Span<byte> destination)
+        => _buffer.ReadBytes(destination);
+
     public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
         var valueSize = CurrentSize;

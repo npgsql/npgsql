@@ -540,13 +540,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else
             {
-                var info = options.GetTypeInfo(valueType, pgTypeId);
-                if (info is null && typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType) && valueType != typeof(string))
-                    throw new NotSupportedException(
-                        "IEnumerable parameters are not supported, pass an array or List instead.");
-                TypeInfo = info ?? throw new NotSupportedException(
-                    $"Couldn't find converter for parameter of type {valueType}{(_npgsqlDbType is not null
-                        ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}.");
+                TypeInfo = options.GetTypeInfo(valueType, pgTypeId) switch
+                {
+                    null when typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType) && valueType != typeof(string)
+                        => throw new NotSupportedException(
+                            "IEnumerable parameters are not supported, pass an array or List instead."),
+                    null => throw new NotSupportedException(
+                        $"Couldn't find converter for parameter of type {valueType}{(_npgsqlDbType is not null
+                            ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}."),
+                    var typeInfo => typeInfo
+                };
             }
         }
 
