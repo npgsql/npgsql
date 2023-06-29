@@ -817,7 +817,7 @@ static class NpgsqlDbTypeExtensions
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array)
                 => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange)
-                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToMultirangeName(),
+                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
 
             _ => null
         };

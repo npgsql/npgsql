@@ -217,6 +217,8 @@ public readonly record struct DataTypeName
 
         return mappedBaseType;
     }
+
+    public override string ToString() => Value;
 }
 
 
