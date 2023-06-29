@@ -246,7 +246,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
 
     public sealed override T Read(PgReader reader)
     {
-        if (reader.Remaining < reader.Current.Size.Value)
+        if (reader.Remaining < reader.CurrentSize)
             ThrowIORequired();
 
         return ReadCore(reader);
