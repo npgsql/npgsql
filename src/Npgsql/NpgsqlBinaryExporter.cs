@@ -277,10 +277,10 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     async ValueTask<T> DoRead<T>(PgConverterInfo info, bool async, CancellationToken cancellationToken = default)
     {
+        using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
+        var position = _buf.ReadPosition;
         try
         {
-            using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
-
             await ReadColumnLenIfNeeded(async);
 
             if (_columnLen == -1)
@@ -309,13 +309,27 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             }
 
             _leftToReadInDataMsg -= _columnLen;
-            _columnLen = int.MinValue; // Mark that the (next) column length hasn't been read yet
+            // Mark that the (next) column length hasn't been read yet
+            _columnLen = int.MinValue;
             _column++;
             return result;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            _connector.Break(e);
+            var consumedBytes = _buf.ReadPosition - position;
+            // We don't need to skip if we can still let the user retry the read.
+            if (consumedBytes > 0 && _connector.State != ConnectorState.Broken)
+            {
+                var remainingBytes = _columnLen - consumedBytes;
+                if (remainingBytes > 0)
+                {
+                    await _buf.Skip(remainingBytes, async);
+                    // Important: position must still be updated
+                    _leftToReadInDataMsg -= _columnLen;
+                    _columnLen = int.MinValue;
+                    _column++;
+                }
+            }
             throw;
         }
     }
