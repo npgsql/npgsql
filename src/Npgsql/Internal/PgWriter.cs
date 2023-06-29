@@ -382,10 +382,8 @@ public class PgWriter
         return Remaining < (bufferRequirement.Kind is SizeKind.Unknown ? Current.Size.Value : bufferRequirement.Value);
     }
 
-    public Task EnsureAtLeastAsync(Size valueSize, CancellationToken cancellationToken)
     public void Flush(TimeSpan timeout = default)
     {
-        throw new NotImplementedException();
         EnsureInit();
         if (FlushMode is FlushMode.None)
             return;
@@ -401,7 +399,6 @@ public class PgWriter
         writer.Flush(timeout);
     }
 
-    public bool ShouldFlush(Size bufferRequirement)
     public ValueTask FlushAsync(CancellationToken cancellationToken = default)
     {
         EnsureInit();

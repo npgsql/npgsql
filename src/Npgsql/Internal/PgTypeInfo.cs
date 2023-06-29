@@ -122,7 +122,8 @@ public class PgTypeInfo
             : GetResolutionAsObject(null); // Other cases, to keep binary bloat minimal.
 
     public PgConverterResolution GetResolutionAsObject(object? value, PgTypeId? expectedPgTypeId = null)
-        => this switch
+    {
+        switch (this)
         {
         case { IsResolverInfo: false }:
             return new(Converter, PgTypeId.GetValueOrDefault());
