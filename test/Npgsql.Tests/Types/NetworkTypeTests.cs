@@ -28,22 +28,9 @@ class NetworkTypeTests : MultiplexingTestBase
             NpgsqlDbType.Inet);
 
     [Test]
-    public Task Inet_v4_as_tuple()
-        => AssertType((IPAddress.Parse("192.168.1.1"), 24), "192.168.1.1/24", "inet", NpgsqlDbType.Inet, isDefaultForReading: false);
-
-    [Test]
-    public Task Inet_v6_as_tuple()
+    public Task Inet_v6_array_of_NpgsqlInets()
         => AssertType(
-            (IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24),
-            "2001:1db8:85a3:1142:1000:8a2e:1370:7334/24",
-            "inet",
-            NpgsqlDbType.Inet,
-            isDefaultForReading: false);
-
-    [Test]
-    public Task Inet_v6_array_as_tuple()
-        => AssertType(
-            new[] { (IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24) },
+            new[] { new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 24) },
             "{2001:1db8:85a3:1142:1000:8a2e:1370:7334/24}",
             "inet[]",
             NpgsqlDbType.Inet | NpgsqlDbType.Array,
@@ -56,7 +43,7 @@ class NetworkTypeTests : MultiplexingTestBase
     [Test]
     public Task Cidr()
         => AssertType(
-            (Address: IPAddress.Parse("192.168.1.0"), Subnet: 24),
+            new NpgsqlCidr(IPAddress.Parse("192.168.1.0"), netmask: 24),
             "192.168.1.0/24",
             "cidr",
             NpgsqlDbType.Cidr,

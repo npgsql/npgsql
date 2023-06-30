@@ -82,6 +82,16 @@ Npgsql.TypeMapping.INpgsqlTypeMapper.Reset() -> void
 Npgsql.TypeMapping.UserTypeMapping
 Npgsql.TypeMapping.UserTypeMapping.ClrType.get -> System.Type!
 Npgsql.TypeMapping.UserTypeMapping.PgTypeName.get -> string!
+NpgsqlTypes.NpgsqlCidr
+NpgsqlTypes.NpgsqlCidr.Address.get -> System.Net.IPAddress!
+NpgsqlTypes.NpgsqlCidr.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
+NpgsqlTypes.NpgsqlCidr.Netmask.get -> byte
+NpgsqlTypes.NpgsqlCidr.NpgsqlCidr() -> void
+NpgsqlTypes.NpgsqlCidr.NpgsqlCidr(string! addr) -> void
+NpgsqlTypes.NpgsqlCidr.NpgsqlCidr(System.Net.IPAddress! address, byte netmask) -> void
+NpgsqlTypes.NpgsqlInet.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
+NpgsqlTypes.NpgsqlInet.NpgsqlInet(System.Net.IPAddress! address, byte netmask) -> void
+NpgsqlTypes.NpgsqlInet.Netmask.get -> byte
 override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
 *REMOVED*static NpgsqlTypes.NpgsqlCircle.Parse(string! s) -> NpgsqlTypes.NpgsqlCircle
@@ -90,6 +100,12 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*static NpgsqlTypes.NpgsqlPath.Parse(string! s) -> NpgsqlTypes.NpgsqlPath
 *REMOVED*static NpgsqlTypes.NpgsqlPoint.Parse(string! s) -> NpgsqlTypes.NpgsqlPoint
 *REMOVED*static NpgsqlTypes.NpgsqlPolygon.Parse(string! s) -> NpgsqlTypes.NpgsqlPolygon
+*REMOVED*NpgsqlTypes.NpgsqlInet.Deconstruct(out System.Net.IPAddress! address, out int netmask) -> void
+*REMOVED*NpgsqlTypes.NpgsqlInet.NpgsqlInet(System.Net.IPAddress! address, int netmask) -> void
+*REMOVED*NpgsqlTypes.NpgsqlInet.Address.set -> void
+*REMOVED*NpgsqlTypes.NpgsqlInet.Equals(NpgsqlTypes.NpgsqlInet other) -> bool
+*REMOVED*NpgsqlTypes.NpgsqlInet.Netmask.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlInet.Netmask.set -> void
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRow(params object![]! values) -> void
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object![]! values) -> System.Threading.Tasks.Task!
 *REMOVED*override Npgsql.NpgsqlDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
@@ -98,6 +114,8 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValue(int ordinal) -> object!
 *REMOVED*override Npgsql.NpgsqlNestedDataReader.GetProviderSpecificValues(object![]! values) -> int
+*REMOVED*override NpgsqlTypes.NpgsqlInet.Equals(object? obj) -> bool
+*REMOVED*override NpgsqlTypes.NpgsqlInet.GetHashCode() -> int
 *REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
@@ -111,6 +129,7 @@ override Npgsql.PostgresTypes.Oid.ToString() -> string!
 override Npgsql.PostgresTypes.PgTypeId.Equals(object? obj) -> bool
 override Npgsql.PostgresTypes.PgTypeId.GetHashCode() -> int
 override Npgsql.PostgresTypes.PgTypeId.ToString() -> string!
+override NpgsqlTypes.NpgsqlCidr.ToString() -> string!
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static Npgsql.PostgresTypes.DataTypeName.explicit operator string!(Npgsql.PostgresTypes.DataTypeName value) -> string!
 static Npgsql.PostgresTypes.DataTypeName.FromDisplayName(string! displayDataTypeName) -> Npgsql.PostgresTypes.DataTypeName
@@ -124,3 +143,7 @@ static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTy
 static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTypeId(Npgsql.PostgresTypes.Oid id) -> Npgsql.PostgresTypes.PgTypeId
 static Npgsql.PostgresTypes.PgTypeId.operator !=(Npgsql.PostgresTypes.PgTypeId left, Npgsql.PostgresTypes.PgTypeId right) -> bool
 static Npgsql.PostgresTypes.PgTypeId.operator ==(Npgsql.PostgresTypes.PgTypeId left, Npgsql.PostgresTypes.PgTypeId right) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlInet.operator !=(NpgsqlTypes.NpgsqlInet x, NpgsqlTypes.NpgsqlInet y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlInet.operator ==(NpgsqlTypes.NpgsqlInet x, NpgsqlTypes.NpgsqlInet y) -> bool
+*REMOVED*static NpgsqlTypes.NpgsqlInet.ToIPAddress(NpgsqlTypes.NpgsqlInet inet) -> System.Net.IPAddress!
+*REMOVED*static NpgsqlTypes.NpgsqlInet.ToNpgsqlInet(System.Net.IPAddress? ip) -> NpgsqlTypes.NpgsqlInet

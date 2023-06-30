@@ -405,19 +405,17 @@ public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
 }
 
 /// <summary>
-/// Represents a PostgreSQL inet type, which is a combination of an IPAddress and a
-/// subnet mask.
+/// Represents a PostgreSQL inet type, which is a combination of an IPAddress and a subnet mask.
 /// </summary>
 /// <remarks>
 /// https://www.postgresql.org/docs/current/static/datatype-net-types.html
 /// </remarks>
-[Obsolete("Use ValueTuple<IPAddress, int> instead")]
-public struct NpgsqlInet : IEquatable<NpgsqlInet>
+public readonly record struct NpgsqlInet
 {
-    public IPAddress Address { get; set; }
-    public int Netmask { get; set; }
+    public IPAddress Address { get; }
+    public byte Netmask { get; }
 
-    public NpgsqlInet(IPAddress address, int netmask)
+    public NpgsqlInet(IPAddress address, byte netmask)
     {
         if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
             throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
@@ -427,76 +425,93 @@ public struct NpgsqlInet : IEquatable<NpgsqlInet>
     }
 
     public NpgsqlInet(IPAddress address)
+        : this(address, (byte)(address.AddressFamily == AddressFamily.InterNetwork ? 32 : 128))
+    {
+    }
+
+    public NpgsqlInet(string addr)
+    {
+        switch (addr.Split('/'))
+        {
+        case [var ip, var netmask]:
+            Address = IPAddress.Parse(ip);
+            Netmask = byte.Parse(netmask);
+            return;
+
+        case [var ip]:
+            Address = IPAddress.Parse(ip);
+            Netmask = 32;
+            return;
+
+        default:
+            throw new FormatException("Invalid number of parts in CIDR specification");
+        }
+    }
+
+    public override string ToString()
+        => (Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
+           (Address.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128)
+            ? Address.ToString()
+            : $"{Address}/{Netmask}";
+
+    public static explicit operator IPAddress(NpgsqlInet inet)
+        => inet.Address;
+
+    public static implicit operator NpgsqlInet(IPAddress ip)
+        => new(ip);
+
+    public void Deconstruct(out IPAddress address, out byte netmask)
+    {
+        address = Address;
+        netmask = Netmask;
+    }
+}
+
+/// <summary>
+/// Represents a PostgreSQL cidr type.
+/// </summary>
+/// <remarks>
+/// https://www.postgresql.org/docs/current/static/datatype-net-types.html
+/// </remarks>
+public readonly record struct NpgsqlCidr
+{
+    public IPAddress Address { get; }
+    public byte Netmask { get; }
+
+    public NpgsqlCidr(IPAddress address, byte netmask)
     {
         if (address.AddressFamily != AddressFamily.InterNetwork && address.AddressFamily != AddressFamily.InterNetworkV6)
             throw new ArgumentException("Only IPAddress of InterNetwork or InterNetworkV6 address families are accepted", nameof(address));
 
         Address = address;
-        Netmask = address.AddressFamily == AddressFamily.InterNetwork ? 32 : 128;
+        Netmask = netmask;
     }
 
-    public NpgsqlInet(string addr)
+    public NpgsqlCidr(string addr)
     {
-        if (addr.IndexOf('/') > 0)
+        switch (addr.Split('/'))
         {
-            var addrbits = addr.Split('/');
-            if (addrbits.GetUpperBound(0) != 1)
-            {
-                throw new FormatException("Invalid number of parts in CIDR specification");
-            }
+        case [var ip, var netmask]:
+            Address = IPAddress.Parse(ip);
+            Netmask = byte.Parse(netmask);
+            return;
 
-            Address = IPAddress.Parse(addrbits[0]);
-            Netmask = int.Parse(addrbits[1]);
-        }
-        else
-        {
-            Address = IPAddress.Parse(addr);
-            Netmask = 32;
+        case [_]:
+            throw new FormatException("Missing netmask");
+
+        default:
+            throw new FormatException("Invalid number of parts in CIDR specification");
         }
     }
 
     public override string ToString()
-    {
-        if ((Address.AddressFamily == AddressFamily.InterNetwork && Netmask == 32) ||
-            (Address.AddressFamily == AddressFamily.InterNetworkV6 && Netmask == 128))
-        {
-            return Address.ToString();
-        }
+        => $"{Address}/{Netmask}";
 
-        return $"{Address}/{Netmask}";
-    }
-
-    // ReSharper disable once InconsistentNaming
-    public static IPAddress ToIPAddress(NpgsqlInet inet)
-    {
-        if (inet.Netmask != 32)
-            throw new InvalidCastException("Cannot cast CIDR network to address");
-        return inet.Address;
-    }
-
-    public static explicit operator IPAddress(NpgsqlInet inet) => ToIPAddress(inet);
-
-    public static NpgsqlInet ToNpgsqlInet(IPAddress? ip)
-        => ip is null ? default : new NpgsqlInet(ip);
-
-    public static implicit operator NpgsqlInet(IPAddress ip) => ToNpgsqlInet(ip);
-
-    public void Deconstruct(out IPAddress address, out int netmask)
+    public void Deconstruct(out IPAddress address, out byte netmask)
     {
         address = Address;
         netmask = Netmask;
     }
-
-    public bool Equals(NpgsqlInet other) => Address.Equals(other.Address) && Netmask == other.Netmask;
-
-    public override bool Equals(object? obj)
-        => obj is NpgsqlInet inet && Equals(inet);
-
-    public override int GetHashCode()
-        => HashCode.Combine(Address, Netmask);
-
-    public static bool operator ==(NpgsqlInet x, NpgsqlInet y) => x.Equals(y);
-    public static bool operator !=(NpgsqlInet x, NpgsqlInet y) => !(x == y);
 }
 
 /// <summary>

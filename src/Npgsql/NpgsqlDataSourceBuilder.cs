@@ -7,7 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
+using Npgsql.Internal.Resolvers;
 using Npgsql.TypeMapping;
+using Npgsql.TypeMapping.Resolvers;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -52,7 +54,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new SystemTextJsonTypeInfoResolver(),
             new RangeTypeInfoResolver(),
             new RecordTypeInfoResolver(),
-            new FullTextSearchTypeInfoResolver()
+            new FullTextSearchTypeInfoResolver(),
+            new NetworkTypeInfoResolver()
         });
 
     /// <summary>
