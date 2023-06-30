@@ -272,7 +272,7 @@ SELECT onedim, twodim FROM (VALUES
         reader.Read();
 
         var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0))!;
-        Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension(s) from an array with 2 dimension(s)"));
+        Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension from an array with 2 dimension(s)"));
     }
 
     [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]

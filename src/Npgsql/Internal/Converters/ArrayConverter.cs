@@ -18,7 +18,7 @@ interface IElementOperations
     Size? GetFixedSize(DataFormat format);
     Size GetSize(SizeContext context, object collection, int index, ref object? state);
     bool IsDbNullValue(object collection, int index);
-    ValueTask Read(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken = default);
+    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken = default);
     ValueTask Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken = default);
 }
 
@@ -117,7 +117,7 @@ readonly struct PgArrayConverter
             return _elementOperations.CreateCollection(0, containsNulls);
 
         if (dimensions != expectedDimensions)
-            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension from an array with {dimensions} dimensions");
+            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "(s)")} from an array with {dimensions} dimensions");
 
         reader.ReadUInt32(); // Element OID. Ignored.
 
@@ -132,11 +132,9 @@ readonly struct PgArrayConverter
                 await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
 
             var length = reader.ReadInt32();
-            if (length == -1)
-                continue;
-
-            reader.Current.Size = length;
-            await _elementOperations.Read(async, reader, collection, i, cancellationToken).ConfigureAwait(false);
+            if (length != -1)
+                reader.Current.Size = length;
+            await _elementOperations.Read(async, reader, isDbNull: length == -1, collection, i, cancellationToken).ConfigureAwait(false);
         }
         return collection;
     }
@@ -419,8 +417,15 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
         static void SetResult(Task task, object collection, int index) => SetValue(collection, index, new ValueTask<TElement>((Task<TElement>)task).Result);
     }
 
-    ValueTask IElementOperations.Read(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
-        => ReadElem(async, reader, collection, index, cancellationToken);
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)
+    {
+        if (isDbNull)
+        {
+            SetValue(collection, index, default);
+            return new();
+        }
+        return ReadElem(async, reader, collection, index, cancellationToken);
+    }
 
     ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
         => WriteElem(async, writer, collection, index, cancellationToken);
@@ -506,8 +511,15 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
         static void SetResult(Task task, object collection, int index) => SetValue(collection, index, new ValueTask<TElement>((Task<TElement>)task).Result);
     }
 
-    ValueTask IElementOperations.Read(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
-        => ReadElem(async, reader, collection, index, cancellationToken);
+    ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)
+    {
+        if (isDbNull)
+        {
+            SetValue(collection, index, default);
+            return new();
+        }
+        return ReadElem(async, reader, collection, index, cancellationToken);
+    }
 
     ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
         => WriteElem(async, writer, collection, index, cancellationToken);
