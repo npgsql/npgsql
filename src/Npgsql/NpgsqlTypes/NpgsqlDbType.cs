@@ -1026,7 +1026,7 @@ static class NpgsqlDbTypeExtensions
                 "geometry" => NpgsqlDbType.Geometry,
                 "geography" => NpgsqlDbType.Geography,
 
-                _ when displayName.Contains("unknown", StringComparison.Ordinal)
+                _ when displayName.Contains("unknown")
                     => !displayName.StartsWith("_", StringComparison.Ordinal) && !displayName.EndsWith("[]", StringComparison.Ordinal)
                         ? NpgsqlDbType.Unknown : null,
                 _ when displayName.EndsWith("[]", StringComparison.Ordinal)

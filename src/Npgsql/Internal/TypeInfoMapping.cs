@@ -41,7 +41,7 @@ readonly struct TypeInfoMapping
 
     public bool DataTypeNameEquals(DataTypeName dataTypeName)
         => DataTypeName.AsSpan().SequenceEqual(PostgresTypes.DataTypeName.IsFullyQualified(DataTypeName.AsSpan())
-            ? dataTypeName.Value
+            ? dataTypeName.Value.AsSpan()
             : dataTypeName.UnqualifiedNameSpan);
 
     string DebuggerDisplay

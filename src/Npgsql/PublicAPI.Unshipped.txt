@@ -47,7 +47,10 @@ Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificate(System.Security.Cryptograp
 Npgsql.NpgsqlSlimDataSourceBuilder.UseRootCertificateCallback(System.Func<System.Security.Cryptography.X509Certificates.X509Certificate2!>? rootCertificateCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseSystemTextJson(System.Text.Json.JsonSerializerOptions? serializerOptions = null, System.Type![]? jsonbClrTypes = null, System.Type![]? jsonClrTypes = null) -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.UseUserCertificateValidationCallback(System.Net.Security.RemoteCertificateValidationCallback! userCertificateValidationCallback) -> Npgsql.NpgsqlSlimDataSourceBuilder!
+Npgsql.PostgresTypes.DataTypeName.Equals(Npgsql.PostgresTypes.DataTypeName other) -> bool
 Npgsql.PostgresTypes.DataTypeName.UnqualifiedName.get -> string!
+Npgsql.PostgresTypes.Oid.Equals(Npgsql.PostgresTypes.Oid other) -> bool
+Npgsql.PostgresTypes.Oid.Oid(uint value) -> void
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, uint? restartTimeline = null) -> void
@@ -63,7 +66,6 @@ Npgsql.PostgresTypes.DataTypeName.ToDefaultMultirangeName() -> Npgsql.PostgresTy
 Npgsql.PostgresTypes.DataTypeName.Value.get -> string!
 Npgsql.PostgresTypes.Oid
 Npgsql.PostgresTypes.Oid.Oid() -> void
-Npgsql.PostgresTypes.Oid.Oid(uint Value) -> void
 Npgsql.PostgresTypes.Oid.Value.get -> uint
 Npgsql.PostgresTypes.Oid.Value.init -> void
 Npgsql.PostgresTypes.PgTypeId
@@ -111,14 +113,25 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, ulong timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName, NpgsqlTypes.NpgsqlLogSequenceNumber? restartLsn = null, ulong? restartTimeline = null) -> void
 *REMOVED*Npgsql.Replication.PhysicalReplicationSlot.RestartTimeline.get -> ulong?
+override Npgsql.PostgresTypes.DataTypeName.Equals(object? obj) -> bool
+override Npgsql.PostgresTypes.DataTypeName.GetHashCode() -> int
 override Npgsql.PostgresTypes.DataTypeName.ToString() -> string!
+override Npgsql.PostgresTypes.Oid.Equals(object? obj) -> bool
+override Npgsql.PostgresTypes.Oid.GetHashCode() -> int
 override Npgsql.PostgresTypes.Oid.ToString() -> string!
+override Npgsql.PostgresTypes.PgTypeId.Equals(object? obj) -> bool
 override Npgsql.PostgresTypes.PgTypeId.GetHashCode() -> int
 override Npgsql.PostgresTypes.PgTypeId.ToString() -> string!
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static Npgsql.PostgresTypes.DataTypeName.explicit operator string!(Npgsql.PostgresTypes.DataTypeName value) -> string!
 static Npgsql.PostgresTypes.DataTypeName.FromDisplayName(string! displayDataTypeName) -> Npgsql.PostgresTypes.DataTypeName
+static Npgsql.PostgresTypes.DataTypeName.operator !=(Npgsql.PostgresTypes.DataTypeName left, Npgsql.PostgresTypes.DataTypeName right) -> bool
+static Npgsql.PostgresTypes.DataTypeName.operator ==(Npgsql.PostgresTypes.DataTypeName left, Npgsql.PostgresTypes.DataTypeName right) -> bool
 static Npgsql.PostgresTypes.Oid.explicit operator uint(Npgsql.PostgresTypes.Oid oid) -> uint
 static Npgsql.PostgresTypes.Oid.implicit operator Npgsql.PostgresTypes.Oid(uint oid) -> Npgsql.PostgresTypes.Oid
+static Npgsql.PostgresTypes.Oid.operator !=(Npgsql.PostgresTypes.Oid left, Npgsql.PostgresTypes.Oid right) -> bool
+static Npgsql.PostgresTypes.Oid.operator ==(Npgsql.PostgresTypes.Oid left, Npgsql.PostgresTypes.Oid right) -> bool
 static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTypeId(Npgsql.PostgresTypes.DataTypeName name) -> Npgsql.PostgresTypes.PgTypeId
 static Npgsql.PostgresTypes.PgTypeId.implicit operator Npgsql.PostgresTypes.PgTypeId(Npgsql.PostgresTypes.Oid id) -> Npgsql.PostgresTypes.PgTypeId
+static Npgsql.PostgresTypes.PgTypeId.operator !=(Npgsql.PostgresTypes.PgTypeId left, Npgsql.PostgresTypes.PgTypeId right) -> bool
+static Npgsql.PostgresTypes.PgTypeId.operator ==(Npgsql.PostgresTypes.PgTypeId left, Npgsql.PostgresTypes.PgTypeId right) -> bool
