@@ -25,6 +25,8 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 
 sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 {
+    // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
+
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
         bufferingRequirement = BufferingRequirement.FixedSize;
@@ -33,6 +35,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
     public override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState) => sizeof(long) + sizeof(int);
     protected override DateTimeOffset ReadCore(PgReader reader)
     {
+        // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         var ticks = reader.ReadInt64() * 10;
         var offset = new TimeSpan(0, 0, -reader.ReadInt32());
         return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
