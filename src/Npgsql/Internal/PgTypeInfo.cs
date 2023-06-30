@@ -192,7 +192,7 @@ public class PgTypeInfo
 
         var converter = resolution.GetConverter<T>();
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
-        if (converter.IsDbNullValue(value))
+        if (converter.IsDbNull(value))
         {
             writeState = null;
             return null;
@@ -221,7 +221,7 @@ public class PgTypeInfo
         format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
-        if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullValueAsObject(value))
+        if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullAsObject(value))
         {
             writeState = null;
             return null;
