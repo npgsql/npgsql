@@ -16,7 +16,7 @@ sealed class CastingConverter<T> : PgConverter<T>
         : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
         => _effectiveConverter = effectiveConverter;
 
-    protected override bool IsDbNull(T? value) => _effectiveConverter.IsDbNullValueAsObject(value);
+    protected override bool IsDbNullValue(T? value) => _effectiveConverter.IsDbNullAsObject(value);
 
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
         => _effectiveConverter.CanConvert(format, out bufferingRequirement);
@@ -53,12 +53,12 @@ sealed class CastingConverter<T> : PgConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => _effectiveConverter.WriteAsObjectAsync(writer, value!, cancellationToken);
 
-    private protected override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+    internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => async
             ? _effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
             : new(_effectiveConverter.ReadAsObject(reader));
 
-    private protected override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
     {
         if (async)
             return _effectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);

@@ -394,7 +394,7 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);
 
     bool IElementOperations.IsDbNullValue(object collection, int index)
-        => _elemConverter.IsDbNullValue(GetValue(collection, index));
+        => _elemConverter.IsDbNull(GetValue(collection, index));
 
     protected override unsafe ValueTask ReadElemCore(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
     {
@@ -488,7 +488,7 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
         => _elemConverter.GetSize(context, GetValue(collection, index)!, ref writeState);
 
     bool IElementOperations.IsDbNullValue(object collection, int index)
-        => _elemConverter.IsDbNullValue(GetValue(collection, index));
+        => _elemConverter.IsDbNull(GetValue(collection, index));
 
     protected override unsafe ValueTask ReadElemCore(bool async, PgReader reader, object collection, int index, CancellationToken cancellationToken)
     {

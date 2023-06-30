@@ -161,8 +161,6 @@ sealed class TypeInfoMappingCollection
     public void AddType<T>(string elementDataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
         => _items.Add(new TypeInfoMapping(typeof(T), elementDataTypeName, isDefault, createInfo));
 
-    public void AddArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : class
-        => AddArrayType<TElement>((string)elementDataTypeName);
     public void AddArrayType<TElement>(string elementDataTypeName) where TElement : class
         => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
 
@@ -180,8 +178,6 @@ sealed class TypeInfoMappingCollection
         }
     }
 
-    public void AddResolverArrayType<TElement>(DataTypeName elementDataTypeName) where TElement : class
-        => AddResolverArrayType<TElement>((string)elementDataTypeName);
     public void AddResolverArrayType<TElement>(string elementDataTypeName) where TElement : class
         => AddResolverArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));
 
@@ -203,10 +199,8 @@ sealed class TypeInfoMappingCollection
         => AddStructType<T>((string)dataTypeName, createInfo, isDefault);
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
-    {
-        AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
+        => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
             static innerInfo => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), isDefault);
-    }
 
     // Lives outside to prevent capture of T.
     void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
@@ -298,8 +292,6 @@ sealed class TypeInfoMappingCollection
                 }));
         }
 
-    public void AddPolymorphicResolverArrayType(DataTypeName elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
-        => AddPolymorphicResolverArrayType((string)elementDataTypeName, elementToArrayConverterFactory);
     public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
         => AddPolymorphicResolverArrayType(FindMapping(typeof(object), elementDataTypeName), elementToArrayConverterFactory);
 

@@ -19,8 +19,8 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
         : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
         => _effectiveConverter = effectiveConverter;
 
-    protected override bool IsDbNull(T? value)
-        => value is null || _effectiveConverter.IsDbNullValue(value.GetValueOrDefault());
+    protected override bool IsDbNullValue(T? value)
+        => value is null || _effectiveConverter.IsDbNull(value.GetValueOrDefault());
 
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
         => _effectiveConverter.CanConvert(format, out bufferingRequirement);
@@ -33,13 +33,14 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
 
     public override unsafe ValueTask<T?> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
-        // Easy if we have all the data, just go sync and return it.
-        if (reader.Remaining >= reader.CurrentSize)
-            return new(_effectiveConverter.Read(reader));
+        // Easy if we have all the data.
+        var task = _effectiveConverter.ReadAsync(reader, cancellationToken);
+        if (task.IsCompletedSuccessfully)
+            return new(task.Result);
 
         // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.
         var source = new CompletionSource<T?>();
-        AwaitTask(_effectiveConverter.ReadAsync(reader, cancellationToken).AsTask(), source, new(this, &UnboxAndComplete));
+        AwaitTask(task.AsTask(), source, new(this, &UnboxAndComplete));
         return source.Task;
 
         static void UnboxAndComplete(Task task, CompletionSource completionSource)
@@ -59,19 +60,11 @@ sealed class NullableConverter<T> : PgConverter<T?> where T : struct
     public override ValueTask WriteAsync(PgWriter writer, T? value, CancellationToken cancellationToken = default)
         => _effectiveConverter.WriteAsync(writer, value.GetValueOrDefault(), cancellationToken);
 
-    private protected override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
-        => async
-            ? _effectiveConverter.ReadAsObjectAsync(reader, cancellationToken)
-            : new(_effectiveConverter.ReadAsObject(reader));
+    internal override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
+        => _effectiveConverter.ReadAsObject(async, reader, cancellationToken);
 
-    private protected override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
-    {
-        if (async)
-            return _effectiveConverter.WriteAsObjectAsync(writer, value, cancellationToken);
-
-        _effectiveConverter.WriteAsObject(writer, value);
-        return new();
-    }
+    internal override ValueTask WriteAsObject(bool async, PgWriter writer, object value, CancellationToken cancellationToken)
+        => _effectiveConverter.WriteAsObject(async, writer, value, cancellationToken);
 }
 
 
