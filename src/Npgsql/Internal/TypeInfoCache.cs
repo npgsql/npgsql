@@ -121,6 +121,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? typeId, PgSerializerOptions options, bool defaultTypeFallback)
         {
             var pgTypeId = AsPgTypeId(typeId);
+            // Validate that we only pass data types that are supported by the backend.
             var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: true) : null;
             var info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
             if (info is null && defaultTypeFallback)

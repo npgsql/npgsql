@@ -22,6 +22,7 @@ public class PgTypeInfo
         Options = options;
         IsBoxing = unboxedType is not null;
         Type = unboxedType ?? type;
+        SupportsWriting = true;
     }
 
     public PgTypeInfo(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, Type? unboxedType = null)

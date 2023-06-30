@@ -60,7 +60,6 @@ Npgsql.PostgresTypes.DataTypeName.IsDefault.get -> bool
 Npgsql.PostgresTypes.DataTypeName.Schema.get -> string!
 Npgsql.PostgresTypes.DataTypeName.ToArrayName() -> Npgsql.PostgresTypes.DataTypeName
 Npgsql.PostgresTypes.DataTypeName.ToDefaultMultirangeName() -> Npgsql.PostgresTypes.DataTypeName
-Npgsql.PostgresTypes.DataTypeName.UnqualifiedDisplayName.get -> string!
 Npgsql.PostgresTypes.DataTypeName.Value.get -> string!
 Npgsql.PostgresTypes.Oid
 Npgsql.PostgresTypes.Oid.Oid() -> void

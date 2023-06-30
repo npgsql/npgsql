@@ -49,9 +49,6 @@ public readonly record struct DataTypeName
     internal static DataTypeName ValidatedName(string fullyQualifiedDataTypeName)
         => new(fullyQualifiedDataTypeName, validated: true);
 
-    ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
-    public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan);
-
     // Includes schema unless it's pg_catalog.
     public string DisplayName =>
         Value.StartsWith("pg_catalog", StringComparison.Ordinal)
@@ -59,6 +56,7 @@ public readonly record struct DataTypeName
             : Schema + "." + ToDisplayName(UnqualifiedNameSpan);
 
     public string Schema => Value.Substring(0, _value.IndexOf('.'));
+    internal ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
     public string UnqualifiedName => Value.Substring(_value.IndexOf('.') + 1);
     public string Value => ValueOrThrowIfDefault();
 
@@ -87,7 +85,7 @@ public readonly record struct DataTypeName
 
         var unqualifiedName = unqualifiedNameSpan.ToString();
         if (unqualifiedName.Length + "_".Length > NAMEDATALEN)
-            return new(Schema + "._" + unqualifiedName.Substring(0, NAMEDATALEN - "_".Length));
+            unqualifiedName = unqualifiedName.Substring(0, NAMEDATALEN - "_".Length);
 
         return new(Schema + "._" + unqualifiedName);
     }
@@ -217,6 +215,8 @@ public readonly record struct DataTypeName
 
         return mappedBaseType;
     }
+
+    internal static bool IsFullyQualified(ReadOnlySpan<char> dataTypeName) => dataTypeName.Contains(".", StringComparison.Ordinal);
 
     public override string ToString() => Value;
 }
