@@ -73,11 +73,11 @@ public class PgSerializerOptions
         => PortableTypeIds ? TypeCatalog.GetDataTypeName(pgTypeId) : TypeCatalog.GetOid(pgTypeId);
 
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
-    internal PgTypeId GetCanonicalTypeId(PostgresType pgType)
+    internal PgTypeId ToCanonicalTypeId(PostgresType pgType)
         => PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID;
 
     internal PgTypeId GetCanonicalTypeId(string dataTypeName)
-        => GetCanonicalTypeId(TypeCatalog.GetPostgresTypeByName(dataTypeName));
+        => ToCanonicalTypeId(TypeCatalog.GetPostgresTypeByName(dataTypeName));
 
     // public PgTypeId GetTypeId(string dataTypeName)
     //     => RequirePortableTypeIds ? TypeCatalog.GetDataTypeName(dataTypeName) : TypeCatalog.GetOid(TypeCatalog.GetDataTypeName(dataTypeName));

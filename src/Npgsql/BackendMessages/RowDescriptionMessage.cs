@@ -312,13 +312,13 @@ public sealed class FieldDescription
 
     internal DataFormat Format => FormatCode is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text;
 
-    internal Field Field => new(Name, _serializerOptions.GetCanonicalTypeId(PostgresType), TypeModifier);
+    internal Field Field => new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
 
     internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
 
     PostgresType? _postgresType;
     internal PostgresType PostgresType
-        => _postgresType ??= _serializerOptions.TryGetPgType((Oid)TypeOID) ?? UnknownBackendType.Instance;
+        => _postgresType ??= _serializerOptions.TryGetPgType((Oid)TypeOID)?.Canonize() ?? UnknownBackendType.Instance;
 
     internal Type FieldType => ObjectOrDefaultTypeInfo.Type;
 

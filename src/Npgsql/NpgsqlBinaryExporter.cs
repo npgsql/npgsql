@@ -229,7 +229,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             {
                 { } name => options.GetCanonicalTypeId(name),
                 // Handle plugin types via lookup.
-                null => options.GetCanonicalTypeId(
+                null => options.ToCanonicalTypeId(
                     options.TypeCatalog.GetPostgresTypeByName(dbType.ToUnqualifiedDataTypeName()))
             };
         var info = options.GetTypeInfo(type, pgTypeId) ?? throw new InvalidCastException($"Reading is not supported for type '{type}'");

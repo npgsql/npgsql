@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-
-namespace Npgsql.PostgresTypes;
+﻿namespace Npgsql.PostgresTypes;
 
 /// <summary>
 /// Represents a PostgreSQL data type, such as int4 or text, as discovered from pg_type.
@@ -113,4 +110,19 @@ public abstract class PostgresType
     /// Returns a string that represents the current object.
     /// </summary>
     public override string ToString() => DisplayName;
+
+    /// Canonizes (nested) domain types to underlying types, does not handle composites.
+    internal PostgresType? Canonize()
+    {
+        return Core(this);
+
+        static PostgresType? Core(PostgresType? postgresType)
+            => (postgresType as PostgresDomainType)?.BaseType ?? postgresType switch
+            {
+                PostgresArrayType { Element: PostgresDomainType domain } => Core(domain.BaseType)?.Array,
+                PostgresMultirangeType { Subrange.Subtype: PostgresDomainType domain } => domain.BaseType.Range?.Multirange,
+                PostgresRangeType { Subtype: PostgresDomainType domain } => domain.Range,
+                var type => type
+            };
+    }
 }

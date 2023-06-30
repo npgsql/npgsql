@@ -552,11 +552,11 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
     PgSerializerOptions Options => _elemResolverTypeInfo.Options;
 
     PgTypeId GetArrayId(PgTypeId elemTypeId)
-        => Options.GetCanonicalTypeId(Options.GetPgType(elemTypeId).Array!);
+        => Options.ToCanonicalTypeId(Options.GetPgType(elemTypeId).Array!);
 
     PgTypeId GetElementId(PgTypeId arrayTypeId) =>
         Options.GetPgType(arrayTypeId) is PostgresArrayType arrayType
-            ? Options.GetCanonicalTypeId(arrayType.Element)
+            ? Options.ToCanonicalTypeId(arrayType.Element)
             : throw new NotSupportedException("Cannot resolve element type id.");
 
     public override PgConverterResolution GetDefault(PgTypeId pgTypeId)

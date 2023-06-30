@@ -505,7 +505,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     { } name => options.GetCanonicalTypeId(name),
                     // Handle plugin types via lookup.
-                    null => options.GetCanonicalTypeId(
+                    null => options.ToCanonicalTypeId(
                         options.TypeCatalog.GetPostgresTypeByName(npgsqlDbType.ToUnqualifiedDataTypeName()))
                 };
             else if (_dataTypeName is not null)
@@ -514,7 +514,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = fqDataTypeName.ToNpgsqlDbType()?.TryToDataTypeName() switch
                 {
                     { } name => options.GetCanonicalTypeId(name),
-                    null => options.GetCanonicalTypeId(
+                    null => options.ToCanonicalTypeId(
                         options.TypeCatalog.GetPostgresTypeByName(_dataTypeName))
                 };
             }
