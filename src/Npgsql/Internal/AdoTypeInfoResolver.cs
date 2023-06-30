@@ -4,7 +4,9 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Numerics;
 using Npgsql.Internal.Converters;
+using Npgsql.Internal.Converters.Internal;
 using Npgsql.PostgresTypes;
+using NpgsqlTypes;
 
 namespace Npgsql.Internal;
 
@@ -205,6 +207,16 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
             isDefault: true);
+
+        // Tid
+        mappings.AddStructType<NpgsqlTid>(DataTypeNames.Tid,
+            static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()), isDefault: true);
+
+        // PgLsn
+        mappings.AddStructType<NpgsqlLogSequenceNumber>(DataTypeNames.Tid,
+            static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()), isDefault: true);
+        mappings.AddStructType<ulong>(DataTypeNames.Tid,
+            static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
