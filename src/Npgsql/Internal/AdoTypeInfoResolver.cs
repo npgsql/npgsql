@@ -213,60 +213,60 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()), isDefault: true);
 
         // PgLsn
-        mappings.AddStructType<NpgsqlLogSequenceNumber>(DataTypeNames.Tid,
+        mappings.AddStructType<NpgsqlLogSequenceNumber>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()), isDefault: true);
-        mappings.AddStructType<ulong>(DataTypeNames.Tid,
+        mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Bool
-        mappings.AddStructArrayType<bool>(DataTypeNames.Bool);
+        mappings.AddStructArrayType<bool>((string)DataTypeNames.Bool);
 
         // Int2
-        mappings.AddStructArrayType<short>(DataTypeNames.Int2);
-        mappings.AddStructArrayType<int>(DataTypeNames.Int2);
-        mappings.AddStructArrayType<long>(DataTypeNames.Int2);
-        mappings.AddStructArrayType<byte>(DataTypeNames.Int2);
-        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int2);
+        mappings.AddStructArrayType<short>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<int>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int2);
 
         // Int4
-        mappings.AddStructArrayType<short>(DataTypeNames.Int4);
-        mappings.AddStructArrayType<int>(DataTypeNames.Int4);
-        mappings.AddStructArrayType<long>(DataTypeNames.Int4);
-        mappings.AddStructArrayType<byte>(DataTypeNames.Int4);
-        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int4);
+        mappings.AddStructArrayType<short>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<int>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int4);
 
         // Int8
-        mappings.AddStructArrayType<short>(DataTypeNames.Int8);
-        mappings.AddStructArrayType<int>(DataTypeNames.Int8);
-        mappings.AddStructArrayType<long>(DataTypeNames.Int8);
-        mappings.AddStructArrayType<byte>(DataTypeNames.Int8);
-        mappings.AddStructArrayType<sbyte>(DataTypeNames.Int8);
+        mappings.AddStructArrayType<short>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<int>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int8);
 
         // Float4
-        mappings.AddStructArrayType<float>(DataTypeNames.Float4);
-        mappings.AddStructArrayType<double>(DataTypeNames.Float4);
+        mappings.AddStructArrayType<float>((string)DataTypeNames.Float4);
+        mappings.AddStructArrayType<double>((string)DataTypeNames.Float4);
 
         // Float8
-        mappings.AddStructArrayType<double>(DataTypeNames.Float8);
+        mappings.AddStructArrayType<double>((string)DataTypeNames.Float8);
 
         // Numeric
-        mappings.AddStructArrayType<BigInteger>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<decimal>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<byte>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<short>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<int>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<long>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<float>(DataTypeNames.Numeric);
-        mappings.AddStructArrayType<double>(DataTypeNames.Numeric);
+        mappings.AddStructArrayType<BigInteger>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<decimal>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<byte>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<short>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<int>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<float>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<double>((string)DataTypeNames.Numeric);
 
         // Varbit
-        mappings.AddArrayType<BitArray>(DataTypeNames.Varbit);
-        mappings.AddStructArrayType<bool>(DataTypeNames.Varbit);
-        mappings.AddStructArrayType<BitVector32>(DataTypeNames.Varbit);
-        mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
+        mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);
+        mappings.AddStructArrayType<bool>((string)DataTypeNames.Varbit);
+        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Varbit);
+        mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
                 () => new ArrayBasedArrayConverter<bool, object>(resolution),
@@ -277,10 +277,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         });
 
         // Bit
-        mappings.AddArrayType<BitArray>(DataTypeNames.Bit);
-        mappings.AddStructArrayType<bool>(DataTypeNames.Bit);
-        mappings.AddStructArrayType<BitVector32>(DataTypeNames.Bit);
-        mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
+        mappings.AddArrayType<BitArray>((string)DataTypeNames.Bit);
+        mappings.AddStructArrayType<bool>((string)DataTypeNames.Bit);
+        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Bit);
+        mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
                 () => new ArrayBasedArrayConverter<bool, object>(resolution),
@@ -291,26 +291,26 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         });
 
         // TimestampTz
-        mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.TimestampTz);
-        mappings.AddResolverStructArrayType<DateTimeOffset>(DataTypeNames.TimestampTz);
-        mappings.AddStructArrayType<long>(DataTypeNames.TimestampTz);
+        mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.TimestampTz);
+        mappings.AddResolverStructArrayType<DateTimeOffset>((string)DataTypeNames.TimestampTz);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.TimestampTz);
 
         // Timestamp
-        mappings.AddResolverStructArrayType<DateTime>(DataTypeNames.Timestamp);
-        mappings.AddStructArrayType<long>(DataTypeNames.Timestamp);
+        mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.Timestamp);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Timestamp);
 
         // Time
-        mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Time);
-        mappings.AddStructArrayType<long>(DataTypeNames.Time);
+        mappings.AddStructArrayType<TimeSpan>((string)DataTypeNames.Time);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Time);
 #if NET6_0_OR_GREATER
-        mappings.AddStructArrayType<TimeOnly>(DataTypeNames.Time);
+        mappings.AddStructArrayType<TimeOnly>((string)DataTypeNames.Time);
 #endif
 
         // TimeTz
-        mappings.AddStructArrayType<DateTimeOffset>(DataTypeNames.TimeTz);
+        mappings.AddStructArrayType<DateTimeOffset>((string)DataTypeNames.TimeTz);
 
         // Interval
-        mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
+        mappings.AddStructArrayType<TimeSpan>((string)DataTypeNames.Interval);
 
         // Text types
         foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
@@ -323,16 +323,16 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         }
 
         // UInt internal types
-        foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
+        foreach (var dataTypeName in new[] { (string)DataTypeNames.Oid, (string)DataTypeNames.Xid, (string)DataTypeNames.Cid, (string)DataTypeNames.RegType, (string)DataTypeNames.RegConfig })
         {
             mappings.AddStructArrayType<uint>(dataTypeName);
         }
 
         // Xid8
-        mappings.AddStructArrayType<ulong>(DataTypeNames.Xid8);
+        mappings.AddStructArrayType<ulong>((string)DataTypeNames.Xid8);
 
         // Oidvector
-        mappings.AddArrayType<uint[]>(DataTypeNames.OidVector);
+        mappings.AddArrayType<uint[]>((string)DataTypeNames.OidVector);
     }
 }
 
