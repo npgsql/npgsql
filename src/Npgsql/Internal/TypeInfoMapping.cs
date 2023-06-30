@@ -151,12 +151,10 @@ readonly struct TypeInfoMappingCollection
 
     public void AddArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
     {
-        AddArrayType(elementMapping, typeof(TElement[]),
-            static elemInfo => new ArrayBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()));
-        AddArrayType(elementMapping, typeof(List<TElement>),
-            static elemInfo => new ListBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()));
+        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>);
+        AddArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverter<TElement>);
         if (typeof(object) == typeof(TElement))
-            AddArrayType(elementMapping, typeof(object), static elemInfo => new ArrayBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()));
+            AddArrayType(elementMapping, typeof(object), CreateArrayBasedConverter<TElement>);
     }
 
     void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeInfo, PgConverter> converter)
@@ -170,10 +168,10 @@ readonly struct TypeInfoMappingCollection
 
     public void AddResolverArrayType<TElement>(TypeInfoMapping elementMapping) where TElement : class
     {
-        AddResolverArrayType(elementMapping, typeof(TElement[]), static (elemInfo, _) => new ArrayConverterResolver<TElement>(elemInfo));
-        AddResolverArrayType(elementMapping, typeof(List<TElement>), static (elemInfo, _) => new ArrayConverterResolver<TElement>(elemInfo));
+        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>);
+        AddResolverArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverterResolver<TElement>);
         if (typeof(object) == typeof(TElement))
-            AddResolverArrayType(elementMapping, typeof(object), static (elemInfo, _) => new ArrayConverterResolver<TElement>(elemInfo));
+            AddResolverArrayType(elementMapping, typeof(object), CreateArrayBasedConverterResolver<TElement>);
     }
 
     void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter)
@@ -202,11 +200,11 @@ readonly struct TypeInfoMappingCollection
         bool suppressObjectMapping = false) where TElement : struct
     {
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
-            static elemInfo => new ArrayBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()),
-            static elemInfo => new ArrayBasedArrayConverter<TElement?>(elemInfo.GetResolutionOrThrow()), suppressObjectMapping);
+            CreateArrayBasedConverter<TElement>,
+            CreateArrayBasedConverter<TElement?>, suppressObjectMapping);
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
-            static elemInfo => new ListBasedArrayConverter<TElement>(elemInfo.GetResolutionOrThrow()),
-            static elemInfo => new ListBasedArrayConverter<TElement?>(elemInfo.GetResolutionOrThrow()), suppressObjectMapping: true);
+            CreateListBasedConverter<TElement>,
+            CreateListBasedConverter<TElement?>, suppressObjectMapping: true);
     }
 
     void AddStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType, Func<PgTypeInfo, PgConverter> converter, Func<PgTypeInfo, PgConverter> nullableConverter, bool suppressObjectMapping)
@@ -238,12 +236,12 @@ readonly struct TypeInfoMappingCollection
         bool suppressObjectMapping = false) where TElement : struct
     {
         AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
-            static (elemInfo, _) => new ArrayConverterResolver<TElement>(elemInfo),
-            static (elemInfo, _) => new ArrayConverterResolver<TElement?>(elemInfo), suppressObjectMapping);
+            CreateArrayBasedConverterResolver<TElement>,
+            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping);
 
         AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
-            static (elemInfo, _) => new ArrayConverterResolver<TElement>(elemInfo),
-            static (elemInfo, _) => new ArrayConverterResolver<TElement?>(elemInfo), suppressObjectMapping: true);
+            CreateListBasedConverterResolver<TElement>,
+            CreateListBasedConverterResolver<TElement?>, suppressObjectMapping: true);
     }
 
     void AddResolverStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType,
@@ -307,6 +305,34 @@ readonly struct TypeInfoMappingCollection
         default:
             throw new ArgumentOutOfRangeException();
         }
+    }
+
+    static ArrayBasedArrayConverter<TElement, object> CreateArrayBasedConverter<TElement>(PgTypeInfo elemInfo)
+    {
+        if (elemInfo.IsBoxing)
+            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter instead.");
+        return new ArrayBasedArrayConverter<TElement, object>(elemInfo.GetResolutionOrThrow());
+    }
+
+    static ListBasedArrayConverter<TElement, object> CreateListBasedConverter<TElement>(PgTypeInfo elemInfo)
+    {
+        if (elemInfo.IsBoxing)
+            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter instead.");
+        return new ListBasedArrayConverter<TElement, object>(elemInfo.GetResolutionOrThrow());
+    }
+
+    static ArrayConverterResolver<TElement> CreateArrayBasedConverterResolver<TElement>(PgResolverTypeInfo elemInfo, PgSerializerOptions options)
+    {
+        if (elemInfo.IsBoxing)
+            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter resolver instead.");
+        return new ArrayConverterResolver<TElement>(elemInfo);
+    }
+
+    static ArrayConverterResolver<TElement> CreateListBasedConverterResolver<TElement>(PgResolverTypeInfo elemInfo, PgSerializerOptions options)
+    {
+        if (elemInfo.IsBoxing)
+            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter resolver instead.");
+        return new ArrayConverterResolver<TElement>(elemInfo);
     }
 }
 
