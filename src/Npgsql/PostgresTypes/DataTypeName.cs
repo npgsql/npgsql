@@ -7,7 +7,7 @@ namespace Npgsql.PostgresTypes;
 /// Represented the fully-qualified name of a PostgreSQL type.
 /// </summary>
 [DebuggerDisplay("{DisplayName,nq}")]
-public readonly record struct DataTypeName
+public readonly struct DataTypeName : IEquatable<DataTypeName>
 {
     /// <summary>
     /// The maximum length of names in an unmodified PostgreSQL installation.
@@ -219,6 +219,11 @@ public readonly record struct DataTypeName
     internal static bool IsFullyQualified(ReadOnlySpan<char> dataTypeName) => dataTypeName.Contains(".", StringComparison.Ordinal);
 
     public override string ToString() => Value;
+    public bool Equals(DataTypeName other) => !IsDefault && !other.IsDefault && _value == other._value;
+    public override bool Equals(object? obj) => obj is DataTypeName other && Equals(other);
+    public override int GetHashCode() => _value.GetHashCode();
+    public static bool operator ==(DataTypeName left, DataTypeName right) => left.Equals(right);
+    public static bool operator !=(DataTypeName left, DataTypeName right) => !left.Equals(right);
 }
 
 

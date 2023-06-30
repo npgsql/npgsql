@@ -9,7 +9,7 @@ public enum SizeKind : byte
     UpperBound
 }
 
-public readonly record struct Size
+public readonly struct Size
 {
     readonly int _byteCount;
 

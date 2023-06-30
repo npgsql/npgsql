@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql.PostgresTypes;
 
-public readonly record struct PgTypeId
+public readonly struct PgTypeId: IEquatable<PgTypeId>
 {
     readonly DataTypeName _dataTypeName;
     readonly Oid _oid;
@@ -24,6 +24,8 @@ public readonly record struct PgTypeId
     public static implicit operator PgTypeId(DataTypeName name) => new(name);
     public static implicit operator PgTypeId(Oid id) => new(id);
 
+    public override string ToString() => IsOid ? _oid.ToString() : _dataTypeName.Value;
+
     public bool Equals(PgTypeId other)
         => (this, other) switch
         {
@@ -32,7 +34,8 @@ public readonly record struct PgTypeId
             _ => false
         };
 
+    public override bool Equals(object? obj) => obj is PgTypeId other && Equals(other);
     public override int GetHashCode() => IsOid ? _oid.GetHashCode() : _dataTypeName.GetHashCode();
-
-    public override string ToString() => IsOid ? _oid.ToString() : _dataTypeName.Value;
+    public static bool operator ==(PgTypeId left, PgTypeId right) => left.Equals(right);
+    public static bool operator !=(PgTypeId left, PgTypeId right) => !left.Equals(right);
 }
