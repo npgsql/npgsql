@@ -35,8 +35,12 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
         var isArray = false;
         if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
         {
-            isArray = true;
-            type = type.GetElementType() ?? type.GetGenericArguments()[0];
+            // Special case char[] to skip decomposition, instead map it to text.
+            if (type.GetElementType() != typeof(char))
+            {
+                isArray = true;
+                type = type.GetElementType() ?? type.GetGenericArguments()[0];
+            }
         }
 
         var isRange = false;

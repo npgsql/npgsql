@@ -69,15 +69,6 @@ static class DataTypeNames
     public static DataTypeName PgLsn => ValidatedName("pg_catalog.pg_lsn");
     public static DataTypeName Unknown => ValidatedName("pg_catalog.unknown");
 
-    // Plugin types.
-    public static DataTypeName CiText => ValidatedName("pg_catalog.citext");
-    public static DataTypeName LQuery => ValidatedName("pg_catalog.lquery");
-    public static DataTypeName LTree => ValidatedName("pg_catalog.ltree");
-    public static DataTypeName LTxtQuery => ValidatedName("pg_catalog.ltxtquery");
-    public static DataTypeName Hstore => ValidatedName("pg_catalog.hstore");
-    public static DataTypeName Geography => ValidatedName("pg_catalog.geography");
-    public static DataTypeName Geometry => ValidatedName("pg_catalog.geometry");
-
     public static DataTypeName? TryGetRangeName(DataTypeName dataTypeName)
     {
         if (Int4 == dataTypeName)

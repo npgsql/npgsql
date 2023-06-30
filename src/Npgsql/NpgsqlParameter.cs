@@ -310,12 +310,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return npgsqlDbType.ToDbType();
 
             if (_dataTypeName is not null)
-                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType().ToDbType();
+                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             // Infer from value but don't cache
             if (Value is not null)
                 // We pass ValueType here for the generic derived type, where we should always respect T and not the runtime type.
-                return (GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType() ?? NpgsqlDbType.Unknown).ToDbType();
+                return GlobalTypeMapper.Instance.TryGetDataTypeName(ValueType!, Value)?.ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             return DbType.Object;
         }
@@ -345,7 +345,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return _npgsqlDbType.Value;
 
             if (_dataTypeName is not null)
-                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType();
+                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -377,7 +377,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return _dataTypeName;
 
             if (_npgsqlDbType is { } npgsqlDbType)
-                return npgsqlDbType.TryToDataTypeName()?.DisplayName;
+                return npgsqlDbType.TryToUnqualifiedDataTypeName();
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -500,14 +500,24 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (!previouslyBound)
         {
             PgTypeId? pgTypeId = null;
-            if (_npgsqlDbType is not null)
-                pgTypeId = _npgsqlDbType.Value.ToDataTypeName();
+            if (_npgsqlDbType is { } npgsqlDbType)
+                pgTypeId = npgsqlDbType.TryToDataTypeName() switch
+                {
+                    { } name => options.GetCanonicalTypeId(name),
+                    // Handle plugin types via lookup.
+                    null => options.GetCanonicalTypeId(
+                        options.TypeCatalog.GetPostgresTypeByName(npgsqlDbType.ToUnqualifiedDataTypeName()))
+                };
             else if (_dataTypeName is not null)
-                pgTypeId = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
-
-            // TODO we probably want to be able to statically go to (well known) oid too.
-            if (pgTypeId is not null)
-                pgTypeId = options.GetCanonicalTypeId(pgTypeId.Value);
+            {
+                var fqDataTypeName = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
+                pgTypeId = fqDataTypeName.ToNpgsqlDbType()?.TryToDataTypeName() switch
+                {
+                    { } name => options.GetCanonicalTypeId(name),
+                    null => options.GetCanonicalTypeId(
+                        options.TypeCatalog.GetPostgresTypeByName(_dataTypeName))
+                };
+            }
 
             // We treat object typed DBNull values as default info.
             // For ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)

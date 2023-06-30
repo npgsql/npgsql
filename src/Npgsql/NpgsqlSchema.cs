@@ -571,7 +571,7 @@ FROM pg_constraint c
             PopulateHardcodedDataTypeInfo(row, baseType);
 
             row["DataType"] = info.Type.FullName;
-            if (baseType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+            if (baseType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                 row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
@@ -590,7 +590,7 @@ FROM pg_constraint c
             row["OID"] = arrayType.OID;
             row["CreateFormat"] += "[]";
             row["DataType"] = info.Type.FullName;
-            if (arrayType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+            if (arrayType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                 row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
@@ -609,7 +609,7 @@ FROM pg_constraint c
             row["OID"] = rangeType.OID;
             row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
             row["DataType"] = info.Type.FullName;
-            if (rangeType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+            if (rangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                 row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
@@ -629,7 +629,7 @@ FROM pg_constraint c
             row["OID"] = multirangeType.OID;
             row["CreateFormat"] = multirangeType.DisplayName.ToUpperInvariant();
             row["DataType"] = info.Type.FullName;
-            if (multirangeType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+            if (multirangeType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                 row["ProviderDbType"] = (int)npgsqlDbType;
         }
 
@@ -650,7 +650,7 @@ FROM pg_constraint c
             row["IsBestMatch"] = false;
 
             row["DataType"] = info.Type.FullName;
-            if (domainType.DataTypeName.ToNpgsqlDbType() is var npgsqlDbType and not NpgsqlDbType.Unknown)
+            if (domainType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                 row["ProviderDbType"] = (int)npgsqlDbType;
         }
 

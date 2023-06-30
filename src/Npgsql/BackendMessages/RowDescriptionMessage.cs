@@ -346,7 +346,7 @@ public sealed class FieldDescription
                 return _objectOrDefaultInfo;
 
             // This will populate _objectOrDefaultInfo
-            var _ = ObjectOrDefaultTypeInfo;
+            _ = ObjectOrDefaultTypeInfo;
             return _objectOrDefaultInfo;
         }
     }

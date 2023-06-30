@@ -147,10 +147,10 @@ JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
     typtype IN ('b', 'r', 'm', 'e', 'd') OR -- Base, range, multirange, enum, domain
     (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
-    (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
+    (typtype = 'p' AND typname IN ('record', 'void', 'unknown')) OR -- Some special supported pseudo-types
     (typtype = 'a' AND (  -- Array of...
         elemtyptype IN ('b', 'r', 'm', 'e', 'd') OR -- Array of base, range, multirange, enum, domain
-        (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
+        (elemtyptype = 'p' AND elemtypname IN ('record', 'void', 'unknown')) OR -- Arrays of special supported pseudo-types
         (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
     ))
 ORDER BY CASE

@@ -222,9 +222,17 @@ public sealed class NpgsqlBinaryExporter : ICancelable
 
     PgConverterInfo CreateConverterInfo(Type type, NpgsqlDbType? npgsqlDbType = null)
     {
-        // TODO we probably want a static map to oid as well (so dbType.ToOid()).
-        var pgTypeId = npgsqlDbType is { } dbType ? (PgTypeId?)_connector.SerializerOptions.GetCanonicalTypeId(dbType.ToDataTypeName()) : null;
-        var info = _connector.SerializerOptions.GetTypeInfo(type, pgTypeId) ?? throw new InvalidCastException($"Reading is not supported for type '{type}'");
+        var options = _connector.SerializerOptions;
+        PgTypeId? pgTypeId = null;
+        if (npgsqlDbType is { } dbType)
+            pgTypeId = dbType.TryToDataTypeName() switch
+            {
+                { } name => options.GetCanonicalTypeId(name),
+                // Handle plugin types via lookup.
+                null => options.GetCanonicalTypeId(
+                    options.TypeCatalog.GetPostgresTypeByName(dbType.ToUnqualifiedDataTypeName()))
+            };
+        var info = options.GetTypeInfo(type, pgTypeId) ?? throw new InvalidCastException($"Reading is not supported for type '{type}'");
         // Binary export has no type info so we only do caller-directed interpretation of data.
         return info.Bind(new Field("?", info.PgTypeId!.Value, -1), DataFormat.Binary);
     }

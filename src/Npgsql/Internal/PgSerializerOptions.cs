@@ -76,6 +76,9 @@ public class PgSerializerOptions
     internal PgTypeId GetCanonicalTypeId(PostgresType pgType)
         => PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID;
 
+    internal PgTypeId GetCanonicalTypeId(string dataTypeName)
+        => GetCanonicalTypeId(TypeCatalog.GetPostgresTypeByName(dataTypeName));
+
     // public PgTypeId GetTypeId(string dataTypeName)
     //     => RequirePortableTypeIds ? TypeCatalog.GetDataTypeName(dataTypeName) : TypeCatalog.GetOid(TypeCatalog.GetDataTypeName(dataTypeName));
     //

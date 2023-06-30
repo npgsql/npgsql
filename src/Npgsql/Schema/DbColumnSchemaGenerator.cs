@@ -255,10 +255,7 @@ ORDER BY attnum";
     {
         var serializerOptions = _connection.Connector!.SerializerOptions;
 
-        var npgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
-        if (npgsqlDbType is not NpgsqlDbType.Unknown)
-            column.NpgsqlDbType = npgsqlDbType;
-
+        column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
         if (serializerOptions.GetDefaultTypeInfo(column.PostgresType) is { } typeInfo)
         {
             column.DataType = typeInfo.Type;

@@ -174,7 +174,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
 
         // Text types
-        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Char, DataTypeNames.Varchar, DataTypeNames.Bpchar, DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
@@ -301,7 +301,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<TimeSpan>(DataTypeNames.Interval);
 
         // Text types
-        foreach (var dataTypeName in new[] { DataTypeNames.Text, DataTypeNames.Char, DataTypeNames.Varchar, DataTypeNames.Bpchar, DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddArrayType<char[]>(dataTypeName);
