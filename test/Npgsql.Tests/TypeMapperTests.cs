@@ -165,7 +165,7 @@ CREATE EXTENSION citext SCHEMA ""{schemaName}""");
         {
             if (type == typeof(string) || dataTypeName?.UnqualifiedName == "citext")
                 if (options.TypeCatalog.TryGetPostgresTypeByName("citext", out var pgType))
-                    return new(options, new StringTextConverter(options.TextEncoding), options.GetCanonicalTypeId(pgType));
+                    return new(options, new StringTextConverter(options.TextEncoding), options.ToCanonicalTypeId(pgType));
 
             return null;
         }

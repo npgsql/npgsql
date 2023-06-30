@@ -216,7 +216,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         return mappedBaseType;
     }
 
-    internal static bool IsFullyQualified(ReadOnlySpan<char> dataTypeName) => dataTypeName.Contains(".", StringComparison.Ordinal);
+    internal static bool IsFullyQualified(ReadOnlySpan<char> dataTypeName) => dataTypeName.Contains(".".AsSpan(), StringComparison.Ordinal);
 
     public override string ToString() => Value;
     public bool Equals(DataTypeName other) => !IsDefault && !other.IsDefault && _value == other._value;

@@ -60,7 +60,7 @@ sealed class PolymorphicArrayConverterResolver : PolymorphicConverterResolver
             ? _elemTypeInfo.GetResolution(field with { PgTypeId = _elemPgTypeId })
             : _elemTypeInfo.GetDefaultResolution(_elemPgTypeId);
 
-        return _converterCache.GetOrAdd<(Func<PgConverterResolution, PgConverter> Factory, PgConverterResolution Resolution)>(
-            elemResolution.Converter, static (_, state) => state.Factory(state.Resolution), (_elemToArrayConverterFactory, elemResolution));
+        (Func<PgConverterResolution, PgConverter> Factory, PgConverterResolution Resolution) state = (_elemToArrayConverterFactory, elemResolution);
+        return _converterCache.GetOrAdd(elemResolution.Converter, static (_, state) => state.Factory(state.Resolution), state);
     }
 }

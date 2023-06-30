@@ -12,7 +12,7 @@ public readonly struct Field
         TypeModifier = typeModifier;
     }
 
-    public string Name { get; }
-    public PgTypeId PgTypeId { get; }
-    public int TypeModifier { get; }
+    public string Name { get; init; }
+    public PgTypeId PgTypeId { get; init; }
+    public int TypeModifier { get; init; }
 }
