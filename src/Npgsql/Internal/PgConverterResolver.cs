@@ -31,7 +31,7 @@ public abstract class PgConverterResolver
     /// Implementations should not return new instances of the possible converters that can be returned, instead its expected these are cached once used.
     /// Array or other collection converters depend on this to cache their own converter - which wraps the element converter - with the cache key being the element converter reference.
     /// </remarks>
-    public abstract PgConverterResolution GetDefault(PgTypeId pgTypeId);
+    public abstract PgConverterResolution GetDefault(PgTypeId? pgTypeId);
 
     /// <summary>
     /// Gets the appropriate converter to read with based on the given field info.
@@ -48,7 +48,7 @@ public abstract class PgConverterResolver
 
     internal abstract PgConverterResolution GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
 
-    internal PgConverterResolution GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId pgTypeId)
+    internal PgConverterResolution GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
     {
         var resolution = GetDefault(pgTypeId);
         if (validate)

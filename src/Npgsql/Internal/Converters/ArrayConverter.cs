@@ -554,15 +554,17 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
     PgTypeId GetArrayId(PgTypeId elemTypeId)
         => Options.ToCanonicalTypeId(Options.GetPgType(elemTypeId).Array!);
 
-    PgTypeId GetElementId(PgTypeId arrayTypeId) =>
-        Options.GetPgType(arrayTypeId) is PostgresArrayType arrayType
-            ? Options.ToCanonicalTypeId(arrayType.Element)
-            : throw new NotSupportedException("Cannot resolve element type id.");
+    PgTypeId? GetElementId(PgTypeId? arrayTypeId) =>
+        arrayTypeId is { } id
+            ? Options.GetPgType(id) is PostgresArrayType arrayType
+                ? Options.ToCanonicalTypeId(arrayType.Element)
+                : throw new NotSupportedException("Cannot resolve element type id.")
+            : null;
 
-    public override PgConverterResolution GetDefault(PgTypeId pgTypeId)
+    public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
         var elemResolution = _elemResolverTypeInfo.GetDefaultResolution(_elemResolverTypeInfo.PgTypeId ?? GetElementId(pgTypeId));
-        return new(GetOrAddArrayBased(elemResolution), pgTypeId);
+        return new(GetOrAddArrayBased(elemResolution), pgTypeId ?? GetArrayId(elemResolution.PgTypeId));
     }
 
     public override PgConverterResolution Get(object? values, PgTypeId? expectedPgTypeId)

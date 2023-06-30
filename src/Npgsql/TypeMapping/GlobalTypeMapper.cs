@@ -55,7 +55,7 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
         if (typeInfo is PgResolverTypeInfo info)
             dataTypeName = info.GetResolutionAsObject(value, null).PgTypeId.DataTypeName;
         else
-            dataTypeName = typeInfo?.GetResolutionOrThrow().PgTypeId.DataTypeName;
+            dataTypeName = typeInfo?.GetConcreteResolution().PgTypeId.DataTypeName;
 
         if (dataTypeName is { } name)
         {

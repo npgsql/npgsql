@@ -242,7 +242,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (p == null)
         {
             // First row, create the parameter objects
-            _params[_column] = p = typeof(T) == typeof(object)
+            _params[_column] = p = typeof(T) == typeof(object) || typeof(T) == typeof(DBNull)
                 ? new NpgsqlParameter()
                 : new NpgsqlParameter<T>();
             p.NpgsqlDbType = npgsqlDbType;
@@ -312,7 +312,7 @@ public sealed class NpgsqlBinaryImporter : ICancelable
         if (_column == -1)
             throw new InvalidOperationException("A row hasn't been started");
 
-        if (typeof(T) == typeof(object))
+        if (typeof(T) == typeof(object) || typeof(T) == typeof(DBNull))
         {
             if (param.GetType() != typeof(NpgsqlParameter))
             {

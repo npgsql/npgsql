@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
@@ -202,7 +203,7 @@ sealed class TypeInfoMappingCollection
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
     {
         AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
-            static innerInfo => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetResolutionOrThrow().Converter), isDefault);
+            static innerInfo => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), isDefault);
 
         void AddStructType(Type type, Type nullableType, string dataTypeName, TypeInfoFactory createInfo,
             Func<PgTypeInfo, PgConverter> nullableConverter, bool isDefault)
@@ -244,8 +245,8 @@ sealed class TypeInfoMappingCollection
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
                     return new(options, CreatePolymorphicArrayConverter(
-                        () => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
-                        () => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
+                        () => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter,
+                        () => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter,
                         options
                     ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array));
                 }));
@@ -286,8 +287,8 @@ sealed class TypeInfoMappingCollection
                     // TODO PolymorphicArrayConverter needs a resolver if it wants to compose.
                     ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
                         new PolymorphicArrayConverter(
-                            arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter,
-                            nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetResolutionOrThrow().Converter
+                            arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter,
+                            nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter
                         ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array)),
                     _ => throw new ArgumentOutOfRangeException()
                 }));
@@ -342,31 +343,43 @@ sealed class TypeInfoMappingCollection
 
     static ArrayBasedArrayConverter<TElement, object> CreateArrayBasedConverter<TElement>(PgTypeInfo elemInfo)
     {
-        if (elemInfo.IsBoxing)
-            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter instead.");
-        return new ArrayBasedArrayConverter<TElement, object>(elemInfo.GetResolutionOrThrow());
+        if (!elemInfo.IsBoxing)
+            return new ArrayBasedArrayConverter<TElement, object>(elemInfo.GetConcreteResolution());
+
+        ThrowBoxingNotSupported(resolver: false);
+        return default;
     }
 
     static ListBasedArrayConverter<TElement, object> CreateListBasedConverter<TElement>(PgTypeInfo elemInfo)
     {
-        if (elemInfo.IsBoxing)
-            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter instead.");
-        return new ListBasedArrayConverter<TElement, object>(elemInfo.GetResolutionOrThrow());
+        if (!elemInfo.IsBoxing)
+            return new ListBasedArrayConverter<TElement, object>(elemInfo.GetConcreteResolution());
+
+        ThrowBoxingNotSupported(resolver: false);
+        return default;
     }
 
     static ArrayConverterResolver<TElement> CreateArrayBasedConverterResolver<TElement>(PgResolverTypeInfo elemInfo, PgSerializerOptions options)
     {
-        if (elemInfo.IsBoxing)
-            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter resolver instead.");
-        return new ArrayConverterResolver<TElement>(elemInfo);
+        if (!elemInfo.IsBoxing)
+            return new ArrayConverterResolver<TElement>(elemInfo);
+
+        ThrowBoxingNotSupported(resolver: true);
+        return default;
     }
 
     static ArrayConverterResolver<TElement> CreateListBasedConverterResolver<TElement>(PgResolverTypeInfo elemInfo, PgSerializerOptions options)
     {
-        if (elemInfo.IsBoxing)
-            throw new InvalidOperationException("Boxing converters are not supported, manually construct a mapping over a casting converter resolver instead.");
-        return new ArrayConverterResolver<TElement>(elemInfo);
+        if (!elemInfo.IsBoxing)
+            return new ArrayConverterResolver<TElement>(elemInfo);
+
+        ThrowBoxingNotSupported(resolver: true);
+        return default;
     }
+
+    [DoesNotReturn]
+    static void ThrowBoxingNotSupported(bool resolver)
+        => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
 }
 
 static class PgTypeInfoHelpers
