@@ -23,7 +23,7 @@ readonly struct TypeInfoMapping
     public TypeInfoMapping(Type type, string dataTypeName, bool isDefault, TypeInfoFactory factory)
     {
         Type = type;
-        DataTypeName = PostgresTypes.DataTypeName.IsFullyQualified(dataTypeName)
+        DataTypeName = PostgresTypes.DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
             ? dataTypeName
             : PostgresTypes.DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
         IsDefault = isDefault;
@@ -39,7 +39,7 @@ readonly struct TypeInfoMapping
     public bool IsDefault { get; }
 
     public bool DataTypeNameEquals(DataTypeName dataTypeName)
-        => DataTypeName.AsSpan().SequenceEqual(PostgresTypes.DataTypeName.IsFullyQualified(DataTypeName)
+        => DataTypeName.AsSpan().SequenceEqual(PostgresTypes.DataTypeName.IsFullyQualified(DataTypeName.AsSpan())
             ? dataTypeName.Value
             : dataTypeName.UnqualifiedNameSpan);
 
@@ -115,7 +115,7 @@ sealed class TypeInfoMappingCollection
     {
         foreach (var mapping in _items)
         {
-            if (mapping.Type == type && mapping.DataTypeName.AsSpan().SequenceEqual(dataTypeName))
+            if (mapping.Type == type && mapping.DataTypeName.AsSpan().SequenceEqual(dataTypeName.AsSpan()))
             {
                 value = mapping;
                 return true;
@@ -336,7 +336,7 @@ sealed class TypeInfoMappingCollection
     }
 
     static string GetArrayDataTypeName(string dataTypeName)
-        => DataTypeName.IsFullyQualified(dataTypeName)
+        => DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value
             : DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
 
@@ -374,9 +374,9 @@ static class PgTypeInfoHelpers
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
         var typeToConvert = resolver.TypeToConvert;
-        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName);
+        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan());
         PgTypeId? pgTypeId = includeDataTypeName && !isFullyQualified
-            ? options.GetCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
+            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         return new(options, resolver, pgTypeId, unboxedType)
@@ -390,9 +390,9 @@ static class PgTypeInfoHelpers
     {
         var typeToConvert = converter.TypeToConvert;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
-        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName);
+        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan());
         var pgTypeId = !isFullyQualified
-            ? options.GetCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
+            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : new DataTypeName(mapping.DataTypeName);
         return new(options, converter, pgTypeId, unboxedType)
         {
