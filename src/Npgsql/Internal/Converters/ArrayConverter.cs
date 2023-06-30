@@ -241,7 +241,7 @@ readonly struct PgArrayConverter
     }
 }
 
-abstract class ArrayConverter : PgStreamingConverter<object>
+abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 {
     protected PgConverterResolution ElemResolution { get; }
     protected Type ElemTypeToConvert { get; }
@@ -263,18 +263,18 @@ abstract class ArrayConverter : PgStreamingConverter<object>
         (ElemReadBufferRequirement, ElemWriteBufferRequirement) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, elemResolution.Converter);
     }
 
-    public override object Read(PgReader reader) => _pgArrayConverter.Read(async: false, reader).Result;
+    public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
 
-    public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => Unsafe.As<ValueTask<object>, ValueTask<object>>(ref Unsafe.AsRef(_pgArrayConverter.Read(async: true, reader, cancellationToken)));
+    public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => Unsafe.As<ValueTask<object>, ValueTask<T>>(ref Unsafe.AsRef(_pgArrayConverter.Read(async: true, reader, cancellationToken)));
 
-    public override Size GetSize(SizeContext context, object values, ref object? writeState)
+    public override Size GetSize(SizeContext context, T values, ref object? writeState)
         => _pgArrayConverter.GetSize(context, values, ref writeState);
 
-    public override void Write(PgWriter writer, object values)
+    public override void Write(PgWriter writer, T values)
         => _pgArrayConverter.Write(async: false, writer, values, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask WriteAsync(PgWriter writer, object values, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, T values, CancellationToken cancellationToken = default)
         => _pgArrayConverter.Write(async: true, writer, values, cancellationToken);
 
     protected void ThrowIfNullsNotSupported(bool containsNulls)
@@ -349,8 +349,14 @@ abstract class ArrayConverter : PgStreamingConverter<object>
     }
 }
 
-sealed class ArrayBasedArrayConverter<TElement> : ArrayConverter, IElementOperations
+sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementOperations where T : class
 {
+    static ArrayBasedArrayConverter()
+    {
+        if (!typeof(T).IsAssignableFrom(typeof(TElement[])))
+            throw new InvalidOperationException("A value of TElement[] must be assignable to T.");
+    }
+
     readonly PgConverter<TElement> _elemConverter;
 
     public ArrayBasedArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
@@ -429,8 +435,14 @@ sealed class ArrayBasedArrayConverter<TElement> : ArrayConverter, IElementOperat
     }
 }
 
-sealed class ListBasedArrayConverter<TElement> : ArrayConverter, IElementOperations
+sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementOperations where T : class
 {
+    static ListBasedArrayConverter()
+    {
+        if (!typeof(T).IsAssignableFrom(typeof(List<TElement>)))
+            throw new InvalidOperationException("A value of List<TElement> must be assignable to T.");
+    }
+
     readonly PgConverter<TElement> _elemConverter;
 
     public ListBasedArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
@@ -514,8 +526,8 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 {
     readonly PgResolverTypeInfo _elemResolverTypeInfo;
     readonly PgTypeId? _arrayTypeId;
-    readonly ConcurrentDictionary<PgConverter, ArrayConverter> _arrayConverters = new(ReferenceEqualityComparer.Instance);
-    readonly ConcurrentDictionary<PgConverter, ArrayConverter> _listConverters = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, ArrayConverter<object>> _arrayConverters = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, ArrayConverter<object>> _listConverters = new(ReferenceEqualityComparer.Instance);
     PgConverterResolution _lastElemResolution;
     PgConverterResolution _lastResolution;
 
@@ -556,7 +568,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
                 throw CreateUnsupportedPgTypeIdException(id);
         }
 
-        ArrayConverter arrayConverter;
+        ArrayConverter<object> arrayConverter;
         PgConverterResolution expectedResolution;
         switch (values)
         {
@@ -605,16 +617,16 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 
     }
 
-    ArrayConverter GetOrAddListBased(PgConverterResolution elemResolution)
+    ArrayConverter<object> GetOrAddListBased(PgConverterResolution elemResolution)
         => _listConverters.GetOrAdd(elemResolution.Converter,
             static (elemConverter, expectedElemPgTypeId) =>
-                new ListBasedArrayConverter<TElement>(new(elemConverter, expectedElemPgTypeId)),
+                new ListBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId)),
             elemResolution.PgTypeId);
 
-    ArrayConverter GetOrAddArrayBased(PgConverterResolution elemResolution)
+    ArrayConverter<object> GetOrAddArrayBased(PgConverterResolution elemResolution)
         => _arrayConverters.GetOrAdd(elemResolution.Converter,
             static (elemConverter, expectedElemPgTypeId) =>
-                new ArrayBasedArrayConverter<TElement>(new(elemConverter, expectedElemPgTypeId)),
+                new ArrayBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId)),
             elemResolution.PgTypeId);
 }
 
@@ -633,7 +645,7 @@ sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
     public override object Read(PgReader reader)
     {
         var remaining = reader.Remaining;
-        var _ = reader.ReadInt32();
+        _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(remaining - reader.Remaining);
         return containsNulls
@@ -644,7 +656,7 @@ sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
     public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         var remaining = reader.Remaining;
-        var _ = reader.ReadInt32();
+        _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(remaining - reader.Remaining);
         return containsNulls

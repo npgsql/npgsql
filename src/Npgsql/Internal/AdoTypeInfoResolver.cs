@@ -203,7 +203,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<uint[]>(
             DataTypeNames.OidVector,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new ArrayBasedArrayConverter<uint>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.OidVector)), pgLowerBound: 0)),
+                new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
             isDefault: true);
     }
 
@@ -257,10 +257,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool>(resolution),
-                () => new ArrayBasedArrayConverter<bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                () => new ArrayBasedArrayConverter<bool, object>(resolution),
+                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray>(resolution),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution),
             _ => throw new NotSupportedException()
         });
 
@@ -271,10 +271,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType(DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool>(resolution),
-                () => new ArrayBasedArrayConverter<bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                () => new ArrayBasedArrayConverter<bool, object>(resolution),
+                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray>(resolution),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution),
             _ => throw new NotSupportedException()
         });
 
