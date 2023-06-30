@@ -98,21 +98,21 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Numeric
         mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<BigInteger>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
         mappings.AddStructType<decimal>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<decimal>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<decimal>()), isDefault: true);
         mappings.AddStructType<byte>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<byte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<byte>()));
         mappings.AddStructType<short>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<short>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<short>()));
         mappings.AddStructType<int>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<int>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<int>()));
         mappings.AddStructType<long>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<long>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<long>()));
         mappings.AddStructType<float>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<float>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<float>()));
         mappings.AddStructType<double>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new NumericConverter<double>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<double>()));
 
         // TODO might want to move to pg specific types.
         // Varbit
