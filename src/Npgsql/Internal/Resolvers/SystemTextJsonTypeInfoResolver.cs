@@ -3,7 +3,7 @@ using System.Text.Json;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 
-namespace Npgsql.TypeMapping;
+namespace Npgsql.TypeMapping.Resolvers;
 
 class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
 {

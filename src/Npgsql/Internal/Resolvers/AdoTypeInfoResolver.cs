@@ -10,7 +10,7 @@ using Npgsql.Internal.Converters.Internal;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-namespace Npgsql.Internal;
+namespace Npgsql.Internal.Resolvers;
 
 // Baseline types that are always supported.
 class AdoTypeInfoResolver : IPgTypeInfoResolver
@@ -215,19 +215,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<uint>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()), isDefault: true);
         }
-
-        // TODO: Move out to opt-in resolver
-
-        // macaddr
-        mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
-        mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
-
-        // inet
-        mappings.AddType<IPAddress>(DataTypeNames.Inet,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InetConverter()), isDefault: true);
-        // TODO: Decide what to do with NpgsqlInet vs. ValueTuple<IPAddress, int> :(
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
