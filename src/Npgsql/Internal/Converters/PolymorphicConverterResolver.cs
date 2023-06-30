@@ -14,10 +14,10 @@ abstract class PolymorphicConverterResolver : PgConverterResolver<object>
 
     protected abstract PgConverter Get(Field? field);
 
-    public sealed override PgConverterResolution GetDefault(PgTypeId pgTypeId)
+    public sealed override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
-        if (pgTypeId != PgTypeId)
-            throw CreateUnsupportedPgTypeIdException(pgTypeId);
+        if (pgTypeId is not null && pgTypeId != PgTypeId)
+            throw CreateUnsupportedPgTypeIdException(pgTypeId.Value);
 
         return new(Get(null), PgTypeId);
     }

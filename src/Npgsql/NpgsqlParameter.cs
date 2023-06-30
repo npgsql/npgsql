@@ -3,7 +3,6 @@ using System.Collections;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -539,7 +538,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             else
             {
                 var info = options.GetTypeInfo(valueType, pgTypeId);
-                if (info is null && typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType))
+                if (info is null && typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType) && valueType != typeof(string))
                     throw new NotSupportedException(
                         "IEnumerable parameters are not supported, pass an array or List instead.");
                 TypeInfo = info ?? throw new NotSupportedException(
@@ -559,7 +558,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         }
     }
 
-    private protected virtual PgConverterResolution GetResolution(PgTypeInfo typeInfo) => typeInfo.GetResolutionAsObject(_value);
+    private protected virtual PgConverterResolution GetResolution(PgTypeInfo typeInfo) => typeInfo.GetObjectResolution(_value);
 
     internal virtual void BindFormatAndLength()
     {
