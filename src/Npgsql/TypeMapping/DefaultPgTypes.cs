@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Npgsql.PostgresTypes;
 using static Npgsql.TypeMapping.PgTypeGroup;
 
@@ -9,29 +8,53 @@ namespace Npgsql.TypeMapping;
 static class DefaultPgTypes
 {
     static IEnumerable<KeyValuePair<Oid, DataTypeName>> GetIdentifiers()
-        => Items.SelectMany(group =>
+    {
+        var list = new List<KeyValuePair<Oid, DataTypeName>>();
+        foreach (var group in Items)
         {
-            var list = new List<KeyValuePair<Oid, DataTypeName>>(4)
-            {
-                new(group.Oid, group.Name),
-                new(group.ArrayOid, group.ArrayName)
-            };
+            list.Add(new(group.Oid, group.Name));
+            list.Add(new(group.ArrayOid, group.ArrayName));
             if (group.TypeKind is PgTypeKind.Range)
             {
                 list.Add(new(group.MultirangeOid!.Value, group.MultirangeName!.Value));
                 list.Add(new(group.MultirangeArrayOid!.Value, group.MultirangeArrayName!.Value));
             }
+        }
 
-            return list;
-        });
+        return list;
+    }
 
     static Dictionary<Oid, DataTypeName>? _oidMap;
-    public static IReadOnlyDictionary<Oid, DataTypeName> OidMap =>
-        _oidMap ??= GetIdentifiers().ToDictionary(kv => kv.Key, kv => kv.Value);
+    public static IReadOnlyDictionary<Oid, DataTypeName> OidMap
+    {
+        get
+        {
+            if (_oidMap is not null)
+                return _oidMap;
+
+            var dict = _oidMap = new Dictionary<Oid, DataTypeName>();
+            foreach (var element in GetIdentifiers())
+                dict.Add(element.Key, element.Value);
+
+            return dict;
+        }
+    }
 
     static Dictionary<DataTypeName, Oid>? _dataTypeNameMap;
-    public static IReadOnlyDictionary<DataTypeName, Oid> DataTypeNameMap =>
-        _dataTypeNameMap ??= GetIdentifiers().ToDictionary(kv => kv.Value, kv => kv.Key);
+    public static IReadOnlyDictionary<DataTypeName, Oid> DataTypeNameMap
+    {
+        get
+        {
+            if (_dataTypeNameMap is not null)
+                return _dataTypeNameMap;
+
+            var dict = _dataTypeNameMap = new Dictionary<DataTypeName, Oid>();
+            foreach (var element in GetIdentifiers())
+                dict.Add(element.Value, element.Key);
+
+            return _dataTypeNameMap;
+        }
+    }
 
     // We could also codegen this from pg_type.dat that lives in the postgres repo.
     public static IEnumerable<PgTypeGroup> Items
