@@ -18,7 +18,7 @@ namespace Npgsql.Internal;
 /// A buffer used by Npgsql to write data to the socket efficiently.
 /// Provides methods which encode different values types and tracks the current position.
 /// </summary>
-public sealed partial class NpgsqlWriteBuffer : IDisposable
+sealed partial class NpgsqlWriteBuffer : IDisposable
 {
     #region Fields and Properties
 

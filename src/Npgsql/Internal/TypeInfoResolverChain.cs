@@ -5,7 +5,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
 
-class TypeInfoResolverChain : IPgTypeInfoResolver
+sealed class TypeInfoResolverChain : IPgTypeInfoResolver
 {
     readonly IPgTypeInfoResolver[] _resolvers;
 

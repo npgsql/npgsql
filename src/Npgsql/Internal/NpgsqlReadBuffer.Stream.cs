@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public sealed partial class NpgsqlReadBuffer
+sealed partial class NpgsqlReadBuffer
 {
     internal sealed class ColumnStream : Stream
     {

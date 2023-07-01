@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public sealed partial class NpgsqlWriteBuffer
+sealed partial class NpgsqlWriteBuffer
 {
     sealed class ParameterStream : Stream
     {

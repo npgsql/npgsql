@@ -19,7 +19,7 @@ namespace Npgsql.Internal;
 /// A buffer used by Npgsql to read data from the socket efficiently.
 /// Provides methods which decode different values types and tracks the current position.
 /// </summary>
-public sealed partial class NpgsqlReadBuffer : IDisposable
+sealed partial class NpgsqlReadBuffer : IDisposable
 {
     #region Fields and Properties
 
