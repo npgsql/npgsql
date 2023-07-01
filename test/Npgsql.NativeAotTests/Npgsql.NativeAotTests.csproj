@@ -9,8 +9,8 @@
     <StripSymbols>true</StripSymbols>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
-    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
     <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+    <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
