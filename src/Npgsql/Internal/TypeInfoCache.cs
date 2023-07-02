@@ -10,11 +10,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
     readonly PgSerializerOptions _options;
 
     // Mostly used for parameter writing, 8ns
-    readonly ConcurrentDictionary<Type, PgTypeInfo> _cacheByClrType = new();
+    readonly ConcurrentDictionary<Type, PgTypeInfo?> _cacheByClrType = new();
 
     // Used for reading, occasionally for parameter writing where a db type was given.
     // 8ns, about 10ns total to scan an array with 6, 7 different clr types under one pg type
-    readonly ConcurrentDictionary<TPgTypeId, (Type? Type, PgTypeInfo Info)[]> _cacheByPgTypeId = new();
+    readonly ConcurrentDictionary<TPgTypeId, (Type? Type, PgTypeInfo? Info)[]> _cacheByPgTypeId = new();
 
     static TypeInfoCache()
     {
@@ -48,12 +48,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         }
 
         if (type is not null)
-            // No GetOrAdd as we don't want to cache potential nulls.
             return _cacheByClrType.TryGetValue(type, out var info) ? info : AddByType(type);
 
         return null;
 
-        PgTypeInfo? FindMatch(Type? type, (Type? Type, PgTypeInfo Info)[] infos, bool defaultTypeFallback)
+        PgTypeInfo? FindMatch(Type? type, (Type? Type, PgTypeInfo? Info)[] infos, bool defaultTypeFallback)
         {
             PgTypeInfo? defaultInfo = null;
             for (var i = 0; i < infos.Length; i++)
@@ -81,12 +80,9 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
                     : _cacheByClrType[type];
         }
 
-        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo Info)[]? infos, bool defaultTypeFallback)
+        PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
             var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback);
-            if (info is null)
-                return null;
-
             if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new[] { (type, info) }))
                 return info;
 
@@ -98,7 +94,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 
                 var oldLength = infos.Length;
                 var oldInfos = infos;
-                if (type is null)
+                if (type is null && info is not null)
                 {
                     // Also add it by its info type to save a future resolver lookup + resize.
                     Array.Resize(ref infos, infos.Length + 2);
