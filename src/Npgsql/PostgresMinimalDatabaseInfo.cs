@@ -65,4 +65,18 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
         : base("minimal", 5432, "minimal", "11")
     {
     }
+
+    static PostgresMinimalDatabaseInfo? _defaultTypeCatalog;
+    internal static PostgresMinimalDatabaseInfo DefaultTypeCatalog
+    {
+        get
+        {
+            if (_defaultTypeCatalog is not null)
+                return _defaultTypeCatalog;
+
+            var catalog = new PostgresMinimalDatabaseInfo();
+            catalog.ProcessTypes();
+            return _defaultTypeCatalog = catalog;
+        }
+    }
 }

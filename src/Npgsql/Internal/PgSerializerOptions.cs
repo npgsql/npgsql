@@ -13,10 +13,14 @@ public class PgSerializerOptions
     internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog)
     {
         TypeCatalog = typeCatalog;
-        PgTextType = typeCatalog.GetPostgresTypeByName(DataTypeNames.Text);
+        PgUnknownType = typeCatalog.GetPostgresTypeByName("unknown");
     }
 
-    public PostgresType PgTextType { get; set; }
+    // Represents postgres unknown type, which can be used for reading and writing arbitrary text values.
+    public PostgresType PgUnknownType { get; set; }
+
+    // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
+    internal bool ValidatePgTypeIds { get; init; } = true;
 
     /// Whether options should return a portable identifier (data type name) to prevent any generated id (oid) confusion across backends, this comes with a perf penalty.
     internal bool PortableTypeIds { get; init; }
@@ -58,16 +62,6 @@ public class PgSerializerOptions
     public PgTypeInfo? GetObjectOrDefaultTypeInfo(PgTypeId pgTypeId)
         => GetTypeInfoCore(typeof(object), pgTypeId, true);
 
-    internal PostgresType GetPgType(PgTypeId pgTypeId)
-        => pgTypeId.IsOid
-            ? TypeCatalog.GetPostgresTypeByOid(pgTypeId.Oid.Value)
-            : TypeCatalog.GetPostgresTypeByName(pgTypeId.DataTypeName.Value);
-
-    internal PostgresType? TryGetPgType(PgTypeId pgTypeId)
-        => pgTypeId.IsOid
-            ? TypeCatalog.ByOID.TryGetValue(pgTypeId.Oid.Value, out var pgType) ? pgType : null
-            : TypeCatalog.TryGetPostgresTypeByName(pgTypeId.DataTypeName.Value, out pgType) ? pgType : null;
-
     // If a given type id is in the opposite form than what was expected it will be mapped according to the requirement.
     internal PgTypeId GetCanonicalTypeId(PgTypeId pgTypeId)
         => PortableTypeIds ? TypeCatalog.GetDataTypeName(pgTypeId) : TypeCatalog.GetOid(pgTypeId);
@@ -79,33 +73,23 @@ public class PgSerializerOptions
     internal PgTypeId GetCanonicalTypeId(string dataTypeName)
         => ToCanonicalTypeId(TypeCatalog.GetPostgresTypeByName(dataTypeName));
 
-    // public PgTypeId GetTypeId(string dataTypeName)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetDataTypeName(dataTypeName) : TypeCatalog.GetOid(TypeCatalog.GetDataTypeName(dataTypeName));
-    //
-    // public PgTypeId GetTypeId(DataTypeName dataTypeName)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetDataTypeName(dataTypeName) : TypeCatalog.GetOid(dataTypeName);
-    //
-    // public PgTypeId GetArrayTypeId(string elementDataTypeName)
-    //     => RequirePortableTypeIds
-    //         ? TypeCatalog.GetArrayDataTypeName(TypeCatalog.GetDataTypeName(elementDataTypeName))
-    //         : TypeCatalog.GetArrayOid(TypeCatalog.GetDataTypeName(elementDataTypeName));
-    //
-    // public PgTypeId GetArrayTypeId(DataTypeName elementDataTypeName)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetArrayDataTypeName(elementDataTypeName) : TypeCatalog.GetArrayOid(elementDataTypeName);
-    //
-    // public PgTypeId GetArrayTypeId(PgTypeId elementTypeId)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetArrayDataTypeName(elementTypeId) : TypeCatalog.GetArrayOid(elementTypeId);
-    //
-    // public PgTypeId GetElementTypeId(string arrayDataTypeName)
-    //     => RequirePortableTypeIds
-    //         ? TypeCatalog.GetElementDataTypeName(TypeCatalog.GetDataTypeName(arrayDataTypeName))
-    //         : TypeCatalog.GetElementOid(TypeCatalog.GetDataTypeName(arrayDataTypeName));
-    //
-    // public PgTypeId GetElementTypeId(DataTypeName arrayDataTypeName)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetElementDataTypeName(arrayDataTypeName) : TypeCatalog.GetElementOid(arrayDataTypeName);
-    //
-    // public PgTypeId GetElementTypeId(PgTypeId arrayTypeId)
-    //     => RequirePortableTypeIds ? TypeCatalog.GetElementDataTypeName(arrayTypeId) : TypeCatalog.GetElementOid(arrayTypeId);
-    //
-    // public DataTypeName GetDataTypeName(PgTypeId pgTypeId) => TypeCatalog.GetDataTypeName(pgTypeId);
+    public PgTypeId GetArrayTypeId(PgTypeId elementTypeId)
+    {
+        // Static affordance to help the global type mapper.
+        if (PortableTypeIds && elementTypeId.IsDataTypeName)
+            return elementTypeId.DataTypeName.ToArrayName();
+
+        return ToCanonicalTypeId(TypeCatalog.GetPgType(elementTypeId).Array
+                                 ?? throw new NotSupportedException("Cannot resolve array type id."));
+    }
+
+    public PgTypeId GetElementTypeId(PgTypeId arrayTypeId)
+    {
+        // Static affordance to help the global type mapper.
+        if (PortableTypeIds && arrayTypeId.IsDataTypeName && arrayTypeId.DataTypeName.UnqualifiedNameSpan.StartsWith("_"))
+            return new DataTypeName(arrayTypeId.DataTypeName.Schema + arrayTypeId.DataTypeName.UnqualifiedNameSpan.Slice(1).ToString());
+
+        return ToCanonicalTypeId((TypeCatalog.GetPgType(arrayTypeId) as PostgresArrayType)?.Element
+                                 ?? throw new NotSupportedException("Cannot resolve element type id."));
+    }
 }

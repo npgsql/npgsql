@@ -77,17 +77,6 @@ Npgsql.PostgresTypes.PgTypeId.Oid.get -> Npgsql.PostgresTypes.Oid
 Npgsql.PostgresTypes.PgTypeId.PgTypeId() -> void
 Npgsql.PostgresTypes.PgTypeId.PgTypeId(Npgsql.PostgresTypes.DataTypeName name) -> void
 Npgsql.PostgresTypes.PgTypeId.PgTypeId(Npgsql.PostgresTypes.Oid oid) -> void
-Npgsql.TypeMapping.GlobalTypeMapper
-Npgsql.TypeMapping.GlobalTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
-Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.get -> Npgsql.INpgsqlNameTranslator!
-Npgsql.TypeMapping.GlobalTypeMapper.DefaultNameTranslator.set -> void
-Npgsql.TypeMapping.GlobalTypeMapper.MapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-Npgsql.TypeMapping.GlobalTypeMapper.MapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-Npgsql.TypeMapping.GlobalTypeMapper.MapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
-Npgsql.TypeMapping.GlobalTypeMapper.Reset() -> void
-Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite(System.Type! clrType, string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
-Npgsql.TypeMapping.GlobalTypeMapper.UnmapComposite<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
-Npgsql.TypeMapping.GlobalTypeMapper.UnmapEnum<TEnum>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> bool
 Npgsql.TypeMapping.INpgsqlTypeMapper.AddTypeInfoResolver(Npgsql.Internal.IPgTypeInfoResolver! resolver) -> void
 Npgsql.TypeMapping.INpgsqlTypeMapper.Reset() -> void
 Npgsql.TypeMapping.UserTypeMapping

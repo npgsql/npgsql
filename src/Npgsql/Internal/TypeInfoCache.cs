@@ -83,7 +83,13 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
             var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback);
-            if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new[] { (type, info) }))
+
+            // We don't store negatives for unknown data types, only for unknown clr types.
+            // This is to allow user mappings to be added on the fly without having to reset the entire cache.
+            if (infos is null && info is null)
+                return null;
+
+            if (infos is null && _cacheByPgTypeId.TryAdd(pgTypeId, new (Type? Type, PgTypeInfo? Info)[] { (type, info) }))
                 return info;
 
             infos ??= _cacheByPgTypeId[pgTypeId];
@@ -118,7 +124,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         {
             var pgTypeId = AsPgTypeId(typeId);
             // Validate that we only pass data types that are supported by the backend.
-            var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: true) : null;
+            var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: options.ValidatePgTypeIds) : null;
             var info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
             if (info is null && defaultTypeFallback)
             {

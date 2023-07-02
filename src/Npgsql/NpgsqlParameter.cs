@@ -504,8 +504,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     { } name => options.GetCanonicalTypeId(name),
                     // Handle plugin types via lookup.
-                    null => options.ToCanonicalTypeId(
-                        options.TypeCatalog.GetPostgresTypeByName(npgsqlDbType.ToUnqualifiedDataTypeName()))
+                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(npgsqlDbType.ToUnqualifiedDataTypeName()))
                 };
             else if (_dataTypeName is not null)
             {
@@ -513,8 +512,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = fqDataTypeName.ToNpgsqlDbType()?.TryToDataTypeName() switch
                 {
                     { } name => options.GetCanonicalTypeId(name),
-                    null => options.ToCanonicalTypeId(
-                        options.TypeCatalog.GetPostgresTypeByName(_dataTypeName))
+                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(_dataTypeName))
                 };
             }
 
@@ -523,7 +521,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             var valueType = ValueType;
             if (valueType is null || _value is DBNull)
             {
-                if (pgTypeId is null)
+                if (pgTypeId is null && valueType is null)
                 {
                     var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                     ThrowHelper.ThrowInvalidOperationException(
@@ -531,7 +529,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     return;
                 }
 
-                TypeInfo = options.GetDefaultTypeInfo(pgTypeId.Value) ?? throw new NotSupportedException(
+                TypeInfo = options.GetDefaultTypeInfo(pgTypeId ?? options.ToCanonicalTypeId(options.PgUnknownType)) ?? throw new NotSupportedException(
                     $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
                         ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
             }
@@ -555,6 +553,12 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             var resolution = GetResolution(TypeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
+        }
+
+        PostgresType GetRepresentationalOrDefault(string dataTypeName)
+        {
+            var type = options.TypeCatalog.GetPostgresTypeByName(dataTypeName);
+            return type.GetRepresentationalType() ?? type;
         }
     }
 

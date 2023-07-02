@@ -71,7 +71,7 @@ readonly struct PgArrayConverter
                 if (IsDbNull(values, i))
                     nulls++;
         }
-        return count - nulls * _writeRequirement.Value;
+        return (count - nulls) * _writeRequirement.Value;
     }
 
     public Size GetSize(SizeContext context, object values, ref object? writeState)
@@ -496,25 +496,21 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
     public ArrayConverterResolver(PgResolverTypeInfo elemResolverTypeInfo)
     {
         _elemResolverTypeInfo = elemResolverTypeInfo;
-        _arrayTypeId = _elemResolverTypeInfo.PgTypeId is { } id ? GetArrayId(id) : null;
+        _arrayTypeId = _elemResolverTypeInfo.PgTypeId is { } id ? GetArrayTypeId(id) : null;
     }
 
     PgSerializerOptions Options => _elemResolverTypeInfo.Options;
 
-    PgTypeId GetArrayId(PgTypeId elemTypeId)
-        => Options.ToCanonicalTypeId(Options.GetPgType(elemTypeId).Array!);
+    PgTypeId GetArrayTypeId(PgTypeId elemTypeId)
+        => Options.GetArrayTypeId(elemTypeId);
 
-    PgTypeId? GetElementId(PgTypeId? arrayTypeId) =>
-        arrayTypeId is { } id
-            ? Options.GetPgType(id) is PostgresArrayType arrayType
-                ? Options.ToCanonicalTypeId(arrayType.Element)
-                : throw new NotSupportedException("Cannot resolve element type id.")
-            : null;
+    PgTypeId? GetElementTypeId(PgTypeId? arrayTypeId)
+        => arrayTypeId is { } id ? Options.GetElementTypeId(id) : null;
 
     public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
-        var elemResolution = _elemResolverTypeInfo.GetDefaultResolution(_elemResolverTypeInfo.PgTypeId ?? GetElementId(pgTypeId));
-        return new(GetOrAddArrayBased(elemResolution), pgTypeId ?? GetArrayId(elemResolution.PgTypeId));
+        var elemResolution = _elemResolverTypeInfo.GetDefaultResolution(_elemResolverTypeInfo.PgTypeId ?? GetElementTypeId(pgTypeId));
+        return new(GetOrAddArrayBased(elemResolution), pgTypeId ?? GetArrayTypeId(elemResolution.PgTypeId));
     }
 
     public override PgConverterResolution Get(object? values, PgTypeId? expectedPgTypeId)
@@ -525,7 +521,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
             if (_arrayTypeId is null)
                 // We have an undecided type info which is asked to resolve for a specific type id
                 // we'll unfortunately have to look up the element id, this is rare though.
-                expectedElemId = GetElementId(id);
+                expectedElemId = GetElementTypeId(id);
             else if (_arrayTypeId == expectedPgTypeId)
                 expectedElemId = _elemResolverTypeInfo.PgTypeId;
             else
@@ -576,7 +572,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
         }
 
         _lastElemResolution = expectedResolution;
-        return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayId(expectedResolution.PgTypeId));
+        return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayTypeId(expectedResolution.PgTypeId));
 
 
     }

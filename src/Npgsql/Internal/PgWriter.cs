@@ -370,7 +370,7 @@ public class PgWriter
 
     public ValueTask WriteRawAsync(ReadOnlySequence<byte> sequence, CancellationToken cancellationToken = default)
     {
-        return new ValueTask();
+        throw new NotImplementedException();
     }
 
     public bool ShouldFlush(Size bufferRequirement)

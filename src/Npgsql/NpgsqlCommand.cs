@@ -490,7 +490,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var param = new NpgsqlParameter();
 
-            var postgresType = serializerOptions.GetPgType((Oid)types[i]);
+            var postgresType = serializerOptions.TypeCatalog.GetPgType((Oid)types[i]);
             var npgsqlDbType = postgresType.DataTypeName.ToNpgsqlDbType();
             param.DataTypeName = postgresType.DisplayName;
             param.PostgresType = postgresType;
@@ -561,8 +561,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             var param = batchCommand.PositionalParameters[i];
                             var paramOid = paramTypeOIDs[i];
 
-                            var postgresType = connector.SerializerOptions.GetPgType((Oid)paramOid);
-                            var npgsqlDbType = postgresType.Canonize()?.DataTypeName.ToNpgsqlDbType();
+                            var postgresType = connector.SerializerOptions.TypeCatalog.GetPgType((Oid)paramOid);
+                            var npgsqlDbType = postgresType.GetRepresentationalType()?.DataTypeName.ToNpgsqlDbType();
                             if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
                                 throw new NpgsqlException(
                                     "The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");

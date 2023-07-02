@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -12,7 +11,6 @@ using System.Transactions;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
 using Npgsql.Properties;
-using Npgsql.TypeMapping;
 using Npgsql.Util;
 
 namespace Npgsql;
@@ -32,8 +30,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlDataSourceConfiguration Configuration { get; }
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
-    readonly List<IPgTypeInfoResolver> _resolverChain;
-    readonly Dictionary<string, UserTypeMapping> _userTypeMappings;
+    readonly IPgTypeInfoResolver _resolver;
     readonly INpgsqlNameTranslator _defaultNameTranslator;
 
     internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
@@ -100,15 +97,15 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordProvider,
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
-                _resolverChain,
-                var userTypeMappings,
+                var resolverChain,
                 _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
         _connectionLogger = LoggingConfiguration.ConnectionLogger;
 
-        _userTypeMappings = userTypeMappings.ToDictionary(x => x.PgTypeName);
+        // TODO probably want this on the options so it can devirt unconditionally.
+        _resolver = new TypeInfoResolverChain(resolverChain);
         _password = settings.Password;
 
         if (_periodicPasswordSuccessRefreshInterval != default)
@@ -235,10 +232,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper being set up (even if its
             // empty). So we set up a minimal version here, and then later inject the actual DatabaseInfo.
-            var typeCatalog = new PostgresMinimalDatabaseInfo(connector);
-            typeCatalog.ProcessTypes();
             connector.SerializerOptions =
-                new(typeCatalog)
+                new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
                     TypeInfoResolver = new AdoTypeInfoResolver()
@@ -255,7 +250,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                 EnableDateTimeInfinityConversions = true,
                 TextEncoding = connector.TextEncoding,
-                TypeInfoResolver = _resolverChain.Count is 0 ? _resolverChain[0] : new TypeInfoResolverChain(_resolverChain)
+                TypeInfoResolver = _resolver
             };
 
             _isBootstrapped = true;

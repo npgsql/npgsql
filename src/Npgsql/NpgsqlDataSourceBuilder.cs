@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -46,14 +45,38 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public string ConnectionString => _internalBuilder.ConnectionString;
 
+    static NpgsqlDataSourceBuilder()
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new IPgTypeInfoResolver[]
+        {
+            AdoWithArrayTypeInfoResolver.Instance,
+            new SystemTextJsonTypeInfoResolver(),
+            new RangeTypeInfoResolver(),
+            new RecordTypeInfoResolver(),
+            new FullTextSearchTypeInfoResolver()
+        });
+
     /// <summary>
     /// Constructs a new <see cref="NpgsqlDataSourceBuilder" />, optionally starting out from the given <paramref name="connectionString"/>.
     /// </summary>
     public NpgsqlDataSourceBuilder(string? connectionString = null)
-    {
-        _internalBuilder = new(connectionString);
+        : this(connectionString, false) { }
 
+    internal NpgsqlDataSourceBuilder(string? connectionString, bool globalBuilder)
+    {
+        _internalBuilder = new(connectionString, globalBuilder);
         AddDefaultFeatures();
+
+        void AddDefaultFeatures()
+        {
+            _internalBuilder.EnableEncryption();
+            foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
+                AddTypeInfoResolver(plugin);
+            AddTypeInfoResolver(AdoWithArrayTypeInfoResolver.Instance);
+            AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
+            AddTypeInfoResolver(new RangeTypeInfoResolver());
+            AddTypeInfoResolver(new RecordTypeInfoResolver());
+            AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+        }
     }
 
     /// <summary>
@@ -316,13 +339,4 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlMultiHostDataSource BuildMultiHost()
         => _internalBuilder.BuildMultiHost();
-
-    void AddDefaultFeatures()
-    {
-        _internalBuilder.EnableEncryption();
-        _internalBuilder.AddDefaultTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
-        _internalBuilder.AddDefaultTypeInfoResolver(new RangeTypeInfoResolver());
-        _internalBuilder.AddDefaultTypeInfoResolver(new RecordTypeInfoResolver());
-        _internalBuilder.AddDefaultTypeInfoResolver(new FullTextSearchTypeInfoResolver());
-    }
 }

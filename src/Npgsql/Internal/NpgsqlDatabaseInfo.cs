@@ -16,8 +16,7 @@ public abstract class NpgsqlDatabaseInfo
 {
     #region Fields
 
-    static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
-    {
+    static volatile INpgsqlDatabaseInfoFactory[] Factories = {
         new PostgresMinimalDatabaseInfoFactory(),
         new PostgresDatabaseInfoFactory()
     };
@@ -347,4 +346,14 @@ public abstract class NpgsqlDatabaseInfo
         => pgTypeId.IsDataTypeName
             ? validate ? GetPostgresTypeByName(pgTypeId.DataTypeName).DataTypeName : pgTypeId.DataTypeName
             : GetPostgresTypeByOid(pgTypeId.Oid).DataTypeName;
+
+    internal PostgresType GetPgType(PgTypeId pgTypeId)
+        => pgTypeId.IsOid
+            ? GetPostgresTypeByOid(pgTypeId.Oid.Value)
+            : GetPostgresTypeByName(pgTypeId.DataTypeName.Value);
+
+    internal PostgresType? TryGetPgType(PgTypeId pgTypeId)
+        => pgTypeId.IsOid
+            ? ByOID.TryGetValue(pgTypeId.Oid.Value, out var pgType) ? pgType : null
+            : TryGetPostgresTypeByName(pgTypeId.DataTypeName.Value, out pgType) ? pgType : null;
 }

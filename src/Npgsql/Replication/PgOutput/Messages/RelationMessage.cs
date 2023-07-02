@@ -1,7 +1,6 @@
 ﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.Replication.PgOutput.Messages;
