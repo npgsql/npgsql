@@ -111,10 +111,19 @@ public abstract class PostgresType
     /// </summary>
     public override string ToString() => DisplayName;
 
+    bool _isRepresentationalType;
+
     /// Canonizes (nested) domain types to underlying types, does not handle composites.
-    internal PostgresType? Canonize()
+    internal PostgresType? GetRepresentationalType()
     {
-        return Core(this);
+        if (_isRepresentationalType)
+            return this;
+
+        var type = Core(this);
+        if (ReferenceEquals(type, this))
+            _isRepresentationalType = true;
+
+        return type;
 
         static PostgresType? Core(PostgresType? postgresType)
             => (postgresType as PostgresDomainType)?.BaseType ?? postgresType switch

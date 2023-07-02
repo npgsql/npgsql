@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Npgsql.Internal;
 using Npgsql.NameTranslation;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
@@ -20,12 +21,17 @@ public abstract class UserTypeMapping
     internal abstract PgTypeInfo Create(PgSerializerOptions options);
 }
 
-class UserTypeMapper
+sealed class UserTypeMapper : IPgTypeInfoResolver
 {
-    readonly List<UserTypeMapping> _mappings = new();
+    readonly List<UserTypeMapping> _mappings;
     public IList<UserTypeMapping> Items => _mappings;
 
     public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = new NpgsqlSnakeCaseNameTranslator();
+
+    UserTypeMapper(IEnumerable<UserTypeMapping> mappings) => _mappings = mappings.ToList();
+    public UserTypeMapper() => _mappings = new();
+
+    public UserTypeMapper Clone() => new(_mappings) { DefaultNameTranslator = DefaultNameTranslator };
 
     sealed class CompositeMapping<T> : UserTypeMapping
     {
@@ -131,4 +137,10 @@ class UserTypeMapper
     static string GetPgName(Type type, INpgsqlNameTranslator nameTranslator)
         => type.GetCustomAttribute<PgNameAttribute>()?.PgName
            ?? nameTranslator.TranslateTypeName(type.Name);
+
+    public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        return null;
+        // throw new NotImplementedException();
+    }
 }

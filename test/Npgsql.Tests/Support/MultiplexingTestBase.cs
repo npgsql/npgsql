@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace Npgsql.Tests;
 
 [TestFixture(MultiplexingMode.NonMultiplexing)]
-// [TestFixture(MultiplexingMode.Multiplexing)]
+[TestFixture(MultiplexingMode.Multiplexing)]
 public abstract class MultiplexingTestBase : TestBase
 {
     protected bool IsMultiplexing => MultiplexingMode == MultiplexingMode.Multiplexing;

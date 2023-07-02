@@ -5,80 +5,110 @@ using System.Threading;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
-using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
 /// <inheritdoc />
-public sealed class GlobalTypeMapper : INpgsqlTypeMapper
+sealed class GlobalTypeMapper : INpgsqlTypeMapper
 {
-    PgSerializerOptions MappingSerializerOptions { get; }
+    readonly UserTypeMapper _userTypeMapper = new();
+    readonly List<IPgTypeInfoResolver> _pluginResolvers = new();
+    readonly ReaderWriterLockSlim _lock = new();
+    IPgTypeInfoResolver[] _typeMappingResolvers = Array.Empty<IPgTypeInfoResolver>();
 
-    GlobalTypeMapper()
+    internal IEnumerable<IPgTypeInfoResolver> GetPluginResolvers()
     {
-        var typeCatalog = new PostgresMinimalDatabaseInfo();
-        typeCatalog.ProcessTypes();
-        MappingSerializerOptions = new(typeCatalog)
+        var resolvers = new List<IPgTypeInfoResolver>();
+        _lock.EnterReadLock();
+        try
         {
-            // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
-            PortableTypeIds = true,
-            // Irrelevant but required.
-            TextEncoding = PGUtil.UTF8Encoding,
-            TypeInfoResolver = AdoTypeInfoResolver.Instance
-        };
-        Reset();
+            resolvers.AddRange(_pluginResolvers);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+
+        return resolvers;
     }
 
-    // We only load the base types and we do some static pattern matching to figure out arrays and well known ranges.
-    internal DataTypeName? TryGetDataTypeName(Type type, object value)
+    // We must clone under the lock.
+    internal UserTypeMapper? GetUserMappings(bool cloneUserMappings = true)
     {
-        var isArray = false;
-        if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
+        _lock.EnterReadLock();
+        try
         {
-            // Special case char[] to skip decomposition, instead map it to text.
-            if (type.GetElementType() != typeof(char))
+            if (!cloneUserMappings)
+                return _userTypeMapper;
+
+            return _userTypeMapper.Items.Count > 0 ? _userTypeMapper.Clone() : null;
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
+    internal void AddGlobalTypeMappingResolvers(IPgTypeInfoResolver[] resolvers)
+    {
+        // Good enough logic to prevent SlimBuilder overriding the normal Builder.
+        if (resolvers.Length > _typeMappingResolvers.Length)
+        {
+            _typeMappingResolvers = resolvers;
+            ResetTypeMappingCache();
+        }
+    }
+
+    void ResetTypeMappingCache() => _typeMappingOptions = null;
+
+    PgSerializerOptions? _typeMappingOptions;
+
+    PgSerializerOptions TypeMappingOptions
+    {
+        get
+        {
+            if (_typeMappingOptions is not null)
+                return _typeMappingOptions;
+
+            _lock.EnterReadLock();
+            try
             {
-                isArray = true;
-                type = type.GetElementType() ?? type.GetGenericArguments()[0];
+                var resolvers = new List<IPgTypeInfoResolver>(_pluginResolvers);
+                resolvers.AddRange(_typeMappingResolvers);
+                // We allow later additions to the global type mapping lookup (we don't clone here).
+                resolvers.Add(_userTypeMapper);
+                return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
+                {
+                    // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
+                    PortableTypeIds = true,
+                    // Don't throw if our catalog doesn't know the datatypename.
+                    ValidatePgTypeIds = false,
+                    // Irrelevant but required.
+                    TextEncoding = PGUtil.UTF8Encoding,
+                    TypeInfoResolver = new TypeInfoResolverChain(resolvers)
+                };
+            }
+            finally
+            {
+                _lock.ExitReadLock();
             }
         }
+    }
 
-        var isRange = false;
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
-        {
-            isRange = true;
-            type = type.GetGenericArguments()[0];
-        }
-
-        var typeInfo = MappingSerializerOptions.GetTypeInfo(type);
+    internal DataTypeName? TryGetDataTypeName(Type type, object value)
+    {
+        var typeInfo = TypeMappingOptions.GetTypeInfo(type);
         DataTypeName? dataTypeName;
         if (typeInfo is PgResolverTypeInfo info)
             dataTypeName = info.GetResolutionAsObject(value, null).PgTypeId.DataTypeName;
         else
             dataTypeName = typeInfo?.GetConcreteResolution().PgTypeId.DataTypeName;
 
-        if (dataTypeName is { } name)
-        {
-            // If we're both range and array we're actually a multirange.
-            if (isRange)
-            {
-                dataTypeName = DataTypeNames.TryGetRangeName(name);
-                if (isArray)
-                    dataTypeName = dataTypeName?.ToDefaultMultirangeName();
-            }
-            else if (isArray)
-                dataTypeName = name.ToArrayName();
-        }
-
         return dataTypeName;
     }
 
     internal static GlobalTypeMapper Instance { get; }
-    internal UserTypeMapper UserTypeMapper { get; } = new();
-    internal List<IPgTypeInfoResolver> TypeInfoResolverChain { get; } = new();
 
-    internal ReaderWriterLockSlim Lock { get; }
-        = new(LockRecursionPolicy.SupportsRecursion);
 
     static GlobalTypeMapper()
         => Instance = new GlobalTypeMapper();
@@ -90,82 +120,81 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
     /// <param name="resolver">The type resolver to be added.</param>
     public void AddTypeInfoResolver(IPgTypeInfoResolver resolver)
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
             var type = resolver.GetType();
 
             // Since EFCore.PG plugins (and possibly other users) repeatedly call NpgsqlConnection.GlobalTypeMapper.UseNodaTime,
             // we replace an existing resolver of the same CLR type.
-            if (TypeInfoResolverChain[0].GetType() == type)
-                TypeInfoResolverChain[0] = resolver;
-            for (var i = 0; i < TypeInfoResolverChain.Count; i++)
+            if (_pluginResolvers[0].GetType() == type)
+                _pluginResolvers[0] = resolver;
+            for (var i = 0; i < _pluginResolvers.Count; i++)
             {
-                if (TypeInfoResolverChain[i].GetType() == type)
+                if (_pluginResolvers[i].GetType() == type)
                 {
-                    TypeInfoResolverChain.RemoveAt(i);
+                    _pluginResolvers.RemoveAt(i);
                     break;
                 }
             }
 
-            TypeInfoResolverChain.Insert(0, resolver);
+            _pluginResolvers.Insert(0, resolver);
+            ResetTypeMappingCache();
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public void Reset()
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            TypeInfoResolverChain.Clear();
-            TypeInfoResolverChain.Add(new AdoWithArrayTypeInfoResolver());
-
-            UserTypeMapper.Items.Clear();
+            _pluginResolvers.Clear();
+            _userTypeMapper.Items.Clear();
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public INpgsqlNameTranslator DefaultNameTranslator
     {
-        get => UserTypeMapper.DefaultNameTranslator;
-        set => UserTypeMapper.DefaultNameTranslator = value;
+        get => _userTypeMapper.DefaultNameTranslator;
+        set => _userTypeMapper.DefaultNameTranslator = value;
     }
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            UserTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+            _userTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
             return this;
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where TEnum : struct, Enum
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            return UserTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
+            return _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
@@ -173,29 +202,29 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            UserTypeMapper.MapComposite<T>(pgName, nameTranslator);
+            _userTypeMapper.MapComposite<T>(pgName, nameTranslator);
             return this;
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            return UserTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
+            return _userTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
@@ -203,29 +232,29 @@ public sealed class GlobalTypeMapper : INpgsqlTypeMapper
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            UserTypeMapper.MapComposite(clrType, pgName, nameTranslator);
+            _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
             return this;
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 
     /// <inheritdoc />
     public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        Lock.EnterWriteLock();
+        _lock.EnterWriteLock();
         try
         {
-            return UserTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
+            return _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
         }
         finally
         {
-            Lock.ExitWriteLock();
+            _lock.ExitWriteLock();
         }
     }
 }

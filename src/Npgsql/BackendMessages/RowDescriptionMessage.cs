@@ -318,7 +318,7 @@ public sealed class FieldDescription
 
     PostgresType? _postgresType;
     internal PostgresType PostgresType
-        => _postgresType ??= _serializerOptions.TryGetPgType((Oid)TypeOID)?.Canonize() ?? UnknownBackendType.Instance;
+        => _postgresType ??= _serializerOptions.TypeCatalog.TryGetPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
 
     internal Type FieldType => ObjectOrDefaultTypeInfo.Type;
 
@@ -396,7 +396,7 @@ public sealed class FieldDescription
             // For text we'll fall back to any available text converter for the expected clr type or throw.
             if (!info.TryBind(Field, Format, out converterInfo))
             {
-                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgTextType);
+                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgUnknownType);
                 converterInfo = info.Bind(Field, Format);
             }
             break;

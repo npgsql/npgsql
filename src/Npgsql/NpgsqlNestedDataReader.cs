@@ -391,14 +391,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             var bufferPos = Buffer.ReadPosition;
             if (i >= _columns.Count)
             {
-                var pgType = SerializerOptions.GetPgType((Oid)typeOid);
+                var pgType = SerializerOptions.TypeCatalog.GetPgType((Oid)typeOid);
                 _columns.Add(new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format));
             }
             else
             {
                 var pgType = _columns[i].PostgresType.OID == typeOid
                     ? _columns[i].PostgresType
-                    : SerializerOptions.GetPgType((Oid)typeOid);
+                    : SerializerOptions.TypeCatalog.GetPgType((Oid)typeOid);
                 _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format);
             }
 

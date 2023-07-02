@@ -33,7 +33,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     TimeSpan _periodicPasswordSuccessRefreshInterval, _periodicPasswordFailureRefreshInterval;
 
     readonly List<IPgTypeInfoResolver> _resolverChain = new();
-    readonly UserTypeMapper _userTypeMapper = new();
+    readonly UserTypeMapper _userTypeMapper;
+    readonly bool _globalBuilder;
 
     Action<NpgsqlConnection>? _syncConnectionInitializer;
     Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
@@ -48,6 +49,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public string ConnectionString => ConnectionStringBuilder.ToString();
 
+    static NpgsqlSlimDataSourceBuilder()
+        => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new []
+        {
+            AdoTypeInfoResolver.Instance
+        });
+
     /// <summary>
     /// A diagnostics name used by Npgsql when generating tracing, logging and metrics.
     /// </summary>
@@ -60,8 +67,18 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public NpgsqlSlimDataSourceBuilder(string? connectionString = null)
     {
         ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+        _userTypeMapper = new();
+        // When used publicly we start off with our slim defaults.
+        foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
+            AddTypeInfoResolver(plugin);
+        AddTypeInfoResolver(new AdoTypeInfoResolver());
+    }
 
-        ResetTypeMappings();
+    internal NpgsqlSlimDataSourceBuilder(string? connectionString, bool globalBuilder)
+    {
+        _globalBuilder = globalBuilder;
+        ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+        _userTypeMapper = new();
     }
 
     /// <summary>
@@ -289,53 +306,10 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     void INpgsqlTypeMapper.Reset()
         => ResetTypeMappings();
 
-    internal void AddDefaultTypeInfoResolver(IPgTypeInfoResolver resolver)
-    {
-        // For these "default" resolvers:
-        // 1. If they were already added in the global type mapper, we don't want to replace them (there may be custom user config, e.g.
-        //    for JSON.
-        // 2. They can't be at the start, since then they'd override a user-added resolver in global (e.g. the range handler would override
-        //    NodaTime, but NodaTime has special handling for tstzrange, mapping it to Interval in addition to NpgsqlRange<Instant>).
-        // 3. They also can't be at the end, since then they'd be overridden by builtin (builtin has limited JSON handler, but we want
-        //    the System.Text.Json handler to take precedence.
-        // So we (currently) add these at the end, but before the builtin resolver.
-        var type = resolver.GetType();
-
-        // 1st pass to skip if the resolver already exists from the global type mapper
-        for (var i = 0; i < _resolverChain.Count; i++)
-            if (_resolverChain[i].GetType() == type)
-                return;
-
-        for (var i = 0; i < _resolverChain.Count; i++)
-        {
-            if (_resolverChain[i] is AdoTypeInfoResolver)
-            {
-                _resolverChain.Insert(i, resolver);
-                return;
-            }
-        }
-
-        throw new Exception("No built-in resolver found");
-    }
-
     internal void ResetTypeMappings()
     {
-        var globalMapper = GlobalTypeMapper.Instance;
-        globalMapper.Lock.EnterReadLock();
-        try
-        {
-            _resolverChain.Clear();
-            foreach (var resolver in globalMapper.TypeInfoResolverChain)
-                _resolverChain.Add(resolver);
-
-            _userTypeMapper.Items.Clear();
-            foreach (var item in globalMapper.UserTypeMapper.Items)
-                _userTypeMapper.Items.Add(item);
-        }
-        finally
-        {
-            globalMapper.Lock.ExitReadLock();
-        }
+        _resolverChain.Clear();
+        _resolverChain.AddRange(GlobalTypeMapper.Instance.GetPluginResolvers());
     }
 
     #endregion Type mapping
@@ -495,11 +469,26 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordProvider,
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
-            _resolverChain,
-            _userTypeMapper.Items,
+            Resolvers(),
             DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);
+
+        IEnumerable<IPgTypeInfoResolver> Resolvers()
+        {
+            var resolvers = new List<IPgTypeInfoResolver>();
+            resolvers.AddRange(_resolverChain);
+
+            if (_userTypeMapper.Items.Count > 0)
+                // Make a copy so the builder can't be used to add mappings later on.
+                resolvers.Add(_userTypeMapper.Clone());
+
+            var globalUserTypeMapper = GlobalTypeMapper.Instance.GetUserMappings(cloneUserMappings: !_globalBuilder);
+            if (globalUserTypeMapper is not null)
+                resolvers.Add(globalUserTypeMapper);
+
+            return resolvers;
+        }
     }
 
     void ValidateMultiHost()
