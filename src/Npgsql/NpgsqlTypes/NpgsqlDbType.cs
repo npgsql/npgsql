@@ -715,7 +715,7 @@ static class NpgsqlDbTypeExtensions
         };
 
     /// Can return null when a custom range type is used.
-    public static string? TryToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
+    public static string? ToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
         => npgsqlDbType switch
         {
             // Numeric types
@@ -814,21 +814,22 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Geography => "geography",
 
             // Unknown cannot be composed
+            NpgsqlDbType.Unknown => "unknown",
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Unknown)
                    && (npgsqlDbType.HasFlag(NpgsqlDbType.Array) || npgsqlDbType.HasFlag(NpgsqlDbType.Range) ||
                        npgsqlDbType.HasFlag(NpgsqlDbType.Multirange))
                 => "unknown",
 
             _ => npgsqlDbType.HasFlag(NpgsqlDbType.Array)
-                ? TryToUnqualifiedDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) is { } name ? name + "[]" : null
+                ? ToUnqualifiedDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) is { } name ? name + "[]" : null
                 : null // e.g. ranges
         };
 
-    public static string ToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
-        => npgsqlDbType.TryToUnqualifiedDataTypeName() ?? throw new ArgumentOutOfRangeException(nameof(npgsqlDbType), npgsqlDbType, "Cannot convert NpgsqlDbType to DataTypeName");
+    public static string ToUnqualifiedDataTypeNameOrThrow(this NpgsqlDbType npgsqlDbType)
+        => npgsqlDbType.ToUnqualifiedDataTypeName() ?? throw new ArgumentOutOfRangeException(nameof(npgsqlDbType), npgsqlDbType, "Cannot convert NpgsqlDbType to DataTypeName");
 
     /// Can return null when a plugin type or custom range type is used.
-    public static DataTypeName? TryToDataTypeName(this NpgsqlDbType npgsqlDbType)
+    public static DataTypeName? ToDataTypeName(this NpgsqlDbType npgsqlDbType)
         => npgsqlDbType switch
         {
             // Numeric types
@@ -918,19 +919,22 @@ static class NpgsqlDbTypeExtensions
 
             // If both multirange and array are set we first remove array, so array is added to the outermost datatypename.
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Array)
-                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
+                => ToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array)?.ToArrayName(),
             _ when npgsqlDbType.HasFlag(NpgsqlDbType.Multirange)
-                => TryToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
+                => ToDataTypeName(npgsqlDbType & ~NpgsqlDbType.Multirange)?.ToDefaultMultirangeName(),
 
             // Plugin types don't have a stable fully qualified name.
             _ => null
         };
 
-    public static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName)
+    public static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
+    public static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
     {
-        return Core(dataTypeName.UnqualifiedName);
-        static NpgsqlDbType? Core(string displayName)
-            => displayName switch
+        var displayName = dataTypeName;
+        if (dataTypeName.IndexOf(".", StringComparison.Ordinal) is not -1 and var index)
+            displayName = dataTypeName.Substring(0, index);
+
+        return displayName switch
             {
                 // Numeric types
                 "int2" => NpgsqlDbType.Smallint,
@@ -1028,12 +1032,16 @@ static class NpgsqlDbTypeExtensions
 
                 _ when displayName.Contains("unknown")
                     => !displayName.StartsWith("_", StringComparison.Ordinal) && !displayName.EndsWith("[]", StringComparison.Ordinal)
-                        ? NpgsqlDbType.Unknown : null,
+                        ? NpgsqlDbType.Unknown
+                        : null,
                 _ when displayName.EndsWith("[]", StringComparison.Ordinal)
-                    => Core(displayName.Substring(0, displayName.Length - 2)) is { } elementNpgsqlDbType
-                        ? elementNpgsqlDbType | NpgsqlDbType.Array : null,
+                    => ToNpgsqlDbType(displayName.Substring(0, displayName.Length - 2)) is { } elementNpgsqlDbType
+                        ? elementNpgsqlDbType | NpgsqlDbType.Array
+                        : null,
                 _ when displayName.StartsWith("_", StringComparison.Ordinal)
-                    => Core(displayName.Substring(1)) is { } elementNpgsqlDbType ? elementNpgsqlDbType | NpgsqlDbType.Array : null,
+                    => ToNpgsqlDbType(displayName.Substring(1)) is { } elementNpgsqlDbType
+                        ? elementNpgsqlDbType | NpgsqlDbType.Array
+                        : null,
 
 
                 // e.g. custom ranges, plugin types etc.

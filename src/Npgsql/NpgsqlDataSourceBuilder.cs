@@ -71,11 +71,13 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _internalBuilder.EnableEncryption();
             foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
                 AddTypeInfoResolver(plugin);
-            AddTypeInfoResolver(AdoWithArrayTypeInfoResolver.Instance);
-            AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
-            AddTypeInfoResolver(new RangeTypeInfoResolver());
-            AddTypeInfoResolver(new RecordTypeInfoResolver());
+            // Reverse order.
             AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+            AddTypeInfoResolver(new RecordTypeInfoResolver());
+            AddTypeInfoResolver(new RangeTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
+            AddTypeInfoResolver(new NetworkTypeInfoResolver());
+            AddTypeInfoResolver(AdoWithArrayTypeInfoResolver.Instance);
         }
     }
 

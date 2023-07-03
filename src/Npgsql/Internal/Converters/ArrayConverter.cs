@@ -111,7 +111,7 @@ readonly struct PgArrayConverter
             return _elementOperations.CreateCollection(0, containsNulls);
 
         if (dimensions != expectedDimensions)
-            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "(s)")} from an array with {dimensions} dimensions");
+            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "s")} from an array with {dimensions} dimension{(dimensions == 1 ? "" : "s")}");
 
         reader.ReadUInt32(); // Element OID. Ignored.
 

@@ -321,7 +321,16 @@ public sealed class FieldDescription
     internal PostgresType PostgresType
         => _postgresType ??= _serializerOptions.TypeCatalog.TryGetPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
 
-    internal Type FieldType => ObjectOrDefaultTypeInfo.Type;
+    internal Type FieldType
+    {
+        get
+        {
+            if (ObjectOrDefaultTypeInfo is PgResolverTypeInfo { IsBoxing: false })
+                return ObjectOrDefaultInfo.Converter.TypeToConvert;
+
+            return ObjectOrDefaultTypeInfo.Type;
+        }
+    }
 
     PgTypeInfo? _objectOrDefaultTypeInfo;
 

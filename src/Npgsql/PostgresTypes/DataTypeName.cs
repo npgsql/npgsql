@@ -219,6 +219,12 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
     internal static bool IsFullyQualified(ReadOnlySpan<char> dataTypeName) => dataTypeName.Contains(".".AsSpan(), StringComparison.Ordinal);
 
+    internal static string NormalizeName(string dataTypeName)
+    {
+        var fqName = FromDisplayName(dataTypeName);
+        return IsFullyQualified(dataTypeName) ? fqName.Value : fqName.UnqualifiedName;
+    }
+
     public override string ToString() => Value;
     public bool Equals(DataTypeName other) => !IsDefault && !other.IsDefault && _value == other._value;
     public override bool Equals(object? obj) => obj is DataTypeName other && Equals(other);

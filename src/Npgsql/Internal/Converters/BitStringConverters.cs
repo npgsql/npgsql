@@ -46,7 +46,8 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         var bits = reader.ReadInt32();
         return ReadValue(reader.ReadBytes(GetByteLengthFromBits(bits)), bits);
     }
-    public override Size GetSize(SizeContext context, BitArray value, ref object? writeState) => sizeof(int) + GetByteLengthFromBits(value.Length);
+    public override Size GetSize(SizeContext context, BitArray value, ref object? writeState)
+        => sizeof(int) + GetByteLengthFromBits(value.Length);
 
     public override void Write(PgWriter writer, BitArray value)
     {
@@ -55,7 +56,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
         value.CopyTo(array, 0);
 
         writer.WriteInt32(value.Length);
-        writer.WriteRaw(new Span<byte>(array, 0, length));
+        writer.WriteRaw(new ReadOnlySpan<byte>(array, 0, length));
 
         _arrayPool.Return(array);
     }
@@ -68,12 +69,23 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
     public override async ValueTask WriteAsync(PgWriter writer, BitArray value, CancellationToken cancellationToken = default)
     {
-        var length = (value.Length + 7) / 8;
-        var array = _arrayPool.Rent(length);
-        value.CopyTo(array, 0);
+        var byteCount = writer.Current.Size.Value - sizeof(int);
+        var array = _arrayPool.Rent(byteCount);
+        for (var pos = 0; pos < byteCount; pos++)
+        {
+            var bitPos = pos*8;
+            var bits = Math.Min(8, value.Length - bitPos);
+            var b = 0;
+            for (var i = 0; i < bits; i++)
+                b += (value[bitPos + i] ? 1 : 0) << (8 - i - 1);
+            array[pos] = (byte)b;
+        }
+
+        if (writer.ShouldFlush(sizeof(int)))
+            await writer.FlushAsync(cancellationToken);
 
         writer.WriteInt32(value.Length);
-        await writer.WriteRawAsync(new Span<byte>(array, 0, length), cancellationToken).ConfigureAwait(false);
+        await writer.WriteRawAsync(new ReadOnlySpan<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
 
         _arrayPool.Return(array);
     }
