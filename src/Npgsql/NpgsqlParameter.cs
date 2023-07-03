@@ -498,6 +498,11 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyBound = TypeInfo?.Options == options;
         if (!previouslyBound)
         {
+            var valueType = ValueType;
+            // The only exceptional type that we don't want a 'random' default for is byte[] which should always map to bytea.
+            if (valueType == typeof(byte[]) && _dataTypeName is null && _npgsqlDbType is null)
+                _dataTypeName = DataTypeNames.Bytea.Value;
+
             PgTypeId? pgTypeId = null;
             if (_npgsqlDbType is { } npgsqlDbType)
                 pgTypeId = npgsqlDbType.TryToDataTypeName() switch
@@ -518,7 +523,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
             // We treat object typed DBNull values as default info.
             // For ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)
-            var valueType = ValueType;
+
             if (valueType is null || _value is DBNull)
             {
                 if (pgTypeId is null && valueType is null)
