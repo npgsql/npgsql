@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -35,7 +36,6 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 
     readonly List<IPgTypeInfoResolver> _resolverChain = new();
     readonly UserTypeMapper _userTypeMapper;
-    readonly bool _globalBuilder;
 
     Action<NpgsqlConnection>? _syncConnectionInitializer;
     Func<NpgsqlConnection, Task>? _asyncConnectionInitializer;
@@ -75,10 +75,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         AddTypeInfoResolver(new AdoTypeInfoResolver());
     }
 
-    internal NpgsqlSlimDataSourceBuilder(string? connectionString, bool globalBuilder)
+    internal NpgsqlSlimDataSourceBuilder(NpgsqlConnectionStringBuilder connectionStringBuilder)
     {
-        _globalBuilder = globalBuilder;
-        ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
+        ConnectionStringBuilder = connectionStringBuilder;
         _userTypeMapper = new();
     }
 
@@ -264,15 +263,17 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
-        _userTypeMapper.MapComposite<T>(pgName, nameTranslator);
+        _userTypeMapper.MapComposite(typeof(T), pgName, nameTranslator);
         return this;
     }
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        => _userTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
+        => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
     public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
@@ -481,10 +482,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             resolvers.AddRange(_resolverChain);
 
             if (_userTypeMapper.Items.Count > 0)
-                // Make a copy so the builder can't be used to add mappings later on.
-                resolvers.Add(_userTypeMapper.Clone());
+                resolvers.Add(_userTypeMapper.Build());
 
-            var globalUserTypeMapper = GlobalTypeMapper.Instance.GetUserMappings(cloneUserMappings: !_globalBuilder);
+            var globalUserTypeMapper = GlobalTypeMapper.Instance.GetUserMappingsResolver();
             if (globalUserTypeMapper is not null)
                 resolvers.Add(globalUserTypeMapper);
 

@@ -62,11 +62,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// Constructs a new <see cref="NpgsqlDataSourceBuilder" />, optionally starting out from the given <paramref name="connectionString"/>.
     /// </summary>
     public NpgsqlDataSourceBuilder(string? connectionString = null)
-        : this(connectionString, false) { }
-
-    internal NpgsqlDataSourceBuilder(string? connectionString, bool globalBuilder)
     {
-        _internalBuilder = new(connectionString, globalBuilder);
+        _internalBuilder = new(new NpgsqlConnectionStringBuilder(connectionString));
         AddDefaultFeatures();
 
         void AddDefaultFeatures()

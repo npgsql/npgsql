@@ -88,7 +88,7 @@ public class TypeMapperTests : TestBase
         // via the data source.
 
         var dataSourceBuilder = CreateDataSourceBuilder();
-        dataSourceBuilder.MapEnum<Mood>();
+        dataSourceBuilder.MapEnum<Mood>(type);
         await using var dataSource = dataSourceBuilder.Build();
         await using var connection1 = await dataSource.OpenConnectionAsync();
         await using var connection2 = await dataSource.OpenConnectionAsync();
@@ -98,8 +98,8 @@ public class TypeMapperTests : TestBase
 
         // The data source type mapper has been replaced and connection1 should have the new mapper, but connection2 should retain the older
         // type mapper - where there's no mapping - as long as it's still open
-        Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
         Assert.ThrowsAsync<NotSupportedException>(async () => await connection2.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
+        Assert.DoesNotThrowAsync(async () => await connection1.ExecuteScalarAsync($"SELECT 'happy'::{type}"));
 
         // Close connection2 and reopen to make sure it picks up the new type and mapping from the data source
         var connId = connection2.ProcessID;

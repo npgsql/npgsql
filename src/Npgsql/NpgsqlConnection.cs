@@ -214,7 +214,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
         // Really unseen, need to create a new pool
         // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
         // The connection string pool can either be added here or above, if it's added above we should just use that.
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(canonical, globalBuilder: true);
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(canonical);
         dataSourceBuilder.UseLoggerFactory(NpgsqlLoggingConfiguration.GlobalLoggerFactory);
         dataSourceBuilder.EnableParameterLogging(NpgsqlLoggingConfiguration.GlobalIsParameterLoggingEnabled);
         var newDataSource = dataSourceBuilder.Build();

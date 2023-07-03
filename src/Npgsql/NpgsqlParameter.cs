@@ -517,7 +517,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 pgTypeId = fqDataTypeName.ToNpgsqlDbType()?.TryToDataTypeName() switch
                 {
                     { } name => options.GetCanonicalTypeId(name),
-                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(_dataTypeName))
+                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(fqDataTypeName.Value))
                 };
             }
 

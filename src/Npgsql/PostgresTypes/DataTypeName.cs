@@ -16,7 +16,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     /// We need to respect this to get to valid names when deriving them (for multirange/arrays etc).
     /// This does not include the namespace.
     /// </remarks>
-    const int NAMEDATALEN = 64 - 1; // Minus null terminator.
+    internal const int NAMEDATALEN = 64 - 1; // Minus null terminator.
 
     readonly string _value;
 
@@ -124,13 +124,14 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         var displayNameSpan = displayDataTypeName.AsSpan().Trim();
 
         // If we have a schema we're done, Postgres doesn't do display name conversions on fully qualified names.
-        if (displayNameSpan.IndexOf('.') != -1)
+        // There is one exception and that's array syntax, which is always resolvable in both ways, while we want the canonical name.
+        if (displayNameSpan.IndexOf('.') != -1 && !displayNameSpan.EndsWith("[]"))
             return new(displayDataTypeName);
 
         // First we strip the schema to get the type name.
-        var schemaIndex = displayNameSpan.IndexOf('.');
-        if (schemaIndex != -1)
-            displayNameSpan = displayNameSpan.Slice(schemaIndex + 1);
+        var schemaEndIndex = displayNameSpan.IndexOf('.');
+        if (schemaEndIndex != -1)
+            displayNameSpan = displayNameSpan.Slice(schemaEndIndex + 1);
 
         // Then we strip either of the two valid array representations to get the base type name (with or without facets).
         var isArray = false;
@@ -171,7 +172,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         };
 
         // And concat with pg_catalog to get a fully qualified name for our constructor.
-        return new("pg_catalog" + "." + (isArray ? "_" : "") + mapped);
+        return new((schemaEndIndex is -1 ? "pg_catalog" : displayDataTypeName.Substring(0, schemaEndIndex)) + "." + (isArray ? "_" : "") + mapped);
     }
 
     // The type names stored in a DataTypeName are usually the actual typname from the pg_type column.

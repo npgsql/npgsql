@@ -55,9 +55,9 @@ readonly struct PgArrayConverter
         {
             ref var elemItem = ref elemStates[i];
             var state = (object?)null;
-            var sizeResult = _elementOperations.GetSize(context, values, i, ref state) ?? Size.Zero;
-            elemItem = (sizeResult, state);
-            totalSize = totalSize.Combine(sizeResult);
+            var sizeResult = _elementOperations.GetSize(context, values, i, ref state);
+            elemItem = (sizeResult ?? Size.Create(-1), state);
+            totalSize = totalSize.Combine(sizeResult ?? Size.Zero);
         }
         return totalSize;
     }
@@ -155,16 +155,17 @@ readonly struct PgArrayConverter
         writer.WriteInt32(_pgLowerBound);
 
         var elemTypeDbNullable = ElemTypeDbNullable;
+        var stateArray = state?.Segment.Array;
         for (var i = 0; i < count; i++)
         {
-            if (elemTypeDbNullable && IsDbNull(values, i))
+            if (elemTypeDbNullable && (stateArray?[i].Item1.Value == -1 || IsDbNull(values, i)))
             {
                 if (writer.ShouldFlush(sizeof(int)))
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 writer.WriteInt32(-1);
             }
-            else if (state is null)
+            else if (stateArray is null)
             {
                 var length = _writeRequirement.Value;
                 if (writer.ShouldFlush(sizeof(int) + length))
@@ -174,7 +175,7 @@ readonly struct PgArrayConverter
             }
             else
             {
-                var (sizeResult, elemState) = state.Segment.Array![i];
+                var (sizeResult, elemState) = stateArray[i];
                 switch (sizeResult.Kind)
                 {
                 case SizeKind.Exact:
@@ -352,11 +353,12 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
     Size? IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
     {
         var value = GetValue(collection, index);
-        return _elemConverter.IsDbNull(value)
-            ? !IsFixedSize
-                ? _elemConverter.GetSize(context, value!, ref writeState)
-                : Size.Zero
-            : null;
+        if (_elemConverter.IsDbNull(value))
+            return null;
+
+        return !IsFixedSize
+            ? _elemConverter.GetSize(context, value!, ref writeState)
+            : Size.Zero;
     }
 
     unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)
@@ -440,11 +442,12 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
     Size? IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
     {
         var value = GetValue(collection, index);
-        return _elemConverter.IsDbNull(value)
-            ? !IsFixedSize
-                ? _elemConverter.GetSize(context, value!, ref writeState)
-                : Size.Zero
-            : null;
+        if (_elemConverter.IsDbNull(value))
+            return null;
+
+        return !IsFixedSize
+            ? _elemConverter.GetSize(context, value!, ref writeState)
+            : Size.Zero;
     }
 
     unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)

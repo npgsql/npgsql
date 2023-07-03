@@ -71,12 +71,12 @@ sealed class TypeInfoMappingCollection
 
     public TypeInfoMappingCollection() : this(0) { }
 
-    public TypeInfoMappingCollection(IReadOnlyCollection<TypeInfoMapping> items)
+    public TypeInfoMappingCollection(IEnumerable<TypeInfoMapping> items)
     {
         _items = new(items);
     }
 
-    public IReadOnlyCollection<TypeInfoMapping> Items => _items;
+    public IReadOnlyList<TypeInfoMapping> Items => _items;
 
     /// Returns the first default converter or the first converter that matches both type and dataTypeName.
     /// If just a type was passed and no default was found we return the first converter with a type match.
@@ -208,7 +208,7 @@ sealed class TypeInfoMappingCollection
     {
         TypeInfoMapping mapping;
         _items.Add(mapping = new TypeInfoMapping(type, dataTypeName, isDefault, createInfo));
-        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault,
+        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault: false,
             CreateComposedFactory(mapping, nullableConverter, copyPreferredFormat: true)));
     }
 
@@ -334,7 +334,7 @@ sealed class TypeInfoMappingCollection
     static string GetArrayDataTypeName(string dataTypeName)
         => DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value
-            : DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
+            : "_" + DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
 
     static ArrayBasedArrayConverter<TElement, object> CreateArrayBasedConverter<TElement>(PgTypeInfo elemInfo)
     {
