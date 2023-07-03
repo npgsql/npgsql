@@ -68,6 +68,7 @@ static class DataTypeNames
     public static DataTypeName Tid => ValidatedName("pg_catalog.tid");
     public static DataTypeName PgLsn => ValidatedName("pg_catalog.pg_lsn");
     public static DataTypeName Unknown => ValidatedName("pg_catalog.unknown");
+    public static DataTypeName Void => ValidatedName("pg_catalog.void");
 
     public static DataTypeName? TryGetRangeName(DataTypeName dataTypeName)
     {

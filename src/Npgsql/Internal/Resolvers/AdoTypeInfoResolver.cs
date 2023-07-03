@@ -209,6 +209,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
 
+        mappings.AddType<object>(DataTypeNames.Void,
+            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false), isDefault: true);
+
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
         {
