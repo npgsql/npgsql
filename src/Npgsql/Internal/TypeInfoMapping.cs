@@ -22,28 +22,31 @@ delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 readonly struct TypeInfoMapping
 {
-    public TypeInfoMapping(Type type, string dataTypeName, bool isDefault, TypeInfoFactory factory)
+    public TypeInfoMapping(Type type, string dataTypeName, bool isDefaultOrDefaultCompanion, TypeInfoFactory factory)
     {
         Type = type;
-        DataTypeName = PostgresTypes.DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
-            ? dataTypeName
-            : PostgresTypes.DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
-        IsDefault = isDefault;
+        DataTypeName = PostgresTypes.DataTypeName.NormalizeName(dataTypeName);
+        IsDefaultOrDefaultCompanion = isDefaultOrDefaultCompanion;
         Factory = factory;
     }
 
-    public TypeInfoMapping(Type type, DataTypeName dataTypeName, bool isDefault, TypeInfoFactory factory)
-        : this(type, dataTypeName.Value, isDefault, factory) { }
+    public TypeInfoMapping(Type type, DataTypeName dataTypeName, bool isDefaultOrDefaultCompanion, TypeInfoFactory factory)
+        : this(type, dataTypeName.Value, isDefaultOrDefaultCompanion, factory) { }
 
     public TypeInfoFactory Factory { get; }
     public Type Type { get; }
     public string DataTypeName { get; }
-    public bool IsDefault { get; }
+
+    // TODO revise/improve this mechanism.
+    public bool IsDefaultOrDefaultCompanion { get; }
 
     public bool DataTypeNameEquals(DataTypeName dataTypeName)
-        => DataTypeName.AsSpan().SequenceEqual(PostgresTypes.DataTypeName.IsFullyQualified(DataTypeName.AsSpan())
-            ? dataTypeName.Value.AsSpan()
-            : dataTypeName.UnqualifiedNameSpan);
+    {
+        var span = DataTypeName.AsSpan();
+        return PostgresTypes.DataTypeName.IsFullyQualified(span)
+            ? span.SequenceEqual(dataTypeName.Value.AsSpan())
+            : span.SequenceEqual(dataTypeName.UnqualifiedNameSpan);
+    }
 
     string DebuggerDisplay
     {
@@ -54,7 +57,7 @@ readonly struct TypeInfoMapping
                 .Append(" <-> ")
                 .Append(PostgresTypes.DataTypeName.FromDisplayName(DataTypeName).DisplayName);
 
-            if (IsDefault)
+            if (IsDefaultOrDefaultCompanion)
                 builder.Append(" (default)");
 
             return builder.ToString();
@@ -72,9 +75,7 @@ sealed class TypeInfoMappingCollection
     public TypeInfoMappingCollection() : this(0) { }
 
     public TypeInfoMappingCollection(IEnumerable<TypeInfoMapping> items)
-    {
-        _items = new(items);
-    }
+        => _items = new(items);
 
     public IReadOnlyList<TypeInfoMapping> Items => _items;
 
@@ -88,7 +89,7 @@ sealed class TypeInfoMappingCollection
             if (!IsMatch(mapping, type, dataTypeName))
                 continue;
 
-            if (mapping.IsDefault || dataTypeName is not null)
+            if (mapping.IsDefaultOrDefaultCompanion || dataTypeName is not null)
                 return mapping.Factory(options, mapping, dataTypeName is not null);
 
             typeMatch ??= mapping;
@@ -105,7 +106,7 @@ sealed class TypeInfoMappingCollection
                 return true;
 
             // We only match as a default if the type wasn't passed.
-            if (mapping.IsDefault && dataTypeMatch && type is null)
+            if (mapping.IsDefaultOrDefaultCompanion && dataTypeMatch && type is null)
                 return true;
 
             // Not a match
@@ -174,7 +175,7 @@ sealed class TypeInfoMappingCollection
         void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<PgTypeInfo, PgConverter> converter)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
-            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
+            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(elementMapping, converter)));
         }
     }
 
@@ -191,7 +192,7 @@ sealed class TypeInfoMappingCollection
         void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
-            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
+            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(elementMapping, converter)));
         }
     }
 
@@ -208,7 +209,7 @@ sealed class TypeInfoMappingCollection
     {
         TypeInfoMapping mapping;
         _items.Add(mapping = new TypeInfoMapping(type, dataTypeName, isDefault, createInfo));
-        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault: false,
+        _items.Add(new TypeInfoMapping(nullableType, dataTypeName, isDefault,
             CreateComposedFactory(mapping, nullableConverter, copyPreferredFormat: true)));
     }
 
@@ -233,11 +234,11 @@ sealed class TypeInfoMappingCollection
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
         TypeInfoMapping arrayMapping;
         TypeInfoMapping nullableArrayMapping;
-        _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
-        _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
+        _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(elementMapping, converter)));
+        _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(nullableElementMapping, nullableConverter)));
         // Don't add the object converter for the list based converter.
-        if (!suppressObjectMapping && (typeof(object) == elementMapping.Type || arrayMapping.IsDefault))
-            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) =>
+        if (!suppressObjectMapping && (typeof(object) == elementMapping.Type || arrayMapping.IsDefaultOrDefaultCompanion))
+            _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefaultOrDefaultCompanion: false, (options, mapping, dataTypeNameMatch) =>
             {
                 if (!dataTypeNameMatch)
                     throw new InvalidOperationException("Should not happen, please file a bug.");
@@ -274,10 +275,10 @@ sealed class TypeInfoMappingCollection
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
             TypeInfoMapping arrayMapping;
             TypeInfoMapping nullableArrayMapping;
-            _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter)));
-            _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, isDefault: false, CreateComposedFactory(nullableElementMapping, nullableConverter)));
-            if (!suppressObjectMapping && (typeof(object) == elementMapping.Type || arrayMapping.IsDefault))
-                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefault: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
+            _items.Add(arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(elementMapping, converter)));
+            _items.Add(nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(nullableElementMapping, nullableConverter)));
+            if (!suppressObjectMapping && (typeof(object) == elementMapping.Type || arrayMapping.IsDefaultOrDefaultCompanion))
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, isDefaultOrDefaultCompanion: false, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
                 {
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
                     ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array)),
@@ -306,7 +307,7 @@ sealed class TypeInfoMappingCollection
         void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
-            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefault, CreateComposedFactory(elementMapping, converter, unboxedType: typeof(Array))));
+            _items.Add(new TypeInfoMapping(type, arrayDataTypeName, elementMapping.IsDefaultOrDefaultCompanion, CreateComposedFactory(elementMapping, converter, unboxedType: typeof(Array))));
         }
     }
 
@@ -382,8 +383,7 @@ static class PgTypeInfoHelpers
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
         var typeToConvert = resolver.TypeToConvert;
-        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan());
-        PgTypeId? pgTypeId = includeDataTypeName && !isFullyQualified
+        PgTypeId? pgTypeId = includeDataTypeName && !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
             ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
@@ -398,8 +398,7 @@ static class PgTypeInfoHelpers
     {
         var typeToConvert = converter.TypeToConvert;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
-        var isFullyQualified = DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan());
-        var pgTypeId = !isFullyQualified
+        var pgTypeId = !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
             ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : new DataTypeName(mapping.DataTypeName);
         return new(options, converter, pgTypeId, unboxedType)

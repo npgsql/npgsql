@@ -376,7 +376,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return _dataTypeName;
 
             if (_npgsqlDbType is { } npgsqlDbType)
-                return npgsqlDbType.TryToUnqualifiedDataTypeName();
+                return npgsqlDbType.ToUnqualifiedDataTypeName();
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -503,23 +503,26 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (valueType == typeof(byte[]))
                 _dataTypeName = DataTypeNames.Bytea.Value;
 
-            PgTypeId? pgTypeId = null;
+            string? dataTypeName = null;
+            DataTypeName? builtinDataTypeName = null;
             if (_npgsqlDbType is { } npgsqlDbType)
-                pgTypeId = npgsqlDbType.TryToDataTypeName() switch
-                {
-                    { } name => options.GetCanonicalTypeId(name),
-                    // Handle plugin types via lookup.
-                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(npgsqlDbType.ToUnqualifiedDataTypeName()))
-                };
+            {
+                dataTypeName = npgsqlDbType.ToUnqualifiedDataTypeNameOrThrow();
+                builtinDataTypeName = npgsqlDbType.ToDataTypeName();
+            }
             else if (_dataTypeName is not null)
             {
-                var fqDataTypeName = PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName);
-                pgTypeId = fqDataTypeName.ToNpgsqlDbType()?.TryToDataTypeName() switch
-                {
-                    { } name => options.GetCanonicalTypeId(name),
-                    null => options.ToCanonicalTypeId(GetRepresentationalOrDefault(fqDataTypeName.Value))
-                };
+                dataTypeName = PostgresTypes.DataTypeName.NormalizeName(_dataTypeName);
+                // If we can find a match in an NpgsqlDbType we known we're dealing with a fully qualified built-in data type name.
+                builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
             }
+
+            var pgTypeId = dataTypeName is null ? (PgTypeId?)null : builtinDataTypeName switch
+            {
+                { } name => options.GetCanonicalTypeId(name),
+                // Handle plugin types via lookup.
+                null => GetRepresentationalOrDefault(dataTypeName)
+            };
 
             // We treat object typed DBNull values as default info.
             // Can only be true in the non-generic NpgsqlParameter case (as the generic can't access _value).
@@ -570,10 +573,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             PgTypeId = resolution.PgTypeId;
         }
 
-        PostgresType GetRepresentationalOrDefault(string dataTypeName)
+        PgTypeId GetRepresentationalOrDefault(string dataTypeName)
         {
             var type = options.TypeCatalog.GetPostgresTypeByName(dataTypeName);
-            return type.GetRepresentationalType() ?? type;
+            return options.ToCanonicalTypeId(type.GetRepresentationalType() ?? type);
         }
     }
 

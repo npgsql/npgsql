@@ -209,8 +209,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
 
+        // Void, no default as it's reading only.
         mappings.AddType<object>(DataTypeNames.Void,
-            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false));
 
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
@@ -230,6 +231,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
             isDefault: true);
 
+        // Int2vector
         mappings.AddType<short[]>(
             DataTypeNames.Int2Vector,
             static (options, mapping, _) => mapping.CreateInfo(options,
