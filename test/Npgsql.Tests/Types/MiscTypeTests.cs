@@ -49,7 +49,7 @@ class MiscTypeTests : MultiplexingTestBase
         {
             cmd.Parameters.AddWithValue("p1", DBNull.Value);
             cmd.Parameters.Add(new NpgsqlParameter<string?>("p2", null));
-            cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
+            cmd.Parameters.Add(new NpgsqlParameter<object>("p3", DBNull.Value));
 
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();

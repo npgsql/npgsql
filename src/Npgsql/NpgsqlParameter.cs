@@ -29,7 +29,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     private protected string? _dataTypeName;
 
     private protected string _name = string.Empty;
-    private protected object? _value;
+    object? _value;
     private protected string _sourceColumn;
 
     internal string TrimmedName { get; private protected set; } = PositionalName;
@@ -498,9 +498,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         var previouslyBound = TypeInfo?.Options == options;
         if (!previouslyBound)
         {
-            var valueType = ValueType;
+            var valueType = ValueType ?? typeof(object);
             // The only exceptional type that we don't want a 'random' default for is byte[] which should always map to bytea.
-            if (valueType == typeof(byte[]) && _dataTypeName is null && _npgsqlDbType is null)
+            if (valueType == typeof(byte[]))
                 _dataTypeName = DataTypeNames.Bytea.Value;
 
             PgTypeId? pgTypeId = null;
@@ -522,11 +522,18 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
 
             // We treat object typed DBNull values as default info.
-            // For ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)
+            // Can only be true in the non-generic NpgsqlParameter case (as the generic can't access _value).
+            if (_value is DBNull)
+                valueType = typeof(object);
+            // Can be the case for generic parameters.
+            // Meaning with ValueType == DBNull we would still use the type (though don't ask why you would construct a NpgsqlParamter<DBNull>)
+            else if (valueType == typeof(object) && Value is DBNull)
+                valueType = typeof(object);
 
-            if (valueType is null || _value is DBNull)
+            if (valueType == typeof(object))
             {
-                if (pgTypeId is null && valueType is null)
+                // Value here will never box as we're already in an object typed context.
+                if (pgTypeId is null && Value is not DBNull)
                 {
                     var parameterName = !string.IsNullOrEmpty(ParameterName) ? ParameterName : $"${Collection?.IndexOf(this) + 1}";
                     ThrowHelper.ThrowInvalidOperationException(
