@@ -230,6 +230,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
             isDefault: true);
 
+        mappings.AddType<short[]>(
+            DataTypeNames.Int2Vector,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                new ArrayBasedArrayConverter<short, short[]>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
+            isDefault: true);
+
         // Tid
         mappings.AddStructType<NpgsqlTid>(DataTypeNames.Tid,
             static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()), isDefault: true);
@@ -355,6 +361,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Oidvector
         mappings.AddArrayType<uint[]>((string)DataTypeNames.OidVector);
+
+        // Int2vector
+        mappings.AddArrayType<short[]>((string)DataTypeNames.Int2Vector);
     }
 }
 
