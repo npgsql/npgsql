@@ -113,7 +113,7 @@ class RangeTests : MultiplexingTestBase
         );
 
         await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
+        cmd.Parameters.Add(new NpgsqlParameter { DataTypeName = typeName, ParameterName = "p", Value = value });
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
         await reader.ReadAsync();
         Assert.That(reader[0], Is.EqualTo(value));
