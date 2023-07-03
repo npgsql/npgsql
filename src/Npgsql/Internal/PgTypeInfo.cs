@@ -187,7 +187,7 @@ public class PgTypeInfo
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
-        if (IsBoxing)
+        if (IsBoxing || typeof(T) == typeof(object))
             return BindObject(resolution, value, out writeState, out format, formatPreference);
 
         var converter = resolution.GetConverter<T>();
