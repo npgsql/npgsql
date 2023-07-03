@@ -250,7 +250,7 @@ class MiscTypeTests : MultiplexingTestBase
     public async Task Void()
     {
         await using var conn = await OpenConnectionAsync();
-        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.SameAs(DBNull.Value));
+        Assert.That(await conn.ExecuteScalarAsync("SELECT pg_sleep(0)"), Is.SameAs(null));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1364")]

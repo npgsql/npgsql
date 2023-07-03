@@ -117,6 +117,7 @@ static class DefaultPgTypes
             Create(DataTypeNames.Tid, oid: 27, arrayOid: 1010),
             Create(DataTypeNames.PgLsn, oid: 3220, arrayOid: 3221),
             Create(DataTypeNames.Unknown, oid: 705, arrayOid: 0, typeKind: PgTypeKind.Pseudo),
+            Create(DataTypeNames.Void, oid: 2278, arrayOid: 0, typeKind: PgTypeKind.Pseudo),
         };
 }
 
