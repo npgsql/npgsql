@@ -32,16 +32,12 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         return resolvers;
     }
 
-    // We must clone under the lock.
-    internal UserTypeMapper? GetUserMappings(bool cloneUserMappings = true)
+    internal IPgTypeInfoResolver? GetUserMappingsResolver()
     {
         _lock.EnterReadLock();
         try
         {
-            if (!cloneUserMappings)
-                return _userTypeMapper;
-
-            return _userTypeMapper.Items.Count > 0 ? _userTypeMapper.Clone() : null;
+            return _userTypeMapper.Items.Count > 0 ? _userTypeMapper.Build() : null;
         }
         finally
         {
@@ -75,8 +71,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             {
                 var resolvers = new List<IPgTypeInfoResolver>(_pluginResolvers);
                 resolvers.AddRange(_typeMappingResolvers);
-                // We allow later additions to the global type mapping lookup (we don't clone here).
-                resolvers.Add(_userTypeMapper);
+                resolvers.Add(_userTypeMapper.Build());
                 return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.
@@ -201,32 +196,12 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     /// <inheritdoc />
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        _lock.EnterWriteLock();
-        try
-        {
-            _userTypeMapper.MapComposite<T>(pgName, nameTranslator);
-            return this;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
+        => MapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-    {
-        _lock.EnterWriteLock();
-        try
-        {
-            return _userTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
+        => UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
     [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
@@ -245,6 +220,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
     public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _lock.EnterWriteLock();

@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Npgsql.Internal;
 using Npgsql.Internal.Descriptors;
@@ -331,7 +332,7 @@ public sealed class FieldDescription
             if (_objectOrDefaultTypeInfo is not null)
                 return _objectOrDefaultTypeInfo;
 
-            (_objectOrDefaultTypeInfo, _objectOrDefaultInfo) = BindWithTextFallback(GetTypeInfo(_serializerOptions, typeof(object), PostgresType));
+            (_objectOrDefaultTypeInfo, _objectOrDefaultInfo) = BindWithTextFallback(GetTypeInfo(_serializerOptions, typeof(object), PostgresType, TypeOID));
             return _objectOrDefaultTypeInfo;
         }
     }
@@ -370,18 +371,24 @@ public sealed class FieldDescription
             info = _lastInfo;
         else
         {
-            (_lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType), type);
+            (_lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
             _lastInfo = info;
         }
         return info;
     }
-    static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType)
-    {
-        if ((typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType)) is not { } info)
-            throw new InvalidCastException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for postgres type '{postgresType.DisplayName}'");
 
-        return info;
+    static PgTypeInfo GetTypeInfo(PgSerializerOptions options, Type type, PostgresType postgresType, Oid typeOid)
+    {
+        if (postgresType.OID is 0)
+            return ThrowReadingNotSupported(type, $"unknown oid: {typeOid}");
+
+        return (typeof(object) == type ? options.GetObjectOrDefaultTypeInfo(postgresType) : options.GetTypeInfo(type, postgresType))
+               ?? ThrowReadingNotSupported(type, postgresType.DisplayName);
     }
+
+    [DoesNotReturn]
+    static PgTypeInfo ThrowReadingNotSupported(Type type, string displayName)
+        => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for postgres type '{displayName}'");
 
     (PgTypeInfo, PgConverterInfo) BindWithTextFallback(PgTypeInfo info, Type? expectedType = null)
     {
@@ -396,7 +403,7 @@ public sealed class FieldDescription
             // For text we'll fall back to any available text converter for the expected clr type or throw.
             if (!info.TryBind(Field, Format, out converterInfo))
             {
-                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgUnknownType);
+                info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgUnknownType, TypeOID);
                 converterInfo = info.Bind(Field, Format);
             }
             break;
