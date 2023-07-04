@@ -94,7 +94,7 @@ public class ReplicationValue
     {
         CheckAndMarkConsumed();
 
-        var info = _fieldDescription.GetOrAddConverterInfo(typeof(T));
+        var info = _fieldDescription.GetConverterInfo(typeof(T));
 
         switch (Kind)
         {
@@ -127,7 +127,7 @@ public class ReplicationValue
 
             try
             {
-                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.Format);
+                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
                 await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
                 return info.AsObject
                     ? (T)await info.Converter.ReadAsObjectAsync(reader, cancellationToken)
@@ -184,7 +184,7 @@ public class ReplicationValue
 
             try
             {
-                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.Format);
+                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
                 await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
                 return await info.Converter.ReadAsObjectAsync(reader, cancellationToken);
             }
@@ -229,8 +229,8 @@ public class ReplicationValue
     /// </summary>
     public TextReader GetTextReader()
     {
-        var info = _fieldDescription.GetOrAddConverterInfo(typeof(TextReader));
-        var reader = _readBuffer.PgReader.Init(GetStream(), Length, _fieldDescription.Format);
+        var info = _fieldDescription.GetConverterInfo(typeof(TextReader));
+        var reader = _readBuffer.PgReader.Init(GetStream(), Length, _fieldDescription.DataFormat);
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
         return (TextReader)info.Converter.ReadAsObject(reader);
     }

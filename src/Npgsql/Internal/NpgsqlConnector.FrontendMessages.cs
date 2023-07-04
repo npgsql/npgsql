@@ -203,7 +203,7 @@ partial class NpgsqlConnector
         {
             if (WriteBuffer.WriteSpaceLeft < sizeof(short))
                 await Flush(async, cancellationToken).ConfigureAwait(false);
-            WriteBuffer.WriteInt16((short)FormatCode.Binary);
+            WriteBuffer.WriteInt16(DataFormat.Binary.ToFormatCode());
         }
         else if (formatCodeListLength > 1)
         {

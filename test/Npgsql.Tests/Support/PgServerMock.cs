@@ -224,7 +224,7 @@ class PgServerMock : IDisposable
             _writeBuffer.WriteUInt32(field.TypeOID);
             _writeBuffer.WriteInt16(field.TypeSize);
             _writeBuffer.WriteInt32(field.TypeModifier);
-            _writeBuffer.WriteInt16((short)field.FormatCode);
+            _writeBuffer.WriteInt16(field.DataFormat.ToFormatCode());
         }
 
         return this;

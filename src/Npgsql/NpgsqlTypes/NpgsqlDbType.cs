@@ -639,7 +639,7 @@ public enum NpgsqlDbType
 
 static class NpgsqlDbTypeExtensions
 {
-    public static NpgsqlDbType? ToNpgsqlDbType(this DbType dbType)
+    internal static NpgsqlDbType? ToNpgsqlDbType(this DbType dbType)
         => dbType switch
         {
             DbType.AnsiString => NpgsqlDbType.Text,
@@ -715,7 +715,7 @@ static class NpgsqlDbTypeExtensions
         };
 
     /// Can return null when a custom range type is used.
-    public static string? ToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
+    internal static string? ToUnqualifiedDataTypeName(this NpgsqlDbType npgsqlDbType)
         => npgsqlDbType switch
         {
             // Numeric types
@@ -825,11 +825,11 @@ static class NpgsqlDbTypeExtensions
                 : null // e.g. ranges
         };
 
-    public static string ToUnqualifiedDataTypeNameOrThrow(this NpgsqlDbType npgsqlDbType)
+    internal static string ToUnqualifiedDataTypeNameOrThrow(this NpgsqlDbType npgsqlDbType)
         => npgsqlDbType.ToUnqualifiedDataTypeName() ?? throw new ArgumentOutOfRangeException(nameof(npgsqlDbType), npgsqlDbType, "Cannot convert NpgsqlDbType to DataTypeName");
 
     /// Can return null when a plugin type or custom range type is used.
-    public static DataTypeName? ToDataTypeName(this NpgsqlDbType npgsqlDbType)
+    internal static DataTypeName? ToDataTypeName(this NpgsqlDbType npgsqlDbType)
         => npgsqlDbType switch
         {
             // Numeric types
@@ -927,8 +927,8 @@ static class NpgsqlDbTypeExtensions
             _ => null
         };
 
-    public static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
-    public static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
+    internal static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
+    internal static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
     {
         var displayName = dataTypeName;
         if (dataTypeName.IndexOf(".", StringComparison.Ordinal) is not -1 and var index)

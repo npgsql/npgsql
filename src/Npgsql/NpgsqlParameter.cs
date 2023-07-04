@@ -41,7 +41,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     internal PgConverter? Converter { get; private set; }
     internal Size? ConvertedSize { get; set; }
     internal bool AsObject { get; private protected set; }
-    internal FormatCode Format { get; private protected set; }
+    internal DataFormat Format { get; private protected set; }
 
     #endregion
 
@@ -596,7 +596,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
         ConvertedSize = info?.BufferRequirement;
         AsObject = info?.AsObject ?? false;
-        Format = dataFormat is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text;
+        Format = dataFormat;
     }
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
@@ -610,7 +610,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         {
             try
             {
-                writer.Current = new() { Format = Format is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text, Size = size, WriteState = _writeState };
+                writer.Current = new() { Format = Format, Size = size, WriteState = _writeState };
 
                 // TODO check write buffer requirement instead of flushing right away for size.Value.
                 if (writer.ShouldFlush(sizeof(int) + size.Value))
