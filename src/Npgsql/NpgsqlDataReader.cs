@@ -1429,6 +1429,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
 
         SeekToColumn(ordinal, false).GetAwaiter().GetResult();
+
         if (ColumnLen is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
@@ -1633,6 +1634,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
         var field = CheckRowAndGetField(ordinal);
         var info = field.GetOrAddConverterInfo(typeof(TextReader));
+
+        await SeekToColumn(ordinal, async);
+        if (ColumnLen is -1)
+            ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
         var reader = Buffer.PgReader.Init(async
             ? await GetStreamInternal(field, ordinal, true, cancellationToken)

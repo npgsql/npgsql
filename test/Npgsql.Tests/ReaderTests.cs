@@ -926,14 +926,14 @@ LANGUAGE plpgsql VOLATILE";
         using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             reader.Read();
-            Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<NotSupportedException>());
         }
         // Simple type handler
         using (var cmd = new NpgsqlCommand("SELECT 1", conn))
         using (var reader = await cmd.ExecuteReaderAsync(Behavior))
         {
             reader.Read();
-            Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<NotSupportedException>());
         }
         Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
     }
@@ -1549,8 +1549,8 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(actual, Is.EqualTo(expected));
         //Assert.That(reader.GetChars(2, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
 
-        Assert.That(() => reader.GetChars(3, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
-        Assert.That(() => reader.GetChars(3, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
+        Assert.That(() => reader.GetChars(3, 0, null, 0, 0), Throws.Exception.TypeOf<NotSupportedException>(), "GetChars on non-text");
+        Assert.That(() => reader.GetChars(3, 0, actual, 0, 1), Throws.Exception.TypeOf<NotSupportedException>(), "GetChars on non-text");
         Assert.That(reader.GetInt32(3), Is.EqualTo(4));
         reader.GetChars(4, 0, actual, 0, 2);
         // Jump to another column from the middle of the column

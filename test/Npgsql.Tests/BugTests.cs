@@ -1204,7 +1204,7 @@ BEGIN
 END;
 $$;");
 
-        Assert.ThrowsAsync<InvalidCastException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
+        Assert.ThrowsAsync<NotSupportedException>(async () => await connection.ExecuteScalarAsync($"SELECT {func}(0)"));
     }
 
     [Test]
