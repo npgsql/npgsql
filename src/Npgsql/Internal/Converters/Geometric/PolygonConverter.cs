@@ -16,13 +16,13 @@ public class PolygonConverter : PgStreamingConverter<NpgsqlPolygon>
 
     async ValueTask<NpgsqlPolygon> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        if (reader.Remaining < sizeof(int))
+        if (reader.ShouldBuffer(sizeof(int)))
             await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var numPoints = reader.ReadInt32();
         var result = new NpgsqlPolygon(numPoints);
         for (var i = 0; i < numPoints; i++)
         {
-            if (reader.Remaining < sizeof(double) * 2)
+            if (reader.ShouldBuffer(sizeof(double) * 2))
                 await reader.BufferData(async, sizeof(double) * 2, cancellationToken).ConfigureAwait(false);
             result.Add(new NpgsqlPoint(reader.ReadDouble(), reader.ReadDouble()));
         }
