@@ -8,7 +8,6 @@ using Npgsql.Internal;
 using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
 using Npgsql.Replication.PgOutput.Messages;
-using Npgsql.Util;
 
 namespace Npgsql.BackendMessages;
 
@@ -66,7 +65,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
                 oid:                   buf.ReadUInt32(),
                 typeSize:              buf.ReadInt16(),
                 typeModifier:          buf.ReadInt32(),
-                formatCode:            (FormatCode)buf.ReadInt16()
+                dataFormat:            DataFormatUtils.Create(buf.ReadInt16())
             );
 
             _nameIndex.TryAdd(field.Name, i);
@@ -76,7 +75,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
     }
 
     internal static RowDescriptionMessage CreateForReplication(
-        PgSerializerOptions options, uint tableOID, FormatCode formatCode, IReadOnlyList<RelationMessage.Column> columns)
+        PgSerializerOptions options, uint tableOID, DataFormat dataFormat, IReadOnlyList<RelationMessage.Column> columns)
     {
         var msg = new RowDescriptionMessage(columns.Count);
         var numFields = msg.Count = columns.Count;
@@ -94,7 +93,7 @@ sealed class RowDescriptionMessage : IBackendMessage, IReadOnlyList<FieldDescrip
                 oid: column.DataTypeId,
                 typeSize: 0, // TODO: Confirm we don't have this in replication
                 typeModifier: column.TypeModifier,
-                formatCode: formatCode
+                dataFormat: dataFormat
             );
 
             if (!msg._nameIndex.ContainsKey(field.Name))
@@ -216,11 +215,11 @@ public sealed class FieldDescription
     internal FieldDescription() { }
 
     internal FieldDescription(uint oid)
-        : this("?", 0, 0, oid, 0, 0, FormatCode.Binary) { }
+        : this("?", 0, 0, oid, 0, 0, DataFormat.Binary) { }
 
     internal FieldDescription(
         string name, uint tableOID, short columnAttributeNumber,
-        uint oid, short typeSize, int typeModifier, FormatCode formatCode)
+        uint oid, short typeSize, int typeModifier, DataFormat dataFormat)
     {
         Name = name;
         TableOID = tableOID;
@@ -228,7 +227,7 @@ public sealed class FieldDescription
         TypeOID = oid;
         TypeSize = typeSize;
         TypeModifier = typeModifier;
-        FormatCode = formatCode;
+        DataFormat = dataFormat;
     }
 #pragma warning restore CS8618
 
@@ -241,7 +240,7 @@ public sealed class FieldDescription
         TypeOID = source.TypeOID;
         TypeSize = source.TypeSize;
         TypeModifier = source.TypeModifier;
-        FormatCode = source.FormatCode;
+        DataFormat = source.DataFormat;
         _postgresType = source.PostgresType;
         _objectOrDefaultTypeInfo = source._objectOrDefaultTypeInfo;
         _objectOrDefaultInfo = source._objectOrDefaultInfo;
@@ -251,7 +250,7 @@ public sealed class FieldDescription
 
     internal void Populate(
         PgSerializerOptions serializerOptions, string name, uint tableOID, short columnAttributeNumber,
-        uint oid, short typeSize, int typeModifier, FormatCode formatCode
+        uint oid, short typeSize, int typeModifier, DataFormat dataFormat
     )
     {
         Reset();
@@ -262,7 +261,7 @@ public sealed class FieldDescription
         TypeOID = oid;
         TypeSize = typeSize;
         TypeModifier = typeModifier;
-        FormatCode = formatCode;
+        DataFormat = dataFormat;
 
         void Reset()
         {
@@ -309,9 +308,7 @@ public sealed class FieldDescription
     /// Currently will be zero (text) or one (binary).
     /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
     /// </summary>
-    internal FormatCode FormatCode { get; set; }
-
-    internal DataFormat Format => FormatCode is FormatCode.Binary ? DataFormat.Binary : DataFormat.Text;
+    internal DataFormat DataFormat { get; set; }
 
     internal Field Field => new(Name, _serializerOptions.ToCanonicalTypeId(PostgresType), TypeModifier);
 
@@ -371,7 +368,7 @@ public sealed class FieldDescription
         return field;
     }
 
-    internal PgConverterInfo GetOrAddConverterInfo(Type type)
+    internal PgConverterInfo GetConverterInfo(Type type, bool overwrite = true)
     {
         PgConverterInfo info;
         if (ObjectOrDefaultTypeInfo.Type == type)
@@ -380,8 +377,12 @@ public sealed class FieldDescription
             info = _lastInfo;
         else
         {
-            (_lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
-            _lastInfo = info;
+            (var lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
+            if (overwrite)
+            {
+                _lastTypeInfo = lastTypeInfo;
+                _lastInfo = info;
+            }
         }
         return info;
     }
@@ -402,18 +403,18 @@ public sealed class FieldDescription
     (PgTypeInfo, PgConverterInfo) BindWithTextFallback(PgTypeInfo info, Type? expectedType = null)
     {
         PgConverterInfo converterInfo;
-        switch (Format)
+        switch (DataFormat)
         {
         case DataFormat.Binary:
             // If we don't support binary we'll just throw.
-            converterInfo = info.Bind(Field, Format);
+            converterInfo = info.Bind(Field, DataFormat);
             break;
         default:
             // For text we'll fall back to any available text converter for the expected clr type or throw.
-            if (!info.TryBind(Field, Format, out converterInfo))
+            if (!info.TryBind(Field, DataFormat, out converterInfo))
             {
                 info = GetTypeInfo(_serializerOptions, expectedType ?? typeof(string), _serializerOptions.PgUnknownType, TypeOID);
-                converterInfo = info.Bind(Field, Format);
+                converterInfo = info.Bind(Field, DataFormat);
             }
             break;
         }

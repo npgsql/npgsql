@@ -1733,9 +1733,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         for (var i = 0; i < rowDescription.Count; i++)
         {
             var field = rowDescription[i];
-            field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
-                ? FormatCode.Text
-                : FormatCode.Binary;
+            field.DataFormat = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                ? DataFormat.Text
+                : DataFormat.Binary;
         }
     }
 

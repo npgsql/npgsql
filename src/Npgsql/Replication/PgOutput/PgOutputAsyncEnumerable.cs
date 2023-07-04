@@ -90,7 +90,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
             _slot, cancellationToken, _walLocation, _options.GetOptionPairs(), bypassingStream: true);
         var buf = _connection.Connector!.ReadBuffer;
         var inStreamingTransaction = false;
-        var formatCode = _options.Binary ?? false ? FormatCode.Binary : FormatCode.Text;
+        var dataFormat = _options.Binary ?? false ? DataFormat.Binary : DataFormat.Text;
 
         await foreach (var xLogData in stream.WithCancellation(cancellationToken))
         {
@@ -192,7 +192,7 @@ sealed class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessa
                 }
 
                 msg.RowDescription = RowDescriptionMessage.CreateForReplication(
-                    _connection.Connector.SerializerOptions, relationId, formatCode, columns);
+                    _connection.Connector.SerializerOptions, relationId, dataFormat, columns);
 
                 yield return msg;
                 continue;

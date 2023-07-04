@@ -457,8 +457,8 @@ public readonly record struct NpgsqlInet
     public static explicit operator IPAddress(NpgsqlInet inet)
         => inet.Address;
 
-    public static implicit operator NpgsqlInet(IPAddress? ip)
-        => ip is null ? new() : new(ip);
+    public static implicit operator NpgsqlInet(IPAddress ip)
+        => new(ip);
 
     public void Deconstruct(out IPAddress address, out byte netmask)
     {

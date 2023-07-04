@@ -78,7 +78,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
         ConvertedSize = info?.BufferRequirement;
         AsObject = info?.AsObject ?? false;
-        Format = dataFormat is DataFormat.Binary ? FormatCode.Binary : FormatCode.Text;
+        Format = dataFormat;
     }
 
     private protected override ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)

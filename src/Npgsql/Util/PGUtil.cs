@@ -145,12 +145,6 @@ static class PGUtil
     internal static readonly Task<bool> FalseTask = Task.FromResult(false);
 }
 
-enum FormatCode : short
-{
-    Text = 0,
-    Binary = 1
-}
-
 static class EnumerableExtensions
 {
     internal static string Join(this IEnumerable<string> values, string separator)
