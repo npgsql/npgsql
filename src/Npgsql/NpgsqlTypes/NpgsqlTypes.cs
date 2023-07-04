@@ -433,13 +433,13 @@ public readonly record struct NpgsqlInet
     {
         switch (addr.Split('/'))
         {
-        case [var ip, var netmask]:
-            Address = IPAddress.Parse(ip);
-            Netmask = byte.Parse(netmask);
+        case { Length: 2 } segments:
+            Address = IPAddress.Parse(segments[0]);
+            Netmask = byte.Parse(segments[1]);
             return;
 
-        case [var ip]:
-            Address = IPAddress.Parse(ip);
+        case { Length: 1 } segments:
+            Address = IPAddress.Parse(segments[0]);
             Netmask = 32;
             return;
 
@@ -491,14 +491,13 @@ public readonly record struct NpgsqlCidr
     {
         switch (addr.Split('/'))
         {
-        case [var ip, var netmask]:
-            Address = IPAddress.Parse(ip);
-            Netmask = byte.Parse(netmask);
+        case { Length: 2 } segments:
+            Address = IPAddress.Parse(segments[0]);
+            Netmask = byte.Parse(segments[1]);
             return;
 
-        case [_]:
+        case { Length: 1 } segments:
             throw new FormatException("Missing netmask");
-
         default:
             throw new FormatException("Invalid number of parts in CIDR specification");
         }

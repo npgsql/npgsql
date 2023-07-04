@@ -125,7 +125,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
         // If we have a schema we're done, Postgres doesn't do display name conversions on fully qualified names.
         // There is one exception and that's array syntax, which is always resolvable in both ways, while we want the canonical name.
-        if (displayNameSpan.IndexOf('.') != -1 && !displayNameSpan.EndsWith("[]"))
+        if (displayNameSpan.IndexOf('.') != -1 && !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
             return new(displayDataTypeName);
 
         // First we strip the schema to get the type name.
@@ -222,7 +222,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     internal static string NormalizeName(string dataTypeName)
     {
         var fqName = FromDisplayName(dataTypeName);
-        return IsFullyQualified(dataTypeName) ? fqName.Value : fqName.UnqualifiedName;
+        return IsFullyQualified(dataTypeName.AsSpan()) ? fqName.Value : fqName.UnqualifiedName;
     }
 
     public override string ToString() => Value;
