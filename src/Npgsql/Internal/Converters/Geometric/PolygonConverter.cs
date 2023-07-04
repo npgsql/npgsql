@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
@@ -6,7 +5,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class PolygonConverter : PgStreamingConverter<NpgsqlPolygon>
+sealed class PolygonConverter : PgStreamingConverter<NpgsqlPolygon>
 {
     public override NpgsqlPolygon Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();

@@ -3,7 +3,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class CircleConverter : PgBufferedConverter<NpgsqlCircle>
+sealed class CircleConverter : PgBufferedConverter<NpgsqlCircle>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

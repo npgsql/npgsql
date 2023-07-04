@@ -3,7 +3,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class LineSegmentConverter : PgBufferedConverter<NpgsqlLSeg>
+sealed class LineSegmentConverter : PgBufferedConverter<NpgsqlLSeg>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

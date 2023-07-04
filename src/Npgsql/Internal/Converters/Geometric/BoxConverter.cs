@@ -3,7 +3,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class BoxConverter : PgBufferedConverter<NpgsqlBox>
+sealed class BoxConverter : PgBufferedConverter<NpgsqlBox>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
