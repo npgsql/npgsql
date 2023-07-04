@@ -2,8 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
