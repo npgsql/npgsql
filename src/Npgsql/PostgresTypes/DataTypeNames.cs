@@ -57,6 +57,7 @@ static class DataTypeNames
     public static DataTypeName Json => ValidatedName("pg_catalog.json");
     public static DataTypeName Jsonb => ValidatedName("pg_catalog.jsonb");
     public static DataTypeName JsonPath => ValidatedName("pg_catalog.jsonpath");
+    public static DataTypeName Record => ValidatedName("pg_catalog.record");
     public static DataTypeName RefCursor => ValidatedName("pg_catalog.refcursor");
     public static DataTypeName OidVector => ValidatedName("pg_catalog.oidvector");
     public static DataTypeName Int2Vector => ValidatedName("pg_catalog.int2vector");

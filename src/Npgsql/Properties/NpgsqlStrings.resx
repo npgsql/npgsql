@@ -69,4 +69,7 @@
     <data name="FullTextSearchNotEnabled" xml:space="preserve">
         <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
     </data>
+    <data name="WriteRecordNotSupported" xml:space="preserve">
+        <value>Writing record parameters isn't supported by PostgreSQL.</value>
+    </data>
 </root>
