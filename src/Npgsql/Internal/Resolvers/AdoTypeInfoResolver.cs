@@ -218,6 +218,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()), isDefault: true);
         }
 
+        // Char
+        mappings.AddStructType<char>(DataTypeNames.Char,
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()), isDefault: true);
+        mappings.AddStructType<byte>(DataTypeNames.Char,
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()));
+
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()), isDefault: true);
@@ -360,6 +366,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         {
             mappings.AddStructArrayType<uint>(dataTypeName);
         }
+
+        mappings.AddStructArrayType<char>((string)DataTypeNames.Char);
+        mappings.AddStructArrayType<byte>((string)DataTypeNames.Char);
 
         // Xid8
         mappings.AddStructArrayType<ulong>((string)DataTypeNames.Xid8);
