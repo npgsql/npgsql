@@ -245,6 +245,11 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()), isDefault: true);
         mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
+
+        // Uuid
+        mappings.AddStructType<Guid>(DataTypeNames.Uuid,
+            static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()),
+            isDefault: true);
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
