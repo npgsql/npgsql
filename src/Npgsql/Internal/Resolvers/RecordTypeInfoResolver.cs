@@ -1,13 +1,35 @@
 using System;
-using Npgsql.Internal;
+using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
 class RecordTypeInfoResolver : IPgTypeInfoResolver
 {
-    public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    TypeInfoMappingCollection Mappings { get; }
+
+    public RecordTypeInfoResolver()
     {
-        return null;
+        Mappings = new TypeInfoMappingCollection();
+        AddInfos(Mappings);
+        // TODO: Opt-in only
+        AddArrayInfos(Mappings);
+    }
+
+    public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
+
+    static void AddInfos(TypeInfoMappingCollection mappings)
+    {
+        mappings.AddType<object[]>(DataTypeNames.Record,
+            static (options, mapping, _) => mapping.CreateInfo(options, new RecordObjectArrayConverter(options), supportsWriting: false),
+            isDefault: true);
+        // TODO: ValueTuple
+        // TODO: Tuple
+    }
+
+    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    {
+        mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
     }
 }

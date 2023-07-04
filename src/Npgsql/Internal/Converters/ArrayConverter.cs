@@ -132,7 +132,7 @@ readonly struct PgArrayConverter
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
                 if (reader.ShouldBuffer(_readRequirement))
-                    await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                    await reader.BufferData(async, _readRequirement, cancellationToken).ConfigureAwait(false);
             }
             await _elementOperations.Read(async, reader, isDbNull, collection, i, cancellationToken).ConfigureAwait(false);
         }
