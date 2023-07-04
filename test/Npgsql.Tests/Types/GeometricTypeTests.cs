@@ -31,7 +31,7 @@ class GeometricTypeTests : MultiplexingTestBase
     [Test]
     public Task Path_closed()
         => AssertType(
-            new NpgsqlPath(new[] {new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)}, false),
+            new NpgsqlPath(new[] { new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4) }, false),
             "((1,2),(3,4))",
             "path",
             NpgsqlDbType.Path);
