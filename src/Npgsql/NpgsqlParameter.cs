@@ -545,7 +545,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 }
 
                 TypeInfo = options.GetDefaultTypeInfo(pgTypeId ?? options.ToCanonicalTypeId(options.PgUnknownType)) ?? throw new NotSupportedException(
-                    $"Couldn't find converter for parameter with {(_npgsqlDbType is not null
+                    $"Writing is not supported for parameter with {(_npgsqlDbType is not null
                         ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
             }
             else
@@ -554,9 +554,9 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 {
                     null when typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType) && valueType != typeof(string)
                         => throw new NotSupportedException(
-                            "IEnumerable parameters are not supported, pass an array or List instead."),
+                            "Writing is not supported for IEnumerable parameters, pass an array or List instead."),
                     null => throw new NotSupportedException(
-                        $"Couldn't find converter for parameter of type {valueType}{(_npgsqlDbType is not null
+                        $"Writing is not supported for parameter of type {valueType}{(_npgsqlDbType is not null
                             ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}."),
                     var typeInfo => typeInfo
                 };
