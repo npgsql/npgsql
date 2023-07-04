@@ -17,7 +17,6 @@ class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
         AddArrayInfos(Mappings);
     }
 
-
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
