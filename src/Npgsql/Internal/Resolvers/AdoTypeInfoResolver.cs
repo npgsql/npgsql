@@ -193,8 +193,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+            // TODO we shouldn't have to make this default but we must shadow internal char[].
             mappings.AddType<char[]>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
             mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ArraySegment<char>>(dataTypeName,
@@ -220,7 +221,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Char
         mappings.AddStructType<char>(DataTypeNames.Char,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>(), supportsWriting: false));
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>(), supportsWriting: false), isDefault: true);
         mappings.AddStructType<byte>(DataTypeNames.Char,
             static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>(), supportsWriting: false));
 
