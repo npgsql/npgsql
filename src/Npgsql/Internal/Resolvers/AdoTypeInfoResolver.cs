@@ -220,9 +220,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Char
         mappings.AddStructType<char>(DataTypeNames.Char,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>(), supportsWriting: false));
         mappings.AddStructType<byte>(DataTypeNames.Char,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()));
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>(), supportsWriting: false));
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
@@ -367,6 +367,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructArrayType<uint>(dataTypeName);
         }
 
+        // Char
         mappings.AddStructArrayType<char>((string)DataTypeNames.Char);
         mappings.AddStructArrayType<byte>((string)DataTypeNames.Char);
 
