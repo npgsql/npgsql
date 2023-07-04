@@ -9,7 +9,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
+sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 {
     readonly Encoding _encoding;
 

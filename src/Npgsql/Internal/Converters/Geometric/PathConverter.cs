@@ -6,7 +6,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class PathConverter : PgStreamingConverter<NpgsqlPath>
+sealed class PathConverter : PgStreamingConverter<NpgsqlPath>
 {
     public override NpgsqlPath Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();

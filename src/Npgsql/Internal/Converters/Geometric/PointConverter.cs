@@ -3,7 +3,7 @@ using NpgsqlTypes;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class PointConverter : PgBufferedConverter<NpgsqlPoint>
+sealed class PointConverter : PgBufferedConverter<NpgsqlPoint>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

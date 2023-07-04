@@ -10,7 +10,7 @@ using static NpgsqlTypes.NpgsqlTsQuery.NodeKind;
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
-public class TsQueryConverter<T> : PgStreamingConverter<T>
+sealed class TsQueryConverter<T> : PgStreamingConverter<T>
     where T : NpgsqlTsQuery
 {
     readonly Encoding _encoding;
