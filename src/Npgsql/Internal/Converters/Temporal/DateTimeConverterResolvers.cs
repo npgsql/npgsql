@@ -35,10 +35,10 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         {
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return expectedPgTypeId == _timestamp
-                ? throw new ArgumentException(
+                ? throw new InvalidCastException(
                     "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
                     "consider using 'timestamp with time zone'. " +
-                    "Note that it's not possible to mix DateTimes with different Kinds in an array/range.", nameof(value))
+                    "Note that it's not possible to mix DateTimes with different Kinds in an array/range.")
                 : GetDefault(expectedPgTypeId ?? _timestampTz);
         }
 
@@ -46,9 +46,9 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         if (expectedPgTypeId == _timestampTz
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
-            throw new ArgumentException(
+            throw new InvalidCastException(
                 $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
-                "Note that it's not possible to mix DateTimes with different Kinds in an array/range. ", nameof(value));
+                "Note that it's not possible to mix DateTimes with different Kinds in an array/range. ");
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
@@ -78,8 +78,7 @@ sealed class DateTimeOffsetUtcOnlyConverterResolver : PgConverterResolver<DateTi
         var resolution = GetDefault(expectedPgTypeId ?? _timestampTz);
         return value.Offset == TimeSpan.Zero
             ? resolution
-            : throw new ArgumentException(
-                $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ",
-                nameof(value));
+            : throw new InvalidCastException(
+                $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ");
     }
 }
