@@ -1,6 +1,7 @@
 using NpgsqlTypes;
 
-namespace Npgsql.Internal.Converters.Internal;
+// ReSharper disable once CheckNamespace
+namespace Npgsql.Internal.Converters;
 
 sealed class PgLsnConverter : PgBufferedConverter<NpgsqlLogSequenceNumber>
 {

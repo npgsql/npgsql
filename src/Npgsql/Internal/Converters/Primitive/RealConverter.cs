@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class RealConverter<T> : PgBufferedConverter<T>

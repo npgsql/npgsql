@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 // sealed class ByteaConverter : PgStreamingConverter<byte[]>

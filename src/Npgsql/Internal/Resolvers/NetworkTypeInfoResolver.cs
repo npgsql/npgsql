@@ -7,12 +7,10 @@ using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-namespace Npgsql.TypeMapping.Resolvers;
+namespace Npgsql.Internal.Resolvers;
 
 class NetworkTypeInfoResolver : IPgTypeInfoResolver
 {
-    public static NetworkTypeInfoResolver Instance { get; } = new();
-
     TypeInfoMappingCollection Mappings { get; }
 
     public NetworkTypeInfoResolver()

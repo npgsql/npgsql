@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class BoolConverter : PgBufferedConverter<bool>

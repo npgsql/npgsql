@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Npgsql.Properties;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types;
 

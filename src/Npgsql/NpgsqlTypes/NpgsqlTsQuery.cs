@@ -89,7 +89,7 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
         var pos = 0;
         var expectingBinOp = false;
 
-        var lastFollowedByOpDistance = -1;
+        short lastFollowedByOpDistance = -1;
 
         NextToken:
         if (pos >= value.Length)
@@ -125,7 +125,7 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
             {
                 lastFollowedByOpDistance = 1;
             }
-            else if (!int.TryParse(followedByOpDistanceString, out lastFollowedByOpDistance)
+            else if (!short.TryParse(followedByOpDistanceString, out lastFollowedByOpDistance)
                      || lastFollowedByOpDistance < 0)
             {
                 throw new FormatException("Syntax error in tsquery. Malformed distance in 'followed by' operator.");
@@ -383,9 +383,9 @@ public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
 readonly struct NpgsqlTsQueryOperator
 {
     public readonly char Char;
-    public readonly int FollowedByDistance;
+    public readonly short FollowedByDistance;
 
-    public NpgsqlTsQueryOperator(char character, int followedByDistance)
+    public NpgsqlTsQueryOperator(char character, short followedByDistance)
     {
         Char = character;
         FollowedByDistance = followedByDistance;
@@ -670,7 +670,7 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
     /// <summary>
     /// The distance between the 2 nodes, in lexemes.
     /// </summary>
-    public int Distance { get; set; }
+    public short Distance { get; set; }
 
     /// <summary>
     /// Creates a "followed by" operator, specifying 2 child nodes and the
@@ -681,7 +681,7 @@ public sealed class NpgsqlTsQueryFollowedBy : NpgsqlTsQueryBinOp
     /// <param name="right"></param>
     public NpgsqlTsQueryFollowedBy(
         NpgsqlTsQuery left,
-        int distance,
+        short distance,
         NpgsqlTsQuery right)
         : base(NodeKind.Phrase, left, right)
     {
