@@ -312,7 +312,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Cannot_mix_DateTime_Kinds_in_array()
-        => AssertTypeUnsupportedWrite<DateTime[], Exception>(new[]
+        => AssertTypeUnsupportedWrite(new[]
         {
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
             new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Local),
