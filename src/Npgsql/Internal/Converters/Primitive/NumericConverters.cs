@@ -21,7 +21,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
             ? stackalloc short[StackAllocByteThreshold / sizeof(short)]
             : (digitsFromPool = ArrayPool<short>.Shared.Rent(digitCount)).AsSpan()).Slice(0, digitCount);
 
-        var value = ConvertTo(NumericConverter.Read(reader, digits));
+        var value = ConvertTo(NumericConverters.Read(reader, digits));
 
         if (digitsFromPool is not null)
             ArrayPool<short>.Shared.Return(digitsFromPool);
@@ -42,7 +42,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
             await reader.BufferDataAsync(PgNumeric.GetByteCount(0), cancellationToken).ConfigureAwait(false);
             var digitCount = reader.ReadInt16();
             var digits = new ArraySegment<short>(ArrayPool<short>.Shared.Rent(digitCount), 0, digitCount);
-            var value = ConvertTo(await NumericConverter.ReadAsync(reader, digits, cancellationToken).ConfigureAwait(false));
+            var value = ConvertTo(await NumericConverters.ReadAsync(reader, digits, cancellationToken).ConfigureAwait(false));
 
             ArrayPool<short>.Shared.Return(digits.Array!);
 
@@ -59,7 +59,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
         // If it's not enough for the builder will do a heap allocation (for decimal it's always enough).
         Span<short> destination = stackalloc short[StackAllocByteThreshold / sizeof(short)];
         var numeric = ConvertFrom(value, destination);
-        NumericConverter.Write(writer, numeric);
+        NumericConverters.Write(writer, numeric);
     }
 
     public override ValueTask WriteAsync(PgWriter writer, BigInteger value, CancellationToken cancellationToken = default)
@@ -75,7 +75,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
         {
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
             var numeric = ConvertFrom(value, Array.Empty<short>()).Build();
-            await NumericConverter.WriteAsync(writer, numeric, cancellationToken).ConfigureAwait(false);
+            await NumericConverters.WriteAsync(writer, numeric, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -98,7 +98,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
     }
 
     public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => readRequirement = writeRequirement = Size.CreateUpperBound(NumericConverter.DecimalBasedMaxByteCount);
+        => readRequirement = writeRequirement = Size.CreateUpperBound(NumericConverters.DecimalBasedMaxByteCount);
 
     protected override T ReadCore(PgReader reader)
     {
@@ -108,7 +108,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
             ? stackalloc short[StackAllocByteThreshold / sizeof(short)]
             : (digitsFromPool = ArrayPool<short>.Shared.Rent(digitCount)).AsSpan()).Slice(0, digitCount);
 
-        var value = ConvertTo(NumericConverter.Read(reader, digits));
+        var value = ConvertTo(NumericConverters.Read(reader, digits));
 
         if (digitsFromPool is not null)
             ArrayPool<short>.Shared.Return(digitsFromPool);
@@ -135,7 +135,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
         // We don't know how many digits we need so we allocate enough for the builder to use.
         Span<short> destination = stackalloc short[PgNumeric.Builder.MaxDecimalNumericDigits];
         var numeric = ConvertFrom(value, destination);
-        NumericConverter.Write(writer, numeric);
+        NumericConverters.Write(writer, numeric);
     }
 
     static PgNumeric.Builder ConvertFrom(T value, Span<short> destination)
@@ -195,7 +195,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
     }
 }
 
-static class NumericConverter
+static class NumericConverters
 {
     public static int DecimalBasedMaxByteCount = PgNumeric.GetByteCount(PgNumeric.Builder.MaxDecimalNumericDigits);
 
