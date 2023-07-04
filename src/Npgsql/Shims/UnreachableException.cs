@@ -1,7 +1,7 @@
 #if !NET7_0_OR_GREATER
 using System;
 
-namespace Npgsql.Shims;
+namespace System.Diagnostics;
 
 /// <summary>
 /// Exception thrown when the program executes an instruction that was thought to be unreachable.
