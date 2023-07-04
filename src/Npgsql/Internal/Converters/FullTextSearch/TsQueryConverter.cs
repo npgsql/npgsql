@@ -13,9 +13,6 @@ namespace Npgsql.Internal.Converters;
 public class TsQueryConverter<T> : PgStreamingConverter<T>
     where T : NpgsqlTsQuery
 {
-    // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
-    const int MaxSingleTokenBytes = 2050;
-
     readonly Encoding _encoding;
 
     public TsQueryConverter(Encoding encoding)
@@ -177,13 +174,22 @@ public class TsQueryConverter<T> : PgStreamingConverter<T>
 
             if (node.Kind is Lexeme)
             {
-                if (writer.ShouldFlush(MaxSingleTokenBytes))
+                var lexemeNode = (NpgsqlTsQueryLexeme)node;
+
+                if (writer.ShouldFlush(sizeof(byte) + sizeof(byte)))
                     await writer.Flush(async, cancellationToken);
 
-                var lexemeNode = (NpgsqlTsQueryLexeme)node;
                 writer.WriteByte((byte)lexemeNode.Weights);
                 writer.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
-                writer.WriteChars(lexemeNode.Text.AsMemory().Span, _encoding);
+
+                if (async)
+                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), _encoding, cancellationToken);
+                else
+                    writer.WriteChars(lexemeNode.Text.AsMemory().Span, _encoding);
+
+                if (writer.ShouldFlush(sizeof(byte)))
+                    await writer.Flush(async, cancellationToken);
+
                 writer.WriteByte(0);
                 return;
             }
