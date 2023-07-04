@@ -2,7 +2,7 @@ using System;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 
-namespace Npgsql.TypeMapping.Resolvers;
+namespace Npgsql.Internal.Resolvers;
 
 class RangeTypeInfoResolver : IPgTypeInfoResolver
 {

@@ -1,6 +1,7 @@
 using System;
 using Npgsql.PostgresTypes;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>

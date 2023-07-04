@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.NetworkInformation;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
@@ -10,7 +11,7 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
 
     protected override PhysicalAddress ReadCore(PgReader reader)
     {
-        var len = reader.Current.Size.Value;
+        var len = reader.CurrentSize;
         Debug.Assert(len is 6 or 8);
 
         var bytes = new byte[len];

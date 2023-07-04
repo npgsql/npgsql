@@ -46,6 +46,9 @@ public class PgReader
     public void CopyTo(Span<byte> destination)
         => _buffer.ReadBytes(destination);
 
+    public ValueTask<string> ReadNullTerminatedString(bool async, CancellationToken cancellationToken = default)
+        => _buffer.ReadNullTerminatedString(async, cancellationToken);
+
     public ReadOnlySequence<byte> ReadBytes(int byteCount)
     {
         var valueSize = CurrentSize;

@@ -1,6 +1,7 @@
 using System;
 using NpgsqlTypes;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>

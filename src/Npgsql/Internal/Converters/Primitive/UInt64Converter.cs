@@ -1,3 +1,4 @@
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class UInt64Converter : PgBufferedConverter<ulong>

@@ -92,6 +92,8 @@ NpgsqlTypes.NpgsqlCidr.NpgsqlCidr(System.Net.IPAddress! address, byte netmask) -
 NpgsqlTypes.NpgsqlInet.Deconstruct(out System.Net.IPAddress! address, out byte netmask) -> void
 NpgsqlTypes.NpgsqlInet.NpgsqlInet(System.Net.IPAddress! address, byte netmask) -> void
 NpgsqlTypes.NpgsqlInet.Netmask.get -> byte
+NpgsqlTypes.NpgsqlTsQueryFollowedBy.Distance.get -> short
+NpgsqlTypes.NpgsqlTsQueryFollowedBy.NpgsqlTsQueryFollowedBy(NpgsqlTypes.NpgsqlTsQuery! left, short distance, NpgsqlTypes.NpgsqlTsQuery! right) -> void
 override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*static NpgsqlTypes.NpgsqlBox.Parse(string! s) -> NpgsqlTypes.NpgsqlBox
 *REMOVED*static NpgsqlTypes.NpgsqlCircle.Parse(string! s) -> NpgsqlTypes.NpgsqlCircle
@@ -106,6 +108,8 @@ override Npgsql.NpgsqlBatch.Dispose() -> void
 *REMOVED*NpgsqlTypes.NpgsqlInet.Equals(NpgsqlTypes.NpgsqlInet other) -> bool
 *REMOVED*NpgsqlTypes.NpgsqlInet.Netmask.get -> int
 *REMOVED*NpgsqlTypes.NpgsqlInet.Netmask.set -> void
+*REMOVED*NpgsqlTypes.NpgsqlTsQueryFollowedBy.Distance.get -> int
+*REMOVED*NpgsqlTypes.NpgsqlTsQueryFollowedBy.NpgsqlTsQueryFollowedBy(NpgsqlTypes.NpgsqlTsQuery! left, int distance, NpgsqlTypes.NpgsqlTsQuery! right) -> void
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRow(params object![]! values) -> void
 *REMOVED*Npgsql.NpgsqlBinaryImporter.WriteRowAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), params object![]! values) -> System.Threading.Tasks.Task!
 *REMOVED*override Npgsql.NpgsqlDataReader.GetProviderSpecificFieldType(int ordinal) -> System.Type!

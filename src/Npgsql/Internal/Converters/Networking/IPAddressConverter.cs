@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class IPAddressConverter : PgBufferedConverter<IPAddress>

@@ -1,5 +1,6 @@
 using System;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>

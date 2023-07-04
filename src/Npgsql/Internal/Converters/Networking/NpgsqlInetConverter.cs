@@ -1,10 +1,10 @@
 using System;
-using System.Buffers;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using NpgsqlTypes;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>

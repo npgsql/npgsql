@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters.Types;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;
 
 sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
