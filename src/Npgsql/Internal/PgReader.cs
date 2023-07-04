@@ -28,13 +28,6 @@ public class PgReader
 
     internal ArraySegment<byte> UserSuppliedByteArray { get; private set; }
     internal Stream? TextReaderStream { get; private set; }
-    public bool CanReadBuffered(out bool requireRead)
-    {
-        Debug.Assert(Current.Size.Kind is SizeKind.Exact);
-        requireRead = Remaining < CurrentSize;
-        return BufferSize >= CurrentSize;
-    }
-
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
     public byte ReadByte() => _buffer.ReadByte();
