@@ -157,10 +157,10 @@ sealed class TypeInfoMappingCollection
             return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, unboxedType, preferredFormat, supportsWriting);
         };
 
-    public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, bool isDefault = false, bool matchAssignableFrom = false) where T : class
-        => AddType<T>((string)dataTypeName, createInfo, isDefault, matchAssignableFrom);
-    public void AddType<T>(string elementDataTypeName, TypeInfoFactory createInfo, bool isDefault = false, bool matchAssignableFrom = false) where T : class
-        => _items.Add(new TypeInfoMapping(typeof(T), elementDataTypeName, isDefault, createInfo, matchAssignableFrom ? type => typeof(T).IsAssignableFrom(type) : null));
+    public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, bool isDefault = false, bool matchAssignableTo = false) where T : class
+        => AddType<T>((string)dataTypeName, createInfo, isDefault, matchAssignableTo);
+    public void AddType<T>(string elementDataTypeName, TypeInfoFactory createInfo, bool isDefault = false, bool matchAssignableTo = false) where T : class
+        => _items.Add(new TypeInfoMapping(typeof(T), elementDataTypeName, isDefault, createInfo, matchAssignableTo ? type => typeof(T).IsAssignableFrom(type) : null));
 
     public void AddArrayType<TElement>(string elementDataTypeName) where TElement : class
         => AddArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName));

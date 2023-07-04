@@ -35,17 +35,22 @@ class NetworkTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
 
         // inet
+        // This is one of the rare mappings that force us to use reflection for a lack of any alternative.
+        // There are certain IPAddress values like Loopback or Any that return a *private* derived type (see https://github.com/dotnet/runtime/issues/27870).
+        // However we still need to be able to resolve an exactly typed converter for those values.
+        // We do so by wrapping our converter in a casting converter constructed over the derived type.
+        // Finally we pass matchAssignableTo: true to be able to match any type which values are assignable to IPAddress.
         mappings.AddType<IPAddress>(DataTypeNames.Inet,
             [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
-            static (options, mapping, _) =>
+            static (options, resolvedMapping, _) =>
             {
                 PgConverter converter = new IPAddressConverter();
-                if (mapping.Type != typeof(IPAddress))
+                if (resolvedMapping.Type != typeof(IPAddress))
                     // There is not much more we can do, the deriving type IPAdress+ReadOnlyIPAdress isn't public.
-                    converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(mapping.Type), converter)!;
+                    converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
 
-                return mapping.CreateInfo(options, converter);
-            }, isDefault: true, matchAssignableFrom: true);
+                return resolvedMapping.CreateInfo(options, converter);
+            }, isDefault: true, matchAssignableTo: true);
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
 
