@@ -417,10 +417,9 @@ public class PgWriter
     public bool ShouldFlush(Size bufferRequirement)
     {
         EnsureInit();
-        if (FlushMode is FlushMode.None)
-            return false;
 
-        return Remaining < (bufferRequirement.Kind is SizeKind.Unknown ? Current.Size.Value : bufferRequirement.Value);
+        return FlushMode is not FlushMode.None &&
+               Remaining < (bufferRequirement.Kind is SizeKind.Unknown ? Current.Size.Value : bufferRequirement.Value);
     }
 
     public void Flush(TimeSpan timeout = default)

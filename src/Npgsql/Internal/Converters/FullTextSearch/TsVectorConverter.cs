@@ -13,10 +13,6 @@ public class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 {
     readonly Encoding _encoding;
 
-    // 2561 = 2046 (max length lexeme string) + (1) null terminator +
-    // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/weights))
-    const int MaxSingleLexemeBytes = 2561;
-
     public TsVectorConverter(Encoding encoding)
         => _encoding = encoding;
 
@@ -86,15 +82,24 @@ public class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 
         foreach (var lexeme in value)
         {
-            if (writer.ShouldFlush(MaxSingleLexemeBytes))
-                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
+            if (async)
+                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), _encoding, cancellationToken);
+            else
+                writer.WriteChars(lexeme.Text.AsMemory().Span, _encoding);
 
-            writer.WriteChars(lexeme.Text.AsMemory().Span, _encoding);
+            if (writer.ShouldFlush(sizeof(byte) + sizeof(short)))
+                await writer.Flush(async, cancellationToken);
+
             writer.WriteByte(0);
             writer.WriteInt16((short)lexeme.Count);
 
             for (var i = 0; i < lexeme.Count; i++)
+            {
+                if (writer.ShouldFlush(sizeof(short)))
+                    await writer.Flush(async, cancellationToken);
+
                 writer.WriteInt16(lexeme[i].Value);
+            }
         }
     }
 }
