@@ -412,6 +412,8 @@ public abstract class TestBase
     protected NpgsqlDataSource DefaultDataSource
         => GetDataSource(ConnectionString);
 
+    protected void ClearDataSources() => DataSources.Clear();
+
     protected virtual NpgsqlConnection CreateConnection()
         => DefaultDataSource.CreateConnection();
 

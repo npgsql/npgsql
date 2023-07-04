@@ -249,7 +249,7 @@ public abstract class NpgsqlDataSource : DbDataSource
             connector.SerializerOptions = SerializerOptions = new(databaseInfo)
             {
                 ArrayNullabilityMode = Settings.ArrayNullabilityMode,
-                EnableDateTimeInfinityConversions = true,
+                EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
                 TextEncoding = connector.TextEncoding,
                 TypeInfoResolver = _resolver
             };

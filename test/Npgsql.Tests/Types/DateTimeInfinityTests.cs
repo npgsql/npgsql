@@ -22,11 +22,15 @@ public class DateTimeInfinityTests : TestBase, IDisposable
         {
             Parameters =
             {
-                new() { Value = DateTime.MinValue, NpgsqlDbType = NpgsqlDbType.TimestampTz },
+                new()
+                {
+                    Value = DisableDateTimeInfinityConversions ? DateTime.MinValue.ToUniversalTime().AddYears(1) : DateTime.MinValue,
+                    NpgsqlDbType = NpgsqlDbType.TimestampTz
+                },
             }
         };
 
-        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions ? "0001-01-01 00:00:00" : "-infinity"));
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(DisableDateTimeInfinityConversions ? "0002-01-01 00:00:00" : "-infinity"));
 
         cmd.Parameters[0].Value = DateTime.MaxValue;
 
@@ -205,6 +209,8 @@ public class DateTimeInfinityTests : TestBase, IDisposable
                 "DateTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
         }
 #endif
+        // The switch is baked into the serializer options, so clear the sources on change here.
+        ClearDataSources();
     }
 
     public void Dispose()
