@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.NetworkInformation;
 using Npgsql.Internal;
@@ -35,7 +36,16 @@ class NetworkTypeInfoResolver : IPgTypeInfoResolver
 
         // inet
         mappings.AddType<IPAddress>(DataTypeNames.Inet,
-            static (options, mapping, _) => mapping.CreateInfo(options, new IPAddressConverter()), isDefault: true);
+            [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
+            static (options, mapping, _) =>
+            {
+                PgConverter converter = new IPAddressConverter();
+                if (mapping.Type != typeof(IPAddress))
+                    // There is not much more we can do, the deriving type IPAdress+ReadOnlyIPAdress isn't public.
+                    converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(mapping.Type), converter)!;
+
+                return mapping.CreateInfo(options, converter);
+            }, isDefault: true, matchAssignableFrom: true);
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
 
