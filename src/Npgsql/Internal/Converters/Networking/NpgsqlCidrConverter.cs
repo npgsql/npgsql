@@ -6,14 +6,14 @@ namespace Npgsql.Internal.Converters;
 sealed class NpgsqlCidrConverter : PgBufferedConverter<NpgsqlCidr>
 {
     public override Size GetSize(SizeContext context, NpgsqlCidr value, ref object? writeState)
-        => NpgsqlInetConverter.DoGetSize(context, value.Address, ref writeState);
+        => NpgsqlInetConverter.GetSizeImpl(context, value.Address, ref writeState);
 
     protected override NpgsqlCidr ReadCore(PgReader reader)
     {
-        var (ip, netmask) = NpgsqlInetConverter.DoReadCore(reader, shouldBeCidr: true);
+        var (ip, netmask) = NpgsqlInetConverter.ReadImpl(reader, shouldBeCidr: true);
         return new(ip, netmask);
     }
 
     protected override void WriteCore(PgWriter writer, NpgsqlCidr value)
-        => NpgsqlInetConverter.DoWriteCore(writer, (value.Address, value.Netmask), isCidr: false);
+        => NpgsqlInetConverter.WriteImpl(writer, (value.Address, value.Netmask), isCidr: false);
 }

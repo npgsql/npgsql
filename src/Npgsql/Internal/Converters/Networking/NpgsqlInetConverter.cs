@@ -13,9 +13,9 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     const byte IPv6 = 3;
 
     public override Size GetSize(SizeContext context, NpgsqlInet value, ref object? writeState)
-        => DoGetSize(context, value.Address, ref writeState);
+        => GetSizeImpl(context, value.Address, ref writeState);
 
-    internal static Size DoGetSize(SizeContext context, IPAddress ipAddress, ref object? writeState)
+    internal static Size GetSizeImpl(SizeContext context, IPAddress ipAddress, ref object? writeState)
         => ipAddress.AddressFamily switch
         {
             AddressFamily.InterNetwork => 8,
@@ -26,11 +26,11 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
 
     protected override NpgsqlInet ReadCore(PgReader reader)
     {
-        var (ip, netmask) = DoReadCore(reader, shouldBeCidr: false);
+        var (ip, netmask) = ReadImpl(reader, shouldBeCidr: false);
         return new(ip, netmask);
     }
 
-    internal static (IPAddress Address, byte Netmask) DoReadCore(PgReader reader, bool shouldBeCidr)
+    internal static (IPAddress Address, byte Netmask) ReadImpl(PgReader reader, bool shouldBeCidr)
     {
         _ = reader.ReadByte(); // addressFamily
         var mask = reader.ReadByte(); // mask
@@ -49,9 +49,9 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     }
 
     protected override void WriteCore(PgWriter writer, NpgsqlInet value)
-        => DoWriteCore(writer, (value.Address, value.Netmask), isCidr: false);
+        => WriteImpl(writer, (value.Address, value.Netmask), isCidr: false);
 
-    internal static void DoWriteCore(PgWriter writer, (IPAddress Address, byte Netmask) value, bool isCidr)
+    internal static void WriteImpl(PgWriter writer, (IPAddress Address, byte Netmask) value, bool isCidr)
     {
         writer.WriteByte(value.Address.AddressFamily switch
         {

@@ -85,7 +85,7 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
             await writer.FlushAsync(cancellationToken);
 
         writer.WriteInt32(value.Length);
-        await writer.WriteRawAsync(new ReadOnlySpan<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
+        await writer.WriteRawAsync(new ReadOnlyMemory<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
 
         _arrayPool.Return(array);
     }
