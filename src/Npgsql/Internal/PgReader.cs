@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,8 +22,8 @@ public class PgReader
     public ref ValueMetadata Current => ref _current;
     public int CurrentSize => Current.Size.Value;
 
-    public int BufferSize => _buffer.Size;
-    public int Remaining => _buffer.ReadBytesLeft;
+    internal int BufferSize => _buffer.Size;
+    internal int Remaining => _buffer.ReadBytesLeft;
 
     internal ArraySegment<byte> UserSuppliedByteArray { get; private set; }
     internal Stream? TextReaderStream { get; private set; }
@@ -49,26 +48,38 @@ public class PgReader
     public ValueTask<string> ReadNullTerminatedString(bool async, CancellationToken cancellationToken = default)
         => _buffer.ReadNullTerminatedString(async, cancellationToken);
 
-    public ReadOnlySequence<byte> ReadBytes(int byteCount)
+    public ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        var valueSize = CurrentSize;
-        if (valueSize < byteCount)
-            throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
-        var array = _pooledArray = ArrayPool.Rent(byteCount);
-        var stream = _buffer.GetStream(byteCount, canSeek: false);
-        stream.ReadExactly(array, 0, byteCount);
-        return new(array, 0, byteCount);
+        var count = buffer.Length;
+        if (CurrentSize < count)
+            throw new ArgumentOutOfRangeException(nameof(buffer), "Value is smaller than the requested read size");
+
+        return _buffer.GetStream(count, canSeek: false).ReadExactlyAsync(buffer, cancellationToken);
     }
 
-    public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int byteCount, CancellationToken cancellationToken = default)
+    public void ReadBytes(Span<byte> buffer)
     {
-        var valueSize = CurrentSize;
-        if (valueSize < byteCount)
-            throw new ArgumentOutOfRangeException(nameof(byteCount), "Value is smaller than the requested read size");
-        var array = _pooledArray = ArrayPool.Rent(byteCount);
-        var stream = _buffer.GetStream(byteCount, canSeek: false);
-        await stream.ReadExactlyAsync(array, 0, byteCount, cancellationToken);
-        return new(array, 0, byteCount);
+        var count = buffer.Length;
+        if (CurrentSize < count)
+            throw new ArgumentOutOfRangeException(nameof(buffer), "Value is smaller than the requested read size");
+
+        _buffer.GetStream(count, canSeek: false).ReadExactly(buffer);
+    }
+
+    /// ReadBytes without memory management, the next read returns the underlying buffer, only use this for intermediate transformations.
+    public ReadOnlySequence<byte> ReadBytes(int count)
+    {
+        var array = RentArray(count);
+        ReadBytes(array.AsSpan(0, count));
+        return new(array, 0, count);
+    }
+
+    /// ReadBytesAsync without memory management, the next read returns the underlying buffer, only use this for intermediate transformations.
+    public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
+    {
+        var array = RentArray(count);
+        await ReadBytesAsync(array.AsMemory(0, count), cancellationToken);
+        return new(array, 0, count);
     }
 
     public void Rewind(int count)
@@ -107,6 +118,15 @@ public class PgReader
             TextReaderStream = null;
         if (_pooledArray is not null)
             ArrayPool.Return(_pooledArray);
+    }
+
+    byte[] RentArray(int count)
+    {
+        var pooledArray = _pooledArray;
+        var array = _pooledArray = ArrayPool.Rent(count);
+        if (pooledArray is not null)
+            ArrayPool.Return(pooledArray);
+        return array;
     }
 
     int GetBufferRequirementByteCount(Size bufferRequirement)

@@ -7,13 +7,13 @@ namespace Npgsql.Internal.Converters;
 sealed class IPAddressConverter : PgBufferedConverter<IPAddress>
 {
     public override Size GetSize(SizeContext context, IPAddress value, ref object? writeState)
-        => NpgsqlInetConverter.DoGetSize(context, value, ref writeState);
+        => NpgsqlInetConverter.GetSizeImpl(context, value, ref writeState);
 
     protected override IPAddress ReadCore(PgReader reader)
-        => NpgsqlInetConverter.DoReadCore(reader, shouldBeCidr: false).Address;
+        => NpgsqlInetConverter.ReadImpl(reader, shouldBeCidr: false).Address;
 
     protected override void WriteCore(PgWriter writer, IPAddress value)
-        => NpgsqlInetConverter.DoWriteCore(
+        => NpgsqlInetConverter.WriteImpl(
             writer,
             (value, (byte)(value.AddressFamily == AddressFamily.InterNetwork ? 32 : 128)),
             isCidr: false);

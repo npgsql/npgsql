@@ -390,24 +390,24 @@ public class PgWriter
     }
 
     // TODO: Make sure to loop and flush
-    public void WriteRaw(ReadOnlySpan<byte> span)
+    public void WriteRaw(ReadOnlySpan<byte> buffer)
     {
-        if (span.Length <= Remaining)
+        if (buffer.Length <= Remaining)
         {
-            span.CopyTo(Span);
-            Advance(span.Length);
+            buffer.CopyTo(Span);
+            Advance(buffer.Length);
             return;
         }
 
         throw new NotImplementedException();
     }
 
-    public ValueTask WriteRawAsync(ReadOnlySpan<byte> span, CancellationToken cancellationToken = default)
+    public ValueTask WriteRawAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        if (span.Length <= Remaining)
+        if (buffer.Length <= Remaining)
         {
-            span.CopyTo(Span);
-            Advance(span.Length);
+            buffer.Span.CopyTo(Span);
+            Advance(buffer.Length);
             return default;
         }
 
