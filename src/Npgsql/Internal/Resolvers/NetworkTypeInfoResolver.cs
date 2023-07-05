@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.NetworkInformation;
-using Npgsql.Internal;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -30,14 +29,15 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr,
             static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
         mappings.AddType<PhysicalAddress>(DataTypeNames.MacAddr8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new MacaddrConverter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // inet
         // This is one of the rare mappings that force us to use reflection for a lack of any alternative.
         // There are certain IPAddress values like Loopback or Any that return a *private* derived type (see https://github.com/dotnet/runtime/issues/27870).
         // However we still need to be able to resolve an exactly typed converter for those values.
         // We do so by wrapping our converter in a casting converter constructed over the derived type.
-        // Finally we pass matchAssignableTo: true to be able to match any type which values are assignable to IPAddress.
+        // Finally we add a custom predicate to be able to match any type which values are assignable to IPAddress.
         mappings.AddType<IPAddress>(DataTypeNames.Inet,
             [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
             static (options, resolvedMapping, _) =>
@@ -48,7 +48,7 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
                     converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
 
                 return resolvedMapping.CreateInfo(options, converter);
-            }, isDefault: true, matchAssignableTo: true);
+            }, mapping => mapping with { MatchRequirement = MatchRequirement.One, TypeMatchPredicate = type => typeof(IPAddress).IsAssignableFrom(type) });
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
 

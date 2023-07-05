@@ -43,19 +43,31 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<float>()), isDefault: true);
         mappings.AddStructType<double>(DataTypeNames.Float8,
             static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter<double>()), isDefault: true);
-        mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
         mappings.AddStructType<decimal>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<decimal>()), isDefault: true);
+        mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
+            static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
 
-        // Text types
-        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        // Text
+        mappings.AddType<string>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+        mappings.AddType<char[]>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddStructType<char>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+
+        // Alternative text types
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
-            // TODO we shouldn't have to make this default but we must shadow internal char[].
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
+                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
             mappings.AddType<char[]>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<ArraySegment<char>>(dataTypeName,
@@ -120,7 +132,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Date
         mappings.AddStructType<DateTime>(DataTypeNames.Date,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)), isDefault: true);
+                mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<int>(DataTypeNames.Date,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
 #if NET6_0_OR_GREATER
@@ -140,67 +153,75 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // TimeTz
         mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimeTz,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetTimeTzConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetTimeTzConverter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Interval
         mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
-            static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
-            static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
-        // Void, no default as it's reading only.
+        // Void
         mappings.AddType<object>(DataTypeNames.Void,
-            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false));
+            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false), mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
         {
             mappings.AddStructType<uint>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()), isDefault: true);
+                static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()),
+                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         }
 
         // Char
         mappings.AddStructType<char>(DataTypeNames.Char,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>(), supportsWriting: false), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<byte>(DataTypeNames.Char,
             static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>(), supportsWriting: false));
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Oidvector
         mappings.AddType<uint[]>(
             DataTypeNames.OidVector,
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
-            isDefault: true);
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Int2vector
         mappings.AddType<short[]>(
             DataTypeNames.Int2Vector,
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new ArrayBasedArrayConverter<short, short[]>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
-            isDefault: true);
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Tid
         mappings.AddStructType<NpgsqlTid>(DataTypeNames.Tid,
-            static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // PgLsn
         mappings.AddStructType<NpgsqlLogSequenceNumber>(DataTypeNames.PgLsn,
-            static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()), isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
 
         // Uuid
         mappings.AddStructType<Guid>(DataTypeNames.Uuid,
             static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()),
-            isDefault: true);
+            mapping => mapping with { CanDefault = MappingDefault.Clr });
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -273,8 +294,15 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Interval
         mappings.AddStructArrayType<TimeSpan>((string)DataTypeNames.Interval);
 
-        // Text types
-        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        // Text
+        mappings.AddArrayType<string>((string)DataTypeNames.Text);
+        mappings.AddArrayType<char[]>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<ReadOnlyMemory<char>>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
+
+        // Altenative text types
+        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddArrayType<char[]>(dataTypeName);
