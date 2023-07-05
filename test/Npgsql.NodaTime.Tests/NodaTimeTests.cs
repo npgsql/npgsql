@@ -2,6 +2,7 @@
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
+using Npgsql.NodaTime.Properties;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -12,8 +13,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.NodaTime.Tests;
 
-// Since this test suite manipulates TimeZone, it is incompatible with multiplexing
-public class NodaTimeTests : TestBase
+public class NodaTimeTests : MultiplexingTestBase
 {
     #region Timestamp without time zone
 
@@ -29,7 +29,8 @@ public class NodaTimeTests : TestBase
 
     [Test, TestCaseSource(nameof(TimestampValues))]
     public Task Timestamp_as_LocalDateTime(LocalDateTime localDateTime, string sqlLiteral)
-        => AssertType(localDateTime, sqlLiteral, "timestamp without time zone", NpgsqlDbType.Timestamp, DbType.DateTime2);
+        => AssertType(localDateTime, sqlLiteral, "timestamp without time zone", NpgsqlDbType.Timestamp, DbType.DateTime2,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Timestamp_as_unspecified_DateTime()
@@ -132,7 +133,8 @@ public class NodaTimeTests : TestBase
 
     [Test, TestCaseSource(nameof(TimestamptzValues))]
     public Task Timestamptz_as_Instant(Instant instant, string sqlLiteral)
-        => AssertType(instant, sqlLiteral, "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime);
+        => AssertType(instant, sqlLiteral, "timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTime,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Timestamptz_as_ZonedDateTime()
@@ -142,6 +144,7 @@ public class NodaTimeTests : TestBase
             "timestamp with time zone",
             NpgsqlDbType.TimestampTz,
             DbType.DateTime,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
@@ -152,6 +155,7 @@ public class NodaTimeTests : TestBase
             "timestamp with time zone",
             NpgsqlDbType.TimestampTz,
             DbType.DateTime,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
@@ -418,7 +422,8 @@ public class NodaTimeTests : TestBase
 
     [Test]
     public Task Date_as_LocalDate()
-        => AssertType(new LocalDate(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date);
+        => AssertType(new LocalDate(2020, 10, 1), "2020-10-01", "date", NpgsqlDbType.Date, DbType.Date,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Date_as_DateTime()
@@ -535,7 +540,8 @@ public class NodaTimeTests : TestBase
 
     [Test]
     public Task Time_as_LocalTime()
-        => AssertType(new LocalTime(10, 45, 34, 500), "10:45:34.5", "time without time zone", NpgsqlDbType.Time, DbType.Time);
+        => AssertType(new LocalTime(10, 45, 34, 500), "10:45:34.5", "time without time zone", NpgsqlDbType.Time, DbType.Time,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Time_as_TimeSpan()
@@ -569,7 +575,8 @@ public class NodaTimeTests : TestBase
             new OffsetTime(new LocalTime(1, 2, 3, 4).PlusNanoseconds(5000), Offset.FromHoursAndMinutes(3, 30) + Offset.FromSeconds(5)),
             "01:02:03.004005+03:30:05",
             "time with time zone",
-            NpgsqlDbType.TimeTz);
+            NpgsqlDbType.TimeTz,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public async Task TimeTz_as_DateTimeOffset()
@@ -608,7 +615,8 @@ public class NodaTimeTests : TestBase
             }.Build().Normalize(),
             "1 year 2 mons 25 days 05:06:07.008009",
             "interval",
-            NpgsqlDbType.Interval);
+            NpgsqlDbType.Interval,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Interval_as_Duration()
@@ -618,24 +626,28 @@ public class NodaTimeTests : TestBase
             "5 days 00:04:03.002001",
             "interval",
             NpgsqlDbType.Interval,
-            isDefaultForReading: false);
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
-    public Task Interval_as_Duration_with_months_fails()
-        => AssertTypeUnsupportedRead<Duration, NpgsqlException>("2 months", "interval");
+    public async Task Interval_as_Duration_with_months_fails()
+    {
+        var exception = await AssertTypeUnsupportedRead<Duration, NpgsqlException>("2 months", "interval");
+        Assert.That(exception.Message, Is.EqualTo(NpgsqlNodaTimeStrings.CannotReadIntervalWithMonthsAsDuration));
+    }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3438")]
     public async Task Bug3438()
     {
         await using var conn = await OpenConnectionAsync();
-        using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+        await using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
 
         var expected = Duration.FromSeconds(2148);
 
         cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
         cmd.Parameters.AddWithValue("p2", expected);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
+        await using var reader = await cmd.ExecuteReaderAsync();
+        await reader.ReadAsync();
         for (var i = 0; i < 2; i++)
         {
             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Period)));
@@ -646,15 +658,16 @@ public class NodaTimeTests : TestBase
 
     #region Support
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
-    {
-        var conn = await base.OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
-        return conn;
-    }
+    protected override NpgsqlDataSource DataSource { get; }
 
-    protected override NpgsqlConnection OpenConnection()
-        => throw new NotSupportedException();
+    public NodaTimeTests(MultiplexingMode multiplexingMode)
+        : base(multiplexingMode)
+    {
+        var builder = CreateDataSourceBuilder();
+        builder.UseNodaTime();
+        builder.ConnectionStringBuilder.Options = "-c TimeZone=Europe/Berlin";
+        DataSource = builder.Build();
+    }
 
     #endregion Support
 }

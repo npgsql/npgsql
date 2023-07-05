@@ -17,9 +17,9 @@ namespace Npgsql.Internal;
 /// <param name="resolvedDataTypeName">
 /// Signals whether a resolver based TypeInfo can keep its PgTypeId undecided or whether it should follow mapping.DataTypeName.
 /// </param>
-delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
+public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfoMapping mapping, bool resolvedDataTypeName);
 
-enum MatchRequirement
+public enum MatchRequirement
 {
     /// Match when the clr type and datatype name both match.
     All,
@@ -30,7 +30,7 @@ enum MatchRequirement
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-readonly struct TypeInfoMapping
+public readonly struct TypeInfoMapping
 {
     public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
     {
@@ -71,7 +71,7 @@ readonly struct TypeInfoMapping
     }
 }
 
-sealed class TypeInfoMappingCollection
+public sealed class TypeInfoMappingCollection
 {
     readonly TypeInfoMappingCollection? _baseCollection;
     readonly List<TypeInfoMapping> _items;
@@ -504,7 +504,7 @@ sealed class TypeInfoMappingCollection
         => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
 }
 
-static class PgTypeInfoHelpers
+public static class PgTypeInfoHelpers
 {
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {

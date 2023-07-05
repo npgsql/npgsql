@@ -241,14 +241,14 @@ public abstract class TestBase
             // With (non-generic) value only
             p = new NpgsqlParameter { Value = valueFactory() };
             cmd.Parameters.Add(p);
-            errorIdentifier[++errorIdentifierIndex] = "Value only (non-generic)";
+            errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, non-generic)";
             if (isNpgsqlDbTypeInferredFromClrType)
                 CheckInference();
 
             // With (generic) value only
             p = new NpgsqlParameter<T> { TypedValue = valueFactory() };
             cmd.Parameters.Add(p);
-            errorIdentifier[++errorIdentifierIndex] = "Value only (generic)";
+            errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
             if (isNpgsqlDbTypeInferredFromClrType)
                 CheckInference();
         }
@@ -412,10 +412,12 @@ public abstract class TestBase
     protected NpgsqlDataSource DefaultDataSource
         => GetDataSource(ConnectionString);
 
+    protected virtual NpgsqlDataSource DataSource => DefaultDataSource;
+
     protected void ClearDataSources() => DataSources.Clear();
 
     protected virtual NpgsqlConnection CreateConnection()
-        => DefaultDataSource.CreateConnection();
+        => DataSource.CreateConnection();
 
     protected virtual NpgsqlConnection OpenConnection()
     {

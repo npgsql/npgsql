@@ -1,5 +1,6 @@
 using System;
 using NodaTime;
+using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
@@ -27,17 +28,40 @@ static class NodaTimeUtils
     /// Decodes a PostgreSQL timestamp/timestamptz into a NodaTime Instant.
     /// </summary>
     /// <param name="value">The number of microseconds from 2000-01-01T00:00:00.</param>
+    /// <param name="dateTimeInfinityConversions">Whether infinity date/time conversions are enabled.</param>
     /// <remarks>
     /// Unfortunately NodaTime doesn't have Duration.FromMicroseconds(), so we decompose into milliseconds and nanoseconds.
     /// </remarks>
-    internal static Instant DecodeInstant(long value)
-        => Instant2000 + Duration.FromMilliseconds(value / 1000) + Duration.FromNanoseconds(value % 1000 * 1000);
+    internal static Instant DecodeInstant(long value, bool dateTimeInfinityConversions)
+        => value switch
+        {
+            long.MaxValue => dateTimeInfinityConversions
+                ? Instant.MaxValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue),
+            long.MinValue => dateTimeInfinityConversions
+                ? Instant.MinValue
+                : throw new InvalidCastException(NpgsqlNodaTimeStrings.CannotReadInfinityValue),
+            _ => Instant2000 + Duration.FromMilliseconds(value / 1000) + Duration.FromNanoseconds(value % 1000 * 1000)
+        };
 
     /// <summary>
     /// Encodes a NodaTime Instant to a PostgreSQL timestamp/timestamptz.
     /// </summary>
-    internal static long EncodeInstant(Instant instant)
+    internal static long EncodeInstant(Instant instant, bool dateTimeInfinityConversions)
     {
+        if (dateTimeInfinityConversions)
+        {
+            if (instant == Instant.MaxValue)
+            {
+                return long.MaxValue;
+            }
+
+            if (instant == Instant.MinValue)
+            {
+                return long.MinValue;
+            }
+        }
+
         // We need to write the number of microseconds from 2000-01-01T00:00:00.
         var since2000 = instant - Instant2000;
 

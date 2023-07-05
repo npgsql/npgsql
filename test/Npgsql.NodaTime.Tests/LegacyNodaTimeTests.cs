@@ -1,4 +1,3 @@
-using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
@@ -8,8 +7,7 @@ using NUnit.Framework;
 
 namespace Npgsql.NodaTime.Tests;
 
-// Since this test suite manipulates TimeZone, it is incompatible with multiplexing
-[NonParallelizable]
+[NonParallelizable] // Since this test suite manipulates an AppContext switch
 public class LegacyNodaTimeTests : TestBase
 {
     [Test]
@@ -19,7 +17,8 @@ public class LegacyNodaTimeTests : TestBase
             "1998-04-12 13:26:38.789",
             "timestamp without time zone",
             NpgsqlDbType.Timestamp,
-            DbType.DateTime);
+            DbType.DateTime,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Timestamp_as_LocalDateTime()
@@ -29,7 +28,8 @@ public class LegacyNodaTimeTests : TestBase
             "timestamp without time zone",
             NpgsqlDbType.Timestamp,
             DbType.DateTime,
-            isDefaultForReading: false);
+            isDefaultForReading: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Timestamptz_as_Instant()
@@ -39,7 +39,8 @@ public class LegacyNodaTimeTests : TestBase
             "timestamp with time zone",
             NpgsqlDbType.TimestampTz,
             DbType.DateTimeOffset,
-            isDefault: false);
+            isDefault: false,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Timestamptz_ZonedDateTime_infinite_values_are_not_supported()
@@ -51,54 +52,31 @@ public class LegacyNodaTimeTests : TestBase
 
     #region Support
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
-    {
-        var conn = await base.OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
-        return conn;
-    }
+    protected override NpgsqlDataSource DataSource { get; }
 
-    protected override NpgsqlConnection OpenConnection()
-        => throw new NotSupportedException();
-
-#pragma warning disable CS1998 // Release code blocks below lack await
-#pragma warning disable CS0618 // GlobalTypeMapper is obsolete
-    [OneTimeSetUp]
-    public async Task Setup()
+    public LegacyNodaTimeTests()
     {
 #if DEBUG
         Internal.NodaTimeUtils.LegacyTimestampBehavior = true;
         Util.Statics.LegacyTimestampBehavior = true;
 
-        // Clear any previous cached mappings/handlers in case tests were executed before the legacy flag was set.
-        NpgsqlConnection.GlobalTypeMapper.Reset();
-        NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
-        await using var connection = await OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
+        var builder = CreateDataSourceBuilder();
+        builder.UseNodaTime();
+        builder.ConnectionStringBuilder.Options = "-c TimeZone=Europe/Berlin";
+        DataSource = builder.Build();
 #else
         Assert.Ignore(
             "Legacy NodaTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
 #endif
-
     }
 
-    [OneTimeTearDown]
-    public async Task Teardown()
+    public void Dispose()
     {
 #if DEBUG
         Internal.NodaTimeUtils.LegacyTimestampBehavior = false;
         Util.Statics.LegacyTimestampBehavior = false;
-
-        // Clear any previous cached mappings/handlers to not affect test which will run later without the legacy flag
-        NpgsqlConnection.GlobalTypeMapper.Reset();
-        NpgsqlConnection.GlobalTypeMapper.UseNodaTime();
-
-        await using var connection = await OpenConnectionAsync();
-        await connection.ReloadTypesAsync();
 #endif
     }
-#pragma warning restore CS1998
-#pragma warning restore CS0618 // GlobalTypeMapper is obsolete
 
     #endregion Support
 }

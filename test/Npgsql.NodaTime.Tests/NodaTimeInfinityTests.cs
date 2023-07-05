@@ -12,7 +12,7 @@ namespace Npgsql.NodaTime.Tests;
 [TestFixture(false)]
 #if DEBUG
 [TestFixture(true)]
-[NonParallelizable]
+[NonParallelizable] // Since this test suite manipulates an AppContext switch
 #endif
 public class NodaTimeInfinityTests : TestBase
 {
@@ -266,15 +266,7 @@ public class NodaTimeInfinityTests : TestBase
         }
     }
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
-    {
-        var conn = await base.OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
-        return conn;
-    }
-
-    protected override NpgsqlConnection OpenConnection()
-        => throw new NotSupportedException();
+    protected override NpgsqlDataSource DataSource { get; }
 
     public NodaTimeInfinityTests(bool disableDateTimeInfinityConversions)
     {
@@ -288,6 +280,11 @@ public class NodaTimeInfinityTests : TestBase
                 "NodaTimeInfinityTests rely on the Npgsql.DisableDateTimeInfinityConversions AppContext switch and can only be run in DEBUG builds");
         }
 #endif
+
+        var builder = CreateDataSourceBuilder();
+        builder.UseNodaTime();
+        builder.ConnectionStringBuilder.Options = "-c TimeZone=Europe/Berlin";
+        DataSource = builder.Build();
     }
 
     public void Dispose()
