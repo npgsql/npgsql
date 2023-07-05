@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Descriptors;
@@ -7,7 +8,7 @@ using Npgsql.Properties;
 
 namespace Npgsql.Internal.Converters;
 
-public class RecordObjectArrayConverter : PgStreamingConverter<object[]>
+sealed class RecordObjectArrayConverter : PgStreamingConverter<object[]>
 {
     readonly PgSerializerOptions _serializerOptions;
 
@@ -32,7 +33,7 @@ public class RecordObjectArrayConverter : PgStreamingConverter<object[]>
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
                 await reader.BufferData(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
-            var typeOID = reader.ReadUInt32();
+            var typeOid = reader.ReadUInt32();
             var fieldLen = reader.ReadInt32();
 
             // Note that we leave .NET nulls in the object array rather than DBNull.
@@ -40,10 +41,12 @@ public class RecordObjectArrayConverter : PgStreamingConverter<object[]>
                 continue;
 
             var postgresType =
-                _serializerOptions.TypeCatalog.GetPgType((Oid)typeOID).GetRepresentationalType()
-                ?? UnknownBackendType.Instance;
-            var typeInfo = _serializerOptions.GetDefaultTypeInfo(postgresType)
-                ?? throw new NotSupportedException($"Reading is not supported for postgres type '{postgresType.DisplayName}'");
+                _serializerOptions.TypeCatalog.GetPgType((Oid)typeOid).GetRepresentationalType()
+                ?? throw new NotSupportedException($"Reading isn't supported for record field {i} (unknown type OID {typeOid}");
+
+            var typeInfo = _serializerOptions.GetObjectOrDefaultTypeInfo(postgresType)
+                           ?? throw new NotSupportedException(
+                               $"Reading isn't supported for record field {i} (PG type '{postgresType.DisplayName}'");
             var converterInfo = typeInfo.Bind(new Field("?", typeInfo.PgTypeId!.Value, -1), DataFormat.Binary);
 
             reader.Current.Size = fieldLen;
