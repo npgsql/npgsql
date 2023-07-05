@@ -104,7 +104,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
 
     internal static GlobalTypeMapper Instance { get; }
 
-
     static GlobalTypeMapper()
         => Instance = new GlobalTypeMapper();
 
