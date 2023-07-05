@@ -586,9 +586,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal virtual void BindFormatAndLength()
     {
-        var value = _value;
+        // Pull from Value so we also support object typed generic params.
+        var value = Value;
         if (value is null)
-            ThrowHelper.ThrowInvalidCastException("Parameter '{0}' must be set", ParameterName);
+            ThrowHelper.ThrowArgumentNullException("Parameter '{0}' must be set", ParameterName);
 
         var info = TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)

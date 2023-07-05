@@ -360,12 +360,10 @@ CREATE TABLE {tableName} ({columns});");
         return new DeferredExecutionDisposable(() => CultureInfo.CurrentCulture = oldCulture);
     }
 
-    internal static IDisposable DisableSqlRewriting()
+    internal static IDisposable DisableSqlRewriting(Action clearDataSources)
     {
 #if DEBUG
-        // We clear the pools to make sure we don't accidentally reuse a pool
-        // Since EnableSqlRewriting is a global change
-        PoolManager.Reset();
+        clearDataSources();
         NpgsqlCommand.EnableSqlRewriting = false;
         return new DeferredExecutionDisposable(() => NpgsqlCommand.EnableSqlRewriting = true);
 #else
