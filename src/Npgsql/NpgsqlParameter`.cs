@@ -71,6 +71,12 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     internal override void BindFormatAndLength()
     {
+        if (typeof(T) == typeof(object))
+        {
+            base.BindFormatAndLength();
+            return;
+        }
+
         var value = TypedValue;
         var info = TypeInfo!.Bind(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)

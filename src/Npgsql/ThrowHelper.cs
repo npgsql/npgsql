@@ -101,6 +101,10 @@ static class ThrowHelper
         => throw new ArgumentNullException(paramName);
 
     [DoesNotReturn]
+    internal static void ThrowArgumentNullException(string message, string paramName)
+        => throw new ArgumentNullException(paramName, message);
+
+    [DoesNotReturn]
     internal static void ThrowIndexOutOfRangeException(string message)
         => throw new IndexOutOfRangeException(message);
 
