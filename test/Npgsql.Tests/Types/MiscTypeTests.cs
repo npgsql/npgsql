@@ -60,11 +60,18 @@ class MiscTypeTests : MultiplexingTestBase
             }
         }
 
-        // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
+        // Setting non-generic NpgsqlParameter.Value to null is not allowed, only DBNull.Value
         await using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
         {
             cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
-            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        // Setting generic NpgsqlParameter<object>.Value to null is not allowed, only DBNull.Value
+        await using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter<object>("p4", NpgsqlDbType.Text) { Value = null! });
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
     }
 
