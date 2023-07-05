@@ -5,7 +5,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
+sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
 {
     TypeInfoMappingCollection Mappings { get; }
 
@@ -43,7 +43,7 @@ class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new TsQueryConverter<NpgsqlTsQueryFollowedBy>(options.TextEncoding)));
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // tsvector
         mappings.AddArrayType<NpgsqlTsVector>((string)DataTypeNames.TsVector);

@@ -5,7 +5,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
+sealed class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
 {
     public SystemTextJsonTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
     {
