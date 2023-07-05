@@ -24,6 +24,8 @@ namespace Npgsql;
 /// </remarks>
 public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
 {
+    static UnsupportedTypeInfoResolver<NpgsqlSlimDataSourceBuilder> UnsupportedTypeInfoResolver { get; } = new();
+
     ILoggerFactory? _loggerFactory;
     bool _sensitiveDataLoggingEnabled;
 
@@ -72,6 +74,8 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         // When used publicly we start off with our slim defaults.
         foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
             AddTypeInfoResolver(plugin);
+        // Reverse order
+        AddTypeInfoResolver(UnsupportedTypeInfoResolver);
         AddTypeInfoResolver(new AdoTypeInfoResolver());
     }
 
