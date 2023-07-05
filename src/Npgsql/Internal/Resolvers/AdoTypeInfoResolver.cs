@@ -64,6 +64,16 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
         }
 
+        // Bytea
+        mappings.AddType<byte[]>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()), isDefault: true);
+        mappings.AddStructType<ArraySegment<byte>>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ArraySegmentByteaConverter()));
+        mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
+        mappings.AddStructType<Memory<byte>>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter()));
+
         // TODO might want to move to pg specific types.
         // Varbit
         mappings.AddType<BitArray>(DataTypeNames.Varbit,
@@ -206,6 +216,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<double>((string)DataTypeNames.Float8);
         mappings.AddStructArrayType<BigInteger>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<decimal>((string)DataTypeNames.Numeric);
+
+        // Bytea
+        mappings.AddArrayType<byte[]>((string)DataTypeNames.Bytea);
+        mappings.AddStructArrayType<ArraySegment<byte>>((string)DataTypeNames.Bytea);
+        mappings.AddStructArrayType<ReadOnlyMemory<byte>>((string)DataTypeNames.Bytea);
+        mappings.AddStructArrayType<Memory<byte>>((string)DataTypeNames.Bytea);
 
         // Varbit
         mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);
