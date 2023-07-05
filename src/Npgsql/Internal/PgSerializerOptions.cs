@@ -13,11 +13,11 @@ public class PgSerializerOptions
     internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog)
     {
         TypeCatalog = typeCatalog;
-        PgUnknownType = typeCatalog.GetPostgresTypeByName("unknown");
+        UnknownPgType = typeCatalog.GetPostgresTypeByName("unknown");
     }
 
     // Represents postgres unknown type, which can be used for reading and writing arbitrary text values.
-    public PostgresType PgUnknownType { get; set; }
+    public PostgresType UnknownPgType { get; set; }
 
     // Used purely for type mapping, where we don't have a full set of types but resolvers might know enough.
     internal bool ValidatePgTypeIds { get; init; } = true;

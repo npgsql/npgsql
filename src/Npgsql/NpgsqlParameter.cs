@@ -544,22 +544,15 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                     return;
                 }
 
-                TypeInfo = options.GetDefaultTypeInfo(pgTypeId ?? options.ToCanonicalTypeId(options.PgUnknownType)) ?? throw new NotSupportedException(
-                    $"Writing is not supported for parameter with {(_npgsqlDbType is not null
-                        ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
+                TypeInfo = options.GetDefaultTypeInfo(pgTypeId ?? options.ToCanonicalTypeId(options.UnknownPgType))
+                           ?? throw new NotSupportedException($"No configured writer was found for parameter with {
+                               (_npgsqlDbType is not null ? $"NpgsqlDbType '{_npgsqlDbType}'" : $" DataTypeName '{_dataTypeName}'")}.");
             }
             else
             {
-                TypeInfo = options.GetTypeInfo(valueType, pgTypeId) switch
-                {
-                    null when typeof(IEnumerable).IsAssignableFrom(valueType) && !typeof(IList).IsAssignableFrom(valueType) && valueType != typeof(string)
-                        => throw new NotSupportedException(
-                            "Writing is not supported for IEnumerable parameters, pass an array or List instead."),
-                    null => throw new NotSupportedException(
-                        $"Writing is not supported for parameter of type {valueType}{(_npgsqlDbType is not null
-                            ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}."),
-                    var typeInfo => typeInfo
-                };
+                TypeInfo = options.GetTypeInfo(valueType, pgTypeId)
+                           ?? throw new NotSupportedException($"No configured writer was found for parameter of type {valueType}{(_npgsqlDbType is not null
+                                   ? $" and NpgsqlDbType '{_npgsqlDbType}'" : pgTypeId is not null ? $" and DataTypeName '{_dataTypeName}'" : "")}.");
             }
         }
 
@@ -584,10 +577,16 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 
     internal virtual void BindFormatAndLength()
     {
+        if (TypeInfo is null)
+            throw new InvalidOperationException("Not bound yet");
+
         // Pull from Value so we also support object typed generic params.
         var value = Value;
         if (value is null)
             ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
+
+        if (!TypeInfo.SupportsWriting)
+            throw new NotSupportedException($"Cannot write values for parameters of type '{TypeInfo.Type}' and postgres type '{TypeInfo.Options.TypeCatalog.GetDataTypeName(PgTypeId).DisplayName}'.");
 
         var info = TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)

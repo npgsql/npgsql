@@ -211,11 +211,5 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("SyncAndAsyncConnectionInitializersRequired", resourceCulture);
             }
         }
-        
-        internal static string WriteRecordNotSupported {
-            get {
-                return ResourceManager.GetString("WriteRecordNotSupported", resourceCulture);
-            }
-        }
     }
 }
