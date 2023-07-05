@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -588,7 +587,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // Pull from Value so we also support object typed generic params.
         var value = Value;
         if (value is null)
-            ThrowHelper.ThrowArgumentNullException("Parameter '{0}' must be set", ParameterName);
+            ThrowHelper.ThrowInvalidOperationException($"Parameter '{ParameterName}' cannot be null, DBNull.Value should be used instead.");
 
         var info = TypeInfo!.BindObject(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)
