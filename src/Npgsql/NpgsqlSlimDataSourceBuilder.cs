@@ -351,7 +351,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableRecords()
     {
-        // AddTypeInfoResolver(new RecordTypeInfoResolver());
+        AddTypeInfoResolver(new RecordTypeInfoResolver());
         return this;
     }
 
@@ -360,7 +360,16 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableFullTextSearch()
     {
-        // AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+        AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for extra conversions from PostgreSQL to .NET types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableExtraConversions()
+    {
+        AddTypeInfoResolver(new ExtraConversionsResolver());
         return this;
     }
 

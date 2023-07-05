@@ -5,7 +5,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-class GeometricTypeInfoResolver : IPgTypeInfoResolver
+sealed class GeometricTypeInfoResolver : IPgTypeInfoResolver
 {
     TypeInfoMappingCollection Mappings { get; }
 
@@ -38,7 +38,7 @@ class GeometricTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CircleConverter()), isDefault: true);
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddStructArrayType<NpgsqlPoint>((string)DataTypeNames.Point);
         mappings.AddStructArrayType<NpgsqlBox>((string)DataTypeNames.Box);

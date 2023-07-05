@@ -4,7 +4,7 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-class RecordTypeInfoResolver : IPgTypeInfoResolver
+sealed class RecordTypeInfoResolver : IPgTypeInfoResolver
 {
     TypeInfoMappingCollection Mappings { get; }
 

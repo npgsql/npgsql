@@ -9,6 +9,7 @@ Npgsql.ChannelBinding.Require = 2 -> Npgsql.ChannelBinding
 Npgsql.NpgsqlBatch.CreateBatchCommand() -> Npgsql.NpgsqlBatchCommand!
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.get -> Npgsql.ChannelBinding
 Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.set -> void
+Npgsql.NpgsqlSlimDataSourceBuilder.EnableExtraConversions() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableFullTextSearch() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableRecords() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void

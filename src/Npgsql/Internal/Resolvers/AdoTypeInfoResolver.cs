@@ -32,87 +32,37 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<bool>(DataTypeNames.Bool,
             static (options, mapping, _) => mapping.CreateInfo(options, new BoolConverter()), isDefault: true);
 
-        // Int2
+        // Numeric
         mappings.AddStructType<short>(DataTypeNames.Int2,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<short>()), isDefault: true);
-        mappings.AddStructType<int>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<int>()));
-        mappings.AddStructType<long>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<long>()));
-        mappings.AddStructType<byte>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<byte>()));
-        mappings.AddStructType<sbyte>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<sbyte>()));
-        mappings.AddStructType<float>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<float>()));
-        mappings.AddStructType<double>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<double>()));
-        mappings.AddStructType<decimal>(DataTypeNames.Int2,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int2Converter<decimal>()));
-
-        // Int4
-        mappings.AddStructType<short>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<short>()));
         mappings.AddStructType<int>(DataTypeNames.Int4,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()), isDefault: true);
-        mappings.AddStructType<long>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<long>()));
-        mappings.AddStructType<byte>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<byte>()));
-        mappings.AddStructType<sbyte>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<sbyte>()));
-        mappings.AddStructType<float>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<float>()));
-        mappings.AddStructType<double>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<double>()));
-        mappings.AddStructType<decimal>(DataTypeNames.Int4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<decimal>()));
-
-        // Int8
-        mappings.AddStructType<short>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<short>()));
-        mappings.AddStructType<int>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<int>()));
         mappings.AddStructType<long>(DataTypeNames.Int8,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()), isDefault: true);
-        mappings.AddStructType<byte>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<byte>()));
-        mappings.AddStructType<sbyte>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<sbyte>()));
-        mappings.AddStructType<float>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<float>()));
-        mappings.AddStructType<double>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<double>()));
-        mappings.AddStructType<decimal>(DataTypeNames.Int8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<decimal>()));
-
-        // Float4
         mappings.AddStructType<float>(DataTypeNames.Float4,
             static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<float>()), isDefault: true);
-        mappings.AddStructType<double>(DataTypeNames.Float4,
-            static (options, mapping, _) => mapping.CreateInfo(options, new RealConverter<double>()));
-
-        // Float8
         mappings.AddStructType<double>(DataTypeNames.Float8,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter()), isDefault: true);
-
-        // Numeric
+            static (options, mapping, _) => mapping.CreateInfo(options, new DoubleConverter<double>()), isDefault: true);
         mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
         mappings.AddStructType<decimal>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<decimal>()), isDefault: true);
-        mappings.AddStructType<byte>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<byte>()));
-        mappings.AddStructType<short>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<short>()));
-        mappings.AddStructType<int>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<int>()));
-        mappings.AddStructType<long>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<long>()));
-        mappings.AddStructType<float>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<float>()));
-        mappings.AddStructType<double>(DataTypeNames.Numeric,
-            static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<double>()));
+
+        // Text types
+        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        {
+            mappings.AddType<string>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+            // TODO we shouldn't have to make this default but we must shadow internal char[].
+            mappings.AddType<char[]>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
+            mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+            mappings.AddStructType<ArraySegment<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+            mappings.AddStructType<char>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        }
 
         // TODO might want to move to pg specific types.
         // Varbit
@@ -188,22 +138,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
-        // Text types
-        foreach (var dataTypeName in new[] { (string)DataTypeNames.Text, "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
-        {
-            mappings.AddType<string>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
-            // TODO we shouldn't have to make this default but we must shadow internal char[].
-            mappings.AddType<char[]>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
-            mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-            mappings.AddStructType<ArraySegment<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-            mappings.AddStructType<char>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-        }
-
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
@@ -264,43 +198,14 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Bool
         mappings.AddStructArrayType<bool>((string)DataTypeNames.Bool);
 
-        // Int2
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int2);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int2);
-
-        // Int4
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int4);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int4);
-
-        // Int8
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Int8);
-        mappings.AddStructArrayType<sbyte>((string)DataTypeNames.Int8);
-
-        // Float4
-        mappings.AddStructArrayType<float>((string)DataTypeNames.Float4);
-        mappings.AddStructArrayType<double>((string)DataTypeNames.Float4);
-
-        // Float8
-        mappings.AddStructArrayType<double>((string)DataTypeNames.Float8);
-
         // Numeric
+        mappings.AddStructArrayType<short>((string)DataTypeNames.Int2);
+        mappings.AddStructArrayType<int>((string)DataTypeNames.Int4);
+        mappings.AddStructArrayType<long>((string)DataTypeNames.Int8);
+        mappings.AddStructArrayType<float>((string)DataTypeNames.Float4);
+        mappings.AddStructArrayType<double>((string)DataTypeNames.Float8);
         mappings.AddStructArrayType<BigInteger>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<decimal>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<byte>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<short>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<int>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<float>((string)DataTypeNames.Numeric);
-        mappings.AddStructArrayType<double>((string)DataTypeNames.Numeric);
 
         // Varbit
         mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);

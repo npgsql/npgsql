@@ -9,7 +9,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-class NetworkTypeInfoResolver : IPgTypeInfoResolver
+sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
 {
     TypeInfoMappingCollection Mappings { get; }
 
@@ -57,7 +57,7 @@ class NetworkTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlCidrConverter()), isDefault: true);
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // macaddr
         mappings.AddArrayType<PhysicalAddress>((string)DataTypeNames.MacAddr);
