@@ -327,7 +327,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableRanges()
     {
-        // AddTypeInfoResolver(new RangeTypeInfoResolver());
+        AddTypeInfoResolver(new RangeTypeInfoResolver());
         return this;
     }
 
@@ -346,7 +346,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        // AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 

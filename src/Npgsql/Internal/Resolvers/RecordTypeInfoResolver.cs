@@ -28,7 +28,7 @@ sealed class RecordTypeInfoResolver : IPgTypeInfoResolver
         // TODO: Tuple
     }
 
-    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
     }

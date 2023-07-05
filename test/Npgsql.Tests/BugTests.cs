@@ -74,18 +74,6 @@ public class BugTests : TestBase
             .Or.EqualTo(PostgresErrorCodes.TooManyColumns)); // PostgreSQL 14.5, 13.8, 12.12, 11.17 and 10.22 changed the returned error
     }
 
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]
-    public void Record_with_non_int_field()
-    {
-        using var conn = OpenConnection();
-        using var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn);
-        using var reader = cmd.ExecuteReader();
-        reader.Read();
-        var record = reader.GetFieldValue<object[]>(0);
-        Assert.That(record[0], Is.EqualTo("one"));
-        Assert.That(record[1], Is.EqualTo(2));
-    }
-
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1450")]
     public void Bug1450()
     {

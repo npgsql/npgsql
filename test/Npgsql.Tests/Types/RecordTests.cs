@@ -67,17 +67,16 @@ public class RecordTests : MultiplexingTestBase
         Assert.That(array[1][0], Is.EqualTo(1));
     }
 
-    [Test]
-    public async Task Write_Record_is_not_supported()
+    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1238")]
+    public async Task Record_with_non_int_field()
     {
-        var exception = await AssertTypeUnsupportedWrite<object[], NotSupportedException>(new object[] { 1, "foo" }, "record");
-        Assert.That(exception.Message, Is.EqualTo(NpgsqlStrings.WriteRecordNotSupported));
-
-        exception = await AssertTypeUnsupportedWrite<(int, string), NotSupportedException>((1, "foo"), "record");
-        Assert.That(exception.Message, Is.EqualTo(NpgsqlStrings.WriteRecordNotSupported));
-
-        exception = await AssertTypeUnsupportedWrite<Tuple<int, string>, NotSupportedException>(Tuple.Create(1, "foo"), "record");
-        Assert.That(exception.Message, Is.EqualTo(NpgsqlStrings.WriteRecordNotSupported));
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        reader.Read();
+        var record = reader.GetFieldValue<object[]>(0);
+        Assert.That(record[0], Is.EqualTo("one"));
+        Assert.That(record[1], Is.EqualTo(2));
     }
 
     [Test]

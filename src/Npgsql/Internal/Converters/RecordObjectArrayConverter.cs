@@ -1,18 +1,16 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal.Descriptors;
 using Npgsql.PostgresTypes;
-using Npgsql.Properties;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class RecordObjectArrayConverter : PgStreamingConverter<object[]>
+sealed class ObjectArrayRecordConverter : PgStreamingConverter<object[]>
 {
     readonly PgSerializerOptions _serializerOptions;
 
-    public RecordObjectArrayConverter(PgSerializerOptions serializerOptions)
+    public ObjectArrayRecordConverter(PgSerializerOptions serializerOptions)
         => _serializerOptions = serializerOptions;
 
     public override object[] Read(PgReader reader)
@@ -27,9 +25,11 @@ sealed class RecordObjectArrayConverter : PgStreamingConverter<object[]>
             await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
         var fieldCount = reader.ReadInt32();
         var result = new object[fieldCount];
+        var recordSize = reader.CurrentSize;
 
         for (var i = 0; i < fieldCount; i++)
         {
+            reader.Current.Size = recordSize;
             if (reader.ShouldBuffer(sizeof(uint) + sizeof(int)))
                 await reader.BufferData(async, sizeof(uint) + sizeof(int), cancellationToken).ConfigureAwait(false);
 
@@ -64,11 +64,11 @@ sealed class RecordObjectArrayConverter : PgStreamingConverter<object[]>
     }
 
     public override Size GetSize(SizeContext context, object[] value, ref object? writeState)
-        => throw new NotSupportedException(NpgsqlStrings.WriteRecordNotSupported);
+        => throw new NotSupportedException();
 
     public override void Write(PgWriter writer, object[] value)
-        => throw new NotSupportedException(NpgsqlStrings.WriteRecordNotSupported);
+        => throw new NotSupportedException();
 
     public override ValueTask WriteAsync(PgWriter writer, object[] value, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException(NpgsqlStrings.WriteRecordNotSupported);
+        => throw new NotSupportedException();
 }
