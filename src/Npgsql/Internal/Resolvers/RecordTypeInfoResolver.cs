@@ -21,9 +21,9 @@ sealed class RecordTypeInfoResolver : IPgTypeInfoResolver
 
     static void AddInfos(TypeInfoMappingCollection mappings)
     {
-        mappings.AddType<object[]>(DataTypeNames.Record,
-            static (options, mapping, _) => mapping.CreateInfo(options, new RecordObjectArrayConverter(options), supportsWriting: false),
-            isDefault: true);
+        mappings.AddType<object[]>(DataTypeNames.Record, static (options, mapping, _) => mapping.CreateInfo(options, new ObjectArrayRecordConverter(options), supportsWriting: false),
+            mappings => mappings with { MatchRequirement = MatchRequirement.DataTypeName });
+
         // TODO: ValueTuple
         // TODO: Tuple
     }
