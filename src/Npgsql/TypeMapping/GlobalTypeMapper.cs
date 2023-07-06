@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Npgsql.Internal;
 using Npgsql.PostgresTypes;
-using Npgsql.Util;
 
 namespace Npgsql.TypeMapping;
 
@@ -78,8 +77,6 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
                     PortableTypeIds = true,
                     // Don't throw if our catalog doesn't know the datatypename.
                     ValidatePgTypeIds = false,
-                    // Irrelevant but required.
-                    TextEncoding = PGUtil.UTF8Encoding,
                     TypeInfoResolver = new TypeInfoResolverChain(resolvers)
                 };
             }

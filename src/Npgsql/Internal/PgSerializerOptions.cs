@@ -8,10 +8,12 @@ namespace Npgsql.Internal;
 // TODO it's either PgSerializerOptions or PgConverterOptions, I have no strong preference.
 public class PgSerializerOptions
 {
+    readonly Func<string>? _timeZoneProvider;
     object? _typeInfoCache;
 
-    internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog)
+    internal PgSerializerOptions(NpgsqlDatabaseInfo typeCatalog, Func<string>? timeZoneProvider = null)
     {
+        _timeZoneProvider = timeZoneProvider;
         TypeCatalog = typeCatalog;
         UnknownPgType = typeCatalog.GetPostgresTypeByName("unknown");
     }
@@ -26,7 +28,8 @@ public class PgSerializerOptions
     internal bool PortableTypeIds { get; init; }
     internal NpgsqlDatabaseInfo TypeCatalog { get; }
 
-    public required Encoding TextEncoding { get; init; }
+    public string TimeZone => _timeZoneProvider?.Invoke() ?? throw new NotSupportedException("TimeZone was not configured.");
+    public Encoding TextEncoding { get; init; } = Encoding.UTF8;
     public required IPgTypeInfoResolver TypeInfoResolver { get; init; }
     public bool EnableDateTimeInfinityConversions { get; init; } = true;
 
