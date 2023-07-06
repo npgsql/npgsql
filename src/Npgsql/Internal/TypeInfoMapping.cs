@@ -25,7 +25,7 @@ enum MatchRequirement
     All,
     /// Match when the datatype name or CLR type matches while the other also matches or is absent.
     Single,
-    // Match when the datatype name matches and the clr type also matches or is absent.
+    /// Match when the datatype name matches and the clr type also matches or is absent.
     DataTypeName,
 }
 
@@ -73,12 +73,17 @@ readonly struct TypeInfoMapping
 
 sealed class TypeInfoMappingCollection
 {
+    readonly TypeInfoMappingCollection? _baseCollection;
     readonly List<TypeInfoMapping> _items;
 
     public TypeInfoMappingCollection(int capacity = 0)
         => _items = new(capacity);
 
     public TypeInfoMappingCollection() : this(0) { }
+
+    // Not used for resolving, only for composing (arrays that need to find the element mapping etc).
+    public TypeInfoMappingCollection(TypeInfoMappingCollection baseCollection) : this(0)
+        => _baseCollection = baseCollection;
 
     public TypeInfoMappingCollection(IEnumerable<TypeInfoMapping> items)
         => _items = new(items);
@@ -115,7 +120,7 @@ sealed class TypeInfoMappingCollection
 
     bool TryFindMapping(Type type, string dataTypeName, out TypeInfoMapping value)
     {
-        foreach (var mapping in _items)
+        foreach (var mapping in _baseCollection?._items ?? _items)
         {
             if (mapping.Type == type && mapping.DataTypeName.AsSpan().SequenceEqual(dataTypeName.AsSpan()))
             {
@@ -277,26 +282,36 @@ sealed class TypeInfoMappingCollection
 
     // We have no overload for DataTypeName for the struct methods to reduce code bloat.
     public void AddStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping = false) where TElement : struct
-        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
+        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), null, suppressObjectMapping);
+
+    public void AddStructArrayType<TElement>(string elementDataTypeName, Func<TypeInfoMapping, TypeInfoMapping> configure, bool suppressObjectMapping = false) where TElement : struct
+        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), configure, suppressObjectMapping);
 
     public void AddStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping,
+        Func<TypeInfoMapping, TypeInfoMapping>? configure,
         bool suppressObjectMapping = false) where TElement : struct
     {
         var arrayTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
+        var nullableArrayTypeMatchPredicate = nullableElementMapping.TypeMatchPredicate is not null ? GetArrayTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate) : null;
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
+        var nullableListTypeMatchPredicate = nullableElementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate) : null;
+
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
-            CreateArrayBasedConverter<TElement>,
-            CreateArrayBasedConverter<TElement?>, suppressObjectMapping, arrayTypeMatchPredicate);
+            CreateArrayBasedConverter<TElement>, CreateArrayBasedConverter<TElement?>,
+            arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate,
+            configure, suppressObjectMapping);
 
         // Don't add the object converter for the list based converter.
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
-            CreateListBasedConverter<TElement>,
-            CreateListBasedConverter<TElement?>, suppressObjectMapping: true, listTypeMatchPredicate);
+            CreateListBasedConverter<TElement>, CreateListBasedConverter<TElement?>,
+            listTypeMatchPredicate, nullableListTypeMatchPredicate,
+            configure, suppressObjectMapping: true);
     }
 
     // Lives outside to prevent capture of TElement.
     void AddStructArrayType(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping, Type type, Type nullableType,
-        Func<PgTypeInfo, PgConverter> converter, Func<PgTypeInfo, PgConverter> nullableConverter, bool suppressObjectMapping, Func<Type, bool>? typeMatchPredicate)
+        Func<PgTypeInfo, PgConverter> converter, Func<PgTypeInfo, PgConverter> nullableConverter,
+        Func<Type, bool>? typeMatchPredicate, Func<Type, bool>? nullableTypeMatchPredicate, Func<TypeInfoMapping, TypeInfoMapping>? configure, bool suppressObjectMapping)
     {
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
@@ -305,10 +320,11 @@ sealed class TypeInfoMappingCollection
             MatchRequirement = elementMapping.MatchRequirement,
             TypeMatchPredicate = typeMatchPredicate
         };
+        arrayMapping = configure?.Invoke(arrayMapping) ?? arrayMapping;
         var nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, CreateComposedFactory(nullableElementMapping, nullableConverter))
         {
-            MatchRequirement = elementMapping.MatchRequirement,
-            TypeMatchPredicate = typeMatchPredicate
+            MatchRequirement = arrayMapping.MatchRequirement,
+            TypeMatchPredicate = nullableTypeMatchPredicate
         };
 
         _items.Add(arrayMapping);
