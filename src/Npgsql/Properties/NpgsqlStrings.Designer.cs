@@ -9,8 +9,8 @@
 
 namespace Npgsql.Properties {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -22,15 +22,15 @@ namespace Npgsql.Properties {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class NpgsqlStrings {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal NpgsqlStrings() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -44,7 +44,7 @@ namespace Npgsql.Properties {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -58,7 +58,7 @@ namespace Npgsql.Properties {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to &apos;{0}&apos; must be positive..
         /// </summary>
@@ -67,7 +67,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("ArgumentMustBePositive", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot read infinity value since Npgsql.DisableDateTimeInfinityConversions is enabled..
         /// </summary>
@@ -76,7 +76,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotReadInfinityValue", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot read interval values with non-zero months as TimeSpan, since that type doesn&apos;t support months. Consider using NodaTime Period which better corresponds to PostgreSQL interval, or read the value as NpgsqlInterval, or transform the interval to not contain months or years in PostgreSQL before reading it..
         /// </summary>
@@ -85,7 +85,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotReadIntervalWithMonthsAsTimeSpan", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to When registering a password provider, a password or password file may not be set..
         /// </summary>
@@ -94,7 +94,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotSetBothPasswordProviderAndPassword", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to When creating a multi-host data source, TargetSessionAttributes cannot be specified. Create without TargetSessionAttributes, and then obtain DataSource wrappers from it. Consult the docs for more information..
         /// </summary>
@@ -103,7 +103,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotSpecifyTargetSessionAttributes", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to RootCertificate cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback..
         /// </summary>
@@ -112,7 +112,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseSslRootCertificateWithUserCallback", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to SslMode.{0} cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback..
         /// </summary>
@@ -121,7 +121,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseSslVerifyWithUserCallback", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to ValidationRootCertificateCallback cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback..
         /// </summary>
@@ -130,7 +130,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("CannotUseValidationRootCertificateCallbackWithUserCallback", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to NpgsqlSlimDataSourceBuilder is being used, and encryption hasn&apos;t been enabled, call EnableEncryption() on NpgsqlSlimDataSourceBuilder to enable it..
         /// </summary>
@@ -139,7 +139,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("EncryptionDisabled", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Full-text search isn&apos;t enabled; please call {0} on {1} to enable full-text search..
         /// </summary>
@@ -148,7 +148,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("FullTextSearchNotEnabled", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to No multirange type could be found in the database for subtype {0}..
         /// </summary>
@@ -157,7 +157,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("NoMultirangeTypeFound", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Connection and transaction access is not supported on batches created from DbDataSource..
         /// </summary>
@@ -166,7 +166,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("NotSupportedOnDataSourceBatch", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Connection and transaction access is not supported on commands created from DbDataSource..
         /// </summary>
@@ -175,7 +175,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("NotSupportedOnDataSourceCommand", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The right type of password provider (sync or async) was not found..
         /// </summary>
@@ -184,7 +184,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("PasswordProviderMissing", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to When using CommandType.StoredProcedure, all positional parameters must come before named parameters..
         /// </summary>
@@ -193,7 +193,7 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("PositionalParameterAfterNamed", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Records aren&apos;t enabled; please call {0} on {1} to enable records..
         /// </summary>
@@ -202,13 +202,22 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("RecordsNotEnabled", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Both sync and async connection initializers must be provided..
         /// </summary>
         internal static string SyncAndAsyncConnectionInitializersRequired {
             get {
                 return ResourceManager.GetString("SyncAndAsyncConnectionInitializersRequired", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ranges aren't enabled; please call {0} on {1} to enable ranges..
+        /// </summary>
+        internal static string RangesNotEnabled {
+            get {
+                return ResourceManager.GetString("RangesNotEnabled", resourceCulture);
             }
         }
     }

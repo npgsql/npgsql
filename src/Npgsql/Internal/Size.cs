@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace Npgsql.Internal;
 
@@ -9,6 +10,7 @@ public enum SizeKind : byte
     UpperBound
 }
 
+[DebuggerDisplay("{DebuggerDisplay,nq}")]
 public readonly struct Size
 {
     readonly int _byteCount;
@@ -41,4 +43,12 @@ public readonly struct Size
     }
 
     public static implicit operator Size(int value) => Create(value);
+
+    string DebuggerDisplay
+        => Kind switch
+        {
+            SizeKind.Exact or SizeKind.UpperBound => $"{_byteCount} ({Kind})",
+            SizeKind.Unknown => "Unknown",
+            _ => throw new ArgumentOutOfRangeException()
+        };
 }

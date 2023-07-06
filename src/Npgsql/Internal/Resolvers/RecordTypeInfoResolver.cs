@@ -1,6 +1,7 @@
 using System;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 
 namespace Npgsql.Internal.Resolvers;
 
@@ -31,5 +32,14 @@ sealed class RecordTypeInfoResolver : IPgTypeInfoResolver
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
+    }
+
+    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        if (type != typeof(object) && dataTypeName == DataTypeNames.Record)
+        {
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.RecordsNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRecords), typeof(TBuilder).Name));
+        }
     }
 }
