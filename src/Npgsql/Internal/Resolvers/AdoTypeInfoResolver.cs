@@ -51,12 +51,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Text
         mappings.AddType<string>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
-        mappings.AddType<char[]>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-        mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-        mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
-            static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
         mappings.AddStructType<char>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
@@ -66,12 +60,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
                 mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
-            mappings.AddType<char[]>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-            mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
-            mappings.AddStructType<ArraySegment<char>>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
             mappings.AddStructType<char>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
         }
@@ -79,12 +67,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Bytea
         mappings.AddType<byte[]>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()), isDefault: true);
-        mappings.AddStructType<ArraySegment<byte>>(DataTypeNames.Bytea,
-            static (options, mapping, _) => mapping.CreateInfo(options, new ArraySegmentByteaConverter()));
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
-        mappings.AddStructType<Memory<byte>>(DataTypeNames.Bytea,
-            static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter()));
 
         // TODO might want to move to pg specific types.
         // Varbit
@@ -163,6 +147,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
+        // Uuid
+        mappings.AddStructType<Guid>(DataTypeNames.Uuid,
+            static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()), isDefault: true);
+
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
@@ -217,10 +205,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
-
-        // Uuid
-        mappings.AddStructType<Guid>(DataTypeNames.Uuid,
-            static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()), isDefault: true);
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -237,11 +221,20 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<BigInteger>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<decimal>((string)DataTypeNames.Numeric);
 
+        // Text
+        mappings.AddArrayType<string>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
+
+        // Altenative text types
+        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        {
+            mappings.AddArrayType<string>(dataTypeName);
+            mappings.AddStructArrayType<char>(dataTypeName);
+        }
+
         // Bytea
         mappings.AddArrayType<byte[]>((string)DataTypeNames.Bytea);
-        mappings.AddStructArrayType<ArraySegment<byte>>((string)DataTypeNames.Bytea);
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>((string)DataTypeNames.Bytea);
-        mappings.AddStructArrayType<Memory<byte>>((string)DataTypeNames.Bytea);
 
         // Varbit
         mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);
@@ -293,22 +286,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Interval
         mappings.AddStructArrayType<TimeSpan>((string)DataTypeNames.Interval);
 
-        // Text
-        mappings.AddArrayType<string>((string)DataTypeNames.Text);
-        mappings.AddArrayType<char[]>((string)DataTypeNames.Text);
-        mappings.AddStructArrayType<ReadOnlyMemory<char>>((string)DataTypeNames.Text);
-        mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
-        mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
-
-        // Altenative text types
-        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
-        {
-            mappings.AddArrayType<string>(dataTypeName);
-            mappings.AddArrayType<char[]>(dataTypeName);
-            mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
-            mappings.AddStructArrayType<ArraySegment<char>>(dataTypeName);
-            mappings.AddStructArrayType<char>(dataTypeName);
-        }
+        // Uuid
+        mappings.AddStructArrayType<Guid>((string)DataTypeNames.Uuid);
 
         // UInt internal types
         foreach (var dataTypeName in new[] { (string)DataTypeNames.Oid, (string)DataTypeNames.Xid, (string)DataTypeNames.Cid, (string)DataTypeNames.RegType, (string)DataTypeNames.RegConfig })

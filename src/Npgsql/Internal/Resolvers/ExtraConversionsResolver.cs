@@ -91,6 +91,35 @@ sealed class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructType<double>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<double>()));
 
+        // Bytea
+        mappings.AddStructType<ArraySegment<byte>>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ArraySegmentByteaConverter()));
+        mappings.AddStructType<Memory<byte>>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter()));
+
+        // Text
+        mappings.AddType<char[]>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+
+        // Alternative text types
+        foreach (var dataTypeName in new[]
+                     { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        {
+            mappings.AddType<char[]>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
+                    preferredFormat: DataFormat.Text));
+            mappings.AddStructType<ReadOnlyMemory<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryTextConverter(options.TextEncoding),
+                    preferredFormat: DataFormat.Text));
+            mappings.AddStructType<ArraySegment<char>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding),
+                    preferredFormat: DataFormat.Text));
+        }
+
     }
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -126,5 +155,22 @@ sealed class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<long>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<float>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<double>((string)DataTypeNames.Numeric);
+
+        // Bytea
+        mappings.AddStructArrayType<ArraySegment<byte>>((string)DataTypeNames.Bytea);
+        mappings.AddStructArrayType<Memory<byte>>((string)DataTypeNames.Bytea);
+
+        // Text
+        mappings.AddArrayType<char[]>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<ReadOnlyMemory<char>>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
+
+        // Alternative text types
+        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        {
+            mappings.AddArrayType<char[]>(dataTypeName);
+            mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
+            mappings.AddStructArrayType<ArraySegment<char>>(dataTypeName);
+        }
     }
 }
