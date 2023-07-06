@@ -1,9 +1,7 @@
 using System;
 using NodaTime;
 using Npgsql.Internal;
-using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
-using NpgsqlTypes;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal;
@@ -39,13 +37,15 @@ sealed class NodaTimeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<ZonedDateTime>(new DataTypeName("pg_catalog.timestamptz"),
             LegacyTimestampBehavior
                 ? static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(options.EnableDateTimeInfinityConversions))
+                    mapping.CreateInfo(options, new LegacyTimestampTzZonedDateTimeConverter(
+                        DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions))
                 : static (options, mapping, _) =>
                     mapping.CreateInfo(options, new ZonedDateTimeConverter(options.EnableDateTimeInfinityConversions)));
         mappings.AddStructType<OffsetDateTime>(new DataTypeName("pg_catalog.timestamptz"),
             LegacyTimestampBehavior
                 ? static (options, mapping, _) =>
-                    mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(options.EnableDateTimeInfinityConversions))
+                    mapping.CreateInfo(options, new LegacyTimestampTzOffsetDateTimeConverter(
+                        DateTimeZoneProviders.Tzdb[options.TimeZone], options.EnableDateTimeInfinityConversions))
                 : static (options, mapping, _) =>
                     mapping.CreateInfo(options, new OffsetDateTimeConverter(options.EnableDateTimeInfinityConversions)));
 

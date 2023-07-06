@@ -234,7 +234,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     TextEncoding = connector.TextEncoding,
-                    TypeInfoResolver = new AdoTypeInfoResolver()
+                    TypeInfoResolver = AdoTypeInfoResolver.Instance
                 };
 
             NpgsqlDatabaseInfo databaseInfo;
@@ -243,13 +243,14 @@ public abstract class NpgsqlDataSource : DbDataSource
                 databaseInfo = await NpgsqlDatabaseInfo.Load(connector, timeout, async);
 
             connector.DatabaseInfo = DatabaseInfo = databaseInfo;
-            connector.SerializerOptions = SerializerOptions = new(databaseInfo)
-            {
-                ArrayNullabilityMode = Settings.ArrayNullabilityMode,
-                EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
-                TextEncoding = connector.TextEncoding,
-                TypeInfoResolver = _resolver
-            };
+            connector.SerializerOptions = SerializerOptions =
+                new(databaseInfo, CreateTimeZoneProvider(connector.Timezone))
+                {
+                    ArrayNullabilityMode = Settings.ArrayNullabilityMode,
+                    EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
+                    TextEncoding = connector.TextEncoding,
+                    TypeInfoResolver = _resolver
+                };
 
             _isBootstrapped = true;
         }
@@ -257,6 +258,18 @@ public abstract class NpgsqlDataSource : DbDataSource
         {
             _setupMappingsSemaphore.Release();
         }
+
+        // Func in a static function to make sure we don't capture state that might not stay around, like a connector.
+        static Func<string> CreateTimeZoneProvider(string postgresTimeZone)
+            => () =>
+            {
+                if (string.Equals(postgresTimeZone, "localtime", StringComparison.OrdinalIgnoreCase))
+                    throw new TimeZoneNotFoundException(
+                        "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
+                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client.");
+
+                return postgresTimeZone;
+            };
     }
 
     #region Password management
