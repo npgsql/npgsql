@@ -51,14 +51,16 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     static NpgsqlDataSourceBuilder()
         => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new IPgTypeInfoResolver[]
         {
-            AdoWithArrayTypeInfoResolver.Instance,
+            AdoTypeInfoResolver.Instance,
+            new ExtraConversionsResolver(),
             new SystemTextJsonTypeInfoResolver(),
             new RangeTypeInfoResolver(),
             new RecordTypeInfoResolver(),
             new FullTextSearchTypeInfoResolver(),
             new NetworkTypeInfoResolver(),
             new GeometricTypeInfoResolver(),
-            new ExtraConversionsResolver()
+            new AdoArrayTypeInfoResolver(),
+            new ExtraConversionsArrayTypeInfoResolver()
         });
 
     /// <summary>
@@ -76,7 +78,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
                 AddTypeInfoResolver(plugin);
             // Reverse order.
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
-            AddTypeInfoResolver(new ExtraConversionsResolver());
+            AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
+            AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
             AddTypeInfoResolver(new GeometricTypeInfoResolver());
             AddTypeInfoResolver(new NetworkTypeInfoResolver());
             AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
@@ -84,7 +87,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new RangeTypeInfoResolver());
             AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
             AddTypeInfoResolver(new NetworkTypeInfoResolver());
-            AddTypeInfoResolver(AdoWithArrayTypeInfoResolver.Instance);
+            AddTypeInfoResolver(new ExtraConversionsResolver());
+            AddTypeInfoResolver(AdoTypeInfoResolver.Instance);
         }
     }
 

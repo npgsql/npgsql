@@ -158,7 +158,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Void
         mappings.AddType<object>(DataTypeNames.Void,
-            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false), mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
@@ -310,11 +311,11 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
     }
 }
 
-sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
+sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 {
     new TypeInfoMappingCollection Mappings { get; }
 
-    public AdoWithArrayTypeInfoResolver()
+    public AdoArrayTypeInfoResolver()
     {
         Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
         var elementTypeCount = Mappings.Items.Count;
@@ -322,8 +323,6 @@ sealed class AdoWithArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoReso
         // Make sure we have at least one mapping for each element type.
         Debug.Assert(Mappings.Items.Count >= elementTypeCount * 2);
     }
-
-    public new static AdoWithArrayTypeInfoResolver Instance { get; } = new();
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);

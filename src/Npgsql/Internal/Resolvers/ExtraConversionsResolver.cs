@@ -4,17 +4,15 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class ExtraConversionsResolver : IPgTypeInfoResolver
+class ExtraConversionsResolver : IPgTypeInfoResolver
 {
     public ExtraConversionsResolver()
     {
         Mappings = new TypeInfoMappingCollection();
         AddInfos(Mappings);
-        // TODO: Opt-in only
-        AddArrayInfos(Mappings);
     }
 
-    TypeInfoMappingCollection Mappings { get; }
+    protected TypeInfoMappingCollection Mappings { get; }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
@@ -122,7 +120,7 @@ sealed class ExtraConversionsResolver : IPgTypeInfoResolver
 
     }
 
-    static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // Int2
         mappings.AddStructArrayType<int>((string)DataTypeNames.Int2);
@@ -173,4 +171,18 @@ sealed class ExtraConversionsResolver : IPgTypeInfoResolver
             mappings.AddStructArrayType<ArraySegment<char>>(dataTypeName);
         }
     }
+}
+
+sealed class ExtraConversionsArrayTypeInfoResolver : ExtraConversionsResolver
+{
+    public ExtraConversionsArrayTypeInfoResolver()
+    {
+        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
+        AddArrayInfos(Mappings);
+    }
+
+    new TypeInfoMappingCollection Mappings { get; }
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }
