@@ -17,6 +17,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
 
         RecordTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
         RangeTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
+        FullTextSearchTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
 
         return null;
     }

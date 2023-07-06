@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
@@ -59,18 +58,23 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        if (type is { IsArray: true })
-            type = type.GetElementType();
-        else if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(List<>))
-            type = type.GetGenericArguments()[0];
+        // Only trigger on well known data type names.
+        if (type != typeof(object) && dataTypeName?.ToNpgsqlDbType()?.HasFlag(NpgsqlDbType.Range) == true)
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
+
+        if (type is null)
+            return;
+
+        if (TypeInfoMappingCollection.IsArrayType(type, out var elementType))
+            type = elementType;
 
         if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             type = type.GetGenericArguments()[0];
 
-        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>)
-            // Only trigger on well known data type names.
-            || (type != typeof(object) && dataTypeName?.ToNpgsqlDbType()?.HasFlag(NpgsqlDbType.Range) == true))
+        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
         {
+            type = type.GetGenericArguments()[0];
             var matchingArugments =
                 new[]
                 {
@@ -81,7 +85,7 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
                 };
 
             foreach (var argument in matchingArugments)
-                if (type is null || argument == type.GetGenericArguments()[0])
+                if (argument == type)
                     throw new NotSupportedException(
                         string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
         }
