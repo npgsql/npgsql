@@ -24,7 +24,7 @@ enum MatchRequirement
     /// Match when the clr type and datatype name both match.
     All,
     /// Match when the datatype name or CLR type matches while the other also matches or is absent.
-    One,
+    Single,
     // Match when the datatype name matches and the clr type also matches or is absent.
     DataTypeName,
 }
@@ -99,7 +99,7 @@ sealed class TypeInfoMappingCollection
             {
             case var _ when dataTypeMatch && typeMatch:
             case not MatchRequirement.All when dataTypeMatch && type is null:
-            case MatchRequirement.One when dataTypeName is null && typeMatch:
+            case MatchRequirement.Single when dataTypeName is null && typeMatch:
                 var resolvedMapping = mapping.TypeMatchPredicate is not null && type is not null ? mapping with { Type = type } : mapping;
                 return resolvedMapping.Factory(options, resolvedMapping, dataTypeName is not null);
             case var _ when fallback is null && dataTypeName is null && typeMatch:
@@ -159,13 +159,13 @@ sealed class TypeInfoMappingCollection
     public void Add(TypeInfoMapping mapping) => _items.Add(mapping);
 
     Func<TypeInfoMapping, TypeInfoMapping> GetDefaultConfigure(bool isDefault)
-        => GetDefaultConfigure(isDefault ? MatchRequirement.One : MatchRequirement.All);
+        => GetDefaultConfigure(isDefault ? MatchRequirement.Single : MatchRequirement.All);
     Func<TypeInfoMapping, TypeInfoMapping> GetDefaultConfigure(MatchRequirement matchRequirement)
         => matchRequirement switch
         {
             MatchRequirement.All => static mapping => mapping with { MatchRequirement = MatchRequirement.All },
             MatchRequirement.DataTypeName => static mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName },
-            MatchRequirement.One => static mapping => mapping with { MatchRequirement = MatchRequirement.One },
+            MatchRequirement.Single => static mapping => mapping with { MatchRequirement = MatchRequirement.Single },
             _ => throw new ArgumentOutOfRangeException(nameof(matchRequirement), matchRequirement, null)
         };
 
@@ -313,7 +313,7 @@ sealed class TypeInfoMappingCollection
 
         _items.Add(arrayMapping);
         _items.Add(nullableArrayMapping);
-        if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.One)
+        if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
             _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
             {
                 if (!dataTypeNameMatch)
@@ -367,7 +367,7 @@ sealed class TypeInfoMappingCollection
 
             _items.Add(arrayMapping);
             _items.Add(nullableArrayMapping);
-            if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.One)
+            if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
                 _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
                 {
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
