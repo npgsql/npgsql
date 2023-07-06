@@ -33,6 +33,7 @@ class RangeTests : MultiplexingTestBase
                 """["2020-01-01 12:00:00+00","2020-01-03 13:00:00+00")""", "tstzrange", NpgsqlDbType.TimestampTzRange)
             .SetName("TimestampTzRange"),
 
+
         // Note that numrange is a non-discrete range, and therefore doesn't undergo normalization to inclusive/exclusive in PG
         new TestCaseData(NpgsqlRange<decimal>.Empty, "empty", "numrange", NpgsqlDbType.NumericRange)
             .SetName("EmptyRange"),
