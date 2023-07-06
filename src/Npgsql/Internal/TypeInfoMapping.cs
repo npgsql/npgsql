@@ -445,6 +445,19 @@ sealed class TypeInfoMappingCollection
         }
     }
 
+    /// Returns whether type matches any of the types we register pg arrays as.
+    public static bool IsArrayType(Type type, [NotNullWhen(true)] out Type? elementType)
+    {
+        elementType = type switch
+        {
+            { IsArray: true } => type.GetElementType(),
+            { IsConstructedGenericType: true } when type.GetGenericTypeDefinition() == typeof(List<>) => type.GetGenericArguments()[0],
+            _ => null
+        };
+
+        return elementType is not null;
+    }
+
     static string GetArrayDataTypeName(string dataTypeName)
         => DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value

@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
+using Npgsql.Properties;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
@@ -56,5 +59,25 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<NpgsqlTsQueryAnd>((string)DataTypeNames.TsQuery);
         mappings.AddArrayType<NpgsqlTsQueryOr>((string)DataTypeNames.TsQuery);
         mappings.AddArrayType<NpgsqlTsQueryFollowedBy>((string)DataTypeNames.TsQuery);
+    }
+
+    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        if (type != typeof(object) && (dataTypeName == DataTypeNames.TsQuery || dataTypeName == DataTypeNames.TsVector))
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch), typeof(TBuilder).Name));
+
+        if (type is null)
+            return;
+
+        if (TypeInfoMappingCollection.IsArrayType(type, out var elementType))
+            type = elementType;
+
+        if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            type = type.GetGenericArguments()[0];
+
+        if (type == typeof(NpgsqlTsVector) || type.IsAssignableTo(typeof(NpgsqlTsQuery)))
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch), typeof(TBuilder).Name));
     }
 }
