@@ -185,7 +185,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()),
             mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<byte>(DataTypeNames.Char,
-            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>(), supportsWriting: false));
+            static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()));
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
@@ -220,8 +220,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Uuid
         mappings.AddStructType<Guid>(DataTypeNames.Uuid,
-            static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()),
-            mapping => mapping with { CanDefault = MappingDefault.Clr });
+            static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()), isDefault: true);
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
