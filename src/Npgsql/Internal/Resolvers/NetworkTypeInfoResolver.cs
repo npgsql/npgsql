@@ -48,7 +48,7 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
                     converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
 
                 return resolvedMapping.CreateInfo(options, converter);
-            }, mapping => mapping with { MatchRequirement = MatchRequirement.One, TypeMatchPredicate = type => typeof(IPAddress).IsAssignableFrom(type) });
+            }, mapping => mapping with { MatchRequirement = MatchRequirement.Single, TypeMatchPredicate = type => typeof(IPAddress).IsAssignableFrom(type) });
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
 

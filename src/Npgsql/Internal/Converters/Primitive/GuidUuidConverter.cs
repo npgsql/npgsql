@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Npgsql.Internal.Converters;
 
-public class GuidUuidConverter : PgBufferedConverter<Guid>
+sealed class GuidUuidConverter : PgBufferedConverter<Guid>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
