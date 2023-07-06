@@ -1018,7 +1018,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
         {
             writer.StartRow();
             writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-            writer.Write((string?)null, NpgsqlDbType.Uuid);
+            writer.Write<Guid?>(null, NpgsqlDbType.Uuid);
             writer.Write(DBNull.Value);
             writer.Write((string?)null);
             var rowsWritten = writer.Complete();
