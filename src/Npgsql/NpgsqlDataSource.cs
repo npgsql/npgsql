@@ -32,8 +32,6 @@ public abstract class NpgsqlDataSource : DbDataSource
     internal NpgsqlLoggingConfiguration LoggingConfiguration { get; }
 
     readonly IPgTypeInfoResolver _resolver;
-    readonly INpgsqlNameTranslator _defaultNameTranslator;
-
     internal PgSerializerOptions SerializerOptions { get; private set; } = null!; // Initialized at bootstrapping
 
     /// <summary>
@@ -99,7 +97,6 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 var resolverChain,
-                _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
