@@ -34,6 +34,9 @@ public readonly struct Size
         if (Kind is SizeKind.Unknown || result.Kind is SizeKind.Unknown)
             return this;
 
+        if (Kind is SizeKind.UpperBound || result.Kind is SizeKind.UpperBound)
+            return CreateUpperBound(_byteCount + result._byteCount);
+
         return Create(_byteCount + result._byteCount);
     }
 
