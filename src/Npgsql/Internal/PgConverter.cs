@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
-public struct SizeContext
+public readonly struct SizeContext
 {
     public SizeContext(DataFormat format) => Format = format;
     public DataFormat Format { get; }
