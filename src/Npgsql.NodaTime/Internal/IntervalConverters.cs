@@ -4,7 +4,7 @@ using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class IntervalPeriodConverter : PgBufferedConverter<Period>
+sealed class IntervalPeriodConverter : PgBufferedConverter<Period>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {
@@ -49,7 +49,7 @@ public class IntervalPeriodConverter : PgBufferedConverter<Period>
     }
 }
 
-public class IntervalDurationConverter : PgBufferedConverter<Duration>
+sealed class IntervalDurationConverter : PgBufferedConverter<Duration>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

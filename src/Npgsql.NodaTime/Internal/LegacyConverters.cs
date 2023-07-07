@@ -4,7 +4,7 @@ using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class LegacyTimestampTzZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
+sealed class LegacyTimestampTzZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
 {
     readonly DateTimeZone _dateTimeZone;
     readonly bool _dateTimeInfinityConversions;
@@ -34,7 +34,7 @@ public class LegacyTimestampTzZonedDateTimeConverter : PgBufferedConverter<Zoned
         => writer.WriteInt64(EncodeInstant(value.ToInstant(), _dateTimeInfinityConversions));
 }
 
-public class LegacyTimestampTzOffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
+sealed class LegacyTimestampTzOffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
 {
     readonly bool _dateTimeInfinityConversions;
     readonly DateTimeZone _dateTimeZone;
