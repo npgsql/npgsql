@@ -3,7 +3,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class OffsetTimeConverter : PgBufferedConverter<OffsetTime>
+sealed class OffsetTimeConverter : PgBufferedConverter<OffsetTime>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

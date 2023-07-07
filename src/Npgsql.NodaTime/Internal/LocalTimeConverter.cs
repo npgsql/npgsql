@@ -3,7 +3,7 @@ using Npgsql.Internal;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class LocalTimeConverter : PgBufferedConverter<LocalTime>
+sealed class LocalTimeConverter : PgBufferedConverter<LocalTime>
 {
     public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
     {

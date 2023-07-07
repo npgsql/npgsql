@@ -5,7 +5,7 @@ using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class InstantConverter : PgBufferedConverter<Instant>
+sealed class InstantConverter : PgBufferedConverter<Instant>
 {
     readonly bool _dateTimeInfinityConversions;
 
@@ -28,7 +28,7 @@ public class InstantConverter : PgBufferedConverter<Instant>
         => writer.WriteInt64(EncodeInstant(value, _dateTimeInfinityConversions));
 }
 
-public class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
+sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
 {
     readonly bool _dateTimeInfinityConversions;
 
@@ -61,7 +61,7 @@ public class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
     }
 }
 
-public class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
+sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
 {
     readonly bool _dateTimeInfinityConversions;
 
@@ -94,7 +94,7 @@ public class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
     }
 }
 
-public class LocalDateTimeConverter : PgBufferedConverter<LocalDateTime>
+sealed class LocalDateTimeConverter : PgBufferedConverter<LocalDateTime>
 {
     readonly bool _dateTimeInfinityConversions;
 

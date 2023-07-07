@@ -5,7 +5,7 @@ using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
-public class LocalDateConverter : PgBufferedConverter<LocalDate>
+sealed class LocalDateConverter : PgBufferedConverter<LocalDate>
 {
     readonly bool _dateTimeInfinityConversions;
 
