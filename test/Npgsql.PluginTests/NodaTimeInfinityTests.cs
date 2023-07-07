@@ -26,7 +26,8 @@ public class NodaTimeInfinityTests : TestBase
             new DateInterval(LocalDate.MinIsoValue, LocalDate.MaxIsoValue),
             "[-infinity,infinity]",
             "daterange",
-            NpgsqlDbType.DateRange);
+            NpgsqlDbType.DateRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
     }
 
     [Test]
