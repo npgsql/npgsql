@@ -92,7 +92,8 @@ public class NodaTimeTests : MultiplexingTestBase
                 new(1998, 4, 12, 15, 26, 38)),
             @"[""1998-04-12 13:26:38"",""1998-04-12 15:26:38""]",
             "tsrange",
-            NpgsqlDbType.TimestampRange);
+            NpgsqlDbType.TimestampRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public async Task Tsmultirange_as_array_of_NpgsqlRange_of_LocalDateTime()
@@ -217,25 +218,26 @@ public class NodaTimeTests : MultiplexingTestBase
                 new LocalDateTime(1998, 4, 12, 15, 26, 38).InUtc().ToInstant()),
             @"[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02"")",
             "tstzrange",
-            NpgsqlDbType.TimestampTzRange);
+            NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Tstzrange_with_no_end_as_Interval()
         => AssertType(
-            new Interval(
-                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(), null),
+            new Interval(new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant(), null),
             @"[""1998-04-12 15:26:38+02"",)",
             "tstzrange",
-            NpgsqlDbType.TimestampTzRange);
+            NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Tstzrange_with_no_start_as_Interval()
         => AssertType(
-            new Interval( null,
-                new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant()),
+            new Interval(null, new LocalDateTime(1998, 4, 12, 13, 26, 38).InUtc().ToInstant()),
             @"(,""1998-04-12 15:26:38+02"")",
             "tstzrange",
-            NpgsqlDbType.TimestampTzRange);
+            NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Tstzrange_with_no_start_or_end_as_Interval()
@@ -243,7 +245,8 @@ public class NodaTimeTests : MultiplexingTestBase
             new Interval(null, null),
             @"(,)",
             "tstzrange",
-            NpgsqlDbType.TimestampTzRange);
+            NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Tstzrange_as_NpgsqlRange_of_Instant()
@@ -254,6 +257,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""]",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
@@ -265,6 +269,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""]",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
@@ -276,6 +281,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""]",
             "tstzrange",
             NpgsqlDbType.TimestampTzRange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
@@ -296,7 +302,8 @@ public class NodaTimeTests : MultiplexingTestBase
             },
             @"{[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""),[""1998-04-13 15:26:38+02"",""1998-04-13 17:26:38+02"")}",
             "tstzmultirange",
-            NpgsqlDbType.TimestampTzMultirange);
+            NpgsqlDbType.TimestampTzMultirange,
+            isNpgsqlDbTypeInferredFromClrType: false);
     }
 
     [Test]
@@ -318,6 +325,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"{[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""],[""1998-04-13 15:26:38+02"",""1998-04-13 17:26:38+02""]}",
             "tstzmultirange",
             NpgsqlDbType.TimestampTzMultirange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
     }
 
@@ -340,6 +348,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"{[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""],[""1998-04-13 15:26:38+02"",""1998-04-13 17:26:38+02""]}",
             "tstzmultirange",
             NpgsqlDbType.TimestampTzMultirange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
     }
 
@@ -362,6 +371,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"{[""1998-04-12 15:26:38+02"",""1998-04-12 17:26:38+02""],[""1998-04-13 15:26:38+02"",""1998-04-13 17:26:38+02""]}",
             "tstzmultirange",
             NpgsqlDbType.TimestampTzMultirange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
     }
 
@@ -392,6 +402,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\"")"",""[\""1998-04-13 15:26:38+02\"",)"",""(,\""1998-04-13 15:26:38+02\"")"",""(,)""}",
             "tstzrange[]",
             NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForWriting: false);
     }
 
@@ -413,6 +424,7 @@ public class NodaTimeTests : MultiplexingTestBase
             @"{""[\""1998-04-12 15:26:38+02\"",\""1998-04-12 17:26:38+02\""]"",""[\""1998-04-13 15:26:38+02\"",\""1998-04-13 17:26:38+02\""]""}",
             "tstzrange[]",
             NpgsqlDbType.TimestampTzRange | NpgsqlDbType.Array,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefault: false);
     }
 
@@ -439,7 +451,8 @@ public class NodaTimeTests : MultiplexingTestBase
             new DateInterval(new(2002, 3, 4), new(2002, 3, 6)),
             "[2002-03-04,2002-03-07)",
             "daterange",
-            NpgsqlDbType.DateRange);
+            NpgsqlDbType.DateRange,
+            isNpgsqlDbTypeInferredFromClrType: false);
 
     [Test]
     public Task Daterange_as_NpgsqlRange_of_LocalDate()
@@ -448,6 +461,7 @@ public class NodaTimeTests : MultiplexingTestBase
             "[2002-03-04,2002-03-06)",
             "daterange",
             NpgsqlDbType.DateRange,
+            isNpgsqlDbTypeInferredFromClrType: false,
             isDefaultForReading: false);
 
     [Test]
