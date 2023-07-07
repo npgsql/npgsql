@@ -229,12 +229,17 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             pgTypeId = npgsqlDbType.Value.ToDataTypeName() is { } name
                 ? options.GetCanonicalTypeId(name)
                 // Handle plugin types via lookup.
-                : options.ToCanonicalTypeId(
-                    options.TypeCatalog.GetPostgresTypeByName(npgsqlDbType.Value.ToUnqualifiedDataTypeNameOrThrow()));
+                : GetRepresentationalOrDefault(npgsqlDbType.Value.ToUnqualifiedDataTypeNameOrThrow());
         }
         var info = options.GetTypeInfo(type, pgTypeId) ?? throw new InvalidCastException($"Reading is not supported for type '{type}'");
         // Binary export has no type info so we only do caller-directed interpretation of data.
         return info.Bind(new Field("?", info.PgTypeId!.Value, -1), DataFormat.Binary);
+
+        PgTypeId GetRepresentationalOrDefault(string dataTypeName)
+        {
+            var type = options.TypeCatalog.GetPostgresTypeByName(dataTypeName);
+            return options.ToCanonicalTypeId(type.GetRepresentationalType() ?? type);
+        }
     }
 
     /// <summary>
