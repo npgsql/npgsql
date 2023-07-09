@@ -220,5 +220,26 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("RangesNotEnabled", resourceCulture);
             }
         }
+
+        public static string RangeArraysNotEnabled
+        {
+            get {
+                return ResourceManager.GetString("RangeArraysNotEnabled", resourceCulture);
+            }
+        }
+
+        public static string MultirangeArraysNotEnabled
+        {
+            get {
+                return ResourceManager.GetString("MultirangeArraysNotEnabled", resourceCulture);
+            }
+        }
+
+        public static string MultirangesNotEnabled
+        {
+            get {
+                return ResourceManager.GetString("MultirangesNotEnabled", resourceCulture);
+            }
+        }
     }
 }

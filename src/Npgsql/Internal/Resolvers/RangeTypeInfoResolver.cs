@@ -3,6 +3,7 @@ using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 using Npgsql.Properties;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
@@ -34,13 +35,13 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, new RangeConverter<decimal>(new DecimalNumericConverter<decimal>())), isDefault: true);
         mappings.AddStructType<NpgsqlRange<BigInteger>>(DataTypeNames.NumRange,
-            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<BigInteger>(new BigIntegerNumericConverter())),
-            isDefault: true);
+            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<BigInteger>(new BigIntegerNumericConverter())));
 
         // daterange
         mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions))), isDefault: true);
+                new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions))),
+            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
         mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
             static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<int>(new Int4Converter<int>())));
 #if NET6_0_OR_GREATER
@@ -56,18 +57,53 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
     {
     }
 
-    public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    public static void ThrowIfUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
-        // Only trigger on well known data type names.
-        if (type != typeof(object) && dataTypeName?.ToNpgsqlDbType()?.HasFlag(NpgsqlDbType.Range) == true)
+        var kind = CheckUnsupported(type, dataTypeName, options);
+        switch (kind)
+        {
+        case PgTypeKind.Range when kind.Value.HasFlag(PgTypeKind.Array):
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.RangeArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
+        case PgTypeKind.Range:
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
-
-        if (type is null)
+        case PgTypeKind.Multirange when kind.Value.HasFlag(PgTypeKind.Array):
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.MultirangeArraysNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableArrays), typeof(TBuilder).Name));
+        case PgTypeKind.Multirange:
+            throw new NotSupportedException(
+                string.Format(NpgsqlStrings.MultirangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableMultiranges), typeof(TBuilder).Name));
+        default:
             return;
+        }
+    }
 
+    public static PgTypeKind? CheckUnsupported(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+    {
+        // Only trigger on well known data type names.
+        var npgsqlDbType = dataTypeName?.ToNpgsqlDbType();
+        if (type != typeof(object) && (npgsqlDbType?.HasFlag(NpgsqlDbType.Range) == true || npgsqlDbType?.HasFlag(NpgsqlDbType.Multirange) == true))
+        {
+            if (npgsqlDbType.Value.HasFlag(NpgsqlDbType.Range))
+                return dataTypeName?.IsArray == true
+                    ? PgTypeKind.Array | PgTypeKind.Range
+                    : PgTypeKind.Range;
+
+            return dataTypeName?.IsArray == true
+                ? PgTypeKind.Array | PgTypeKind.Multirange
+                : PgTypeKind.Multirange;
+        }
+
+        if (type is null || type == typeof(object))
+            return null;
+
+        var isArray = false;
         if (TypeInfoMappingCollection.IsArrayType(type, out var elementType))
+        {
             type = elementType;
+            isArray = true;
+        }
 
         if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             type = type.GetGenericArguments()[0];
@@ -84,10 +120,13 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
 #endif
                 };
 
+            // If we don't know more than the clr type, default to a Multirange kind over Array as they share the same types.
             foreach (var argument in matchingArugments)
                 if (argument == type)
-                    throw new NotSupportedException(
-                        string.Format(NpgsqlStrings.RangesNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableRanges), typeof(TBuilder).Name));
+                    return isArray ? PgTypeKind.Multirange : PgTypeKind.Range;
+
         }
+
+        return null;
     }
 }

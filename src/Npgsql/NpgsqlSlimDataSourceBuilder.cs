@@ -323,9 +323,27 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     #region Optional opt-ins
 
     /// <summary>
-    /// Sets up mappings for the PostgreSQL <c>range</c> and <c>multirange</c> types.
+    /// Sets up mappings for the PostgreSQL <c>array</c> types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableArrays()
+    {
+        AddTypeInfoResolver(new RangeTypeInfoResolver());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>range</c> types.
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableRanges()
+    {
+        AddTypeInfoResolver(new RangeTypeInfoResolver());
+        return this;
+    }
+
+    /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>multirange</c> types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableMultiranges()
     {
         AddTypeInfoResolver(new RangeTypeInfoResolver());
         return this;

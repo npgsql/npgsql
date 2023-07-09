@@ -31,7 +31,7 @@ sealed class RecordTypeInfoResolver : IPgTypeInfoResolver
 
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
-        // mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
+        mappings.AddArrayType<object[]>((string)DataTypeNames.Record);
     }
 
     public static void CheckUnsupported<TBuilder>(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)

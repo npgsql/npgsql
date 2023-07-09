@@ -134,7 +134,7 @@ enum PgTypeKind
     // A range carying its element type.
     Range,
     // A multi-range carying its element type.
-    MultiRange,
+    Multirange,
     // A domain carying its underlying type.
     Domain,
     // A composite carying its constituent fields.

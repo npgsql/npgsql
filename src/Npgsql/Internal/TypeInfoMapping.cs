@@ -107,7 +107,8 @@ public sealed class TypeInfoMappingCollection
             case MatchRequirement.Single when dataTypeName is null && typeMatch:
                 var resolvedMapping = mapping.TypeMatchPredicate is not null && type is not null ? mapping with { Type = type } : mapping;
                 return resolvedMapping.Factory(options, resolvedMapping, dataTypeName is not null);
-            case var _ when fallback is null && dataTypeName is null && typeMatch:
+            // DataTypeName is explicitly requiring dataTypeName so it won't be used for a fallback, Single would have matched above already.
+            case MatchRequirement.All when fallback is null && dataTypeName is null && typeMatch:
                 fallback = mapping.TypeMatchPredicate is not null ? mapping with { Type = type! } : mapping;
                 break;
             default:

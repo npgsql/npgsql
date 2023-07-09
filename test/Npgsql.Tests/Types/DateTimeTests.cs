@@ -415,7 +415,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Interval_with_months_cannot_read_as_TimeSpan()
-        => AssertTypeUnsupportedRead("1 month 2 days", "interval");
+        => AssertTypeUnsupportedRead<TimeSpan, InvalidCastException>("1 month 2 days", "interval");
 
     #endregion
 

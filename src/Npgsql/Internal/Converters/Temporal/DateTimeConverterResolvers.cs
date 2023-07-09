@@ -35,7 +35,7 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         {
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return expectedPgTypeId == _timestamp
-                ? throw new InvalidCastException(
+                ? throw new NotSupportedException(
                     "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
                     "consider using 'timestamp with time zone'. " +
                     "Note that it's not possible to mix DateTimes with different Kinds in an array/range.")
@@ -46,7 +46,7 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         if (expectedPgTypeId == _timestampTz
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
-            throw new InvalidCastException(
+            throw new NotSupportedException(
                 $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
                 "Note that it's not possible to mix DateTimes with different Kinds in an array/range. ");
         }
@@ -78,7 +78,7 @@ sealed class DateTimeOffsetUtcOnlyConverterResolver : PgConverterResolver<DateTi
         var resolution = GetDefault(expectedPgTypeId ?? _timestampTz);
         return value.Offset == TimeSpan.Zero
             ? resolution
-            : throw new InvalidCastException(
+            : throw new NotSupportedException(
                 $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ");
     }
 }
