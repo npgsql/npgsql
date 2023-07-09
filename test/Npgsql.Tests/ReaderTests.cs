@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Tests.Support;
 using Npgsql.TypeMapping;

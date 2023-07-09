@@ -1,8 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Descriptors;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 

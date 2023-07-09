@@ -4,8 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Npgsql.Internal;
 using Npgsql.Internal.Converters;
+using Npgsql.Internal.Postgres;
 using Npgsql.NameTranslation;
-using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;

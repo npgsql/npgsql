@@ -1,5 +1,5 @@
 using System;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Internal.Converters;

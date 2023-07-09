@@ -1,6 +1,6 @@
 using System;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 
 namespace Npgsql.Internal.Resolvers;

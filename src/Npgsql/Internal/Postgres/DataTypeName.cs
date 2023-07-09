@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Npgsql.PostgresTypes;
+namespace Npgsql.Internal.Postgres;
 
 /// <summary>
 /// Represented the fully-qualified name of a PostgreSQL type.

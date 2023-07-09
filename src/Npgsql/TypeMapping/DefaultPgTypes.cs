@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using static Npgsql.TypeMapping.PgTypeGroup;
 
 namespace Npgsql.TypeMapping;

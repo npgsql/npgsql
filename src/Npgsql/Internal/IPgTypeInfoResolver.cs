@@ -1,5 +1,5 @@
 using System;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 

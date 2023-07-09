@@ -5,8 +5,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Descriptors;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Internal.Converters.BitStringHelpers;
 
 namespace Npgsql.Internal.Converters;

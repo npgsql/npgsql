@@ -1,8 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using Npgsql.Internal.Converters;
-using Npgsql.Internal.Descriptors;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 

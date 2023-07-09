@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.NetworkInformation;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;

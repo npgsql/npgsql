@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Npgsql.Internal.Descriptors;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 

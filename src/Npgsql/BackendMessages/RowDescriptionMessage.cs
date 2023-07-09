@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Npgsql.Internal;
-using Npgsql.Internal.Descriptors;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Replication.PgOutput.Messages;
 

@@ -1,6 +1,6 @@
 using System;
 
-namespace Npgsql.PostgresTypes;
+namespace Npgsql.Internal.Postgres;
 
 public readonly struct Oid: IEquatable<Oid>
 {

@@ -1,7 +1,6 @@
 using System;
 using System.Text.Json;
-using Npgsql.Internal;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Resolvers;
 

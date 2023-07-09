@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
