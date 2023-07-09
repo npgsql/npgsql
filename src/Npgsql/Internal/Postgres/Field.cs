@@ -1,6 +1,4 @@
-using Npgsql.PostgresTypes;
-
-namespace Npgsql.Internal.Descriptors;
+namespace Npgsql.Internal.Postgres;
 
 /// Base field type shared between tables and composites.
 public readonly struct Field

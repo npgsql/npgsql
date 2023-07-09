@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;

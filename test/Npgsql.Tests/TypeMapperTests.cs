@@ -1,9 +1,9 @@
 ﻿using Npgsql.Internal;
-using Npgsql.PostgresTypes;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 using Npgsql.Internal.Converters;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;

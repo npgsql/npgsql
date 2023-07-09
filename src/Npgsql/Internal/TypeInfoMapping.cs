@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
 
@@ -35,7 +35,7 @@ public readonly struct TypeInfoMapping
     public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
     {
         Type = type;
-        DataTypeName = PostgresTypes.DataTypeName.NormalizeName(dataTypeName);
+        DataTypeName = Postgres.DataTypeName.NormalizeName(dataTypeName);
         Factory = factory;
     }
 
@@ -49,7 +49,7 @@ public readonly struct TypeInfoMapping
     public bool DataTypeNameEquals(DataTypeName dataTypeName)
     {
         var span = DataTypeName.AsSpan();
-        return PostgresTypes.DataTypeName.IsFullyQualified(span)
+        return Postgres.DataTypeName.IsFullyQualified(span)
             ? span.SequenceEqual(dataTypeName.Value.AsSpan())
             : span.SequenceEqual(dataTypeName.UnqualifiedNameSpan);
     }
@@ -61,7 +61,7 @@ public readonly struct TypeInfoMapping
             var builder = new StringBuilder()
                 .Append(Type.Name)
                 .Append(" <-> ")
-                .Append(PostgresTypes.DataTypeName.FromDisplayName(DataTypeName).DisplayName);
+                .Append(Postgres.DataTypeName.FromDisplayName(DataTypeName).DisplayName);
 
             if (MatchRequirement is not MatchRequirement.All)
                 builder.Append($" ({MatchRequirement.ToString().ToLowerInvariant()})");

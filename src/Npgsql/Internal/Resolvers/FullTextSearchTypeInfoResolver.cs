@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Numerics;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 using NpgsqlTypes;
 

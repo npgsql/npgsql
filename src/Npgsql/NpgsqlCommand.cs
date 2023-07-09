@@ -17,7 +17,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Npgsql.Internal;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 
 namespace Npgsql;

@@ -1,6 +1,6 @@
-using static Npgsql.PostgresTypes.DataTypeName;
+using static Npgsql.Internal.Postgres.DataTypeName;
 
-namespace Npgsql.PostgresTypes;
+namespace Npgsql.Internal.Postgres;
 
 /// <summary>
 /// Well-known PostgreSQL data type names.

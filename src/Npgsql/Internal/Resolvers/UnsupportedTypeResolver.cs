@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Resolvers;
 

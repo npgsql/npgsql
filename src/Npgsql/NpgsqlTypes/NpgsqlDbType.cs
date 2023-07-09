@@ -1,7 +1,7 @@
 using System;
 using System.Data;
 using Npgsql;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Util.Statics;
 
 #pragma warning disable CA1720

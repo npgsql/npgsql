@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -307,7 +308,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return npgsqlDbType.ToDbType();
 
             if (_dataTypeName is not null)
-                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
+                return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType()?.ToDbType() ?? DbType.Object;
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -342,7 +343,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 return _npgsqlDbType.Value;
 
             if (_dataTypeName is not null)
-                return PostgresTypes.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
+                return Internal.Postgres.DataTypeName.FromDisplayName(_dataTypeName).ToNpgsqlDbType() ?? NpgsqlDbType.Unknown;
 
             // Infer from value but don't cache
             if (Value is not null)
@@ -520,7 +521,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             }
             else if (_dataTypeName is not null)
             {
-                dataTypeName = PostgresTypes.DataTypeName.NormalizeName(_dataTypeName);
+                dataTypeName = Internal.Postgres.DataTypeName.NormalizeName(_dataTypeName);
                 // If we can find a match in an NpgsqlDbType we known we're dealing with a fully qualified built-in data type name.
                 builtinDataTypeName = NpgsqlDbTypeExtensions.ToNpgsqlDbType(dataTypeName)?.ToDataTypeName();
             }

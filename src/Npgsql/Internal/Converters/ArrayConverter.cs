@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
@@ -261,7 +261,7 @@ readonly struct PgArrayConverter
         var stateArray = state.ElementInfo.Array;
 
         var indices = state.Indices;
-        Array.Clear(indices);
+        Array.Clear(indices, 0 , indices.Length);
         var lastLength = state.Lengths?[state.Lengths.Length - 1] ?? state.Count;
         var i = state.ElementInfo.Offset;
         do

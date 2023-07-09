@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Npgsql.PostgresTypes;
+namespace Npgsql.Internal.Postgres;
 
 public readonly struct PgTypeId: IEquatable<PgTypeId>
 {

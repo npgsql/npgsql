@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
-using Npgsql.Internal.Descriptors;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql;
 

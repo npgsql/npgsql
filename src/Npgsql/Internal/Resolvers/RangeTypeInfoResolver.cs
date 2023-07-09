@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
