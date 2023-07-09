@@ -374,8 +374,13 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
             if (_dataTypeName != null)
                 return _dataTypeName;
 
+            // Map it to a display name.
             if (_npgsqlDbType is { } npgsqlDbType)
-                return npgsqlDbType.ToUnqualifiedDataTypeName();
+            {
+                var unqualifiedName = npgsqlDbType.ToUnqualifiedDataTypeName();
+                return unqualifiedName is null ? null : Internal.Postgres.DataTypeName.ValidatedName(
+                    "pg_catalog." + unqualifiedName).UnqualifiedDisplayName;
+            }
 
             // Infer from value but don't cache
             if (Value is not null)

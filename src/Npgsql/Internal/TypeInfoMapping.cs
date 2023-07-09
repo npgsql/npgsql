@@ -53,8 +53,8 @@ public readonly struct TypeInfoMapping
     {
         var span = DataTypeName.AsSpan();
         return Postgres.DataTypeName.IsFullyQualified(span)
-            ? span.SequenceEqual(dataTypeName.Value.AsSpan())
-            : span.SequenceEqual(dataTypeName.UnqualifiedNameSpan);
+            ? span.Equals(dataTypeName.Value.AsSpan(), StringComparison.Ordinal)
+            : span.Equals(dataTypeName.UnqualifiedNameSpan, StringComparison.Ordinal);
     }
 
     string DebuggerDisplay
@@ -126,7 +126,7 @@ public sealed class TypeInfoMappingCollection
     {
         foreach (var mapping in _baseCollection?._items ?? _items)
         {
-            if (mapping.Type == type && mapping.DataTypeName.AsSpan().SequenceEqual(dataTypeName.AsSpan()))
+            if (mapping.Type == type && mapping.DataTypeName.AsSpan().Equals(dataTypeName.AsSpan(), StringComparison.Ordinal))
             {
                 value = mapping;
                 return true;

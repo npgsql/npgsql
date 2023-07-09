@@ -719,19 +719,19 @@ static class NpgsqlDbTypeExtensions
         => npgsqlDbType switch
         {
             // Numeric types
-            NpgsqlDbType.Smallint => "smallint",
-            NpgsqlDbType.Integer  => "integer",
-            NpgsqlDbType.Bigint   => "bigint",
-            NpgsqlDbType.Real     => "real",
-            NpgsqlDbType.Double   => "double precision",
+            NpgsqlDbType.Smallint => "int2",
+            NpgsqlDbType.Integer  => "int4",
+            NpgsqlDbType.Bigint   => "int8",
+            NpgsqlDbType.Real     => "float4",
+            NpgsqlDbType.Double   => "float8",
             NpgsqlDbType.Numeric  => "numeric",
             NpgsqlDbType.Money    => "money",
 
             // Text types
             NpgsqlDbType.Text      => "text",
             NpgsqlDbType.Xml       => "xml",
-            NpgsqlDbType.Varchar   => "character varying",
-            NpgsqlDbType.Char      => "character",
+            NpgsqlDbType.Varchar   => "varchar",
+            NpgsqlDbType.Char      => "bpchar",
             NpgsqlDbType.Name      => "name",
             NpgsqlDbType.Refcursor => "refcursor",
             NpgsqlDbType.Jsonb     => "jsonb",
@@ -739,11 +739,11 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.JsonPath  => "jsonpath",
 
             // Date/time types
-            NpgsqlDbType.Timestamp   => "timestamp without time zone",
-            NpgsqlDbType.TimestampTz => "timestamp with time zone",
+            NpgsqlDbType.Timestamp   => "timestamp",
+            NpgsqlDbType.TimestampTz => "timestamptz",
             NpgsqlDbType.Date        => "date",
-            NpgsqlDbType.Time        => "time without time zone",
-            NpgsqlDbType.TimeTz      => "time with time zone",
+            NpgsqlDbType.Time        => "time",
+            NpgsqlDbType.TimeTz      => "timetz",
             NpgsqlDbType.Interval    => "interval",
 
             // Network types
@@ -775,10 +775,10 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Regconfig => "regconfig",
 
             // Misc types
-            NpgsqlDbType.Boolean => "boolean",
+            NpgsqlDbType.Boolean => "bool",
             NpgsqlDbType.Bytea   => "bytea",
             NpgsqlDbType.Uuid    => "uuid",
-            NpgsqlDbType.Varbit  => "bit varying",
+            NpgsqlDbType.Varbit  => "varbit",
             NpgsqlDbType.Bit     => "bit",
 
             // Built-in range types
@@ -821,7 +821,7 @@ static class NpgsqlDbTypeExtensions
                 => "unknown",
 
             _ => npgsqlDbType.HasFlag(NpgsqlDbType.Array)
-                ? ToUnqualifiedDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) is { } name ? name + "[]" : null
+                ? ToUnqualifiedDataTypeName(npgsqlDbType & ~NpgsqlDbType.Array) is { } name ? "_" + name : null
                 : null // e.g. ranges
         };
 
