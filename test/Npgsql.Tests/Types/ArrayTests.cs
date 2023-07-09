@@ -150,9 +150,9 @@ public class ArrayTests : MultiplexingTestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
-        Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidOperationException>());
-        Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidOperationException>());
-        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
+        Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidCastException>());
+        Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidCastException>());
+        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
     }
 
     [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
@@ -271,8 +271,8 @@ SELECT onedim, twodim FROM (VALUES
         var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0))!;
-        Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension from an array with 2 dimensions"));
+        var ex = Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<int[]>(0))!;
+        Assert.That(ex.Message, Does.StartWith("Cannot read an array value with 2 dimensions into a collection type with 1 dimension"));
     }
 
     [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
@@ -289,7 +289,7 @@ SELECT onedim, twodim FROM (VALUES
 
         Assert.That(
             () => reader.GetFieldValue<int[]>(0),
-            Throws.Exception.TypeOf<InvalidOperationException>()
+            Throws.Exception.TypeOf<InvalidCastException>()
                 .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 
@@ -308,7 +308,7 @@ SELECT onedim, twodim FROM (VALUES
 
         Assert.That(
             () => reader.GetFieldValue<List<int>>(0),
-            Throws.Exception.TypeOf<InvalidOperationException>()
+            Throws.Exception.TypeOf<InvalidCastException>()
                 .With.Message.EqualTo(PgArrayConverter.ReadNonNullableCollectionWithNullsExceptionMessage));
     }
 

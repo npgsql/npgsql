@@ -298,11 +298,11 @@ public abstract class TestBase
         await using var reader = await cmd.ExecuteReaderAsync();
         await reader.ReadAsync();
 
-        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
+        Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<NotSupportedException>());
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
-        => AssertTypeUnsupportedRead<T, InvalidCastException>(sqlLiteral, pgTypeName, dataSource);
+    public Task<NotSupportedException> AssertTypeUnsupportedRead<T>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
+        => AssertTypeUnsupportedRead<T, NotSupportedException>(sqlLiteral, pgTypeName, dataSource);
 
     public async Task<TException> AssertTypeUnsupportedRead<T, TException>(string sqlLiteral, string pgTypeName, NpgsqlDataSource? dataSource = null)
         where TException : Exception
@@ -317,8 +317,8 @@ public abstract class TestBase
         return Assert.Throws<TException>(() => reader.GetFieldValue<T>(0))!;
     }
 
-    public Task<InvalidCastException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
-        => AssertTypeUnsupportedWrite<T, InvalidCastException>(value, pgTypeName, dataSource);
+    public Task<NotSupportedException> AssertTypeUnsupportedWrite<T>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
+        => AssertTypeUnsupportedWrite<T, NotSupportedException>(value, pgTypeName, dataSource);
 
     public async Task<TException> AssertTypeUnsupportedWrite<T, TException>(T value, string? pgTypeName = null, NpgsqlDataSource? dataSource = null)
         where TException : Exception

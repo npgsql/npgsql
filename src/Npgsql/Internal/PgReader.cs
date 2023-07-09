@@ -116,8 +116,11 @@ public class PgReader
             UserSuppliedByteArray = default;
         if (TextReaderStream is not null)
             TextReaderStream = null;
-        if (_pooledArray is not null)
-            ArrayPool.Return(_pooledArray);
+        if (_pooledArray is { } array)
+        {
+            ArrayPool.Return(array);
+            _pooledArray = null;
+        }
     }
 
     byte[] RentArray(int count)

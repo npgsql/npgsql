@@ -72,4 +72,13 @@
     <data name="RangesNotEnabled" xml:space="preserve">
         <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
     </data>
+    <data name="RangeArraysNotEnabled" xml:space="preserve">
+        <value>Range arrays aren't enabled; please call {0} on {1} to enable arrays for ranges.</value>
+    </data>
+    <data name="MultirangesNotEnabled" xml:space="preserve">
+        <value>Multiranges aren't enabled; please call {0} on {1} to enable multiranges.</value>
+    </data>
+    <data name="MultirangeArraysNotEnabled" xml:space="preserve">
+        <value>Multirange arrays aren't enabled; please call {0} on {1} to enable arrays for multiranges.</value>
+    </data>
 </root>

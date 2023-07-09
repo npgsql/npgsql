@@ -64,6 +64,8 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
 
     public bool IsDefault => _value is null;
 
+    public bool IsArray => UnqualifiedNameSpan.StartsWith("_", StringComparison.Ordinal);
+
     string ValueOrThrowIfDefault()
     {
         return _value is null ? Throw() : _value;
