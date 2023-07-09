@@ -18,10 +18,9 @@ public class PostgresArrayType : PostgresType
     /// <summary>
     /// Constructs a representation of a PostgreSQL array data type.
     /// </summary>
-    protected internal PostgresArrayType(string ns, string internalName, uint oid, PostgresType elementPostgresType)
-        : base(ns, elementPostgresType.Name + "[]", internalName, oid)
+    protected internal PostgresArrayType(string ns, string name, uint oid, PostgresType elementPostgresType)
+        : base(ns, name, oid)
     {
-        Debug.Assert(internalName == '_' + elementPostgresType.InternalName);
         Element = elementPostgresType;
         Element.Array = this;
     }
