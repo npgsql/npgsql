@@ -72,7 +72,7 @@ public class DateTimeTests : TestBase
         await using var conn = await OpenConnectionAsync();
         MinimumPgVersion(conn, "14.0", "Multirange types were introduced in PostgreSQL 14");
 
-        await  AssertType(
+        await AssertType(
             new[]
             {
                 new NpgsqlRange<DateOnly>(new(2002, 3, 4), true, new(2002, 3, 6), false),

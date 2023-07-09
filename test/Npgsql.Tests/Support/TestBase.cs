@@ -236,6 +236,21 @@ public abstract class TestBase
             CheckInference();
         }
 
+        Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
+
+        cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
+            "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
+
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
+
+        for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
+        {
+            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
+            Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
+        }
+
+        // Do this after reading to get better errors when features are disabled (which would cause default mappings to resolve to Unknown).
         if (isDefault)
         {
             // With (non-generic) value only
@@ -251,20 +266,6 @@ public abstract class TestBase
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
             if (isNpgsqlDbTypeInferredFromClrType)
                 CheckInference();
-        }
-
-        Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
-
-        cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
-            "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
-
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        await reader.ReadAsync();
-
-        for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
-        {
-            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
-            Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
         }
 
         void CheckInference()
