@@ -2,21 +2,12 @@
   <Import Project="../Directory.Build.props" />
 
   <PropertyGroup>
-    <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">net8.0;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">net8.0;net6.0</TargetFrameworks>
     <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
 
     <!-- Suppress warnings for [RequiresPreviewFeatures] (<EnablePreviewFeatures> doesn't seem to work across <ProjectReference>) -->
     <NoWarn>$(NoWarn);CA2252</NoWarn>
-  </PropertyGroup>
-
-  <!--
-    We use the netcoreapp3.1 TFM to tests compatibility with netstandard2.0 but may of the the packages issue warnings
-    because they have not been tested with netcoreapp3.1.
-    Since testing for compatibility is exactly what we want to do here, we disable the warnings.
-  -->
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1'">
-    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
 
   <ItemGroup>

@@ -41,7 +41,7 @@ jobs:
           - os: ubuntu-22.04
             pg_major: 15
             config: Release
-            test_tfm: netcoreapp3.1
+            test_tfm: net6.0
           - os: macos-12
             pg_major: 14
             config: Release

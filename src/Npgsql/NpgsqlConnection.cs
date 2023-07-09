@@ -853,7 +853,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
             return Task.CompletedTask;
         }
 
-        return CloseAsync(async);            
+        return CloseAsync(async);
     }
 
     async Task CloseAsync(bool async)
@@ -914,7 +914,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                     // We're already doing the same in the NpgsqlConnector.Reset for pooled connections
                     // TODO: move reset logic to ConnectorSource.Return
                     connector.Transaction?.UnbindIfNecessary();
-                }  
+                }
 
                 if (Settings.Multiplexing)
                 {
@@ -1228,7 +1228,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     {
         using (NoSynchronizationContextScope.Enter())
             return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
-    } 
+    }
 
     async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
     {
@@ -1448,7 +1448,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
 
     static bool IsValidCopyCommand(string copyCommand)
     {
-    #if NET6_0_OR_GREATER || NETSTANDARD2_1
+    #if NET6_0_OR_GREATER
         return copyCommand.AsSpan().TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);
     #else
         return copyCommand.TrimStart().StartsWith("COPY", StringComparison.OrdinalIgnoreCase);

@@ -77,7 +77,7 @@ static class EncodingExtensions
     }
 #endif
 
-#if NETSTANDARD
+#if NETSTANDARD2_0
     /// <summary>
     /// Decodes the specified <see cref="ReadOnlySequence{Byte}"/> to <see langword="char"/>s using the specified <see cref="Encoding"/>
     /// and outputs the result to <paramref name="chars"/>.
@@ -133,9 +133,6 @@ static class EncodingExtensions
         // If the incoming sequence is single-segment, one-shot this.
         if (bytes.IsSingleSegment)
         {
-#if NETSTANDARD2_1
-            return encoding.GetString(bytes.First.Span);
-#else
             var rented = false;
             byte[] arr;
             var memory = bytes.First;
@@ -151,7 +148,6 @@ static class EncodingExtensions
             if (rented)
                 ArrayPool<byte>.Shared.Return(arr);
             return ret;
-#endif
         }
 
         // If the incoming sequence is multi-segment, create a stateful Decoder
