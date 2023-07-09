@@ -198,15 +198,8 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     // Alternatively some of the source lives at https://github.com/postgres/postgres/blob/c8e1ba736b2b9e8c98d37a5b77c4ed31baf94147/src/backend/utils/adt/format_type.c#L186
     static string ToDisplayName(ReadOnlySpan<char> unqualifiedName)
     {
-        var prefixedArrayType = unqualifiedName.IndexOf('_') == 0;
-        var postfixedArrayType = unqualifiedName.EndsWith("[]".AsSpan(), StringComparison.Ordinal);
-        string baseTypeName;
-        if (prefixedArrayType)
-            baseTypeName = unqualifiedName.Slice(1).ToString();
-        else if (postfixedArrayType)
-            baseTypeName = unqualifiedName.Slice(0, unqualifiedName.Length - 2).ToString();
-        else
-            baseTypeName = unqualifiedName.ToString();
+        var isArray = unqualifiedName.IndexOf('_') == 0;
+        var baseTypeName = isArray ? unqualifiedName.Slice(1).ToString() : unqualifiedName.ToString();
 
         var mappedBaseType = baseTypeName switch
         {
@@ -227,7 +220,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             _ => baseTypeName
         };
 
-        if (prefixedArrayType || postfixedArrayType)
+        if (isArray)
             return mappedBaseType + "[]";
 
         return mappedBaseType;
