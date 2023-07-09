@@ -32,11 +32,11 @@ static class DefaultPgTypes
             if (_oidMap is not null)
                 return _oidMap;
 
-            var dict = _oidMap = new Dictionary<Oid, DataTypeName>();
+            var dict = new Dictionary<Oid, DataTypeName>();
             foreach (var element in GetIdentifiers())
                 dict.Add(element.Key, element.Value);
 
-            return dict;
+            return _oidMap = dict;
         }
     }
 
@@ -48,11 +48,11 @@ static class DefaultPgTypes
             if (_dataTypeNameMap is not null)
                 return _dataTypeNameMap;
 
-            var dict = _dataTypeNameMap = new Dictionary<DataTypeName, Oid>();
+            var dict = new Dictionary<DataTypeName, Oid>();
             foreach (var element in GetIdentifiers())
                 dict.Add(element.Value, element.Key);
 
-            return _dataTypeNameMap;
+            return _dataTypeNameMap = dict;
         }
     }
 
