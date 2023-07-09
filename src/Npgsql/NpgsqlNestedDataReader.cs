@@ -197,7 +197,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var columnLen = CheckRowAndColumnAndSeek(ordinal, out var column);
-        var info = GetOrAddConverterInfo(typeof(byte[]), column, ordinal);
+        var info = GetOrAddConverterInfo(typeof(Stream), column, ordinal);
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
 
         if (columnLen is -1)
@@ -214,8 +214,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         length = Math.Min(length, columnLen - dataOffset2);
         var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen, Format);
         var result = info.AsObject
-            ? (byte[])info.Converter.ReadAsObject(reader)!
-            : info.GetConverter<byte[]>().Read(reader);
+            ? (Stream)info.Converter.ReadAsObject(reader)!
+            : info.GetConverter<Stream>().Read(reader);
         Debug.Assert(ReferenceEquals(buffer, result));
         return length;
     }
