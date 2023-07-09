@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;

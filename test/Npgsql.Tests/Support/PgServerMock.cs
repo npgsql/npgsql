@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NUnit.Framework;

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests;
