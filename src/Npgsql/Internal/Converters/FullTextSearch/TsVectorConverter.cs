@@ -32,7 +32,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 
         for (var i = 0; i < numLexemes; i++)
         {
-            var lexemeString = await reader.ReadNullTerminatedString(async, cancellationToken);
+            var lexemeString = await reader.ReadNullTerminatedString(async, cancellationToken).ConfigureAwait(false);
 
             if (reader.ShouldBuffer(sizeof(short)))
                 await reader.BufferData(async, sizeof(short), cancellationToken).ConfigureAwait(false);
@@ -83,12 +83,12 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
         foreach (var lexeme in value)
         {
             if (async)
-                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), _encoding, cancellationToken);
+                await writer.WriteCharsAsync(lexeme.Text.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
             else
                 writer.WriteChars(lexeme.Text.AsMemory().Span, _encoding);
 
             if (writer.ShouldFlush(sizeof(byte) + sizeof(short)))
-                await writer.Flush(async, cancellationToken);
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
             writer.WriteByte(0);
             writer.WriteInt16((short)lexeme.Count);
@@ -96,7 +96,7 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
             for (var i = 0; i < lexeme.Count; i++)
             {
                 if (writer.ShouldFlush(sizeof(short)))
-                    await writer.Flush(async, cancellationToken);
+                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 writer.WriteInt16(lexeme[i].Value);
             }

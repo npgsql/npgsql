@@ -53,7 +53,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
                     await reader.BufferData(async, _subtypeBufferReadRequirements, cancellationToken).ConfigureAwait(false);
 
                 lowerBound = async
-                    ? await _subtypeConverter.ReadAsync(reader, cancellationToken)
+                    ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                     : _subtypeConverter.Read(reader);
             }
@@ -73,7 +73,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
                 if (reader.ShouldBuffer(_subtypeBufferReadRequirements))
                     await reader.BufferData(async, _subtypeBufferReadRequirements, cancellationToken).ConfigureAwait(false);
                 upperBound = async
-                    ? await _subtypeConverter.ReadAsync(reader, cancellationToken)
+                    ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                     : _subtypeConverter.Read(reader);
             }
@@ -150,7 +150,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
                 writer.Current.WriteState = writeState.LowerBoundWriteState;
                 if (async)
-                    await _subtypeConverter.WriteAsync(writer, value.LowerBound, cancellationToken);
+                    await _subtypeConverter.WriteAsync(writer, value.LowerBound, cancellationToken).ConfigureAwait(false);
                 else
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                     _subtypeConverter.Write(writer, value.LowerBound);
@@ -171,7 +171,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
                 writer.Current.WriteState = writeState.UpperBoundWriteState;
                 if (async)
-                    await _subtypeConverter.WriteAsync(writer, value.UpperBound, cancellationToken);
+                    await _subtypeConverter.WriteAsync(writer, value.UpperBound, cancellationToken).ConfigureAwait(false);
                 else
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                     _subtypeConverter.Write(writer, value.UpperBound);

@@ -56,7 +56,7 @@ sealed class ObjectArrayRecordConverter : PgStreamingConverter<object[]>
             if (reader.ShouldBuffer(fieldReadBufferRequirement))
                 await reader.BufferData(async, fieldReadBufferRequirement, cancellationToken).ConfigureAwait(false);
 
-            result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken);
+            result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
         }
 
         return result;
