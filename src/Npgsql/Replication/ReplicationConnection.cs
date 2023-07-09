@@ -474,7 +474,7 @@ public abstract class ReplicationConnection : IAsyncDisposable
             var buf = connector.ReadBuffer;
 
             // Cancellation is handled at the replication level - we don't want every ReadAsync
-            columnStream = new NpgsqlReadBuffer.ColumnStream(connector, startCancellableOperations: false);
+            columnStream = new NpgsqlReadBuffer.ColumnStream(connector, commandScoped: false);
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
 

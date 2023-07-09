@@ -1425,7 +1425,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         var field = CheckRowAndGetField(ordinal);
         // Check whether we can do byte[] reads.
-        var info = field.GetConverterInfo(typeof(byte[]));
+        var info = field.GetConverterInfo(typeof(Stream));
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
 
         SeekToColumn(ordinal, false).GetAwaiter().GetResult();
@@ -1445,8 +1445,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), ColumnLen, field.DataFormat);
         // TODO actually make this work in the byte[] converter.
         var result = info.AsObject
-            ? (byte[])info.Converter.ReadAsObject(reader)
-            : info.GetConverter<byte[]>().Read(reader);
+            ? (Stream)info.Converter.ReadAsObject(reader)
+            : info.GetConverter<Stream>().Read(reader);
         Debug.Assert(ReferenceEquals(buffer, result));
         PosInColumn += length;
         return length;

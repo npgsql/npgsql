@@ -97,11 +97,8 @@ sealed class ResettableCancellationTokenSource : IDisposable
     /// in order make sure the next call to <see cref="Start"/> will not invalidate
     /// the cancellation token.
     /// </summary>
-    /// <param name="cancellationToken">
-    /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
-    /// </param>
     /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
-    public CancellationToken Reset(CancellationToken cancellationToken = default)
+    public CancellationToken Reset()
     {
         _registration.Dispose();
         lock (lockObject)
@@ -124,8 +121,6 @@ sealed class ResettableCancellationTokenSource : IDisposable
                 _cts = new CancellationTokenSource();
             }
         }
-        if (cancellationToken.CanBeCanceled)
-            _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
 #if DEBUG
         _isRunning = false;
 #endif
