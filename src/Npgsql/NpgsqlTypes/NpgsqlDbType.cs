@@ -1032,19 +1032,13 @@ static class NpgsqlDbTypeExtensions
                 "geography" => NpgsqlDbType.Geography,
 
                 _ when unqualifiedName.Contains("unknown")
-                    => !unqualifiedName.StartsWith("_", StringComparison.Ordinal) && !unqualifiedName.EndsWith("[]", StringComparison.Ordinal)
+                    => !unqualifiedName.StartsWith("_", StringComparison.Ordinal)
                         ? NpgsqlDbType.Unknown
-                        : null,
-                _ when unqualifiedName.EndsWith("[]", StringComparison.Ordinal)
-                    => ToNpgsqlDbType(unqualifiedName.Substring(0, unqualifiedName.Length - 2)) is { } elementNpgsqlDbType
-                        ? elementNpgsqlDbType | NpgsqlDbType.Array
                         : null,
                 _ when unqualifiedName.StartsWith("_", StringComparison.Ordinal)
                     => ToNpgsqlDbType(unqualifiedName.Substring(1)) is { } elementNpgsqlDbType
                         ? elementNpgsqlDbType | NpgsqlDbType.Array
                         : null,
-
-
                 // e.g. custom ranges, plugin types etc.
                 _ => null
             };
