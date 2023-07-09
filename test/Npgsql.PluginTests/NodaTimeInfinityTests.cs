@@ -14,7 +14,7 @@ namespace Npgsql.PluginTests;
 [TestFixture(true)]
 [NonParallelizable] // Since this test suite manipulates an AppContext switch
 #endif
-public class NodaTimeInfinityTests : TestBase
+public class NodaTimeInfinityTests : TestBase, IDisposable
 {
     [Test] // #4715
     public async Task DateRange_with_upper_bound_infinity()
@@ -294,5 +294,7 @@ public class NodaTimeInfinityTests : TestBase
         DisableDateTimeInfinityConversions = false;
         Statics.DisableDateTimeInfinityConversions = false;
 #endif
+
+        DataSource.Dispose();
     }
 }

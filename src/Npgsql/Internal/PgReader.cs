@@ -48,6 +48,9 @@ public class PgReader
     public ValueTask<string> ReadNullTerminatedString(bool async, CancellationToken cancellationToken = default)
         => _buffer.ReadNullTerminatedString(async, cancellationToken);
 
+    public Stream GetStream(int len, bool canSeek)
+        => _buffer.GetStream(len, canSeek);
+
     public ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var count = buffer.Length;

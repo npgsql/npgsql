@@ -531,9 +531,7 @@ sealed partial class NpgsqlWriteBuffer : IDisposable
 
     public Stream GetStream()
     {
-        if (_parameterStream == null)
-            _parameterStream = new ParameterStream(this);
-
+        _parameterStream ??= new ParameterStream(this);
         _parameterStream.Init();
         return _parameterStream;
     }

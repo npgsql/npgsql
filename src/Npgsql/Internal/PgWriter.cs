@@ -2,9 +2,11 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.IO;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -444,6 +446,10 @@ public class PgWriter
         throw new NotImplementedException();
     }
 
+    [RequiresPreviewFeatures]
+    public Stream GetStream()
+        => new PgWriterStream(this);
+
     public bool ShouldFlush(Size bufferRequirement)
     {
         EnsureInit();
@@ -493,5 +499,67 @@ public class PgWriter
 
         Flush();
         return new();
+    }
+
+    sealed class PgWriterStream : Stream
+    {
+        readonly PgWriter _writer;
+
+        internal PgWriterStream(PgWriter writer)
+            => _writer = writer;
+
+        public override void Write(byte[] buffer, int offset, int count)
+            => Write(async: false, buffer: buffer, offset: offset, count: count).GetAwaiter().GetResult();
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => Write(async: true, buffer: buffer, offset: offset, count: count, cancellationToken: cancellationToken);
+
+        Task Write(bool async, byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentNullException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentNullException(nameof(count));
+            if (buffer.Length - offset < count)
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+
+            if (async)
+                return _writer.WriteRawAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+
+            _writer.WriteRaw(new Span<byte>(buffer, offset, count));
+            return Task.CompletedTask;
+        }
+
+        public override void Flush()
+            => _writer.Flush();
+
+        public override Task FlushAsync(CancellationToken cancellationToken)
+            => _writer.FlushAsync(cancellationToken).AsTask();
+
+        public override bool CanRead => false;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+
+        public override int Read(byte[] buffer, int offset, int count)
+            => throw new NotSupportedException();
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public override long Length => throw new NotSupportedException();
+        public override void SetLength(long value)
+            => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+        public override long Seek(long offset, SeekOrigin origin)
+            => throw new NotSupportedException();
     }
 }
