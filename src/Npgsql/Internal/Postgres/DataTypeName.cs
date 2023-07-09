@@ -52,8 +52,10 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     // Includes schema unless it's pg_catalog.
     public string DisplayName =>
         Value.StartsWith("pg_catalog", StringComparison.Ordinal)
-            ? ToDisplayName(UnqualifiedNameSpan)
-            : Schema + "." + ToDisplayName(UnqualifiedNameSpan);
+            ? UnqualifiedDisplayName
+            : Schema + "." + UnqualifiedDisplayName;
+
+    public string UnqualifiedDisplayName => ToDisplayName(UnqualifiedNameSpan);
 
     public string Schema => Value.Substring(0, _value.IndexOf('.'));
     internal ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
@@ -118,22 +120,26 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
         return new(Schema + "." + unqualifiedName + "_multirange");
     }
 
-
     // Create a DataTypeName from a broader range of valid names.
     // including SQL aliases like 'timestamp without time zone', trailing facet info etc.
-    public static DataTypeName FromDisplayName(string displayDataTypeName)
+    public static DataTypeName FromDisplayName(string displayName, string? schema = null)
     {
-        var displayNameSpan = displayDataTypeName.AsSpan().Trim();
+        var displayNameSpan = displayName.AsSpan().Trim();
 
         // If we have a schema we're done, Postgres doesn't do display name conversions on fully qualified names.
         // There is one exception and that's array syntax, which is always resolvable in both ways, while we want the canonical name.
-        if (displayNameSpan.IndexOf('.') != -1 && !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
-            return new(displayDataTypeName);
+        var schemaEndIndex = displayNameSpan.IndexOf('.');
+        if (schemaEndIndex is not -1 &&
+            !displayNameSpan.Slice(schemaEndIndex).StartsWith("_".AsSpan(), StringComparison.Ordinal) &&
+            !displayNameSpan.EndsWith("[]".AsSpan(), StringComparison.Ordinal))
+            return new(displayName);
 
         // First we strip the schema to get the type name.
-        var schemaEndIndex = displayNameSpan.IndexOf('.');
-        if (schemaEndIndex != -1)
+        if (schemaEndIndex is not -1)
+        {
+            schema = displayNameSpan.Slice(0, schemaEndIndex).ToString();
             displayNameSpan = displayNameSpan.Slice(schemaEndIndex + 1);
+        }
 
         // Then we strip either of the two valid array representations to get the base type name (with or without facets).
         var isArray = false;
@@ -148,33 +154,41 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
             displayNameSpan = displayNameSpan.Slice(0, displayNameSpan.Length - 2);
         }
 
-        // Finally we strip the facet info.
-        var parenIndex = displayNameSpan.IndexOf('(');
-        if (parenIndex > -1)
-            displayNameSpan = displayNameSpan.Slice(0, parenIndex);
-
-        // Map any aliases to the internal type name.
-        var mapped = displayNameSpan.ToString() switch
+        string mapped;
+        if (schemaEndIndex is -1)
         {
-            "boolean" => "bool",
-            "character" => "bpchar",
-            "decimal" => "numeric",
-            "real" => "float4",
-            "double precision" => "float8",
-            "smallint" => "int2",
-            "integer" => "int4",
-            "bigint" => "int8",
-            "time without time zone" => "time",
-            "timestamp without time zone" => "timestamp",
-            "time with time zone" => "timetz",
-            "timestamp with time zone" => "timestamptz",
-            "bit varying" => "varbit",
-            "character varying" => "varchar",
-            var value => value
-        };
+            // Finally we strip the facet info.
+            var parenIndex = displayNameSpan.IndexOf('(');
+            if (parenIndex > -1)
+                displayNameSpan = displayNameSpan.Slice(0, parenIndex);
 
-        // And concat with pg_catalog to get a fully qualified name for our constructor.
-        return new((schemaEndIndex is -1 ? "pg_catalog" : displayDataTypeName.Substring(0, schemaEndIndex)) + "." + (isArray ? "_" : "") + mapped);
+            // Map any aliases to the internal type name.
+            mapped = displayNameSpan.ToString() switch
+            {
+                "boolean" => "bool",
+                "character" => "bpchar",
+                "decimal" => "numeric",
+                "real" => "float4",
+                "double precision" => "float8",
+                "smallint" => "int2",
+                "integer" => "int4",
+                "bigint" => "int8",
+                "time without time zone" => "time",
+                "timestamp without time zone" => "timestamp",
+                "time with time zone" => "timetz",
+                "timestamp with time zone" => "timestamptz",
+                "bit varying" => "varbit",
+                "character varying" => "varchar",
+                var value => value
+            };
+        }
+        else
+        {
+            // If we had a schema originally we stop here, see comment at schemaEndIndex.
+            mapped = displayNameSpan.ToString();
+        }
+
+        return new((schema ?? "pg_catalog") + "." + (isArray ? "_" : "") + mapped);
     }
 
     // The type names stored in a DataTypeName are usually the actual typname from the pg_type column.

@@ -800,9 +800,9 @@ Npgsql.PostgresNotice.Where.get -> string?
 Npgsql.PostgresNotice.Where.set -> void
 Npgsql.PostgresTypes.PostgresArrayType
 Npgsql.PostgresTypes.PostgresArrayType.Element.get -> Npgsql.PostgresTypes.PostgresType!
-Npgsql.PostgresTypes.PostgresArrayType.PostgresArrayType(string! ns, string! internalName, uint oid, Npgsql.PostgresTypes.PostgresType! elementPostgresType) -> void
+Npgsql.PostgresTypes.PostgresArrayType.PostgresArrayType(string! ns, string! name, uint oid, Npgsql.PostgresTypes.PostgresType! elementPostgresType) -> void
 Npgsql.PostgresTypes.PostgresBaseType
-Npgsql.PostgresTypes.PostgresBaseType.PostgresBaseType(string! ns, string! internalName, uint oid) -> void
+Npgsql.PostgresTypes.PostgresBaseType.PostgresBaseType(string! ns, string! name, uint oid) -> void
 Npgsql.PostgresTypes.PostgresCompositeType
 Npgsql.PostgresTypes.PostgresCompositeType.Field
 Npgsql.PostgresTypes.PostgresCompositeType.Field.Name.get -> string!
@@ -830,8 +830,6 @@ Npgsql.PostgresTypes.PostgresType.InternalName.get -> string!
 Npgsql.PostgresTypes.PostgresType.Name.get -> string!
 Npgsql.PostgresTypes.PostgresType.Namespace.get -> string!
 Npgsql.PostgresTypes.PostgresType.OID.get -> uint
-Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, string! internalName, uint oid) -> void
-Npgsql.PostgresTypes.PostgresType.PostgresType(string! ns, string! name, uint oid) -> void
 Npgsql.PostgresTypes.PostgresType.Range.get -> Npgsql.PostgresTypes.PostgresRangeType?
 Npgsql.PostgresTypes.UnknownBackendType
 Npgsql.ProvideClientCertificatesCallback

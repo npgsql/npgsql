@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a PostgreSQL data type that isn't known to Npgsql and cannot be handled.
 /// </summary>
-public class UnknownBackendType : PostgresType
+public sealed class UnknownBackendType : PostgresType
 {
     internal static readonly PostgresType Instance = new UnknownBackendType();
 

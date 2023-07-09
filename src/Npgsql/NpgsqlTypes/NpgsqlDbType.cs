@@ -928,13 +928,14 @@ static class NpgsqlDbTypeExtensions
         };
 
     internal static NpgsqlDbType? ToNpgsqlDbType(this DataTypeName dataTypeName) => ToNpgsqlDbType(dataTypeName.UnqualifiedName);
+    /// Should not be used with display names, first normalize it instead.
     internal static NpgsqlDbType? ToNpgsqlDbType(string dataTypeName)
     {
-        var displayName = dataTypeName;
+        var unqualifiedName = dataTypeName;
         if (dataTypeName.IndexOf(".", StringComparison.Ordinal) is not -1 and var index)
-            displayName = dataTypeName.Substring(0, index);
+            unqualifiedName = dataTypeName.Substring(0, index);
 
-        return displayName switch
+        return unqualifiedName switch
             {
                 // Numeric types
                 "int2" => NpgsqlDbType.Smallint,
@@ -1030,16 +1031,16 @@ static class NpgsqlDbTypeExtensions
                 "geometry" => NpgsqlDbType.Geometry,
                 "geography" => NpgsqlDbType.Geography,
 
-                _ when displayName.Contains("unknown")
-                    => !displayName.StartsWith("_", StringComparison.Ordinal) && !displayName.EndsWith("[]", StringComparison.Ordinal)
+                _ when unqualifiedName.Contains("unknown")
+                    => !unqualifiedName.StartsWith("_", StringComparison.Ordinal) && !unqualifiedName.EndsWith("[]", StringComparison.Ordinal)
                         ? NpgsqlDbType.Unknown
                         : null,
-                _ when displayName.EndsWith("[]", StringComparison.Ordinal)
-                    => ToNpgsqlDbType(displayName.Substring(0, displayName.Length - 2)) is { } elementNpgsqlDbType
+                _ when unqualifiedName.EndsWith("[]", StringComparison.Ordinal)
+                    => ToNpgsqlDbType(unqualifiedName.Substring(0, unqualifiedName.Length - 2)) is { } elementNpgsqlDbType
                         ? elementNpgsqlDbType | NpgsqlDbType.Array
                         : null,
-                _ when displayName.StartsWith("_", StringComparison.Ordinal)
-                    => ToNpgsqlDbType(displayName.Substring(1)) is { } elementNpgsqlDbType
+                _ when unqualifiedName.StartsWith("_", StringComparison.Ordinal)
+                    => ToNpgsqlDbType(unqualifiedName.Substring(1)) is { } elementNpgsqlDbType
                         ? elementNpgsqlDbType | NpgsqlDbType.Array
                         : null,
 

@@ -21,23 +21,11 @@ public abstract class PostgresType
     /// <param name="ns">The data type's namespace (or schema).</param>
     /// <param name="name">The data type's name.</param>
     /// <param name="oid">The data type's OID.</param>
-    protected PostgresType(string ns, string name, uint oid)
-        : this(ns, name, name, oid) { }
-
-    /// <summary>
-    /// Constructs a representation of a PostgreSQL data type.
-    /// </summary>
-    /// <param name="ns">The data type's namespace (or schema).</param>
-    /// <param name="name">The data type's name.</param>
-    /// <param name="internalName">The data type's internal name (e.g. _int4 for integer[]).</param>
-    /// <param name="oid">The data type's OID.</param>
-    protected PostgresType(string ns, string name, string internalName, uint oid)
+    private protected PostgresType(string ns, string name, uint oid)
     {
-        Namespace = ns;
-        Name = name;
-        DataTypeName = DataTypeName.ValidatedName(Namespace + '.' + internalName);
-        FullName = ns + "." + name;
+        DataTypeName = DataTypeName.FromDisplayName(name, ns);
         OID = oid;
+        FullName = Namespace + "." + Name;
     }
 
     #endregion
@@ -52,7 +40,7 @@ public abstract class PostgresType
     /// <summary>
     /// The data type's namespace (or schema).
     /// </summary>
-    public string Namespace { get; }
+    public string Namespace => DataTypeName.Schema;
 
     /// <summary>
     /// The data type's name.
@@ -61,7 +49,7 @@ public abstract class PostgresType
     /// Note that this is the standard, user-displayable type name (e.g. integer[]) rather than the internal
     /// PostgreSQL name as it is in pg_type (_int4). See <see cref="InternalName"/> for the latter.
     /// </remarks>
-    public string Name { get; }
+    public string Name => DataTypeName.UnqualifiedDisplayName;
 
     /// <summary>
     /// The full name of the backend type, including its namespace.
@@ -74,7 +62,7 @@ public abstract class PostgresType
     /// A display name for this backend type, including the namespace unless it is pg_catalog (the namespace
     /// for all built-in types).
     /// </summary>
-    public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
+    public string DisplayName => DataTypeName.DisplayName;
 
     /// <summary>
     /// The data type's internal PostgreSQL name (e.g. <c>_int4</c> not <c>integer[]</c>).
