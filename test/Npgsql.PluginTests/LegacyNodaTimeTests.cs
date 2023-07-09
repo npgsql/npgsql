@@ -4,8 +4,9 @@ using NodaTime;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
+using Npgsql.NodaTime.Internal;
 
-namespace Npgsql.NodaTime.Tests;
+namespace Npgsql.PluginTests;
 
 [NonParallelizable] // Since this test suite manipulates an AppContext switch
 public class LegacyNodaTimeTests : TestBase
@@ -71,7 +72,7 @@ public class LegacyNodaTimeTests : TestBase
     public LegacyNodaTimeTests()
     {
 #if DEBUG
-        Internal.NodaTimeUtils.LegacyTimestampBehavior = true;
+        NodaTimeUtils.LegacyTimestampBehavior = true;
         Util.Statics.LegacyTimestampBehavior = true;
 
         var builder = CreateDataSourceBuilder();
@@ -87,7 +88,7 @@ public class LegacyNodaTimeTests : TestBase
     public void Dispose()
     {
 #if DEBUG
-        Internal.NodaTimeUtils.LegacyTimestampBehavior = false;
+        NodaTimeUtils.LegacyTimestampBehavior = false;
         Util.Statics.LegacyTimestampBehavior = false;
 #endif
     }

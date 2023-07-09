@@ -11,7 +11,7 @@ using static Npgsql.Tests.TestUtil;
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
 
-namespace Npgsql.NodaTime.Tests;
+namespace Npgsql.PluginTests;
 
 public class NodaTimeTests : MultiplexingTestBase
 {

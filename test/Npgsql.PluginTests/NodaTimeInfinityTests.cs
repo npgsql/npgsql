@@ -7,7 +7,7 @@ using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
-namespace Npgsql.NodaTime.Tests;
+namespace Npgsql.PluginTests;
 
 [TestFixture(false)]
 #if DEBUG

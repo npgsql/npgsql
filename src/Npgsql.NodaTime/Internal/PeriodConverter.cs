@@ -1,6 +1,5 @@
 using NodaTime;
 using Npgsql.Internal;
-using Npgsql.NodaTime.Properties;
 
 namespace Npgsql.NodaTime.Internal;
 
