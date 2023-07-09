@@ -22,6 +22,7 @@ public delegate PgTypeInfo TypeInfoFactory(PgSerializerOptions options, TypeInfo
 public enum MatchRequirement
 {
     /// Match when the clr type and datatype name both match.
+    /// It's also the only requirement that participates in clr type fallback matching.
     All,
     /// Match when the datatype name or CLR type matches while the other also matches or is absent.
     Single,
@@ -192,6 +193,9 @@ public sealed class TypeInfoMappingCollection
 
     public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
         => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(isDefault));
+
+    public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
+        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
 
     public void AddType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
     {
