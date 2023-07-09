@@ -76,7 +76,7 @@ sealed class FullTextSearchTypeInfoResolver : IPgTypeInfoResolver
         if (type is { IsConstructedGenericType: true } && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             type = type.GetGenericArguments()[0];
 
-        if (type == typeof(NpgsqlTsVector) || type.IsAssignableTo(typeof(NpgsqlTsQuery)))
+        if (type == typeof(NpgsqlTsVector) || typeof(NpgsqlTsQuery).IsAssignableFrom(type))
             throw new NotSupportedException(
                 string.Format(NpgsqlStrings.FullTextSearchNotEnabled, nameof(NpgsqlSlimDataSourceBuilder.EnableFullTextSearch), typeof(TBuilder).Name));
     }
