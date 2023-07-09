@@ -2,7 +2,7 @@ using System;
 using NodaTime;
 using Npgsql.Internal;
 using Npgsql.Internal.Converters;
-using Npgsql.PostgresTypes;
+using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 using static Npgsql.NodaTime.Internal.NodaTimeUtils;
 
