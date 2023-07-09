@@ -398,7 +398,7 @@ public sealed class FieldDescription
 
     [DoesNotReturn]
     static PgTypeInfo ThrowReadingNotSupported(Type type, string displayName)
-        => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for postgres type '{displayName}'");
+        => throw new NotSupportedException($"Reading{(typeof(object) == type ? "" : $" as {type}")} is not supported for PostgreSQL type '{displayName}'");
 
     (PgTypeInfo, PgConverterInfo) BindWithTextFallback(PgTypeInfo info, Type? expectedType = null)
     {

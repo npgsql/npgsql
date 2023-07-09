@@ -1,3 +1,4 @@
+using System;
 using System.Data;
 using System.Threading.Tasks;
 using NodaTime;
@@ -9,7 +10,7 @@ using Npgsql.NodaTime.Internal;
 namespace Npgsql.PluginTests;
 
 [NonParallelizable] // Since this test suite manipulates an AppContext switch
-public class LegacyNodaTimeTests : TestBase
+public class LegacyNodaTimeTests : TestBase, IDisposable
 {
     const string TimeZone = "Europe/Berlin";
 
@@ -90,6 +91,8 @@ public class LegacyNodaTimeTests : TestBase
 #if DEBUG
         NodaTimeUtils.LegacyTimestampBehavior = false;
         Util.Statics.LegacyTimestampBehavior = false;
+
+        DataSource.Dispose();
 #endif
     }
 

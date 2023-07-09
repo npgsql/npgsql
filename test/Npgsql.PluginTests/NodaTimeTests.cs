@@ -13,7 +13,7 @@ using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.PluginTests;
 
-public class NodaTimeTests : MultiplexingTestBase
+public class NodaTimeTests : MultiplexingTestBase, IDisposable
 {
     #region Timestamp without time zone
 
@@ -682,6 +682,9 @@ public class NodaTimeTests : MultiplexingTestBase
         builder.ConnectionStringBuilder.Options = "-c TimeZone=Europe/Berlin";
         DataSource = builder.Build();
     }
+
+    public void Dispose()
+        => DataSource.Dispose();
 
     #endregion Support
 }
