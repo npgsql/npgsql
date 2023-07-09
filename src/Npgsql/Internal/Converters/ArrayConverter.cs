@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,115 +13,185 @@ namespace Npgsql.Internal.Converters;
 
 interface IElementOperations
 {
-    object CreateCollection(int capacity, bool containsNulls);
-    int GetCollectionCount(object collection);
-    Size? GetSize(SizeContext context, object collection, int index, ref object? state);
-    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken = default);
-    ValueTask Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken = default);
+    object CreateCollection(int[] lengths);
+    int GetCollectionCount(object collection, out int[]? lengths);
+    Size? GetSize(SizeContext context, object collection, int[] indices, ref object? writeState);
+    ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken = default);
+    ValueTask Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken = default);
 }
 
 readonly struct PgArrayConverter
 {
-    readonly IElementOperations _elementOperations;
+    internal const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable collection type instead.";
+
+    readonly IElementOperations _elemOps;
+    readonly int? _expectedDimensions;
     readonly Size _readRequirement;
     readonly Size _writeRequirement;
     public bool ElemTypeDbNullable { get; }
-    readonly ArrayPool<(Size, object?)> _statePool;
     readonly int _pgLowerBound;
     readonly PgTypeId _elemTypeId;
 
-    public PgArrayConverter(IElementOperations elementOperations, bool elemTypeDbNullable, Size readRequirement, Size writeRequirement, PgTypeId elemTypeId, ArrayPool<(Size, object?)> statePool, int pgLowerBound = 1)
+    public PgArrayConverter(IElementOperations elemOps, bool elemTypeDbNullable, int? expectedDimensions, Size readRequirement, Size writeRequirement, PgTypeId elemTypeId, int pgLowerBound = 1)
     {
         _elemTypeId = elemTypeId;
-        _statePool = statePool;
         ElemTypeDbNullable = elemTypeDbNullable;
         _pgLowerBound = pgLowerBound;
-        _elementOperations = elementOperations;
+        _elemOps = elemOps;
+        _expectedDimensions = expectedDimensions;
         _readRequirement = readRequirement;
         _writeRequirement = writeRequirement;
     }
 
-    bool IsDbNull(object values, int index)
+    bool IsDbNull(object values, int[] indices)
     {
         object? state = null;
-        return _elementOperations.GetSize(new(DataFormat.Binary), values, index, ref state) is null;
+        return _elemOps.GetSize(new(DataFormat.Binary), values, indices, ref state) is null;
     }
 
-    Size GetElemsSize(object values, int count, (Size, object?)[] elemStates, DataFormat format)
+    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool elemStateDisposable, DataFormat format, int count, int[] indices, int[]? lengths = null)
     {
         Debug.Assert(elemStates.Length >= count);
         var totalSize = Size.Zero;
         var context = new SizeContext(format);
-        for (var i = 0; i < count; i++)
+        elemStateDisposable = false;
+        var lastLength = lengths?[lengths.Length - 1] ?? count;
+        ref var lastIndex = ref indices[indices.Length - 1];
+        var i = 0;
+        do
         {
-            ref var elemItem = ref elemStates[i];
+            ref var elemItem = ref elemStates[i++];
             var state = (object?)null;
-            var sizeResult = _elementOperations.GetSize(context, values, i, ref state);
+            var sizeResult = _elemOps.GetSize(context, values, indices, ref state);
+            if (!elemStateDisposable && state is IDisposable)
+                elemStateDisposable = true;
             elemItem = (sizeResult ?? Size.Create(-1), state);
             totalSize = totalSize.Combine(sizeResult ?? Size.Zero);
         }
+        // We can immediately continue if we didn't reach the end of the last dimension.
+        while (++lastIndex < lastLength || (indices.Length > 1 && CarryIndices(lengths!, indices)));
+
         return totalSize;
     }
 
-    Size GetFixedElemsSize(object values, int count)
+    Size GetFixedElemsSize(object values, int count, int[] indices, int[]? lengths = null)
     {
         var nulls = 0;
+        var lastLength = lengths?[lengths!.Length - 1] ?? count;
+        ref var lastIndex = ref indices[indices!.Length - 1];
         if (ElemTypeDbNullable)
-        {
-            for (var i = 0; i < count; i++)
-                if (IsDbNull(values, i))
+            do
+            {
+                if (IsDbNull(values, indices))
                     nulls++;
-        }
+            }
+            // We can immediately continue if we didn't reach the end of the last dimension.
+            while (++lastIndex < lastLength || (indices.Length > 1 && CarryIndices(lengths!, indices)));
+
         return (count - nulls) * _writeRequirement.Value;
     }
 
+    int GetFormatSize(int count, int dimensions)
+        => sizeof(int) + // Dimensions
+           sizeof(int) + // Flags
+           sizeof(int) + // Element OID
+           dimensions * (sizeof(int) + sizeof(int)) + // Dimensions * (array length and lower bound)
+           sizeof(int) * count; // Element length integers
+
     public Size GetSize(SizeContext context, object values, ref object? writeState)
     {
-        var count = _elementOperations.GetCollectionCount(values);
-        var formatSize = Size.Create(
-            4 + // Dimensions
-            4 + // Flags
-            4 + // Element OID
-            1 * 8 + // Dimensions * (array length and lower bound)
-            4 * count // Element length integers
-        );
+        var count = _elemOps.GetCollectionCount(values, out var lengths);
+        var dimensions = lengths?.Length ?? 1;
+        var formatSize = Size.Create(GetFormatSize(count, dimensions));
 
         if (count is 0)
             return formatSize;
 
         Size elemsSize;
+        var indices = new int[dimensions];
         if (_writeRequirement is { Kind: SizeKind.Exact, Value: > 0 })
-            elemsSize = GetFixedElemsSize(values, count);
+        {
+            elemsSize = GetFixedElemsSize(values, count, indices, lengths);
+            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths };
+        }
         else
         {
-            var stateArray = _statePool.Rent(count);
-            elemsSize = GetElemsSize(values, count, stateArray, context.Format);
-            writeState = new RentedArray<(Size, object?)>(stateArray, count, _statePool);
+            var stateArray = ArrayPool<(Size, object?)>.Shared.Rent(count);
+            elemsSize = GetElemsSize(values, stateArray, out var elemStateDisposable, context.Format, count, indices, lengths);
+            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ElementInfo = new(stateArray, 0, count), ElemStateDisposable = elemStateDisposable };
         }
 
         return formatSize.Combine(elemsSize);
     }
 
+    class WriteState : IDisposable
+    {
+        public required int Count { get; init; }
+        public required int[] Indices { get; init; }
+        public required int[]? Lengths { get; init; }
+        public ArraySegment<(Size, object?)> ElementInfo { get; init; }
+        public bool ElemStateDisposable { get; init; }
+
+        public void Dispose()
+        {
+            if (ElemStateDisposable)
+            {
+                var array = ElementInfo.Array!;
+                for (var i = ElementInfo.Offset; i < array.Length; i++)
+                    if (array[i].Item2 is IDisposable disposable)
+                        disposable.Dispose();
+            }
+
+            if (ElementInfo.Array is not null)
+                ArrayPool<(Size, object?)>.Shared.Return(ElementInfo.Array, true);
+        }
+    }
+
     public async ValueTask<object> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
     {
-        const int expectedDimensions = 1;
-
         var dimensions = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
-        if (dimensions is 0)
-            return _elementOperations.CreateCollection(0, containsNulls);
+        _ = reader.ReadUInt32(); // Element OID.
 
-        if (dimensions != expectedDimensions)
-            throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension{(expectedDimensions == 1 ? "" : "s")} from an array with {dimensions} dimension{(dimensions == 1 ? "" : "s")}");
+        if (dimensions is not 0 && _expectedDimensions is not null && dimensions != _expectedDimensions)
+            throw new InvalidCastException($"Cannot read an array value with {dimensions} dimension{(dimensions == 1 ? "" : "s")} into a "
+                                                + $"collection type with {_expectedDimensions} dimension{(_expectedDimensions == 1 ? "" : "s")}. "
+                                                + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas being the expected amount of dimensions.");
 
-        reader.ReadUInt32(); // Element OID. Ignored.
+        if (containsNulls && !ElemTypeDbNullable)
+            throw new InvalidCastException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
-        var arrayLength = reader.ReadInt32();
+        // Make sure we can read length + lower bound N dimension times.
+        if (reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions))
+            await reader.BufferData(async, (sizeof(int) + sizeof(int)) * dimensions, cancellationToken).ConfigureAwait(false);
 
-        reader.ReadInt32(); // Lower bound
+        var dimLengths = new int[_expectedDimensions ?? dimensions];
+        var lastDimLength = 0;
+        for (var i = 0; i < dimensions; i++)
+        {
+            lastDimLength = reader.ReadInt32();
+            reader.ReadInt32(); // Lower bound
+            if (dimLengths.Length is 0)
+                break;
+            dimLengths[i] = lastDimLength;
+        }
 
-        var collection = _elementOperations.CreateCollection(arrayLength, containsNulls);
-        for (var i = 0; i < arrayLength; i++)
+        var collection = _elemOps.CreateCollection(dimLengths);
+        Debug.Assert(dimensions <= 1 || collection is Array a && a.Rank == dimensions);
+
+        if (dimensions is 0 || lastDimLength is 0)
+            return collection;
+
+        int[] indices;
+        // Reuse array for dim <= 1
+        if (dimensions == 1)
+        {
+            dimLengths[0] = 0;
+            indices = dimLengths;
+        }
+        else
+            indices = new int[dimensions];
+        do
         {
             if (reader.ShouldBuffer(sizeof(int)))
                 await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
@@ -134,115 +205,131 @@ readonly struct PgArrayConverter
                 if (reader.ShouldBuffer(_readRequirement))
                     await reader.BufferData(async, _readRequirement, cancellationToken).ConfigureAwait(false);
             }
-            await _elementOperations.Read(async, reader, isDbNull, collection, i, cancellationToken).ConfigureAwait(false);
+            await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
         }
+        // We can immediately continue if we didn't reach the end of the last dimension.
+        while (++indices[indices.Length - 1] < lastDimLength || (dimensions > 1 && CarryIndices(dimLengths, indices)));
+
         return collection;
+    }
+
+    static bool CarryIndices(int[] lengths, int[] indices)
+    {
+        Debug.Assert(lengths.Length > 1);
+
+        // Find the first dimension from the end that isn't at or past its length, increment it and bring all previous dimensions to zero.
+        for (var dim = indices.Length - 1; dim >= 0; dim--)
+        {
+            if (indices[dim] >= lengths[dim] - 1)
+                continue;
+
+            indices.AsSpan().Slice(dim + 1).Clear();
+            indices[dim]++;
+            return true;
+        }
+
+        // We're done if we can't find any dimension that isn't at its length.
+        return false;
     }
 
     public async ValueTask Write(bool async, PgWriter writer, object values, CancellationToken cancellationToken)
     {
-        var state = writer.Current.WriteState switch
+        var (count, dims, state) = writer.Current.WriteState switch
         {
-            (RentedArray<(Size, object?)> or null) and var v => (RentedArray<(Size, object?)>?)v,
+            WriteState writeState => (writeState.Count, writeState.Lengths?.Length ?? 1 , writeState),
+            null => (0, values is Array a ? a.Rank : 1, null),
             _ => throw new InvalidOperationException($"Invalid state, expected {typeof((Size, object?)[]).FullName}.")
         };
 
-        var count = _elementOperations.GetCollectionCount(values);
-        writer.WriteInt32(1); // Dimensions
+        if (writer.ShouldFlush(GetFormatSize(count, dims)))
+            await writer.Flush(async, cancellationToken).ConfigureAwait(false);
+
+        writer.WriteInt32(dims); // Dimensions
         writer.WriteInt32(0); // Flags (not really used)
         writer.WriteAsOid(_elemTypeId);
-        writer.WriteInt32(count);
-        writer.WriteInt32(_pgLowerBound);
+        for (var dim = 0; dim < dims; dim++)
+        {
+            writer.WriteInt32(state?.Lengths?[dim] ?? count);
+            writer.WriteInt32(_pgLowerBound); // Lower bound
+        }
+
+        // We can stop here for empty collections.
+        if (state is null)
+            return;
 
         var elemTypeDbNullable = ElemTypeDbNullable;
-        var stateArray = state?.Segment.Array;
-        for (var i = 0; i < count; i++)
+        var stateArray = state.ElementInfo.Array;
+
+        var indices = state.Indices;
+        Array.Clear(indices);
+        var lastLength = state.Lengths?[state.Lengths.Length - 1] ?? state.Count;
+        var i = state.ElementInfo.Offset;
+        do
         {
-            if (elemTypeDbNullable && (stateArray?[i].Item1.Value == -1 || IsDbNull(values, i)))
+            var stateElem = stateArray?[i];
+            if (elemTypeDbNullable && (stateElem?.Item1.Value == -1 || IsDbNull(values, indices)))
             {
                 if (writer.ShouldFlush(sizeof(int)))
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 writer.WriteInt32(-1);
             }
-            else if (stateArray is null)
+            else if (stateElem is null)
             {
                 var length = _writeRequirement.Value;
                 if (writer.ShouldFlush(sizeof(int) + length))
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-                await WriteValue(_elementOperations, i, length, null).ConfigureAwait(false);
+                writer.WriteInt32(length);
+                await WriteValue(_elemOps, indices, length, null).ConfigureAwait(false);
             }
             else
             {
-                var (sizeResult, elemState) = stateArray[i];
-                switch (sizeResult.Kind)
+                var (sizeResult, elemState) = stateElem.Value;
+                switch (sizeResult)
                 {
-                case SizeKind.Exact:
-                    if (writer.ShouldFlush(sizeof(int) + sizeResult.Value))
+                case { Kind: SizeKind.Exact, Value: var length }:
+                    if (writer.ShouldFlush(sizeof(int) + length))
                         await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
-                    await WriteValue(_elementOperations, i, sizeResult.Value, elemState).ConfigureAwait(false);
+                    writer.WriteInt32(length);
+                    await WriteValue(_elemOps, indices, length, elemState).ConfigureAwait(false);
                     break;
-                case SizeKind.Unknown:
+                case { Kind: SizeKind.Unknown }:
                     throw new NotImplementedException();
-                // {
-                //     using var bufferedOutput = options.GetBufferedOutput(elemConverter!, value, elemState, DataRepresentation.Binary);
-                //     writer.WriteInt32(bufferedOutput.Length);
-                //     if (async)
-                //         await bufferedOutput.WriteAsync(writer, cancellationToken).ConfigureAwait(false);
-                //     else
-                //         bufferedOutput.Write(writer);
-                // }
-                // break;
                 default:
                     throw new ArgumentOutOfRangeException();
                 }
             }
-        }
 
-        ValueTask WriteValue(IElementOperations elementOps, int index, int byteCount, object? writeState)
+            i++;
+        }
+        // We can immediately continue if we didn't reach the end of the last dimension.
+        while (++indices[indices.Length - 1] < lastLength || (indices.Length > 1 && CarryIndices(state.Lengths!, indices)));
+
+        ValueTask WriteValue(IElementOperations elementOps, int[] indices, int byteCount, object? writeState)
         {
-            writer.WriteInt32(byteCount);
             ref var current = ref writer.Current;
             current.Size = byteCount;
             if (writeState is not null || current.WriteState is not null)
                 current.WriteState = writeState;
-            return elementOps.Write(async, writer, values, index, cancellationToken);
+            return elementOps.Write(async, writer, values, indices, cancellationToken);
         }
-    }
-
-    sealed class RentedArray<T> : IDisposable
-    {
-        readonly T[] _array;
-        readonly int _length;
-        readonly ArrayPool<T>? _pool;
-        public ArraySegment<T> Segment => new(_array, 0, _length);
-
-        public RentedArray(T[] array, int length, ArrayPool<T>? pool = default)
-        {
-            _array = array;
-            _length = length;
-            _pool = pool;
-        }
-
-        public void Dispose() => (_pool ?? ArrayPool<T>.Shared).Return(_array);
     }
 }
 
+// Class constraint exists to make Unsafe.As<ValueTask<object>, ValueTask<T>> safe, don't remove unless that unsafe cast is also removed.
 abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 {
     protected PgConverterResolution ElemResolution { get; }
     protected Type ElemTypeToConvert { get; }
-
-    internal const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls. Call GetFieldValue with a nullable array type instead.";
 
     readonly PgArrayConverter _pgArrayConverter;
     protected bool IsFixedSize { get; }
     protected Size ElemReadBufferRequirement { get; }
     protected Size ElemWriteBufferRequirement { get; }
 
-    internal ArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
+    private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
     {
         if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
@@ -251,9 +338,8 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
         IsFixedSize = ElemWriteBufferRequirement is { Kind: SizeKind.Exact, Value: > 0 };
         ElemResolution = elemResolution;
         ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
-        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue,
-            ElemReadBufferRequirement, ElemWriteBufferRequirement, elemResolution.PgTypeId,
-            statePool ?? ArrayPool<(Size, object?)>.Shared, pgLowerBound);
+        _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue, expectedDimensions,
+            ElemReadBufferRequirement, ElemWriteBufferRequirement, elemResolution.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
@@ -270,12 +356,6 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     public override ValueTask WriteAsync(PgWriter writer, T values, CancellationToken cancellationToken = default)
         => _pgArrayConverter.Write(async: true, writer, values, cancellationToken);
 
-    protected void ThrowIfNullsNotSupported(bool containsNulls)
-    {
-        if (containsNulls && !_pgArrayConverter.ElemTypeDbNullable)
-            throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
-    }
-
     // Using a function pointer here is safe against assembly unloading as the instance reference that the static pointer method lives on is passed along.
     // As such the instance cannot be collected by the gc which means the entire assembly is prevented from unloading until we're done.
     // The alternatives are:
@@ -284,29 +364,44 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 #if !NETSTANDARD
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
 #endif
-    private protected static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, int index)
+    private protected static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, int[] indices)
     {
         await task.ConfigureAwait(false);
-        continuation.Invoke(task, collection, index);
+        continuation.Invoke(task, collection, indices);
         // Guarantee the type stays loaded until the function pointer call is done.
         GC.KeepAlive(continuation.Handle);
     }
 
     // Split out into a struct as unsafe and async don't mix, while we do want a nicely typed function pointer signature to prevent mistakes.
-    public readonly unsafe struct Continuation
+    protected readonly unsafe struct Continuation
     {
         public object Handle { get; }
-        readonly delegate*<Task, object, int, void> _continuation;
+        readonly delegate*<Task, object, int[], void> _continuation;
 
         /// <param name="handle">A reference to the type that houses the static method <see ref="continuation"/> points to.</param>
         /// <param name="continuation">The continuation</param>
-        public Continuation(object handle, delegate*<Task, object, int, void> continuation)
+        public Continuation(object handle, delegate*<Task, object, int[], void> continuation)
         {
             Handle = handle;
             _continuation = continuation;
         }
 
-        public void Invoke(Task task, object collection, int index) => _continuation(task, collection, index);
+        public void Invoke(Task task, object collection, int[] indices) => _continuation(task, collection, indices);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    protected static void Root<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]TRoot>() {}
+
+    protected static int[]? GetLengths(Array array)
+    {
+        if (array.Rank == 1)
+            return null;
+
+        var lengths = new int[array.Rank];
+        for (var i = 0; i < lengths.Length; i++)
+            lengths[i] = array.GetLength(i);
+
+        return lengths;
     }
 }
 
@@ -316,43 +411,76 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
     {
         if (!typeof(T).IsAssignableFrom(typeof(TElement[])))
             throw new InvalidOperationException("A value of TElement[] must be assignable to T.");
+        // We want to keep code size minimal for CreateCollection so we just do a call here.
+        Root<TElement?[,]>();
+        Root<TElement?[,,]>();
+        Root<TElement?[,,,]>();
+        Root<TElement?[,,,,]>();
+        Root<TElement?[,,,,,]>();
+        Root<TElement?[,,,,,,]>();
+        Root<TElement?[,,,,,,,]>();
     }
 
     readonly PgConverter<TElement> _elemConverter;
 
-    public ArrayBasedArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
-        : base(elemResolution, statePool ?? ArrayPool<(Size, object?)>.Shared, pgLowerBound)
+    public ArrayBasedArrayConverter(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
+        : base(
+            expectedDimensions: effectiveType is null ? 1 : effectiveType.IsArray ? effectiveType.GetArrayRank() : null,
+            elemResolution, pgLowerBound)
         => _elemConverter = elemResolution.GetConverter<TElement>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static TElement? GetValue(object collection, int index)
+    static TElement? GetValue(object collection, int[] indices)
     {
-        Debug.Assert(collection is TElement?[]);
-        return Unsafe.As<TElement?[]>(collection)[index];
+        switch (indices.Length)
+        {
+        case 1:
+            Debug.Assert(collection is TElement?[]);
+            return Unsafe.As<TElement?[]>(collection)[indices[0]];
+        default:
+            Debug.Assert(collection is Array);
+            return (TElement?)Unsafe.As<Array>(collection).GetValue(indices);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static void SetValue(object collection, int index, TElement? value)
+    static void SetValue(object collection, int[] indices, TElement? value)
     {
-        Debug.Assert(collection is TElement?[]);
-        Unsafe.As<TElement?[]>(collection)[index] = value;
+        switch (indices.Length)
+        {
+            case 1:
+                Debug.Assert(collection is TElement?[]);
+                Unsafe.As<TElement?[]>(collection)[indices[0]] = value;
+                break;
+            default:
+                Debug.Assert(collection is Array);
+                Unsafe.As<Array>(collection).SetValue(value, indices);
+                break;
+        }
     }
 
-    object IElementOperations.CreateCollection(int capacity, bool containsNulls)
+    object IElementOperations.CreateCollection(int[] lengths)
+        => lengths.Length switch
+        {
+            0 => Array.Empty<TElement?>(),
+            1 when lengths[0] == 0 => Array.Empty<TElement?>(),
+            1 => new TElement?[lengths[0]],
+            // We don't write these out for code size reasons, they're all rooted in the static constructor though.
+            <= 8 => Array.CreateInstance(typeof(TElement?), lengths),
+            _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
+        };
+
+    int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
     {
-        ThrowIfNullsNotSupported(containsNulls);
-        return capacity is 0 ? Array.Empty<TElement?>() : new TElement?[capacity];
+        Debug.Assert(collection is Array);
+        var array = Unsafe.As<Array>(collection);
+        lengths = GetLengths(array);
+        return array.Length;
     }
 
-    int IElementOperations.GetCollectionCount(object collection)
+    Size? IElementOperations.GetSize(SizeContext context, object collection, int[] indices, ref object? writeState)
     {
-        Debug.Assert(collection is TElement?[]);
-        return Unsafe.As<TElement?[]>(collection).Length;
-    }
-
-    Size? IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
-    {
-        var value = GetValue(collection, index);
+        var value = GetValue(collection, indices);
         if (_elemConverter.IsDbNull(value))
             return null;
 
@@ -361,7 +489,7 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
             : Size.Zero;
     }
 
-    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)
+    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
         TElement? result;
         if (isDbNull)
@@ -372,28 +500,28 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
         {
             var task = _elemConverter.ReadAsync(reader, cancellationToken);
             if (!task.IsCompletedSuccessfully)
-                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, index);
+                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, indices);
 
             result = task.Result;
         }
 
-        SetValue(collection, index, result);
+        SetValue(collection, indices, result);
         return new();
 
         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
-        static void SetResult(Task task, object collection, int index)
+        static void SetResult(Task task, object collection, int[] indices)
         {
             Debug.Assert(task is Task<TElement>);
-            SetValue(collection, index, new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
+            SetValue(collection, indices, new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
         }
     }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken)
     {
         if (async)
-            return _elemConverter.WriteAsync(writer, GetValue(collection, index)!, cancellationToken);
+            return _elemConverter.WriteAsync(writer, GetValue(collection, indices)!, cancellationToken);
 
-        _elemConverter.Write(writer, GetValue(collection, index)!);
+        _elemConverter.Write(writer, GetValue(collection, indices)!);
         return new();
     }
 }
@@ -408,8 +536,8 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
 
     readonly PgConverter<TElement> _elemConverter;
 
-    public ListBasedArrayConverter(PgConverterResolution elemResolution, ArrayPool<(Size, object?)>? statePool = null, int pgLowerBound = 1)
-        : base(elemResolution, statePool ?? ArrayPool<(Size, object?)>.Shared, pgLowerBound)
+    public ListBasedArrayConverter(PgConverterResolution elemResolution, int pgLowerBound = 1)
+        : base(expectedDimensions: 1, elemResolution, pgLowerBound)
         => _elemConverter = elemResolution.GetConverter<TElement>();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -427,21 +555,19 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
         list.Insert(index, value);
     }
 
-    object IElementOperations.CreateCollection(int capacity, bool containsNulls)
-    {
-        ThrowIfNullsNotSupported(containsNulls);
-        return new List<TElement?>(capacity);
-    }
+    object IElementOperations.CreateCollection(int[] lengths)
+        => new List<TElement?>(lengths.Length is 0 ? 0 : lengths[0]);
 
-    int IElementOperations.GetCollectionCount(object collection)
+    int IElementOperations.GetCollectionCount(object collection, out int[]? lengths)
     {
         Debug.Assert(collection is List<TElement?>);
+        lengths = null;
         return Unsafe.As<List<TElement?>>(collection).Count;
     }
 
-    Size? IElementOperations.GetSize(SizeContext context, object collection, int index, ref object? writeState)
+    Size? IElementOperations.GetSize(SizeContext context, object collection, int[] indices, ref object? writeState)
     {
-        var value = GetValue(collection, index);
+        var value = GetValue(collection, indices[0]);
         if (_elemConverter.IsDbNull(value))
             return null;
 
@@ -450,8 +576,9 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
             : Size.Zero;
     }
 
-    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int index, CancellationToken cancellationToken)
+    unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
+        Debug.Assert(indices.Length is 1);
         TElement? result;
         if (isDbNull)
             result = default;
@@ -461,34 +588,36 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
         {
             var task = _elemConverter.ReadAsync(reader, cancellationToken);
             if (!task.IsCompletedSuccessfully)
-                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, index);
+                return AwaitTask(task.AsTask(), new(this, &SetResult), collection, indices);
 
             result = task.Result;
         }
 
-        SetValue(collection, index, result);
+        SetValue(collection, indices[0], result);
         return new();
 
         // Using .Result on ValueTask is equivalent to GetAwaiter().GetResult(), this removes TaskAwaiter<TElement> rooting.
-        static void SetResult(Task task, object collection, int index)
+        static void SetResult(Task task, object collection, int[] indices)
         {
             Debug.Assert(task is Task<TElement>);
-            SetValue(collection, index, new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
+            SetValue(collection, indices[0], new ValueTask<TElement>(Unsafe.As<Task<TElement>>(task)).Result);
         }
     }
 
-    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int index, CancellationToken cancellationToken)
+    ValueTask IElementOperations.Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken)
     {
+        Debug.Assert(indices.Length is 1);
         if (async)
-            return _elemConverter.WriteAsync(writer, GetValue(collection, index)!, cancellationToken);
+            return _elemConverter.WriteAsync(writer, GetValue(collection, indices[0])!, cancellationToken);
 
-        _elemConverter.Write(writer, GetValue(collection, index)!);
+        _elemConverter.Write(writer, GetValue(collection, indices[0])!);
         return new();
     }
 }
 
 sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 {
+    readonly Type _effectiveType;
     readonly PgResolverTypeInfo _elemResolverTypeInfo;
     readonly PgTypeId? _arrayTypeId;
     readonly ConcurrentDictionary<PgConverter, ArrayConverter<object>> _arrayConverters = new(ReferenceEqualityComparer.Instance);
@@ -496,8 +625,9 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
     PgConverterResolution _lastElemResolution;
     PgConverterResolution _lastResolution;
 
-    public ArrayConverterResolver(PgResolverTypeInfo elemResolverTypeInfo)
+    public ArrayConverterResolver(PgResolverTypeInfo elemResolverTypeInfo, Type effectiveType)
     {
+        _effectiveType = effectiveType;
         _elemResolverTypeInfo = elemResolverTypeInfo;
         _arrayTypeId = _elemResolverTypeInfo.PgTypeId is { } id ? GetArrayTypeId(id) : null;
     }
@@ -576,8 +706,6 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 
         _lastElemResolution = expectedResolution;
         return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayTypeId(expectedResolution.PgTypeId));
-
-
     }
 
     ArrayConverter<object> GetOrAddListBased(PgConverterResolution elemResolution)
@@ -588,9 +716,12 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 
     ArrayConverter<object> GetOrAddArrayBased(PgConverterResolution elemResolution)
         => _arrayConverters.GetOrAdd(elemResolution.Converter,
-            static (elemConverter, expectedElemPgTypeId) =>
-                new ArrayBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId)),
-            elemResolution.PgTypeId);
+            static (elemConverter, state) =>
+            {
+                var (effectiveType, expectedElemPgTypeId) = state;
+                return new ArrayBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId), effectiveType);
+            },
+            (_effectiveType, elemResolution.PgTypeId));
 }
 
 // T is object as we only know what type it will be after reading 'contains nulls'.

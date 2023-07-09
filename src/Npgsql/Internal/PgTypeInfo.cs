@@ -246,7 +246,7 @@ public class PgTypeInfo
         }
 
         // No-op in this case.
-        if (IsBoxing || Type == typeof(object))
+        if (Type == unboxedType)
             return this;
 
         return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)

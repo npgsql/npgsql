@@ -244,10 +244,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool, object>(resolution),
-                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                () => new ArrayBasedArrayConverter<bool, object>(resolution, typeof(Array)),
+                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
 
@@ -258,10 +258,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool, object>(resolution),
-                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId)),
+                () => new ArrayBasedArrayConverter<bool, object>(resolution, typeof(Array)),
+                () => new ArrayBasedArrayConverter<bool?, object>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
 

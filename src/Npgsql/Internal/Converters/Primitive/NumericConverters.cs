@@ -226,7 +226,7 @@ static class NumericConverters
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
         var array = digits.Array!;
-        for (var i = digits.Offset; i < digits.Count; i++)
+        for (var i = digits.Offset; i < array.Length; i++)
         {
             if (reader.Remaining < sizeof(short))
                 await reader.BufferDataAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
