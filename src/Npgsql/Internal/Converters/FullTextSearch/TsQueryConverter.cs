@@ -158,7 +158,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
         var numTokens = GetTokenCount(value);
 
         if (writer.ShouldFlush(sizeof(int)))
-            await writer.Flush(async, cancellationToken);
+            await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(numTokens);
 
         if (numTokens is 0)
@@ -169,7 +169,7 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
         async Task WriteCore(NpgsqlTsQuery node)
         {
             if (writer.ShouldFlush(sizeof(byte)))
-                await writer.Flush(async, cancellationToken);
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
             writer.WriteByte(node.Kind is Lexeme ? (byte)1 : (byte)2);
 
             if (node.Kind is Lexeme)
@@ -177,18 +177,18 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
                 var lexemeNode = (NpgsqlTsQueryLexeme)node;
 
                 if (writer.ShouldFlush(sizeof(byte) + sizeof(byte)))
-                    await writer.Flush(async, cancellationToken);
+                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 writer.WriteByte((byte)lexemeNode.Weights);
                 writer.WriteByte(lexemeNode.IsPrefixSearch ? (byte)1 : (byte)0);
 
                 if (async)
-                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), _encoding, cancellationToken);
+                    await writer.WriteCharsAsync(lexemeNode.Text.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
                 else
                     writer.WriteChars(lexemeNode.Text.AsMemory().Span, _encoding);
 
                 if (writer.ShouldFlush(sizeof(byte)))
-                    await writer.Flush(async, cancellationToken);
+                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
                 writer.WriteByte(0);
                 return;
@@ -199,15 +199,15 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
             switch (node.Kind)
             {
             case Not:
-                await WriteCore(((NpgsqlTsQueryNot)node).Child);
+                await WriteCore(((NpgsqlTsQueryNot)node).Child).ConfigureAwait(false);
                 return;
             case Phrase:
                 writer.WriteInt16(((NpgsqlTsQueryFollowedBy)node).Distance);
                 break;
             }
 
-            await WriteCore(((NpgsqlTsQueryBinOp)node).Right);
-            await WriteCore(((NpgsqlTsQueryBinOp)node).Left);
+            await WriteCore(((NpgsqlTsQueryBinOp)node).Right).ConfigureAwait(false);
+            await WriteCore(((NpgsqlTsQueryBinOp)node).Left).ConfigureAwait(false);
         }
     }
 
