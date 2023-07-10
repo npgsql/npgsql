@@ -44,7 +44,7 @@ readonly struct PgNumeric
         destination[1] = raw.Mid;
         destination[2] = raw.High;
         destination[3] = (uint)raw.Flags;
-        scale = (short)raw.Scale;
+        scale = raw.Scale;
 #else
         decimal.GetBits(value, MemoryMarshal.Cast<uint, int>(destination));
 #endif
