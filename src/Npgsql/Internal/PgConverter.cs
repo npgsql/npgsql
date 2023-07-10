@@ -158,7 +158,7 @@ public abstract class PgConverter<T> : PgConverter
     public abstract T Read(PgReader reader);
     public abstract ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default);
 
-    public abstract Size GetSize(SizeContext context, [DisallowNull] T value, ref object? writeState);
+    public abstract Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState);
     public abstract void Write(PgWriter writer, [DisallowNull] T value);
     public abstract ValueTask WriteAsync(PgWriter writer, [DisallowNull] T value, CancellationToken cancellationToken = default);
 
@@ -322,5 +322,20 @@ public abstract class PgComposingConverter<T> : PgConverter<T>
 
         EffectiveConverter.WriteAsObject(writer, value);
         return new();
+    }
+}
+
+static class ConverterExtensions
+{
+    public static Size? GetSizeOrDbNull<T>(this PgConverter<T> converter, Size writeRequirement, SizeContext context, T? value, ref object? writeState)
+    {
+        if (converter.IsDbNull(value))
+            return null;
+
+        if (writeRequirement is { Kind: SizeKind.Exact, Value: var byteCount })
+            return byteCount;
+        var size = converter.GetSize(context, value, ref writeState);
+        Debug.Assert(size.Kind is not SizeKind.UpperBound);
+        return size;
     }
 }

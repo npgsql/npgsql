@@ -11,7 +11,7 @@ public enum SizeKind : byte
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
-public readonly struct Size
+public readonly struct Size : IEquatable<Size>
 {
     readonly int _byteCount;
 
@@ -51,4 +51,10 @@ public readonly struct Size
             SizeKind.Unknown => "Unknown",
             _ => throw new ArgumentOutOfRangeException()
         };
+
+    public bool Equals(Size other) => _byteCount == other._byteCount && Kind == other.Kind;
+    public override bool Equals(object? obj) => obj is Size other && Equals(other);
+    public override int GetHashCode() => HashCode.Combine(_byteCount, (int)Kind);
+    public static bool operator ==(Size left, Size right) => left.Equals(right);
+    public static bool operator !=(Size left, Size right) => !left.Equals(right);
 }
