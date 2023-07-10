@@ -259,6 +259,10 @@ public sealed class TypeInfoMappingCollection
         => AddStructType(typeof(T), typeof(T?), (string)dataTypeName, createInfo,
             static (_, innerInfo) => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), GetDefaultConfigure(isDefault));
 
+    public void AddStructType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
+        => AddStructType(typeof(T), typeof(T?), (string)dataTypeName, createInfo,
+            static (_, innerInfo) => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), GetDefaultConfigure(matchRequirement));
+
     public void AddStructType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), (string)dataTypeName, createInfo,
             static (_, innerInfo) => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), configure);

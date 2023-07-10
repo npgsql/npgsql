@@ -48,10 +48,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public string ConnectionString => _internalBuilder.ConnectionString;
 
-    static NpgsqlDataSourceBuilder()
+    internal static void ResetGlobalMappings(bool overwrite)
         => GlobalTypeMapper.Instance.AddGlobalTypeMappingResolvers(new IPgTypeInfoResolver[]
         {
-            AdoTypeInfoResolver.Instance,
+            overwrite ? new AdoTypeInfoResolver() : AdoTypeInfoResolver.Instance,
             new ExtraConversionsResolver(),
             new SystemTextJsonTypeInfoResolver(),
             new RangeTypeInfoResolver(),
@@ -61,7 +61,10 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new GeometricTypeInfoResolver(),
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver()
-        });
+        }, overwrite);
+
+    static NpgsqlDataSourceBuilder()
+        => ResetGlobalMappings(overwrite: false);
 
     /// <summary>
     /// Constructs a new <see cref="NpgsqlDataSourceBuilder" />, optionally starting out from the given <paramref name="connectionString"/>.

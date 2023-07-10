@@ -55,30 +55,3 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         return GetDefault(expectedPgTypeId ?? _timestamp);
     }
 }
-
-sealed class DateTimeOffsetUtcOnlyConverterResolver : PgConverterResolver<DateTimeOffset>
-{
-    readonly PgTypeId _timestampTz;
-    readonly PgConverter<DateTimeOffset> _converter;
-
-    public DateTimeOffsetUtcOnlyConverterResolver(PgTypeId timestampTz, bool dateTimeInfinityConversions)
-    {
-        _timestampTz = timestampTz;
-        _converter = new DateTimeOffsetConverter(dateTimeInfinityConversions);
-    }
-
-    public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
-        => pgTypeId is null || pgTypeId == _timestampTz
-            ? new(_converter, _timestampTz)
-            : throw CreateUnsupportedPgTypeIdException(pgTypeId.Value);
-
-    public override PgConverterResolution Get(DateTimeOffset value, PgTypeId? expectedPgTypeId)
-    {
-        // We run GetDefault first to make sure the expectedPgTypeId is known.
-        var resolution = GetDefault(expectedPgTypeId ?? _timestampTz);
-        return value.Offset == TimeSpan.Zero
-            ? resolution
-            : throw new NotSupportedException(
-                $"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ");
-    }
-}

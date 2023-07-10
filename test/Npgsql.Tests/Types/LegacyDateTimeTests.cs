@@ -1,7 +1,7 @@
 using System;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.TypeMapping;
+using Npgsql.Internal.Resolvers;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Util.Statics;
@@ -49,21 +49,22 @@ public class LegacyDateTimeTests : TestBase
             isDefaultForWriting: false);
     }
 
-    protected override async ValueTask<NpgsqlConnection> OpenConnectionAsync()
-    {
-        var conn = await base.OpenConnectionAsync();
-        await conn.ExecuteNonQueryAsync("SET TimeZone='Europe/Berlin'");
-        return conn;
-    }
-
-    protected override NpgsqlConnection OpenConnection()
-        => throw new NotSupportedException();
+    NpgsqlDataSource _dataSource = null!;
+    protected override NpgsqlDataSource DataSource => _dataSource;
 
     [OneTimeSetUp]
     public void Setup()
     {
 #if DEBUG
         LegacyTimestampBehavior = true;
+        _dataSource = CreateDataSource(builder =>
+        {
+            // Can't use the static AdoTypeInfoResolver instance, it already captured the feature flag.
+            builder.AddTypeInfoResolver(new AdoTypeInfoResolver());
+            builder.AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
+            builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
+        });
+        NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);
 #else
         Assert.Ignore(
             "Legacy DateTime tests rely on the Npgsql.EnableLegacyTimestampBehavior AppContext switch and can only be run in DEBUG builds");
@@ -72,6 +73,10 @@ public class LegacyDateTimeTests : TestBase
 
 #if DEBUG
     [OneTimeTearDown]
-    public void Teardown() => LegacyTimestampBehavior = false;
+    public void Teardown()
+    {
+        LegacyTimestampBehavior = false;
+        NpgsqlDataSourceBuilder.ResetGlobalMappings(overwrite: true);
+    }
 #endif
 }

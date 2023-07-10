@@ -46,5 +46,11 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
         => PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);
 
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
-        => writer.WriteInt64(PgTimestamp.Encode(value.DateTime, _dateTimeInfinityConversions));
+    {
+        if (value.Offset != TimeSpan.Zero)
+            throw new ArgumentException($"Cannot write DateTimeOffset with Offset={value.Offset} to PostgreSQL type 'timestamp with time zone', only offset 0 (UTC) is supported. ", nameof(value));
+
+        writer.WriteInt64(PgTimestamp.Encode(value.DateTime, _dateTimeInfinityConversions));
+
+    }
 }
