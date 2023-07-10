@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -212,6 +213,35 @@ public class PgWriter
 
     public ref ValueMetadata Current => ref _current;
 
+    // TODO these should just be extension methods.
+    public async ValueTask NestedWriteAsync<T>(PgConverter<T> converter, [DisallowNull]T value, Size size, object? state, CancellationToken cancellationToken = default)
+    {
+        Debug.Assert(size != -1);
+        if (ShouldFlush(size))
+            await FlushAsync(cancellationToken).ConfigureAwait(false);
+
+        Current.Size = size;
+        // Saves a write barrier in most cases (i.e. when there is no state).
+        if (Current.WriteState is not null || state is not null)
+            Current.WriteState = state;
+
+        await converter.WriteAsync(this, value, cancellationToken).ConfigureAwait(false);
+    }
+
+    // TODO these should just be extension methods.
+    public void NestedWrite<T>(PgConverter<T> converter, [DisallowNull]T value, Size size, object? state)
+    {
+        Debug.Assert(size != -1);
+        if (ShouldFlush(size))
+            Flush();
+
+        Current.Size = size;
+        // Saves a write barrier in most cases (i.e. when there is no state).
+        if (Current.WriteState is not null || state is not null)
+            Current.WriteState = state;
+
+        converter.Write(this, value);
+    }
 
     // This method lives here to remove the chances oids will be cached on converters inadvertently when data type names should be used.
     // Such a mapping (for instance for array element oids) should be done per operation to ensure it is done in the context of a specific backend.

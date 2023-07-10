@@ -9,14 +9,14 @@ namespace Npgsql.Internal.Converters;
 public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
 {
     readonly PgConverter<T> _subtypeConverter;
-    readonly Size _subtypeBufferReadRequirements;
+    readonly Size _subtypeReadRequirement;
+    readonly Size _subTypeWriteRequirement;
 
     public RangeConverter(PgConverter<T> subtypeConverter)
     {
         if (!subtypeConverter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        (_subtypeBufferReadRequirements, _) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, subtypeConverter);
-
+        (_subtypeReadRequirement, _subTypeWriteRequirement) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, subtypeConverter);
         _subtypeConverter = subtypeConverter;
     }
 
@@ -49,8 +49,8 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
             {
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
-                if (reader.ShouldBuffer(_subtypeBufferReadRequirements))
-                    await reader.BufferData(async, _subtypeBufferReadRequirements, cancellationToken).ConfigureAwait(false);
+                if (reader.ShouldBuffer(_subtypeReadRequirement))
+                    await reader.BufferData(async, _subtypeReadRequirement, cancellationToken).ConfigureAwait(false);
 
                 lowerBound = async
                     ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
@@ -70,8 +70,8 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
             {
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
-                if (reader.ShouldBuffer(_subtypeBufferReadRequirements))
-                    await reader.BufferData(async, _subtypeBufferReadRequirements, cancellationToken).ConfigureAwait(false);
+                if (reader.ShouldBuffer(_subtypeReadRequirement))
+                    await reader.BufferData(async, _subtypeReadRequirement, cancellationToken).ConfigureAwait(false);
                 upperBound = async
                     ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
@@ -84,38 +84,41 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
 
     public override Size GetSize(SizeContext context, NpgsqlRange<T> value, ref object? writeState)
     {
-        var totalSize = Size.Create(1); // Flags
+        var totalSize = Size.Create(1);
+        if (value.IsEmpty)
+            return totalSize; // Just flags.
 
-        if (!value.IsEmpty)
+        WriteState? state = null;
+        if (!value.LowerBoundInfinite)
         {
-            var rangeWriteState = new WriteState();
-
-            if (!value.LowerBoundInfinite)
+            totalSize = totalSize.Combine(sizeof(int));
+            var subTypeState = (object?)null;
+            if (_subtypeConverter.GetSizeOrDbNull(_subTypeWriteRequirement, context, value.LowerBound, ref subTypeState) is { } size)
             {
-                CalculateBoundSize(
-                    value.LowerBound, ref totalSize, out rangeWriteState.LowerBoundSize, ref rangeWriteState.LowerBoundWriteState);
+                totalSize = totalSize.Combine(size);
+                (state ??= new WriteState()).LowerBoundSize = size;
+                state.LowerBoundWriteState = subTypeState;
             }
-
-            if (!value.UpperBoundInfinite)
-            {
-                CalculateBoundSize(
-                    value.UpperBound, ref totalSize, out rangeWriteState.UpperBoundSize, ref rangeWriteState.UpperBoundWriteState);
-            }
-
-            writeState = rangeWriteState;
+            else if (state is not null)
+                state.LowerBoundSize = -1;
         }
 
+        if (!value.UpperBoundInfinite)
+        {
+            totalSize = totalSize.Combine(sizeof(int));
+            var subTypeState = (object?)null;
+            if (_subtypeConverter.GetSizeOrDbNull(_subTypeWriteRequirement, context, value.UpperBound, ref subTypeState) is { } size)
+            {
+                totalSize = totalSize.Combine(size);
+                (state ??= new WriteState()).UpperBoundSize = size;
+                state.UpperBoundWriteState = subTypeState;
+            }
+            else if (state is not null)
+                state.UpperBoundSize = -1;
+        }
+
+        writeState = state;
         return totalSize;
-
-        void CalculateBoundSize(T? boundValue, ref Size totalSize, out int boundSize, ref object? boundWriteState)
-        {
-            Size size = sizeof(int); // Length
-
-            if (!_subtypeConverter.IsDbNull(boundValue))
-                size = size.Combine(_subtypeConverter.GetSize(context, boundValue, ref boundWriteState));
-            boundSize = size.Value - sizeof(int);
-            totalSize = totalSize.Combine(size);
-        }
     }
 
     public override void Write(PgWriter writer, NpgsqlRange<T> value)
@@ -126,65 +129,62 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
 
     async ValueTask Write(bool async, PgWriter writer, NpgsqlRange<T> value, CancellationToken cancellationToken)
     {
+        var writeState = writer.Current.WriteState as WriteState;
+        var lowerBoundSize = writeState?.LowerBoundSize ?? -1;
+        var upperBoundSize = writeState?.UpperBoundSize ?? -1;
+
+        var flags = value.Flags;
+        if (!value.IsEmpty)
+        {
+            // Normalize nulls to infinite, as pg does.
+            if (lowerBoundSize == -1 && !value.LowerBoundInfinite)
+                flags = (flags & ~RangeFlags.LowerBoundInclusive) | RangeFlags.LowerBoundInfinite;
+
+            if (upperBoundSize == -1 && !value.UpperBoundInfinite)
+                flags = (flags & ~RangeFlags.UpperBoundInclusive) | RangeFlags.UpperBoundInfinite;
+        }
+
         if (writer.ShouldFlush(sizeof(byte)))
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-        writer.WriteByte((byte)value.Flags);
-
+        writer.WriteByte((byte)flags);
         if (value.IsEmpty)
             return;
 
-        var writeState = writer.Current.WriteState as WriteState;
-        Debug.Assert(writeState is not null);
-
-        if (!value.LowerBoundInfinite)
+        if (!flags.HasFlag(RangeFlags.LowerBoundInfinite))
         {
+            Debug.Assert(lowerBoundSize.Kind is SizeKind.Exact && lowerBoundSize.Value != -1);
+            var length = lowerBoundSize.Value;
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-            if (_subtypeConverter.IsDbNull(value.LowerBound))
-                writer.WriteInt32(-1);
+            writer.WriteInt32(length);
+            if (async)
+                await writer.NestedWriteAsync(_subtypeConverter, value.LowerBound!, lowerBoundSize,
+                    writeState!.LowerBoundWriteState, cancellationToken);
             else
-            {
-                writer.WriteInt32(writeState.LowerBoundSize);
-                if (writer.ShouldFlush(writeState.LowerBoundSize))
-                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-                writer.Current.WriteState = writeState.LowerBoundWriteState;
-                if (async)
-                    await _subtypeConverter.WriteAsync(writer, value.LowerBound, cancellationToken).ConfigureAwait(false);
-                else
-                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    _subtypeConverter.Write(writer, value.LowerBound);
-            }
+                writer.NestedWrite(_subtypeConverter, value.LowerBound!, lowerBoundSize, writeState!.LowerBoundWriteState);
         }
 
-        if (!value.UpperBoundInfinite)
+        if (!flags.HasFlag(RangeFlags.UpperBoundInfinite))
         {
+            Debug.Assert(upperBoundSize.Kind is SizeKind.Exact && upperBoundSize.Value != -1);
+            var length = upperBoundSize.Value;
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-            if (_subtypeConverter.IsDbNull(value.UpperBound))
-                writer.WriteInt32(-1);
+            writer.WriteInt32(length);
+            if (async)
+                await writer.NestedWriteAsync(_subtypeConverter, value.UpperBound!, upperBoundSize,
+                    writeState!.UpperBoundWriteState, cancellationToken);
             else
-            {
-                writer.WriteInt32(writeState.UpperBoundSize);
-                if (writer.ShouldFlush(writeState.UpperBoundSize))
-                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-                writer.Current.WriteState = writeState.UpperBoundWriteState;
-                if (async)
-                    await _subtypeConverter.WriteAsync(writer, value.UpperBound, cancellationToken).ConfigureAwait(false);
-                else
-                    // ReSharper disable once MethodHasAsyncOverloadWithCancellation
-                    _subtypeConverter.Write(writer, value.UpperBound);
-            }
+                writer.NestedWrite(_subtypeConverter, value.UpperBound!, upperBoundSize, writeState!.UpperBoundWriteState);
         }
     }
 
-    class WriteState
+    sealed class WriteState
     {
         // ReSharper disable InconsistentNaming
-        internal int LowerBoundSize;
+        internal Size LowerBoundSize;
         internal object? LowerBoundWriteState;
-        internal int UpperBoundSize;
+        internal Size UpperBoundSize;
         internal object? UpperBoundWriteState;
         // ReSharper restore InconsistentNaming
     }
