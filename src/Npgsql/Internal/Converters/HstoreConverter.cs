@@ -14,10 +14,10 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
     public HstoreConverter(Encoding encoding) => _encoding = encoding;
 
     public override T Read(PgReader reader)
-        => ReadCore(async: false, reader, CancellationToken.None).Result;
+        => Read(async: false, reader, CancellationToken.None).Result;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => ReadCore(async: true, reader, cancellationToken);
+        => Read(async: true, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
     {
@@ -46,12 +46,12 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
     }
 
     public override void Write(PgWriter writer, T value)
-        => WriteCore(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
+        => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => WriteCore(async: true, writer, value, cancellationToken);
+        => Write(async: true, writer, value, cancellationToken);
 
-    async ValueTask<T> ReadCore(bool async, PgReader reader, CancellationToken cancellationToken)
+    async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.BufferData(async,sizeof(int), cancellationToken).ConfigureAwait(false);
@@ -101,7 +101,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
         }
     }
 
-    async ValueTask WriteCore(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
+    async ValueTask Write(bool async, PgWriter writer, T value, CancellationToken cancellationToken)
     {
         if (writer.Current.WriteState is not WriteState && value.Count is not 0)
             throw new InvalidOperationException("Missing write state");
