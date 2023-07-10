@@ -35,6 +35,8 @@ public readonly struct TypeInfoMapping
     public TypeInfoMapping(Type type, string dataTypeName, TypeInfoFactory factory)
     {
         Type = type;
+        // For objects it makes no sense to have clr type only matches by default, there are too many implementations.
+        MatchRequirement = type == typeof(object) ? MatchRequirement.DataTypeName : MatchRequirement.All;
         DataTypeName = Postgres.DataTypeName.NormalizeName(dataTypeName);
         Factory = factory;
     }
@@ -206,7 +208,7 @@ public sealed class TypeInfoMappingCollection
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
 
-        AddArrayType(elementMapping, typeof(Array), CreateArrayBasedConverter<TElement>, copyDefault: true, arrayTypeMatchPredicate);
+        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, copyDefault: true, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
         AddArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverter<TElement>, copyDefault: true, listTypeMatchPredicate, suppressObjectMapping: true);
 
         void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgTypeInfo, PgConverter> converter, bool copyDefault, Func<Type, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
@@ -237,7 +239,7 @@ public sealed class TypeInfoMappingCollection
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
-        AddResolverArrayType(elementMapping, typeof(Array), CreateArrayBasedConverterResolver<TElement>, copyDefault: true, arrayTypeMatchPredicate);
+        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, copyDefault: true, arrayTypeMatchPredicate);
         AddResolverArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverterResolver<TElement>, copyDefault: true, listTypeMatchPredicate);
         if (typeof(object) == typeof(TElement))
             AddResolverArrayType(elementMapping, typeof(object), CreateArrayBasedConverterResolver<TElement>, copyDefault: false);
@@ -292,15 +294,14 @@ public sealed class TypeInfoMappingCollection
     }
 
     // We have no overload for DataTypeName for the struct methods to reduce code bloat.
-    public void AddStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping = false) where TElement : struct
-        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), null, suppressObjectMapping);
+    public void AddStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
+        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), null);
 
-    public void AddStructArrayType<TElement>(string elementDataTypeName, Func<TypeInfoMapping, TypeInfoMapping> configure, bool suppressObjectMapping = false) where TElement : struct
-        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), configure, suppressObjectMapping);
+    public void AddStructArrayType<TElement>(string elementDataTypeName, Func<TypeInfoMapping, TypeInfoMapping> configure) where TElement : struct
+        => AddStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), configure);
 
     public void AddStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping,
-        Func<TypeInfoMapping, TypeInfoMapping>? configure,
-        bool suppressObjectMapping = false) where TElement : struct
+        Func<TypeInfoMapping, TypeInfoMapping>? configure) where TElement : struct
     {
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
@@ -308,10 +309,10 @@ public sealed class TypeInfoMappingCollection
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
         var nullableListTypeMatchPredicate = nullableElementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(nullableElementMapping.TypeMatchPredicate) : null;
 
-        AddStructArrayType(elementMapping, nullableElementMapping, typeof(Array), typeof(Array),
+        AddStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             CreateArrayBasedConverter<TElement>, CreateArrayBasedConverter<TElement?>,
             arrayTypeMatchPredicate, nullableArrayTypeMatchPredicate,
-            configure, suppressObjectMapping);
+            configure, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
 
         // Don't add the object converter for the list based converter.
         AddStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),
@@ -356,19 +357,18 @@ public sealed class TypeInfoMappingCollection
     }
 
     // We have no overload for DataTypeName for the struct methods to reduce code bloat.
-    public void AddResolverStructArrayType<TElement>(string elementDataTypeName, bool suppressObjectMapping = false) where TElement : struct
-        => AddResolverStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName), suppressObjectMapping);
+    public void AddResolverStructArrayType<TElement>(string elementDataTypeName) where TElement : struct
+        => AddResolverStructArrayType<TElement>(FindMapping(typeof(TElement), elementDataTypeName), FindMapping(typeof(TElement?), elementDataTypeName));
 
-    public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping,
-        bool suppressObjectMapping = false) where TElement : struct
+    public void AddResolverStructArrayType<TElement>(TypeInfoMapping elementMapping, TypeInfoMapping nullableElementMapping) where TElement : struct
     {
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
 
-        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(Array), typeof(Array),
+        AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(TElement[]), typeof(TElement?[]),
             CreateArrayBasedConverterResolver<TElement>,
-            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping, arrayTypeMatchPredicate);
+            CreateArrayBasedConverterResolver<TElement?>, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _), arrayTypeMatchPredicate);
 
         // Don't add the object converter for the list based converter.
         AddResolverStructArrayType(elementMapping, nullableElementMapping, typeof(List<TElement>), typeof(List<TElement?>),

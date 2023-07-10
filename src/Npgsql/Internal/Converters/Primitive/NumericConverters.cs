@@ -97,22 +97,15 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
         return base.CanConvert(format, out _);
     }
 
+    // This upper bound would already cause an overflow exception in the builder, no need to do + 1.
     public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
         => readRequirement = writeRequirement = Size.CreateUpperBound(NumericConverters.DecimalBasedMaxByteCount);
 
     protected override T ReadCore(PgReader reader)
     {
         var digitCount = reader.ReadInt16();
-        short[]? digitsFromPool = null;
-        var digits = (digitCount <= StackAllocByteThreshold / sizeof(short)
-            ? stackalloc short[StackAllocByteThreshold / sizeof(short)]
-            : (digitsFromPool = ArrayPool<short>.Shared.Rent(digitCount)).AsSpan()).Slice(0, digitCount);
-
+        var digits = stackalloc short[StackAllocByteThreshold / sizeof(short)].Slice(0, digitCount);;
         var value = ConvertTo(NumericConverters.Read(reader, digits));
-
-        if (digitsFromPool is not null)
-            ArrayPool<short>.Shared.Return(digitsFromPool);
-
         return value;
     }
 

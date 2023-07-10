@@ -257,9 +257,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<ReadOnlyMemory<byte>>((string)DataTypeNames.Bytea);
 
         // Varbit
-        mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);
-        mappings.AddStructArrayType<bool>((string)DataTypeNames.Varbit);
-        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Varbit);
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
@@ -269,11 +266,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
+        // Object mapping first.
+        mappings.AddArrayType<BitArray>((string)DataTypeNames.Varbit);
+        mappings.AddStructArrayType<bool>((string)DataTypeNames.Varbit);
+        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Varbit);
 
         // Bit
-        mappings.AddArrayType<BitArray>((string)DataTypeNames.Bit);
-        mappings.AddStructArrayType<bool>((string)DataTypeNames.Bit);
-        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Bit);
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
@@ -283,6 +281,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, object>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
+        // Object mapping first.
+        mappings.AddArrayType<BitArray>((string)DataTypeNames.Bit);
+        mappings.AddStructArrayType<bool>((string)DataTypeNames.Bit);
+        mappings.AddStructArrayType<BitVector32>((string)DataTypeNames.Bit);
 
         // Timestamp
         if (Statics.LegacyTimestampBehavior)
@@ -347,7 +349,7 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
 
     public AdoArrayTypeInfoResolver()
     {
-        Mappings = new TypeInfoMappingCollection(base.Mappings.Items);
+        Mappings = new TypeInfoMappingCollection(base.Mappings);
         var elementTypeCount = Mappings.Items.Count;
         AddArrayInfos(Mappings);
         // Make sure we have at least one mapping for each element type.
