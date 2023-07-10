@@ -292,7 +292,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState) => throw new NotImplementedException();
+    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState) => throw new NotImplementedException();
 
     public sealed override T Read(PgReader reader)
     {

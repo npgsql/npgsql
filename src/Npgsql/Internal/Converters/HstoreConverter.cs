@@ -27,7 +27,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
             return totalSize;
 
         var state = new WriteState(new ArraySegment<int>(ArrayPool<int>.Shared.Rent(value.Count * 2), 0, value.Count * 2));
-        var sizes = state.KvSizes;
+        var sizes = state.KvSizes.AsSpan();
         var i = 0;
         foreach (var kv in value)
         {
@@ -115,12 +115,12 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
             return;
 
         var sizes = ((WriteState)writer.Current.WriteState!).KvSizes;
-        var i = 0;
+        var i = sizes.Offset;
         foreach (var kv in value)
         {
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(sizes[i]);
+            writer.WriteInt32(sizes.Array![i]);
             if (async)
                 await writer.WriteCharsAsync(kv.Key.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
             else
@@ -128,7 +128,7 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
 
             if (writer.ShouldFlush(sizeof(int)))
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            var valueSize = sizes[i + 1];
+            var valueSize = sizes.Array![i + 1];
             writer.WriteInt32(valueSize);
             if (valueSize is not -1)
             {
