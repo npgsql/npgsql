@@ -48,6 +48,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new DecimalNumericConverter<decimal>()), isDefault: true);
         mappings.AddStructType<BigInteger>(DataTypeNames.Numeric,
             static (options, mapping, _) => mapping.CreateInfo(options, new BigIntegerNumericConverter()));
+        mappings.AddStructType<decimal>(DataTypeNames.Money,
+            static (options, mapping, _) => mapping.CreateInfo(options, new MoneyConverter<decimal>()), MatchRequirement.DataTypeName);
 
         // Text
         mappings.AddType<string>(DataTypeNames.Text,
@@ -240,6 +242,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<double>((string)DataTypeNames.Float8);
         mappings.AddStructArrayType<BigInteger>((string)DataTypeNames.Numeric);
         mappings.AddStructArrayType<decimal>((string)DataTypeNames.Numeric);
+        mappings.AddStructArrayType<decimal>((string)DataTypeNames.Money);
 
         // Text
         mappings.AddArrayType<string>((string)DataTypeNames.Text);
