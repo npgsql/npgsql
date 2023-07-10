@@ -44,10 +44,10 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         }
     }
 
-    internal void AddGlobalTypeMappingResolvers(IPgTypeInfoResolver[] resolvers)
+    internal void AddGlobalTypeMappingResolvers(IPgTypeInfoResolver[] resolvers, bool overwrite = false)
     {
         // Good enough logic to prevent SlimBuilder overriding the normal Builder.
-        if (resolvers.Length > _typeMappingResolvers.Length)
+        if (overwrite || resolvers.Length > _typeMappingResolvers.Length)
         {
             _typeMappingResolvers = resolvers;
             ResetTypeMappingCache();

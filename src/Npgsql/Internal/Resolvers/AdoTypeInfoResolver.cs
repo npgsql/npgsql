@@ -6,6 +6,7 @@ using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
 using Npgsql.Internal.Postgres;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
@@ -93,24 +94,42 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
 
-        // TimestampTz
-        mappings.AddStructType<DateTime>(DataTypeNames.TimestampTz,
-            static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
-                new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                    options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
-        mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimestampTz,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                new DateTimeOffsetUtcOnlyConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz),
-                    options.EnableDateTimeInfinityConversions)));
-        mappings.AddStructType<long>(DataTypeNames.TimestampTz,
+        // Timestamp
+        if (Statics.LegacyTimestampBehavior)
+        {
+            mappings.AddStructType<DateTime>(DataTypeNames.Timestamp,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true)), isDefault: true);
+        }
+        else
+        {
+            mappings.AddStructType<DateTime>(DataTypeNames.Timestamp,
+                static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
+                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+        }
+        mappings.AddStructType<long>(DataTypeNames.Timestamp,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
-        // Timestamp
-        mappings.AddStructType<DateTime>(DataTypeNames.Timestamp,
-            static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
-                new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
-                    options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
-        mappings.AddStructType<long>(DataTypeNames.Timestamp,
+        // TimestampTz
+        if (Statics.LegacyTimestampBehavior)
+        {
+            mappings.AddStructType<DateTime>(DataTypeNames.TimestampTz,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false)), matchRequirement: MatchRequirement.DataTypeName);
+            mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimestampTz,
+                static (options, mapping, _) => mapping.CreateInfo(options, new LegacyDateTimeOffsetConverter(options.EnableDateTimeInfinityConversions)));
+        }
+        else
+        {
+            mappings.AddStructType<DateTime>(DataTypeNames.TimestampTz,
+                static (options, mapping, dataTypeNameMatch) => mapping.CreateInfo(options,
+                    new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz), options.GetCanonicalTypeId(DataTypeNames.Timestamp),
+                        options.EnableDateTimeInfinityConversions), dataTypeNameMatch), isDefault: true);
+            mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimestampTz,
+                static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions)));
+        }
+        mappings.AddStructType<long>(DataTypeNames.TimestampTz,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int8Converter<long>()));
 
         // Date
@@ -265,14 +284,25 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             _ => throw new NotSupportedException()
         });
 
-        // TimestampTz
-        mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.TimestampTz);
-        mappings.AddResolverStructArrayType<DateTimeOffset>((string)DataTypeNames.TimestampTz);
-        mappings.AddStructArrayType<long>((string)DataTypeNames.TimestampTz);
-
         // Timestamp
-        mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.Timestamp);
+        if (Statics.LegacyTimestampBehavior)
+            mappings.AddStructArrayType<DateTime>((string)DataTypeNames.TimestampTz);
+        else
+            mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.Timestamp);
         mappings.AddStructArrayType<long>((string)DataTypeNames.Timestamp);
+
+        // TimestampTz
+        if (Statics.LegacyTimestampBehavior)
+        {
+            mappings.AddStructArrayType<DateTime>((string)DataTypeNames.TimestampTz);
+            mappings.AddStructArrayType<DateTimeOffset>((string)DataTypeNames.TimestampTz);
+        }
+        else
+        {
+            mappings.AddResolverStructArrayType<DateTime>((string)DataTypeNames.TimestampTz);
+            mappings.AddResolverStructArrayType<DateTimeOffset>((string)DataTypeNames.TimestampTz);
+        }
+        mappings.AddStructArrayType<long>((string)DataTypeNames.TimestampTz);
 
         // Time
         mappings.AddStructArrayType<TimeSpan>((string)DataTypeNames.Time);

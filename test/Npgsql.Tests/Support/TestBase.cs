@@ -375,6 +375,13 @@ public abstract class TestBase
         return NpgsqlDataSource.Create(connectionStringBuilder);
     }
 
+    protected virtual NpgsqlDataSource CreateDataSource(Action<NpgsqlDataSourceBuilder> configure)
+    {
+        var builder = new NpgsqlDataSourceBuilder(ConnectionString);
+        configure(builder);
+        return builder.Build();
+    }
+
     protected static NpgsqlDataSource GetDataSource(string connectionString)
     {
         if (!DataSources.TryGetValue(connectionString, out var dataSource))
