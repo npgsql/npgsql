@@ -32,21 +32,21 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
     }
 
     public override T Read(PgReader reader)
-        => ReadCore(async: false, reader, CancellationToken.None).Result;
+        => Read(async: false, reader, CancellationToken.None).Result;
 
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => ReadCore(async: true, reader, cancellationToken);
+        => Read(async: true, reader, cancellationToken);
 
     public override Size GetSize(SizeContext context, [DisallowNull] T value, ref object? writeState)
         => _textConverter.GetSize(context, value, ref writeState).Combine(sizeof(byte));
 
     public override void Write(PgWriter writer, [DisallowNull]T value)
-        => WriteCore(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
+        => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
 
     public override ValueTask WriteAsync(PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken = default)
-        => WriteCore(async: true, writer, value, cancellationToken);
+        => Write(async: true, writer, value, cancellationToken);
 
-    async ValueTask<T> ReadCore(bool async, PgReader reader, CancellationToken cancellationToken)
+    async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         var readRequirement = _innerRequirements.Read;
         if (reader.Current.Format is DataFormat.Binary)
@@ -67,7 +67,7 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
         return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
     }
 
-    async ValueTask WriteCore(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
+    async ValueTask Write(bool async, PgWriter writer, [DisallowNull]T value, CancellationToken cancellationToken)
     {
         var size = writer.Current.Size;
         if (writer.Current.Format is DataFormat.Binary)
