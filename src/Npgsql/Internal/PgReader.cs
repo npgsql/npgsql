@@ -143,7 +143,7 @@ public class PgReader
             _ => CurrentSize,
         };
 
-    internal bool ShouldBuffer(Size bufferRequirement) => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
+    public bool ShouldBuffer(Size bufferRequirement) => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
 
     bool ShouldBuffer(int byteCount)
     {
@@ -192,7 +192,7 @@ public class PgReader
         }
     }
 
-    internal ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
+    public ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
     {
         if (async)
             return BufferDataAsync(bufferRequirement, cancellationToken);
