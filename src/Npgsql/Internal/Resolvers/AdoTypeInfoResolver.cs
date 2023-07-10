@@ -5,6 +5,8 @@ using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
 using Npgsql.Internal.Postgres;
@@ -60,7 +62,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
         // Alternative text types
-        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
@@ -68,6 +70,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddStructType<char>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
         }
+
+        // Jsonb
+        mappings.AddType<string>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
+        mappings.AddStructType<char>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char>(new CharTextConverter(options.TextEncoding))));
 
         // Bytea
         mappings.AddType<byte[]>(DataTypeNames.Bytea,
@@ -259,7 +267,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
 
         // Altenative text types
-        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddStructArrayType<char>(dataTypeName);

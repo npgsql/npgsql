@@ -105,7 +105,7 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
 
         // Alternative text types
         foreach (var dataTypeName in new[]
-                     { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+                     { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddType<char[]>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
@@ -118,6 +118,13 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
                     preferredFormat: DataFormat.Text));
         }
 
+        // Jsonb
+        mappings.AddType<char[]>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char[]>(new CharArrayTextConverter(options.TextEncoding))));
+        mappings.AddStructType<ReadOnlyMemory<char>>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ReadOnlyMemory<char>>(new ReadOnlyMemoryTextConverter(options.TextEncoding))));
+        mappings.AddStructType<ArraySegment<char>>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ArraySegment<char>>(new CharArraySegmentTextConverter(options.TextEncoding))));
     }
 
     protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
@@ -164,7 +171,7 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
 
         // Alternative text types
-        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
         {
             mappings.AddArrayType<char[]>(dataTypeName);
             mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
