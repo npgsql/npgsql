@@ -93,6 +93,23 @@ sealed class NetTopologySuiteTypeInfoResolver : IPgTypeInfoResolver
     static void AddArrayInfos(TypeInfoMappingCollection mappings)
     {
         // geometry
-        // mappings.AddArrayType<Geometry>("geometry");
+        mappings.AddArrayType<Geometry>("geometry");
+        mappings.AddArrayType<Point>("geometry");
+        mappings.AddArrayType<MultiPoint>("geometry");
+        mappings.AddArrayType<LineString>("geometry");
+        mappings.AddArrayType<MultiLineString>("geometry");
+        mappings.AddArrayType<Polygon>("geometry");
+        mappings.AddArrayType<MultiPolygon>("geometry");
+        mappings.AddArrayType<GeometryCollection>("geometry");
+
+        // geography
+        mappings.AddArrayType<Geometry>("geography");
+        mappings.AddArrayType<Point>("geography");
+        mappings.AddArrayType<MultiPoint>("geography");
+        mappings.AddArrayType<LineString>("geography");
+        mappings.AddArrayType<MultiLineString>("geography");
+        mappings.AddArrayType<Polygon>("geography");
+        mappings.AddArrayType<MultiPolygon>("geography");
+        mappings.AddArrayType<GeometryCollection>("geography");
     }
 }
