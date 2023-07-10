@@ -5,14 +5,11 @@ namespace Npgsql.NodaTime.Internal;
 
 sealed class PeriodConverter : PgBufferedConverter<Period>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, Period value, ref object? writeState)
-        => sizeof(long) + sizeof(int) + sizeof(int);
 
     protected override Period ReadCore(PgReader reader)
     {

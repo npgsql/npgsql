@@ -29,9 +29,9 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.None;
+        bufferRequirements = BufferRequirements.None;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
@@ -83,9 +83,9 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => writer.WriteCharsAsync(ConvertTo(value), _encoding, cancellationToken);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.None;
+        bufferRequirements = BufferRequirements.None;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 
@@ -143,15 +143,11 @@ sealed class CharTextConverter : PgBufferedConverter<char>
         _oneCharMaxByteCount = Size.CreateUpperBound(encoding.GetMaxByteCount(1));
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        // Under different encodings we may end up with different sizes per char.
-        bufferingRequirement = BufferingRequirement.Custom;
+        bufferRequirements = BufferRequirements.Create(_oneCharMaxByteCount);
         return format is DataFormat.Binary or DataFormat.Text;
     }
-
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => readRequirement = writeRequirement = _oneCharMaxByteCount;
 
     protected override char ReadCore(PgReader reader)
     {

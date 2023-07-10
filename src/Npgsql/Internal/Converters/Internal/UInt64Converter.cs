@@ -3,12 +3,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class UInt64Converter : PgBufferedConverter<ulong>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(ulong));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, ulong value, ref object? writeState) => sizeof(ulong);
     protected override ulong ReadCore(PgReader reader) => reader.ReadUInt64();
     protected override void WriteCore(PgWriter writer, ulong value) => writer.WriteUInt64(value);
 }

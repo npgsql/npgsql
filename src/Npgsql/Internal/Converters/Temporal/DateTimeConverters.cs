@@ -15,12 +15,11 @@ sealed class DateTimeConverter : PgBufferedConverter<DateTime>
         _kind = kind;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, DateTime value, ref object? writeState) => sizeof(long);
 
     protected override DateTime ReadCore(PgReader reader)
         => PgTimestamp.Decode(reader.ReadInt64(), _kind, _dateTimeInfinityConversions);
@@ -35,12 +34,11 @@ sealed class DateTimeOffsetConverter : PgBufferedConverter<DateTimeOffset>
     public DateTimeOffsetConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState) => sizeof(long);
 
     protected override DateTimeOffset ReadCore(PgReader reader)
         => PgTimestamp.Decode(reader.ReadInt64(), DateTimeKind.Utc, _dateTimeInfinityConversions);

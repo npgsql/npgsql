@@ -18,9 +18,9 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         _encoding = encoding;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.Value;
+        bufferRequirements = BufferRequirements.Value;
         return format is DataFormat.Binary or DataFormat.Text;
     }
 

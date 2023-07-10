@@ -8,10 +8,10 @@ namespace Npgsql.Internal;
 public class PgTypeInfo
 {
     readonly bool _canBinaryConvert;
-    readonly BufferingRequirement _binaryBufferingRequirement;
+    readonly BufferRequirements _binaryBufferRequirements;
 
     readonly bool _canTextConvert;
-    readonly BufferingRequirement _textBufferingRequirement;
+    readonly BufferRequirements _textBufferRequirements;
 
     PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
     {
@@ -29,8 +29,8 @@ public class PgTypeInfo
     {
         Converter = converter;
         PgTypeId = options.GetCanonicalTypeId(pgTypeId);
-        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement);
-        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferingRequirement);
+        _canBinaryConvert = converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+        _canTextConvert = converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
     }
 
     private protected PgTypeInfo(PgSerializerOptions options, Type type, PgConverterResolution? resolution, Type? unboxedType = null)
@@ -44,8 +44,8 @@ public class PgTypeInfo
 
             PgTypeId = res.PgTypeId;
             Converter = res.Converter;
-            _canBinaryConvert = res.Converter.CanConvert(DataFormat.Binary, out _binaryBufferingRequirement);
-            _canTextConvert = res.Converter.CanConvert(DataFormat.Text, out _textBufferingRequirement);
+            _canBinaryConvert = res.Converter.CanConvert(DataFormat.Binary, out _binaryBufferRequirements);
+            _canTextConvert = res.Converter.CanConvert(DataFormat.Text, out _textBufferRequirements);
         }
     }
 
@@ -84,23 +84,23 @@ public class PgTypeInfo
         case { IsResolverInfo: false }:
             // Type lies when IsBoxing is true.
             var typeToConvert = IsBoxing ? typeof(object) : Type;
-            if (!CachedCanConvert(format, out var bufferingRequirement))
+            if (!CachedCanConvert(format, out var bufferRequirements))
             {
                 info = default;
                 return false;
             }
-            info = CreateConverterInfo(bufferingRequirement, isRead: true, format, Converter, typeToConvert);
+            info = CreateConverterInfo(bufferRequirements, isRead: true, Converter, typeToConvert);
             return true;
         case PgResolverTypeInfo resolverInfo:
             var resolution = resolverInfo.GetResolution(field);
             if (!HasCachedInfo(resolution.Converter)
-                    ? !CachedCanConvert(format, out bufferingRequirement)
-                    : !resolution.Converter.CanConvert(format, out bufferingRequirement))
+                    ? !CachedCanConvert(format, out bufferRequirements)
+                    : !resolution.Converter.CanConvert(format, out bufferRequirements))
             {
                 info = default;
                 return false;
             }
-            info = CreateConverterInfo(bufferingRequirement, isRead: true, format, resolution.Converter, resolution.Converter.TypeToConvert);
+            info = CreateConverterInfo(bufferRequirements, isRead: true, resolution.Converter, resolution.Converter.TypeToConvert);
             return true;
         default:
             throw new NotSupportedException("Should not happen, please file a bug.");
@@ -150,32 +150,33 @@ public class PgTypeInfo
             _ => throw new NotSupportedException("Should not happen, please file a bug.")
         };
 
-    PgConverterInfo CreateConverterInfo(BufferingRequirement bufferingRequirement, bool isRead, DataFormat format, PgConverter converter, Type typeToConvert)
-    {
-        return new()
+    PgConverterInfo CreateConverterInfo(BufferRequirements bufferRequirements, bool isRead, PgConverter converter, Type typeToConvert)
+        => new()
         {
             Converter = converter,
             AsObject = Type != typeToConvert,
-            BufferRequirement = GetRequirement(isRead, format),
+            BufferRequirement = isRead ? bufferRequirements.Read : bufferRequirements.Write
         };
 
-        Size GetRequirement(bool isRead, DataFormat format)
-        {
-            var (readRequirement, writeRequirement) = bufferingRequirement.ToBufferRequirements(format, converter);
-            return isRead ? readRequirement : writeRequirement;
-        }
-    }
-
-    bool CachedCanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    bool CachedCanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
         if (format is DataFormat.Binary)
         {
-            bufferingRequirement = _binaryBufferingRequirement;
+            bufferRequirements = _binaryBufferRequirements;
             return _canBinaryConvert;
         }
 
-        bufferingRequirement = _textBufferingRequirement;
+        bufferRequirements = _textBufferRequirements;
         return _canTextConvert;
+    }
+
+    public BufferRequirements? GetBufferRequirements(PgConverter converter, DataFormat format)
+    {
+        var success = HasCachedInfo(converter)
+            ? CachedCanConvert(format, out var bufferRequirements)
+            : converter.CanConvert(format, out bufferRequirements);
+
+        return success ? null : bufferRequirements;
     }
 
     // Bind for writing.
@@ -190,7 +191,7 @@ public class PgTypeInfo
             return BindObject(resolution, value, out writeState, out format, formatPreference);
 
         var converter = resolution.GetConverter<T>();
-        format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
+        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
         if (converter.IsDbNull(value))
         {
             writeState = null;
@@ -198,7 +199,7 @@ public class PgTypeInfo
         }
         writeState = null;
         var context = new SizeContext(format);
-        var size = converter.GetSize(context, value, ref writeState);
+        var size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
         return new()
         {
             Converter = converter,
@@ -217,7 +218,7 @@ public class PgTypeInfo
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
 
         var converter = resolution.Converter;
-        format = ResolveFormat(converter, out _, formatPreference ?? PreferredFormat);
+        format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
 
         // Given SQL values are effectively a union of T | NULL we support DBNull.Value to signify a NULL value for all types except DBNull in this api.
         if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullAsObject(value))
@@ -227,7 +228,7 @@ public class PgTypeInfo
         }
         writeState = null;
         var context = new SizeContext(format);
-        var size = converter.GetSizeAsObject(context, value, ref writeState);
+        var size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
         return new()
         {
             Converter = converter,
@@ -281,16 +282,16 @@ public class PgTypeInfo
     //     => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
 
     // If we don't have a converter stored we must ask the retrieved one through virtual calls.
-    DataFormat ResolveFormat(PgConverter converter, out BufferingRequirement bufferingRequirement, DataFormat? formatPreference = null)
+    DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
         switch (formatPreference)
         {
         // The common case, no preference means we default to binary if supported.
-        case null or DataFormat.Binary when HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Binary, out bufferingRequirement) : converter.CanConvert(DataFormat.Binary, out bufferingRequirement):
+        case null or DataFormat.Binary when HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Binary, out bufferRequirements) : converter.CanConvert(DataFormat.Binary, out bufferRequirements):
             return DataFormat.Binary;
         // In this case we either prefer text or we have no preference and our converter doesn't support binary.
         case null or DataFormat.Text:
-            var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferingRequirement) : converter.CanConvert(DataFormat.Text, out bufferingRequirement);
+            var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferRequirements) : converter.CanConvert(DataFormat.Text, out bufferRequirements);
             if (!canTextConvert)
                 throw new InvalidOperationException("Converter doesn't support any data format.");
             return DataFormat.Text;

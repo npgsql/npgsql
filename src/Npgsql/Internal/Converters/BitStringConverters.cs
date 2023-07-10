@@ -94,12 +94,9 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
 {
     static int MaxSize => sizeof(int) + sizeof(int);
 
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => readRequirement = writeRequirement = Size.CreateUpperBound(MaxSize);
-
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.Custom;
+        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(MaxSize));
         return format is DataFormat.Binary;
     }
 
@@ -138,15 +135,9 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
 {
     static int MaxSize => sizeof(int) + sizeof(byte);
 
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        readRequirement = Size.CreateUpperBound(MaxSize);
-        writeRequirement = MaxSize;
-    }
-
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
-    {
-        bufferingRequirement = BufferingRequirement.Custom;
+        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(MaxSize), MaxSize);
         return format is DataFormat.Binary;
     }
 

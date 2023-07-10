@@ -49,12 +49,11 @@ sealed class ObjectArrayRecordConverter : PgStreamingConverter<object[]>
             var converterInfo = typeInfo.Bind(new Field("?", typeInfo.PgTypeId!.Value, -1), DataFormat.Binary);
 
             reader.Current.Size = fieldLen;
-            if (!converterInfo.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
+            if (typeInfo.GetBufferRequirements(converterInfo.Converter, DataFormat.Binary) is not { } bufferRequirements)
                 throw new NotSupportedException("Record field converter has to support the binary format to be compatible.");
-            var (fieldReadBufferRequirement, _) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, converterInfo.Converter);
 
-            if (reader.ShouldBuffer(fieldReadBufferRequirement))
-                await reader.BufferData(async, fieldReadBufferRequirement, cancellationToken).ConfigureAwait(false);
+            if (reader.ShouldBuffer(bufferRequirements.Read))
+                await reader.BufferData(async, bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
 
             result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
         }

@@ -6,6 +6,9 @@ namespace Npgsql.Internal.Converters;
 
 sealed class IPAddressConverter : PgBufferedConverter<IPAddress>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => CanConvertBufferedDefault(format, out bufferRequirements);
+
     public override Size GetSize(SizeContext context, IPAddress value, ref object? writeState)
         => NpgsqlInetConverter.GetSizeImpl(context, value, ref writeState);
 

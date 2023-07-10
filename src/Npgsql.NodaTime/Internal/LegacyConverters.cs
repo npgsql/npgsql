@@ -15,14 +15,11 @@ sealed class LegacyTimestampTzZonedDateTimeConverter : PgBufferedConverter<Zoned
         _dateTimeInfinityConversions = dateTimeInfinityConversions;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, ZonedDateTime value, ref object? writeState)
-        => sizeof(long);
 
     protected override ZonedDateTime ReadCore(PgReader reader)
     {
@@ -45,14 +42,11 @@ sealed class LegacyTimestampTzOffsetDateTimeConverter : PgBufferedConverter<Offs
         _dateTimeZone = dateTimeZone;
     }
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, OffsetDateTime value, ref object? writeState)
-        => sizeof(long);
 
     protected override OffsetDateTime ReadCore(PgReader reader)
     {

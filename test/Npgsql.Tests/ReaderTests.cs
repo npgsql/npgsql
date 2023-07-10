@@ -2255,6 +2255,10 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
 
     public override Size GetSize(SizeContext context, int value, ref object? writeState)
         => throw new NotSupportedException();
+
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => CanConvertBufferedDefault(format, out bufferRequirements);
+
     protected override void WriteCore(PgWriter writer, int value)
         => throw new NotSupportedException();
 
