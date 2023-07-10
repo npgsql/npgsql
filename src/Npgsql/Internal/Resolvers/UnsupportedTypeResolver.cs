@@ -8,6 +8,9 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
 {
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
+        if (PgSerializerOptions.IntrospectionMode)
+            return null;
+
         RecordTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
         RangeTypeInfoResolver.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
         FullTextSearchTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
