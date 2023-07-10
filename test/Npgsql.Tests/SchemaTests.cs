@@ -535,6 +535,14 @@ CREATE TABLE {table} (color {schema}.{enumName});");
         Assert.That(row["data_type"], Is.EqualTo($"{schema}.{enumName}"));
     }
 
+    [Test]
+    public async Task SlimBuilder_introspection_without_unsupported_type_exceptions()
+    {
+        await using var dataSource = new NpgsqlSlimDataSourceBuilder(ConnectionString).Build();
+        await using var conn = await dataSource.OpenConnectionAsync();
+        Assert.That(() => GetSchema(conn, DbMetaDataCollectionNames.DataTypes), Throws.Nothing);
+    }
+
     public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
     // ReSharper disable MethodHasAsyncOverload

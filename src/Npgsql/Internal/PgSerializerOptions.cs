@@ -9,6 +9,12 @@ namespace Npgsql.Internal;
 // TODO it's either PgSerializerOptions or PgConverterOptions, I have no strong preference.
 public class PgSerializerOptions
 {
+    /// <summary>
+    /// Used by GetSchema to be able to attempt to resolve all type catalog types without exceptions.
+    /// </summary>
+    [field: ThreadStatic]
+    internal static bool IntrospectionMode { get; set; }
+
     readonly Func<string>? _timeZoneProvider;
     object? _typeInfoCache;
 
