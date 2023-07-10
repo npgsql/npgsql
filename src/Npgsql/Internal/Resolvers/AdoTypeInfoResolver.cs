@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Numerics;
@@ -172,6 +174,14 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<Guid>(DataTypeNames.Uuid,
             static (options, mapping, _) => mapping.CreateInfo(options, new GuidUuidConverter()), isDefault: true);
 
+        // Hstore
+        mappings.AddType<Dictionary<string, string?>>("hstore",
+            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<Dictionary<string, string?>>(options.TextEncoding)), isDefault: true);
+        mappings.AddType<IDictionary<string, string?>>("hstore",
+            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<IDictionary<string, string?>>(options.TextEncoding)));
+        mappings.AddType<ImmutableDictionary<string, string?>>("hstore",
+            static (options, mapping, _) => mapping.CreateInfo(options, new HstoreConverter<ImmutableDictionary<string, string?>>(options.TextEncoding)));
+
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
@@ -324,6 +334,11 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
 
         // Uuid
         mappings.AddStructArrayType<Guid>((string)DataTypeNames.Uuid);
+
+        // Hstore
+        mappings.AddArrayType<Dictionary<string, string?>>("hstore");
+        mappings.AddArrayType<IDictionary<string, string?>>("hstore");
+        mappings.AddArrayType<ImmutableDictionary<string, string?>>("hstore");
 
         // UInt internal types
         foreach (var dataTypeName in new[] { (string)DataTypeNames.Oid, (string)DataTypeNames.Xid, (string)DataTypeNames.Cid, (string)DataTypeNames.RegType, (string)DataTypeNames.RegConfig })

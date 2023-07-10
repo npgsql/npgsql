@@ -15,7 +15,7 @@ sealed class UnsupportedTypeInfoResolver<TBuilder> : IPgTypeInfoResolver
         RangeTypeInfoResolver.ThrowIfUnsupported<TBuilder>(type, dataTypeName, options);
         FullTextSearchTypeInfoResolver.CheckUnsupported<TBuilder>(type, dataTypeName, options);
 
-        if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string))
+        if (typeof(IEnumerable).IsAssignableFrom(type) && !typeof(IList).IsAssignableFrom(type) && type != typeof(string) && (dataTypeName is null || dataTypeName.Value.IsArray))
             throw new NotSupportedException("Writing is not supported for IEnumerable parameters, use an array or List instead.");
 
         return null;
