@@ -15,4 +15,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
   </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <Using Include="Npgsql.Polyfills" />
+  </ItemGroup>
+
 </Project>

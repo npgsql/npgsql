@@ -1,4 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netcoreapp3.1</TargetFrameworks>
+    <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
+    <NoWarn>$(NoWarn);NETSDK1138</NoWarn> <!-- netcoreapp3.1 is out of support  -->
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="NUnit" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
@@ -7,10 +14,13 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NUnit3TestAdapter" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
   </ItemGroup>
+
   <PropertyGroup>
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
+
 </Project>

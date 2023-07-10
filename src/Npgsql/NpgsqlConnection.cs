@@ -698,6 +698,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// </remarks>
     protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken)
         => await BeginTransactionAsync(isolationLevel, cancellationToken);
+#endif
 
     /// <summary>
     /// Asynchronously begins a database transaction.
@@ -710,7 +711,11 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// Nested transactions are not supported.
     /// Transactions created by this method will have the <see cref="IsolationLevel.ReadCommitted"/> isolation level.
     /// </remarks>
+#if NETSTANDARD2_0
+    public ValueTask<NpgsqlTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+#else
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+#endif
         => BeginTransactionAsync(IsolationLevel.Unspecified, cancellationToken);
 
     /// <summary>
@@ -724,12 +729,15 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
     /// <remarks>
     /// Nested transactions are not supported.
     /// </remarks>
+#if NETSTANDARD2_0
+    public ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
+#else
     public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
+#endif
     {
         using (NoSynchronizationContextScope.Enter())
             return BeginTransaction(level, async: true, cancellationToken);
     }
-#endif
 
     /// <summary>
     /// Enlist transaction.

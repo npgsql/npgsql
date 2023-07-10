@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 
 #pragma warning disable 1591
 
-namespace System.Diagnostics.CodeAnalysis
+namespace Npgsql.Polyfills
 {
 #if NETSTANDARD2_0
     [AttributeUsageAttribute(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property)]
