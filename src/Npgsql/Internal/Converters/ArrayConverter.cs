@@ -26,21 +26,19 @@ readonly struct PgArrayConverter
 
     readonly IElementOperations _elemOps;
     readonly int? _expectedDimensions;
-    readonly Size _readRequirement;
-    readonly Size _writeRequirement;
+    readonly BufferRequirements _bufferRequirements;
     public bool ElemTypeDbNullable { get; }
     readonly int _pgLowerBound;
     readonly PgTypeId _elemTypeId;
 
-    public PgArrayConverter(IElementOperations elemOps, bool elemTypeDbNullable, int? expectedDimensions, Size readRequirement, Size writeRequirement, PgTypeId elemTypeId, int pgLowerBound = 1)
+    public PgArrayConverter(IElementOperations elemOps, bool elemTypeDbNullable, int? expectedDimensions, BufferRequirements bufferRequirements, PgTypeId elemTypeId, int pgLowerBound = 1)
     {
         _elemTypeId = elemTypeId;
         ElemTypeDbNullable = elemTypeDbNullable;
         _pgLowerBound = pgLowerBound;
         _elemOps = elemOps;
         _expectedDimensions = expectedDimensions;
-        _readRequirement = readRequirement;
-        _writeRequirement = writeRequirement;
+        _bufferRequirements = bufferRequirements;
     }
 
     bool IsDbNull(object values, int[] indices)
@@ -88,7 +86,7 @@ readonly struct PgArrayConverter
             // We can immediately continue if we didn't reach the end of the last dimension.
             while (++lastIndex < lastLength || (indices.Length > 1 && CarryIndices(lengths!, indices)));
 
-        return (count - nulls) * _writeRequirement.Value;
+        return (count - nulls) * _bufferRequirements.Write.Value;
     }
 
     int GetFormatSize(int count, int dimensions)
@@ -109,7 +107,7 @@ readonly struct PgArrayConverter
 
         Size elemsSize;
         var indices = new int[dimensions];
-        if (_writeRequirement is { Kind: SizeKind.Exact, Value: > 0 })
+        if (_bufferRequirements.IsFixedSize)
         {
             elemsSize = GetFixedElemsSize(values, count, indices, lengths);
             writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths };
@@ -202,8 +200,8 @@ readonly struct PgArrayConverter
             {
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
-                if (reader.ShouldBuffer(_readRequirement))
-                    await reader.BufferData(async, _readRequirement, cancellationToken).ConfigureAwait(false);
+                if (reader.ShouldBuffer(_bufferRequirements.Read))
+                    await reader.BufferData(async, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
             }
             await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
         }
@@ -276,7 +274,7 @@ readonly struct PgArrayConverter
             }
             else if (stateElem is null)
             {
-                var length = _writeRequirement.Value;
+                var length = _bufferRequirements.Write.Value;
                 if (writer.ShouldFlush(sizeof(int) + length))
                     await writer.Flush(async, cancellationToken).ConfigureAwait(false);
 
@@ -325,21 +323,18 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     protected Type ElemTypeToConvert { get; }
 
     readonly PgArrayConverter _pgArrayConverter;
-    protected bool IsFixedSize { get; }
-    protected Size ElemReadBufferRequirement { get; }
-    protected Size ElemWriteBufferRequirement { get; }
+    protected BufferRequirements ElemBinaryRequirements { get; }
 
     private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
     {
-        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
+        if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        (ElemReadBufferRequirement, ElemWriteBufferRequirement) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, elemResolution.Converter);
-        IsFixedSize = ElemWriteBufferRequirement is { Kind: SizeKind.Exact, Value: > 0 };
+        ElemBinaryRequirements = bufferRequirements;
         ElemResolution = elemResolution;
         ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
         _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue, expectedDimensions,
-            ElemReadBufferRequirement, ElemWriteBufferRequirement, elemResolution.PgTypeId, pgLowerBound);
+            bufferRequirements, elemResolution.PgTypeId, pgLowerBound);
     }
 
     public override T Read(PgReader reader) => (T)_pgArrayConverter.Read(async: false, reader).Result;
@@ -484,7 +479,7 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
         if (_elemConverter.IsDbNull(value))
             return null;
 
-        return !IsFixedSize
+        return !ElemBinaryRequirements.IsFixedSize
             ? _elemConverter.GetSize(context, value!, ref writeState)
             : Size.Zero;
     }
@@ -571,7 +566,7 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
         if (_elemConverter.IsDbNull(value))
             return null;
 
-        return !IsFixedSize
+        return !ElemBinaryRequirements.IsFixedSize
             ? _elemConverter.GetSize(context, value!, ref writeState)
             : Size.Zero;
     }

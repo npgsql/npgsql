@@ -12,6 +12,9 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
     const byte IPv4 = 2;
     const byte IPv6 = 3;
 
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => CanConvertBufferedDefault(format, out bufferRequirements);
+
     public override Size GetSize(SizeContext context, NpgsqlInet value, ref object? writeState)
         => GetSizeImpl(context, value.Address, ref writeState);
 

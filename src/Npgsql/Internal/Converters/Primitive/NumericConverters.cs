@@ -91,15 +91,12 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
 {
     const int StackAllocByteThreshold = 64 * sizeof(uint);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.Custom;
-        return base.CanConvert(format, out _);
+        // This upper bound would already cause an overflow exception in the builder, no need to do + 1.
+        bufferRequirements = BufferRequirements.Create(Size.CreateUpperBound(NumericConverters.DecimalBasedMaxByteCount));
+        return format is DataFormat.Binary;
     }
-
-    // This upper bound would already cause an overflow exception in the builder, no need to do + 1.
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => readRequirement = writeRequirement = Size.CreateUpperBound(NumericConverters.DecimalBasedMaxByteCount);
 
     protected override T ReadCore(PgReader reader)
     {

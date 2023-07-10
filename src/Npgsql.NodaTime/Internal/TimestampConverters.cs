@@ -12,14 +12,11 @@ sealed class InstantConverter : PgBufferedConverter<Instant>
     public InstantConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, Instant value, ref object? writeState)
-        => sizeof(long);
 
     protected override Instant ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions);
@@ -35,14 +32,11 @@ sealed class ZonedDateTimeConverter : PgBufferedConverter<ZonedDateTime>
     public ZonedDateTimeConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, ZonedDateTime value, ref object? writeState)
-        => sizeof(long);
 
     protected override ZonedDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc();
@@ -68,14 +62,11 @@ sealed class OffsetDateTimeConverter : PgBufferedConverter<OffsetDateTime>
     public OffsetDateTimeConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, OffsetDateTime value, ref object? writeState)
-        => sizeof(long);
 
     protected override OffsetDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).WithOffset(Offset.Zero);
@@ -101,14 +92,11 @@ sealed class LocalDateTimeConverter : PgBufferedConverter<LocalDateTime>
     public LocalDateTimeConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, LocalDateTime value, ref object? writeState)
-        => sizeof(long);
 
     protected override LocalDateTime ReadCore(PgReader reader)
         => DecodeInstant(reader.ReadInt64(), _dateTimeInfinityConversions).InUtc().LocalDateTime;

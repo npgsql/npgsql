@@ -5,12 +5,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, TimeSpan value, ref object? writeState) => sizeof(long);
     protected override TimeSpan ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
     protected override void WriteCore(PgWriter writer, TimeSpan value) => writer.WriteInt64(value.Ticks / 10);
 }
@@ -18,8 +17,12 @@ sealed class TimeSpanTimeConverter : PgBufferedConverter<TimeSpan>
 #if NET6_0_OR_GREATER
 sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
+    }
     protected override TimeOnly ReadCore(PgReader reader) => new(reader.ReadInt64() * 10);
-    public override Size GetSize(SizeContext context, TimeOnly value, ref object? writeState) => sizeof(long);
     protected override void WriteCore(PgWriter writer, TimeOnly value) => writer.WriteInt64(value.Ticks / 10);
 }
 #endif
@@ -27,13 +30,12 @@ sealed class TimeOnlyTimeConverter : PgBufferedConverter<TimeOnly>
 sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
 {
     // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
-
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, DateTimeOffset value, ref object? writeState) => sizeof(long) + sizeof(int);
+
     protected override DateTimeOffset ReadCore(PgReader reader)
     {
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
@@ -41,6 +43,7 @@ sealed class DateTimeOffsetTimeTzConverter : PgBufferedConverter<DateTimeOffset>
         var offset = new TimeSpan(0, 0, -reader.ReadInt32());
         return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
     }
+
     protected override void WriteCore(PgWriter writer, DateTimeOffset value)
     {
         writer.WriteInt64(value.Ticks / 10);

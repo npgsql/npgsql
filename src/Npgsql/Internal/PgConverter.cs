@@ -13,44 +13,81 @@ public readonly struct SizeContext
     public DataFormat Format { get; }
 }
 
-public enum BufferingRequirement : byte
+public readonly struct BufferRequirements : IEquatable<BufferRequirements>
 {
-    /// Streaming
-    None,
-    /// Entire value should be buffered
-    Value,
-    /// Fixed size value should be buffered
-    FixedSize,
-    /// Custom requirements from GetBufferRequirements
-    Custom
-}
+    readonly Size _readRequirement;
+    readonly Size _writeRequirement;
 
-public static class BufferingRequirementExtensions
-{
-    public static (Size ReadRequirement, Size WriteRequirement) ToBufferRequirements(this BufferingRequirement bufferingRequirement, DataFormat format, PgConverter converter)
+    BufferRequirements(Size readRequirement, Size writeRequirement)
     {
-        Size read, write;
-        switch (bufferingRequirement)
-        {
-        case BufferingRequirement.Custom:
-            converter.GetBufferRequirements(format, out read, out write);
-            break;
-        case BufferingRequirement.FixedSize:
-            object? state = null;
-            read = write = converter.GetSizeAsObject(new(format), null!, ref state);
-            break;
-        default:
-            read = write = bufferingRequirement switch
-            {
-                BufferingRequirement.None => Size.Zero,
-                BufferingRequirement.Value => Size.Unknown,
-                _ => Size.Unknown
-            };
-            break;
-        }
-
-        return (read, write);
+        _readRequirement = readRequirement;
+        _writeRequirement = writeRequirement;
     }
+
+    public Size Read
+    {
+        get
+        {
+            ThrowIfDefault();
+            return _readRequirement;
+        }
+    }
+
+    public Size Write
+    {
+        get
+        {
+            ThrowIfDefault();
+            return _readRequirement;
+        }
+    }
+
+    public bool IsDefault => _readRequirement.IsDefault || _writeRequirement.IsDefault;
+
+    public bool IsFixedSize => Write is { Kind: SizeKind.Exact, Value : > 0 } && _readRequirement == _writeRequirement;
+
+    /// Streaming
+    public static BufferRequirements None => new(Size.Zero, Size.Zero);
+    /// Entire value should be buffered
+    public static BufferRequirements Value => new(Size.Unknown, Size.Unknown);
+    /// Fixed size value should be buffered
+    public static BufferRequirements CreateFixedSize(int byteCount) => new(byteCount, byteCount);
+    /// Custom requirements
+    public static BufferRequirements Create(Size requirement) => new(requirement, requirement);
+    public static BufferRequirements Create(Size readRequirement, Size writeRequirement) => new(readRequirement, writeRequirement);
+
+    static Size RequirementCombine(Size left, Size right)
+    {
+        // The oddity, we shouldn't add sizes to zero, which is supposed to mean streaming.
+        if (left == Size.Zero || right == Size.Zero)
+            return Size.Zero;
+
+        return left.Combine(right);
+    }
+
+    public BufferRequirements Combine(BufferRequirements other)
+        => new(
+            RequirementCombine(_readRequirement, other._readRequirement),
+            RequirementCombine(_writeRequirement, other._writeRequirement)
+        );
+
+    public BufferRequirements Combine(int byteCount)
+        => Combine(CreateFixedSize(byteCount));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    void ThrowIfDefault()
+    {
+        if (IsDefault)
+            ThrowDefaultException();
+
+        static void ThrowDefaultException() => throw new InvalidOperationException();
+    }
+
+    public bool Equals(BufferRequirements other) => _readRequirement.Equals(other._readRequirement) && _writeRequirement.Equals(other._writeRequirement);
+    public override bool Equals(object? obj) => obj is BufferRequirements other && Equals(other);
+    public override int GetHashCode() => HashCode.Combine(_readRequirement, _writeRequirement);
+    public static bool operator ==(BufferRequirements left, BufferRequirements right) => left.Equals(right);
+    public static bool operator !=(BufferRequirements left, BufferRequirements right) => !left.Equals(right);
 }
 
 public abstract class PgConverter
@@ -64,15 +101,11 @@ public abstract class PgConverter
         DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
     }
 
-    public virtual bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public virtual bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.None;
+        bufferRequirements = BufferRequirements.None;
         return format is DataFormat.Binary;
     }
-
-    /// When <see cref="CanConvert"/> returns BufferingRequirement.Custom this method can be called to determine the buffer requirements.
-    public virtual void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => throw new NotImplementedException();
 
     internal abstract Type TypeToConvert { get; }
 
@@ -130,7 +163,13 @@ public abstract class PgConverter
         => throw new InvalidOperationException("Fixed sizedness for format not respected, expected no IO to be required.");
 
     private protected static bool ThrowInvalidNullValue()
-        => throw new ArgumentNullException("Null value given for non-nullable type converter");
+        => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");
+
+    protected bool CanConvertBufferedDefault(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.Value;
+        return format is DataFormat.Binary;
+    }
 }
 
 public abstract class PgConverter<T> : PgConverter
@@ -164,9 +203,8 @@ public abstract class PgConverter<T> : PgConverter
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    // Make an allowance here for fixed size queries which won't know the default value of T.
-    internal sealed override Size GetSizeAsObject(SizeContext context, object? value, ref object? writeState)
-        => GetSize(context, value is null ? default! : DownCast(value), ref writeState);
+    internal sealed override Size GetSizeAsObject(SizeContext context, object value, ref object? writeState)
+        => GetSize(context, DownCast(value), ref writeState);
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     [return: NotNullIfNotNull(nameof(value))]
@@ -220,7 +258,7 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
     protected PgStreamingConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }
 
     internal sealed override unsafe ValueTask<object> ReadAsObject(
-        bool async, PgReader reader, CancellationToken cancellationToken = default)
+        bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (!async)
             return new(Read(reader)!);
@@ -253,6 +291,8 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
 
     protected abstract T ReadCore(PgReader reader);
     protected abstract void WriteCore(PgWriter writer, T value);
+
+    public override Size GetSize(SizeContext context, T value, ref object? writeState) => throw new NotImplementedException();
 
     public sealed override T Read(PgReader reader)
     {
@@ -289,11 +329,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader)!);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
-    {
-        bufferingRequirement = BufferingRequirement.Value;
-        return format is DataFormat.Binary;
-    }
+    public abstract override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
 }
 
 public abstract class PgComposingConverter<T> : PgConverter<T>
@@ -304,11 +340,8 @@ public abstract class PgComposingConverter<T> : PgConverter<T>
         : base(effectiveConverter.DbNullPredicateKind is DbNullPredicate.Custom)
         => EffectiveConverter = effectiveConverter;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
-        => EffectiveConverter.CanConvert(format, out bufferingRequirement);
-
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => EffectiveConverter.GetBufferRequirements(format, out readRequirement, out writeRequirement);
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => EffectiveConverter.CanConvert(format, out bufferRequirements);
 
     internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => async

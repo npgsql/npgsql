@@ -5,14 +5,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class LineSegmentConverter : PgBufferedConverter<NpgsqlLSeg>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double) * 4);
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, NpgsqlLSeg value, ref object? writeState)
-        => sizeof(double) * 4;
 
     protected override NpgsqlLSeg ReadCore(PgReader reader)
         => new(reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble(), reader.ReadDouble());

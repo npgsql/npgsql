@@ -13,14 +13,11 @@ sealed class DateTimeDateConverter : PgBufferedConverter<DateTime>
     public DateTimeDateConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, DateTime value, ref object? writeState)
-        => sizeof(int);
 
     protected override DateTime ReadCore(PgReader reader)
         => reader.ReadInt32() switch
@@ -65,6 +62,12 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
     public DateOnlyDateConverter(bool dateTimeInfinityConversions)
         => _dateTimeInfinityConversions = dateTimeInfinityConversions;
 
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(int));
+        return format is DataFormat.Binary;
+    }
+
     protected override DateOnly ReadCore(PgReader reader)
         => reader.ReadInt32() switch
         {
@@ -76,9 +79,6 @@ sealed class DateOnlyDateConverter : PgBufferedConverter<DateOnly>
                 : DateOnly.MinValue,
             var value => BaseValue.AddDays(value)
         };
-
-    public override Size GetSize(SizeContext context, DateOnly value, ref object? writeState)
-        => sizeof(int);
 
     protected override void WriteCore(PgWriter writer, DateOnly value)
     {

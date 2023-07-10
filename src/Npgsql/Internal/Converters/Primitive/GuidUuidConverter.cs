@@ -6,13 +6,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class GuidUuidConverter : PgBufferedConverter<Guid>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(16 * sizeof(byte));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, Guid value, ref object? writeState) => 16;
-
     protected override Guid ReadCore(PgReader reader)
         => new GuidRaw
         {

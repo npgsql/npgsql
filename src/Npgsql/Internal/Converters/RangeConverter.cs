@@ -9,14 +9,13 @@ namespace Npgsql.Internal.Converters;
 public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
 {
     readonly PgConverter<T> _subtypeConverter;
-    readonly Size _subtypeReadRequirement;
-    readonly Size _subTypeWriteRequirement;
+    readonly BufferRequirements _subtypeRequirements;
 
     public RangeConverter(PgConverter<T> subtypeConverter)
     {
-        if (!subtypeConverter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
+        if (!subtypeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        (_subtypeReadRequirement, _subTypeWriteRequirement) = bufferingRequirement.ToBufferRequirements(DataFormat.Binary, subtypeConverter);
+        _subtypeRequirements = bufferRequirements;
         _subtypeConverter = subtypeConverter;
     }
 
@@ -49,8 +48,8 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
             {
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
-                if (reader.ShouldBuffer(_subtypeReadRequirement))
-                    await reader.BufferData(async, _subtypeReadRequirement, cancellationToken).ConfigureAwait(false);
+                if (reader.ShouldBuffer(_subtypeRequirements.Read))
+                    await reader.BufferData(async, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
 
                 lowerBound = async
                     ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
@@ -70,8 +69,8 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
             {
                 // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 reader.Current.Size = length;
-                if (reader.ShouldBuffer(_subtypeReadRequirement))
-                    await reader.BufferData(async, _subtypeReadRequirement, cancellationToken).ConfigureAwait(false);
+                if (reader.ShouldBuffer(_subtypeRequirements.Read))
+                    await reader.BufferData(async, _subtypeRequirements.Read, cancellationToken).ConfigureAwait(false);
                 upperBound = async
                     ? await _subtypeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                     // ReSharper disable once MethodHasAsyncOverloadWithCancellation
@@ -93,7 +92,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
         {
             totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(_subTypeWriteRequirement, context, value.LowerBound, ref subTypeState) is { } size)
+            if (_subtypeConverter.GetSizeOrDbNull(_subtypeRequirements.Write, context, value.LowerBound, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size);
                 (state ??= new WriteState()).LowerBoundSize = size;
@@ -107,7 +106,7 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
         {
             totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(_subTypeWriteRequirement, context, value.UpperBound, ref subTypeState) is { } size)
+            if (_subtypeConverter.GetSizeOrDbNull(_subtypeRequirements.Write, context, value.UpperBound, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size);
                 (state ??= new WriteState()).UpperBoundSize = size;

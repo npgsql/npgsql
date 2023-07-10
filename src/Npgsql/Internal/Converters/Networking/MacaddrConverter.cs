@@ -6,6 +6,9 @@ namespace Npgsql.Internal.Converters;
 
 sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
 {
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => CanConvertBufferedDefault(format, out bufferRequirements);
+
     public override Size GetSize(SizeContext context, PhysicalAddress value, ref object? writeState)
         => value.GetAddressBytes().Length;
 

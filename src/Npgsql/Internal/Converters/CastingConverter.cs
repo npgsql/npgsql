@@ -18,11 +18,8 @@ sealed class CastingConverter<T> : PgConverter<T>
 
     protected override bool IsDbNullValue(T? value) => _effectiveConverter.IsDbNullAsObject(value);
 
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
-        => _effectiveConverter.CanConvert(format, out bufferingRequirement);
-
-    public override void GetBufferRequirements(DataFormat format, out Size readRequirement, out Size writeRequirement)
-        => _effectiveConverter.GetBufferRequirements(format, out readRequirement, out writeRequirement);
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+        => _effectiveConverter.CanConvert(format, out bufferRequirements);
 
     public override T Read(PgReader reader) => (T)_effectiveConverter.ReadAsObject(reader)!;
     public override unsafe ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)

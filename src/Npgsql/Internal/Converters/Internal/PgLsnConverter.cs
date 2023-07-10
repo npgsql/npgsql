@@ -5,13 +5,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class PgLsnConverter : PgBufferedConverter<NpgsqlLogSequenceNumber>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out bufferingRequirement);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, NpgsqlLogSequenceNumber value, ref object? writeState) => sizeof(long);
     protected override NpgsqlLogSequenceNumber ReadCore(PgReader reader) => new(reader.ReadUInt64());
     protected override void WriteCore(PgWriter writer, NpgsqlLogSequenceNumber value) => writer.WriteUInt64((ulong)value);
 }

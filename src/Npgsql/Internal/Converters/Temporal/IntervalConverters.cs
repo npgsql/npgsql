@@ -6,14 +6,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, TimeSpan value, ref object? writeState)
-        => sizeof(long) + sizeof(int) + sizeof(int);
 
     protected override TimeSpan ReadCore(PgReader reader)
     {
@@ -38,14 +35,11 @@ sealed class TimeSpanIntervalConverter : PgBufferedConverter<TimeSpan>
 
 sealed class NpgsqlIntervalConverter : PgBufferedConverter<NpgsqlInterval>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(long) + sizeof(int) + sizeof(int));
+        return format is DataFormat.Binary;
     }
-
-    public override Size GetSize(SizeContext context, NpgsqlInterval value, ref object? writeState)
-        => sizeof(long) + sizeof(int) + sizeof(int);
 
     protected override NpgsqlInterval ReadCore(PgReader reader)
     {

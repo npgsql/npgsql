@@ -9,12 +9,11 @@ sealed class DoubleConverter<T> : PgBufferedConverter<T>
     where T : INumberBase<T>
 #endif
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(double));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, T value, ref object? writeState) => sizeof(double);
 
 #if NET7_0_OR_GREATER
     protected override T ReadCore(PgReader reader) => T.CreateChecked(reader.ReadDouble());

@@ -3,13 +3,11 @@ namespace Npgsql.Internal.Converters;
 
 sealed class BoolConverter : PgBufferedConverter<bool>
 {
-    public override bool CanConvert(DataFormat format, out BufferingRequirement bufferingRequirement)
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
     {
-        bufferingRequirement = BufferingRequirement.FixedSize;
-        return base.CanConvert(format, out _);
+        bufferRequirements = BufferRequirements.CreateFixedSize(sizeof(byte));
+        return format is DataFormat.Binary;
     }
-    public override Size GetSize(SizeContext context, bool value, ref object? writeState) => sizeof(byte);
-
     protected override bool ReadCore(PgReader reader) => reader.ReadByte() is not 0;
     protected override void WriteCore(PgWriter writer, bool value) => writer.WriteByte((byte)(value ? 1 : 0));
 }
