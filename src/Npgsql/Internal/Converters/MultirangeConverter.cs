@@ -18,9 +18,9 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
 
     public MultirangeConverter(PgConverter<TRange> rangeConverter)
     {
-        if (!rangeConverter.CanConvert(DataFormat.Binary, out var bufferingRequirement))
+        if (!rangeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
-        _rangeBufferRequirements = bufferingRequirement;
+        _rangeBufferRequirements = bufferRequirements;
         _rangeConverter = rangeConverter;
     }
 
@@ -50,7 +50,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
                 await reader.BufferData(async, _rangeBufferRequirements.Read, cancellationToken).ConfigureAwait(false);
 
             var range = async
-                ? await _rangeConverter.ReadAsync(reader, cancellationToken)
+                ? await _rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                 // ReSharper disable once MethodHasAsyncOverloadWithCancellation
                 : _rangeConverter.Read(reader);
 
