@@ -62,7 +62,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
         // Alternative text types
-        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
+                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
+                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
@@ -266,8 +268,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddArrayType<string>((string)DataTypeNames.Text);
         mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
 
-        // Altenative text types
-        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        // Alternative text types
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
+                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
+                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddStructArrayType<char>(dataTypeName);
