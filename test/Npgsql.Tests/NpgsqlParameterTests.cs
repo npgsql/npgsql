@@ -109,8 +109,8 @@ public class NpgsqlParameterTest : TestBase
     [Test]
     public void Infer_data_type_name_from_ClrType()
     {
-        var p = new NpgsqlParameter("p1", new Dictionary<string, string>());
-        Assert.That(p.DataTypeName, Is.EqualTo("hstore"));
+        var p = new NpgsqlParameter("p1", Array.Empty<byte>());
+        Assert.That(p.DataTypeName, Is.EqualTo("bytea"));
     }
 
     [Test]
