@@ -176,7 +176,7 @@ public class PgTypeInfo
             ? CachedCanConvert(format, out var bufferRequirements)
             : converter.CanConvert(format, out bufferRequirements);
 
-        return success ? null : bufferRequirements;
+        return success ? bufferRequirements : null;
     }
 
     // Bind for writing.
