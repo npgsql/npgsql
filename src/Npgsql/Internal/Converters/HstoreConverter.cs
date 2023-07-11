@@ -61,38 +61,38 @@ sealed class HstoreConverter<T> : PgStreamingConverter<T> where T : IDictionary<
         if (typeof(T) == typeof(Dictionary<string, string?>) || typeof(T) == typeof(IDictionary<string, string?>))
         {
             var result = new Dictionary<string, string?>(count);
-            await ReadInto(result).ConfigureAwait(false);
+            await ReadInto(async, _encoding, result, count, reader, cancellationToken).ConfigureAwait(false);
             return (T)(object)result;
         }
 
         if (typeof(T) == typeof(ImmutableDictionary<string, string?>))
         {
             var builder = ImmutableDictionary.CreateBuilder<string, string?>();
-            await ReadInto(builder).ConfigureAwait(false);
+            await ReadInto(async, _encoding, builder, count, reader, cancellationToken).ConfigureAwait(false);
             return (T)(object)builder.ToImmutableDictionary();
         }
 
         throw new NotSupportedException();
 
-        async ValueTask ReadInto(IDictionary<string, string?> result)
+        static async ValueTask ReadInto(bool async, Encoding encoding, IDictionary<string, string?> result, int count, PgReader reader, CancellationToken cancellationtoken)
         {
             for (var i = 0; i < count; i++)
             {
                 if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                    await reader.BufferData(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
                 var keySize = reader.ReadInt32();
-                var key = _encoding.GetString(async
-                    ? await reader.ReadBytesAsync(keySize, cancellationToken).ConfigureAwait(false)
+                var key = encoding.GetString(async
+                    ? await reader.ReadBytesAsync(keySize, cancellationtoken).ConfigureAwait(false)
                     : reader.ReadBytes(keySize)
                 );
 
                 if (reader.ShouldBuffer(sizeof(int)))
-                    await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
+                    await reader.BufferData(async, sizeof(int), cancellationtoken).ConfigureAwait(false);
                 var valueSize = reader.ReadInt32();
                 string? value = null;
                 if (valueSize is not -1)
-                    value = _encoding.GetString(async
-                        ? await reader.ReadBytesAsync(valueSize, cancellationToken).ConfigureAwait(false)
+                    value = encoding.GetString(async
+                        ? await reader.ReadBytesAsync(valueSize, cancellationtoken).ConfigureAwait(false)
                         : reader.ReadBytes(valueSize)
                     );
 
