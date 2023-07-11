@@ -101,11 +101,7 @@ public abstract class PgConverter
         DbNullPredicateKind = customDbNullPredicate ? DbNullPredicate.Custom : InferDbNullPredicate(type, isNullDefaultValue);
     }
 
-    public virtual bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
-    {
-        bufferRequirements = BufferRequirements.None;
-        return format is DataFormat.Binary;
-    }
+    public abstract bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
 
     internal abstract Type TypeToConvert { get; }
 
@@ -257,6 +253,12 @@ public abstract class PgStreamingConverter<T> : PgConverter<T>
 {
     protected PgStreamingConverter(bool customDbNullPredicate = false) : base(customDbNullPredicate) { }
 
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.None;
+        return format is DataFormat.Binary;
+    }
+
     internal sealed override unsafe ValueTask<object> ReadAsObject(
         bool async, PgReader reader, CancellationToken cancellationToken)
     {
@@ -328,8 +330,6 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
 
     internal sealed override ValueTask<object> ReadAsObject(bool async, PgReader reader, CancellationToken cancellationToken)
         => new(Read(reader)!);
-
-    public abstract override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements);
 }
 
 public abstract class PgComposingConverter<T> : PgConverter<T>
