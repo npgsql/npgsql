@@ -104,8 +104,9 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new CharArraySegmentTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
 
         // Alternative text types
-        foreach (var dataTypeName in new[]
-                     { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
+                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
+                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
         {
             mappings.AddType<char[]>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding),
@@ -171,7 +172,9 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructArrayType<ArraySegment<char>>((string)DataTypeNames.Text);
 
         // Alternative text types
-        foreach (var dataTypeName in new[] { "citext", (string)DataTypeNames.Json, (string)DataTypeNames.Varchar, (string)DataTypeNames.Bpchar, (string)DataTypeNames.Name })
+        foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
+                    (string)DataTypeNames.Bpchar, (string)DataTypeNames.Json,
+                    (string)DataTypeNames.Xml, (string)DataTypeNames.Name, (string)DataTypeNames.RefCursor })
         {
             mappings.AddArrayType<char[]>(dataTypeName);
             mappings.AddStructArrayType<ReadOnlyMemory<char>>(dataTypeName);
