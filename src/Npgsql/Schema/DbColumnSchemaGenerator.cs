@@ -257,7 +257,7 @@ ORDER BY attnum";
         var serializerOptions = _connection.Connector!.SerializerOptions;
 
         column.NpgsqlDbType = column.PostgresType.DataTypeName.ToNpgsqlDbType();
-        if (serializerOptions.GetDefaultTypeInfo(column.PostgresType) is { } typeInfo)
+        if (serializerOptions.GetObjectOrDefaultTypeInfo(column.PostgresType) is { } typeInfo)
         {
             column.DataType = typeInfo.Type;
             column.IsLong = column.PostgresType.DataTypeName == DataTypeNames.Bytea;
