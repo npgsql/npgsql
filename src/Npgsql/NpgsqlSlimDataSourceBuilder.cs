@@ -56,6 +56,11 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     public string ConnectionString => ConnectionStringBuilder.ToString();
 
     /// <summary>
+    /// A diagnostics name used by Npgsql when generating tracing, logging and metrics.
+    /// </summary>
+    public string? Name { get; set; }
+
+    /// <summary>
     /// Constructs a new <see cref="NpgsqlSlimDataSourceBuilder" />, optionally starting out from the given
     /// <paramref name="connectionString"/>.
     /// </summary>
@@ -521,6 +526,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         }
 
         return new(
+            Name,
             _loggerFactory is null
                 ? NpgsqlLoggingConfiguration.NullConfiguration
                 : new NpgsqlLoggingConfiguration(_loggerFactory, _sensitiveDataLoggingEnabled),

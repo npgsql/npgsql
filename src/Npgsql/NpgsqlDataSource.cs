@@ -67,6 +67,9 @@ public abstract class NpgsqlDataSource : DbDataSource
     private protected readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
         = new();
 
+    internal MetricsReporter MetricsReporter { get; }
+    internal string Name { get; }
+
     internal abstract (int Total, int Idle, int Busy) Statistics { get; }
 
     volatile int _isDisposed;
@@ -89,7 +92,8 @@ public abstract class NpgsqlDataSource : DbDataSource
 
         Configuration = dataSourceConfig;
 
-        (LoggingConfiguration,
+        (var name,
+                LoggingConfiguration,
                 EncryptionHandler,
                 UserCertificateValidationCallback,
                 ClientCertificatesCallback,
@@ -118,6 +122,9 @@ public abstract class NpgsqlDataSource : DbDataSource
             // in GetPasswordAsync.
             _passwordRefreshTask = Task.Run(RefreshPassword);
         }
+
+        Name = name ?? ConnectionString;
+        MetricsReporter = new MetricsReporter(this);
     }
 
     /// <inheritdoc />
@@ -338,7 +345,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         Debug.Assert(this is not NpgsqlMultiHostDataSource);
 
         var databaseStateInfo = _databaseStateInfo;
-        
+
         if (!ignoreTimeStamp && timeStamp <= databaseStateInfo.TimeStamp)
             return _databaseStateInfo.State;
 
@@ -414,8 +421,8 @@ public abstract class NpgsqlDataSource : DbDataSource
         }
 
         _passwordProviderTimer?.Dispose();
-
         _setupMappingsSemaphore.Dispose();
+        MetricsReporter.Dispose(); // TODO: This is probably too early, dispose only when all connections have been closed?
 
         Clear();
     }
@@ -463,7 +470,7 @@ public abstract class NpgsqlDataSource : DbDataSource
     }
 
     #endregion
-    
+
     sealed class DatabaseStateInfo
     {
         internal readonly DatabaseState State;
@@ -472,7 +479,7 @@ public abstract class NpgsqlDataSource : DbDataSource
         internal readonly DateTime TimeStamp;
 
         public DatabaseStateInfo() : this(default, default, default) {}
-        
+
         public DatabaseStateInfo(DatabaseState state, NpgsqlTimeout timeout, DateTime timeStamp)
             => (State, Timeout, TimeStamp) = (state, timeout, timeStamp);
     }

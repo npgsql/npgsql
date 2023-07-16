@@ -11,6 +11,7 @@ using Npgsql.Internal.TypeMapping;
 namespace Npgsql;
 
 sealed record NpgsqlDataSourceConfiguration(
+    string? Name,
     NpgsqlLoggingConfiguration LoggingConfiguration,
     EncryptionHandler EncryptionHandler,
     RemoteCertificateValidationCallback? UserCertificateValidationCallback,

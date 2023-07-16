@@ -19,6 +19,15 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
 {
     readonly NpgsqlSlimDataSourceBuilder _internalBuilder;
 
+    /// <summary>
+    /// A diagnostics name used by Npgsql when generating tracing, logging and metrics.
+    /// </summary>
+    public string? Name
+    {
+        get => _internalBuilder.Name;
+        set => _internalBuilder.Name = value;
+    }
+
     /// <inheritdoc />
     public INpgsqlNameTranslator DefaultNameTranslator
     {

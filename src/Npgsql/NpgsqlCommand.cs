@@ -1342,6 +1342,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 Task? sendTask;
 
                 var validateParameterValues = !behavior.HasFlag(CommandBehavior.SchemaOnly);
+                long startTimestamp;
 
                 try
                 {
@@ -1360,7 +1361,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     ResetPreparation();
                                     goto case false;
                                 }
-                                
+
                                 batchCommand.Parameters.ProcessParameters(dataSource.TypeMapper, validateParameterValues, CommandType);
                             }
                         }
@@ -1378,6 +1379,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
 
                         NpgsqlEventSource.Log.CommandStartPrepared();
+                        connector.DataSource.MetricsReporter.CommandStartPrepared();
                         break;
 
                     case false:
@@ -1414,7 +1416,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             _connectorPreparedOn = connector;
                             if (numPrepared == InternalBatchCommands.Count)
+                            {
                                 NpgsqlEventSource.Log.CommandStartPrepared();
+                                connector.DataSource.MetricsReporter.CommandStartPrepared();
+                            }
                         }
 
                         break;
@@ -1431,6 +1436,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     NpgsqlEventSource.Log.CommandStart(CommandText);
+                    startTimestamp = connector.DataSource.MetricsReporter.ReportCommandStart();
                     TraceCommandStart(connector);
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -1461,7 +1467,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
                 var reader = connector.DataReader;
-                reader.Init(this, behavior, InternalBatchCommands, sendTask);
+                reader.Init(this, behavior, InternalBatchCommands, startTimestamp, sendTask);
                 connector.CurrentReader = reader;
                 if (async)
                     await reader.NextResultAsync(cancellationToken);

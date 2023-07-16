@@ -137,6 +137,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     internal NpgsqlNestedDataReader? CachedFreeNestedDataReader;
 
+    long _startTimestamp;
     readonly ILogger _commandLogger;
 
     internal NpgsqlDataReader(NpgsqlConnector connector)
@@ -149,6 +150,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         NpgsqlCommand command,
         CommandBehavior behavior,
         List<NpgsqlBatchCommand> statements,
+        long startTimestamp = 0,
         Task? sendTask = null)
     {
         Command = command;
@@ -161,6 +163,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         _sendTask = sendTask;
         State = ReaderState.BetweenResults;
         _recordsAffected = null;
+        _startTimestamp = startTimestamp;
     }
 
     #region Read
@@ -1189,6 +1192,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (_commandLogger.IsEnabled(LogLevel.Information))
             Command.LogExecutingCompleted(Connector, executing: false);
         NpgsqlEventSource.Log.CommandStop();
+        Connector.DataSource.MetricsReporter.ReportCommandStop(_startTimestamp);
         Connector.EndUserAction();
 
         // The reader shouldn't be unbound, if we're disposing - so the state is set prematurely

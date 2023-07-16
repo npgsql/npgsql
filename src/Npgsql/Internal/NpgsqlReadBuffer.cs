@@ -25,14 +25,11 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     #region Fields and Properties
 
     public NpgsqlConnection Connection => Connector.Connection!;
-
     internal readonly NpgsqlConnector Connector;
-
     internal Stream Underlying { private get; set; }
-
     readonly Socket? _underlyingSocket;
-
     internal ResettableCancellationTokenSource Cts { get; }
+    readonly MetricsReporter? _metricsReporter;
 
     TimeSpan _preTranslatedTimeout = TimeSpan.Zero;
 
@@ -99,7 +96,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     #region Constructors
 
     internal NpgsqlReadBuffer(
-        NpgsqlConnector connector,
+        NpgsqlConnector? connector,
         Stream stream,
         Socket? socket,
         int size,
@@ -112,9 +109,10 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
         }
 
-        Connector = connector;
+        Connector = connector!; // TODO: Clean this up
         Underlying = stream;
         _underlyingSocket = socket;
+        _metricsReporter = connector?.DataSource.MetricsReporter;
         Cts = new ResettableCancellationTokenSource();
         Buffer = usePool ? ArrayPool<byte>.Shared.Rent(size) : new byte[size];
         Size = Buffer.Length;
@@ -272,6 +270,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
 
             buffer.Cts.Stop();
             NpgsqlEventSource.Log.BytesRead(totalRead);
+            buffer._metricsReporter?.ReportBytesRead(totalRead);
 
             static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
 
@@ -525,7 +524,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
             ReadPosition += readFromBuffer;
             return new ValueTask<int>(readFromBuffer);
         }
-        
+
         if (output.Length == 0)
             return new ValueTask<int>(0);
 
@@ -562,7 +561,7 @@ public sealed partial class NpgsqlReadBuffer : IDisposable
     {
         if (_preparedTextReader is not { IsDisposed: true })
             _preparedTextReader = new PreparedTextReader();
-        
+
         _preparedTextReader.Init(str, (ColumnStream)stream);
         return _preparedTextReader;
     }
