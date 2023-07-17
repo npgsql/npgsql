@@ -198,12 +198,12 @@ readonly struct PgArrayConverter
             var isDbNull = length == -1;
             if (!isDbNull)
             {
-                // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
-                reader.Current.Size = length;
-                if (reader.ShouldBuffer(_bufferRequirements.Read))
-                    await reader.BufferData(async, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+                await using var _ = await reader
+                    .BeginNestedRead(async, length, _bufferRequirements.Read, cancellationToken).ConfigureAwait(false);
+                await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
             }
-            await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
+            else
+                await _elemOps.Read(async, reader, isDbNull, collection, indices, cancellationToken).ConfigureAwait(false);
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
         while (++indices[indices.Length - 1] < lastDimLength || (dimensions > 1 && CarryIndices(dimLengths, indices)));
@@ -733,10 +733,9 @@ sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
 
     public override object Read(PgReader reader)
     {
-        var remaining = reader.Remaining;
         _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
-        reader.Rewind(remaining - reader.Remaining);
+        reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
             ? _nullableElementCollectionConverter.ReadAsObject(reader)
             : _structElementCollectionConverter.ReadAsObject(reader);
@@ -744,10 +743,9 @@ sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
 
     public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
-        var remaining = reader.Remaining;
         _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
-        reader.Rewind(remaining - reader.Remaining);
+        reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
             ? _nullableElementCollectionConverter.ReadAsObjectAsync(reader, cancellationToken)
             : _structElementCollectionConverter.ReadAsObjectAsync(reader, cancellationToken);

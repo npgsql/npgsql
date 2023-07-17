@@ -64,6 +64,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     }
 
     NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
+    PgReader PgReader => Buffer.PgReader;
     PgSerializerOptions SerializerOptions => _outermostReader.Connector.SerializerOptions;
 
     internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
@@ -212,6 +213,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
         Buffer.ReadPosition += dataOffset2;
         length = Math.Min(length, columnLen - dataOffset2);
+        // TODO these should be nested reads.
         var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen, Format);
         var result = info.AsObject
             ? (Stream)info.Converter.ReadAsObject(reader)!
@@ -315,7 +317,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         var info = column.ObjectOrDefaultInfo;
         if (columnLength == -1)
             return DBNull.Value;
-        var reader = Buffer.PgReader.Init(columnLength, DataFormat.Binary);
+        // TODO these should be nested reads.
+        var reader = PgReader.Init(columnLength, Format);
         reader.BufferData(info.BufferRequirement);
         return info.Converter.ReadAsObject(reader);
     }
@@ -361,7 +364,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             ThrowHelper.ThrowInvalidCastException_NoValue();
         }
 
-        var reader = Buffer.PgReader.Init(columnLength, Format);
+        // TODO these should be nested reads.
+        var reader = PgReader.Init(columnLength, Format);
         reader.BufferData(info.BufferRequirement);
         return info.AsObject
             ? (T)info.Converter.ReadAsObject(reader)!

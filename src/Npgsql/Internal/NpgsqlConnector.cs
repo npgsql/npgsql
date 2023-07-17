@@ -1432,6 +1432,12 @@ public sealed partial class NpgsqlConnector
                 }
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
+
+                // Reset flushed bytes after any RFQ or in between potentially long running operations.
+                // Just in case we'll hit that 15 exbibyte limit of a signed long...
+                if (messageCode is BackendMessageCode.ReadyForQuery or BackendMessageCode.CopyData or BackendMessageCode.NotificationResponse)
+                    ReadBuffer.ResetFlushedBytes();
+
                 return msg;
             }
         }

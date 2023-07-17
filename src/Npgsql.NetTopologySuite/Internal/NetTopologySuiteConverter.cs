@@ -18,7 +18,7 @@ public class NetTopologySuiteConverter<T> : PgStreamingConverter<T>
         => (_reader, _writer) = (reader, writer);
 
     public override T Read(PgReader reader)
-        => (T)_reader.Read(reader.GetStream(reader.CurrentSize, canSeek: false));
+        => (T)_reader.Read(reader.GetStream());
 
     // PostGisReader/PostGisWriter doesn't support async
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)

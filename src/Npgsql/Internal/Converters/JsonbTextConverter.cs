@@ -58,12 +58,11 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
             if (version != JsonbProtocolVersion)
                 throw new InvalidCastException($"Unknown jsonb wire format version {version}");
 
-            // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
-            reader.Current.Size = reader.Current.Size.Value - 1;
+            await using var _ = await reader
+                .BeginNestedRead(async, reader.CurrentSize - 1, readRequirement, cancellationToken).ConfigureAwait(false);
+            return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
         }
 
-        if (reader.ShouldBuffer(readRequirement))
-            await reader.BufferData(async, readRequirement, cancellationToken);
         return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
     }
 
