@@ -258,7 +258,11 @@ partial class NpgsqlConnector
             var sb = new StringBuilder();
             var hashResult = md5.ComputeHash(cryptBuf);
             foreach (var b in hashResult)
+#if NET6_0_OR_GREATER
+                sb.Append($"{b:x2}");
+#else
                 sb.Append(b.ToString("x2"));
+#endif
 
             var prehash = sb.ToString();
 
@@ -273,7 +277,11 @@ partial class NpgsqlConnector
             sb = new StringBuilder("md5");
             hashResult = md5.ComputeHash(cryptBuf);
             foreach (var b in hashResult)
+#if NET6_0_OR_GREATER
+                sb.Append($"{b:x2}");
+#else
                 sb.Append(b.ToString("x2"));
+#endif
 
             var resultString = sb.ToString();
             result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
