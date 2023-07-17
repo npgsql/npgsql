@@ -25,7 +25,7 @@ sealed class CastingConverter<T> : PgConverter<T>
     public override unsafe ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         // Easy if we have all the data, just go sync and return it.
-        if (reader.Remaining >= reader.CurrentSize)
+        if (reader.ShouldBuffer(reader.CurrentSize))
             return new((T)_effectiveConverter.ReadAsObject(reader));
 
         // Otherwise we do one additional allocation, this allow us to share state machine codegen for all Ts.

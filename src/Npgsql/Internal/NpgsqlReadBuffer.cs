@@ -13,8 +13,6 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 using static System.Threading.Timeout;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql.Internal;
 
 /// <summary>
@@ -77,12 +75,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     internal int ReadBytesLeft => FilledBytes - ReadPosition;
     internal PgReader PgReader { get; }
 
+    long _flushedBytes; // this will always fit at least one message.
+    internal long CumulativeReadPosition => unchecked(_flushedBytes + ReadPosition);
+
     internal readonly byte[] Buffer;
     internal int FilledBytes;
 
-    ColumnStream? _columnStream;
-
-    PreparedTextReader? _preparedTextReader;
+    internal ReadOnlySpan<byte> Span => Buffer.AsSpan(ReadPosition, ReadBytesLeft);
 
     readonly bool _usePool;
     bool _disposed;
@@ -143,6 +142,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         try
         {
             var read = Underlying.Read(buffer);
+            _flushedBytes = unchecked(_flushedBytes + read);
             NpgsqlEventSource.Log.BytesRead(read);
             return read;
         }
@@ -162,6 +162,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         try
         {
             var read = await Underlying.ReadAsync(buffer, finalCt).ConfigureAwait(false);
+            _flushedBytes = unchecked(_flushedBytes + read);
             NpgsqlEventSource.Log.BytesRead(read);
             return read;
         }
@@ -266,12 +267,13 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
             if (buffer.ReadPosition == buffer.FilledBytes)
             {
-                buffer.Reset();
+                buffer.ResetPosition();
             }
             else if (count > buffer.Size - buffer.FilledBytes)
             {
                 Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
                 buffer.FilledBytes = buffer.ReadBytesLeft;
+                buffer._flushedBytes = unchecked(buffer._flushedBytes + buffer.ReadPosition);
                 buffer.ReadPosition = 0;
             }
 
@@ -399,7 +401,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (_underlyingSocket != null)
             tempBuf.Timeout = Timeout;
         CopyTo(tempBuf);
-        Reset();
+        ResetPosition();
         return tempBuf;
     }
 
@@ -424,11 +426,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             len -= ReadBytesLeft;
             while (len > Size)
             {
-                Reset();
+                ResetPosition();
                 await Ensure(Size, async);
                 len -= Size;
             }
-            Reset();
+            ResetPosition();
             await Ensure((int)len, async);
         }
 
@@ -613,7 +615,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         if (output.Length > 0)
         {
             Debug.Assert(ReadBytesLeft == 0);
-            Reset();
+            ResetPosition();
         }
 
         if (commandScoped)
@@ -621,7 +623,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
         try
         {
-            return Underlying.Read(output);
+            var read = Underlying.Read(output);
+            _flushedBytes = unchecked(_flushedBytes + read);
+            NpgsqlEventSource.Log.BytesRead(read);
+            return read;
         }
         catch (Exception e)
         {
@@ -647,7 +652,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
             if (output.Length > 0)
             {
                 Debug.Assert(buffer.ReadBytesLeft == 0);
-                buffer.Reset();
+                buffer.ResetPosition();
             }
 
             if (commandScoped)
@@ -655,7 +660,10 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
             try
             {
-                return await buffer.Underlying.ReadAsync(output, cancellationToken).ConfigureAwait(false);
+                var read = await buffer.Underlying.ReadAsync(output, cancellationToken).ConfigureAwait(false);
+                buffer._flushedBytes = unchecked(buffer._flushedBytes + read);
+                NpgsqlEventSource.Log.BytesRead(read);
+                return read;
             }
             catch (Exception e)
             {
@@ -664,20 +672,11 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         }
     }
 
-    public Stream GetStream(int len, bool canSeek)
+    public ColumnStream CreateStream(int len, bool canSeek)
     {
-        _columnStream ??= new ColumnStream(Connector);
-        _columnStream.Init(len, canSeek);
-        return _columnStream;
-    }
-
-    public TextReader GetPreparedTextReader(string str, Stream stream)
-    {
-        if (_preparedTextReader is not { IsDisposed: true })
-            _preparedTextReader = new PreparedTextReader();
-
-        _preparedTextReader.Init(str, (ColumnStream)stream);
-        return _preparedTextReader;
+        var stream = new ColumnStream(Connector);
+        stream.Init(len, canSeek);
+        return stream;
     }
 
     /// <summary>
@@ -702,7 +701,7 @@ sealed partial class NpgsqlReadBuffer : IDisposable
     /// Seeks the first null terminator (\0) and returns the string up to it. Reads additional data from the network if a null
     /// terminator isn't found in the buffered data.
     /// </summary>
-    ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
+    public ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
     {
         var index = Buffer.AsSpan(ReadPosition, FilledBytes - ReadPosition).IndexOf((byte)0);
         if (index >= 0)
@@ -796,11 +795,14 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     #region Misc
 
-    internal void Reset()
+    void ResetPosition()
     {
+        _flushedBytes = unchecked(_flushedBytes + FilledBytes);
         ReadPosition = 0;
         FilledBytes = 0;
     }
+
+    internal void ResetFlushedBytes() => _flushedBytes = 0;
 
     internal void CopyTo(NpgsqlReadBuffer other)
     {

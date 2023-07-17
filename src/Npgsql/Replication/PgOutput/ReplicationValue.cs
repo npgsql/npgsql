@@ -184,9 +184,8 @@ public class ReplicationValue
 
             try
             {
-                var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
-                await reader.BufferDataAsync(info.BufferRequirement, cancellationToken);
-                return await info.Converter.ReadAsObjectAsync(reader, cancellationToken);
+                await _readBuffer.PgReader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+                return await info.Converter.ReadAsObjectAsync(_readBuffer.PgReader, cancellationToken);
             }
             catch
             {
@@ -230,8 +229,9 @@ public class ReplicationValue
     public TextReader GetTextReader()
     {
         var info = _fieldDescription.GetConverterInfo(typeof(TextReader));
-        var reader = _readBuffer.PgReader.Init(GetStream(), Length, _fieldDescription.DataFormat);
-        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
+        var reader = _readBuffer.PgReader.Init(Length, _fieldDescription.DataFormat);
+        Debug.Assert(info.BufferRequirement == Size.Zero);
+        reader.BufferData(info.BufferRequirement);
         return (TextReader)info.Converter.ReadAsObject(reader);
     }
 

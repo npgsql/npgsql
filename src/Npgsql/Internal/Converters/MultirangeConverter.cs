@@ -41,14 +41,11 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
         {
             if (reader.ShouldBuffer(sizeof(int)))
                 await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
-            var rangeLen = reader.ReadInt32();
-            Debug.Assert(rangeLen != -1);
+            var length = reader.ReadInt32();
+            Debug.Assert(length != -1);
 
-            // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
-            reader.Current.Size = rangeLen;
-            if (reader.ShouldBuffer(_rangeBufferRequirements.Read))
-                await reader.BufferData(async, _rangeBufferRequirements.Read, cancellationToken).ConfigureAwait(false);
-
+            await using var _ = await reader
+                .BeginNestedRead(async, length, _rangeBufferRequirements.Read, cancellationToken).ConfigureAwait(false);
             var range = async
                 ? await _rangeConverter.ReadAsync(reader, cancellationToken).ConfigureAwait(false)
                 // ReSharper disable once MethodHasAsyncOverloadWithCancellation

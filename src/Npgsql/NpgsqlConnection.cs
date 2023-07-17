@@ -884,7 +884,7 @@ public sealed class NpgsqlConnection : DbConnection, ICloneable, IComponent
                 }
             }
 
-            Debug.Assert(connector.IsReady || connector.IsBroken);
+            Debug.Assert(connector.IsReady || connector.IsBroken, $"Connector is not ready or broken during close, it's {connector.State}");
             Debug.Assert(connector.CurrentReader == null);
             Debug.Assert(connector.CurrentCopyOperation == null);
 

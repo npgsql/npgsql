@@ -324,6 +324,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
             // Mark that the (next) column length hasn't been read yet
             _columnLen = int.MinValue;
             _column++;
+            reader.Commit();
             return result;
         }
         catch (Exception)
