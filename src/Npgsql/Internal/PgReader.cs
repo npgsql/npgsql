@@ -192,22 +192,20 @@ public class PgReader
         return _preparedTextReader;
     }
 
-    public ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    public async ValueTask ReadBytesAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
         var count = buffer.Length;
-        if (CurrentSize < count)
-            throw new ArgumentOutOfRangeException(nameof(buffer), "Value is smaller than the requested read size");
-
-        return _buffer.CreateStream(count, canSeek: false).ReadExactlyAsync(buffer, cancellationToken);
+        CheckBounds(count);
+        await using var stream = _buffer.CreateStream(count, canSeek: false);
+        await stream.ReadExactlyAsync(buffer, cancellationToken);
     }
 
     public void ReadBytes(Span<byte> buffer)
     {
         var count = buffer.Length;
-        if (CurrentSize < count)
-            throw new ArgumentOutOfRangeException(nameof(buffer), "Value is smaller than the requested read size");
-
-        _buffer.CreateStream(count, canSeek: false).ReadExactly(buffer);
+        CheckBounds(count);
+        using var stream = _buffer.CreateStream(count, canSeek: false);
+        stream.ReadExactly(buffer);
     }
 
     /// ReadBytes without memory management, the next read invalidates the underlying buffer(s), only use this for intermediate transformations.
