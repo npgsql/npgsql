@@ -256,13 +256,21 @@ sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableR
                 return 0;
 
             const int maxStackAlloc = 512;
+#if NETSTANDARD
+            var tempCharBuf = new char[maxStackAlloc];
+#else
             Span<char> tempCharBuf = stackalloc char[maxStackAlloc];
+#endif
             var totalRead = 0;
             var fin = false;
             while (!fin)
             {
                 var toRead = count is null ? maxStackAlloc : Math.Min(maxStackAlloc, count.Value - totalRead);
+#if NETSTANDARD
+                var read = reader.ReadBlock(tempCharBuf, 0, toRead);
+#else
                 var read = reader.ReadBlock(tempCharBuf.Slice(0, toRead));
+#endif
                 totalRead += read;
                 if (count is not null && read is 0)
                     throw new EndOfStreamException();

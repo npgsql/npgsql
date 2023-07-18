@@ -1542,7 +1542,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         async ValueTask<T> Core(int ordinal, CancellationToken cancellationToken)
         {
-            await using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+            using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
             var isStream = typeof(T) == typeof(Stream);
             var info = GetInfo(ordinal, isStream ? null : typeof(T), out var field);
 
@@ -1654,7 +1654,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         async Task<bool> Core(int ordinal, CancellationToken cancellationToken)
         {
-            await using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+            using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
             return await SeekToColumn(async: true, ordinal, CheckRowAndGetField(ordinal), resumableOp: true) is -1;
         }
     }
