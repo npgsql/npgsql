@@ -43,7 +43,7 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.DateRange,
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions))),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
         mappings.AddStructType<NpgsqlRange<int>>(DataTypeNames.DateRange,
             static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<int>(new Int4Converter<int>())));
 #if NET6_0_OR_GREATER
@@ -83,10 +83,11 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<NpgsqlRange<DateTime>[]>(DataTypeNames.DateMultirange,
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, new MultirangeConverter<NpgsqlRange<DateTime>[], NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))),
-            isDefault: true);
+            MatchRequirement.DataTypeName);
         mappings.AddType<List<NpgsqlRange<DateTime>>>(DataTypeNames.DateMultirange,
             static (options, mapping, _) =>
-                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))));
+                mapping.CreateInfo(options, new MultirangeConverter<List<NpgsqlRange<DateTime>>, NpgsqlRange<DateTime>>(new RangeConverter<DateTime>(new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)))),
+            MatchRequirement.DataTypeName);
 #if NET6_0_OR_GREATER
         mappings.AddType<NpgsqlRange<DateOnly>[]>(DataTypeNames.DateMultirange,
             static (options, mapping, _) =>
