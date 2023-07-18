@@ -1285,11 +1285,6 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(actual, Is.EqualTo(expected));
         Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
 
-        Assert.That(() => reader.GetBytes(1, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(),
-            "GetBytes on non-bytea");
-        Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1),
-            Throws.Exception.TypeOf<InvalidCastException>(),
-            "GetBytes on non-bytea");
         Assert.That(reader.GetString(1), Is.EqualTo("foo"));
         reader.GetBytes(2, 0, actual, 0, 2);
         // Jump to another column from the middle of the column

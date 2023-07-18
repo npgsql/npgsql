@@ -1407,30 +1407,28 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
-        // Check whether we can do byte[] reads.
-        var info = GetInfo(ordinal, typeof(Stream), out var field);
-        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
-
+        var field = CheckRowAndGetField(ordinal);
         var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
         if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
-        //
-        // if (buffer is null)
-        //     return ColumnLen;
-        //
-        // var dataOffset2 = checked((int)dataOffset);
-        // if (_isSequential && dataOffset2 < PgReader.CurrentOffset)
-        //     ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
-        //
-        // PgReader.Seek(async: false, dataOffset2).GetAwaiter().GetResult();
-        //
-        // var reader = PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), ColumnLen, field.DataFormat);
-        // // TODO actually make this work in the byte[] converter.
-        // var result = info.AsObject
-        //     ? (Stream)info.Converter.ReadAsObject(reader)
-        //     : info.GetConverter<Stream>().Read(reader);
-        // Debug.Assert(ReferenceEquals(buffer, result));
-        // PosInColumn += length;
+
+        if (buffer is null)
+            return columnLength;
+
+        // Move to offset
+        if (PgReader.CurrentOffset > dataOffset)
+        {
+            if (_isSequential)
+                ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
+
+            PgReader.Rewind(PgReader.CurrentOffset - (int)dataOffset);
+        }
+        else if (PgReader.CurrentOffset < dataOffset)
+            PgReader.Consume(async: false, (int)dataOffset - PgReader.CurrentOffset).GetAwaiter().GetResult();
+
+        // At offset, read into buffer.
+        length = Math.Min(length, PgReader.CurrentRemaining);
+        PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }
 
