@@ -17,7 +17,8 @@ public class PgReader
 
     byte[]? _pooledArray;
 
-    internal long _fieldStartPos;
+    internal long FieldStartPos { get; set; }
+    internal int FieldSize => _field.Size.IsDefault ? -1 : _field.Size.Value;
 
     int _currentSize;
     int _currentStartPos;
@@ -29,10 +30,7 @@ public class PgReader
         _pooledArray = null;
     }
 
-    int Pos => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
-
-    internal int FieldSize => _field.Size.IsDefault ? -1 : _field.Size.Value;
-
+    int Pos => (int)(_buffer.CumulativeReadPosition - FieldStartPos);
     public ValueMetadata Current => new() { Size = _currentSize, Format =  _field.Format };
     int CurrentSize => _currentSize;
     internal int CurrentOffset => Pos - _currentStartPos;
@@ -352,7 +350,7 @@ public class PgReader
             _charsReadReader?.Dispose();
             _charsReadReader = null;
             _charsRead = default;
-            _fieldStartPos = _buffer.CumulativeReadPosition;
+            FieldStartPos = _buffer.CumulativeReadPosition;
             _currentSize = columnLength < 0 ? 0 : columnLength;
             _field = new() { Format = format, Size = columnLength };
         }
@@ -398,6 +396,14 @@ public class PgReader
 
     public ValueTask<NestedReadScope> BeginNestedReadAsync(int size, Size bufferRequirement, CancellationToken cancellationToken = default)
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
+
+    internal void Seek(int offset)
+    {
+        if (CurrentOffset > offset)
+            Rewind(CurrentOffset - offset);
+        else if (CurrentOffset < offset)
+            Consume(offset - CurrentOffset);
+    }
 
     async ValueTask Consume(bool async, int? count = null)
     {
@@ -447,6 +453,7 @@ public class PgReader
         }
 
         _field = default;
+        FieldStartPos = -1;
     }
 
     byte[] RentArray(int count)

@@ -4,7 +4,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -20,7 +19,6 @@ namespace Npgsql;
 public sealed class NpgsqlNestedDataReader : DbDataReader
 {
     readonly NpgsqlDataReader _outermostReader;
-    ulong _uniqueOutermostReaderRowId;
     readonly NpgsqlNestedDataReader? _outerNestedReader;
     NpgsqlNestedDataReader? _cachedFreeNestedDataReader;
     PostgresCompositeType? _compositeType;
@@ -31,6 +29,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     ReaderState _readerState;
 
     readonly List<ColumnInfo> _columns = new();
+    long _startPos;
 
     DataFormat Format => DataFormat.Binary;
 
@@ -63,23 +62,22 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
     }
 
-    NpgsqlReadBuffer Buffer => _outermostReader.Buffer;
-    PgReader PgReader => Buffer.PgReader;
+    PgReader PgReader => _outermostReader.Buffer.PgReader;
     PgSerializerOptions SerializerOptions => _outermostReader.Connector.SerializerOptions;
 
     internal NpgsqlNestedDataReader(NpgsqlDataReader outermostReader, NpgsqlNestedDataReader? outerNestedReader,
-        ulong uniqueOutermostReaderRowId, int depth, PostgresCompositeType? compositeType)
+        int depth, PostgresCompositeType? compositeType)
     {
         _outermostReader = outermostReader;
         _outerNestedReader = outerNestedReader;
-        _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
         _depth = depth;
         _compositeType = compositeType;
+        _startPos = PgReader.FieldStartPos;
     }
 
-    internal void Init(ulong uniqueOutermostReaderRowId, PostgresCompositeType? compositeType)
+    internal void Init(PostgresCompositeType? compositeType)
     {
-        _uniqueOutermostReaderRowId = uniqueOutermostReaderRowId;
+        _startPos = PgReader.FieldStartPos;
         _columns.Clear();
         _numRows = 0;
         _nextRowIndex = 0;
@@ -90,9 +88,9 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
 
     internal void InitArray()
     {
-        var dimensions = Buffer.ReadInt32();
-        var containsNulls = Buffer.ReadInt32() == 1;
-        Buffer.ReadUInt32(); // Element OID. Ignored.
+        var dimensions = PgReader.ReadInt32();
+        var containsNulls = PgReader.ReadInt32() == 1;
+        PgReader.ReadUInt32(); // Element OID. Ignored.
 
         if (containsNulls)
             throw new InvalidOperationException("Record array contains null record");
@@ -103,19 +101,19 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (dimensions != 1)
             throw new InvalidOperationException("Cannot read a multidimensional array with a nested DbDataReader");
 
-        _numRows = Buffer.ReadInt32();
-        Buffer.ReadInt32(); // Lower bound
+        _numRows = PgReader.ReadInt32();
+        PgReader.ReadInt32(); // Lower bound
 
         if (_numRows > 0)
-            Buffer.ReadInt32(); // Length of first row
+            PgReader.ReadInt32(); // Length of first row
 
-        _nextRowBufferPos = Buffer.ReadPosition;
+        _nextRowBufferPos = PgReader.CurrentOffset;
     }
 
     internal void InitSingleRow()
     {
         _numRows = 1;
-        _nextRowBufferPos = Buffer.ReadPosition;
+        _nextRowBufferPos = PgReader.CurrentOffset;
     }
 
     /// <inheritdoc />
@@ -157,7 +155,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     /// <inheritdoc />
     public override bool IsClosed
         => _readerState == ReaderState.Closed || _readerState == ReaderState.Disposed
-                                              || _outermostReader.IsClosed || _uniqueOutermostReaderRowId != _outermostReader.UniqueRowId;
+                                              || _outermostReader.IsClosed || PgReader.FieldStartPos != _startPos;
 
     /// <inheritdoc />
     public override int RecordsAffected => -1;
@@ -247,11 +245,11 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         if (reader != null)
         {
             _cachedFreeNestedDataReader = null;
-            reader.Init(_uniqueOutermostReaderRowId, compositeType);
+            reader.Init(compositeType);
         }
         else
         {
-            reader = new NpgsqlNestedDataReader(_outermostReader, this, _uniqueOutermostReaderRowId, _depth + 1, compositeType);
+            reader = new NpgsqlNestedDataReader(_outermostReader, this, _depth + 1, compositeType);
         }
         if (isArray)
             reader.InitArray();
@@ -370,7 +368,7 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     {
         CheckResultSet();
 
-        Buffer.ReadPosition = _nextRowBufferPos;
+        PgReader.Seek(_nextRowBufferPos);
         if (_nextRowIndex == _numRows)
         {
             _readerState = ReaderState.AfterRows;
@@ -378,14 +376,14 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         }
 
         if (_nextRowIndex++ != 0)
-            Buffer.ReadInt32(); // Length of record
+            PgReader.ReadInt32(); // Length of record
 
-        var numColumns = Buffer.ReadInt32();
+        var numColumns = PgReader.ReadInt32();
 
         for (var i = 0; i < numColumns; i++)
         {
-            var typeOid = Buffer.ReadUInt32();
-            var bufferPos = Buffer.ReadPosition;
+            var typeOid = PgReader.ReadUInt32();
+            var bufferPos = PgReader.CurrentOffset;
             if (i >= _columns.Count)
             {
                 var pgType = SerializerOptions.TypeCatalog.GetPgType((Oid)typeOid);
@@ -399,13 +397,13 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
                 _columns[i] = new ColumnInfo(pgType, bufferPos, GetObjectOrDefaultTypeInfo(pgType), Format);
             }
 
-            var columnLen = Buffer.ReadInt32();
+            var columnLen = PgReader.ReadInt32();
             if (columnLen >= 0)
-                Buffer.Skip(columnLen);
+                PgReader.Consume(columnLen);
         }
         _columns.RemoveRange(numColumns, _columns.Count - numColumns);
 
-        _nextRowBufferPos = Buffer.ReadPosition;
+        _nextRowBufferPos = PgReader.CurrentOffset;
 
         _readerState = ReaderState.OnRow;
         return true;
@@ -493,8 +491,8 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
     int CheckRowAndColumnAndSeek(int ordinal, out ColumnInfo column)
     {
         column = CheckRowAndColumn(ordinal);
-        Buffer.ReadPosition = column.BufferPos;
-        return Buffer.ReadInt32();
+        PgReader.Seek(column.BufferPos);
+        return PgReader.ReadInt32();
     }
 
     PgConverterInfo GetOrAddConverterInfo(Type type, ColumnInfo column, int ordinal)
