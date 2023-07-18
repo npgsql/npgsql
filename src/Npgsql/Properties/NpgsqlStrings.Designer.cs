@@ -241,5 +241,12 @@ namespace Npgsql.Properties {
                 return ResourceManager.GetString("MultirangesNotEnabled", resourceCulture);
             }
         }
+
+        public static string LTreeNotEnabled
+        {
+            get {
+                return ResourceManager.GetString("LTreeNotEnabled", resourceCulture);
+            }
+        }
     }
 }

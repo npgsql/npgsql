@@ -387,6 +387,15 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <summary>
+    /// Sets up mappings for the PostgreSQL <c>ltree</c> extension types.
+    /// </summary>
+    public NpgsqlSlimDataSourceBuilder EnableLTree()
+    {
+        AddTypeInfoResolver(new LTreeTypeInfoResolver());
+        return this;
+    }
+
+    /// <summary>
     /// Sets up mappings for extra conversions from PostgreSQL to .NET types.
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableExtraConversions()
