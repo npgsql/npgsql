@@ -69,6 +69,9 @@
     <data name="FullTextSearchNotEnabled" xml:space="preserve">
         <value>Full-text search isn't enabled; please call {0} on {1} to enable full-text search.</value>
     </data>
+    <data name="LTreeNotEnabled" xml:space="preserve">
+        <value>Ltree isn't enabled; please call {0} on {1} to enable LTree.</value>
+    </data>
     <data name="RangesNotEnabled" xml:space="preserve">
         <value>Ranges aren't enabled; please call {0} on {1} to enable ranges.</value>
     </data>

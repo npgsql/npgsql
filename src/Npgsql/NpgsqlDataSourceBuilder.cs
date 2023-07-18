@@ -59,6 +59,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new FullTextSearchTypeInfoResolver(),
             new NetworkTypeInfoResolver(),
             new GeometricTypeInfoResolver(),
+            new LTreeTypeInfoResolver(),
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver()
         }, overwrite);
@@ -83,6 +84,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
+            AddTypeInfoResolver(new LTreeTypeInfoResolver());
             AddTypeInfoResolver(new GeometricTypeInfoResolver());
             AddTypeInfoResolver(new NetworkTypeInfoResolver());
             AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());

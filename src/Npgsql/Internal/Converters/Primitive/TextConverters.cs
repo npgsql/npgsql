@@ -18,8 +18,9 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
 
     public override T Read(PgReader reader)
         => Read(async: false, reader, _encoding).GetAwaiter().GetResult();
+
     public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-        => Read(async: true, reader, _encoding);
+        => Read(async: true, reader, _encoding, cancellationToken);
 
     public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => TextConverter.GetSize(ref context, ConvertTo(value), _encoding);
@@ -39,15 +40,17 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
     protected abstract ReadOnlyMemory<char> ConvertTo(T value);
     protected abstract T ConvertFrom(string value);
 
-    ValueTask<T> Read(bool async, PgReader reader, Encoding encoding)
+    ValueTask<T> Read(bool async, PgReader reader, Encoding encoding, CancellationToken cancellationToken = default)
     {
-        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining))));
+        return async
+            ? ReadAsync(reader, encoding, cancellationToken)
+            : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining))));
 
 #if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
-        async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
-            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false)));
+        async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding, CancellationToken cancellationToken)
+            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)));
     }
 }
 
