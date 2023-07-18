@@ -212,6 +212,13 @@ public class PgReader
     public ReadOnlySequence<byte> ReadBytes(int count)
     {
         CheckBounds(count);
+        if (BufferBytesRemaining >= count)
+        {
+            var result = new ReadOnlySequence<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            _buffer.ReadPosition += count;
+            return result;
+        }
+
         var array = RentArray(count);
         ReadBytes(array.AsSpan(0, count));
         return new(array, 0, count);
@@ -221,6 +228,13 @@ public class PgReader
     public async ValueTask<ReadOnlySequence<byte>> ReadBytesAsync(int count, CancellationToken cancellationToken = default)
     {
         CheckBounds(count);
+        if (BufferBytesRemaining >= count)
+        {
+            var result = new ReadOnlySequence<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            _buffer.ReadPosition += count;
+            return result;
+        }
+
         var array = RentArray(count);
         await ReadBytesAsync(array.AsMemory(0, count), cancellationToken);
         return new(array, 0, count);
