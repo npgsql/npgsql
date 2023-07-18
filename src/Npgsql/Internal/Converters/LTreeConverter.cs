@@ -14,27 +14,23 @@ sealed class LTreeConverter : PgStreamingConverter<string>
         => (_expectedVersionPrefix, _encoding) = (expectedVersionPrefix, encoding);
 
     public override string Read(PgReader reader)
+        => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
+
+    public override ValueTask<string> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => Read(async: true, reader, cancellationToken);
+
+    async ValueTask<string> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
     {
         if (reader.ShouldBuffer(sizeof(byte)))
-            reader.BufferData(async: false, sizeof(byte), cancellationToken: default).GetAwaiter().GetResult();
+            await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         var version = reader.ReadByte();
         if (version != _expectedVersionPrefix)
             throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
-        return _encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
-    }
-
-    public override async ValueTask<string> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
-    {
-        if (reader.ShouldBuffer(sizeof(byte)))
-            await reader.BufferData(async: true, sizeof(byte), cancellationToken);
-
-        var version = reader.ReadByte();
-        if (version != _expectedVersionPrefix)
-            throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
-
-        return _encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false));
+        return _encoding.GetString(async
+            ? await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false)
+            : reader.ReadBytes(reader.CurrentRemaining));
     }
 
     public override Size GetSize(SizeContext context, string value, ref object? writeState)
@@ -53,6 +49,6 @@ sealed class LTreeConverter : PgStreamingConverter<string>
         if (writer.ShouldFlush(sizeof(byte)))
             await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
         writer.WriteByte(_expectedVersionPrefix);
-        await writer.WriteCharsAsync(value.AsMemory(), _encoding, cancellationToken);
+        await writer.WriteCharsAsync(value.AsMemory(), _encoding, cancellationToken).ConfigureAwait(false);
     }
 }
