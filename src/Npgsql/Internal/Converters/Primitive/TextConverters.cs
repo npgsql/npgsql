@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -177,7 +178,6 @@ sealed class CharTextConverter : PgBufferedConverter<char>
     }
 }
 
-// Move these out for code size/sharing.
 sealed class TextReaderTextConverter : PgStreamingConverter<TextReader>
 {
     readonly Encoding _encoding;
@@ -199,6 +199,84 @@ sealed class TextReaderTextConverter : PgStreamingConverter<TextReader>
     public override void Write(PgWriter writer, TextReader value) => throw new NotImplementedException();
     public override ValueTask WriteAsync(PgWriter writer, TextReader value, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }
+
+
+readonly struct GetChars
+{
+    public int Read { get; }
+    public GetChars(int read) => Read = read;
+}
+
+sealed class GetCharsTextConverter : PgStreamingConverter<GetChars>, IResumableRead
+{
+    readonly Encoding _encoding;
+    public GetCharsTextConverter(Encoding encoding) => _encoding = encoding;
+
+    public override GetChars Read(PgReader reader)
+        => reader.IsCharsRead
+            ? ResumableRead(reader)
+            : throw new NotSupportedException();
+
+    public override ValueTask<GetChars> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    public override Size GetSize(SizeContext context, GetChars value, ref object? writeState) => throw new NotSupportedException();
+    public override void Write(PgWriter writer, GetChars value) => throw new NotSupportedException();
+    public override ValueTask WriteAsync(PgWriter writer, GetChars value, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+    GetChars ResumableRead(PgReader reader)
+    {
+        reader.GetCharsReadInfo(_encoding, out var charsRead, out var textReader, out var charsOffset, out var buffer);
+        if (charsOffset < charsRead || (buffer is null && charsRead > 0))
+        {
+            // With variable length encodings, moving backwards based on bytes means we have to start over.
+            reader.ResetCharsRead(out charsRead);
+        }
+
+        // First seek towards the charsOffset.
+        // If buffer is null read the entire thing and report the length, see sql client remarks.
+        // https://learn.microsoft.com/en-us/dotnet/api/system.data.sqlclient.sqldatareader.getchars
+        int read;
+        if (buffer is null)
+        {
+            read = ConsumeChars(textReader, null);
+        }
+        else
+        {
+            var consumed = ConsumeChars(textReader, charsOffset - charsRead);
+            Debug.Assert(consumed == charsOffset - charsRead);
+            read = textReader.ReadBlock(buffer.GetValueOrDefault().Array!, buffer.GetValueOrDefault().Offset, buffer.GetValueOrDefault().Count);
+        }
+
+        return new(read);
+
+        static int ConsumeChars(TextReader reader, int? count)
+        {
+            if (count is 0)
+                return 0;
+
+            const int maxStackAlloc = 512;
+            Span<char> tempCharBuf = stackalloc char[maxStackAlloc];
+            var totalRead = 0;
+            var fin = false;
+            while (!fin)
+            {
+                var toRead = count is null ? maxStackAlloc : Math.Min(maxStackAlloc, count.Value - totalRead);
+                var read = reader.ReadBlock(tempCharBuf.Slice(0, toRead));
+                totalRead += read;
+                if (count is not null && read is 0)
+                    throw new EndOfStreamException();
+
+                fin = count is null ? read is 0 : totalRead >= count;
+            }
+            return totalRead;
+        }
+    }
+
+    bool IResumableRead.Supported => true;
+}
+
+// Moved out for code size/sharing.
 static class TextConverter
 {
     public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding)

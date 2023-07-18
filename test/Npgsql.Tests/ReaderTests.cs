@@ -1535,7 +1535,8 @@ LANGUAGE plpgsql VOLATILE";
         Assert.That(reader.GetChars(0, 0, actual, 0, 2), Is.EqualTo(2));
         Assert.That(actual[0], Is.EqualTo(expected[0]));
         Assert.That(actual[1], Is.EqualTo(expected[1]));
-        Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+        if (!IsSequential)
+            Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
         // Note: Unlike with bytea, finding out the length of the column consumes it (variable-width
         // UTF8 encoding)
         Assert.That(reader.GetChars(2, 0, actual, 0, 2), Is.EqualTo(2));

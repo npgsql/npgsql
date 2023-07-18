@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
+sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
 {
     const byte JsonbProtocolVersion = 1;
 
@@ -51,13 +51,17 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
         var readRequirement = _innerRequirements.Read;
         if (reader.Current.Format is DataFormat.Binary)
         {
-            if (reader.ShouldBuffer(sizeof(byte)))
-                await reader.BufferData(async, sizeof(byte), cancellationToken);
+            if (!reader.IsResumed)
+            {
+                if (reader.ShouldBuffer(sizeof(byte)))
+                    await reader.BufferData(async, sizeof(byte), cancellationToken);
 
-            var version = reader.ReadByte();
-            if (version != JsonbProtocolVersion)
-                throw new InvalidCastException($"Unknown jsonb wire format version {version}");
+                var version = reader.ReadByte();
+                if (version != JsonbProtocolVersion)
+                    throw new InvalidCastException($"Unknown jsonb wire format version {version}");
+            }
 
+            // TODO could avoid nested read by having all text readers use CurrentRemaining.
             await using var _ = await reader
                 .BeginNestedRead(async, reader.CurrentSize - 1, readRequirement, cancellationToken).ConfigureAwait(false);
             return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
@@ -82,4 +86,6 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>
         else
             writer.NestedWrite(_textConverter, value, size, writer.Current.WriteState);
     }
+
+    bool IResumableRead.Supported => _textConverter is IResumableRead { Supported: true };
 }
