@@ -149,10 +149,11 @@ public class PgReader
         CheckBounds(0);
         return result;
     }
+    public Stream GetStream(int? length = null) => GetColumnStream(false, length);
 
-    public Stream GetStream(int? length = null) => GetColumnStream(length);
+    internal Stream GetStream(bool canSeek, int? length = null) => GetColumnStream(canSeek, length);
 
-    NpgsqlReadBuffer.ColumnStream GetColumnStream(int? length = null)
+    NpgsqlReadBuffer.ColumnStream GetColumnStream(bool canSeek = false, int? length = null)
     {
         if (length > CurrentRemaining)
             throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
@@ -163,7 +164,7 @@ public class PgReader
 
         length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), length <= BufferBytesRemaining);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), canSeek && length <= BufferBytesRemaining);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -187,7 +188,7 @@ public class PgReader
         }
 
         _preparedTextReader ??= new PreparedTextReader();
-        _preparedTextReader.Init(encoding.GetString(async ? await ReadBytesAsync(CurrentRemaining, cancellationToken) : ReadBytes(CurrentRemaining)), GetColumnStream(0));
+        _preparedTextReader.Init(encoding.GetString(async ? await ReadBytesAsync(CurrentRemaining, cancellationToken) : ReadBytes(CurrentRemaining)), GetColumnStream(canSeek: false, 0));
         return _preparedTextReader;
     }
 
@@ -373,7 +374,24 @@ public class PgReader
         await BufferData(async, bufferRequirement, cancellationToken);
     }
 
-    internal void EndRead() => _readStarted = false;
+    internal void EndRead()
+    {
+        _readStarted = false;
+        // If it was upper bound we should consume.
+        if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
+            Consume();
+    }
+
+    internal ValueTask EndReadAsync()
+    {
+        _readStarted = false;
+
+        // If it was upper bound we should consume.
+        if (_currentBufferRequirement.Kind is SizeKind.UpperBound)
+            return ConsumeAsync();
+
+        return new();
+    }
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
     {

@@ -1549,14 +1549,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
                 // The only statically mapped converter, it always exists.
                 if (isStream)
-                    return (T)(object)PgReader.GetStream();
+                    return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
             }
 
             await PgReader.StartReadAsync(info.BufferRequirement, cancellationToken);
             var result = info.AsObject
                 ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
                 : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken);
-            PgReader.EndRead();
+            await PgReader.EndReadAsync();
             return result;
         }
     }
@@ -1581,7 +1581,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         // The only statically mapped converter, it always exists.
         if (isStream)
-            return (T)(object)PgReader.GetStream();
+            return (T)(object)PgReader.GetStream(canSeek: !_isSequential);
 
         PgReader.StartRead(info.BufferRequirement);
         var result = info.AsObject
@@ -1880,22 +1880,27 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     ValueTask<int> SeekToColumnSequential(bool async, int ordinal, FieldDescription field, bool resumableOp = false)
     {
-        var resuming = _column == ordinal;
-        if (ordinal < _column || (resuming && !resumableOp && PgReader.FieldSize != -1))
+        var reread = _column == ordinal;
+        // Column rereading rules for sequential mode:
+        // * We never allow rereading if the column didn't get initialized as resumable the previous time
+        // * If it did get initialized as resumable we only allow rereading when one of the following is true:
+        //  - The op is a resumable one again
+        //  - The value is a DbNull (mostly supported as a historical artifact)
+        if (ordinal < _column || (reread && (!PgReader.Resumable || (!resumableOp && PgReader.FieldSize != -1))))
             ThrowHelper.ThrowInvalidOperationException(
                 $"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, " +
                 $"you may only read from column ordinal '{_column}' or greater.");
 
         var committed = false;
-        if (!PgReader.CommitHasIO(resuming))
+        if (!PgReader.CommitHasIO(reread))
         {
-            var task = PgReader.Commit(async, resuming);
+            var task = PgReader.Commit(async, reread);
             task.GetAwaiter().GetResult();
             Debug.Assert(task.IsCompleted);
             committed = true;
             if (TrySeekBuffered(ordinal, out var columnLength))
             {
-                PgReader.Init(columnLength, field.DataFormat, resumableOp);
+                PgReader.Init(columnLength, field.DataFormat, columnLength is -1 || resumableOp);
                 return new(columnLength);
             }
 
@@ -1918,11 +1923,14 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (commit)
             {
                 Debug.Assert(ordinal != _column);
-                await PgReader.Commit(async, resuming);
+                await PgReader.Commit(async, reread);
             }
 
             if (ordinal == _column)
+            {
+                PgReader.Init(PgReader.FieldSize, field.DataFormat, PgReader.FieldSize is -1 || resumableOp);
                 return PgReader.FieldSize;
+            }
 
             // Seek to the requested column
             var buffer = Buffer;
