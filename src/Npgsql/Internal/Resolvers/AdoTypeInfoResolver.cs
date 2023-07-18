@@ -62,6 +62,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<TextReader>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
+        mappings.AddStructType<GetChars>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
 
         // Alternative text types
         foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
@@ -76,6 +79,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddType<TextReader>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
                 MatchRequirement.DataTypeName);
+            mappings.AddStructType<GetChars>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+                MatchRequirement.DataTypeName);
         }
 
         // Jsonb
@@ -85,6 +91,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char>(new CharTextConverter(options.TextEncoding))));
         mappings.AddType<TextReader>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
+        mappings.AddStructType<GetChars>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
 
         // Bytea
