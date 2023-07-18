@@ -41,13 +41,13 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
 
     ValueTask<T> Read(bool async, PgReader reader, Encoding encoding)
     {
-        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentSize))));
+        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentRemaining))));
 
 #if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
-            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentSize).ConfigureAwait(false)));
+            => ConvertFrom(encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false)));
     }
 }
 
@@ -95,13 +95,13 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
 
     ValueTask<T> Read(bool async, PgReader reader, Encoding encoding)
     {
-        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(GetSegment(reader.ReadBytes(reader.CurrentSize), encoding)));
+        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(GetSegment(reader.ReadBytes(reader.CurrentRemaining), encoding)));
 
 #if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
-            => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentSize).ConfigureAwait(false), encoding));
+            => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentRemaining).ConfigureAwait(false), encoding));
 
         static ArraySegment<char> GetSegment(ReadOnlySequence<byte> bytes, Encoding encoding)
         {
@@ -152,7 +152,7 @@ sealed class CharTextConverter : PgBufferedConverter<char>
 
     protected override char ReadCore(PgReader reader)
     {
-        var byteSeq = reader.ReadBytes(reader.CurrentSize);
+        var byteSeq = reader.ReadBytes(Math.Min(_oneCharMaxByteCount.Value, reader.CurrentRemaining));
         Debug.Assert(byteSeq.IsSingleSegment);
         var bytes = byteSeq.GetFirstSpan();
 

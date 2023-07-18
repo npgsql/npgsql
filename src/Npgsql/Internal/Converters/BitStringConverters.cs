@@ -102,7 +102,7 @@ sealed class BitVector32BitStringConverter : PgBufferedConverter<BitVector32>
 
     protected override BitVector32 ReadCore(PgReader reader)
     {
-        if (reader.CurrentSize > sizeof(int) + sizeof(int))
+        if (reader.CurrentRemaining > sizeof(int) + sizeof(int))
             throw new InvalidCastException("Can't read a BIT(N) with more than 32 bits to BitVector32, only up to BIT(32).");
 
         var bits = reader.ReadInt32();

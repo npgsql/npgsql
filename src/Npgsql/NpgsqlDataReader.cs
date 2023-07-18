@@ -208,7 +208,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (!_canConsumeRowNonSequentially)
                 return null;
             // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
-            ConsumeRowNonSequential(userOp: true);
+            ConsumeRowNonSequential();
             break;
         case ReaderState.BetweenResults:
         case ReaderState.Consumed:
@@ -247,7 +247,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 return true;
 
             case ReaderState.InResult:
-                await ConsumeRow(async, userOp: true);
+                await ConsumeRow(async);
                 if (_behavior.HasFlag(CommandBehavior.SingleRow))
                 {
                     // TODO: See optimization proposal in #410
@@ -358,7 +358,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
             case ReaderState.BeforeResult:
             case ReaderState.InResult:
-                await ConsumeRow(async, userOp: !isConsuming);
+                await ConsumeRow(async);
                 while (true)
                 {
                     var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
@@ -1424,7 +1424,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             PgReader.Rewind(PgReader.CurrentOffset - (int)dataOffset);
         }
         else if (PgReader.CurrentOffset < dataOffset)
-            PgReader.Consume(async: false, (int)dataOffset - PgReader.CurrentOffset).GetAwaiter().GetResult();
+            PgReader.Consume((int)dataOffset - PgReader.CurrentOffset);
 
         // At offset, read into buffer.
         length = Math.Min(length, PgReader.CurrentRemaining);
@@ -1492,10 +1492,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (_isSequential && previousDataOffset > dataOffset)
             ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
+        PgReader.StartRead(info.BufferRequirement);
         var result = info.AsObject
             ? (GetChars)info.Converter.ReadAsObject(PgReader)
             : info.GetConverter<GetChars>().Read(PgReader);
         PgReader.AdvanceCharsRead(result.Read);
+        PgReader.EndRead();
         return result.Read;
     }
 
@@ -1559,10 +1561,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                     return (T)(object)PgReader.GetStream();
             }
 
-            await PgReader.BufferDataAsync(info.BufferRequirement, cancellationToken);
-            return info.AsObject
+            await PgReader.StartReadAsync(info.BufferRequirement, cancellationToken);
+            var result = info.AsObject
                 ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
                 : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken);
+            PgReader.EndRead();
+            return result;
         }
     }
 
@@ -1588,10 +1592,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (isStream)
             return (T)(object)PgReader.GetStream();
 
-        PgReader.BufferData(info.BufferRequirement);
-        return info.AsObject
+        PgReader.StartRead(info.BufferRequirement);
+        var result = info.AsObject
             ? (T)info.Converter.ReadAsObject(PgReader)
             : info.GetConverter<T>().Read(PgReader);
+        PgReader.EndRead();
+        return result;
     }
 
     #endregion
@@ -1610,8 +1616,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (columnLength == -1)
             return DBNull.Value;
 
-        PgReader.BufferData(info.BufferRequirement);
+        PgReader.StartRead(info.BufferRequirement);
         var result = info.Converter.ReadAsObject(PgReader);
+        PgReader.EndRead();
 
         return result;
     }
@@ -1905,7 +1912,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             // If we couldn't consume the column TrySeekBuffered had to stop at, do so now.
             if (columnLength > -1)
             {
-                PgReader.Init(columnLength, field.DataFormat, resumableOp);
+                // Resumable: true causes commit to consume without error.
+                PgReader.Init(columnLength, field.DataFormat, resumable: true);
                 committed = false;
             }
         }
@@ -1984,29 +1992,21 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     #region ConsumeRow
 
-    Task ConsumeRow(bool async, bool userOp = false)
+    Task ConsumeRow(bool async)
     {
         Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
         UniqueRowId++;
 
         if (!_canConsumeRowNonSequentially)
-            return ConsumeRowSequential(async, userOp);
+            return ConsumeRowSequential(async);
 
         // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
-        ConsumeRowNonSequential(userOp);
+        ConsumeRowNonSequential();
         return Task.CompletedTask;
 
-        async Task ConsumeRowSequential(bool async, bool userOp)
+        async Task ConsumeRowSequential(bool async)
         {
-            if (!userOp)
-            {
-                if (async)
-                    await PgReader.ConsumeAsync();
-                else
-                    PgReader.Consume();
-            }
-
             await PgReader.Commit(async, resuming: false);
 
             // Skip over the remaining columns in the row
@@ -2021,11 +2021,9 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void ConsumeRowNonSequential(bool userOp)
+    void ConsumeRowNonSequential()
     {
         Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
-        if (!userOp)
-            PgReader.Consume();
         PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
         Buffer.ReadPosition = _dataMsgEnd;
     }

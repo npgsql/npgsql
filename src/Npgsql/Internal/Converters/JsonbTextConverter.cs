@@ -61,9 +61,8 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
                     throw new InvalidCastException($"Unknown jsonb wire format version {version}");
             }
 
-            // TODO could avoid nested read by having all text readers use CurrentRemaining.
-            await using var _ = await reader
-                .BeginNestedRead(async, reader.CurrentSize - 1, readRequirement, cancellationToken).ConfigureAwait(false);
+            // No need for a nested read, all text converters will read CurrentRemaining bytes.
+            await reader.BufferData(async, readRequirement, cancellationToken);
             return async ? await _textConverter.ReadAsync(reader, cancellationToken) : _textConverter.Read(reader);
         }
 

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,10 +17,11 @@ public class PgReader
 
     byte[]? _pooledArray;
 
-    long _startPos;
+    internal long _fieldStartPos;
 
-    int _currentStartPos;
     int _currentSize;
+    int _currentStartPos;
+    Size _currentBufferRequirement { get; set; }
 
     internal PgReader(NpgsqlReadBuffer buffer)
     {
@@ -27,44 +29,43 @@ public class PgReader
         _pooledArray = null;
     }
 
-    int Pos => (int)(_buffer.CumulativeReadPosition - _startPos);
+    int Pos => (int)(_buffer.CumulativeReadPosition - _fieldStartPos);
 
     internal int FieldSize => _field.Size.IsDefault ? -1 : _field.Size.Value;
 
     public ValueMetadata Current => new() { Size = _currentSize, Format =  _field.Format };
-    public int CurrentSize => _currentSize;
-    public int CurrentOffset => Pos - _currentStartPos;
+    int CurrentSize => _currentSize;
+    internal int CurrentOffset => Pos - _currentStartPos;
+    public Size CurrentBufferRequirement => _currentBufferRequirement;
     public int CurrentRemaining => CurrentSize - CurrentOffset;
 
-    public int MaxRewindCount => BufferSize;
-
     int BufferSize => _buffer.Size;
-    int RemainingData => Math.Min(CurrentRemaining, _buffer.ReadBytesLeft);
+    int BufferBytesRemaining => _buffer.ReadBytesLeft;
 
     NpgsqlReadBuffer.ColumnStream? _userActiveStream;
     PreparedTextReader? _preparedTextReader;
-    bool _resumable;
+    internal bool Resumable { get; private set; }
 
     ArrayPool<byte> ArrayPool => ArrayPool<byte>.Shared;
 
-    internal void Revert(int size, int startPos)
+    // Here for testing purposes
+    internal void BreakConnection() => throw _buffer.Connector.Break(new Exception("Broken"));
+
+    internal void Revert(int size, int startPos, Size bufferRequirement)
     {
         if (startPos > Pos)
-            throw new ArgumentOutOfRangeException(nameof(startPos), "Can't revert forwardly");
-        if (size > _field.Size.Value)
-            throw new ArgumentOutOfRangeException(nameof(size), "Can't revert to a larger size than the outer most size.");
+            ThrowHelper.ThrowArgumentOutOfRangeException(nameof(startPos), "Can't revert forwardly");
 
         _currentSize = size;
         _currentStartPos = startPos;
+        _currentBufferRequirement = bufferRequirement;
     }
 
     [Conditional("DEBUG")]
     void CheckBounds(int count)
     {
         if (Pos + count > _field.Size.Value)
-            throw new InvalidOperationException("Attempt to read past the end of the field.");
-
-        // _pos += count;
+            ThrowHelper.ThrowInvalidOperationException("Attempt to read past the end of the field.");
     }
 
     public byte ReadByte()
@@ -155,16 +156,16 @@ public class PgReader
 
     NpgsqlReadBuffer.ColumnStream GetColumnStream(int? length = null)
     {
-        if (length > CurrentSize)
-            throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current value size");
+        if (length > CurrentRemaining)
+            throw new ArgumentOutOfRangeException(nameof(length), "Length is larger than the current remaining value size");
 
         // This will cause any previously handed out StreamReaders etc to throw, as intended.
         if (_userActiveStream is { } stream)
             stream.Dispose();
 
-        length ??= CurrentSize;
+        length ??= CurrentRemaining;
         CheckBounds(length.GetValueOrDefault());
-        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), length <= _buffer.ReadBytesLeft);
+        return _userActiveStream = _buffer.CreateStream(length.GetValueOrDefault(), length <= BufferBytesRemaining);
     }
 
     public TextReader GetTextReader(Encoding encoding)
@@ -178,7 +179,7 @@ public class PgReader
         // We don't want to add a ton of memory pressure for large strings.
         const int maxPreparedSize = 1024 * 64;
 
-        if (CurrentSize > RemainingData || CurrentSize > maxPreparedSize)
+        if (CurrentRemaining > BufferBytesRemaining || CurrentRemaining > maxPreparedSize)
             return new StreamReader(GetColumnStream(), encoding, detectEncodingFromByteOrderMarks: false);
 
         if (_preparedTextReader is { IsDisposed: false })
@@ -188,7 +189,7 @@ public class PgReader
         }
 
         _preparedTextReader ??= new PreparedTextReader();
-        _preparedTextReader.Init(encoding.GetString(async ? await ReadBytesAsync(CurrentSize, cancellationToken) : ReadBytes(CurrentSize)), GetColumnStream(0));
+        _preparedTextReader.Init(encoding.GetString(async ? await ReadBytesAsync(CurrentRemaining, cancellationToken) : ReadBytes(CurrentRemaining)), GetColumnStream(0));
         return _preparedTextReader;
     }
 
@@ -259,7 +260,7 @@ public class PgReader
         return 0;
     }
 
-    public bool IsResumed => _resumable && CurrentSize != CurrentRemaining;
+    public bool IsResumed => Resumable && CurrentSize != CurrentRemaining;
 
     // Internal state
     TextReader? _charsReadReader;
@@ -321,7 +322,7 @@ public class PgReader
 
     internal void InitCharsRead(int dataOffset, ArraySegment<char>? buffer, out int? charsRead)
     {
-        if (!_resumable)
+        if (!Resumable)
             throw new InvalidOperationException("Wasn't initialized as resumed");
 
         charsRead = _charsReadReader is null ? null : _charsRead;
@@ -351,37 +352,54 @@ public class PgReader
             _charsReadReader?.Dispose();
             _charsReadReader = null;
             _charsRead = default;
-            _startPos = _buffer.CumulativeReadPosition;
+            _fieldStartPos = _buffer.CumulativeReadPosition;
             _currentSize = columnLength < 0 ? 0 : columnLength;
             _field = new() { Format = format, Size = columnLength };
         }
 
-        _resumable = resumable;
+        Resumable = resumable;
         return this;
     }
 
-    internal Exception BreakConnection(Exception reason) => _buffer.Connector.Break(reason);
+    bool _readStarted;
+    internal void StartRead(Size bufferRequirement)
+        => StartRead(async: false, bufferRequirement, CancellationToken.None).GetAwaiter().GetResult();
+
+    internal ValueTask StartReadAsync(Size bufferRequirement, CancellationToken cancellationToken)
+        => StartRead(async: true, bufferRequirement, cancellationToken);
+
+    async ValueTask StartRead(bool async, Size bufferRequirement, CancellationToken cancellationToken)
+    {
+        _readStarted = true;
+        _currentBufferRequirement = bufferRequirement;
+        await BufferData(async, bufferRequirement, cancellationToken);
+    }
+
+    internal void EndRead() => _readStarted = false;
 
     internal async ValueTask<NestedReadScope> BeginNestedRead(bool async, int size, Size bufferRequirement, CancellationToken cancellationToken = default)
     {
+        if (size > CurrentRemaining)
+            throw new ArgumentOutOfRangeException(nameof(size), "Can't begin a read for a larger size than the current remaining size.");
+
         var previousSize = CurrentSize;
         var previousStartPos = _currentStartPos;
+        var previousBufferRequirement = _currentBufferRequirement;
         _currentSize = size;
+        _currentBufferRequirement = bufferRequirement;
         _currentStartPos = Pos;
 
-        if (ShouldBuffer(bufferRequirement))
-            await BufferData(async, bufferRequirement, cancellationToken);
-
-        return new NestedReadScope(async, this, previousSize, previousStartPos);
+        await BufferData(async, bufferRequirement, cancellationToken);
+        return new NestedReadScope(async, this, previousSize, previousStartPos, previousBufferRequirement);
     }
 
     public NestedReadScope BeginNestedRead(int size, Size bufferRequirement)
         => BeginNestedRead(async: false, size, bufferRequirement, CancellationToken.None).GetAwaiter().GetResult();
 
-    public ValueTask<NestedReadScope> BeginNestedReadAsync(int size, Size bufferRequirement, CancellationToken cancellationToken)
+    public ValueTask<NestedReadScope> BeginNestedReadAsync(int size, Size bufferRequirement, CancellationToken cancellationToken = default)
         => BeginNestedRead(async: true, size, bufferRequirement, cancellationToken);
 
-    internal async ValueTask Consume(bool async, int? count = null)
+    async ValueTask Consume(bool async, int? count = null)
     {
         if (FieldSize <= 0)
             return;
@@ -394,8 +412,8 @@ public class PgReader
             await _buffer.Skip(remaining, async);
     }
 
-    public void Consume() => Consume(async: false).GetAwaiter().GetResult();
-    public ValueTask ConsumeAsync() => Consume(async: true);
+    public void Consume(int? count = null) => Consume(async: false, count).GetAwaiter().GetResult();
+    public ValueTask ConsumeAsync(int? count = null) => Consume(async: true, count);
 
     internal void ThrowIfStreamActive()
     {
@@ -413,8 +431,8 @@ public class PgReader
         await DisposeUserActiveStream(async);
 
         // If it was a resumable read while the next one isn't we'll consume everything.
-        // This is the only case where we won't throw about unconsumed data.
-        if (_resumable)
+        // If we're in a _readStarted state we'll assume we had an exception and we'll consume silently as well.
+        if (Resumable || _readStarted)
         {
             if (async)
                 await ConsumeAsync();
@@ -424,7 +442,7 @@ public class PgReader
 
         if (Pos < _field.Size.Value)
         {
-            throw BreakConnection(
+            throw _buffer.Connector.Break(
                 new InvalidOperationException("Trying to commit a reader over a field that hasn't been entirely consumed"));
         }
 
@@ -444,32 +462,39 @@ public class PgReader
         => bufferRequirement.Kind switch
         {
             SizeKind.Exact => bufferRequirement.Value,
-            SizeKind.UpperBound => Math.Min(bufferRequirement.Value, CurrentSize),
-            _ => CurrentSize,
+            SizeKind.UpperBound => Math.Min(bufferRequirement.Value, CurrentRemaining),
+            _ => CurrentRemaining,
         };
 
-    public bool ShouldBuffer(Size bufferRequirement) => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
-
-    bool ShouldBuffer(int byteCount)
+    public bool ShouldBuffer(Size bufferRequirement)
+        => ShouldBuffer(GetBufferRequirementByteCount(bufferRequirement));
+    public bool ShouldBuffer(int byteCount)
     {
-        if (byteCount > BufferSize)
-            return ThrowArgumentOutOfRange();
-        if (byteCount > sizeof(int) + CurrentSize)
-            return ThrowArgumentOutOfRangeOfValue();
+        return BufferBytesRemaining < byteCount && Core();
 
-        return RemainingData < byteCount;
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        bool Core()
+        {
+            if (byteCount > BufferSize)
+                ThrowArgumentOutOfRange();
+            if (byteCount > CurrentRemaining)
+                ThrowArgumentOutOfRangeOfValue();
 
-        bool ThrowArgumentOutOfRange()
+            return true;
+        }
+
+        static void ThrowArgumentOutOfRange()
             => throw new ArgumentOutOfRangeException(nameof(byteCount),
                 "Buffer requirement is larger than the buffer size, this can never succeed by buffering data but requires a larger buffer size instead.");
-        bool ThrowArgumentOutOfRangeOfValue()
+        static void ThrowArgumentOutOfRangeOfValue()
             => throw new ArgumentOutOfRangeException(nameof(byteCount),
-                "Buffer requirement is larger than the length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
+                "Buffer requirement is larger than the remaining length of the value, make sure the value is always at least this size or use an upper bound requirement instead.");
     }
 
     public void BufferData(Size bufferRequirement)
+        => BufferData(GetBufferRequirementByteCount(bufferRequirement));
+    public void BufferData(int byteCount)
     {
-        var byteCount = GetBufferRequirementByteCount(bufferRequirement);
         if (!ShouldBuffer(byteCount))
             return;
 
@@ -477,8 +502,9 @@ public class PgReader
     }
 
     public ValueTask BufferDataAsync(Size bufferRequirement, CancellationToken cancellationToken)
+        => BufferDataAsync(GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
+    public ValueTask BufferDataAsync(int byteCount, CancellationToken cancellationToken)
     {
-        var byteCount = GetBufferRequirementByteCount(bufferRequirement);
         if (!ShouldBuffer(byteCount))
             return new();
 
@@ -486,17 +512,18 @@ public class PgReader
 
         async ValueTask EnsureDataAsyncCore(int byteCount, CancellationToken cancellationToken)
         {
-            // TODO no cancellationToken?
             await _buffer.EnsureAsync(byteCount);
         }
     }
 
-    public ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
+    internal ValueTask BufferData(bool async, Size bufferRequirement, CancellationToken cancellationToken)
+        => BufferData(async, GetBufferRequirementByteCount(bufferRequirement), cancellationToken);
+    internal ValueTask BufferData(bool async, int byteCount, CancellationToken cancellationToken)
     {
         if (async)
-            return BufferDataAsync(bufferRequirement, cancellationToken);
+            return BufferDataAsync(byteCount, cancellationToken);
 
-        BufferData(bufferRequirement);
+        BufferData(byteCount);
         return new();
     }
 }
@@ -506,14 +533,16 @@ public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
     readonly PgReader _reader;
     readonly int _previousSize;
     readonly int _previousStartPos;
+    readonly Size _previousBufferRequirement;
     readonly bool _async;
 
-    internal NestedReadScope(bool async, PgReader reader, int previousSize, int previousStartPos)
+    internal NestedReadScope(bool async, PgReader reader, int previousSize, int previousStartPos, Size previousBufferRequirement)
     {
         _async = async;
         _reader = reader;
         _previousSize = previousSize;
         _previousStartPos = previousStartPos;
+        _previousBufferRequirement = previousBufferRequirement;
     }
 
     public void Dispose()
@@ -528,17 +557,17 @@ public readonly struct NestedReadScope : IDisposable, IAsyncDisposable
         if (_reader.CurrentRemaining > 0)
         {
             if (_async)
-                return AsyncCore(_reader, _previousSize, _previousStartPos);
+                return AsyncCore(_reader, _previousSize, _previousStartPos, _previousBufferRequirement);
 
             _reader.Consume();
         }
-        _reader.Revert(_previousSize, _previousStartPos);
+        _reader.Revert(_previousSize, _previousStartPos, _previousBufferRequirement);
         return new();
 
-        static async ValueTask AsyncCore(PgReader reader, int previousSize, int previousStartPos)
+        static async ValueTask AsyncCore(PgReader reader, int previousSize, int previousStartPos, Size previousBufferRequirement)
         {
             await reader.ConsumeAsync();
-            reader.Revert(previousSize, previousStartPos);
+            reader.Revert(previousSize, previousStartPos, previousBufferRequirement);
         }
     }
 }

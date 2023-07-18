@@ -32,7 +32,7 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
     public override ValueTask<BigInteger> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         // If we don't need a read and can read buffered we delegate to our sync read method which won't do IO in such a case.
-        if (!reader.ShouldBuffer(reader.CurrentSize))
+        if (!reader.ShouldBuffer(reader.CurrentRemaining))
             Read(reader);
 
         return AsyncCore(reader, cancellationToken);
