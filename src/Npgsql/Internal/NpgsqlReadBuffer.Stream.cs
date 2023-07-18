@@ -216,14 +216,13 @@ sealed partial class NpgsqlReadBuffer
             if (IsDisposed || !disposing)
                 return;
 
-            var leftToSkip = CurrentLength - _read;
-            if (leftToSkip > 0)
+            if (!_connector.IsBroken)
             {
-                if (async)
+                var leftToSkip = CurrentLength - _read;
+                if (leftToSkip > 0)
                     await _buf.Skip(leftToSkip, async).ConfigureAwait(false);
-                else
-                    _buf.Skip(leftToSkip, async).GetAwaiter().GetResult();
             }
+
             IsDisposed = true;
         }
     }

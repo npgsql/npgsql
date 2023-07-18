@@ -267,7 +267,7 @@ public class DateTimeTests : TestBase
 
     [Test]
     public Task Timestamptz_cannot_write_non_utc_DateTimeOffset()
-        => AssertTypeUnsupportedWrite(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
+        => AssertTypeUnsupportedWrite<DateTimeOffset, ArgumentException>(new DateTimeOffset(1998, 4, 12, 13, 26, 38, TimeSpan.FromHours(2)));
 
     [Test]
     public Task Timestamptz_as_long()

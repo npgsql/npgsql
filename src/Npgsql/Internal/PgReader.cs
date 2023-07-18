@@ -390,7 +390,7 @@ public class PgReader
         CheckBounds(remaining);
 
         // A breaking exception unwind from a nested scope should not try to consume its remaining data.
-        if (_buffer.Connector.State is not ConnectorState.Broken)
+        if (!_buffer.Connector.IsBroken)
             await _buffer.Skip(remaining, async);
     }
 
