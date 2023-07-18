@@ -198,27 +198,23 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
         var columnLen = CheckRowAndColumnAndSeek(ordinal, out var column);
-        var info = GetOrAddConverterInfo(typeof(Stream), column, ordinal);
-        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
-
         if (columnLen is -1)
             ThrowHelper.ThrowInvalidCastException_NoValue();
 
         if (buffer is null)
             return columnLen;
 
-        var dataOffset2 = (int)dataOffset;
-        if (dataOffset2 >= columnLen)
-            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), columnLen);
+        using var _ = PgReader.BeginNestedRead(columnLen, Size.Zero);
 
-        Buffer.ReadPosition += dataOffset2;
-        length = Math.Min(length, columnLen - dataOffset2);
-        // TODO these should be nested reads.
-        var reader = Buffer.PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), columnLen, Format);
-        var result = info.AsObject
-            ? (Stream)info.Converter.ReadAsObject(reader)!
-            : info.GetConverter<Stream>().Read(reader);
-        Debug.Assert(ReferenceEquals(buffer, result));
+        // Move to offset
+        if (PgReader.CurrentOffset > dataOffset)
+            PgReader.Rewind(PgReader.CurrentOffset - (int)dataOffset);
+        else if (PgReader.CurrentOffset < dataOffset)
+            PgReader.Consume((int)dataOffset - PgReader.CurrentOffset);
+
+        // At offset, read into buffer.
+        length = Math.Min(length, PgReader.CurrentRemaining);
+        PgReader.ReadBytes(new Span<byte>(buffer, bufferOffset, length));
         return length;
     }
     /// <inheritdoc />
@@ -317,10 +313,9 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
         var info = column.ObjectOrDefaultInfo;
         if (columnLength == -1)
             return DBNull.Value;
-        // TODO these should be nested reads.
-        var reader = PgReader.Init(columnLength, Format);
-        reader.BufferData(info.BufferRequirement);
-        return info.Converter.ReadAsObject(reader);
+
+        using var _ = PgReader.BeginNestedRead(columnLength, info.BufferRequirement);
+        return info.Converter.ReadAsObject(PgReader);
     }
 
     /// <inheritdoc />
@@ -364,12 +359,10 @@ public sealed class NpgsqlNestedDataReader : DbDataReader
             ThrowHelper.ThrowInvalidCastException_NoValue();
         }
 
-        // TODO these should be nested reads.
-        var reader = PgReader.Init(columnLength, Format);
-        reader.BufferData(info.BufferRequirement);
+        using var _ = PgReader.BeginNestedRead(columnLength, info.BufferRequirement);
         return info.AsObject
-            ? (T)info.Converter.ReadAsObject(reader)!
-            : info.GetConverter<T>().Read(reader);
+            ? (T)info.Converter.ReadAsObject(PgReader)!
+            : info.GetConverter<T>().Read(PgReader);
     }
 
     /// <inheritdoc />
