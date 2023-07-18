@@ -152,12 +152,18 @@ readonly struct PgArrayConverter
         _ = reader.ReadUInt32(); // Element OID.
 
         if (dimensions is not 0 && _expectedDimensions is not null && dimensions != _expectedDimensions)
-            throw new InvalidCastException($"Cannot read an array value with {dimensions} dimension{(dimensions == 1 ? "" : "s")} into a "
-                                                + $"collection type with {_expectedDimensions} dimension{(_expectedDimensions == 1 ? "" : "s")}. "
-                                                + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas being the expected amount of dimensions.");
+        {
+            await reader.Consume(async);
+            ThrowHelper.ThrowInvalidCastException($"Cannot read an array value with {dimensions} dimension{(dimensions == 1 ? "" : "s")} into a "
+                                                  + $"collection type with {_expectedDimensions} dimension{(_expectedDimensions == 1 ? "" : "s")}. "
+                                                  + $"Call GetValue or a version of GetFieldValue<TElement[,,,]> with the commas being the expected amount of dimensions.");
+        }
 
         if (containsNulls && !ElemTypeDbNullable)
-            throw new InvalidCastException(ReadNonNullableCollectionWithNullsExceptionMessage);
+        {
+            await reader.Consume(async);
+            ThrowHelper.ThrowInvalidCastException(ReadNonNullableCollectionWithNullsExceptionMessage);
+        }
 
         // Make sure we can read length + lower bound N dimension times.
         if (reader.ShouldBuffer((sizeof(int) + sizeof(int)) * dimensions))

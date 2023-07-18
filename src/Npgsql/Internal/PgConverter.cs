@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal;
 
+interface IResumableRead
+{
+    bool Supported { get; }
+}
+
 public readonly struct SizeContext
 {
     public SizeContext(DataFormat format) => Format = format;

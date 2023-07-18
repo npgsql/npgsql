@@ -10,12 +10,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Npgsql.BackendMessages;
 using Npgsql.Internal;
+using Npgsql.Internal.Converters;
 using Npgsql.PostgresTypes;
 using Npgsql.Schema;
 using Npgsql.Util;
@@ -81,14 +81,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     int _column;
 
     /// <summary>
-    /// For streaming types (e.g. bytea), holds the byte length of the column.
-    /// Does not include the length prefix.
-    /// </summary>
-    internal int ColumnLen;
-
-    internal int PosInColumn;
-
-    /// <summary>
     /// The position in the buffer at which the current data row message ends.
     /// Used only when the row is consumed non-sequentially.
     /// </summary>
@@ -100,8 +92,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// Should always be true for the non-sequential mode.
     /// </summary>
     bool _canConsumeRowNonSequentially;
-
-    int _charPos;
 
     /// <summary>
     /// The RowDescription message for the current resultset being processed
@@ -218,7 +208,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             if (!_canConsumeRowNonSequentially)
                 return null;
             // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
-            ConsumeRowNonSequential();
+            ConsumeRowNonSequential(userOp: true);
             break;
         case ReaderState.BetweenResults:
         case ReaderState.Consumed:
@@ -257,7 +247,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
                 return true;
 
             case ReaderState.InResult:
-                await ConsumeRow(async);
+                await ConsumeRow(async, userOp: true);
                 if (_behavior.HasFlag(CommandBehavior.SingleRow))
                 {
                     // TODO: See optimization proposal in #410
@@ -368,7 +358,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             {
             case ReaderState.BeforeResult:
             case ReaderState.InResult:
-                await ConsumeRow(async);
+                await ConsumeRow(async, userOp: !isConsuming);
                 while (true)
                 {
                     var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
@@ -641,13 +631,11 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             p.Value = pending.Dequeue();
         }
 
-        PgReader.CommandReset();
+        PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
         State = ReaderState.BeforeResult; // Set the state back
         Buffer.ReadPosition = currentPosition; // Restore position
 
         _column = -1;
-        ColumnLen = -1;
-        PosInColumn = 0;
     }
 
     /// <summary>
@@ -833,8 +821,6 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
         _hasRows = true;
         _column = -1;
-        ColumnLen = -1;
-        PosInColumn = 0;
 
         // We assume that the row's number of columns is identical to the description's
         _numColumns = Buffer.ReadInt16();
@@ -1378,8 +1364,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (field.DataFormat is DataFormat.Text || (elementType.InternalName != "record" && compositeType == null))
             throw new InvalidCastException("GetData() not supported for type " + field.TypeDisplayName);
 
-        SeekToColumn(ordinal, false).GetAwaiter().GetResult();
-        if (ColumnLen == -1)
+        var columnLength = SeekToColumn(async: false, ordinal, field).GetAwaiter().GetResult();
+        if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
         var reader = CachedFreeNestedDataReader;
@@ -1421,32 +1407,30 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
-        var field = CheckRowAndGetField(ordinal);
         // Check whether we can do byte[] reads.
-        var info = field.GetConverterInfo(typeof(Stream));
+        var info = GetInfo(ordinal, typeof(Stream), out var field);
         Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
 
-        SeekToColumn(ordinal, false, resumable: true).GetAwaiter().GetResult();
-
-        if (ColumnLen is -1)
+        var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
+        if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
-
-        if (buffer is null)
-            return ColumnLen;
-
-        var dataOffset2 = (int)dataOffset;
-        // Attempt to read beyond the end of the column
-        SeekInColumn(dataOffset2, false).GetAwaiter().GetResult();
-
-        length = Math.Min(length, ColumnLen - dataOffset2);
-
-        var reader = PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), ColumnLen, field.DataFormat);
-        // TODO actually make this work in the byte[] converter.
-        var result = info.AsObject
-            ? (Stream)info.Converter.ReadAsObject(reader)
-            : info.GetConverter<Stream>().Read(reader);
-        Debug.Assert(ReferenceEquals(buffer, result));
-        PosInColumn += length;
+        //
+        // if (buffer is null)
+        //     return ColumnLen;
+        //
+        // var dataOffset2 = checked((int)dataOffset);
+        // if (_isSequential && dataOffset2 < PgReader.CurrentOffset)
+        //     ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
+        //
+        // PgReader.Seek(async: false, dataOffset2).GetAwaiter().GetResult();
+        //
+        // var reader = PgReader.Init(new ArraySegment<byte>(buffer, bufferOffset, length), ColumnLen, field.DataFormat);
+        // // TODO actually make this work in the byte[] converter.
+        // var result = info.AsObject
+        //     ? (Stream)info.Converter.ReadAsObject(reader)
+        //     : info.GetConverter<Stream>().Read(reader);
+        // Debug.Assert(ReferenceEquals(buffer, result));
+        // PosInColumn += length;
         return length;
     }
 
@@ -1455,7 +1439,8 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The returned object.</returns>
-    public override Stream GetStream(int ordinal) => GetStream(ordinal, false).Result;
+    public override Stream GetStream(int ordinal)
+        => GetFieldValue<Stream>(ordinal);
 
     /// <summary>
     /// Retrieves data as a <see cref="Stream"/>.
@@ -1466,24 +1451,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </param>
     /// <returns>The returned object.</returns>
     public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return GetStream(ordinal, true, cancellationToken).AsTask();
-    }
-
-    ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default) =>
-        GetStreamInternal(CheckRowAndGetField(ordinal), ordinal, async, cancellationToken);
-
-    async ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
-    {
-        using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-        await SeekToColumn(ordinal, async);
-        if (ColumnLen == -1)
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
-
-        return PgReader.GetStream();
-    }
+        => GetFieldValueAsync<Stream>(ordinal, cancellationToken);
 
     #endregion
 
@@ -1507,96 +1475,30 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
             throw new IndexOutOfRangeException($"length must be between 0 and {buffer.Length - bufferOffset}");
 
-        var field = CheckRowAndGetField(ordinal);
-        // Check whether we can do char[] reads.
-        var info = field.GetConverterInfo(typeof(char[]));
-        Debug.Assert(info.BufferRequirement is { Kind: SizeKind.Exact, Value: 0 });
+        // Check whether we can do resumable char[] reads.
+        var info = GetInfo(ordinal, typeof(GetChars), out var field);
+        if (info.Converter is not IResumableRead { Supported: true })
+            throw new NotSupportedException("The GetChars method is not supported for this column type");
 
-        SeekToColumn(ordinal, false, resumable: true).GetAwaiter().GetResult();
-        if (ColumnLen == -1)
+        Debug.Assert(info.BufferRequirement == Size.Zero);
+
+        var columnLength = SeekToColumn(async: false, ordinal, field, resumableOp: true).GetAwaiter().GetResult();
+        if (columnLength == -1)
             ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
-        if (PosInColumn == 0)
-            _charPos = 0;
+        dataOffset = buffer is null ? 0 : dataOffset;
+        PgReader.InitCharsRead(checked((int)dataOffset),
+            buffer is not null ? new ArraySegment<char>(buffer, bufferOffset, length) : (ArraySegment<char>?)null,
+            out var previousDataOffset);
 
-        var decoder = Buffer.TextEncoding.GetDecoder();
+        if (_isSequential && previousDataOffset > dataOffset)
+            ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
 
-        if (buffer == null)
-        {
-            // Note: Getting the length of a text column means decoding the entire field,
-            // very inefficient and also consumes the column in sequential mode. But this seems to
-            // be SqlClient's behavior as well.
-            var (bytesSkipped, charsSkipped) = SkipChars(decoder, int.MaxValue, ColumnLen - PosInColumn);
-            Debug.Assert(bytesSkipped == ColumnLen - PosInColumn);
-            PosInColumn += bytesSkipped;
-            _charPos += charsSkipped;
-            return _charPos;
-        }
-
-        if (PosInColumn == ColumnLen || dataOffset < _charPos)
-        {
-            // Either the column has already been read (e.g. GetString()) or a previous GetChars()
-            // has positioned us in the column *after* the requested read start offset. Seek back
-            // (this will throw for sequential)
-            SeekInColumn(0, false).GetAwaiter().GetResult();
-            _charPos = 0;
-        }
-
-        if (dataOffset > _charPos)
-        {
-            var charsToSkip = (int)dataOffset - _charPos;
-            var (bytesSkipped, charsSkipped) = SkipChars(decoder, charsToSkip, ColumnLen - PosInColumn);
-            decoder.Reset();
-            PosInColumn += bytesSkipped;
-            _charPos += charsSkipped;
-            if (charsSkipped < charsToSkip) // data offset is beyond the column's end
-                return 0;
-        }
-
-        // We're now positioned at the start of the segment of characters we need to read.
-        if (length == 0)
-            return 0;
-
-        var (bytesRead, charsRead) = DecodeChars(decoder, buffer.AsSpan(bufferOffset, length), ColumnLen - PosInColumn);
-
-        PosInColumn += bytesRead;
-        _charPos += charsRead;
-        return charsRead;
-    }
-
-    (int BytesRead, int CharsRead) DecodeChars(Decoder decoder, Span<char> output, int byteCount)
-    {
-        var (bytesRead, charsRead) = (0, 0);
-        var outputLength = output.Length;
-
-        while (true)
-        {
-            Buffer.Ensure(1); // Make sure we have at least some data
-            var maxBytes = Math.Min(byteCount - bytesRead, Buffer.ReadBytesLeft);
-            var bytes = Buffer.Buffer.AsSpan(Buffer.ReadPosition, maxBytes);
-            decoder.Convert(bytes, output, false, out var bytesUsed, out var charsUsed, out _);
-            Buffer.ReadPosition += bytesUsed;
-            bytesRead += bytesUsed;
-            charsRead += charsUsed;
-            if (charsRead == outputLength || bytesRead == byteCount)
-                break;
-            output = output.Slice(charsUsed);
-        }
-
-        return (bytesRead, charsRead);
-    }
-
-    internal (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
-    {
-        Span<char> tempCharBuf = stackalloc char[512];
-        var (charsSkipped, bytesSkipped) = (0, 0);
-        while (charsSkipped < charCount && bytesSkipped < byteCount)
-        {
-            var (bytesRead, charsRead) = DecodeChars(decoder, tempCharBuf.Slice(0, Math.Min(charCount, tempCharBuf.Length)), byteCount);
-            bytesSkipped += bytesRead;
-            charsSkipped += charsRead;
-        }
-        return (bytesSkipped, charsSkipped);
+        var result = info.AsObject
+            ? (GetChars)info.Converter.ReadAsObject(PgReader)
+            : info.GetConverter<GetChars>().Read(PgReader);
+        PgReader.AdvanceCharsRead(result.Read);
+        return result.Read;
     }
 
     /// <summary>
@@ -1605,7 +1507,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The returned object.</returns>
     public override TextReader GetTextReader(int ordinal)
-        => GetTextReader(ordinal, false).Result;
+        => GetFieldValue<TextReader>(ordinal);
 
     /// <summary>
     /// Retrieves data as a <see cref="TextReader"/>.
@@ -1616,34 +1518,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </param>
     /// <returns>The returned object.</returns>
     public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
-    {
-        using (NoSynchronizationContextScope.Enter())
-            return GetTextReader(ordinal, true, cancellationToken).AsTask();
-    }
-
-    async ValueTask<TextReader> GetTextReader(int ordinal, bool async, CancellationToken cancellationToken = default)
-    {
-        var field = CheckRowAndGetField(ordinal);
-        var info = field.GetConverterInfo(typeof(TextReader));
-
-        // Call Reset before SeekToColumn means we cause an exception to be thrown if a user is already holding a reader.
-        PgReader.Reset();
-        await SeekToColumn(ordinal, async);
-        if (ColumnLen is -1)
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
-
-        Debug.Assert(info.BufferRequirement == Size.Zero);
-
-        // We take current remaining bytes as the TextReader implementation might read/skip a few before handing off a stream
-        // It could also decide to hand of a copy of the data, which should also be properly supported.
-        var prevRemaining = PgReader.ByteCountRemaining;
-        var result = (TextReader)(async
-            ? await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
-            : info.Converter.ReadAsObject(PgReader));
-        // Here we compute the difference, the remainder of the column pos will be incremented by callers of DisposeUserActiveStream()
-        PosInColumn += prevRemaining - PgReader.ByteCountRemaining;
-        return result;
-    }
+        => GetFieldValueAsync<TextReader>(ordinal, cancellationToken);
 
     #endregion
 
@@ -1660,18 +1535,37 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns></returns>
     public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
     {
-        if (typeof(T) == typeof(Stream))
-            return (Task<T>)(object)GetStreamAsync(ordinal, cancellationToken);
-
-        if (typeof(T) == typeof(TextReader))
-            return (Task<T>)(object)GetTextReaderAsync(ordinal, cancellationToken);
-
         // In non-sequential, we know that the column is already buffered - no I/O will take place
         if (!_isSequential)
             return Task.FromResult(GetFieldValue<T>(ordinal));
 
         using (NoSynchronizationContextScope.Enter())
-            return GetFieldValueSequential<T>(ordinal, true, cancellationToken).AsTask();
+            return Core(ordinal, cancellationToken).AsTask();
+
+        async ValueTask<T> Core(int ordinal, CancellationToken cancellationToken)
+        {
+            await using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+            var isStream = typeof(T) == typeof(Stream);
+            var info = GetInfo(ordinal, isStream ? null : typeof(T), out var field);
+
+            var columnLength = await SeekToColumnSequential(async: true, ordinal, field);
+            if (columnLength == -1)
+                return DbNullValueOrThrow<T>(field);
+
+            if (isStream || typeof(T) == typeof(TextReader))
+            {
+                PgReader.ThrowIfStreamActive();
+
+                // The only statically mapped converter, it always exists.
+                if (isStream)
+                    return (T)(object)PgReader.GetStream();
+            }
+
+            await PgReader.BufferDataAsync(info.BufferRequirement, cancellationToken);
+            return info.AsObject
+                ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
+                : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -1682,96 +1576,24 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>The column to be retrieved.</returns>
     public override T GetFieldValue<T>(int ordinal)
     {
-        if (typeof(T) == typeof(Stream))
-            return (T)(object)GetStream(ordinal);
+        var isStream = typeof(T) == typeof(Stream);
+        var info = GetInfo(ordinal, isStream ? null : typeof(T), out var field);
 
-        if (typeof(T) == typeof(TextReader))
-            return (T)(object)GetTextReader(ordinal);
+        if (isStream || typeof(T) == typeof(TextReader))
+            PgReader.ThrowIfStreamActive();
 
-        if (_isSequential)
-            return GetFieldValueSequential<T>(ordinal, false).GetAwaiter().GetResult();
+        var columnLength = SeekToColumn(async: false, ordinal, field).GetAwaiter().GetResult();
+        if (columnLength == -1)
+            return DbNullValueOrThrow<T>(field);
 
-        // In non-sequential, we know that the column is already buffered - no I/O will take place
+        // The only statically mapped converter, it always exists.
+        if (isStream)
+            return (T)(object)PgReader.GetStream();
 
-        var field = CheckRowAndGetField(ordinal);
-        SeekToColumnNonSequential(ordinal);
-
-        var info = field.GetConverterInfo(typeof(T));
-
-        if (ColumnLen == -1)
-        {
-            // When T is a Nullable<T> (and only in that case), we support returning null
-            if (default(T) is null && typeof(T).IsValueType)
-                return default!;
-
-            if (typeof(T) == typeof(object))
-                return (T)(object)DBNull.Value;
-
-            ThrowHelper.ThrowInvalidCastException_NoValue(field);
-        }
-
-        // We don't handle exceptions or update PosInColumn
-        // With non-sequential reads we always just move to the start/end of the column
         PgReader.BufferData(info.BufferRequirement);
         return info.AsObject
             ? (T)info.Converter.ReadAsObject(PgReader)
             : info.GetConverter<T>().Read(PgReader);
-    }
-
-    async ValueTask<T> GetFieldValueSequential<T>(int column, bool async, CancellationToken cancellationToken = default)
-    {
-        using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-        var position = Buffer.ReadPosition;
-        try
-        {
-            var field = CheckRowAndGetField(column);
-            var info = field.GetConverterInfo(typeof(T));
-            await SeekToColumnSequential(column, async);
-
-            if (ColumnLen == -1)
-            {
-                // When T is a Nullable<T> (and only in that case), we support returning null
-                if (default(T) is null && typeof(T).IsValueType)
-                    return default!;
-
-                if (typeof(T) == typeof(object))
-                    return (T)(object)DBNull.Value;
-
-                ThrowHelper.ThrowInvalidCastException_NoValue(field);
-            }
-
-            if (async)
-            {
-                await PgReader.BufferDataAsync(info.BufferRequirement, cancellationToken);
-                return info.AsObject
-                    ? (T)await info.Converter.ReadAsObjectAsync(PgReader, cancellationToken)
-                    : await info.GetConverter<T>().ReadAsync(PgReader, cancellationToken);
-            }
-            PgReader.BufferData(info.BufferRequirement);
-            return info.AsObject
-                ? (T)info.Converter.ReadAsObject(PgReader)
-                : info.GetConverter<T>().Read(PgReader);
-        }
-        catch
-        {
-            var consumedBytes = Buffer.ReadPosition - position;
-            // We don't need to skip if we can still let the user retry the read.
-            if (consumedBytes > 0 && Connector.State != ConnectorState.Broken)
-            {
-                var remainingBytes = ColumnLen - consumedBytes;
-                if (remainingBytes > 0)
-                {
-                    await Buffer.Skip(remainingBytes, async);
-                }
-            }
-            throw;
-        }
-        finally
-        {
-            // Important: position must still be updated
-            if (ColumnLen > 0)
-                PosInColumn += ColumnLen;
-        }
     }
 
     #endregion
@@ -1785,36 +1607,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <returns>The value of the specified column.</returns>
     public override object GetValue(int ordinal)
     {
-        var field = CheckRowAndGetField(ordinal);
-        SeekToColumn(ordinal, false);
-        var info = field.ObjectOrDefaultInfo;
-
-        if (ColumnLen == -1)
+        var info = GetInfo(ordinal, null, out var field);
+        var columnLength = SeekToColumn(async: false, ordinal, field).GetAwaiter().GetResult();
+        if (columnLength == -1)
             return DBNull.Value;
 
-        object result;
-        var position = Buffer.ReadPosition;
-        try
-        {
-            PgReader.BufferData(info.BufferRequirement);
-            result = info.Converter.ReadAsObject(PgReader);
-        }
-        catch
-        {
-            if (Connector.State != ConnectorState.Broken)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-            }
-            throw;
-        }
-        finally
-        {
-            // Important: position must still be updated
-            PosInColumn += ColumnLen;
-        }
+        PgReader.BufferData(info.BufferRequirement);
+        var result = info.Converter.ReadAsObject(PgReader);
 
         return result;
     }
@@ -1836,11 +1635,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
     public override bool IsDBNull(int ordinal)
-    {
-        CheckRowAndGetField(ordinal);
-        SeekToColumn(ordinal, false);
-        return ColumnLen == -1;
-    }
+        => SeekToColumn(async: false, ordinal, CheckRowAndGetField(ordinal), resumableOp: true).GetAwaiter().GetResult() is -1;
 
     /// <summary>
     /// An asynchronous version of <see cref="IsDBNull(int)"/>, which gets a value that indicates whether the column contains non-existent or missing values.
@@ -1856,17 +1651,13 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
         if (!_isSequential)
             return IsDBNull(ordinal) ? PGUtil.TrueTask : PGUtil.FalseTask;
 
-        CheckRowAndGetField(ordinal);
         using (NoSynchronizationContextScope.Enter())
-            return IsDBNullAsyncInternal(ordinal, cancellationToken);
+            return Core(ordinal, cancellationToken);
 
-        // ReSharper disable once InconsistentNaming
-        async Task<bool> IsDBNullAsyncInternal(int ordinal, CancellationToken cancellationToken)
+        async Task<bool> Core(int ordinal, CancellationToken cancellationToken)
         {
-            using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
-
-            await SeekToColumn(ordinal, true);
-            return ColumnLen == -1;
+            await using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+            return await SeekToColumn(async: true, ordinal, CheckRowAndGetField(ordinal), resumableOp: true) is -1;
         }
     }
 
@@ -2061,114 +1852,133 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     #region Seeking
 
-    Task SeekToColumn(int ordinal, bool async, bool resumable = false)
-    {
-        if (_isSequential)
-            return SeekToColumnSequential(ordinal, async, resumable);
-        SeekToColumnNonSequential(ordinal);
-        return Task.CompletedTask;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    ValueTask<int> SeekToColumn(bool async, int ordinal, FieldDescription field, bool resumableOp = false)
+        => _isSequential
+            ? SeekToColumnSequential(async, ordinal, field, resumableOp)
+            : new(SeekToColumnNonSequential(ordinal, field, resumableOp));
 
-    void SeekToColumnNonSequential(int ordinal)
+    int SeekToColumnNonSequential(int ordinal, FieldDescription field, bool resumableOp = false)
     {
-        // Shut down any streaming going on on the column
-        _ = PgReader.DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
-
-        if (_column != ordinal)
-            PgReader.Commit();
+        PgReader.Commit(async: false, _column == ordinal && resumableOp).GetAwaiter().GetResult();
 
         for (var lastColumnRead = _columns.Count; ordinal >= lastColumnRead; lastColumnRead++)
         {
-            int lastColumnLen;
-            (Buffer.ReadPosition, lastColumnLen) = _columns[lastColumnRead - 1];
+            (Buffer.ReadPosition, var lastColumnLen) = _columns[lastColumnRead - 1];
             if (lastColumnLen != -1)
                 Buffer.ReadPosition += lastColumnLen;
             var len = Buffer.ReadInt32();
             _columns.Add((Buffer.ReadPosition, len));
         }
 
-        (Buffer.ReadPosition, ColumnLen) = _columns[ordinal];
-        if (_column != ordinal && ColumnLen >= 0)
-            PgReader.Init(ColumnLen, CheckRowAndGetField(ordinal).DataFormat);
+        (Buffer.ReadPosition, var columnLength) = _columns[ordinal];
+        PgReader.Init(columnLength, field.DataFormat, resumableOp);
+        if (ordinal != _column)
+            _column = ordinal;
 
-        _column = ordinal;
-        PosInColumn = 0;
+        return columnLength;
     }
 
     /// <summary>
-    /// Seeks to the given column. The 4-byte length is read and stored in <see cref="ColumnLen"/>.
+    /// Seeks to the given column. The 4-byte length is read and returned/>.
     /// </summary>
-    async Task SeekToColumnSequential(int ordinal, bool async, bool resumable = false)
+    ValueTask<int> SeekToColumnSequential(bool async, int ordinal, FieldDescription field, bool resumableOp = false)
     {
-        if (ordinal < 0 || ordinal >= _numColumns)
-            throw new IndexOutOfRangeException("Column index out of range");
+        var resuming = _column == ordinal;
+        if (ordinal < _column || (resuming && !resumableOp && PgReader.FieldSize != -1))
+            ThrowHelper.ThrowInvalidOperationException(
+                $"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, " +
+                $"you may only read from column ordinal '{_column}' or greater.");
 
-        if (ordinal < _column || (!resumable && ordinal == _column))
-            throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{ordinal}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{_column}' or greater.");
-
-        // Shut down any streaming going on on the column
-        // Dispose() consumes the length number of bytes it was initialized at, usually the entire column.
-        PosInColumn += await PgReader.DisposeUserActiveStream(async);
-
-        if (ordinal == _column)
-            return;
-
-        PgReader.Commit();
-
-        // Need to seek forward
-
-        // Skip to end of column if needed
-        // TODO: Simplify by better initializing _columnLen/_posInColumn
-        var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
-        if (remainingInColumn > 0)
-            await Buffer.Skip(remainingInColumn, async);
-
-        // Skip over unwanted fields
-        for (; _column < ordinal - 1; _column++)
+        var committed = false;
+        if (!PgReader.CommitHasIO(resuming))
         {
-            await Buffer.Ensure(4, async);
-            var len = Buffer.ReadInt32();
-            if (len != -1)
-                await Buffer.Skip(len, async);
+            var task = PgReader.Commit(async, resuming);
+            task.GetAwaiter().GetResult();
+            Debug.Assert(task.IsCompleted);
+            committed = true;
+            if (TrySeekBuffered(ordinal, out var columnLength))
+            {
+                if (!resuming)
+                    PgReader.Init(columnLength, field.DataFormat, resumableOp);
+                return new(columnLength);
+            }
+
+            // If we couldn't consume the column TrySeekBuffered had to stop at, do so now.
+            if (columnLength > -1)
+            {
+                PgReader.Init(columnLength, field.DataFormat, resumableOp);
+                committed = false;
+            }
         }
 
-        await Buffer.Ensure(4, async);
-        ColumnLen = Buffer.ReadInt32();
+        return Core(async, !committed, ordinal, field.DataFormat, resumableOp);
 
-        if (ColumnLen >= 0)
-            PgReader.Init(ColumnLen, CheckRowAndGetField(ordinal).DataFormat);
-
-        PosInColumn = 0;
-        _column = ordinal;
-    }
-
-    Task SeekInColumn(int dataOffset, bool async)
-    {
-        if (_isSequential)
-            return SeekInColumnSequential(dataOffset, async);
-
-        if (dataOffset >= ColumnLen)
-            ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), ColumnLen);
-
-        Buffer.ReadPosition = _columns[_column].Offset + dataOffset;
-        PosInColumn = dataOffset;
-        return Task.CompletedTask;
-
-        async Task SeekInColumnSequential(int dataOffset, bool async)
+#if NET6_0_OR_GREATER
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
+        async ValueTask<int> Core(bool async, bool commit, int ordinal, DataFormat dataFormat, bool resumableOp)
         {
-            Debug.Assert(_column > -1);
-
-            if (dataOffset < PosInColumn)
-                ThrowHelper.ThrowInvalidOperationException("Attempt to read a position in the column which has already been read");
-
-            if (dataOffset >= ColumnLen)
-                ThrowHelper.ThrowArgumentOutOfRange_OutOfColumnBounds(nameof(dataOffset), ColumnLen);
-
-            if (dataOffset > PosInColumn)
+            if (commit)
             {
-                await Buffer.Skip(dataOffset - PosInColumn, async);
-                PosInColumn = dataOffset;
+                Debug.Assert(ordinal != _column);
+                await PgReader.Commit(async, resuming);
             }
+
+            if (ordinal == _column)
+                return PgReader.FieldSize;
+
+            // Seek to the requested column
+            var buffer = Buffer;
+            for (; _column < ordinal - 1; _column++)
+            {
+                await buffer.Ensure(4, async);
+                var len = buffer.ReadInt32();
+                if (len != -1)
+                    await buffer.Skip(len, async);
+            }
+
+            await buffer.Ensure(4, async);
+            var columnLength = buffer.ReadInt32();
+            _column = ordinal;
+
+            PgReader.Init(columnLength, dataFormat, resumableOp);
+            return columnLength;
+        }
+
+        bool TrySeekBuffered(int ordinal, out int columnLength)
+        {
+            if (ordinal == _column)
+            {
+                columnLength = PgReader.FieldSize;
+                return true;
+            }
+
+            // Skip over unwanted fields
+            columnLength = -1;
+            var buffer = Buffer;
+            for (; _column < ordinal - 1; _column++)
+            {
+                if (buffer.ReadBytesLeft < 4)
+                    return false;
+                columnLength = buffer.ReadInt32();
+                if (columnLength > 0)
+                {
+                    if (buffer.ReadBytesLeft < columnLength)
+                        return false;
+                    buffer.Skip(columnLength);
+                }
+            }
+
+            if (buffer.ReadBytesLeft < 4)
+            {
+                columnLength = -1;
+                return false;
+            }
+
+            columnLength = buffer.ReadInt32();
+            _column = ordinal;
+            return true;
         }
     }
 
@@ -2176,30 +1986,30 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 
     #region ConsumeRow
 
-    Task ConsumeRow(bool async)
+    Task ConsumeRow(bool async, bool userOp = false)
     {
         Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
         UniqueRowId++;
 
         if (!_canConsumeRowNonSequentially)
-            return ConsumeRowSequential(async);
+            return ConsumeRowSequential(async, userOp);
 
         // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
-        ConsumeRowNonSequential();
+        ConsumeRowNonSequential(userOp);
         return Task.CompletedTask;
 
-        async Task ConsumeRowSequential(bool async)
+        async Task ConsumeRowSequential(bool async, bool userOp)
         {
-            // Shut down any streaming going on on the column
-            // Dispose() consumes the length number of bytes it was initialized at, usually the entire column.
-            PosInColumn += await PgReader.DisposeUserActiveStream(async);
+            if (!userOp)
+            {
+                if (async)
+                    await PgReader.ConsumeAsync();
+                else
+                    PgReader.Consume();
+            }
 
-            // TODO: Potential for code-sharing with ReadColumn above, which also skips
-            // Skip to end of column if needed
-            var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
-            if (remainingInColumn > 0)
-                await Buffer.Skip(remainingInColumn, async);
+            await PgReader.Commit(async, resuming: false);
 
             // Skip over the remaining columns in the row
             for (; _column < _numColumns - 1; _column++)
@@ -2213,12 +2023,12 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void ConsumeRowNonSequential()
+    void ConsumeRowNonSequential(bool userOp)
     {
         Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
-        // Shut down any streaming going on on the column
-        // Dispose() consumes the length number of bytes it was initialized at, usually the entire column.
-        PosInColumn += PgReader.DisposeUserActiveStream(async: false).GetAwaiter().GetResult();
+        if (!userOp)
+            PgReader.Consume();
+        PgReader.Commit(async: false, resuming: false).GetAwaiter().GetResult();
         Buffer.ReadPosition = _dataMsgEnd;
     }
 
@@ -2243,6 +2053,26 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
             ThrowHelper.ThrowInvalidOperationException("No resultset is currently being traversed");
             return;
         }
+    }
+
+    static T DbNullValueOrThrow<T>(FieldDescription field)
+    {
+        // When T is a Nullable<T> (and only in that case), we support returning null
+        if (default(T) is null && typeof(T).IsValueType)
+            return default!;
+
+        if (typeof(T) == typeof(object))
+            return (T)(object)DBNull.Value;
+
+        ThrowHelper.ThrowInvalidCastException_NoValue(field);
+        return default;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    PgConverterInfo GetInfo(int ordinal, Type? type, out FieldDescription field)
+    {
+        field = CheckRowAndGetField(ordinal);
+        return type is null ? field.ObjectOrDefaultInfo : field.GetConverterInfo(type);
     }
 
     FieldDescription CheckRowAndGetField(int column)
