@@ -188,6 +188,9 @@ public sealed class TypeInfoMappingCollection
     public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : class
         => AddType<T>((string)dataTypeName, createInfo, GetDefaultConfigure(isDefault));
 
+    public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : class
+        => AddType<T>(dataTypeName, createInfo, GetDefaultConfigure(matchRequirement));
+
     public void AddType<T>(DataTypeName dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : class
         => AddType<T>((string)dataTypeName, createInfo, configure);
 
@@ -276,6 +279,10 @@ public sealed class TypeInfoMappingCollection
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, bool isDefault = false) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
             static (_, innerInfo) => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), GetDefaultConfigure(isDefault));
+
+    public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, MatchRequirement matchRequirement) where T : struct
+        => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,
+            static (_, innerInfo) => new NullableConverter<T>((PgBufferedConverter<T>)innerInfo.GetConcreteResolution().Converter), GetDefaultConfigure(matchRequirement));
 
     public void AddStructType<T>(string dataTypeName, TypeInfoFactory createInfo, Func<TypeInfoMapping, TypeInfoMapping>? configure) where T : struct
         => AddStructType(typeof(T), typeof(T?), dataTypeName, createInfo,

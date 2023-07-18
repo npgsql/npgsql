@@ -356,7 +356,7 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     // The alternatives are:
     // 1. Add a virtual method and make AwaitTask call into it (bloating the vtable of all derived types).
     // 2. Using a delegate, meaning we add a static field + an alloc per T + metadata, slightly slower dispatch perf so overall strictly worse as well.
-#if !NETSTANDARD
+#if NET6_0_OR_GREATER
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
 #endif
     private protected static async ValueTask AwaitTask(Task task, Continuation continuation, object collection, int[] indices)

@@ -42,7 +42,7 @@ abstract class StringBasedTextConverter<T> : PgStreamingConverter<T>
     {
         return async ? ReadAsync(reader, encoding) : new(ConvertFrom(encoding.GetString(reader.ReadBytes(reader.CurrentSize))));
 
-#if !NETSTANDARD
+#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
@@ -94,15 +94,15 @@ abstract class ArrayBasedTextConverter<T> : PgStreamingConverter<T>
 
     ValueTask<T> Read(bool async, PgReader reader, Encoding encoding)
     {
-        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(GetSegment(reader.ReadBytes(reader.CurrentSize))));
+        return async ? ReadAsync(reader, encoding) : new(ConvertFrom(GetSegment(reader.ReadBytes(reader.CurrentSize), encoding)));
 
-#if !NETSTANDARD
+#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
         async ValueTask<T> ReadAsync(PgReader reader, Encoding encoding)
-            => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentSize).ConfigureAwait(false)));
+            => ConvertFrom(GetSegment(await reader.ReadBytesAsync(reader.CurrentSize).ConfigureAwait(false), encoding));
 
-        ArraySegment<char> GetSegment(ReadOnlySequence<byte> bytes)
+        static ArraySegment<char> GetSegment(ReadOnlySequence<byte> bytes, Encoding encoding)
         {
             var array = TextConverter.GetChars(encoding, bytes);
             return new(array, 0, array.Length);
@@ -178,6 +178,27 @@ sealed class CharTextConverter : PgBufferedConverter<char>
 }
 
 // Move these out for code size/sharing.
+sealed class TextReaderTextConverter : PgStreamingConverter<TextReader>
+{
+    readonly Encoding _encoding;
+    public TextReaderTextConverter(Encoding encoding) => _encoding = encoding;
+
+    public override bool CanConvert(DataFormat format, out BufferRequirements bufferRequirements)
+    {
+        bufferRequirements = BufferRequirements.None;
+        return format is DataFormat.Binary or DataFormat.Text;
+    }
+
+    public override TextReader Read(PgReader reader)
+        => reader.GetTextReader(_encoding);
+
+    public override ValueTask<TextReader> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => reader.GetTextReaderAsync(_encoding, cancellationToken);
+
+    public override Size GetSize(SizeContext context, TextReader value, ref object? writeState) => throw new NotImplementedException();
+    public override void Write(PgWriter writer, TextReader value) => throw new NotImplementedException();
+    public override ValueTask WriteAsync(PgWriter writer, TextReader value, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+}
 static class TextConverter
 {
     public static Size GetSize(ref SizeContext context, ReadOnlyMemory<char> value, Encoding encoding)

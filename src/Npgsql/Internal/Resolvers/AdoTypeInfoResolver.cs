@@ -4,9 +4,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
-using System.Runtime.InteropServices;
-using System.Text;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
 using Npgsql.Internal.Postgres;
@@ -60,6 +59,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
         mappings.AddStructType<char>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        mappings.AddType<TextReader>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
 
         // Alternative text types
         foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
@@ -68,9 +70,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         {
             mappings.AddType<string>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
-                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+                MatchRequirement.DataTypeName);
             mappings.AddStructType<char>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+            mappings.AddType<TextReader>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+                MatchRequirement.DataTypeName);
         }
 
         // Jsonb
@@ -78,6 +83,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
         mappings.AddStructType<char>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char>(new CharTextConverter(options.TextEncoding))));
+        mappings.AddType<TextReader>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
 
         // Bytea
         mappings.AddType<byte[]>(DataTypeNames.Bytea,
