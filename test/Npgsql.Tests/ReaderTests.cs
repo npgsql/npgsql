@@ -1750,7 +1750,7 @@ LANGUAGE plpgsql VOLATILE";
         await using var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", connection);
         await using var reader = await cmd.ExecuteReaderAsync(Behavior);
         await reader.ReadAsync();
-        Assert.That(() => reader.GetInt32(0), Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
+        Assert.That(() => reader.GetInt32(0), Throws.Exception.With.Message.EqualTo("Broken"));
         Assert.That(connection.FullState, Is.EqualTo(ConnectionState.Broken));
         Assert.That(connection.State, Is.EqualTo(ConnectionState.Closed));
     }
@@ -2260,11 +2260,11 @@ class ExplodingTypeHandler : PgBufferedConverter<int>
 
     protected override int ReadCore(PgReader reader)
     {
-        reader.ReadInt32();
+        if (_safe)
+            throw new Exception("Safe read exception as requested");
 
-        throw _safe
-            ? new Exception("Safe read exception as requested")
-            : reader.BreakConnection(new Exception("Non-safe read exception as requested"));
+        reader.BreakConnection();
+        return default;
     }
 }
 

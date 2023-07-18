@@ -14,7 +14,7 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
 
     protected override PhysicalAddress ReadCore(PgReader reader)
     {
-        var len = reader.CurrentSize;
+        var len = reader.CurrentRemaining;
         Debug.Assert(len is 6 or 8);
 
         var bytes = new byte[len];

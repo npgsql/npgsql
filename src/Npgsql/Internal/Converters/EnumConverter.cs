@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
 
@@ -34,7 +33,7 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
 
     protected override TEnum ReadCore(PgReader reader)
     {
-        var str = _encoding.GetString(reader.ReadBytes(reader.CurrentSize));
+        var str = _encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
         var success = _labelToEnum.TryGetValue(str, out var value);
 
         if (!success)

@@ -30,7 +30,7 @@ abstract class ByteaConverters<T> : PgStreamingConverter<T>
 #endif
     async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
-        var bytes = new byte[reader.CurrentSize];
+        var bytes = new byte[reader.CurrentRemaining];
         if (async)
             await reader.ReadBytesAsync(bytes, cancellationToken).ConfigureAwait(false);
         else
