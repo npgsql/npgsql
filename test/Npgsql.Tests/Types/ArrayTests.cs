@@ -184,9 +184,9 @@ SELECT onedim, twodim FROM (VALUES
             Assert.That(reader.GetValue(1), Is.EqualTo(new [,]{{1, 2}, {3, 4}}));
             reader.Read();
             Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
-            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidCastException>());
             break;
         case ArrayNullabilityMode.Always:
             reader.Read();
@@ -477,11 +477,11 @@ SELECT onedim, twodim FROM (VALUES
         await using var reader = await cmd.ExecuteReaderAsync();
         reader.Read();
         Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-        var exception = Assert.Throws<NotSupportedException>(() =>
+        var exception = Assert.Throws<InvalidCastException>(() =>
         {
             reader.GetFieldValue<List<int>>(0);
         })!;
-        Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
+        Assert.That(exception.Message, Does.StartWith("Cannot read an array value with 2 dimensions"));
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/844")]

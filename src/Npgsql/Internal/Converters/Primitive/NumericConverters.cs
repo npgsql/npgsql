@@ -192,14 +192,14 @@ static class NumericConverters
     public static PgNumeric.Builder Read(PgReader reader, Span<short> digits)
     {
         var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
-        if (reader.Remaining < remainingStructureSize)
+        if (reader.ShouldBuffer(remainingStructureSize))
             reader.BufferData(remainingStructureSize);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
         var scale = reader.ReadInt16();
         foreach (ref var digit in digits)
         {
-            if (reader.Remaining < sizeof(short))
+            if (reader.ShouldBuffer(sizeof(short)))
                 reader.BufferData(sizeof(short));
             digit = reader.ReadInt16();
         }
@@ -210,7 +210,7 @@ static class NumericConverters
     public static async ValueTask<PgNumeric> ReadAsync(PgReader reader, ArraySegment<short> digits, CancellationToken cancellationToken)
     {
         var remainingStructureSize = PgNumeric.GetByteCount(0) - sizeof(short);
-        if (reader.Remaining < remainingStructureSize)
+        if (reader.ShouldBuffer(remainingStructureSize))
             await reader.BufferDataAsync(remainingStructureSize, cancellationToken).ConfigureAwait(false);
         var weight = reader.ReadInt16();
         var sign = reader.ReadInt16();
@@ -218,7 +218,7 @@ static class NumericConverters
         var array = digits.Array!;
         for (var i = digits.Offset; i < array.Length; i++)
         {
-            if (reader.Remaining < sizeof(short))
+            if (reader.ShouldBuffer(sizeof(short)))
                 await reader.BufferDataAsync(sizeof(short), cancellationToken).ConfigureAwait(false);
             array[i] = reader.ReadInt16();
         }

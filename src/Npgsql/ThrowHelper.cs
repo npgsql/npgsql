@@ -53,8 +53,12 @@ static class ThrowHelper
         throw new InvalidCastException($"Column '{field.Name}' is null.");
 
     [DoesNotReturn]
+    internal static void ThrowInvalidCastException(string message) =>
+        throw new InvalidCastException(message);
+
+    [DoesNotReturn]
     internal static void ThrowInvalidCastException_NoValue() =>
-        throw new InvalidCastException($"Field is null.");
+        throw new InvalidCastException("Field is null.");
 
     [DoesNotReturn]
     internal static void ThrowArgumentOutOfRange_OutOfColumnBounds(string paramName, int columnLength) =>

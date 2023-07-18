@@ -156,7 +156,7 @@ public abstract class PgConverter
 
     [DoesNotReturn]
     private protected static void ThrowIORequired()
-        => throw new InvalidOperationException("Fixed sizedness for format not respected, expected no IO to be required.");
+        => throw new InvalidOperationException("Buffer requirements for format not respected, expected no IO to be required.");
 
     private protected static bool ThrowInvalidNullValue()
         => throw new ArgumentNullException("value", "Null value given for non-nullable type converter");
@@ -218,7 +218,7 @@ static class PgStreamingConverterHelpers
 {
     // Split out from the generic class to amortize the huge size penalty per async state machine, which would otherwise be per
     // instantiation.
-#if !NETSTANDARD
+#if NET6_0_OR_GREATER
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
 #endif
     public static async ValueTask<object> AwaitTask(Task task, Continuation continuation)
