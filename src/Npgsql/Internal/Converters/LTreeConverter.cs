@@ -22,7 +22,7 @@ sealed class LTreeConverter : PgStreamingConverter<string>
         if (version != _expectedVersionPrefix)
             throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
-        return _encoding.GetString(reader.ReadBytes(reader.CurrentSize - 1));
+        return _encoding.GetString(reader.ReadBytes(reader.CurrentRemaining));
     }
 
     public override async ValueTask<string> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
@@ -34,7 +34,7 @@ sealed class LTreeConverter : PgStreamingConverter<string>
         if (version != _expectedVersionPrefix)
             throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
-        return _encoding.GetString(await reader.ReadBytesAsync(reader.CurrentSize - 1, cancellationToken).ConfigureAwait(false));
+        return _encoding.GetString(await reader.ReadBytesAsync(reader.CurrentRemaining, cancellationToken).ConfigureAwait(false));
     }
 
     public override Size GetSize(SizeContext context, string value, ref object? writeState)
