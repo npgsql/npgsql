@@ -32,7 +32,9 @@ sealed class TsVectorConverter : PgStreamingConverter<NpgsqlTsVector>
 
         for (var i = 0; i < numLexemes; i++)
         {
-            var lexemeString = await reader.ReadNullTerminatedString(async, cancellationToken).ConfigureAwait(false);
+            var lexemeString = async
+                ? await reader.ReadNullTerminatedStringAsync(_encoding, cancellationToken).ConfigureAwait(false)
+                : reader.ReadNullTerminatedString(_encoding);
 
             if (reader.ShouldBuffer(sizeof(short)))
                 await reader.BufferData(async, sizeof(short), cancellationToken).ConfigureAwait(false);

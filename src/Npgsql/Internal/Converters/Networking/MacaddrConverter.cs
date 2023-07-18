@@ -18,7 +18,7 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
         Debug.Assert(len is 6 or 8);
 
         var bytes = new byte[len];
-        reader.CopyTo(bytes);
+        reader.Read(bytes);
         return new PhysicalAddress(bytes);
     }
 

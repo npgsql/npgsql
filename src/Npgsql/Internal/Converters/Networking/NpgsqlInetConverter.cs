@@ -43,7 +43,7 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
 
         var numBytes = reader.ReadByte();
         Span<byte> bytes = stackalloc byte[numBytes];
-        reader.CopyTo(bytes);
+        reader.Read(bytes);
 #if NETSTANDARD2_0
         return (new IPAddress(bytes.ToArray()), mask);
 #else

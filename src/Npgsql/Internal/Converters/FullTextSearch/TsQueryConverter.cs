@@ -48,7 +48,9 @@ sealed class TsQueryConverter<T> : PgStreamingConverter<T>
                 var weight = (NpgsqlTsQueryLexeme.Weight)reader.ReadByte();
                 var prefix = reader.ReadByte() != 0;
 
-                var str = await reader.ReadNullTerminatedString(async, cancellationToken);
+                var str = async
+                    ? await reader.ReadNullTerminatedStringAsync(_encoding, cancellationToken).ConfigureAwait(false)
+                    : reader.ReadNullTerminatedString(_encoding);
                 InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix), nodes, ref value);
                 continue;
 
