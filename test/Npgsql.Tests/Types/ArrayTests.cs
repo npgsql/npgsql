@@ -515,7 +515,7 @@ SELECT onedim, twodim FROM (VALUES
         await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
         cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, jagged);
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-            .TypeOf<Exception>()
+            .TypeOf<NotSupportedException>()
             .With.Message.Contains("jagged"));
     }
 
