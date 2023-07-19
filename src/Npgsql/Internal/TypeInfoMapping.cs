@@ -364,7 +364,7 @@ public sealed class TypeInfoMappingCollection
                     () => nullableArrayMapping.Factory(options, nullableArrayMapping with { Type = typeof(object) }, dataTypeNameMatch).GetConcreteResolution().Converter,
                     options
                 ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array));
-            }));
+            }) { MatchRequirement = MatchRequirement.DataTypeName });
     }
 
     // We have no overload for DataTypeName for the struct methods to reduce code bloat.
@@ -413,14 +413,13 @@ public sealed class TypeInfoMappingCollection
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
                     ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array)),
                     ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array)),
-                    // TODO PolymorphicArrayConverter needs a resolver if it wants to compose.
                     ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
-                        new PolymorphicArrayConverter(
-                            arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter,
-                            nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).GetConcreteResolution().Converter
+                        new PolymorphicArrayConverterResolver(
+                            (PgResolverTypeInfo)arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch),
+                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch)
                         ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array)),
                     _ => throw new ArgumentOutOfRangeException()
-                }));
+                }) { MatchRequirement = MatchRequirement.DataTypeName });
         }
 
     public void AddPolymorphicResolverArrayType(string elementDataTypeName, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
@@ -430,7 +429,7 @@ public sealed class TypeInfoMappingCollection
     {
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
         AddPolymorphicResolverArrayType(elementMapping, typeof(object),
-            (mapping, elemInfo, options) => new PolymorphicArrayConverterResolver(
+            (mapping, elemInfo, options) => new ArrayPolymorphicConverterResolver(
                 options.GetCanonicalTypeId(arrayDataTypeName), elemInfo, elementToArrayConverterFactory(options))
         , null);
 

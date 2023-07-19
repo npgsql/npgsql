@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal;
@@ -115,5 +117,84 @@ public abstract class PgConverterResolver<T> : PgConverterResolver
         if (typeInfo.ValidateResolution)
             Validate(nameof(Get), resolution, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return resolution;
+    }
+}
+
+abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
+{
+    readonly PgTypeId? _pgTypeId;
+    protected PgResolverTypeInfo EffectiveResolverTypeInfo { get; }
+    readonly ConcurrentDictionary<PgConverter, PgConverter<T>> _converters = new(ReferenceEqualityComparer.Instance);
+    PgConverterResolution _lastEffectiveResolution;
+    PgConverterResolution _lastResolution;
+
+    protected ComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveResolverTypeInfo)
+    {
+        if (pgTypeId is null && effectiveResolverTypeInfo.PgTypeId is not null)
+            throw new ArgumentNullException(nameof(pgTypeId), "Cannot be null if effectiveResolverTypeInfo.PgTypeId is not null.");
+
+        _pgTypeId = pgTypeId;
+        EffectiveResolverTypeInfo = effectiveResolverTypeInfo;
+    }
+
+    protected PgTypeId? ResolvePgTypeId(PgResolverTypeInfo effectiveResolverTypeInfo)
+        => effectiveResolverTypeInfo.PgTypeId is { } id ? GetPgTypeId(id) : null;
+
+    protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
+    protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
+    protected abstract PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution);
+    protected abstract PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId);
+
+    public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
+    {
+        var effectivePgTypeId = EffectiveResolverTypeInfo.PgTypeId ??
+                                (pgTypeId is null ? null : GetEffectivePgTypeId(pgTypeId.GetValueOrDefault()));
+        var elemResolution = EffectiveResolverTypeInfo.GetDefaultResolution(effectivePgTypeId);
+        return new(GetOrAdd(elemResolution), pgTypeId ?? GetPgTypeId(elemResolution.PgTypeId));
+    }
+
+    public override PgConverterResolution Get(T? value, PgTypeId? expectedPgTypeId)
+    {
+        PgTypeId? expectedEffectiveId = null;
+        if (expectedPgTypeId is { } id)
+        {
+            if (_pgTypeId is null)
+                // We have an undecided type info which is asked to resolve for a specific type id
+                // we'll unfortunately have to look up the effective id, this is rare though.
+                expectedEffectiveId = GetEffectivePgTypeId(id);
+            else if (_pgTypeId == expectedPgTypeId)
+                expectedEffectiveId = EffectiveResolverTypeInfo.PgTypeId;
+            else
+                throw CreateUnsupportedPgTypeIdException(id);
+        }
+
+        var effectiveResolution = GetEffectiveResolution(value, expectedEffectiveId);
+
+        if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
+            return _lastResolution;
+
+        var converter = GetOrAdd(effectiveResolution);
+        _lastEffectiveResolution = effectiveResolution;
+        return _lastResolution = new PgConverterResolution(converter, expectedPgTypeId ?? GetPgTypeId(effectiveResolution.PgTypeId));
+    }
+
+    public override PgConverterResolution Get(Field field)
+    {
+        var effectiveResolution = EffectiveResolverTypeInfo.GetResolution(field);
+        if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
+            return _lastResolution;
+
+        var converter = GetOrAdd(effectiveResolution);
+        _lastEffectiveResolution = effectiveResolution;
+        return _lastResolution = new PgConverterResolution(converter, field.PgTypeId);
+    }
+
+    PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)
+    {
+        (ComposingConverterResolver<T> Instance, PgConverterResolution EffectiveResolution) state = (this, effectiveResolution);
+        return _converters.GetOrAdd(
+            effectiveResolution.Converter,
+            static (_, state) => state.Instance.CreateConverter(state.EffectiveResolution),
+            state);
     }
 }

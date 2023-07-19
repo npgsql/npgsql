@@ -239,15 +239,16 @@ public class PgTypeInfo
 
     internal PgTypeInfo AsObjectTypeInfo(Type? unboxedType = null)
     {
-        if (IsResolverInfo)
-        {
-            // TODO should have a CastingConverterResolver.
-            throw new NotImplementedException();
-        }
-
         // No-op in this case.
         if (Type == unboxedType)
             return this;
+
+        if (IsResolverInfo)
+            return new PgResolverTypeInfo(Options, new CastingConverterResolver<object>((PgResolverTypeInfo)this), PgTypeId.GetValueOrDefault(), unboxedType)
+            {
+                PreferredFormat = PreferredFormat,
+                SupportsWriting = SupportsWriting
+            };
 
         return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)
         {
@@ -274,14 +275,8 @@ public class PgTypeInfo
             PreferredFormat = PreferredFormat,
             SupportsWriting = SupportsWriting
         };
-    //
-    // public static PgTypeInfo Create(PgSerializerOptions options, PgConverter converter, PgTypeId pgTypeId, DataFormat? preferredFormat = null, Type? unboxedType = null)
-    //     => new(options, converter, pgTypeId, unboxedType) { PreferredFormat = preferredFormat };
-    //
-    // public static PgTypeResolverInfo Create(PgSerializerOptions options, PgConverterResolver resolver, PgTypeId? expectedPgTypeId = null, DataFormat? preferredFormat = null, Type? unboxedType = null)
-    //     => new(options, resolver, expectedPgTypeId, unboxedType) { PreferredFormat = preferredFormat };
 
-    // If we don't have a converter stored we must ask the retrieved one through virtual calls.
+    // If we don't have a converter stored we must ask the retrieved one.
     DataFormat ResolveFormat(PgConverter converter, out BufferRequirements bufferRequirements, DataFormat? formatPreference = null)
     {
         switch (formatPreference)
