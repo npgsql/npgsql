@@ -137,9 +137,6 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
         EffectiveResolverTypeInfo = effectiveResolverTypeInfo;
     }
 
-    protected PgTypeId? ResolvePgTypeId(PgResolverTypeInfo effectiveResolverTypeInfo)
-        => effectiveResolverTypeInfo.PgTypeId is { } id ? GetPgTypeId(id) : null;
-
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
     protected abstract PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution);
@@ -147,27 +144,14 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
 
     public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
-        var effectivePgTypeId = EffectiveResolverTypeInfo.PgTypeId ??
-                                (pgTypeId is null ? null : GetEffectivePgTypeId(pgTypeId.GetValueOrDefault()));
+        var effectivePgTypeId = pgTypeId is null ? null : (PgTypeId?)GetEffectiveTypeId(pgTypeId.GetValueOrDefault());
         var elemResolution = EffectiveResolverTypeInfo.GetDefaultResolution(effectivePgTypeId);
         return new(GetOrAdd(elemResolution), pgTypeId ?? GetPgTypeId(elemResolution.PgTypeId));
     }
 
     public override PgConverterResolution Get(T? value, PgTypeId? expectedPgTypeId)
     {
-        PgTypeId? expectedEffectiveId = null;
-        if (expectedPgTypeId is { } id)
-        {
-            if (_pgTypeId is null)
-                // We have an undecided type info which is asked to resolve for a specific type id
-                // we'll unfortunately have to look up the effective id, this is rare though.
-                expectedEffectiveId = GetEffectivePgTypeId(id);
-            else if (_pgTypeId == expectedPgTypeId)
-                expectedEffectiveId = EffectiveResolverTypeInfo.PgTypeId;
-            else
-                throw CreateUnsupportedPgTypeIdException(id);
-        }
-
+        PgTypeId? expectedEffectiveId = expectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
         var effectiveResolution = GetEffectiveResolution(value, expectedEffectiveId);
 
         if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
@@ -180,13 +164,24 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
 
     public override PgConverterResolution Get(Field field)
     {
-        var effectiveResolution = EffectiveResolverTypeInfo.GetResolution(field);
+        var effectiveResolution = EffectiveResolverTypeInfo.GetResolution(field with { PgTypeId = GetEffectiveTypeId(field.PgTypeId) });
         if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
             return _lastResolution;
 
         var converter = GetOrAdd(effectiveResolution);
         _lastEffectiveResolution = effectiveResolution;
         return _lastResolution = new PgConverterResolution(converter, field.PgTypeId);
+    }
+
+    PgTypeId GetEffectiveTypeId(PgTypeId pgTypeId)
+    {
+        if (_pgTypeId is null)
+            // We have an undecided type info which is asked to resolve for a specific type id
+            // we'll unfortunately have to look up the effective id, this is rare though.
+            return GetEffectivePgTypeId(pgTypeId);
+        if (_pgTypeId == pgTypeId)
+            return EffectiveResolverTypeInfo.PgTypeId.GetValueOrDefault();
+        throw CreateUnsupportedPgTypeIdException(pgTypeId);
     }
 
     PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)

@@ -108,7 +108,12 @@ public sealed class TypeInfoMappingCollection
             case var _ when dataTypeMatch && typeMatch:
             case not MatchRequirement.All when dataTypeMatch && type is null:
             case MatchRequirement.Single when dataTypeName is null && typeMatch:
-                var resolvedMapping = mapping.TypeMatchPredicate is not null && type is not null ? mapping with { Type = type } : mapping;
+                var resolvedMapping = mapping with
+                {
+                    Type = type ?? mapping.Type,
+                    // Make sure plugins (which match on unqualified names) and resolvers get the fully qualified name to canonicalize.
+                    DataTypeName = dataTypeName is not null ? dataTypeName.GetValueOrDefault().Value : mapping.DataTypeName
+                };
                 return resolvedMapping.Factory(options, resolvedMapping, dataTypeName is not null);
             // DataTypeName is explicitly requiring dataTypeName so it won't be used for a fallback, Single would have matched above already.
             case MatchRequirement.All when fallback is null && dataTypeName is null && typeMatch:
@@ -363,7 +368,7 @@ public sealed class TypeInfoMappingCollection
                     () => arrayMapping.Factory(options, arrayMapping with { Type = typeof(object) }, dataTypeNameMatch).GetConcreteResolution().Converter,
                     () => nullableArrayMapping.Factory(options, nullableArrayMapping with { Type = typeof(object) }, dataTypeNameMatch).GetConcreteResolution().Converter,
                     options
-                ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array));
+                ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array));
             }) { MatchRequirement = MatchRequirement.DataTypeName });
     }
 
@@ -417,7 +422,7 @@ public sealed class TypeInfoMappingCollection
                         new PolymorphicArrayConverterResolver(
                             (PgResolverTypeInfo)arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch),
                             (PgResolverTypeInfo)nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch)
-                        ), options.GetCanonicalTypeId(arrayDataTypeName), unboxedType: typeof(Array)),
+                        ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array)),
                     _ => throw new ArgumentOutOfRangeException()
                 }) { MatchRequirement = MatchRequirement.DataTypeName });
         }
@@ -430,7 +435,7 @@ public sealed class TypeInfoMappingCollection
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
         AddPolymorphicResolverArrayType(elementMapping, typeof(object),
             (mapping, elemInfo, options) => new ArrayPolymorphicConverterResolver(
-                options.GetCanonicalTypeId(arrayDataTypeName), elemInfo, elementToArrayConverterFactory(options))
+                options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elemInfo, elementToArrayConverterFactory(options))
         , null);
 
         void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter, Func<Type, bool>? typeMatchPredicate)
@@ -532,7 +537,7 @@ public static class PgTypeInfoHelpers
     {
         var typeToConvert = resolver.TypeToConvert;
         PgTypeId? pgTypeId = includeDataTypeName && !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
+            ? throw new InvalidOperationException("Cannot accept unqualified name at this stage, fully qualified name is passed along on 'mapping' argument during matching.")
             : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         return new(options, resolver, pgTypeId, unboxedType)
@@ -547,7 +552,7 @@ public static class PgTypeInfoHelpers
         var typeToConvert = converter.TypeToConvert;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         var pgTypeId = !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
+            ? throw new InvalidOperationException("Cannot accept unqualified name at this stage, fully qualified name is passed along on 'mapping' argument during matching.")
             : new DataTypeName(mapping.DataTypeName);
         return new(options, converter, pgTypeId, unboxedType)
         {

@@ -5,6 +5,7 @@ using Npgsql.Internal.Converters;
 using Npgsql.Internal.Postgres;
 using Npgsql.Properties;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Resolvers;
@@ -51,6 +52,57 @@ sealed class RangeTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, new RangeConverter<DateOnly>(new DateOnlyDateConverter(options.EnableDateTimeInfinityConversions))));
 #endif
+
+        // Timestamp
+        if (Statics.LegacyTimestampBehavior)
+        {
+            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: true))), isDefault: true);
+        }
+        else
+        {
+            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsRange,
+                static (options, mapping, dataTypeNameMatch) =>
+                {
+                    // TODO this isn't so nice, probably want some more helpers for raw type info creation.
+                    var inner = new TypeInfoMapping(typeof(DateTime), DataTypeNames.Timestamp.Value, null!).CreateInfo(options,
+                        new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz),
+                            options.GetCanonicalTypeId(DataTypeNames.Timestamp),
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch);
+                    return mapping.CreateInfo(options, new RangeConverterResolver<DateTime>(inner), dataTypeNameMatch);
+                }, isDefault: true);
+        }
+        mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsRange,
+            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<long>(new Int8Converter<long>())));
+
+        // TimestampTz
+        if (Statics.LegacyTimestampBehavior)
+        {
+            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    new RangeConverter<DateTime>(new LegacyDateTimeConverter(options.EnableDateTimeInfinityConversions, timestamp: false))), matchRequirement: MatchRequirement.DataTypeName);
+            mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
+                static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<DateTimeOffset>(new LegacyDateTimeOffsetConverter(options.EnableDateTimeInfinityConversions))));
+        }
+        else
+        {
+            mappings.AddStructType<NpgsqlRange<DateTime>>(DataTypeNames.TsTzRange,
+                static (options, mapping, dataTypeNameMatch) =>
+                {
+                    // TODO this isn't so nice, probably want some more helpers for raw type info creation.
+                    var inner = new TypeInfoMapping(typeof(DateTime), DataTypeNames.TimestampTz.Value, null!).CreateInfo(options,
+                        new DateTimeConverterResolver(options.GetCanonicalTypeId(DataTypeNames.TimestampTz),
+                            options.GetCanonicalTypeId(DataTypeNames.Timestamp),
+                            options.EnableDateTimeInfinityConversions), dataTypeNameMatch);
+                    return mapping.CreateInfo(options, new RangeConverterResolver<DateTime>(inner), dataTypeNameMatch);
+                }, isDefault: true);
+            mappings.AddStructType<NpgsqlRange<DateTimeOffset>>(DataTypeNames.TsTzRange,
+                static (options, mapping, _) => mapping.CreateInfo(options,
+                    new RangeConverter<DateTimeOffset>(new DateTimeOffsetConverter(options.EnableDateTimeInfinityConversions))));
+        }
+        mappings.AddStructType<NpgsqlRange<long>>(DataTypeNames.TsTzRange,
+            static (options, mapping, _) => mapping.CreateInfo(options, new RangeConverter<long>(new Int8Converter<long>())));
 
         // int4multirange
         mappings.AddType<NpgsqlRange<int>[]>(DataTypeNames.Int4Multirange,

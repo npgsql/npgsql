@@ -1,14 +1,11 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Data;
 using System.Globalization;
 using System.Threading.Tasks;
 using Npgsql.Properties;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
-
-using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types;
 
@@ -27,12 +24,13 @@ class RangeTests : MultiplexingTestBase
                     new DateTime(2020, 1, 3, 13, 0, 0), false),
                 """["2020-01-01 12:00:00","2020-01-03 13:00:00")""", "tsrange", NpgsqlDbType.TimestampRange)
             .SetName("TimestampRange"),
+        // Note that the below text representations are local (according to TimeZone, which is set to Europe/Berlin in this test class),
+        // because that's how PG does timestamptz *text* representation.
         new TestCaseData(new NpgsqlRange<DateTime>(
                     new DateTime(2020, 1, 1, 12, 0, 0, DateTimeKind.Utc), true,
                     new DateTime(2020, 1, 3, 13, 0, 0, DateTimeKind.Utc), false),
-                """["2020-01-01 12:00:00+00","2020-01-03 13:00:00+00")""", "tstzrange", NpgsqlDbType.TimestampTzRange)
+                """["2020-01-01 13:00:00+01","2020-01-03 14:00:00+01")""", "tstzrange", NpgsqlDbType.TimestampTzRange)
             .SetName("TimestampTzRange"),
-
 
         // Note that numrange is a non-discrete range, and therefore doesn't undergo normalization to inclusive/exclusive in PG
         new TestCaseData(NpgsqlRange<decimal>.Empty, "empty", "numrange", NpgsqlDbType.NumericRange)
@@ -412,5 +410,11 @@ class RangeTests : MultiplexingTestBase
 
     #endregion
 
-    public RangeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
+    protected override NpgsqlDataSource DataSource { get; }
+
+    public RangeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode)
+        => DataSource = CreateDataSource(builder =>
+        {
+            builder.ConnectionStringBuilder.Timezone = "Europe/Berlin";
+        });
 }
