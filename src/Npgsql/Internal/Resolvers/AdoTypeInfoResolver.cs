@@ -137,7 +137,6 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
 
-        // TODO might want to move to pg specific types.
         // Varbit
         mappings.AddType<BitArray>(DataTypeNames.Varbit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
@@ -332,6 +331,15 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mappings.AddArrayType<byte[]>(dataTypeName);
             mappings.AddStructArrayType<ReadOnlyMemory<byte>>(dataTypeName);
         }
+
+        // Jsonb
+        mappings.AddArrayType<string>((string)DataTypeNames.Jsonb);
+        mappings.AddStructArrayType<char>((string)DataTypeNames.Jsonb);
+        mappings.AddArrayType<byte[]>((string)DataTypeNames.Jsonb);
+        mappings.AddStructArrayType<ReadOnlyMemory<byte>>((string)DataTypeNames.Jsonb);
+
+        // Jsonpath
+        mappings.AddArrayType<string>((string)DataTypeNames.Jsonpath);
 
         // Bytea
         mappings.AddArrayType<byte[]>((string)DataTypeNames.Bytea);
