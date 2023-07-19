@@ -35,31 +35,21 @@ public class ByteaTests : MultiplexingTestBase
     }
 
     [Test]
-    public Task Write_as_Memory()
-        => AssertTypeWrite(
-            new Memory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
+    public Task AsMemory()
+        => AssertType(
+            new Memory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
+            comparer: (left, right) => left.Span.SequenceEqual(right.Span));
 
     [Test]
-    public Task Read_as_Memory_not_supported()
-        => AssertTypeUnsupportedRead<Memory<byte>, NotSupportedException>("\\x010203", "bytea");
+    public Task AsReadOnlyMemory()
+        => AssertType(
+            new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false,
+            comparer: (left, right) => left.Span.SequenceEqual(right.Span));
 
     [Test]
-    public Task Write_as_ReadOnlyMemory()
-        => AssertTypeWrite(
-            new ReadOnlyMemory<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
-
-    [Test]
-    public Task Read_as_ReadOnlyMemory_not_supported()
-        => AssertTypeUnsupportedRead<ReadOnlyMemory<byte>, NotSupportedException>("\\x010203", "bytea");
-
-    [Test]
-    public Task Write_as_ArraySegment()
-        => AssertTypeWrite(
+    public Task AsArraySegment()
+        => AssertType(
             new ArraySegment<byte>(new byte[] { 1, 2, 3 }), "\\x010203", "bytea", NpgsqlDbType.Bytea, DbType.Binary, isDefault: false);
-
-    [Test]
-    public Task Read_as_ArraySegment_not_supported()
-        => AssertTypeUnsupportedRead<ArraySegment<byte>, NotSupportedException>("\\x010203", "bytea");
 
     [Test]
     public Task Write_as_MemoryStream()
