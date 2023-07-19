@@ -537,7 +537,7 @@ public static class PgTypeInfoHelpers
     {
         var typeToConvert = resolver.TypeToConvert;
         PgTypeId? pgTypeId = includeDataTypeName && !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? throw new InvalidOperationException("Cannot accept unqualified name at this stage, fully qualified name is passed along on 'mapping' argument during matching.")
+            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         return new(options, resolver, pgTypeId, unboxedType)
@@ -552,7 +552,7 @@ public static class PgTypeInfoHelpers
         var typeToConvert = converter.TypeToConvert;
         unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         var pgTypeId = !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? throw new InvalidOperationException("Cannot accept unqualified name at this stage, fully qualified name is passed along on 'mapping' argument during matching.")
+            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : new DataTypeName(mapping.DataTypeName);
         return new(options, converter, pgTypeId, unboxedType)
         {
