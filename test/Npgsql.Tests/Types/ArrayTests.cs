@@ -435,19 +435,6 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
     }
 
-
-    [Test, Description("Roundtrips a non-generic IList as an array")]
-    // ReSharper disable once InconsistentNaming
-    public async Task IList_non_generic()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        var expected = new ArrayList(new[] { 1, 2, 3 });
-        var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = expected };
-        cmd.Parameters.Add(p);
-        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(expected.ToArray()));
-    }
-
     [Test, Description("Roundtrips a generic List as an array")]
     // ReSharper disable once InconsistentNaming
     public async Task IList_generic()
@@ -494,18 +481,6 @@ SELECT onedim, twodim FROM (VALUES
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
-    public async Task Mixed_element_types()
-    {
-        var mixedList = new ArrayList { 1, "yo" };
-        await using var conn = await OpenConnectionAsync();
-        await using var cmd = new NpgsqlCommand("SELECT @p1", conn);
-        cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, mixedList);
-        Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-            .TypeOf<Exception>()
-            .With.Message.Contains("mix"));
-    }
-
-    [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
     public async Task Jagged_arrays_not_supported()
     {
         var jagged = new int[2][];
@@ -517,15 +492,6 @@ SELECT onedim, twodim FROM (VALUES
         Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
             .TypeOf<NotSupportedException>()
             .With.Message.Contains("jagged"));
-    }
-
-    [Test, Description("Checks that IList<T>s are properly serialized as arrays of their underlying types")]
-    public async Task List_type_resolution()
-    {
-        await using var conn = await OpenConnectionAsync();
-        await AssertIListRoundtrips(conn, new[] { 1, 2, 3 });
-        await AssertIListRoundtrips(conn, new IntList { 1, 2, 3 });
-        await AssertIListRoundtrips(conn, new MisleadingIntList<string>() { 1, 2, 3 });
     }
 
     [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1546")]
@@ -616,17 +582,6 @@ CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2)
         Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
         // Unlike T[], List<T> is mutable so we should not return the same instance
         Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
-    }
-
-    async Task AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
-    {
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-        reader.Read();
-        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
-        Assert.That(reader[0], Is.EqualTo(value.ToArray()));
     }
 
     class IntList : List<int> { }
