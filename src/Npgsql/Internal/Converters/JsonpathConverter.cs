@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
+sealed class JsonpathConverter<T> : PgStreamingConverter<T>, IResumableRead
 {
-    const byte JsonbProtocolVersion = 1;
+    const byte JsonpathProtocolVersion = 1;
 
     readonly PgConverter<T> _textConverter;
     BufferRequirements _innerRequirements;
 
-    public JsonbTextConverter(PgConverter<T> textConverter)
+    public JsonpathConverter(PgConverter<T> textConverter)
         : base(textConverter.DbNullPredicateKind is DbNullPredicate.Custom)
         => _textConverter = textConverter;
 
@@ -59,8 +59,8 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
                     await reader.BufferData(async, sizeof(byte), cancellationToken);
 
                 var version = reader.ReadByte();
-                if (version != JsonbProtocolVersion)
-                    throw new InvalidCastException($"Unknown jsonb wire format version {version}");
+                if (version != JsonpathProtocolVersion)
+                    throw new InvalidCastException($"Unknown jsonpath wire format version {version}");
             }
 
             // No need for a nested read, all text converters will read CurrentRemaining bytes.
@@ -78,7 +78,7 @@ sealed class JsonbTextConverter<T> : PgStreamingConverter<T>, IResumableRead
         {
             if (writer.ShouldFlush(sizeof(byte)))
                 await writer.Flush(async, cancellationToken);
-            writer.WriteByte(JsonbProtocolVersion);
+            writer.WriteByte(JsonpathProtocolVersion);
             size = size.Value - 1;
         }
 
