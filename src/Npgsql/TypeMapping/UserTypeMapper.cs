@@ -10,9 +10,18 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping;
 
+/// <summary>
+/// The base class for user type mappings.
+/// </summary>
 public abstract class UserTypeMapping
 {
+    /// <summary>
+    /// The name of the PostgreSQL type that this mapping is for.
+    /// </summary>
     public string PgTypeName { get; }
+    /// <summary>
+    /// The CLR type that this mapping is for.
+    /// </summary>
     public Type ClrType { get; }
 
     internal UserTypeMapping(string pgTypeName, Type type)

@@ -247,7 +247,7 @@ class RangeTests : MultiplexingTestBase
         dataSourceBuilder.EnableRanges();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType(new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange);
+        await AssertType(dataSource, new NpgsqlRange<int>(1, true, 10, false), "[1,10)", "int4range", NpgsqlDbType.IntegerRange);
     }
 
     protected override NpgsqlConnection OpenConnection()

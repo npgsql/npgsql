@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -71,12 +72,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     {
         ConnectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString);
         _userTypeMapper = new();
-        // When used publicly we start off with our slim defaults.
-        foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
-            AddTypeInfoResolver(plugin);
         // Reverse order
         AddTypeInfoResolver(UnsupportedTypeInfoResolver);
         AddTypeInfoResolver(new AdoTypeInfoResolver());
+        // When used publicly we start off with our slim defaults.
+        foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers().Reverse())
+            AddTypeInfoResolver(plugin);
     }
 
     internal NpgsqlSlimDataSourceBuilder(NpgsqlConnectionStringBuilder connectionStringBuilder)

@@ -303,6 +303,7 @@ public sealed class NpgsqlBinaryExporter : ICancelable
                 throw new InvalidCastException("Column is null");
             }
 
+            // TODO use StartRead/EndRead
             var reader = _buf.PgReader.Init(_columnLen, DataFormat.Binary);
             T result;
             if (async)

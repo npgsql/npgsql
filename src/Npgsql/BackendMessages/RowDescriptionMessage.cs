@@ -371,13 +371,15 @@ public sealed class FieldDescription
     internal PgConverterInfo GetConverterInfo(Type type, bool overwrite = true)
     {
         PgConverterInfo info;
+        // TODO lock/copy etc., we could race on prepared statements.
+        var lastTypeInfo = _lastTypeInfo;
         if (ObjectOrDefaultTypeInfo.Type == type)
             info = ObjectOrDefaultInfo;
-        else if (_lastTypeInfo?.Type == type)
+        else if (lastTypeInfo?.Type == type)
             info = _lastInfo;
         else
         {
-            (var lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
+            (lastTypeInfo, info) = BindWithTextFallback(GetTypeInfo(_serializerOptions, type, PostgresType, TypeOID), type);
             if (overwrite)
             {
                 _lastTypeInfo = lastTypeInfo;

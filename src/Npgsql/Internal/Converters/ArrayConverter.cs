@@ -75,8 +75,8 @@ readonly struct PgArrayConverter
     Size GetFixedElemsSize(object values, int count, int[] indices, int[]? lengths = null)
     {
         var nulls = 0;
-        var lastLength = lengths?[lengths!.Length - 1] ?? count;
-        ref var lastIndex = ref indices[indices!.Length - 1];
+        var lastLength = lengths?[lengths.Length - 1] ?? count;
+        ref var lastIndex = ref indices[indices.Length - 1];
         if (ElemTypeDbNullable)
             do
             {
@@ -611,6 +611,7 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
     }
 }
 
+// TODO this should probably be two separate resolvers, one for arrays and one for lists.
 sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
 {
     readonly Type _effectiveType;

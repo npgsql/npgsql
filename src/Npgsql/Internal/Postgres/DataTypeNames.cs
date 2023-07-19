@@ -76,24 +76,4 @@ static class DataTypeNames
     public static DataTypeName PgLsn => ValidatedName("pg_catalog.pg_lsn");
     public static DataTypeName Unknown => ValidatedName("pg_catalog.unknown");
     public static DataTypeName Void => ValidatedName("pg_catalog.void");
-
-    public static DataTypeName? TryGetRangeName(DataTypeName dataTypeName)
-    {
-        if (Int4 == dataTypeName)
-            return Int4Range;
-
-        if (Int8 == dataTypeName)
-            return Int8Range;
-
-        if (Numeric == dataTypeName)
-            return NumRange;
-
-        if (Timestamp == dataTypeName)
-            return TsRange;
-
-        if (TimestampTz == dataTypeName)
-            return TsTzRange;
-
-        return null;
-    }
 }
