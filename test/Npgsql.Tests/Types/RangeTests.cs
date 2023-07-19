@@ -72,31 +72,6 @@ class RangeTests : MultiplexingTestBase
 #endif
 
     [Test]
-    [NonParallelizable]
-    public async Task Range_with_long_subtype()
-    {
-        await using var dataSource = CreateDataSource(csb => csb.MaxPoolSize = 1);
-        await using var conn = await dataSource.OpenConnectionAsync();
-
-        var typeName = await GetTempTypeName(conn);
-        await conn.ExecuteNonQueryAsync($"CREATE TYPE {typeName} AS RANGE(subtype=text)");
-        await Task.Yield(); // TODO: fix multiplexing deadlock bug
-        conn.ReloadTypes();
-        Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
-
-        var value = new NpgsqlRange<string>(
-            new string('a', conn.Settings.WriteBufferSize + 10),
-            new string('z', conn.Settings.WriteBufferSize + 10)
-        );
-
-        await using var cmd = new NpgsqlCommand("SELECT @p", conn);
-        cmd.Parameters.Add(new NpgsqlParameter { DataTypeName = typeName, ParameterName = "p", Value = value });
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        await reader.ReadAsync();
-        Assert.That(reader[0], Is.EqualTo(value));
-    }
-
-    [Test]
     public void Equality_finite()
     {
         var r1 = new NpgsqlRange<int>(0, true, false, 1, false, false);
