@@ -6,7 +6,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Types;
 
-[NonParallelizable]
 public class LTreeTests : MultiplexingTestBase
 {
     [Test]
@@ -31,20 +30,20 @@ public class LTreeTests : MultiplexingTestBase
         await using var dataSource = dataSourceBuilder.Build();
 
         var exception =
-            await AssertTypeUnsupportedRead<NpgsqlRange<int>, NotSupportedException>("Top.Science.Astronomy", "ltree", dataSource);
+            await AssertTypeUnsupportedRead<NpgsqlRange<int>>("Top.Science.Astronomy", "ltree", dataSource);
         Assert.That(exception.Message, Is.EqualTo(errorMessage));
-        exception = await AssertTypeUnsupportedWrite<string, NotSupportedException>("Top.Science.Astronomy", "ltree", dataSource);
+        exception = await AssertTypeUnsupportedWrite<string>("Top.Science.Astronomy", "ltree", dataSource);
         Assert.That(exception.Message, Is.EqualTo(errorMessage));
     }
 
     [Test]
-    public async Task NpgsqlSlimSourceBuilder_EnableRanges()
+    public async Task NpgsqlSlimSourceBuilder_EnableLTree()
     {
         var dataSourceBuilder = new NpgsqlSlimDataSourceBuilder(ConnectionString);
-        dataSourceBuilder.EnableRanges();
+        dataSourceBuilder.EnableLTree();
         await using var dataSource = dataSourceBuilder.Build();
 
-        await AssertType("Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
+        await AssertType(dataSource, "Top.Science.Astronomy", "Top.Science.Astronomy", "ltree", NpgsqlDbType.LTree, isDefaultForWriting: false);
     }
 
     [OneTimeSetUp]

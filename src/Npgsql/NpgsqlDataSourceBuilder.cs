@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -78,8 +79,6 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
         void AddDefaultFeatures()
         {
             _internalBuilder.EnableEncryption();
-            foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers())
-                AddTypeInfoResolver(plugin);
             // Reverse order.
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
@@ -94,6 +93,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(new NetworkTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsResolver());
             AddTypeInfoResolver(AdoTypeInfoResolver.Instance);
+            foreach (var plugin in GlobalTypeMapper.Instance.GetPluginResolvers().Reverse())
+                AddTypeInfoResolver(plugin);
         }
     }
 

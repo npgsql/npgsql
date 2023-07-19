@@ -7,7 +7,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net7.0;net8.0</TargetFrameworks>
     <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net8.0</TargetFramework>
-    <NoWarn>$(NoWarn);CA2017;CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CA2017</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -55,10 +55,4 @@
       <DependentUpon>NpgsqlStrings.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-
-
-  <ItemGroup>
-    <Folder Include="Internal\Postgres\" />
-  </ItemGroup>
-
 </Project>

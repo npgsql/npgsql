@@ -37,7 +37,7 @@ public class ReplicationValue
     internal ReplicationValue(NpgsqlConnector connector)
     {
         _readBuffer = connector.ReadBuffer;
-        _columnStream = new NpgsqlReadBuffer.ColumnStream(connector, commandScoped: true);
+        _columnStream = new NpgsqlReadBuffer.ColumnStream(connector, commandScoped: false);
     }
 
     internal void Reset(TupleDataKind kind, int length, FieldDescription fieldDescription)
