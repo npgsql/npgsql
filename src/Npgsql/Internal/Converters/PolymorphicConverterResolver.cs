@@ -38,16 +38,19 @@ abstract class PolymorphicConverterResolver : PgConverterResolver<object>
 // Including pushing construction through a GVM visitor pattern on the element handler,
 // manual reimplementation of the element logic in the array resolver, and other ways.
 // This one however is by far the most lightweight on both the implementation duplication and code bloat axes.
-sealed class PolymorphicArrayConverterResolver : PolymorphicConverterResolver
+sealed class ArrayPolymorphicConverterResolver : PolymorphicConverterResolver
 {
     readonly PgResolverTypeInfo _elemTypeInfo;
     readonly Func<PgConverterResolution, PgConverter> _elemToArrayConverterFactory;
     readonly PgTypeId _elemPgTypeId;
     readonly ConcurrentDictionary<PgConverter, PgConverter> _converterCache = new(ReferenceEqualityComparer.Instance);
 
-    public PolymorphicArrayConverterResolver(PgTypeId pgTypeId, PgResolverTypeInfo elemTypeInfo, Func<PgConverterResolution, PgConverter> elemToArrayConverterFactory)
+    public ArrayPolymorphicConverterResolver(PgTypeId pgTypeId, PgResolverTypeInfo elemTypeInfo, Func<PgConverterResolution, PgConverter> elemToArrayConverterFactory)
         : base(pgTypeId)
     {
+        if (elemTypeInfo.PgTypeId is null)
+            throw new ArgumentException("elemTypeInfo.PgTypeId must be non-null.", nameof(elemTypeInfo));
+
         _elemTypeInfo = elemTypeInfo;
         _elemToArrayConverterFactory = elemToArrayConverterFactory;
         _elemPgTypeId = elemTypeInfo.PgTypeId!.Value;

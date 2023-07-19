@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Postgres;
 using static Npgsql.Internal.Converters.AsyncHelpers;
 
 namespace Npgsql.Internal.Converters;
@@ -65,3 +66,18 @@ sealed class CastingConverter<T> : PgConverter<T>
     }
 }
 
+// Given there aren't many instantiations of converter resolvers (and it's fairly involved to write a fast one) we use the composing base class.
+sealed class CastingConverterResolver<T> : ComposingConverterResolver<T>
+{
+    public CastingConverterResolver(PgResolverTypeInfo effectiveResolverTypeInfo)
+        : base(effectiveResolverTypeInfo.PgTypeId, effectiveResolverTypeInfo) { }
+
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => pgTypeId;
+    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => effectivePgTypeId;
+
+    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
+        => new CastingConverter<T>(effectiveResolution.Converter);
+
+    protected override PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
+        => EffectiveResolverTypeInfo.GetResolutionAsObject(value, expectedEffectivePgTypeId);
+}

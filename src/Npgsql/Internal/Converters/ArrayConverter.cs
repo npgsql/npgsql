@@ -481,7 +481,7 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
             return null;
 
         return !ElemBinaryRequirements.IsFixedSize
-            ? _elemConverter.GetSize(context, value!, ref writeState)
+            ? _elemConverter.GetSize(context, value, ref writeState)
             : Size.Zero;
     }
 
@@ -568,7 +568,7 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
             return null;
 
         return !ElemBinaryRequirements.IsFixedSize
-            ? _elemConverter.GetSize(context, value!, ref writeState)
+            ? _elemConverter.GetSize(context, value, ref writeState)
             : Size.Zero;
     }
 
@@ -761,4 +761,36 @@ sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
 
     public override ValueTask WriteAsync(PgWriter writer, object value, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Polymorphic writing is not supported");
+}
+
+sealed class PolymorphicArrayConverterResolver : PolymorphicConverterResolver
+{
+    readonly PgResolverTypeInfo _effectiveInfo;
+    readonly PgResolverTypeInfo _effectiveNullableInfo;
+    readonly ConcurrentDictionary<PgConverter, PgConverter<object>> _converterCache = new(ReferenceEqualityComparer.Instance);
+
+    public PolymorphicArrayConverterResolver(PgResolverTypeInfo effectiveInfo, PgResolverTypeInfo effectiveNullableInfo)
+        : base(effectiveInfo.PgTypeId!.Value)
+    {
+        if (effectiveInfo.PgTypeId is null || effectiveNullableInfo.PgTypeId is null)
+            throw new InvalidOperationException("Cannot accept undecided infos");
+
+        _effectiveInfo = effectiveInfo;
+        _effectiveNullableInfo = effectiveNullableInfo;
+    }
+
+    protected override PgConverter Get(Field? maybeField)
+    {
+        var structResolution = maybeField is { } field
+            ? _effectiveInfo.GetResolution(field)
+            : _effectiveInfo.GetDefaultResolution(PgTypeId);
+        var nullableResolution = maybeField is { } field2
+            ? _effectiveNullableInfo.GetResolution(field2)
+            : _effectiveNullableInfo.GetDefaultResolution(PgTypeId);
+
+        (PgConverter StructConverter, PgConverter NullableConverter) state = (structResolution.Converter, nullableResolution.Converter);
+        return _converterCache.GetOrAdd(structResolution.Converter,
+            static (_, state) => new PolymorphicArrayConverter(state.StructConverter, state.NullableConverter),
+            state);
+    }
 }
