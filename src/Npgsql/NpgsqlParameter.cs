@@ -513,10 +513,6 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
                 valueType = staticValueType == typeof(object) ? Value?.GetType() : staticValueType;
             }
 
-            // The only exceptional type that we don't want a 'random' default for is byte[] which should always map to bytea.
-            if (valueType == typeof(byte[]))
-                _dataTypeName = DataTypeNames.Bytea.Value;
-
             string? dataTypeName = null;
             DataTypeName? builtinDataTypeName = null;
             if (_npgsqlDbType is { } npgsqlDbType)

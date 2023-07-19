@@ -59,6 +59,14 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
         mappings.AddStructType<char>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+        // Uses the bytea converters, as neither type has a header.
+        mappings.AddType<byte[]>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),
+            MatchRequirement.DataTypeName);
+        mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Text,
+            static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
+            MatchRequirement.DataTypeName);
+        //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
@@ -75,7 +83,16 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
                 static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
                 MatchRequirement.DataTypeName);
             mappings.AddStructType<char>(dataTypeName,
-                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
+                static (options, mapping, _) => mapping.CreateInfo(options, new CharTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
+                MatchRequirement.DataTypeName);
+            // Uses the bytea converters, as neither type has a header.
+            mappings.AddType<byte[]>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()),
+                MatchRequirement.DataTypeName);
+            mappings.AddStructType<ReadOnlyMemory<byte>>(dataTypeName,
+                static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()),
+                MatchRequirement.DataTypeName);
+            //Special mappings, these have no corresponding array mapping.
             mappings.AddType<TextReader>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
                 MatchRequirement.DataTypeName);
@@ -89,11 +106,18 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
         mappings.AddStructType<char>(DataTypeNames.Jsonb,
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<char>(new CharTextConverter(options.TextEncoding))));
+        mappings.AddType<byte[]>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<byte[]>(new ArrayByteaConverter())),
+            MatchRequirement.DataTypeName);
+        mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Jsonb,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<ReadOnlyMemory<byte>>(new ReadOnlyMemoryByteaConverter())),
+            MatchRequirement.DataTypeName);
+        //Special mappings, these have no corresponding array mapping.
         mappings.AddType<TextReader>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new TextReaderTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<TextReader>(new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
         mappings.AddStructType<GetChars>(DataTypeNames.Jsonb,
-            static (options, mapping, _) => mapping.CreateInfo(options, new GetCharsTextConverter(options.TextEncoding), supportsWriting: false, preferredFormat: DataFormat.Text),
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<GetChars>(new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
 
         // Bytea
@@ -284,6 +308,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Text
         mappings.AddArrayType<string>((string)DataTypeNames.Text);
         mappings.AddStructArrayType<char>((string)DataTypeNames.Text);
+        mappings.AddArrayType<byte[]>((string)DataTypeNames.Text);
+        mappings.AddStructArrayType<ReadOnlyMemory<byte>>((string)DataTypeNames.Text);
 
         // Alternative text types
         foreach(var dataTypeName in new[] { "citext", (string)DataTypeNames.Varchar,
@@ -292,6 +318,8 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         {
             mappings.AddArrayType<string>(dataTypeName);
             mappings.AddStructArrayType<char>(dataTypeName);
+            mappings.AddArrayType<byte[]>(dataTypeName);
+            mappings.AddStructArrayType<ReadOnlyMemory<byte>>(dataTypeName);
         }
 
         // Bytea

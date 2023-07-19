@@ -288,7 +288,12 @@ public class PgTypeInfo
         case null or DataFormat.Text:
             var canTextConvert = HasCachedInfo(converter) ? CachedCanConvert(DataFormat.Text, out bufferRequirements) : converter.CanConvert(DataFormat.Text, out bufferRequirements);
             if (!canTextConvert)
-                throw new InvalidOperationException("Converter doesn't support any data format.");
+            {
+                if (formatPreference is null)
+                    throw new InvalidOperationException("Converter doesn't support any data format.");
+                // Rerun without preference.
+                return ResolveFormat(converter, out bufferRequirements);
+            }
             return DataFormat.Text;
         default:
             throw new ArgumentOutOfRangeException();
