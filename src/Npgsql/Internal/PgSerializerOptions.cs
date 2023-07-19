@@ -80,9 +80,6 @@ public class PgSerializerOptions
     internal PgTypeId ToCanonicalTypeId(PostgresType pgType)
         => PortableTypeIds ? pgType.DataTypeName : (Oid)pgType.OID;
 
-    internal PgTypeId GetCanonicalTypeId(string dataTypeName)
-        => ToCanonicalTypeId(TypeCatalog.GetPostgresTypeByName(dataTypeName));
-
     public PgTypeId GetArrayTypeId(PgTypeId elementTypeId)
     {
         // Static affordance to help the global type mapper.
@@ -102,4 +99,12 @@ public class PgSerializerOptions
         return ToCanonicalTypeId((TypeCatalog.GetPgType(arrayTypeId) as PostgresArrayType)?.Element
                                  ?? throw new NotSupportedException("Cannot resolve element type id."));
     }
+
+    public PgTypeId GetRangeTypeId(PgTypeId subTypeId) =>
+        ToCanonicalTypeId(TypeCatalog.GetPgType(subTypeId).Range
+                          ?? throw new NotSupportedException("Cannot resolve range type id."));
+
+    public PgTypeId GetRangeSubTypeId(PgTypeId rangeTypeId) =>
+        ToCanonicalTypeId((TypeCatalog.GetPgType(rangeTypeId) as PostgresRangeType)?.Subtype
+                          ?? throw new NotSupportedException("Cannot resolve element type id."));
 }
