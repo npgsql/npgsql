@@ -120,6 +120,17 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new JsonbTextConverter<GetChars>(new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
             MatchRequirement.DataTypeName);
 
+        // Jsonpath
+        mappings.AddType<string>(DataTypeNames.Jsonpath,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<string>(new StringTextConverter(options.TextEncoding))), isDefault: true);
+        //Special mappings, these have no corresponding array mapping.
+        mappings.AddType<TextReader>(DataTypeNames.Jsonpath,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<TextReader>(new TextReaderTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
+        mappings.AddStructType<GetChars>(DataTypeNames.Jsonpath,
+            static (options, mapping, _) => mapping.CreateInfo(options, new JsonpathConverter<GetChars>(new GetCharsTextConverter(options.TextEncoding)), supportsWriting: false, preferredFormat: DataFormat.Text),
+            MatchRequirement.DataTypeName);
+
         // Bytea
         mappings.AddType<byte[]>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()), isDefault: true);

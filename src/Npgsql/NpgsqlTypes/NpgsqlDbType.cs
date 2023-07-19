@@ -850,7 +850,7 @@ static class NpgsqlDbTypeExtensions
             NpgsqlDbType.Refcursor => DataTypeNames.RefCursor,
             NpgsqlDbType.Jsonb => DataTypeNames.Jsonb,
             NpgsqlDbType.Json => DataTypeNames.Json,
-            NpgsqlDbType.JsonPath => DataTypeNames.JsonPath,
+            NpgsqlDbType.JsonPath => DataTypeNames.Jsonpath,
 
             // Date/time types
             NpgsqlDbType.Timestamp => DataTypeNames.Timestamp,

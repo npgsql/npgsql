@@ -105,7 +105,7 @@ static class DefaultPgTypes
             Create(DataTypeNames.Xml, oid: 142, arrayOid: 143),
             Create(DataTypeNames.Json, oid: 114, arrayOid: 199),
             Create(DataTypeNames.Jsonb, oid: 3802, arrayOid: 3807),
-            Create(DataTypeNames.JsonPath, oid: 4072, arrayOid: 4073),
+            Create(DataTypeNames.Jsonpath, oid: 4072, arrayOid: 4073),
             Create(DataTypeNames.RefCursor, oid: 1790, arrayOid: 2201),
             Create(DataTypeNames.OidVector, oid: 30, arrayOid: 1013),
             Create(DataTypeNames.Int2Vector, oid: 22, arrayOid: 1006),
