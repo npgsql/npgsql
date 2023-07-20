@@ -82,7 +82,7 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)
             throw new NotImplementedException();
 
-        ConvertedSize = info?.BufferRequirement;
+        ConvertedSize = info?.BufferRequirement ?? -1;
         AsObject = info?.AsObject ?? false;
         Format = dataFormat;
     }

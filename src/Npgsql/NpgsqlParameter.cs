@@ -563,6 +563,7 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         // TODO we could expose a property on a Converter/TypeInfo to indicate whether it's immutable, at that point we can reuse.
         if (!previouslyBound || TypeInfo is PgResolverTypeInfo)
         {
+            ResetResolution();
             var resolution = GetResolution(TypeInfo!);
             Converter = resolution.Converter;
             PgTypeId = resolution.PgTypeId;
@@ -582,6 +583,10 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (TypeInfo is null)
             throw new InvalidOperationException("Not bound yet");
 
+        // We might call this twice, once during validation and once during WriteBind, only compute things once.
+        if (ConvertedSize is not null)
+            return;
+
         // Pull from Value so we also support object typed generic params.
         var value = Value;
         if (value is null)
@@ -594,19 +599,19 @@ public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
         if (info?.BufferRequirement.Kind is SizeKind.Unknown)
             throw new NotImplementedException();
 
-        ConvertedSize = info?.BufferRequirement;
+        ConvertedSize = info?.BufferRequirement ?? -1;
         AsObject = info?.AsObject ?? false;
         Format = dataFormat;
     }
 
     internal async ValueTask Write(bool async, PgWriter writer, CancellationToken cancellationToken)
     {
-        if (TypeInfo is null)
-            throw new InvalidOperationException("Not bound yet");
+        if (TypeInfo is null || ConvertedSize is null)
+            throw new InvalidOperationException("Not bound or sized yet");
 
         switch (ConvertedSize)
         {
-        case { Kind: SizeKind.Exact } size:
+        case { Kind: SizeKind.Exact, Value: >= 0 } size:
         {
             try
             {
