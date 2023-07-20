@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -79,4 +80,29 @@ sealed class MemoryByteaConverter : ByteaConverters<Memory<byte>>
 {
     protected override Memory<byte> ConvertTo(Memory<byte> value) => value;
     protected override Memory<byte> ConvertFrom(Memory<byte> value) => value;
+}
+
+sealed class StreamByteaConverter : PgStreamingConverter<Stream>
+{
+    public override Stream Read(PgReader reader)
+        => throw new NotSupportedException("Handled by generic stream support in NpgsqlDataReader");
+
+    public override ValueTask<Stream> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Handled by generic stream support in NpgsqlDataReader");
+
+    public override Size GetSize(SizeContext context, Stream value, ref object? writeState)
+    {
+        var memoryStream = new MemoryStream(value.CanSeek ? (int)value.Length : 0);
+        if (value.CanSeek)
+            value.Seek(0, SeekOrigin.Begin);
+        value.CopyTo(memoryStream);
+        writeState = memoryStream.ToArray();
+        return checked((int)memoryStream.Length);
+    }
+
+    public override void Write(PgWriter writer, Stream value)
+        => writer.WriteRaw((byte[])writer.Current.WriteState!);
+
+    public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default)
+        => writer.WriteRawAsync((byte[])writer.Current.WriteState!, cancellationToken);
 }
