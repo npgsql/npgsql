@@ -15,8 +15,8 @@ public class PgTypeInfo
 
     PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
     {
-        if (unboxedType is not null && type != typeof(object))
-            throw new ArgumentException("Cannot supply unboxed type information for converters that don't convert to object.", nameof(unboxedType));
+        if (unboxedType is not null && !type.IsAssignableFrom(unboxedType))
+            throw new ArgumentException("Cannot supply unboxed type information for converters where a value of unboxedType is not assignable to type.", nameof(unboxedType));
 
         Options = options;
         IsBoxing = unboxedType is not null;
@@ -237,23 +237,23 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo AsObjectTypeInfo(Type? unboxedType = null)
+    internal PgTypeInfo AsObjectTypeInfo(Type? unboxedType = null, bool supportsWriting = false)
     {
         // No-op in this case.
-        if (Type == unboxedType)
+        if (Type == unboxedType && IsBoxing)
             return this;
 
         if (IsResolverInfo)
             return new PgResolverTypeInfo(Options, new CastingConverterResolver<object>((PgResolverTypeInfo)this), PgTypeId.GetValueOrDefault(), unboxedType)
             {
                 PreferredFormat = PreferredFormat,
-                SupportsWriting = SupportsWriting
+                SupportsWriting = supportsWriting && SupportsWriting
             };
 
         return new(Options, new CastingConverter<object>(Converter), PgTypeId.GetValueOrDefault(), unboxedType)
         {
             PreferredFormat = PreferredFormat,
-            SupportsWriting = SupportsWriting
+            SupportsWriting = supportsWriting && SupportsWriting
         };
     }
 
@@ -269,11 +269,11 @@ public class PgTypeInfo
         };
     }
 
-    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null)
+    internal PgTypeInfo ToComposedTypeInfo(PgConverterResolver resolver, PgTypeId? expectedPgTypeId, Type? unboxedType = null, bool supportsWriting = true)
         => new PgResolverTypeInfo(Options, resolver, expectedPgTypeId, unboxedType)
         {
             PreferredFormat = PreferredFormat,
-            SupportsWriting = SupportsWriting
+            SupportsWriting = supportsWriting && SupportsWriting
         };
 
     // If we don't have a converter stored we must ask the retrieved one.
