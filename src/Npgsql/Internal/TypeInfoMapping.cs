@@ -49,12 +49,13 @@ public readonly struct TypeInfoMapping
     public MatchRequirement MatchRequirement { get; init; }
     public Func<Type, bool>? TypeMatchPredicate { get; init; }
 
-    public bool DataTypeNameEquals(DataTypeName dataTypeName)
+    public bool TypeEquals(Type type) => Type == type || TypeMatchPredicate?.Invoke(type) == true;
+    public bool DataTypeNameEquals(string dataTypeName)
     {
         var span = DataTypeName.AsSpan();
         return Postgres.DataTypeName.IsFullyQualified(span)
-            ? span.Equals(dataTypeName.Value.AsSpan(), StringComparison.Ordinal)
-            : span.Equals(dataTypeName.UnqualifiedNameSpan, StringComparison.Ordinal);
+            ? span.Equals(dataTypeName.AsSpan(), StringComparison.Ordinal)
+            : span.Equals(Postgres.DataTypeName.ValidatedName(dataTypeName).UnqualifiedNameSpan, StringComparison.Ordinal);
     }
 
     string DebuggerDisplay
@@ -101,7 +102,7 @@ public sealed class TypeInfoMappingCollection
         foreach (var mapping in _items)
         {
             var typeMatch = type is not null && (mapping.TypeMatchPredicate is { } pred ? pred(type) : mapping.Type == type);
-            var dataTypeMatch = dataTypeName is not null && mapping.DataTypeNameEquals(dataTypeName.Value);
+            var dataTypeMatch = dataTypeName is not null && mapping.DataTypeNameEquals(dataTypeName.Value.Value);
 
             switch (mapping.MatchRequirement)
             {
@@ -131,7 +132,7 @@ public sealed class TypeInfoMappingCollection
     {
         foreach (var mapping in _baseCollection?._items ?? _items)
         {
-            if (mapping.Type == type && mapping.DataTypeName.AsSpan().Equals(dataTypeName.AsSpan(), StringComparison.Ordinal))
+            if (mapping.TypeEquals(type) && mapping.DataTypeNameEquals(dataTypeName))
             {
                 value = mapping;
                 return true;
