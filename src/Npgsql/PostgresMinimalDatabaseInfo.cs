@@ -62,7 +62,7 @@ sealed class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
 
     // TODO, split database info and type catalog.
     internal PostgresMinimalDatabaseInfo()
-        : base("minimal", 5432, "minimal", "11")
+        : base("minimal", 5432, "minimal", "14")
     {
     }
 
