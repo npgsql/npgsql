@@ -148,28 +148,56 @@ public sealed class TypeInfoMappingCollection
         => TryFindMapping(type, dataTypeName, out var info) ? info : throw new InvalidOperationException("Could not find mapping for " + dataTypeName);
 
     // Helper to eliminate generic display class duplication.
-    static TypeInfoFactory CreateComposedFactory(TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, Type? unboxedType = null, bool copyPreferredFormat = false) =>
-        (options, mapping, resolvedDataTypeName) =>
+    static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgTypeInfo, PgConverter> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
+        => (options, mapping, dataTypeNameMatch) =>
         {
-            var innerInfo = innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
+            var innerInfo = innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
             var converter = mapper(mapping, innerInfo);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var supportsWriting = innerInfo.SupportsWriting;
-            return mapping.CreateInfo(options, converter, unboxedType, preferredFormat, supportsWriting);
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting && mapping.Type != typeof(object);
+            var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
+            return mapping.CreateInfo(options, converter, unboxedType, preferredFormat, writingSupported);
         };
 
     // Helper to eliminate generic display class duplication.
-    static TypeInfoFactory CreateComposedFactory(TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> mapper, Type? unboxedType = null, bool copyPreferredFormat = false) =>
-        (options, mapping, resolvedDataTypeName) =>
+    static TypeInfoFactory CreateComposedFactory(Type mappingType, TypeInfoMapping innerMapping, Func<TypeInfoMapping, PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> mapper, bool copyPreferredFormat = false, bool supportsWriting = true)
+        => (options, mapping, dataTypeNameMatch) =>
         {
-            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, innerMapping, resolvedDataTypeName);
+            var innerInfo = (PgResolverTypeInfo)innerMapping.Factory(options, innerMapping, dataTypeNameMatch);
             var resolver = mapper(mapping, innerInfo, options);
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
-            var supportsWriting = innerInfo.SupportsWriting;
+            var writingSupported = supportsWriting && innerInfo.SupportsWriting && mapping.Type != typeof(object);
+            var unboxedType = ComputeUnboxedType(defaultType: mappingType, resolver.TypeToConvert, mapping.Type);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
-            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, unboxedType, preferredFormat, supportsWriting);
+            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, unboxedType, preferredFormat, writingSupported);
         };
+
+    static Type? ComputeUnboxedType(Type defaultType, Type converterType, Type matchedType)
+    {
+        // The minimal hierarchy that should hold for things to work is object < converterType < matchedType.
+        // Though these types could often be seen in a hierarchy: object < converterType < defaultType < matchedType.
+        // Some caveats with the latter being for instance Array being the matchedType while the defaultType is int[].
+        Debug.Assert(converterType.IsAssignableFrom(matchedType) || matchedType == typeof(object));
+        Debug.Assert(converterType.IsAssignableFrom(defaultType));
+
+        // A special case for object matches, where we return a more specific type than was matched.
+        // This is to report e.g. Array converters as Array when their matched type was object.
+        if (matchedType == typeof(object))
+            return converterType;
+
+        // This is to report e.g. Array converters as int[,,,] when their matched type was such.
+        if (matchedType != defaultType)
+            return matchedType;
+
+        // If defaultType does not equal converterType we take defaultType as it's more specific.
+        // This is to report e.g. Array converters as int[] when their matched type was their default type.
+        if (defaultType != converterType)
+            return defaultType;
+
+        // Keep the converter type.
+        return null;
+    }
 
     public void Add(TypeInfoMapping mapping) => _items.Add(mapping);
 
@@ -221,25 +249,26 @@ public sealed class TypeInfoMappingCollection
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
 
-        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, copyDefault: true, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
-        AddArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverter<TElement>, copyDefault: true, listTypeMatchPredicate, suppressObjectMapping: true);
+        AddArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverter<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
+        AddArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverter<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
 
-        void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgTypeInfo, PgConverter> converter, bool copyDefault, Func<Type, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
+        void AddArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgTypeInfo, PgConverter> converter, Func<Type, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
-            var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(elementMapping, converter))
+            var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(type, elementMapping, converter))
             {
-                MatchRequirement = copyDefault ? elementMapping.MatchRequirement : MatchRequirement.All,
+                MatchRequirement = elementMapping.MatchRequirement,
                 TypeMatchPredicate = typeMatchPredicate
             };
             _items.Add(arrayMapping);
+            suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
                 _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
                 {
                     if (!dataTypeNameMatch)
                         throw new InvalidOperationException("Should not happen, please file a bug.");
 
-                    return arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array));
+                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
                 }));
         }
     }
@@ -252,21 +281,28 @@ public sealed class TypeInfoMappingCollection
         // Always use a predicate to match all dimensions.
         var arrayTypeMatchPredicate = GetArrayTypeMatchPredicate(elementMapping.TypeMatchPredicate ?? (static type => type == typeof(TElement)));
         var listTypeMatchPredicate = elementMapping.TypeMatchPredicate is not null ? GetListTypeMatchPredicate(elementMapping.TypeMatchPredicate) : null;
-        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, copyDefault: true, arrayTypeMatchPredicate);
-        AddResolverArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverterResolver<TElement>, copyDefault: true, listTypeMatchPredicate);
-        if (typeof(object) == typeof(TElement))
-            AddResolverArrayType(elementMapping, typeof(object), CreateArrayBasedConverterResolver<TElement>, copyDefault: false);
 
-        void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter,
-            bool copyDefault, Func<Type, bool>? typeMatchPredicate = null)
+        AddResolverArrayType(elementMapping, typeof(TElement[]), CreateArrayBasedConverterResolver<TElement>, arrayTypeMatchPredicate, suppressObjectMapping: TryFindMapping(typeof(object), elementMapping.DataTypeName, out _));
+        AddResolverArrayType(elementMapping, typeof(List<TElement>), CreateListBasedConverterResolver<TElement>, listTypeMatchPredicate, suppressObjectMapping: true);
+
+        void AddResolverArrayType(TypeInfoMapping elementMapping, Type type, Func<TypeInfoMapping, PgResolverTypeInfo, PgSerializerOptions, PgConverterResolver> converter, Func<Type, bool>? typeMatchPredicate = null, bool suppressObjectMapping = false)
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
-            var mapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(elementMapping, converter))
+            var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(type, elementMapping, converter))
             {
-                MatchRequirement = copyDefault ? elementMapping.MatchRequirement : MatchRequirement.All,
+                MatchRequirement = elementMapping.MatchRequirement,
                 TypeMatchPredicate = typeMatchPredicate
             };
-            _items.Add(mapping);
+            _items.Add(arrayMapping);
+            suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
+            if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
+                _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
+                {
+                    if (!dataTypeNameMatch)
+                        throw new InvalidOperationException("Should not happen, please file a bug.");
+
+                    return arrayMapping.Factory(options, mapping, dataTypeNameMatch);
+                }));
         }
     }
 
@@ -302,7 +338,7 @@ public sealed class TypeInfoMappingCollection
         mapping = configure?.Invoke(mapping) ?? mapping;
         _items.Add(mapping);
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
-            CreateComposedFactory(mapping, nullableConverter, copyPreferredFormat: true))
+            CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
             {
                 TypeMatchPredicate = mapping.TypeMatchPredicate is not null
                     ? type => Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying)
@@ -345,13 +381,13 @@ public sealed class TypeInfoMappingCollection
     {
         var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-        var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(elementMapping, converter))
+        var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(type, elementMapping, converter))
         {
             MatchRequirement = elementMapping.MatchRequirement,
             TypeMatchPredicate = typeMatchPredicate
         };
         arrayMapping = configure?.Invoke(arrayMapping) ?? arrayMapping;
-        var nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, CreateComposedFactory(nullableElementMapping, nullableConverter))
+        var nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, CreateComposedFactory(nullableType, nullableElementMapping, nullableConverter))
         {
             MatchRequirement = arrayMapping.MatchRequirement,
             TypeMatchPredicate = nullableTypeMatchPredicate
@@ -359,17 +395,23 @@ public sealed class TypeInfoMappingCollection
 
         _items.Add(arrayMapping);
         _items.Add(nullableArrayMapping);
+        suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
         if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
             _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) =>
             {
-                if (!dataTypeNameMatch)
-                    throw new InvalidOperationException("Should not happen, please file a bug.");
-
-                return new(options, CreatePolymorphicArrayConverter(
-                    () => arrayMapping.Factory(options, arrayMapping with { Type = typeof(object) }, dataTypeNameMatch).GetConcreteResolution().Converter,
-                    () => nullableArrayMapping.Factory(options, nullableArrayMapping with { Type = typeof(object) }, dataTypeNameMatch).GetConcreteResolution().Converter,
-                    options
-                ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array));
+                return options.ArrayNullabilityMode switch
+                {
+                    _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    ArrayNullabilityMode.PerInstance => new(options,
+                        new PolymorphicArrayConverter<Array>(
+                            arrayMapping.Factory(options, mapping, dataTypeNameMatch).GetConcreteResolution().GetConverter<Array>(),
+                            nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch).GetConcreteResolution().GetConverter<Array>()
+                        ),
+                        options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array)) { SupportsWriting = false },
+                    _ => throw new ArgumentOutOfRangeException()
+                };
             }) { MatchRequirement = MatchRequirement.DataTypeName });
     }
 
@@ -400,12 +442,12 @@ public sealed class TypeInfoMappingCollection
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
 
-            var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(elementMapping, converter))
+            var arrayMapping = new TypeInfoMapping(type, arrayDataTypeName, CreateComposedFactory(type, elementMapping, converter))
             {
                 MatchRequirement = elementMapping.MatchRequirement,
                 TypeMatchPredicate = typeMatchPredicate
             };
-            var nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, CreateComposedFactory(nullableElementMapping, nullableConverter))
+            var nullableArrayMapping = new TypeInfoMapping(nullableType, arrayDataTypeName, CreateComposedFactory(nullableType, nullableElementMapping, nullableConverter))
             {
                 MatchRequirement = elementMapping.MatchRequirement,
                 TypeMatchPredicate = typeMatchPredicate
@@ -413,17 +455,18 @@ public sealed class TypeInfoMappingCollection
 
             _items.Add(arrayMapping);
             _items.Add(nullableArrayMapping);
+            suppressObjectMapping = suppressObjectMapping || arrayMapping.TypeEquals(typeof(object));
             if (!suppressObjectMapping && arrayMapping.MatchRequirement is MatchRequirement.DataTypeName or MatchRequirement.Single)
                 _items.Add(new TypeInfoMapping(typeof(object), arrayDataTypeName, (options, mapping, dataTypeNameMatch) => options.ArrayNullabilityMode switch
                 {
                     _ when !dataTypeNameMatch => throw new InvalidOperationException("Should not happen, please file a bug."),
-                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array)),
-                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch).AsObjectTypeInfo(unboxedType: typeof(Array)),
-                    ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch).ToComposedTypeInfo(
-                        new PolymorphicArrayConverterResolver(
-                            (PgResolverTypeInfo)arrayMapping.Factory(options, arrayMapping, dataTypeNameMatch),
-                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, nullableArrayMapping, dataTypeNameMatch)
-                        ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), unboxedType: typeof(Array)),
+                    ArrayNullabilityMode.Never => arrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    ArrayNullabilityMode.Always => nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                    ArrayNullabilityMode.PerInstance => arrayMapping.Factory(options, mapping, dataTypeNameMatch).ToComposedTypeInfo(
+                        new PolymorphicArrayConverterResolver<Array>(
+                            (PgResolverTypeInfo)arrayMapping.Factory(options, mapping, dataTypeNameMatch),
+                            (PgResolverTypeInfo)nullableArrayMapping.Factory(options, mapping, dataTypeNameMatch)
+                        ), options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), supportsWriting: false),
                     _ => throw new ArgumentOutOfRangeException()
                 }) { MatchRequirement = MatchRequirement.DataTypeName });
         }
@@ -433,7 +476,6 @@ public sealed class TypeInfoMappingCollection
 
     public void AddPolymorphicResolverArrayType(TypeInfoMapping elementMapping, Func<PgSerializerOptions, Func<PgConverterResolution, PgConverter>> elementToArrayConverterFactory)
     {
-        var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
         AddPolymorphicResolverArrayType(elementMapping, typeof(object),
             (mapping, elemInfo, options) => new ArrayPolymorphicConverterResolver(
                 options.GetCanonicalTypeId(new DataTypeName(mapping.DataTypeName)), elemInfo, elementToArrayConverterFactory(options))
@@ -443,7 +485,7 @@ public sealed class TypeInfoMappingCollection
         {
             var arrayDataTypeName = GetArrayDataTypeName(elementMapping.DataTypeName);
             var mapping = new TypeInfoMapping(type, arrayDataTypeName,
-                CreateComposedFactory(elementMapping, converter, unboxedType: typeof(Array)))
+                CreateComposedFactory(typeof(Array), elementMapping, converter, supportsWriting: false))
             {
                 MatchRequirement = elementMapping.MatchRequirement,
                 TypeMatchPredicate = typeMatchPredicate
@@ -452,26 +494,14 @@ public sealed class TypeInfoMappingCollection
         }
     }
 
-    public static PgConverter CreatePolymorphicArrayConverter(Func<PgConverter> arrayConverterFactory, Func<PgConverter> nullableArrayConverterFactory, PgSerializerOptions options)
-    {
-        switch (options.ArrayNullabilityMode)
+    public static PgConverter CreatePolymorphicArrayConverter<TBase>(Func<PgConverter<TBase>> arrayConverterFactory, Func<PgConverter<TBase>> nullableArrayConverterFactory, PgSerializerOptions options)
+        => options.ArrayNullabilityMode switch
         {
-        case ArrayNullabilityMode.Never:
-            var arrayConverter = arrayConverterFactory();
-            if (arrayConverter.TypeToConvert != typeof(object))
-                return new CastingConverter<object>(arrayConverter);
-            return arrayConverter;
-        case ArrayNullabilityMode.Always:
-            var nullableArrayConverter = nullableArrayConverterFactory();
-            if (nullableArrayConverter.TypeToConvert != typeof(object))
-                return new CastingConverter<object>(nullableArrayConverter);
-            return nullableArrayConverter;
-        case ArrayNullabilityMode.PerInstance:
-            return new PolymorphicArrayConverter(arrayConverterFactory(), nullableArrayConverterFactory());
-        default:
-            throw new ArgumentOutOfRangeException();
-        }
-    }
+            ArrayNullabilityMode.Never => arrayConverterFactory(),
+            ArrayNullabilityMode.Always => nullableArrayConverterFactory(),
+            ArrayNullabilityMode.PerInstance => new PolymorphicArrayConverter<TBase>(arrayConverterFactory(), nullableArrayConverterFactory()),
+            _ => throw new ArgumentOutOfRangeException()
+        };
 
     /// Returns whether type matches any of the types we register pg arrays as.
     public static bool IsArrayType(Type type, [NotNullWhen(true)] out Type? elementType)
@@ -491,19 +521,19 @@ public sealed class TypeInfoMappingCollection
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value
             : "_" + DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
 
-    static ArrayBasedArrayConverter<TElement, object> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ArrayBasedArrayConverter<TElement, Array> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<TElement, object>(elemInfo.GetConcreteResolution(), mapping.Type);
+            return new ArrayBasedArrayConverter<TElement, Array>(elemInfo.GetConcreteResolution(), mapping.Type);
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
     }
 
-    static ListBasedArrayConverter<TElement, object> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ListBasedArrayConverter<TElement, List<TElement>> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<TElement, object>(elemInfo.GetConcreteResolution());
+            return new ListBasedArrayConverter<TElement, List<TElement>>(elemInfo.GetConcreteResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
@@ -536,11 +566,9 @@ public static class PgTypeInfoHelpers
 {
     public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
-        var typeToConvert = resolver.TypeToConvert;
         PgTypeId? pgTypeId = includeDataTypeName && !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
             ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
-        unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         return new(options, resolver, pgTypeId, unboxedType)
         {
             PreferredFormat = preferredFormat,
@@ -550,8 +578,6 @@ public static class PgTypeInfoHelpers
 
     public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
-        var typeToConvert = converter.TypeToConvert;
-        unboxedType ??= typeToConvert == typeof(object) && mapping.Type != typeToConvert ? mapping.Type : null;
         var pgTypeId = !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
             ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
             : new DataTypeName(mapping.DataTypeName);

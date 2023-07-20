@@ -5,7 +5,7 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-abstract class PolymorphicConverterResolver : PgConverterResolver<object>
+abstract class PolymorphicConverterResolver<TBase> : PgConverterResolver<TBase>
 {
     protected PolymorphicConverterResolver(PgTypeId pgTypeId) => PgTypeId = pgTypeId;
 
@@ -21,7 +21,7 @@ abstract class PolymorphicConverterResolver : PgConverterResolver<object>
         return new(Get(null), PgTypeId);
     }
 
-    public sealed override PgConverterResolution Get(object? value, PgTypeId? expectedPgTypeId)
+    public sealed override PgConverterResolution Get(TBase? value, PgTypeId? expectedPgTypeId)
         => new(Get(null), PgTypeId);
 
     public sealed override PgConverterResolution Get(Field field)
@@ -38,7 +38,7 @@ abstract class PolymorphicConverterResolver : PgConverterResolver<object>
 // Including pushing construction through a GVM visitor pattern on the element handler,
 // manual reimplementation of the element logic in the array resolver, and other ways.
 // This one however is by far the most lightweight on both the implementation duplication and code bloat axes.
-sealed class ArrayPolymorphicConverterResolver : PolymorphicConverterResolver
+sealed class ArrayPolymorphicConverterResolver : PolymorphicConverterResolver<object>
 {
     readonly PgResolverTypeInfo _elemTypeInfo;
     readonly Func<PgConverterResolution, PgConverter> _elemToArrayConverterFactory;

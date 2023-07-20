@@ -322,7 +322,9 @@ public sealed class FieldDescription
     {
         get
         {
-            if (ObjectOrDefaultTypeInfo is PgResolverTypeInfo { IsBoxing: false })
+            // Object typed resolvers can return any type of converter, so we check the type of the converter instead.
+            // We cannot do this in general as we should respect the 'unboxed type' of infos, which can differ from the converter type.
+            if (ObjectOrDefaultTypeInfo is PgResolverTypeInfo resolverTypeInfo && resolverTypeInfo.Type == typeof(object))
                 return ObjectOrDefaultInfo.Converter.TypeToConvert;
 
             return ObjectOrDefaultTypeInfo.Type;
@@ -330,7 +332,6 @@ public sealed class FieldDescription
     }
 
     PgTypeInfo? _objectOrDefaultTypeInfo;
-
     PgTypeInfo ObjectOrDefaultTypeInfo
     {
         get

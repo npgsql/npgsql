@@ -16,7 +16,7 @@ public class PgTypeInfo
     PgTypeInfo(PgSerializerOptions options, Type type, Type? unboxedType)
     {
         if (unboxedType is not null && !type.IsAssignableFrom(unboxedType))
-            throw new ArgumentException("Cannot supply unboxed type information for converters where a value of unboxedType is not assignable to type.", nameof(unboxedType));
+            throw new ArgumentException("A value of unboxed type is not assignable to converter type", nameof(unboxedType));
 
         Options = options;
         IsBoxing = unboxedType is not null;
@@ -310,7 +310,8 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
             converterResolver.TypeToConvert,
             // We'll always validate the default resolution, the info will be re-used so there is no real downside.
             pgTypeId is { } typeId ? converterResolver.GetDefaultInternal(validate: true, options.PortableTypeIds, options.GetCanonicalTypeId(typeId)) : null,
-            unboxedType)
+            // We always mark resolvers with type object as boxing, as they may freely return converters for any type (see PgConverterResolver.Validate).
+            unboxedType ?? (converterResolver.TypeToConvert == typeof(object) ? typeof(object) : null))
         => _converterResolver = converterResolver;
 
     public new PgConverterResolution GetResolution<T>(T? value, PgTypeId? expectedPgTypeId)
@@ -321,7 +322,7 @@ public sealed class PgResolverTypeInfo : PgTypeInfo
 
         PgConverterResolution ThrowNotSupportedType(Type? type)
             => throw new NotSupportedException(IsBoxing
-                ? $"TypeInfo only supports boxing conversions, call GetResolution<T> with {typeof(object)} instead of {type} or call GetResolutionAsObject instead."
+                ? "TypeInfo only supports boxing conversions, call GetResolutionAsObject instead."
                 : $"TypeInfo is not of type {type}");
     }
 
