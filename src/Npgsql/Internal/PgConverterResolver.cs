@@ -47,7 +47,7 @@ public abstract class PgConverterResolver
 
     internal abstract Type TypeToConvert { get; }
 
-    internal abstract PgConverterResolution GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
+    internal abstract PgConverterResolution? GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId);
 
     internal PgConverterResolution GetDefaultInternal(bool validate, bool expectPortableTypeIds, PgTypeId? pgTypeId)
     {
@@ -103,23 +103,23 @@ public abstract class PgConverterResolver<T> : PgConverterResolver
     /// cached once used. Array or other collection converters depend on this to cache their own converter - which wraps the element
     /// converter - with the cache key being the element converter reference.
     /// </remarks>
-    public abstract PgConverterResolution Get(T? value, PgTypeId? expectedPgTypeId);
+    public abstract PgConverterResolution? Get(T? value, PgTypeId? expectedPgTypeId);
 
     internal sealed override Type TypeToConvert => typeof(T);
 
-    internal PgConverterResolution GetInternal(PgTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
+    internal PgConverterResolution? GetInternal(PgTypeInfo typeInfo, T? value, PgTypeId? expectedPgTypeId)
     {
         var resolution = Get(value, expectedPgTypeId);
-        if (typeInfo.ValidateResolution)
-            Validate(nameof(Get), resolution, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
+        if (typeInfo.ValidateResolution && resolution is not null)
+            Validate(nameof(Get), resolution.GetValueOrDefault(), TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return resolution;
     }
 
-    internal sealed override PgConverterResolution GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
+    internal sealed override PgConverterResolution? GetAsObjectInternal(PgTypeInfo typeInfo, object? value, PgTypeId? expectedPgTypeId)
     {
         var resolution = Get(value is null ? default : (T)value, expectedPgTypeId);
-        if (typeInfo.ValidateResolution)
-            Validate(nameof(Get), resolution, TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
+        if (typeInfo.ValidateResolution && resolution is not null)
+            Validate(nameof(Get), resolution.GetValueOrDefault(), TypeToConvert, expectedPgTypeId, typeInfo.Options.PortableTypeIds);
         return resolution;
     }
 }
@@ -127,10 +127,8 @@ public abstract class PgConverterResolver<T> : PgConverterResolver
 public abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 {
     readonly PgTypeId? _pgTypeId;
-    protected PgResolverTypeInfo EffectiveTypeInfo { get; }
+    public PgResolverTypeInfo EffectiveTypeInfo { get; }
     readonly ConcurrentDictionary<PgConverter, PgConverter<T>> _converters = new(ReferenceEqualityComparer.Instance);
-    PgConverterResolution _lastEffectiveResolution;
-    PgConverterResolution _lastResolution;
 
     protected PgComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveTypeInfo)
     {
@@ -144,48 +142,38 @@ public abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
     protected abstract PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId);
     protected abstract PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution);
-    protected abstract PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId);
+    protected abstract PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId);
 
     public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
-        var effectivePgTypeId = pgTypeId is null ? null : (PgTypeId?)GetEffectiveTypeId(pgTypeId.GetValueOrDefault());
-        var elemResolution = EffectiveTypeInfo.GetDefaultResolution(effectivePgTypeId);
-        return new(GetOrAdd(elemResolution), pgTypeId ?? GetPgTypeId(elemResolution.PgTypeId));
+        PgTypeId? effectivePgTypeId = pgTypeId is not null ? GetEffectiveTypeId(pgTypeId.GetValueOrDefault()) : null;
+        var effectiveResolution = EffectiveTypeInfo.GetDefaultResolution(effectivePgTypeId);
+        return new(GetOrAdd(effectiveResolution), pgTypeId ?? _pgTypeId ?? GetPgTypeId(effectiveResolution.PgTypeId));
     }
 
-    public override PgConverterResolution Get(T? value, PgTypeId? expectedPgTypeId)
+    public override PgConverterResolution? Get(T? value, PgTypeId? expectedPgTypeId)
     {
-        PgTypeId? expectedEffectiveId = expectedPgTypeId is { } id ? GetEffectiveTypeId(id) : null;
-        var effectiveResolution = GetEffectiveResolution(value, expectedEffectiveId);
+        PgTypeId? expectedEffectiveId = expectedPgTypeId is not null ? GetEffectiveTypeId(expectedPgTypeId.GetValueOrDefault()) : null;
+        if (GetEffectiveResolution(value, expectedEffectiveId) is { } resolution)
+            return new PgConverterResolution(GetOrAdd(resolution), expectedPgTypeId ?? _pgTypeId ?? GetPgTypeId(resolution.PgTypeId));
 
-        if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
-            return _lastResolution;
-
-        var converter = GetOrAdd(effectiveResolution);
-        _lastEffectiveResolution = effectiveResolution;
-        return _lastResolution = new PgConverterResolution(converter, expectedPgTypeId ?? GetPgTypeId(effectiveResolution.PgTypeId));
+        return null;
     }
 
     public override PgConverterResolution Get(Field field)
     {
         var effectiveResolution = EffectiveTypeInfo.GetResolution(field with { PgTypeId = GetEffectiveTypeId(field.PgTypeId) });
-        if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
-            return _lastResolution;
-
-        var converter = GetOrAdd(effectiveResolution);
-        _lastEffectiveResolution = effectiveResolution;
-        return _lastResolution = new PgConverterResolution(converter, field.PgTypeId);
+        return new PgConverterResolution(GetOrAdd(effectiveResolution), field.PgTypeId);
     }
 
     PgTypeId GetEffectiveTypeId(PgTypeId pgTypeId)
     {
-        if (_pgTypeId is null)
-            // We have an undecided type info which is asked to resolve for a specific type id
-            // we'll unfortunately have to look up the effective id, this is rare though.
-            return GetEffectivePgTypeId(pgTypeId);
         if (_pgTypeId == pgTypeId)
             return EffectiveTypeInfo.PgTypeId.GetValueOrDefault();
-        throw CreateUnsupportedPgTypeIdException(pgTypeId);
+
+        // We have an undecided type info which is asked to resolve for a specific type id
+        // we'll unfortunately have to look up the effective id, this is rare though.
+        return GetEffectivePgTypeId(pgTypeId);
     }
 
     PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)

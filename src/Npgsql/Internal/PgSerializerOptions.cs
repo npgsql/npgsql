@@ -87,7 +87,7 @@ public class PgSerializerOptions
             return elementTypeId.DataTypeName.ToArrayName();
 
         return ToCanonicalTypeId(TypeCatalog.GetPgType(elementTypeId).Array
-                                 ?? throw new NotSupportedException("Cannot resolve array type id."));
+                                 ?? throw new NotSupportedException("Cannot resolve array type id"));
     }
 
     public PgTypeId GetArrayElementTypeId(PgTypeId arrayTypeId)
@@ -97,22 +97,39 @@ public class PgSerializerOptions
             return new DataTypeName(arrayTypeId.DataTypeName.Schema + arrayTypeId.DataTypeName.UnqualifiedNameSpan.Slice(1).ToString());
 
         return ToCanonicalTypeId((TypeCatalog.GetPgType(arrayTypeId) as PostgresArrayType)?.Element
-                                 ?? throw new NotSupportedException("Cannot resolve array element type id."));
+                                 ?? throw new NotSupportedException("Cannot resolve array element type id"));
     }
 
     public PgTypeId GetRangeTypeId(PgTypeId subtypeTypeId) =>
         ToCanonicalTypeId(TypeCatalog.GetPgType(subtypeTypeId).Range
-                          ?? throw new NotSupportedException("Cannot resolve range type id."));
+                          ?? throw new NotSupportedException("Cannot resolve range type id"));
 
     public PgTypeId GetRangeSubtypeTypeId(PgTypeId rangeTypeId) =>
         ToCanonicalTypeId((TypeCatalog.GetPgType(rangeTypeId) as PostgresRangeType)?.Subtype
-                          ?? throw new NotSupportedException("Cannot resolve range subtype type id."));
+                          ?? throw new NotSupportedException("Cannot resolve range subtype type id"));
 
     public PgTypeId GetMultirangeTypeId(PgTypeId rangeTypeId) =>
         ToCanonicalTypeId((TypeCatalog.GetPgType(rangeTypeId) as PostgresRangeType)?.Multirange
-                          ?? throw new NotSupportedException("Cannot resolve multirange type id."));
+                          ?? throw new NotSupportedException("Cannot resolve multirange type id"));
 
     public PgTypeId GetMultirangeElementTypeId(PgTypeId multirangeTypeId) =>
         ToCanonicalTypeId((TypeCatalog.GetPgType(multirangeTypeId) as PostgresMultirangeType)?.Subrange
-                          ?? throw new NotSupportedException("Cannot resolve multirange element type id."));
+                          ?? throw new NotSupportedException("Cannot resolve multirange element type id"));
+
+    public bool TryGetDataTypeName(PgTypeId pgTypeId, out DataTypeName dataTypeName)
+    {
+        if (TypeCatalog.FindPgType(pgTypeId) is { } pgType)
+        {
+            dataTypeName = pgType.DataTypeName;
+            return true;
+        }
+
+        dataTypeName = default;
+        return false;
+    }
+
+    public DataTypeName GetDataTypeName(PgTypeId pgTypeId)
+        => !TryGetDataTypeName(pgTypeId, out var name)
+        ? throw new ArgumentException("Unknown type id", nameof(pgTypeId))
+        : name;
 }

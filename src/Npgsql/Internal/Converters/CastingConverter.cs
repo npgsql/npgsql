@@ -78,6 +78,6 @@ sealed class CastingConverterResolver<T> : PgComposingConverterResolver<T>
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
         => new CastingConverter<T>(effectiveResolution.Converter);
 
-    protected override PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
+    protected override PgConverterResolution? GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
         => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
 }

@@ -622,7 +622,7 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
             ? new ListBasedArrayConverter<T, TElement>(effectiveResolution)
             : new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
 
-    protected override PgConverterResolution GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConverterResolution? GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
     {
         PgConverterResolution? resolution = null;
         if (values is null)
@@ -633,14 +633,14 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
         {
             switch (values)
             {
-                case T[] array:
+                case TElement[] array:
                     foreach (var value in array)
                     {
                         var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
                         resolution ??= result;
                     }
                     break;
-                case IList<T> list:
+                case IList<TElement> list:
                     foreach (var value in list)
                     {
                         var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
@@ -650,13 +650,14 @@ sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<
                 default:
                     foreach (var value in values)
                     {
-                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                        var result = EffectiveTypeInfo.GetResolutionAsObject(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
                         resolution ??= result;
                     }
                     break;
             }
         }
-        return resolution.GetValueOrDefault();
+
+        return resolution;
     }
 }
 

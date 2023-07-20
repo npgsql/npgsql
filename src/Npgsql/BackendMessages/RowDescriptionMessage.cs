@@ -316,7 +316,7 @@ public sealed class FieldDescription
 
     PostgresType? _postgresType;
     internal PostgresType PostgresType
-        => _postgresType ??= _serializerOptions.TypeCatalog.TryGetPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
+        => _postgresType ??= _serializerOptions.TypeCatalog.FindPgType((Oid)TypeOID)?.GetRepresentationalType() ?? UnknownBackendType.Instance;
 
     internal Type FieldType
     {

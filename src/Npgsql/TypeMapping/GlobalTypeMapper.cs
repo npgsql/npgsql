@@ -94,7 +94,7 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
         if (typeInfo is PgResolverTypeInfo info)
             try
             {
-                dataTypeName = info.GetResolutionAsObject(value, null).PgTypeId.DataTypeName;
+                dataTypeName = info.GetObjectResolution(value).PgTypeId.DataTypeName;
             }
             // We swallow just this particular error, user code might try to lookup type info that we don't have.
             catch(NotSupportedException)

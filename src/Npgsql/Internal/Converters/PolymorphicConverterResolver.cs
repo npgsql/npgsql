@@ -21,7 +21,7 @@ abstract class PolymorphicConverterResolver<TBase> : PgConverterResolver<TBase>
         return new(Get(null), PgTypeId);
     }
 
-    public sealed override PgConverterResolution Get(TBase? value, PgTypeId? expectedPgTypeId)
+    public sealed override PgConverterResolution? Get(TBase? value, PgTypeId? expectedPgTypeId)
         => new(Get(null), PgTypeId);
 
     public sealed override PgConverterResolution Get(Field field)
