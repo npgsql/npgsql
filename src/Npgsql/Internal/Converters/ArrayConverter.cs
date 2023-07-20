@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -401,12 +402,10 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     }
 }
 
-sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementOperations where T : class
+sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class, IList
 {
     static ArrayBasedArrayConverter()
     {
-        if (!typeof(T).IsAssignableFrom(typeof(TElement[])))
-            throw new InvalidOperationException("A value of TElement[] must be assignable to T.");
         // We want to keep code size minimal for CreateCollection so we just do a call here.
         Root<TElement?[,]>();
         Root<TElement?[,,]>();
@@ -522,14 +521,8 @@ sealed class ArrayBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElement
     }
 }
 
-sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementOperations where T : class
+sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class, IList
 {
-    static ListBasedArrayConverter()
-    {
-        if (!typeof(T).IsAssignableFrom(typeof(List<TElement>)))
-            throw new InvalidOperationException("A value of List<TElement> must be assignable to T.");
-    }
-
     readonly PgConverter<TElement> _elemConverter;
 
     public ListBasedArrayConverter(PgConverterResolution elemResolution, int pgLowerBound = 1)
@@ -611,114 +604,60 @@ sealed class ListBasedArrayConverter<TElement, T> : ArrayConverter<T>, IElementO
     }
 }
 
-// TODO this should probably be two separate resolvers, one for arrays and one for lists.
-sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
+sealed class ArrayConverterResolver<T, TElement> : PgComposingConverterResolver<T> where T : class, IList
 {
     readonly Type _effectiveType;
-    readonly PgResolverTypeInfo _elemResolverTypeInfo;
-    readonly PgTypeId? _arrayTypeId;
-    readonly ConcurrentDictionary<PgConverter, ArrayConverter<object>> _arrayConverters = new(ReferenceEqualityComparer.Instance);
-    readonly ConcurrentDictionary<PgConverter, ArrayConverter<object>> _listConverters = new(ReferenceEqualityComparer.Instance);
-    PgConverterResolution _lastElemResolution;
-    PgConverterResolution _lastResolution;
 
-    public ArrayConverterResolver(PgResolverTypeInfo elemResolverTypeInfo, Type effectiveType)
+    public ArrayConverterResolver(PgResolverTypeInfo elementTypeInfo, Type effectiveType)
+        : base(elementTypeInfo.PgTypeId is { } id ? elementTypeInfo.Options.GetArrayTypeId(id) : null, elementTypeInfo)
+        => _effectiveType = effectiveType;
+
+    PgSerializerOptions Options => EffectiveTypeInfo.Options;
+
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetMultirangeElementTypeId(pgTypeId);
+    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetMultirangeTypeId(effectivePgTypeId);
+
+    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
+        => typeof(T).IsConstructedGenericType && typeof(T).GetGenericTypeDefinition() == typeof(List<>)
+            ? new ListBasedArrayConverter<T, TElement>(effectiveResolution)
+            : new ArrayBasedArrayConverter<T, TElement>(effectiveResolution, _effectiveType);
+
+    protected override PgConverterResolution GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
     {
-        _effectiveType = effectiveType;
-        _elemResolverTypeInfo = elemResolverTypeInfo;
-        _arrayTypeId = _elemResolverTypeInfo.PgTypeId is { } id ? GetArrayTypeId(id) : null;
-    }
-
-    PgSerializerOptions Options => _elemResolverTypeInfo.Options;
-
-    PgTypeId GetArrayTypeId(PgTypeId elemTypeId)
-        => Options.GetArrayTypeId(elemTypeId);
-
-    PgTypeId? GetElementTypeId(PgTypeId? arrayTypeId)
-        => arrayTypeId is { } id ? Options.GetArrayElementTypeId(id) : null;
-
-    public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
-    {
-        var elemResolution = _elemResolverTypeInfo.GetDefaultResolution(_elemResolverTypeInfo.PgTypeId ?? GetElementTypeId(pgTypeId));
-        return new(GetOrAddArrayBased(elemResolution), pgTypeId ?? GetArrayTypeId(elemResolution.PgTypeId));
-    }
-
-    public override PgConverterResolution Get(object? values, PgTypeId? expectedPgTypeId)
-    {
-        PgTypeId? expectedElemId = null;
-        if (expectedPgTypeId is { } id)
+        PgConverterResolution? resolution = null;
+        if (values is null)
         {
-            if (_arrayTypeId is null)
-                // We have an undecided type info which is asked to resolve for a specific type id
-                // we'll unfortunately have to look up the element id, this is rare though.
-                expectedElemId = GetElementTypeId(id);
-            else if (_arrayTypeId == expectedPgTypeId)
-                expectedElemId = _elemResolverTypeInfo.PgTypeId;
-            else
-                throw CreateUnsupportedPgTypeIdException(id);
+            resolution = EffectiveTypeInfo.GetResolution(default(TElement), expectedEffectivePgTypeId);
         }
-
-        ArrayConverter<object> arrayConverter;
-        PgConverterResolution expectedResolution;
-        switch (values)
+        else
         {
-        case TElement[] vs:
-        {
-            // We get the pg type id for the first element to be able to pass it in for the subsequent, per element calls.
-            // This is how we allow resolvers to catch value inconsistencies that would cause converter mixing and helps return useful error messages.
-            expectedResolution = _elemResolverTypeInfo.GetResolution(vs.Length > 0 ? vs[0] : default, expectedElemId);
-            for (var index = 1; index < vs.Length; index++)
-                _ = _elemResolverTypeInfo.GetResolution(vs[index], expectedResolution.PgTypeId);
-
-            if (ReferenceEquals(expectedResolution.Converter, _lastElemResolution.Converter) && expectedResolution.PgTypeId == _lastElemResolution.PgTypeId)
-                return _lastResolution;
-
-            arrayConverter = GetOrAddArrayBased(expectedResolution);
-
-            break;
-        }
-        case List<TElement> vs:
-        {
-            // We get the pg type id for the first element to be able to pass it in for the subsequent, per element calls.
-            // This is how we allow resolvers to catch value inconsistencies that would cause converter mixing and helps return useful error messages.
-            var first = true;
-            expectedResolution = _elemResolverTypeInfo.GetResolution(vs.Count > 0 ? vs[0] : default, expectedElemId);
-            foreach (var value in vs)
+            switch (values)
             {
-                if (!first)
-                    _ = _elemResolverTypeInfo.GetResolution(value, expectedResolution.PgTypeId);
-                first = false;
+                case T[] array:
+                    foreach (var value in array)
+                    {
+                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                        resolution ??= result;
+                    }
+                    break;
+                case IList<T> list:
+                    foreach (var value in list)
+                    {
+                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                        resolution ??= result;
+                    }
+                    break;
+                default:
+                    foreach (var value in values)
+                    {
+                        var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                        resolution ??= result;
+                    }
+                    break;
             }
-
-            if (ReferenceEquals(expectedResolution.Converter, _lastElemResolution.Converter) && expectedResolution.PgTypeId == _lastElemResolution.PgTypeId)
-                return _lastResolution;
-
-            arrayConverter = GetOrAddListBased(expectedResolution);
-
-            break;
         }
-        default:
-            throw new NotSupportedException();
-        }
-
-        _lastElemResolution = expectedResolution;
-        return _lastResolution = new PgConverterResolution(arrayConverter, expectedPgTypeId ?? GetArrayTypeId(expectedResolution.PgTypeId));
+        return resolution.GetValueOrDefault();
     }
-
-    ArrayConverter<object> GetOrAddListBased(PgConverterResolution elemResolution)
-        => _listConverters.GetOrAdd(elemResolution.Converter,
-            static (elemConverter, expectedElemPgTypeId) =>
-                new ListBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId)),
-            elemResolution.PgTypeId);
-
-    ArrayConverter<object> GetOrAddArrayBased(PgConverterResolution elemResolution)
-        => _arrayConverters.GetOrAdd(elemResolution.Converter,
-            static (elemConverter, state) =>
-            {
-                var (effectiveType, expectedElemPgTypeId) = state;
-                return new ArrayBasedArrayConverter<TElement, object>(new(elemConverter, expectedElemPgTypeId), effectiveType);
-            },
-            (_effectiveType, elemResolution.PgTypeId));
 }
 
 // T is Array as we only know what type it will be after reading 'contains nulls'.

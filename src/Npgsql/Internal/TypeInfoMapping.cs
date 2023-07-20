@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -521,37 +522,37 @@ public sealed class TypeInfoMappingCollection
             ? DataTypeName.ValidatedName(dataTypeName).ToArrayName().Value
             : "_" + DataTypeName.FromDisplayName(dataTypeName).UnqualifiedName;
 
-    static ArrayBasedArrayConverter<TElement, Array> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ArrayBasedArrayConverter<Array, TElement> CreateArrayBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayBasedArrayConverter<TElement, Array>(elemInfo.GetConcreteResolution(), mapping.Type);
+            return new ArrayBasedArrayConverter<Array, TElement>(elemInfo.GetConcreteResolution(), mapping.Type);
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
     }
 
-    static ListBasedArrayConverter<TElement, List<TElement>> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
+    static ListBasedArrayConverter<IList, TElement> CreateListBasedConverter<TElement>(TypeInfoMapping mapping, PgTypeInfo elemInfo)
     {
         if (!elemInfo.IsBoxing)
-            return new ListBasedArrayConverter<TElement, List<TElement>>(elemInfo.GetConcreteResolution());
+            return new ListBasedArrayConverter<IList, TElement>(elemInfo.GetConcreteResolution());
 
         ThrowBoxingNotSupported(resolver: false);
         return default;
     }
 
-    static ArrayConverterResolver<TElement> CreateArrayBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo, PgSerializerOptions options)
+    static ArrayConverterResolver<Array, TElement> CreateArrayBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo, PgSerializerOptions options)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayConverterResolver<TElement>(elemInfo, mapping.Type);
+            return new ArrayConverterResolver<Array, TElement>(elemInfo, mapping.Type);
 
         ThrowBoxingNotSupported(resolver: true);
         return default;
     }
 
-    static ArrayConverterResolver<TElement> CreateListBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo, PgSerializerOptions options)
+    static ArrayConverterResolver<IList, TElement> CreateListBasedConverterResolver<TElement>(TypeInfoMapping mapping, PgResolverTypeInfo elemInfo, PgSerializerOptions options)
     {
         if (!elemInfo.IsBoxing)
-            return new ArrayConverterResolver<TElement>(elemInfo, mapping.Type);
+            return new ArrayConverterResolver<IList, TElement>(elemInfo, mapping.Type);
 
         ThrowBoxingNotSupported(resolver: true);
         return default;

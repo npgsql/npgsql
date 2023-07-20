@@ -280,14 +280,14 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddType<uint[]>(
             DataTypeNames.OidVector,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new ArrayBasedArrayConverter<uint, uint[]>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
+                new ArrayBasedArrayConverter<uint[], uint>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
             mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Int2vector
         mappings.AddType<short[]>(
             DataTypeNames.Int2Vector,
             static (options, mapping, _) => mapping.CreateInfo(options,
-                new ArrayBasedArrayConverter<short, short[]>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
+                new ArrayBasedArrayConverter<short[], short>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
             mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
 
         // Tid
@@ -352,10 +352,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Varbit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool, Array>(resolution, typeof(Array)),
-                () => new ArrayBasedArrayConverter<bool?, Array>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
+                () => new ArrayBasedArrayConverter<Array, bool>(resolution, typeof(Array)),
+                () => new ArrayBasedArrayConverter<Array, bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, Array>(resolution, typeof(Array)),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<Array, BitArray>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
         // Object mapping first.
@@ -367,10 +367,10 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddPolymorphicResolverArrayType((string)DataTypeNames.Bit, static options => resolution => resolution.Converter switch
         {
             BoolBitStringConverter => TypeInfoMappingCollection.CreatePolymorphicArrayConverter(
-                () => new ArrayBasedArrayConverter<bool, Array>(resolution, typeof(Array)),
-                () => new ArrayBasedArrayConverter<bool?, Array>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
+                () => new ArrayBasedArrayConverter<Array, bool>(resolution, typeof(Array)),
+                () => new ArrayBasedArrayConverter<Array, bool?>(new(new NullableConverter<bool>(resolution.GetConverter<bool>()), resolution.PgTypeId), typeof(Array)),
                 options),
-            BitArrayBitStringConverter => new ArrayBasedArrayConverter<BitArray, Array>(resolution, typeof(Array)),
+            BitArrayBitStringConverter => new ArrayBasedArrayConverter<Array, BitArray>(resolution, typeof(Array)),
             _ => throw new NotSupportedException()
         });
         // Object mapping first.
