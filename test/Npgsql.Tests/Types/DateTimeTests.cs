@@ -337,6 +337,27 @@ public class DateTimeTests : TestBase
                 new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
                 new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
             new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
+                new DateTime(1998, 4, 12, 13, 26, 38, DateTimeKind.Utc),
+                new DateTime(1998, 4, 12, 15, 26, 38, DateTimeKind.Utc)),
+            new NpgsqlRange<DateTime>(
                 new DateTime(1998, 4, 13, 13, 26, 38, DateTimeKind.Local),
                 new DateTime(1998, 4, 13, 15, 26, 38, DateTimeKind.Local)),
         });

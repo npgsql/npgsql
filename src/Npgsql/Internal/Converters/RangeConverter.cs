@@ -202,11 +202,15 @@ sealed class RangeConverterResolver<TSubtype> : PgComposingConverterResolver<Npg
     protected override PgConverter<NpgsqlRange<TSubtype>> CreateConverter(PgConverterResolution effectiveResolution)
         => new RangeConverter<TSubtype>(effectiveResolution.GetConverter<TSubtype>());
 
-    protected override PgConverterResolution GetEffectiveResolution(NpgsqlRange<TSubtype> value, PgTypeId? expectedEffectiveTypeId)
+    protected override PgConverterResolution? GetEffectiveResolution(NpgsqlRange<TSubtype> value, PgTypeId? expectedEffectiveTypeId)
     {
         // Resolve both sides to make sure we end up with consistent PgTypeIds.
-        var resolution = EffectiveTypeInfo.GetResolution(value.LowerBound, expectedEffectiveTypeId);
-        EffectiveTypeInfo.GetResolution(value.UpperBound, resolution.PgTypeId);
+        PgConverterResolution? resolution = null;
+        if (!value.LowerBoundInfinite)
+            resolution = EffectiveTypeInfo.GetResolution(value.LowerBound, expectedEffectiveTypeId);
+        if (!value.UpperBoundInfinite)
+            resolution = EffectiveTypeInfo.GetResolution(value.UpperBound, resolution?.PgTypeId);
+
         return resolution;
     }
 }

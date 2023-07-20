@@ -135,7 +135,7 @@ sealed class MultirangeConverterResolver<T, TRange> : PgComposingConverterResolv
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
         => new MultirangeConverter<T, TRange>(effectiveResolution.GetConverter<TRange>());
 
-    protected override PgConverterResolution GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConverterResolution? GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
     {
         PgConverterResolution? resolution = null;
         if (values is null)
@@ -150,6 +150,7 @@ sealed class MultirangeConverterResolver<T, TRange> : PgComposingConverterResolv
                 resolution ??= result;
             }
         }
-        return resolution.GetValueOrDefault();
+
+        return resolution;
     }
 }

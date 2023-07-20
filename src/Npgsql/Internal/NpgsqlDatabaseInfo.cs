@@ -183,17 +183,17 @@ public abstract class NpgsqlDatabaseInfo
     public PostgresType GetPostgresTypeByOid(uint oid)
         => ByOID.TryGetValue(oid, out var pgType)
             ? pgType
-            : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the database");
+            : throw new ArgumentException($"A PostgreSQL type with the oid '{oid}' was not found in the current database info");
 
     internal PostgresType GetPostgresTypeByName(DataTypeName dataTypeName)
         => ByFullName.TryGetValue(dataTypeName.Value, out var value)
             ? value
-            : throw new ArgumentException($"A PostgreSQL type with the name '{dataTypeName}' was not found in the database");
+            : throw new ArgumentException($"A PostgreSQL type with the name '{dataTypeName}' was not found in the current database info");
 
     public PostgresType GetPostgresTypeByName(string pgName)
         => TryGetPostgresTypeByName(pgName, out var pgType)
             ? pgType
-            : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the database");
+            : throw new ArgumentException($"A PostgreSQL type with the name '{pgName}' was not found in the current database info");
 
     public bool TryGetPostgresTypeByName(string pgName, [NotNullWhen(true)] out PostgresType? pgType)
     {
@@ -353,7 +353,7 @@ public abstract class NpgsqlDatabaseInfo
             ? GetPostgresTypeByOid(pgTypeId.Oid.Value)
             : GetPostgresTypeByName(pgTypeId.DataTypeName.Value);
 
-    internal PostgresType? TryGetPgType(PgTypeId pgTypeId)
+    internal PostgresType? FindPgType(PgTypeId pgTypeId)
         => pgTypeId.IsOid
             ? ByOID.TryGetValue(pgTypeId.Oid.Value, out var pgType) ? pgType : null
             : TryGetPostgresTypeByName(pgTypeId.DataTypeName.Value, out pgType) ? pgType : null;

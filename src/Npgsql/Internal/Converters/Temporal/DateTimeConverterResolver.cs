@@ -29,7 +29,7 @@ sealed class DateTimeConverterResolver : PgConverterResolver<DateTime>
         throw CreateUnsupportedPgTypeIdException(pgTypeId.Value);
     }
 
-    public override PgConverterResolution Get(DateTime value, PgTypeId? expectedPgTypeId)
+    public override PgConverterResolution? Get(DateTime value, PgTypeId? expectedPgTypeId)
     {
         if (value.Kind is DateTimeKind.Utc)
         {
