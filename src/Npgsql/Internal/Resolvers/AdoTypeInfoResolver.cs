@@ -136,6 +136,9 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             static (options, mapping, _) => mapping.CreateInfo(options, new ArrayByteaConverter()), isDefault: true);
         mappings.AddStructType<ReadOnlyMemory<byte>>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new ReadOnlyMemoryByteaConverter()));
+        mappings.AddType<Stream>(DataTypeNames.Bytea,
+            static (options, mapping, _) => mapping.CreateInfo(options, new StreamByteaConverter()).AsObjectTypeInfo(unboxedType: mapping.Type),
+            mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
         // Varbit
         mappings.AddType<BitArray>(DataTypeNames.Varbit,
