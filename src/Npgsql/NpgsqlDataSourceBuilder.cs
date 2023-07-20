@@ -62,7 +62,8 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new GeometricTypeInfoResolver(),
             new LTreeTypeInfoResolver(),
             new AdoArrayTypeInfoResolver(),
-            new ExtraConversionsArrayTypeInfoResolver()
+            new ExtraConversionsArrayTypeInfoResolver(),
+            new RangeArrayTypeInfoResolver(),
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -81,6 +82,7 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _internalBuilder.EnableEncryption();
             // Reverse order.
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
+            AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
             AddTypeInfoResolver(new LTreeTypeInfoResolver());

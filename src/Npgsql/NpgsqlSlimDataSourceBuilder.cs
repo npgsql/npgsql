@@ -328,7 +328,9 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     /// </summary>
     public NpgsqlSlimDataSourceBuilder EnableArrays()
     {
-        AddTypeInfoResolver(new RangeTypeInfoResolver());
+        AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
+        AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
+        AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
         return this;
     }
 
