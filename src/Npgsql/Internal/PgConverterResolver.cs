@@ -70,8 +70,12 @@ public abstract class PgConverterResolver
         if (resolution.Converter is null)
             throw new InvalidOperationException($"'{methodName}' returned a null {nameof(PgConverterResolution.Converter)} unexpectedly.");
 
+        // We allow object resolvers to return any converter, this is to help:
+        //   - Composing resolvers being able to use converter type identity (instead of everything being CastingConverter<object>).
+        //   - Reduce indirection by allowing disparate type converters to be returned directly.
+        // As a consequence any object typed resolver info is always a boxing one, to reduce the chances invalid casts to PgConverter<object> are attempted.
         if (expectedTypeToConvert != typeof(object) && resolution.Converter.TypeToConvert != expectedTypeToConvert)
-            throw new InvalidOperationException($"'{methodName}' returned a {nameof(PgConverterResolution.Converter)} of type {resolution.Converter.GetType()} instead of {expectedTypeToConvert} unexpectedly.");
+            throw new InvalidOperationException($"'{methodName}' returned a {nameof(PgConverterResolution.Converter)} of type {resolution.Converter.TypeToConvert} instead of {expectedTypeToConvert} unexpectedly.");
 
         if (expectPortableTypeIds && resolution.PgTypeId.IsOid || !expectPortableTypeIds && resolution.PgTypeId.IsDataTypeName)
             throw new InvalidOperationException($"{methodName}' returned a resolution with a {nameof(PgConverterResolution.PgTypeId)} that was not in canonical form.");

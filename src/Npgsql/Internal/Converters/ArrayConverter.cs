@@ -721,53 +721,53 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
             (_effectiveType, elemResolution.PgTypeId));
 }
 
-// T is object as we only know what type it will be after reading 'contains nulls'.
-sealed class PolymorphicArrayConverter : PgStreamingConverter<object>
+// T is Array as we only know what type it will be after reading 'contains nulls'.
+sealed class PolymorphicArrayConverter<TBase> : PgStreamingConverter<TBase>
 {
-    readonly PgConverter _structElementCollectionConverter;
-    readonly PgConverter _nullableElementCollectionConverter;
+    readonly PgConverter<TBase> _structElementCollectionConverter;
+    readonly PgConverter<TBase> _nullableElementCollectionConverter;
 
-    public PolymorphicArrayConverter(PgConverter structElementCollectionConverter, PgConverter nullableElementCollectionConverter)
+    public PolymorphicArrayConverter(PgConverter<TBase> structElementCollectionConverter, PgConverter<TBase> nullableElementCollectionConverter)
     {
         _structElementCollectionConverter = structElementCollectionConverter;
         _nullableElementCollectionConverter = nullableElementCollectionConverter;
     }
 
-    public override object Read(PgReader reader)
+    public override TBase Read(PgReader reader)
     {
         _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
-            ? _nullableElementCollectionConverter.ReadAsObject(reader)
-            : _structElementCollectionConverter.ReadAsObject(reader);
+            ? _nullableElementCollectionConverter.Read(reader)
+            : _structElementCollectionConverter.Read(reader);
     }
 
-    public override ValueTask<object> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    public override ValueTask<TBase> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
     {
         _ = reader.ReadInt32();
         var containsNulls = reader.ReadInt32() is 1;
         reader.Rewind(sizeof(int) + sizeof(int));
         return containsNulls
-            ? _nullableElementCollectionConverter.ReadAsObjectAsync(reader, cancellationToken)
-            : _structElementCollectionConverter.ReadAsObjectAsync(reader, cancellationToken);
+            ? _nullableElementCollectionConverter.ReadAsync(reader, cancellationToken)
+            : _structElementCollectionConverter.ReadAsync(reader, cancellationToken);
     }
 
-    public override Size GetSize(SizeContext context, object value, ref object? writeState)
+    public override Size GetSize(SizeContext context, TBase value, ref object? writeState)
         => throw new NotSupportedException("Polymorphic writing is not supported");
 
-    public override void Write(PgWriter writer, object value)
+    public override void Write(PgWriter writer, TBase value)
         => throw new NotSupportedException("Polymorphic writing is not supported");
 
-    public override ValueTask WriteAsync(PgWriter writer, object value, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, TBase value, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Polymorphic writing is not supported");
 }
 
-sealed class PolymorphicArrayConverterResolver : PolymorphicConverterResolver
+sealed class PolymorphicArrayConverterResolver<TBase> : PolymorphicConverterResolver<TBase>
 {
     readonly PgResolverTypeInfo _effectiveInfo;
     readonly PgResolverTypeInfo _effectiveNullableInfo;
-    readonly ConcurrentDictionary<PgConverter, PgConverter<object>> _converterCache = new(ReferenceEqualityComparer.Instance);
+    readonly ConcurrentDictionary<PgConverter, PgConverter<TBase>> _converterCache = new(ReferenceEqualityComparer.Instance);
 
     public PolymorphicArrayConverterResolver(PgResolverTypeInfo effectiveInfo, PgResolverTypeInfo effectiveNullableInfo)
         : base(effectiveInfo.PgTypeId!.Value)
@@ -790,7 +790,7 @@ sealed class PolymorphicArrayConverterResolver : PolymorphicConverterResolver
 
         (PgConverter StructConverter, PgConverter NullableConverter) state = (structResolution.Converter, nullableResolution.Converter);
         return _converterCache.GetOrAdd(structResolution.Converter,
-            static (_, state) => new PolymorphicArrayConverter(state.StructConverter, state.NullableConverter),
+            static (_, state) => new PolymorphicArrayConverter<TBase>((PgConverter<TBase>)state.StructConverter, (PgConverter<TBase>)state.NullableConverter),
             state);
     }
 }

@@ -163,7 +163,7 @@ sealed class BoolBitStringConverter : PgBufferedConverter<bool>
 
 /// Note that for BIT(1), this resolver will return a bool by default, to align with SqlClient
 /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
-sealed class PolymorphicBitStringConverterResolver : PolymorphicConverterResolver
+sealed class PolymorphicBitStringConverterResolver : PolymorphicConverterResolver<object>
 {
     BoolBitStringConverter? _boolConverter;
     BitArrayBitStringConverter? _bitArrayConverter;
