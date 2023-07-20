@@ -635,7 +635,7 @@ sealed class ArrayConverterResolver<TElement> : PgConverterResolver<object>
         => Options.GetArrayTypeId(elemTypeId);
 
     PgTypeId? GetElementTypeId(PgTypeId? arrayTypeId)
-        => arrayTypeId is { } id ? Options.GetElementTypeId(id) : null;
+        => arrayTypeId is { } id ? Options.GetArrayElementTypeId(id) : null;
 
     public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {

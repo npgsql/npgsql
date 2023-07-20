@@ -120,21 +120,21 @@ public abstract class PgConverterResolver<T> : PgConverterResolver
     }
 }
 
-abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
+public abstract class PgComposingConverterResolver<T> : PgConverterResolver<T>
 {
     readonly PgTypeId? _pgTypeId;
-    protected PgResolverTypeInfo EffectiveResolverTypeInfo { get; }
+    protected PgResolverTypeInfo EffectiveTypeInfo { get; }
     readonly ConcurrentDictionary<PgConverter, PgConverter<T>> _converters = new(ReferenceEqualityComparer.Instance);
     PgConverterResolution _lastEffectiveResolution;
     PgConverterResolution _lastResolution;
 
-    protected ComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveResolverTypeInfo)
+    protected PgComposingConverterResolver(PgTypeId? pgTypeId, PgResolverTypeInfo effectiveTypeInfo)
     {
-        if (pgTypeId is null && effectiveResolverTypeInfo.PgTypeId is not null)
-            throw new ArgumentNullException(nameof(pgTypeId), "Cannot be null if effectiveResolverTypeInfo.PgTypeId is not null.");
+        if (pgTypeId is null && effectiveTypeInfo.PgTypeId is not null)
+            throw new ArgumentNullException(nameof(pgTypeId), $"Cannot be null if {nameof(effectiveTypeInfo)}.{nameof(PgTypeInfo.PgTypeId)} is not null.");
 
         _pgTypeId = pgTypeId;
-        EffectiveResolverTypeInfo = effectiveResolverTypeInfo;
+        EffectiveTypeInfo = effectiveTypeInfo;
     }
 
     protected abstract PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId);
@@ -145,7 +145,7 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
     public override PgConverterResolution GetDefault(PgTypeId? pgTypeId)
     {
         var effectivePgTypeId = pgTypeId is null ? null : (PgTypeId?)GetEffectiveTypeId(pgTypeId.GetValueOrDefault());
-        var elemResolution = EffectiveResolverTypeInfo.GetDefaultResolution(effectivePgTypeId);
+        var elemResolution = EffectiveTypeInfo.GetDefaultResolution(effectivePgTypeId);
         return new(GetOrAdd(elemResolution), pgTypeId ?? GetPgTypeId(elemResolution.PgTypeId));
     }
 
@@ -164,7 +164,7 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
 
     public override PgConverterResolution Get(Field field)
     {
-        var effectiveResolution = EffectiveResolverTypeInfo.GetResolution(field with { PgTypeId = GetEffectiveTypeId(field.PgTypeId) });
+        var effectiveResolution = EffectiveTypeInfo.GetResolution(field with { PgTypeId = GetEffectiveTypeId(field.PgTypeId) });
         if (ReferenceEquals(effectiveResolution.Converter, _lastEffectiveResolution.Converter) && effectiveResolution.PgTypeId == _lastEffectiveResolution.PgTypeId)
             return _lastResolution;
 
@@ -180,13 +180,13 @@ abstract class ComposingConverterResolver<T> : PgConverterResolver<T>
             // we'll unfortunately have to look up the effective id, this is rare though.
             return GetEffectivePgTypeId(pgTypeId);
         if (_pgTypeId == pgTypeId)
-            return EffectiveResolverTypeInfo.PgTypeId.GetValueOrDefault();
+            return EffectiveTypeInfo.PgTypeId.GetValueOrDefault();
         throw CreateUnsupportedPgTypeIdException(pgTypeId);
     }
 
     PgConverter<T> GetOrAdd(PgConverterResolution effectiveResolution)
     {
-        (ComposingConverterResolver<T> Instance, PgConverterResolution EffectiveResolution) state = (this, effectiveResolution);
+        (PgComposingConverterResolver<T> Instance, PgConverterResolution EffectiveResolution) state = (this, effectiveResolution);
         return _converters.GetOrAdd(
             effectiveResolution.Converter,
             static (_, state) => state.Instance.CreateConverter(state.EffectiveResolution),
