@@ -67,7 +67,7 @@ sealed class CastingConverter<T> : PgConverter<T>
 }
 
 // Given there aren't many instantiations of converter resolvers (and it's fairly involved to write a fast one) we use the composing base class.
-sealed class CastingConverterResolver<T> : ComposingConverterResolver<T>
+sealed class CastingConverterResolver<T> : PgComposingConverterResolver<T>
 {
     public CastingConverterResolver(PgResolverTypeInfo effectiveResolverTypeInfo)
         : base(effectiveResolverTypeInfo.PgTypeId, effectiveResolverTypeInfo) { }
@@ -78,6 +78,6 @@ sealed class CastingConverterResolver<T> : ComposingConverterResolver<T>
     protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
         => new CastingConverter<T>(effectiveResolution.Converter);
 
-    protected override PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectivePgTypeId)
-        => EffectiveResolverTypeInfo.GetResolutionAsObject(value, expectedEffectivePgTypeId);
+    protected override PgConverterResolution GetEffectiveResolution(T? value, PgTypeId? expectedEffectiveTypeId)
+        => EffectiveTypeInfo.GetResolutionAsObject(value, expectedEffectiveTypeId);
 }

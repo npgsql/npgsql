@@ -7,12 +7,12 @@ using NpgsqlTypes;
 
 namespace Npgsql.Internal.Converters;
 
-public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
+public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtype>>
 {
-    readonly PgConverter<T> _subtypeConverter;
+    readonly PgConverter<TSubtype> _subtypeConverter;
     readonly BufferRequirements _subtypeRequirements;
 
-    public RangeConverter(PgConverter<T> subtypeConverter)
+    public RangeConverter(PgConverter<TSubtype> subtypeConverter)
     {
         if (!subtypeConverter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Range subtype converter has to support the binary format to be compatible.");
@@ -20,23 +20,23 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
         _subtypeConverter = subtypeConverter;
     }
 
-    public override NpgsqlRange<T> Read(PgReader reader)
+    public override NpgsqlRange<TSubtype> Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask<NpgsqlRange<T>> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    public override ValueTask<NpgsqlRange<TSubtype>> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    async ValueTask<NpgsqlRange<T>> Read(bool async, PgReader reader, CancellationToken cancellationToken)
+    async ValueTask<NpgsqlRange<TSubtype>> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(byte)))
             await reader.BufferData(async, sizeof(byte), cancellationToken).ConfigureAwait(false);
 
         var flags = (RangeFlags)reader.ReadByte();
         if ((flags & RangeFlags.Empty) != 0)
-            return NpgsqlRange<T>.Empty;
+            return NpgsqlRange<TSubtype>.Empty;
 
-        var lowerBound = default(T);
-        var upperBound = default(T);
+        var lowerBound = default(TSubtype);
+        var upperBound = default(TSubtype);
 
         var readRequirement = _subtypeRequirements.Read;
         var converter = _subtypeConverter;
@@ -78,10 +78,10 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
             }
         }
 
-        return new NpgsqlRange<T>(lowerBound, upperBound, flags);
+        return new NpgsqlRange<TSubtype>(lowerBound, upperBound, flags);
     }
 
-    public override Size GetSize(SizeContext context, NpgsqlRange<T> value, ref object? writeState)
+    public override Size GetSize(SizeContext context, NpgsqlRange<TSubtype> value, ref object? writeState)
     {
         var totalSize = Size.Create(1);
         if (value.IsEmpty)
@@ -120,13 +120,13 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
         return totalSize;
     }
 
-    public override void Write(PgWriter writer, NpgsqlRange<T> value)
+    public override void Write(PgWriter writer, NpgsqlRange<TSubtype> value)
         => Write(async: false, writer, value, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask WriteAsync(PgWriter writer, NpgsqlRange<T> value, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, NpgsqlRange<TSubtype> value, CancellationToken cancellationToken = default)
         => Write(async: true, writer, value, cancellationToken);
 
-    async ValueTask Write(bool async, PgWriter writer, NpgsqlRange<T> value, CancellationToken cancellationToken)
+    async ValueTask Write(bool async, PgWriter writer, NpgsqlRange<TSubtype> value, CancellationToken cancellationToken)
     {
         var writeState = writer.Current.WriteState as WriteState;
         var lowerBoundSize = writeState?.LowerBoundSize ?? -1;
@@ -189,24 +189,24 @@ public class RangeConverter<T> : PgStreamingConverter<NpgsqlRange<T>>
     }
 }
 
-sealed class RangeConverterResolver<T> : ComposingConverterResolver<NpgsqlRange<T>>
+sealed class RangeConverterResolver<TSubtype> : PgComposingConverterResolver<NpgsqlRange<TSubtype>>
 {
-    public RangeConverterResolver(PgResolverTypeInfo effectiveResolverTypeInfo)
-        : base(effectiveResolverTypeInfo.PgTypeId is {} id ? effectiveResolverTypeInfo.Options.GetRangeTypeId(id) : null, effectiveResolverTypeInfo) { }
+    public RangeConverterResolver(PgResolverTypeInfo subtypeTypeInfo)
+        : base(subtypeTypeInfo.PgTypeId is {} id ? subtypeTypeInfo.Options.GetRangeTypeId(id) : null, subtypeTypeInfo) { }
 
-    PgSerializerOptions Options => EffectiveResolverTypeInfo.Options;
+    PgSerializerOptions Options => EffectiveTypeInfo.Options;
 
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetRangeSubTypeId(pgTypeId);
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetRangeSubtypeTypeId(pgTypeId);
     protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetRangeTypeId(effectivePgTypeId);
 
-    protected override PgConverter<NpgsqlRange<T>> CreateConverter(PgConverterResolution effectiveResolution)
-        => new RangeConverter<T>(effectiveResolution.GetConverter<T>());
+    protected override PgConverter<NpgsqlRange<TSubtype>> CreateConverter(PgConverterResolution effectiveResolution)
+        => new RangeConverter<TSubtype>(effectiveResolution.GetConverter<TSubtype>());
 
-    protected override PgConverterResolution GetEffectiveResolution(NpgsqlRange<T> value, PgTypeId? expectedEffectivePgTypeId)
+    protected override PgConverterResolution GetEffectiveResolution(NpgsqlRange<TSubtype> value, PgTypeId? expectedEffectiveTypeId)
     {
         // Resolve both sides to make sure we end up with consistent PgTypeIds.
-        var resolution = EffectiveResolverTypeInfo.GetResolution(value.LowerBound, expectedEffectivePgTypeId);
-        EffectiveResolverTypeInfo.GetResolution(value.UpperBound, resolution.PgTypeId);
+        var resolution = EffectiveTypeInfo.GetResolution(value.LowerBound, expectedEffectiveTypeId);
+        EffectiveTypeInfo.GetResolution(value.UpperBound, resolution.PgTypeId);
         return resolution;
     }
 }

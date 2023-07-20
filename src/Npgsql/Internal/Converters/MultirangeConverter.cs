@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
@@ -117,4 +118,35 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
     }
 
     readonly record struct RangeInfo(int Size, object? RangeWriteState);
+}
+
+sealed class MultirangeConverterResolver<T, TRange> : PgComposingConverterResolver<T>
+    where T : IList<TRange>
+    where TRange : notnull
+{
+    public MultirangeConverterResolver(PgResolverTypeInfo rangeTypeInfo)
+        : base(rangeTypeInfo.PgTypeId is { } id ? rangeTypeInfo.Options.GetMultirangeTypeId(id) : null, rangeTypeInfo) { }
+
+    PgSerializerOptions Options => EffectiveTypeInfo.Options;
+
+    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetMultirangeElementTypeId(pgTypeId);
+    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetMultirangeTypeId(effectivePgTypeId);
+
+    protected override PgConverter<T> CreateConverter(PgConverterResolution effectiveResolution)
+        => new MultirangeConverter<T, TRange>(effectiveResolution.GetConverter<TRange>());
+
+    protected override PgConverterResolution GetEffectiveResolution(T? values, PgTypeId? expectedEffectivePgTypeId)
+    {
+        PgConverterResolution? resolution = null;
+        if (values is null)
+        {
+            resolution = EffectiveTypeInfo.GetResolution(values, expectedEffectivePgTypeId);
+        }
+        else
+        {
+            foreach (var _ in values)
+                resolution ??= EffectiveTypeInfo.GetResolution(values, resolution?.PgTypeId);
+        }
+        return resolution.GetValueOrDefault();
+    }
 }
