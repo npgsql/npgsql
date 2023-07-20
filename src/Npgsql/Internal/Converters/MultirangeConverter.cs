@@ -140,12 +140,15 @@ sealed class MultirangeConverterResolver<T, TRange> : PgComposingConverterResolv
         PgConverterResolution? resolution = null;
         if (values is null)
         {
-            resolution = EffectiveTypeInfo.GetResolution(values, expectedEffectivePgTypeId);
+            resolution = EffectiveTypeInfo.GetResolution(default(TRange), expectedEffectivePgTypeId);
         }
         else
         {
-            foreach (var _ in values)
-                resolution ??= EffectiveTypeInfo.GetResolution(values, resolution?.PgTypeId);
+            foreach (var value in values)
+            {
+                var result = EffectiveTypeInfo.GetResolution(value, resolution?.PgTypeId ?? expectedEffectivePgTypeId);
+                resolution ??= result;
+            }
         }
         return resolution.GetValueOrDefault();
     }
