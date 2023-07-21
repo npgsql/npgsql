@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Threading;
 using Npgsql.NameTranslation;
 using NUnit.Framework;
 
@@ -58,17 +57,18 @@ public class SnakeCaseNameTranslatorTests
     });
 
     [Test, Description("Checks translating a name with letter 'I' in Turkish locale with default setting (Invariant Culture)")]
+    [SetCulture("tr-TR")]
     public void TurkeyTest()
     {
         var translator = new NpgsqlSnakeCaseNameTranslator();
+        var legacyTranslator = new NpgsqlSnakeCaseNameTranslator(true);
 
-        var originalCulture = Thread.CurrentThread.CurrentCulture;
-        Thread.CurrentThread.CurrentCulture = new CultureInfo("tr-TR");
-        var translatedMemberName = translator.TranslateMemberName("IPhone");
-        var translatedTypeName = translator.TranslateTypeName("IPhone");
-        Thread.CurrentThread.CurrentCulture = originalCulture;
+        const string clrName = "IPhone";
+        const string expected = "i_phone";
 
-        Assert.AreEqual("i_phone", translatedMemberName);
-        Assert.AreEqual("i_phone", translatedTypeName);
+        Assert.AreEqual(expected, translator.TranslateMemberName(clrName));
+        Assert.AreEqual(expected, translator.TranslateTypeName(clrName));
+        Assert.AreEqual(expected, legacyTranslator.TranslateMemberName(clrName));
+        Assert.AreEqual(expected, legacyTranslator.TranslateTypeName(clrName));
     }
 }
