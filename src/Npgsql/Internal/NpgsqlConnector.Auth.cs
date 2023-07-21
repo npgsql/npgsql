@@ -71,8 +71,8 @@ partial class NpgsqlConnector
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
-        var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
-        var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
+        var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256") && Settings.ChannelBinding != ChannelBinding.Require;
+        var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS") && Settings.ChannelBinding != ChannelBinding.Disable;
         if (!supportsSha256 && !supportsSha256Plus)
             throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                       "Mechanisms received from server: " + string.Join(", ", mechanisms));
@@ -167,6 +167,19 @@ partial class NpgsqlConnector
     internal void AuthenticateSASLSha256Plus(ref string mechanism, ref string cbindFlag, ref string cbind,
         ref bool successfulBind)
     {
+        // The check below is copied from libpq (with commentary)
+        // https://github.com/postgres/postgres/blob/98640f960eb9ed80cf90de3ef5d2e829b785b3eb/src/interfaces/libpq/fe-auth.c#L507-L517
+
+        // The server offered SCRAM-SHA-256-PLUS, but the connection
+        // is not SSL-encrypted. That's not sane. Perhaps SSL was
+        // stripped by a proxy? There's no point in continuing,
+        // because the server will reject the connection anyway if we
+        // try authenticate without channel binding even though both
+        // the client and server supported it. The SCRAM exchange
+        // checks for that, to prevent downgrade attacks.
+        if (!IsSecure)
+            throw new NpgsqlException("Server offered SCRAM-SHA-256-PLUS authentication over a non-SSL connection");
+
         var sslStream = (SslStream)_stream;
         if (sslStream.RemoteCertificate is null)
         {
