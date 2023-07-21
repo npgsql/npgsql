@@ -1476,6 +1476,42 @@ $$ LANGUAGE plpgsql;";
         await queryTask;
     }
 
+    [Test]
+    public async Task Cancel_while_reading_from_long_running_query()
+    {
+        if (IsMultiplexing)
+            return;
+
+        await using var conn = await OpenConnectionAsync();
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+SELECT *, CASE WHEN "t"."i" = 50000 THEN pg_sleep(100) ELSE NULL END
+FROM
+(
+    SELECT generate_series(1, 1000000) AS "i"
+) AS "t"
+""";
+
+        using (var cts = new CancellationTokenSource())
+        await using (var reader = await cmd.ExecuteReaderAsync(cts.Token))
+        {
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
+            {
+                var i = 0;
+                while (await reader.ReadAsync(cts.Token))
+                {
+                    i++;
+                    if (i == 10)
+                        cts.Cancel();
+                }
+            });
+        }
+
+        cmd.CommandText = "SELECT 42";
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(42));
+    }
+
     #region Logging
 
     [Test]
