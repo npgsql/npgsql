@@ -1,5 +1,11 @@
 ﻿#nullable enable
 const Npgsql.PostgresErrorCodes.IdleSessionTimeout = "57P05" -> string!
+Npgsql.ChannelBinding
+Npgsql.ChannelBinding.Disable = 0 -> Npgsql.ChannelBinding
+Npgsql.ChannelBinding.Prefer = 1 -> Npgsql.ChannelBinding
+Npgsql.ChannelBinding.Require = 2 -> Npgsql.ChannelBinding
+Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.get -> Npgsql.ChannelBinding
+Npgsql.NpgsqlConnectionStringBuilder.ChannelBinding.set -> void
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableFullTextSearch() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlSlimDataSourceBuilder.EnableRecords() -> Npgsql.NpgsqlSlimDataSourceBuilder!
 Npgsql.NpgsqlBinaryImporter.WriteRow(params object?[]! values) -> void
