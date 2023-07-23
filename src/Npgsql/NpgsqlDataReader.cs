@@ -1706,6 +1706,7 @@ public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The data type of the specified column.</returns>
+    [UnconditionalSuppressMessage("ILLink", "IL2093", Justification = "No members are dynamically accessed by Npgsql via GetFieldType")]
     public override Type GetFieldType(int ordinal)
         => GetField(ordinal).FieldType;
 
