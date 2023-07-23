@@ -117,16 +117,12 @@ public class BitStringTests : MultiplexingTestBase
     }
 
     [Test]
-    public Task Write_as_string()
-        => AssertTypeWrite("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
+    public Task As_string()
+        => AssertType("010101", "010101", "bit varying", NpgsqlDbType.Varbit, isDefault: false);
 
     [Test]
     public Task Write_as_string_validation()
-        => AssertTypeUnsupportedWrite<string, FormatException>("001q0", "bit varying");
-
-    [Test]
-    public Task Read_as_string_is_not_supported()
-        => AssertTypeUnsupportedRead<string, NotSupportedException>("010101", "bit varying");
+        => AssertTypeUnsupportedWrite<string, ArgumentException>("001q0", "bit varying");
 
     public BitStringTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
 }

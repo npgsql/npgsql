@@ -95,6 +95,14 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         mappings.AddStructType<Memory<byte>>(DataTypeNames.Bytea,
             static (options, mapping, _) => mapping.CreateInfo(options, new MemoryByteaConverter()));
 
+        // Varbit
+        mappings.AddType<string>(DataTypeNames.Varbit,
+            static (options, mapping, _) => mapping.CreateInfo(options, new StringBitStringConverter()));
+
+        // Bit
+        mappings.AddType<string>(DataTypeNames.Bit,
+            static (options, mapping, _) => mapping.CreateInfo(options, new StringBitStringConverter()));
+
         // Text
         mappings.AddType<char[]>(DataTypeNames.Text,
             static (options, mapping, _) => mapping.CreateInfo(options, new CharArrayTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text));
@@ -165,6 +173,12 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
         // Bytea
         mappings.AddStructArrayType<ArraySegment<byte>>((string)DataTypeNames.Bytea);
         mappings.AddStructArrayType<Memory<byte>>((string)DataTypeNames.Bytea);
+
+        // Varbit
+        mappings.AddArrayType<string>((string)DataTypeNames.Varbit);
+
+        // Bit
+        mappings.AddArrayType<string>((string)DataTypeNames.Bit);
 
         // Text
         mappings.AddArrayType<char[]>((string)DataTypeNames.Text);
