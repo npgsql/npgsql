@@ -1337,7 +1337,8 @@ public sealed partial class NpgsqlConnector
             {
                 // Prepended queries should never fail.
                 // If they do, we're not even going to attempt to salvage the connector.
-                throw Break(e);
+                Break(e);
+                throw;
             }
         }
 
@@ -2621,7 +2622,8 @@ public sealed partial class NpgsqlConnector
                 {
                     // We're somewhere in the middle of a reading keepalive messages
                     // Breaking the connection, as we've lost protocol sync
-                    throw Break(e);
+                    Break(e);
+                    throw;
                 }
 
                 if (msg == null)
