@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Internal.Postgres;
 using NpgsqlTypes;
 
 namespace Npgsql.Internal.Converters;
@@ -186,31 +185,5 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         internal Size UpperBoundSize;
         internal object? UpperBoundWriteState;
         // ReSharper restore InconsistentNaming
-    }
-}
-
-sealed class RangeConverterResolver<TSubtype> : PgComposingConverterResolver<NpgsqlRange<TSubtype>>
-{
-    public RangeConverterResolver(PgResolverTypeInfo subtypeTypeInfo)
-        : base(subtypeTypeInfo.PgTypeId is {} id ? subtypeTypeInfo.Options.GetRangeTypeId(id) : null, subtypeTypeInfo) { }
-
-    PgSerializerOptions Options => EffectiveTypeInfo.Options;
-
-    protected override PgTypeId GetEffectivePgTypeId(PgTypeId pgTypeId) => Options.GetRangeSubtypeTypeId(pgTypeId);
-    protected override PgTypeId GetPgTypeId(PgTypeId effectivePgTypeId) => Options.GetRangeTypeId(effectivePgTypeId);
-
-    protected override PgConverter<NpgsqlRange<TSubtype>> CreateConverter(PgConverterResolution effectiveResolution)
-        => new RangeConverter<TSubtype>(effectiveResolution.GetConverter<TSubtype>());
-
-    protected override PgConverterResolution? GetEffectiveResolution(NpgsqlRange<TSubtype> value, PgTypeId? expectedEffectiveTypeId)
-    {
-        // Resolve both sides to make sure we end up with consistent PgTypeIds.
-        PgConverterResolution? resolution = null;
-        if (!value.LowerBoundInfinite)
-            resolution = EffectiveTypeInfo.GetResolution(value.LowerBound, expectedEffectiveTypeId);
-        if (!value.UpperBoundInfinite)
-            resolution = EffectiveTypeInfo.GetResolution(value.UpperBound, resolution?.PgTypeId);
-
-        return resolution;
     }
 }
