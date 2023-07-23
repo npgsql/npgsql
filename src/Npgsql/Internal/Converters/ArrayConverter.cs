@@ -386,9 +386,6 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
         public void Invoke(Task task, object collection, int[] indices) => _continuation(task, collection, indices);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    protected static void Root<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]TRoot>() {}
-
     protected static int[]? GetLengths(Array array)
     {
         if (array.Rank == 1)
@@ -404,18 +401,6 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
 
 sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementOperations where T : class, IList
 {
-    static ArrayBasedArrayConverter()
-    {
-        // We want to keep code size minimal for CreateCollection so we just do a call here.
-        Root<TElement?[,]>();
-        Root<TElement?[,,]>();
-        Root<TElement?[,,,]>();
-        Root<TElement?[,,,,]>();
-        Root<TElement?[,,,,,]>();
-        Root<TElement?[,,,,,,]>();
-        Root<TElement?[,,,,,,,]>();
-    }
-
     readonly PgConverter<TElement> _elemConverter;
 
     public ArrayBasedArrayConverter(PgConverterResolution elemResolution, Type? effectiveType = null, int pgLowerBound = 1)
@@ -460,8 +445,13 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
             0 => Array.Empty<TElement?>(),
             1 when lengths[0] == 0 => Array.Empty<TElement?>(),
             1 => new TElement?[lengths[0]],
-            // We don't write these out for code size reasons, they're all rooted in the static constructor though.
-            <= 8 => Array.CreateInstance(typeof(TElement?), lengths),
+            2 => new TElement?[lengths[0],lengths[1]],
+            3 => new TElement?[lengths[0],lengths[1], lengths[2]],
+            4 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3]],
+            5 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4]],
+            6 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5]],
+            7 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6]],
+            8 => new TElement?[lengths[0],lengths[1], lengths[2], lengths[3], lengths[4], lengths[5], lengths[6], lengths[7]],
             _ => throw new InvalidOperationException("Postgres arrays can have at most 8 dimensions.")
         };
 
