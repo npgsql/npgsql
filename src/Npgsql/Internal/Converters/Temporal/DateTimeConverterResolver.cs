@@ -8,6 +8,7 @@ namespace Npgsql.Internal.Converters;
 
 sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
 {
+    readonly PgSerializerOptions _options;
     readonly Func<DateTimeConverterResolver<T>, T?, PgTypeId?, PgConverterResolution?> _resolver;
     readonly Func<PgTypeId, PgConverter> _factory;
     readonly PgTypeId _timestampTz;
@@ -16,8 +17,9 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
     PgConverter? _timestampConverter;
     readonly bool _dateTimeInfinityConversions;
 
-    internal DateTimeConverterResolver(Func<DateTimeConverterResolver<T>, T?, PgTypeId?, PgConverterResolution?> resolver, Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
+    internal DateTimeConverterResolver(PgSerializerOptions options, Func<DateTimeConverterResolver<T>, T?, PgTypeId?, PgConverterResolution?> resolver, Func<PgTypeId, PgConverter> factory, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
     {
+        _options = options;
         _resolver = resolver;
         _factory = factory;
         _timestampTz = timestampTz;
@@ -41,10 +43,10 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
         {
             // We coalesce with expectedPgTypeId to throw on unknown type ids.
             return expectedPgTypeId == _timestamp
-                ? throw new NotSupportedException(
-                    "Cannot write DateTime with Kind=UTC to PostgreSQL type 'timestamp without time zone', " +
-                    "consider using 'timestamp with time zone'. " +
-                    "Note that it's not possible to mix DateTimes with different Kinds in an array/range.")
+                ? throw new ArgumentException(
+                    $"Cannot write DateTime with Kind=UTC to PostgreSQL type '{_options.GetDataTypeName(_timestamp).DisplayName}', " +
+                    $"consider using '{_options.GetDataTypeName(_timestampTz).DisplayName}'. " +
+                    "Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.", nameof(value))
                 : validateOnly ? null : GetDefault(expectedPgTypeId ?? _timestampTz);
         }
 
@@ -52,9 +54,9 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
         if (expectedPgTypeId == _timestampTz
             && !(_dateTimeInfinityConversions && (value == DateTime.MinValue || value == DateTime.MaxValue)))
         {
-            throw new NotSupportedException(
-                $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type 'timestamp with time zone', only UTC is supported. " +
-                "Note that it's not possible to mix DateTimes with different Kinds in an array/range. ");
+            throw new ArgumentException(
+                $"Cannot write DateTime with Kind={value.Kind} to PostgreSQL type '{_options.GetDataTypeName(_timestampTz).DisplayName}', only UTC is supported. " +
+                "Note that it's not possible to mix DateTimes with different Kinds in an array, range, or multirange.", nameof(value));
         }
 
         // We coalesce with expectedPgTypeId to throw on unknown type ids.
@@ -67,8 +69,8 @@ sealed class DateTimeConverterResolver<T> : PgConverterResolver<T>
 
 sealed class DateTimeConverterResolver
 {
-    public static DateTimeConverterResolver<DateTime> CreateResolver(PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(static (resolver, value, expectedPgTypeId) => resolver.Get(value, expectedPgTypeId), pgTypeId =>
+    public static DateTimeConverterResolver<DateTime> CreateResolver(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
+        => new(options, static (resolver, value, expectedPgTypeId) => resolver.Get(value, expectedPgTypeId), pgTypeId =>
         {
             if (pgTypeId == timestampTz)
                 return new DateTimeConverter(dateTimeInfinityConversions, DateTimeKind.Utc);
@@ -78,15 +80,18 @@ sealed class DateTimeConverterResolver
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);
 
-    public static DateTimeConverterResolver<NpgsqlRange<DateTime>> CreateRangeResolver(PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
-        => new(static (resolver, value, expectedPgTypeId) =>
+    public static DateTimeConverterResolver<NpgsqlRange<DateTime>> CreateRangeResolver(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
+        => new(options, static (resolver, value, expectedPgTypeId) =>
         {
             // Resolve both sides to make sure we end up with consistent PgTypeIds.
             PgConverterResolution? resolution = null;
             if (!value.LowerBoundInfinite)
                 resolution = resolver.Get(value.LowerBound, expectedPgTypeId);
             if (!value.UpperBoundInfinite)
-                resolution = resolver.Get(value.UpperBound, resolution?.PgTypeId ?? expectedPgTypeId, validateOnly: resolution is not null);
+            {
+                var result = resolver.Get(value.UpperBound, resolution?.PgTypeId ?? expectedPgTypeId, validateOnly: resolution is not null);
+                resolution ??= result;
+            }
 
             return resolution;
         }, pgTypeId =>
@@ -99,13 +104,13 @@ sealed class DateTimeConverterResolver
             throw new NotSupportedException();
         }, timestampTz, timestamp, dateTimeInfinityConversions);
 
-    public static DateTimeConverterResolver<T> CreateMultirangeResolver<T, TElement>(PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
+    public static DateTimeConverterResolver<T> CreateMultirangeResolver<T, TElement>(PgSerializerOptions options, PgTypeId timestampTz, PgTypeId timestamp, bool dateTimeInfinityConversions)
         where T : IList<TElement> where TElement : notnull
     {
         if (typeof(TElement) != typeof(NpgsqlRange<DateTime>))
             throw new NotSupportedException("Unsupported element type");
 
-        return new DateTimeConverterResolver<T>(static (resolver, value, expectedPgTypeId) =>
+        return new DateTimeConverterResolver<T>(options, static (resolver, value, expectedPgTypeId) =>
         {
             PgConverterResolution? resolution = null;
             if (value is null)
