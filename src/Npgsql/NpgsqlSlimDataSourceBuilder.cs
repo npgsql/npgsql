@@ -268,7 +268,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         => _userTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(typeof(T), pgName, nameTranslator);
@@ -276,11 +276,12 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Composite type mapping currently isn't trimming-safe.")]
+    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
     public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(typeof(T), pgName, nameTranslator);
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
     public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
     {
         _userTypeMapper.MapComposite(clrType, pgName, nameTranslator);
@@ -288,6 +289,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
     }
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("Composite type mapping isn't trimming-safe.")]
     public bool UnmapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
         => _userTypeMapper.UnmapComposite(clrType, pgName, nameTranslator);
 
