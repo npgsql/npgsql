@@ -71,9 +71,11 @@ partial class NpgsqlConnector
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
-        var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256") && Settings.ChannelBinding != ChannelBinding.Require;
-        var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS") && Settings.ChannelBinding != ChannelBinding.Disable;
-        if (!supportsSha256 && !supportsSha256Plus)
+        var serverSupportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
+        var clientSupportsSha256 = serverSupportsSha256 && Settings.ChannelBinding != ChannelBinding.Require;
+        var serverSupportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
+        var clientSupportsSha256Plus = serverSupportsSha256Plus && Settings.ChannelBinding != ChannelBinding.Disable;
+        if (!clientSupportsSha256 && !clientSupportsSha256Plus)
             throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                       "Mechanisms received from server: " + string.Join(", ", mechanisms));
 
@@ -82,17 +84,18 @@ partial class NpgsqlConnector
         var cbind = string.Empty;
         var successfulBind = false;
 
-        if (supportsSha256Plus)
+        if (clientSupportsSha256Plus)
             DataSource.EncryptionHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
-        if (!successfulBind && supportsSha256)
+        if (!successfulBind && serverSupportsSha256)
         {
             mechanism = "SCRAM-SHA-256";
             // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
+            // Or the user specifically requested to not use bindings
             // So, we set 'n' (client does not support binding) if there was an error while binding
             // or 'y' (client supports but server doesn't) in other case
-            cbindFlag = supportsSha256Plus ? "n" : "y";
-            cbind = supportsSha256Plus ? "biws" : "eSws";
+            cbindFlag = serverSupportsSha256Plus ? "n" : "y";
+            cbind = serverSupportsSha256Plus ? "biws" : "eSws";
             successfulBind = true;
             IsScram = true;
         }

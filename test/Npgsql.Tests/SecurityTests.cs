@@ -181,6 +181,47 @@ public class SecurityTests : TestBase
             // scram-sha-256-plus only works beginning from PostgreSQL 11
             if (conn.PostgreSqlVersion.Major >= 11)
             {
+                Assert.That(conn.IsScram, Is.False);
+                Assert.That(conn.IsScramPlus, Is.True);
+            }
+            else
+            {
+                Assert.That(conn.IsScram, Is.True);
+                Assert.That(conn.IsScramPlus, Is.False);
+            }
+        }
+        catch (Exception e) when (!IsOnBuildServer)
+        {
+            Console.WriteLine(e);
+            Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
+        }
+    }
+
+    [Test]
+    public void ScramPlus_channel_binding([Values] ChannelBinding channelBinding)
+    {
+        try
+        {
+            using var dataSource = CreateDataSource(csb =>
+            {
+                csb.SslMode = SslMode.Require;
+                csb.Username = "npgsql_tests_scram";
+                csb.Password = "npgsql_tests_scram";
+                csb.TrustServerCertificate = true;
+                csb.ChannelBinding = channelBinding;
+            });
+            // scram-sha-256-plus only works beginning from PostgreSQL 11
+            MinimumPgVersion(dataSource, "11.0");
+            using var conn = dataSource.OpenConnection();
+
+            if (channelBinding == ChannelBinding.Disable)
+            {
+                Assert.That(conn.IsScram, Is.True);
+                Assert.That(conn.IsScramPlus, Is.False);
+            }
+            else
+            {
+                Assert.That(conn.IsScram, Is.False);
                 Assert.That(conn.IsScramPlus, Is.True);
             }
         }
