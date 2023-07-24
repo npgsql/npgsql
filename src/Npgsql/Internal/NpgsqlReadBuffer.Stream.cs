@@ -174,11 +174,7 @@ sealed partial class NpgsqlReadBuffer
             CheckDisposed();
 
             var count = Math.Min(buffer.Length, CurrentLength - _read);
-
-            if (count == 0)
-                return new ValueTask<int>(0);
-
-            return ReadLong(this, buffer.Slice(0, count), cancellationToken);
+            return count == 0 ? new ValueTask<int>(0) : ReadLong(this, buffer.Slice(0, count), cancellationToken);
 
             static async ValueTask<int> ReadLong(ColumnStream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
             {

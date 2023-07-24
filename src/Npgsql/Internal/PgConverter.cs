@@ -29,25 +29,8 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
         _writeRequirement = writeRequirement;
     }
 
-    public Size Read
-    {
-        get
-        {
-            ThrowIfDefault();
-            return _readRequirement;
-        }
-    }
-
-    public Size Write
-    {
-        get
-        {
-            ThrowIfDefault();
-            return _readRequirement;
-        }
-    }
-
-    public bool IsDefault => _readRequirement.IsDefault || _writeRequirement.IsDefault;
+    public Size Read => _readRequirement.IsDefault ? ThrowDefaultException() : _readRequirement;
+    public Size Write => _writeRequirement.IsDefault ? ThrowDefaultException() : _writeRequirement;
 
     public bool IsFixedSize => Write is { Kind: SizeKind.Exact, Value : > 0 } && _readRequirement == _writeRequirement;
 
@@ -61,32 +44,22 @@ public readonly struct BufferRequirements : IEquatable<BufferRequirements>
     public static BufferRequirements Create(Size requirement) => new(requirement, requirement);
     public static BufferRequirements Create(Size readRequirement, Size writeRequirement) => new(readRequirement, writeRequirement);
 
-    static Size RequirementCombine(Size left, Size right)
-    {
-        // The oddity, we shouldn't add sizes to zero, which is supposed to mean streaming.
-        if (left == Size.Zero || right == Size.Zero)
-            return Size.Zero;
-
-        return left.Combine(right);
-    }
-
     public BufferRequirements Combine(BufferRequirements other)
-        => new(
-            RequirementCombine(_readRequirement, other._readRequirement),
-            RequirementCombine(_writeRequirement, other._writeRequirement)
+    {
+        return new BufferRequirements(
+            CombineRequirements(_readRequirement, other._readRequirement),
+            CombineRequirements(_writeRequirement, other._writeRequirement)
         );
+
+        // The oddity, we shouldn't add sizes to zero, which is supposed to mean streaming.
+        static Size CombineRequirements(Size left, Size right)
+            => left == Size.Zero || right == Size.Zero ? Size.Zero : left.Combine(right);
+    }
 
     public BufferRequirements Combine(int byteCount)
         => Combine(CreateFixedSize(byteCount));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    void ThrowIfDefault()
-    {
-        if (IsDefault)
-            ThrowDefaultException();
-
-        static void ThrowDefaultException() => throw new InvalidOperationException();
-    }
+    static Size ThrowDefaultException() => throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(BufferRequirements)}.");
 
     public bool Equals(BufferRequirements other) => _readRequirement.Equals(other._readRequirement) && _writeRequirement.Equals(other._writeRequirement);
     public override bool Equals(object? obj) => obj is BufferRequirements other && Equals(other);
@@ -321,7 +294,7 @@ public abstract class PgBufferedConverter<T> : PgConverter<T>
     public sealed override void Write(PgWriter writer, T value)
     {
         // If Kind is SizeKind.Unknown we're doing a buffering write.
-        if (writer.Current.Size is not { Kind: not SizeKind.Unknown } size || writer.ShouldFlush(size))
+        if (writer.Current.Size is { Kind: not SizeKind.Unknown } size && writer.ShouldFlush(size))
             ThrowIORequired();
 
         WriteCore(writer, value);

@@ -2,11 +2,9 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -596,14 +594,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
         return result;
     }
 
-    public char[] ReadChars(int byteLen)
-    {
-        Debug.Assert(byteLen <= ReadBytesLeft);
-        var result = TextEncoding.GetChars(Buffer, ReadPosition, byteLen);
-        ReadPosition += byteLen;
-        return result;
-    }
-
     public void ReadBytes(Span<byte> output)
     {
         Debug.Assert(output.Length <= ReadBytesLeft);
@@ -613,14 +603,6 @@ sealed partial class NpgsqlReadBuffer : IDisposable
 
     public void ReadBytes(byte[] output, int outputOffset, int len)
         => ReadBytes(new Span<byte>(output, outputOffset, len));
-
-    public ReadOnlySpan<byte> ReadSpan(int len)
-    {
-        Debug.Assert(len <= ReadBytesLeft);
-        var span = new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
-        ReadPosition += len;
-        return span;
-    }
 
     public ReadOnlyMemory<byte> ReadMemory(int len)
     {

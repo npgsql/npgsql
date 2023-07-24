@@ -6,7 +6,6 @@ using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
 
-// TODO it's either PgSerializerOptions or PgConverterOptions, I have no strong preference.
 public class PgSerializerOptions
 {
     /// <summary>
