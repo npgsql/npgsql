@@ -28,8 +28,8 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     internal Stream Underlying { private get; set; }
 
     readonly Socket? _underlyingSocket;
-
     readonly ResettableCancellationTokenSource _timeoutCts;
+    readonly MetricsReporter? _metricsReporter;
 
     /// <summary>
     /// Timeout for sync and async writes
@@ -87,7 +87,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
     #region Constructors
 
     internal NpgsqlWriteBuffer(
-        NpgsqlConnector connector,
+        NpgsqlConnector? connector,
         Stream stream,
         Socket? socket,
         int size,
@@ -96,9 +96,10 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
         if (size < MinimumSize)
             throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
 
-        Connector = connector;
+        Connector = connector!; // TODO: Clean this up; only null when used from PregeneratedMessages, where we don't care.
         Underlying = stream;
         _underlyingSocket = socket;
+        _metricsReporter = connector?.DataSource.MetricsReporter!;
         _timeoutCts = new ResettableCancellationTokenSource();
         Buffer = new byte[size];
         Size = size;
@@ -137,7 +138,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             {
                 await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                 await Underlying.FlushAsync(finalCt);
-                if (Timeout > TimeSpan.Zero) 
+                if (Timeout > TimeSpan.Zero)
                     _timeoutCts.Stop();
             }
             else
@@ -170,6 +171,7 @@ public sealed partial class NpgsqlWriteBuffer : IDisposable
             throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
         }
         NpgsqlEventSource.Log.BytesWritten(WritePosition);
+        _metricsReporter?.ReportBytesWritten(WritePosition);
         //NpgsqlEventSource.Log.RequestFailed();
 
         WritePosition = 0;
