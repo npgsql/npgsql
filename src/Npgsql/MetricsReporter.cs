@@ -11,7 +11,7 @@ using System.Threading;
 
 // .NET docs on metric instrumentation: https://learn.microsoft.com/en-us/dotnet/core/diagnostics/metrics-instrumentation
 // OpenTelemetry semantic conventions for database metric: https://opentelemetry.io/docs/specs/otel/metrics/semantic_conventions/database-metrics
-class MetricsReporter : IDisposable
+sealed class MetricsReporter : IDisposable
 {
     const string Version = "0.1.0";
 
@@ -55,8 +55,8 @@ class MetricsReporter : IDisposable
         CommandDuration
             = Meter.CreateHistogram<double>("db.client.commands.duration", "ms", "The duration of database commands, in milliseconds.");
 
-        BytesWritten = Meter.CreateCounter<long>("db.client.commands.bytes_read", "The number of bytes read.");
-        BytesRead = Meter.CreateCounter<long>("db.client.commands.bytes_written", "The number of bytes written.");
+        BytesWritten = Meter.CreateCounter<long>("db.client.commands.bytes_written", "The number of bytes written.");
+        BytesRead = Meter.CreateCounter<long>("db.client.commands.bytes_read", "The number of bytes read.");
 
         PendingConnectionRequests = Meter.CreateUpDownCounter<int>(
             "db.client.connections.pending_requests",
@@ -214,13 +214,12 @@ class MetricsReporter : IDisposable
         lock (Reporters)
         {
             Reporters.Remove(this);
-            Reporters.Sort((x,y) => string.Compare(x._dataSource.Name, y._dataSource.Name, StringComparison.Ordinal));
         }
     }
 }
 #else
 // Unfortunately, UpDownCounter is only supported starting with net7.0, and since a lot of the metrics rely on it,
-class MetricsReporter : IDisposable
+sealed class MetricsReporter : IDisposable
 {
     public MetricsReporter(NpgsqlDataSource _) {}
     internal long ReportCommandStart() => 0;
