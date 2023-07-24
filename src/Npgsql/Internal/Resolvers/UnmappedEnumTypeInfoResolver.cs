@@ -12,7 +12,7 @@ namespace Npgsql.Internal.Resolvers;
 
 [RequiresUnreferencedCode("Unmapped enum resolver may perform reflection on types with fields that were trimmed if not referenced directly.")]
 [RequiresDynamicCode("Unmapped enums need to construct a generic converter for a statically unknown enum type.")]
-class UnmappedEnumResolver : IPgTypeInfoResolver
+class UnmappedEnumTypeInfoResolver : IPgTypeInfoResolver
 {
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -55,13 +55,13 @@ class UnmappedEnumResolver : IPgTypeInfoResolver
     public static bool IsEnum(Type type, [NotNullWhen(true)]out Type? enumType)
         => (enumType = type).IsEnum || (enumType = Nullable.GetUnderlyingType(type!))?.IsEnum == true;
 
-    static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod("AddStructType",
+    static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddStructType),
         new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 }
 
 [RequiresUnreferencedCode("Unmapped enum resolver may perform reflection on types with fields that were trimmed if not referenced directly.")]
 [RequiresDynamicCode("Unmapped enums need to construct a generic converter for a statically unknown enum type")]
-sealed class UnmappedEnumArrayResolver : UnmappedEnumResolver, IPgTypeInfoResolver
+sealed class UnmappedEnumTypeInfoArrayResolver : UnmappedEnumTypeInfoResolver, IPgTypeInfoResolver
 {
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
     {
@@ -85,5 +85,5 @@ sealed class UnmappedEnumArrayResolver : UnmappedEnumResolver, IPgTypeInfoResolv
         => TypeInfoMappingCollection.IsArrayType(type, out enumType) && IsEnum(enumType, out enumType);
 
     static readonly MethodInfo AddStructArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
-        .GetMethod("AddStructArrayType", new[] { typeof(string) }) ?? throw new NullReferenceException();
+        .GetMethod(nameof(TypeInfoMappingCollection.AddStructArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
 }

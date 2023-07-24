@@ -57,15 +57,18 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             new SystemTextJsonTypeInfoResolver(),
             new RangeTypeInfoResolver(),
             new RecordTypeInfoResolver(),
+            new TupledRecordTypeInfoResolver(),
             new FullTextSearchTypeInfoResolver(),
             new NetworkTypeInfoResolver(),
             new GeometricTypeInfoResolver(),
             new LTreeTypeInfoResolver(),
-            new UnmappedEnumResolver(),
+            new UnmappedEnumTypeInfoResolver(),
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver(),
+            new RecordArrayTypeInfoResolver(),
+            new TupledRecordArrayTypeInfoResolver(),
             new RangeArrayTypeInfoResolver(),
-            new UnmappedEnumArrayResolver(),
+            new UnmappedEnumTypeInfoArrayResolver(),
         }, overwrite);
 
     static NpgsqlDataSourceBuilder()
@@ -84,15 +87,18 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             _internalBuilder.EnableEncryption();
             // Reverse order.
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
-            AddTypeInfoResolver(new UnmappedEnumArrayResolver());
+            AddTypeInfoResolver(new UnmappedEnumTypeInfoArrayResolver());
             AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
+            AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
-            AddTypeInfoResolver(new UnmappedEnumResolver());
+            AddTypeInfoResolver(new UnmappedEnumTypeInfoResolver());
             AddTypeInfoResolver(new LTreeTypeInfoResolver());
             AddTypeInfoResolver(new GeometricTypeInfoResolver());
             AddTypeInfoResolver(new NetworkTypeInfoResolver());
             AddTypeInfoResolver(new FullTextSearchTypeInfoResolver());
+            AddTypeInfoResolver(new TupledRecordTypeInfoResolver());
             AddTypeInfoResolver(new RecordTypeInfoResolver());
             AddTypeInfoResolver(new RangeTypeInfoResolver());
             AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver());
