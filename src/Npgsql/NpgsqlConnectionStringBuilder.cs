@@ -1837,7 +1837,7 @@ public enum ChannelBinding
     /// </summary>
     Disable,
     /// <summary>
-    /// Prefer channel binding if the server allows.
+    /// Prefer channel binding if the server allows it, but connect without it if not.
     /// </summary>
     Prefer,
     /// <summary>

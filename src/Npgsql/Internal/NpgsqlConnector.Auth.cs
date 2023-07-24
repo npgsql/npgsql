@@ -76,8 +76,17 @@ partial class NpgsqlConnector
         var serverSupportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
         var clientSupportsSha256Plus = serverSupportsSha256Plus && Settings.ChannelBinding != ChannelBinding.Disable;
         if (!clientSupportsSha256 && !clientSupportsSha256Plus)
+        {
+            if (serverSupportsSha256 && Settings.ChannelBinding == ChannelBinding.Require)
+                throw new NpgsqlException($"Couldn't connect because {nameof(ChannelBinding)} is set to {nameof(ChannelBinding.Require)} " +
+                                          "but the server doesn't support SCRAM-SHA-256-PLUS");
+            if (serverSupportsSha256Plus && Settings.ChannelBinding == ChannelBinding.Disable)
+                throw new NpgsqlException($"Couldn't connect because {nameof(ChannelBinding)} is set to {nameof(ChannelBinding.Disable)} " +
+                                          "but the server doesn't support SCRAM-SHA-256");
+
             throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                       "Mechanisms received from server: " + string.Join(", ", mechanisms));
+        }
 
         var mechanism = string.Empty;
         var cbindFlag = string.Empty;
