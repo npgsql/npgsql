@@ -68,9 +68,10 @@ sealed class GlobalTypeMapper : INpgsqlTypeMapper
             _lock.EnterReadLock();
             try
             {
-                var resolvers = new List<IPgTypeInfoResolver>(_pluginResolvers);
-                resolvers.AddRange(_typeMappingResolvers);
+                var resolvers = new List<IPgTypeInfoResolver>();
                 resolvers.Add(_userTypeMapper.Build());
+                resolvers.AddRange(_pluginResolvers);
+                resolvers.AddRange(_typeMappingResolvers);
                 return _typeMappingOptions = new(PostgresMinimalDatabaseInfo.DefaultTypeCatalog)
                 {
                     // This means we don't ever have a missing oid for a datatypename as our canonical format is datatypenames.

@@ -10,6 +10,20 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
     readonly Dictionary<string, TEnum> _labelToEnum;
     readonly Encoding _encoding;
 
+    // Unmapped enums
+    public EnumConverter(Dictionary<Enum, string> enumToLabel, Dictionary<string, Enum> labelToEnum, Encoding encoding)
+    {
+        _enumToLabel = new(enumToLabel.Count);
+        foreach (var kv in enumToLabel)
+            _enumToLabel.Add((TEnum)kv.Key, kv.Value);
+
+        _labelToEnum = new(labelToEnum.Count);
+        foreach (var kv in labelToEnum)
+            _labelToEnum.Add(kv.Key, (TEnum)kv.Value);
+
+        _encoding = encoding;
+    }
+
     public EnumConverter(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum, Encoding encoding)
     {
         _enumToLabel = enumToLabel;
