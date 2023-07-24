@@ -5,20 +5,24 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class ObjectArrayRecordConverter : PgStreamingConverter<object[]>
+sealed class ObjectArrayRecordConverter<T> : PgStreamingConverter<T>
 {
     readonly PgSerializerOptions _serializerOptions;
+    readonly Func<object[], T>? _factory;
 
-    public ObjectArrayRecordConverter(PgSerializerOptions serializerOptions)
-        => _serializerOptions = serializerOptions;
+    public ObjectArrayRecordConverter(PgSerializerOptions serializerOptions, Func<object[], T>? factory = null)
+    {
+        _serializerOptions = serializerOptions;
+        _factory = factory;
+    }
 
-    public override object[] Read(PgReader reader)
+    public override T Read(PgReader reader)
         => Read(async: false, reader, CancellationToken.None).GetAwaiter().GetResult();
 
-    public override ValueTask<object[]> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
+    public override ValueTask<T> ReadAsync(PgReader reader, CancellationToken cancellationToken = default)
         => Read(async: true, reader, cancellationToken);
 
-    async ValueTask<object[]> Read(bool async, PgReader reader, CancellationToken cancellationToken)
+    async ValueTask<T> Read(bool async, PgReader reader, CancellationToken cancellationToken)
     {
         if (reader.ShouldBuffer(sizeof(int)))
             await reader.BufferData(async, sizeof(int), cancellationToken).ConfigureAwait(false);
@@ -53,15 +57,15 @@ sealed class ObjectArrayRecordConverter : PgStreamingConverter<object[]>
             result[i] = await converterInfo.Converter.ReadAsObject(async, reader, cancellationToken).ConfigureAwait(false);
         }
 
-        return result;
+        return _factory is null ? (T)(object)result : _factory(result);
     }
 
-    public override Size GetSize(SizeContext context, object[] value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T value, ref object? writeState)
         => throw new NotSupportedException();
 
-    public override void Write(PgWriter writer, object[] value)
+    public override void Write(PgWriter writer, T value)
         => throw new NotSupportedException();
 
-    public override ValueTask WriteAsync(PgWriter writer, object[] value, CancellationToken cancellationToken = default)
+    public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 }
