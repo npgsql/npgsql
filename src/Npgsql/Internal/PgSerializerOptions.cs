@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Npgsql.Internal.Postgres;
+using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql.Internal;
@@ -40,6 +41,7 @@ public class PgSerializerOptions
     public bool EnableDateTimeInfinityConversions { get; init; } = true;
 
     public ArrayNullabilityMode ArrayNullabilityMode { get; init; } = ArrayNullabilityMode.Never;
+    public INpgsqlNameTranslator DefaultNameTranslator { get; init; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
     // We don't verify the kind of pgTypeId we get, it'll throw if it's incorrect.
     // It's up to the caller to call GetCanonicalTypeId if they want to use an oid instead of a DataTypeName.
