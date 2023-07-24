@@ -35,7 +35,7 @@ sealed class UserTypeMapper
     readonly List<UserTypeMapping> _mappings;
     public IList<UserTypeMapping> Items => _mappings;
 
-    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = new NpgsqlSnakeCaseNameTranslator();
+    public INpgsqlNameTranslator DefaultNameTranslator { get; set; } = NpgsqlSnakeCaseNameTranslator.Instance;
 
     UserTypeMapper(IEnumerable<UserTypeMapping> mappings) => _mappings = new List<UserTypeMapping>(mappings);
     public UserTypeMapper() => _mappings = new();

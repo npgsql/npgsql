@@ -517,6 +517,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
             _periodicPasswordSuccessRefreshInterval,
             _periodicPasswordFailureRefreshInterval,
             Resolvers(),
+            DefaultNameTranslator,
             _syncConnectionInitializer,
             _asyncConnectionInitializer);
 

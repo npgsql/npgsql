@@ -77,6 +77,8 @@ public abstract class NpgsqlDataSource : DbDataSource
     /// </summary>
     readonly SemaphoreSlim _setupMappingsSemaphore = new(1);
 
+    readonly INpgsqlNameTranslator _defaultNameTranslator;
+
     internal NpgsqlDataSource(
         NpgsqlConnectionStringBuilder settings,
         NpgsqlDataSourceConfiguration dataSourceConfig)
@@ -97,6 +99,7 @@ public abstract class NpgsqlDataSource : DbDataSource
                 _periodicPasswordSuccessRefreshInterval,
                 _periodicPasswordFailureRefreshInterval,
                 var resolverChain,
+                _defaultNameTranslator,
                 ConnectionInitializer,
                 ConnectionInitializerAsync)
             = dataSourceConfig;
@@ -249,7 +252,8 @@ public abstract class NpgsqlDataSource : DbDataSource
                     ArrayNullabilityMode = Settings.ArrayNullabilityMode,
                     EnableDateTimeInfinityConversions = !Statics.DisableDateTimeInfinityConversions,
                     TextEncoding = connector.TextEncoding,
-                    TypeInfoResolver = _resolver
+                    TypeInfoResolver = _resolver,
+                    DefaultNameTranslator = _defaultNameTranslator
                 };
 
             _isBootstrapped = true;
