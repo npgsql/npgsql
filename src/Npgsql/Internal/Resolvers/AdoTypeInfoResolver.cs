@@ -9,6 +9,7 @@ using System.Numerics;
 using Npgsql.Internal.Converters;
 using Npgsql.Internal.Converters.Internal;
 using Npgsql.Internal.Postgres;
+using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;
 
@@ -28,7 +29,23 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
     protected TypeInfoMappingCollection Mappings { get; }
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.Find(type, dataTypeName, options);
+    {
+        var info = Mappings.Find(type, dataTypeName, options);
+        if (info is null && dataTypeName is not null)
+            return GetEnumTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+        return info;
+    }
+
+    protected static PgTypeInfo? GetEnumTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+    {
+        if (type is not null && type != typeof(string))
+            return null;
+
+        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresEnumType)
+            return null;
+
+        return new PgTypeInfo(options, new StringTextConverter(options.TextEncoding), dataTypeName);
+    }
 
     static void AddInfos(TypeInfoMappingCollection mappings)
     {
@@ -454,5 +471,24 @@ sealed class AdoArrayTypeInfoResolver : AdoTypeInfoResolver, IPgTypeInfoResolver
     }
 
     public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
-        => Mappings.Find(type, dataTypeName, options);
+    {
+        var info = Mappings.Find(type, dataTypeName, options);
+        if (info is null && dataTypeName is not null)
+            return GetEnumArrayTypeInfo(type, dataTypeName.GetValueOrDefault(), options);
+        return info;
+    }
+
+    static PgTypeInfo? GetEnumArrayTypeInfo(Type? type, DataTypeName dataTypeName, PgSerializerOptions options)
+    {
+        if (type is not null && (!TypeInfoMappingCollection.IsArrayType(type, out var elementType) || elementType != typeof(string)))
+            return null;
+
+        if (options.TypeCatalog.GetPostgresTypeByName(dataTypeName) is not PostgresArrayType { Element: PostgresEnumType })
+            return null;
+
+        var mappings = new TypeInfoMappingCollection();
+        mappings.AddType<string>(dataTypeName, (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding)), MatchRequirement.DataTypeName);
+        mappings.AddArrayType<string>((string)dataTypeName);
+        return mappings.Find(type, dataTypeName, options);
+    }
 }

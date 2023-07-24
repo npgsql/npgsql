@@ -524,14 +524,14 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         IEnumerable<IPgTypeInfoResolver> Resolvers()
         {
             var resolvers = new List<IPgTypeInfoResolver>();
-            resolvers.AddRange(_resolverChain);
 
             if (_userTypeMapper.Items.Count > 0)
                 resolvers.Add(_userTypeMapper.Build());
 
-            var globalUserTypeMapper = GlobalTypeMapper.Instance.GetUserMappingsResolver();
-            if (globalUserTypeMapper is not null)
+            if (GlobalTypeMapper.Instance.GetUserMappingsResolver() is { } globalUserTypeMapper)
                 resolvers.Add(globalUserTypeMapper);
+
+            resolvers.AddRange(_resolverChain);
 
             return resolvers;
         }

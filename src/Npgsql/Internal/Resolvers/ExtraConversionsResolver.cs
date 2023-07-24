@@ -6,13 +6,9 @@ namespace Npgsql.Internal.Resolvers;
 
 class ExtraConversionsResolver : IPgTypeInfoResolver
 {
-    public ExtraConversionsResolver()
-    {
-        Mappings = new TypeInfoMappingCollection();
-        AddInfos(Mappings);
-    }
+    public ExtraConversionsResolver() => AddInfos(Mappings);
 
-    protected TypeInfoMappingCollection Mappings { get; }
+    protected TypeInfoMappingCollection Mappings { get; } = new();
 
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
@@ -197,7 +193,7 @@ class ExtraConversionsResolver : IPgTypeInfoResolver
     }
 }
 
-sealed class ExtraConversionsArrayTypeInfoResolver : ExtraConversionsResolver
+sealed class ExtraConversionsArrayTypeInfoResolver : ExtraConversionsResolver, IPgTypeInfoResolver
 {
     public ExtraConversionsArrayTypeInfoResolver()
     {

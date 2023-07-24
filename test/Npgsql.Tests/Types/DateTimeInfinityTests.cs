@@ -35,7 +35,7 @@ public class DateTimeInfinityTests : TestBase, IDisposable
         cmd.Parameters[0].Value = DateTime.MaxValue;
 
         if (DisableDateTimeInfinityConversions)
-            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(async () => await cmd.ExecuteScalarAsync(), Throws.Exception.TypeOf<ArgumentException>());
         else
             Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo("infinity"));
     }
