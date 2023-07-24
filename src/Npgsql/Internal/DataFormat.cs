@@ -16,7 +16,7 @@ static class DataFormatUtils
         {
             0 => DataFormat.Text,
             1 => DataFormat.Binary,
-            _ => throw new UnreachableException()
+            _ => throw new ArgumentOutOfRangeException(nameof(formatCode), formatCode, "Unknown postgres format code, please file a bug,")
         };
 
     public static short ToFormatCode(this DataFormat dataFormat)
@@ -24,6 +24,6 @@ static class DataFormatUtils
         {
             DataFormat.Text => 0,
             DataFormat.Binary => 1,
-            var code => throw new ArgumentOutOfRangeException("", code, "Unknown postgres format code, please file a bug,")
+            _ => throw new UnreachableException()
         };
 }

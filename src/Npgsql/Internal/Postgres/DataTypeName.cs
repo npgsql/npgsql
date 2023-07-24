@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace Npgsql.Internal.Postgres;
 
 /// <summary>
-/// Represented the fully-qualified name of a PostgreSQL type.
+/// Represents the fully-qualified name of a PostgreSQL type.
 /// </summary>
 [DebuggerDisplay("{DisplayName,nq}")]
 public readonly struct DataTypeName : IEquatable<DataTypeName>
@@ -16,7 +16,7 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     /// We need to respect this to get to valid names when deriving them (for multirange/arrays etc).
     /// This does not include the namespace.
     /// </remarks>
-    internal const int NAMEDATALEN = 64 - 1; // Minus null terminator.
+    const int NAMEDATALEN = 64 - 1; // Minus null terminator.
 
     readonly string _value;
 
@@ -60,21 +60,16 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     public string Schema => Value.Substring(0, _value.IndexOf('.'));
     internal ReadOnlySpan<char> UnqualifiedNameSpan => Value.AsSpan().Slice(_value.IndexOf('.') + 1);
     public string UnqualifiedName => Value.Substring(_value.IndexOf('.') + 1);
-    public string Value => ValueOrThrowIfDefault();
+    public string Value => _value is null ? ThrowDefaultException() : _value;
+
+    static string ThrowDefaultException() =>
+        throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
 
     public static explicit operator string(DataTypeName value) => value.Value;
 
     public bool IsDefault => _value is null;
 
     public bool IsArray => UnqualifiedNameSpan.StartsWith("_".AsSpan(), StringComparison.Ordinal);
-
-    string ValueOrThrowIfDefault()
-    {
-        return _value is null ? Throw() : _value;
-
-        static string Throw() =>
-            throw new InvalidOperationException($"This operation cannot be performed on a default instance of {nameof(DataTypeName)}.");
-    }
 
     internal static DataTypeName CreateFullyQualifiedName(string dataTypeName)
         => dataTypeName.IndexOf('.') != -1 ? new(dataTypeName) : new("pg_catalog." + dataTypeName);
@@ -241,5 +236,3 @@ public readonly struct DataTypeName : IEquatable<DataTypeName>
     public static bool operator ==(DataTypeName left, DataTypeName right) => left.Equals(right);
     public static bool operator !=(DataTypeName left, DataTypeName right) => !left.Equals(right);
 }
-
-
