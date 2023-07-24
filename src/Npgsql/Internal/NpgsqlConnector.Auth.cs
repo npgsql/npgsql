@@ -71,28 +71,40 @@ partial class NpgsqlConnector
     async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
     {
         // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
-        var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
-        var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
-        if (!supportsSha256 && !supportsSha256Plus)
+        var serverSupportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
+        var clientSupportsSha256 = serverSupportsSha256 && Settings.ChannelBinding != ChannelBinding.Require;
+        var serverSupportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
+        var clientSupportsSha256Plus = serverSupportsSha256Plus && Settings.ChannelBinding != ChannelBinding.Disable;
+        if (!clientSupportsSha256 && !clientSupportsSha256Plus)
+        {
+            if (serverSupportsSha256 && Settings.ChannelBinding == ChannelBinding.Require)
+                throw new NpgsqlException($"Couldn't connect because {nameof(ChannelBinding)} is set to {nameof(ChannelBinding.Require)} " +
+                                          "but the server doesn't support SCRAM-SHA-256-PLUS");
+            if (serverSupportsSha256Plus && Settings.ChannelBinding == ChannelBinding.Disable)
+                throw new NpgsqlException($"Couldn't connect because {nameof(ChannelBinding)} is set to {nameof(ChannelBinding.Disable)} " +
+                                          "but the server doesn't support SCRAM-SHA-256");
+
             throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                       "Mechanisms received from server: " + string.Join(", ", mechanisms));
+        }
 
         var mechanism = string.Empty;
         var cbindFlag = string.Empty;
         var cbind = string.Empty;
         var successfulBind = false;
 
-        if (supportsSha256Plus)
+        if (clientSupportsSha256Plus)
             DataSource.EncryptionHandler.AuthenticateSASLSha256Plus(this, ref mechanism, ref cbindFlag, ref cbind, ref successfulBind);
 
-        if (!successfulBind && supportsSha256)
+        if (!successfulBind && serverSupportsSha256)
         {
             mechanism = "SCRAM-SHA-256";
             // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
+            // Or the user specifically requested to not use bindings
             // So, we set 'n' (client does not support binding) if there was an error while binding
             // or 'y' (client supports but server doesn't) in other case
-            cbindFlag = supportsSha256Plus ? "n" : "y";
-            cbind = supportsSha256Plus ? "biws" : "eSws";
+            cbindFlag = serverSupportsSha256Plus ? "n" : "y";
+            cbind = serverSupportsSha256Plus ? "biws" : "eSws";
             successfulBind = true;
             IsScram = true;
         }
@@ -167,6 +179,19 @@ partial class NpgsqlConnector
     internal void AuthenticateSASLSha256Plus(ref string mechanism, ref string cbindFlag, ref string cbind,
         ref bool successfulBind)
     {
+        // The check below is copied from libpq (with commentary)
+        // https://github.com/postgres/postgres/blob/98640f960eb9ed80cf90de3ef5d2e829b785b3eb/src/interfaces/libpq/fe-auth.c#L507-L517
+
+        // The server offered SCRAM-SHA-256-PLUS, but the connection
+        // is not SSL-encrypted. That's not sane. Perhaps SSL was
+        // stripped by a proxy? There's no point in continuing,
+        // because the server will reject the connection anyway if we
+        // try authenticate without channel binding even though both
+        // the client and server supported it. The SCRAM exchange
+        // checks for that, to prevent downgrade attacks.
+        if (!IsSecure)
+            throw new NpgsqlException("Server offered SCRAM-SHA-256-PLUS authentication over a non-SSL connection");
+
         var sslStream = (SslStream)_stream;
         if (sslStream.RemoteCertificate is null)
         {

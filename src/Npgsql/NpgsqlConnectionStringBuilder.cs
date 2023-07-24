@@ -653,6 +653,25 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     }
     bool _includeErrorDetail;
 
+    /// <summary>
+    /// Controls whether channel binding is required, disabled or preferred, depending on server support.
+    /// </summary>
+    [Category("Security")]
+    [Description("Controls whether channel binding is required, disabled or preferred, depending on server support.")]
+    [DisplayName("Channel Binding")]
+    [DefaultValue(ChannelBinding.Prefer)]
+    [NpgsqlConnectionStringProperty]
+    public ChannelBinding ChannelBinding
+    {
+        get => _channelBinding;
+        set
+        {
+            _channelBinding = value;
+            SetValue(nameof(ChannelBinding), value);
+        }
+    }
+    ChannelBinding _channelBinding;
+
     #endregion
 
     #region Properties - Pooling
@@ -1806,6 +1825,25 @@ public enum SslMode
     /// Fail the connection if the server doesn't support SSL. Also verifies server certificate with host's name.
     /// </summary>
     VerifyFull
+}
+
+/// <summary>
+/// Specifies how to manage channel binding.
+/// </summary>
+public enum ChannelBinding
+{
+    /// <summary>
+    /// Channel binding is disabled. If the server requires channel binding, the connection will fail.
+    /// </summary>
+    Disable,
+    /// <summary>
+    /// Prefer channel binding if the server allows it, but connect without it if not.
+    /// </summary>
+    Prefer,
+    /// <summary>
+    /// Fail the connection if the server doesn't support channel binding.
+    /// </summary>
+    Require
 }
 
 /// <summary>
