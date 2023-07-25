@@ -92,9 +92,7 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
 
     public override Size GetSize(SizeContext context, Stream value, ref object? writeState)
     {
-        var memoryStream = new MemoryStream(value.CanSeek ? (int)value.Length : 0);
-        if (value.CanSeek)
-            value.Seek(0, SeekOrigin.Begin);
+        var memoryStream = new MemoryStream(value.CanSeek ? (int)(value.Length - value.Position) : 0);
         value.CopyTo(memoryStream);
         writeState = memoryStream.ToArray();
         return checked((int)memoryStream.Length);

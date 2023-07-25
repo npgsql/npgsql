@@ -174,9 +174,8 @@ partial class NpgsqlConnector
         for (var paramIndex = 0; paramIndex < parameters.Count; paramIndex++)
         {
             var param = parameters[paramIndex];
-            param.BindFormatAndLength();
-            // TODO this is where we would do SizeKind.Unknown buffered writing to get the length, the bytes would then be written later down below.
-            var size = param.ConvertedSize!.Value;
+            param.Bind();
+            var size = param.WriteSize!.Value;
             paramsLength += size.Value > 0 ? size.Value : 0;
             formatCodesSum += param.Format.ToFormatCode();
         }

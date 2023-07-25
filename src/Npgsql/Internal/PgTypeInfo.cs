@@ -191,37 +191,35 @@ public class PgTypeInfo
 
     // Bind for writing.
     /// When result is null, the value was interpreted to be a SQL NULL.
-    public PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    public PgConverterInfo? Bind<T>(PgConverterResolution resolution, T? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
             throw new NotSupportedException($"Writing {Type} is not supported for this type info.");
-
-        if (IsBoxing || typeof(T) == typeof(object))
-            return BindObject(resolution, value, out writeState, out format, formatPreference);
 
         var converter = resolution.GetConverter<T>();
         format = ResolveFormat(converter, out var bufferRequirements, formatPreference ?? PreferredFormat);
         if (converter.IsDbNull(value))
         {
             writeState = null;
+            size = default;
             return null;
         }
         writeState = null;
         var context = new SizeContext(format);
-        var size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
+        size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSize(context, value, ref writeState);
         return new()
         {
             Converter = converter,
-            AsObject = IsBoxing || Type != typeof(T),
-            BufferRequirement = size,
+            AsObject = IsBoxing,
+            BufferRequirement = bufferRequirements.Write,
         };
     }
 
     // Bind for writing.
     // Note: this api is not called BindAsObject as the semantics are extended, DBNull is a NULL value for all object values.
     /// When result is null or DBNull, the value was interpreted to be a SQL NULL.
-    public PgConverterInfo? BindObject(PgConverterResolution resolution, object? value, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
+    public PgConverterInfo? BindObject(PgConverterResolution resolution, object? value, out Size size, out object? writeState, out DataFormat format, DataFormat? formatPreference = null)
     {
         // Basically exists to catch cases like object[] resolving a polymorphic read converter, better to fail during binding than writing.
         if (!SupportsWriting)
@@ -234,16 +232,17 @@ public class PgTypeInfo
         if (value is DBNull && Type != typeof(DBNull) || converter.IsDbNullAsObject(value))
         {
             writeState = null;
+            size = default;
             return null;
         }
         writeState = null;
         var context = new SizeContext(format);
-        var size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
+        size = bufferRequirements.IsFixedSize ? bufferRequirements.Write : converter.GetSizeAsObject(context, value, ref writeState);
         return new()
         {
             Converter = converter,
-            AsObject = IsBoxing || Type != typeof(object),
-            BufferRequirement = size,
+            AsObject = Type != typeof(object),
+            BufferRequirement = bufferRequirements.Write,
         };
     }
 

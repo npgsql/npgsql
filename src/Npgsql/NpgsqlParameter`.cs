@@ -3,7 +3,6 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Internal;
-using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql;
@@ -67,30 +66,37 @@ public sealed class NpgsqlParameter<T> : NpgsqlParameter
 
     #endregion Constructors
 
-    private protected override PgConverterResolution GetResolution(PgTypeInfo typeInfo) => typeInfo.GetResolution(TypedValue);
+    private protected override PgConverterResolution ResolveConverter(PgTypeInfo typeInfo) => typeInfo.GetResolution(TypedValue);
 
-    internal override void BindFormatAndLength()
+    private protected override void BindCore(bool allowNullObject = false)
     {
-        if (typeof(T) == typeof(object))
+        if (AsObject)
         {
-            base.BindFormatAndLength();
+            base.BindCore(_useSubStream || allowNullObject);
             return;
         }
 
         var value = TypedValue;
-        var info = TypeInfo!.Bind(new(Converter!, PgTypeId), value, out _writeState, out var dataFormat);
-        if (info?.BufferRequirement.Kind is SizeKind.Unknown)
-            throw new NotImplementedException();
+        if (TypeInfo!.Bind(new(Converter!, PgTypeId), value, out var size, out _writeState, out var dataFormat) is { } info)
+        {
+            if (size.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
 
-        ConvertedSize = info?.BufferRequirement ?? -1;
-        AsObject = info?.AsObject ?? false;
+            WriteSize = size;
+            _bufferRequirement = info.BufferRequirement;
+        }
+        else
+        {
+            WriteSize = -1;
+            _bufferRequirement = default;
+        }
         Format = dataFormat;
     }
 
-    private protected override ValueTask WriteValue(PgWriter writer, PgConverter converter, bool async, CancellationToken cancellationToken)
+    private protected override ValueTask WriteValue(bool async, PgConverter converter, PgWriter writer, CancellationToken cancellationToken)
     {
         if (AsObject)
-            return base.WriteValue(writer, converter, async, cancellationToken);
+            return base.WriteValue(async, converter, writer, cancellationToken);
 
         if (async)
             return ((PgConverter<T>)converter).WriteAsync(writer, TypedValue!, cancellationToken);

@@ -735,11 +735,11 @@ public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<Npg
                 break;
             }
 
-            p.Bind(options);
+            p.ResolveTypeInfo(options);
 
             if (validateValues)
             {
-                p.BindFormatAndLength();
+                p.Bind();
             }
         }
     }

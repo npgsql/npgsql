@@ -177,6 +177,7 @@ public class ByteaTests : MultiplexingTestBase
         var p = new NpgsqlParameter("p", data) { Size = 4 };
         cmd.Parameters.Add(p);
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+        Assert.That(p.Value, Is.EqualTo(new byte[] { 1, 2, 3, 4 }), "Truncated parameter value should be persisted on the parameter per DbParameter.Size docs");
 
         // NpgsqlParameter.Size needs to persist when value is changed
         byte[] data2 = { 11, 12, 13, 14, 15, 16 };
@@ -184,6 +185,7 @@ public class ByteaTests : MultiplexingTestBase
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
 
         // NpgsqlParameter.Size larger than the value size should mean the value size, as well as 0 and -1
+        p.Value = data2;
         p.Size = data2.Length + 10;
         Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
         p.Size = 0;
@@ -195,7 +197,6 @@ public class ByteaTests : MultiplexingTestBase
     }
 
     [Test, Description("Tests that bytea stream values are truncated when the NpgsqlParameter's Size is set")]
-    [NonParallelizable] // The last check will break the connection, which can fail other unrelated queries in multiplexing
     public async Task Truncate_stream()
     {
         await using var conn = await OpenConnectionAsync();
@@ -225,13 +226,9 @@ public class ByteaTests : MultiplexingTestBase
 
         Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
 
-        // NpgsqlParameter.Size larger than the value size should throw
-        p.Size = data2.Length + 10;
         p.Value = new MemoryStream(data2);
-        var ex = Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync())!;
-        Assert.That(ex.InnerException, Is.TypeOf<EndOfStreamException>());
-        if (!IsMultiplexing)
-            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+        p.Size = data2.Length + 10;
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
     }
 
     [Test]
@@ -251,7 +248,7 @@ public class ByteaTests : MultiplexingTestBase
 
         p.Value = new NonSeekableStream(data);
         p.Size = 0;
-        Assert.ThrowsAsync<NpgsqlException>(async () => await cmd.ExecuteScalarAsync());
+        Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data));
         Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
     }
 
