@@ -331,8 +331,8 @@ public sealed class NpgsqlBinaryImporter : ICancelable
             }
             typedParam.TypedValue = value;
         }
-        param.Bind(_connector.SerializerOptions);
-        param.BindFormatAndLength();
+        param.ResolveTypeInfo(_connector.SerializerOptions);
+        param.Bind();
         try
         {
             await param.Write(async, _pgWriter.WithFlushMode(async ? FlushMode.NonBlocking : FlushMode.Blocking), cancellationToken);
