@@ -2,7 +2,7 @@ using System;
 
 namespace Npgsql;
 
-#if NET7_0_OR_GREATER
+#if NET6_0_OR_GREATER
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -114,7 +114,11 @@ sealed class MetricsReporter : IDisposable
 
         if (CommandDuration.Enabled && startTimestamp > 0)
         {
+#if NET7_0_OR_GREATER
             var duration = Stopwatch.GetElapsedTime(startTimestamp);
+#else
+            var duration = new TimeSpan((long)((Stopwatch.GetTimestamp() - startTimestamp) * StopWatchTickFrequency));
+#endif
             CommandDuration.Record(duration.TotalMilliseconds, _poolNameTag);
         }
     }
@@ -216,9 +220,15 @@ sealed class MetricsReporter : IDisposable
             Reporters.Remove(this);
         }
     }
+
+#if !NET7_0_OR_GREATER
+    const long TicksPerMicrosecond = 10;
+    const long TicksPerMillisecond = TicksPerMicrosecond * 1000;
+    const long TicksPerSecond = TicksPerMillisecond * 1000;   // 10,000,000
+    static readonly double StopWatchTickFrequency = (double)TicksPerSecond / Stopwatch.Frequency;
+#endif
 }
 #else
-// Unfortunately, UpDownCounter is only supported starting with net7.0, and since a lot of the metrics rely on it,
 sealed class MetricsReporter : IDisposable
 {
     public MetricsReporter(NpgsqlDataSource _) {}
