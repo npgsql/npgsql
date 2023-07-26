@@ -451,24 +451,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
     SslMode _sslMode;
 
     /// <summary>
-    /// Whether to trust the server certificate without validating it.
-    /// </summary>
-    [Category("Security")]
-    [Description("Whether to trust the server certificate without validating it.")]
-    [DisplayName("Trust Server Certificate")]
-    [NpgsqlConnectionStringProperty]
-    public bool TrustServerCertificate
-    {
-        get => _trustServerCertificate;
-        set
-        {
-            _trustServerCertificate = value;
-            SetValue(nameof(TrustServerCertificate), value);
-        }
-    }
-    bool _trustServerCertificate;
-
-    /// <summary>
     /// Location of a client certificate to be sent to the server.
     /// </summary>
     [Category("Security")]
@@ -1573,6 +1555,25 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
         set => IncludeErrorDetail = value;
     }
 
+    /// <summary>
+    /// Whether to trust the server certificate without validating it.
+    /// </summary>
+    [Category("Security")]
+    [Description("Whether to trust the server certificate without validating it.")]
+    [DisplayName("Trust Server Certificate")]
+    [Obsolete("The TrustServerCertificate parameter is no longer needed and does nothing.")]
+    [NpgsqlConnectionStringProperty]
+    public bool TrustServerCertificate
+    {
+        get => _trustServerCertificate;
+        set
+        {
+            _trustServerCertificate = value;
+            SetValue(nameof(TrustServerCertificate), value);
+        }
+    }
+    bool _trustServerCertificate;
+
     #endregion
 
     #region Misc
@@ -1583,8 +1584,6 @@ public sealed partial class NpgsqlConnectionStringBuilder : DbConnectionStringBu
             throw new ArgumentException("Host can't be null");
         if (Multiplexing && !Pooling)
             throw new ArgumentException("Pooling must be on to use multiplexing");
-        if (TrustServerCertificate && SslMode is SslMode.Allow or SslMode.VerifyCA or SslMode.VerifyFull)
-            throw new ArgumentException(NpgsqlStrings.CannotUseTrustServerCertificate);
 
         if (!Host.Contains(','))
         {
