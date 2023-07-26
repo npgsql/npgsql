@@ -24,12 +24,6 @@
     <data name="CannotUseSslRootCertificateWithUserCallback" xml:space="preserve">
         <value>RootCertificate cannot be used in conjunction with UserCertificateValidationCallback; when registering a validation callback, perform whatever validation you require in that callback.</value>
     </data>
-    <data name="CannotUseSslModeRequireWithoutTrustServerCertificate" xml:space="preserve">
-        <value>To validate server certificates, please use VerifyFull or VerifyCA instead of Require. To disable validation, explicitly set 'Trust Server Certificate' to true. See https://www.npgsql.org/doc/release-notes/6.0.html for more details.</value>
-    </data>
-    <data name="CannotUseTrustServerCertificate" xml:space="preserve">
-        <value>TrustServerCertificate=true is not supported with SslMode={0}</value>
-    </data>
     <data name="EncryptionDisabled" xml:space="preserve">
         <value>NpgsqlSlimDataSourceBuilder is being used, and encryption hasn't been enabled, call EnableEncryption() on NpgsqlSlimDataSourceBuilder to enable it.</value>
     </data>

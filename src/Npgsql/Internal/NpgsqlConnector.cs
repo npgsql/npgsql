@@ -897,9 +897,6 @@ public sealed partial class NpgsqlConnector
             }
             else if (sslMode is SslMode.Prefer or SslMode.Require)
             {
-                if (isFirstAttempt && sslMode is SslMode.Require && !Settings.TrustServerCertificate)
-                    throw new ArgumentException(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate);
-
                 certificateValidationCallback = SslTrustServerValidation;
                 checkCertificateRevocation = false;
             }

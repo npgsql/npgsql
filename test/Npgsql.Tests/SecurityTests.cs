@@ -16,7 +16,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsSecure, Is.True);
@@ -31,7 +30,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.IsScram, Is.False);
@@ -60,7 +58,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         Assert.That(conn.ExecuteScalar("SHOW ssl_renegotiation_limit"), Is.EqualTo("0"));
@@ -154,7 +151,6 @@ public class SecurityTests : TestBase
         using var dataSource = CreateDataSource(csb =>
         {
             csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = true;
         });
         using var conn = dataSource.OpenConnection();
         using var cmd = CreateSleepCommand(conn, 10000);
@@ -175,7 +171,6 @@ public class SecurityTests : TestBase
                 csb.SslMode = SslMode.Require;
                 csb.Username = "npgsql_tests_scram";
                 csb.Password = "npgsql_tests_scram";
-                csb.TrustServerCertificate = true;
             });
             using var conn = dataSource.OpenConnection();
             // scram-sha-256-plus only works beginning from PostgreSQL 11
@@ -207,7 +202,6 @@ public class SecurityTests : TestBase
                 csb.SslMode = SslMode.Require;
                 csb.Username = "npgsql_tests_scram";
                 csb.Password = "npgsql_tests_scram";
-                csb.TrustServerCertificate = true;
                 csb.ChannelBinding = channelBinding;
             });
             // scram-sha-256-plus only works beginning from PostgreSQL 11
@@ -258,29 +252,6 @@ public class SecurityTests : TestBase
             Console.WriteLine(e);
             Assert.Ignore("Only ssl user doesn't seem to be set up");
         }
-    }
-
-    [Test]
-    public void SslMode_Require_throws_without_TSC()
-    {
-        using var dataSource = CreateDataSource(csb => csb.SslMode = SslMode.Require);
-        var ex = Assert.ThrowsAsync<ArgumentException>(async () => await dataSource.OpenConnectionAsync())!;
-        Assert.That(ex.Message, Is.EqualTo(NpgsqlStrings.CannotUseSslModeRequireWithoutTrustServerCertificate));
-    }
-
-    [Test]
-    public async Task SslMode_Require_with_callback_without_TSC()
-    {
-        await using var dataSource = CreateDataSource(csb =>
-        {
-            csb.SslMode = SslMode.Require;
-            csb.TrustServerCertificate = false;
-            csb.Pooling = false;
-        });
-        await using var connection = dataSource.CreateConnection();
-        connection.UserCertificateValidationCallback = (_, _, _, _) => true;
-
-        await connection.OpenAsync();
     }
 
     [Test]
@@ -399,7 +370,6 @@ public class SecurityTests : TestBase
             csb.Username = "npgsql_tests_ssl";
             csb.Password = "npgsql_tests_ssl";
             csb.MaxPoolSize = 1;
-            csb.TrustServerCertificate = true;
         });
 
         NpgsqlConnection conn = default!;
