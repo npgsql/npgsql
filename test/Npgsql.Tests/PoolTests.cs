@@ -203,6 +203,50 @@ class PoolTests : TestBase
         AssertPoolState(dataSource, open: Math.Max(1, minPoolSize), idle: Math.Max(0, minPoolSize - 1));
     }
 
+    [Test]
+    [Explicit("Timing-based")]
+    public async Task Prune_counts_max_lifetime_exceeded()
+    {
+        await using var dataSource = CreateDataSource(csb =>
+        {
+            csb.MinPoolSize = 0;
+            // Idle lifetime 2 seconds, 2 samples
+            csb.ConnectionIdleLifetime = 2;
+            csb.ConnectionPruningInterval = 1;
+            csb.ConnectionLifetime = 5;
+        });
+
+        // conn1 will exceed max lifetime
+        await using var conn1 = await dataSource.OpenConnectionAsync();
+
+        // make conn1 4 seconds older than the others, so it exceeds max lifetime
+        Thread.Sleep(4000);
+
+        await using var conn2 = await dataSource.OpenConnectionAsync();
+        await using var conn3 = await dataSource.OpenConnectionAsync();
+
+        await conn1.CloseAsync();
+        await conn2.CloseAsync();
+        AssertPoolState(dataSource, open: 3, idle: 2);
+
+        // wait for 1 sample
+        Thread.Sleep(1000);
+        // ConnectionIdleLifetime not yet reached.
+        AssertPoolState(dataSource, open: 3, idle: 2);
+
+        // close conn3, so we can see if too many connectors get pruned
+        await conn3.CloseAsync();
+
+        // wait for last sample + a bit more time for reliability
+        Thread.Sleep(1500);
+
+        // ConnectionIdleLifetime reached
+        // - conn1 should have been closed due to max lifetime (but this should count as pruning)
+        // - conn2 or conn3 should have been closed due to idle pruning
+        // - conn3 or conn2 should remain
+        AssertPoolState(dataSource, open: 1, idle: 1);
+    }
+
     [Test, Description("Makes sure that when a waiting async open is is given a connection, the continuation is executed in the TP rather than on the closing thread")]
     public async Task Close_releases_waiter_on_another_thread()
     {
