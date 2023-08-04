@@ -158,26 +158,26 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
             mapping => mapping with { TypeMatchPredicate = type => typeof(Stream).IsAssignableFrom(type) });
 
         // Varbit
+        mappings.AddType<object>(DataTypeNames.Varbit,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), supportsWriting: false));
         mappings.AddType<BitArray>(DataTypeNames.Varbit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
         mappings.AddStructType<bool>(DataTypeNames.Varbit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BoolBitStringConverter()));
         mappings.AddStructType<BitVector32>(DataTypeNames.Varbit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BitVector32BitStringConverter()));
-        mappings.AddType<object>(DataTypeNames.Varbit,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Varbit)), supportsWriting: false));
 
         // Bit
+        mappings.AddType<object>(DataTypeNames.Bit,
+            static (options, mapping, _) => mapping.CreateInfo(options,
+                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
         mappings.AddType<BitArray>(DataTypeNames.Bit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BitArrayBitStringConverter()), isDefault: true);
         mappings.AddStructType<bool>(DataTypeNames.Bit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BoolBitStringConverter()));
         mappings.AddStructType<BitVector32>(DataTypeNames.Bit,
             static (options, mapping, _) => mapping.CreateInfo(options, new BitVector32BitStringConverter()));
-        mappings.AddType<object>(DataTypeNames.Bit,
-            static (options, mapping, _) => mapping.CreateInfo(options,
-                new PolymorphicBitStringConverterResolver(options.GetCanonicalTypeId(DataTypeNames.Bit)), supportsWriting: false));
 
         // Timestamp
         if (Statics.LegacyTimestampBehavior)
@@ -221,7 +221,7 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         mappings.AddStructType<DateTime>(DataTypeNames.Date,
             static (options, mapping, _) =>
                 mapping.CreateInfo(options, new DateTimeDateConverter(options.EnableDateTimeInfinityConversions)),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
         mappings.AddStructType<int>(DataTypeNames.Date,
             static (options, mapping, _) => mapping.CreateInfo(options, new Int4Converter<int>()));
 #if NET6_0_OR_GREATER
@@ -242,12 +242,12 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // TimeTz
         mappings.AddStructType<DateTimeOffset>(DataTypeNames.TimeTz,
             static (options, mapping, _) => mapping.CreateInfo(options, new DateTimeOffsetTimeTzConverter()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // Interval
         mappings.AddStructType<TimeSpan>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new TimeSpanIntervalConverter()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
         mappings.AddStructType<NpgsqlInterval>(DataTypeNames.Interval,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlIntervalConverter()));
 
@@ -266,56 +266,56 @@ class AdoTypeInfoResolver : IPgTypeInfoResolver
         // Unknown
         mappings.AddType<string>(DataTypeNames.Unknown,
             static (options, mapping, _) => mapping.CreateInfo(options, new StringTextConverter(options.TextEncoding), preferredFormat: DataFormat.Text),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // Void
         mappings.AddType<object>(DataTypeNames.Void,
             static (options, mapping, _) => mapping.CreateInfo(options, new VoidConverter(), supportsWriting: false),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // UInt internal types
         foreach (var dataTypeName in new[] { DataTypeNames.Oid, DataTypeNames.Xid, DataTypeNames.Cid, DataTypeNames.RegType, DataTypeNames.RegConfig })
         {
             mappings.AddStructType<uint>(dataTypeName,
                 static (options, mapping, _) => mapping.CreateInfo(options, new UInt32Converter()),
-                mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+                MatchRequirement.DataTypeName);
         }
 
         // Char
         mappings.AddStructType<char>(DataTypeNames.Char,
             static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<char>()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
         mappings.AddStructType<byte>(DataTypeNames.Char,
             static (options, mapping, _) => mapping.CreateInfo(options, new InternalCharConverter<byte>()));
 
         // Xid8
         mappings.AddStructType<ulong>(DataTypeNames.Xid8,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // Oidvector
         mappings.AddType<uint[]>(
             DataTypeNames.OidVector,
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new ArrayBasedArrayConverter<uint[], uint>(new(new UInt32Converter(), new PgTypeId(DataTypeNames.Oid)), pgLowerBound: 0)),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // Int2vector
         mappings.AddType<short[]>(
             DataTypeNames.Int2Vector,
             static (options, mapping, _) => mapping.CreateInfo(options,
                 new ArrayBasedArrayConverter<short[], short>(new(new Int2Converter<short>(), new PgTypeId(DataTypeNames.Int2)), pgLowerBound: 0)),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // Tid
         mappings.AddStructType<NpgsqlTid>(DataTypeNames.Tid,
             static (options, mapping, _) => mapping.CreateInfo(options, new TidConverter()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
 
         // PgLsn
         mappings.AddStructType<NpgsqlLogSequenceNumber>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new PgLsnConverter()),
-            mapping => mapping with { MatchRequirement = MatchRequirement.DataTypeName });
+            MatchRequirement.DataTypeName);
         mappings.AddStructType<ulong>(DataTypeNames.PgLsn,
             static (options, mapping, _) => mapping.CreateInfo(options, new UInt64Converter()));
     }

@@ -28,7 +28,7 @@ public enum MatchRequirement
     /// Match when the datatype name or CLR type matches while the other also matches or is absent.
     Single,
     /// Match when the datatype name matches and the clr type also matches or is absent.
-    DataTypeName,
+    DataTypeName
 }
 
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
@@ -50,7 +50,7 @@ public readonly struct TypeInfoMapping
     public MatchRequirement MatchRequirement { get; init; }
     public Func<Type, bool>? TypeMatchPredicate { get; init; }
 
-    public bool TypeEquals(Type type) => Type == type || TypeMatchPredicate?.Invoke(type) == true;
+    public bool TypeEquals(Type type) => TypeMatchPredicate is null ? Type == type : TypeMatchPredicate.Invoke(type);
     public bool DataTypeNameEquals(string dataTypeName)
     {
         var span = DataTypeName.AsSpan();
@@ -341,6 +341,7 @@ public sealed class TypeInfoMappingCollection
         _items.Add(new TypeInfoMapping(nullableType, dataTypeName,
             CreateComposedFactory(nullableType, mapping, nullableConverter, copyPreferredFormat: true))
             {
+                MatchRequirement = mapping.MatchRequirement,
                 TypeMatchPredicate = mapping.TypeMatchPredicate is not null
                     ? type => Nullable.GetUnderlyingType(type) is { } underlying && mapping.TypeMatchPredicate(underlying)
                     : null
