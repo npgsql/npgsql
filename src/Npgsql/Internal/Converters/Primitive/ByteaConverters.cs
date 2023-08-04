@@ -100,14 +100,14 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
 
     public override void Write(PgWriter writer, Stream value)
     {
-        if (((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
+        if (!((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
             throw new InvalidOperationException();
         writer.WriteBytes(segment.AsSpan());
     }
 
     public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default)
     {
-        if (((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
+        if (!((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
             throw new InvalidOperationException();
 
         return writer.WriteBytesAsync(segment.AsMemory(), cancellationToken);
