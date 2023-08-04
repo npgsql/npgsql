@@ -42,12 +42,13 @@ sealed class NetworkTypeInfoResolver : IPgTypeInfoResolver
             [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "MakeGenericType is safe because the target will only ever be a reference type.")]
             static (options, resolvedMapping, _) =>
             {
+                var derivedType = resolvedMapping.Type != typeof(IPAddress);
                 PgConverter converter = new IPAddressConverter();
-                if (resolvedMapping.Type != typeof(IPAddress))
+                if (derivedType)
                     // There is not much more we can do, the deriving type IPAdress+ReadOnlyIPAdress isn't public.
                     converter = (PgConverter)Activator.CreateInstance(typeof(CastingConverter<>).MakeGenericType(resolvedMapping.Type), converter)!;
 
-                return resolvedMapping.CreateInfo(options, converter);
+                return resolvedMapping.CreateInfo(options, converter, supportsWriting: !derivedType);
             }, mapping => mapping with { MatchRequirement = MatchRequirement.Single, TypeMatchPredicate = type => typeof(IPAddress).IsAssignableFrom(type) });
         mappings.AddStructType<NpgsqlInet>(DataTypeNames.Inet,
             static (options, mapping, _) => mapping.CreateInfo(options, new NpgsqlInetConverter()));
