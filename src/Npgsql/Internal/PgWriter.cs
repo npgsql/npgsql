@@ -351,6 +351,7 @@ public class PgWriter
                 if (ShouldFlush(minBufferSize))
                     Flush();
                 Ensure(minBufferSize);
+                // TODO incorrect use of flush
                 encoder.Convert(data, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -387,6 +388,7 @@ public class PgWriter
                 if (ShouldFlush(minBufferSize))
                     await FlushAsync(cancellationToken);
                 Ensure(minBufferSize);
+                // TODO incorrect use of flush
                 encoder.Convert(data.Span, Span, flush: true, out var charsUsed, out var bytesUsed, out completed);
                 data = data.Slice(charsUsed);
                 Advance(bytesUsed);
@@ -394,7 +396,7 @@ public class PgWriter
         }
     }
 
-    public void WriteRaw(ReadOnlySpan<byte> buffer)
+    public void WriteBytes(ReadOnlySpan<byte> buffer)
     {
         while (!buffer.IsEmpty)
         {
@@ -407,7 +409,7 @@ public class PgWriter
         }
     }
 
-    public ValueTask WriteRawAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+    public ValueTask WriteBytesAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
     {
         if (buffer.Length <= Remaining)
         {
@@ -514,9 +516,9 @@ public class PgWriter
                 return Task.FromCanceled(cancellationToken);
 
             if (async)
-                return _writer.WriteRawAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+                return _writer.WriteBytesAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
 
-            _writer.WriteRaw(new Span<byte>(buffer, offset, count));
+            _writer.WriteBytes(new Span<byte>(buffer, offset, count));
             return Task.CompletedTask;
         }
 

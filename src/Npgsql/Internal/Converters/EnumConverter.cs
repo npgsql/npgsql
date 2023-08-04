@@ -61,6 +61,6 @@ sealed class EnumConverter<TEnum> : PgBufferedConverter<TEnum> where TEnum : str
         if (!_enumToLabel.TryGetValue(value, out var str))
             throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
 
-        writer.WriteRaw(new ReadOnlySpan<byte>(_encoding.GetBytes(str)));
+        writer.WriteBytes(new ReadOnlySpan<byte>(_encoding.GetBytes(str)));
     }
 }

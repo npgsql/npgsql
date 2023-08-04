@@ -21,10 +21,10 @@ abstract class ByteaConverters<T> : PgStreamingConverter<T>
         => ConvertTo(value).Length;
 
     public override void Write(PgWriter writer, T value)
-        => writer.WriteRaw(ConvertTo(value).Span);
+        => writer.WriteBytes(ConvertTo(value).Span);
 
     public override ValueTask WriteAsync(PgWriter writer, T value, CancellationToken cancellationToken = default)
-        => writer.WriteRawAsync(ConvertTo(value), cancellationToken);
+        => writer.WriteBytesAsync(ConvertTo(value), cancellationToken);
 
 #if NET6_0_OR_GREATER
     [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
@@ -94,13 +94,22 @@ sealed class StreamByteaConverter : PgStreamingConverter<Stream>
     {
         var memoryStream = new MemoryStream(value.CanSeek ? (int)(value.Length - value.Position) : 0);
         value.CopyTo(memoryStream);
-        writeState = memoryStream.ToArray();
+        writeState = memoryStream;
         return checked((int)memoryStream.Length);
     }
 
     public override void Write(PgWriter writer, Stream value)
-        => writer.WriteRaw((byte[])writer.Current.WriteState!);
+    {
+        if (((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
+            throw new InvalidOperationException();
+        writer.WriteBytes(segment.AsSpan());
+    }
 
     public override ValueTask WriteAsync(PgWriter writer, Stream value, CancellationToken cancellationToken = default)
-        => writer.WriteRawAsync((byte[])writer.Current.WriteState!, cancellationToken);
+    {
+        if (((MemoryStream)writer.Current.WriteState!).TryGetBuffer(out var segment))
+            throw new InvalidOperationException();
+
+        return writer.WriteBytesAsync(segment.AsMemory(), cancellationToken);
+    }
 }

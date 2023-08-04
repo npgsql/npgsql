@@ -208,6 +208,32 @@ public class PgReader
         stream.ReadExactly(buffer);
     }
 
+    public bool TryReadBytes(int count, out ReadOnlySpan<byte> bytes)
+    {
+        CheckBounds(count);
+        if (BufferBytesRemaining >= count)
+        {
+            bytes = new ReadOnlySpan<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            _buffer.ReadPosition += count;
+            return true;
+        }
+        bytes = default;
+        return false;
+    }
+
+    public bool TryReadBytes(int count, out ReadOnlyMemory<byte> bytes)
+    {
+        CheckBounds(count);
+        if (BufferBytesRemaining >= count)
+        {
+            bytes = new ReadOnlyMemory<byte>(_buffer.Buffer, _buffer.ReadPosition, count);
+            _buffer.ReadPosition += count;
+            return true;
+        }
+        bytes = default;
+        return false;
+    }
+
     /// ReadBytes without memory management, the next read invalidates the underlying buffer(s), only use this for intermediate transformations.
     public ReadOnlySequence<byte> ReadBytes(int count)
     {

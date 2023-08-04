@@ -78,9 +78,9 @@ sealed class BitArrayBitStringConverter : PgStreamingConverter<BitArray>
 
         writer.WriteInt32(value.Length);
         if (async)
-            await writer.WriteRawAsync(new ReadOnlyMemory<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
+            await writer.WriteBytesAsync(new ReadOnlyMemory<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
         else
-            writer.WriteRaw(new ReadOnlySpan<byte>(array, 0, byteCount));
+            writer.WriteBytes(new ReadOnlySpan<byte>(array, 0, byteCount));
 
         ArrayPool<byte>.Shared.Return(array);
     }
@@ -211,9 +211,9 @@ sealed class StringBitStringConverter : PgStreamingConverter<string>
 
         writer.WriteInt32(value.Length);
         if (async)
-            await writer.WriteRawAsync(new ReadOnlyMemory<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
+            await writer.WriteBytesAsync(new ReadOnlyMemory<byte>(array, 0, byteCount), cancellationToken).ConfigureAwait(false);
         else
-            writer.WriteRaw(new ReadOnlySpan<byte>(array, 0, byteCount));
+            writer.WriteBytes(new ReadOnlySpan<byte>(array, 0, byteCount));
 
         ArrayPool<byte>.Shared.Return(array);
     }
