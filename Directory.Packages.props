@@ -1,27 +1,40 @@
 <Project>
+  <PropertyGroup>
+    <SystemVersion>8.0.0-preview.6.23329.7</SystemVersion>
+    <ExtensionsVersion>$(SystemVersion)</ExtensionsVersion>
+  </PropertyGroup>
+  
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.1" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
-
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="OpenTelemetry.API" Version="1.5.1" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
 
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
-    <PackageVersion Include="Scriban.Signed" Version="5.7.0 " />
+    <!-- Compatibility -->
+    <PackageVersion Include="System.Threading.Channels" Version="$(SystemVersion)" />
+    <PackageVersion Include="System.Collections.Immutable" Version="$(SystemVersion)" />
+    <PackageVersion Include="System.Text.Json" Version="$(SystemVersion)" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="$(SystemVersion) " />
+    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
+    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 
-    <!-- Plugins -->
+    <!-- Plugin projects -->
     <PackageVersion Include="NetTopologySuite" Version="2.5.0" />
     <PackageVersion Include="NetTopologySuite.IO.PostGIS" Version="2.1.0" />
     <PackageVersion Include="NodaTime" Version="3.1.9" />
     <PackageVersion Include="GeoJSON.Net" Version="1.2.19" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
 
+    <!-- Build -->
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.3.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.7.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
+    <PackageVersion Include="Scriban.Signed" Version="5.7.0 " />
+    
     <!-- Tests -->
     <PackageVersion Include="NUnit" Version="3.13.3" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="7.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(ExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(ExtensionsVersion)" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.7.1" />
     <PackageVersion Include="NUnit3TestAdapter" Version="4.5.0" />
@@ -29,7 +42,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.4.5" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="AdoNet.Specification.Tests" Version="2.0.0-alpha8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(ExtensionsVersion)" />
 
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.7" />
@@ -38,21 +51,5 @@
 
     <!-- NativeAOT -->
     <PackageVersion Include="Mono.Cecil" Version="0.11.5" />
-  </ItemGroup>
-
-  <!-- Compatibility -->
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageVersion Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' ">
-    <PackageVersion Include="System.Text.Json" Version="7.0.3" />
-    <PackageVersion Include="System.Threading.Channels" Version="7.0.0" />
-    <PackageVersion Include="System.Collections.Immutable" Version="7.0.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'net6.0' ">
-    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="7.0.2" />
   </ItemGroup>
 </Project>
