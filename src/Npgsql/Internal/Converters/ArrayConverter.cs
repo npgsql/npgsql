@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -238,7 +237,7 @@ readonly struct PgArrayConverter
         {
             WriteState writeState => (writeState.Count, writeState.Lengths?.Length ?? 1 , writeState),
             null => (0, values is Array a ? a.Rank : 1, null),
-            _ => throw new InvalidOperationException($"Invalid state, expected {typeof((Size, object?)[]).FullName}.")
+            _ => throw new InvalidCastException($"Invalid state, expected {typeof((Size, object?)[]).FullName}.")
         };
 
         if (writer.ShouldFlush(GetFormatSize(count, dims)))

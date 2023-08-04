@@ -68,6 +68,6 @@ sealed class NpgsqlInetConverter : PgBufferedConverter<NpgsqlInet>
         writer.WriteByte((byte)(isCidr ? 1 : 0));  // Ignored on server side
         var bytes = value.Address.GetAddressBytes();
         writer.WriteByte((byte)bytes.Length);
-        writer.WriteRaw(bytes);
+        writer.WriteBytes(bytes);
     }
 }

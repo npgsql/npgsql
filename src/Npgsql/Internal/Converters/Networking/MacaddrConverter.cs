@@ -25,6 +25,6 @@ sealed class MacaddrConverter : PgBufferedConverter<PhysicalAddress>
     protected override void WriteCore(PgWriter writer, PhysicalAddress value)
     {
         var bytes = value.GetAddressBytes();
-        writer.WriteRaw(bytes);
+        writer.WriteBytes(bytes);
     }
 }
