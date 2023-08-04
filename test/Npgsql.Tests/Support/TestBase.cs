@@ -95,6 +95,13 @@ public abstract class TestBase
         return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault);
     }
 
+    public async Task<T> AssertTypeRead<T>(NpgsqlDataSource dataSource, string sqlLiteral, string pgTypeName, T expected,
+        bool isDefault = true, Func<T, T, bool>? comparer = null, Type? fieldType = null)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync();
+        return await AssertTypeRead(connection, sqlLiteral, pgTypeName, expected, isDefault, comparer, fieldType);
+    }
+
     public async Task AssertTypeWrite<T>(
         NpgsqlDataSource dataSource,
         T value,
@@ -144,7 +151,7 @@ public abstract class TestBase
         string pgTypeName,
         T expected,
         bool isDefault = true,
-        Func<T, T, bool>? comparer = null)
+        Func<T, T, bool>? comparer = null, Type? fieldType = null)
     {
         if (sqlLiteral.Contains('\''))
             sqlLiteral = sqlLiteral.Replace("'", "''");
@@ -166,7 +173,7 @@ public abstract class TestBase
         if (isDefault)
         {
             // For arrays, GetFieldType always returns typeof(Array), since PG arrays can have arbitrary dimensionality
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(dataTypeName.EndsWith("[]") ? typeof(Array) : typeof(T)),
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(dataTypeName.EndsWith("[]") ? typeof(Array) : fieldType ?? typeof(T)),
                 $"Got wrong result from GetFieldType when reading '{truncatedSqlLiteral}'");
         }
 
@@ -236,21 +243,6 @@ public abstract class TestBase
             CheckInference();
         }
 
-        Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
-
-        cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
-            "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
-
-        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-        await reader.ReadAsync();
-
-        for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
-        {
-            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
-            Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
-        }
-
-        // Do this after reading to get better errors when features are disabled (which would cause default mappings to resolve to Unknown).
         if (isDefault)
         {
             // With (non-generic) value only
@@ -266,6 +258,20 @@ public abstract class TestBase
             errorIdentifier[++errorIdentifierIndex] = $"Value only (type {p.Value!.GetType().Name}, generic)";
             if (isNpgsqlDbTypeInferredFromClrType)
                 CheckInference();
+        }
+
+        Debug.Assert(cmd.Parameters.Count == errorIdentifierIndex + 1);
+
+        cmd.CommandText = "SELECT " + string.Join(", ", Enumerable.Range(1, cmd.Parameters.Count).Select(i =>
+            "pg_typeof($1)::text, $1::text".Replace("$1", $"${i}")));
+
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+        await reader.ReadAsync();
+
+        for (var i = 0; i < cmd.Parameters.Count * 2; i += 2)
+        {
+            Assert.That(reader[i], Is.EqualTo(pgTypeNameWithoutFacets), $"Got wrong PG type name when writing with {errorIdentifier[i / 2]}");
+            Assert.That(reader[i+1], Is.EqualTo(expectedSqlLiteral), $"Got wrong SQL literal when writing with {errorIdentifier[i / 2]}");
         }
 
         void CheckInference()

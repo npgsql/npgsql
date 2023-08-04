@@ -369,7 +369,7 @@ public sealed class NpgsqlSlimDataSourceBuilder : INpgsqlTypeMapper
         Type[]? jsonbClrTypes = null,
         Type[]? jsonClrTypes = null)
     {
-        AddTypeInfoResolver(new SystemTextJsonTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
+        AddTypeInfoResolver(new SystemTextJsonPocoTypeInfoResolver(jsonbClrTypes, jsonClrTypes, serializerOptions));
         return this;
     }
 

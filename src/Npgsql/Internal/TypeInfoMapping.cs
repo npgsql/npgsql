@@ -157,7 +157,12 @@ public sealed class TypeInfoMappingCollection
             var preferredFormat = copyPreferredFormat ? innerInfo.PreferredFormat : null;
             var writingSupported = supportsWriting && innerInfo.SupportsWriting && mapping.Type != typeof(object);
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, converter.TypeToConvert, mapping.Type);
-            return mapping.CreateInfo(options, converter, unboxedType, preferredFormat, writingSupported);
+
+            return new PgTypeInfo(options, converter, TypeInfoMappingHelpers.ResolveFullyQualifiedName(options, mapping.DataTypeName), unboxedType)
+            {
+                PreferredFormat = preferredFormat,
+                SupportsWriting = writingSupported
+            };
         };
 
     // Helper to eliminate generic display class duplication.
@@ -171,7 +176,14 @@ public sealed class TypeInfoMappingCollection
             var unboxedType = ComputeUnboxedType(defaultType: mappingType, resolver.TypeToConvert, mapping.Type);
             // We include the data type name if the inner info did so as well.
             // This way we can rely on its logic around resolvedDataTypeName, including when it ignores that flag.
-            return mapping.CreateInfo(options, resolver, innerInfo.PgTypeId is not null, unboxedType, preferredFormat, writingSupported);
+            PgTypeId? pgTypeId = innerInfo.PgTypeId is not null
+                ? TypeInfoMappingHelpers.ResolveFullyQualifiedName(options, mapping.DataTypeName)
+                : null;
+            return new PgResolverTypeInfo(options, resolver, pgTypeId, unboxedType)
+            {
+                PreferredFormat = preferredFormat,
+                SupportsWriting = writingSupported
+            };
         };
 
     static Type? ComputeUnboxedType(Type defaultType, Type converterType, Type matchedType)
@@ -564,26 +576,24 @@ public sealed class TypeInfoMappingCollection
         => throw new InvalidOperationException($"Boxing converters are not supported, manually construct a mapping over a casting converter{(resolver ? " resolver" : "")} instead.");
 }
 
-public static class PgTypeInfoHelpers
+public static class TypeInfoMappingHelpers
 {
-    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
-    {
-        PgTypeId? pgTypeId = includeDataTypeName && !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
-            : includeDataTypeName ? new DataTypeName(mapping.DataTypeName) : null;
-        return new(options, resolver, pgTypeId, unboxedType)
+    internal static PgTypeId ResolveFullyQualifiedName(PgSerializerOptions options, string dataTypeName)
+        => !DataTypeName.IsFullyQualified(dataTypeName.AsSpan())
+            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(dataTypeName))
+            : new(new DataTypeName(dataTypeName));
+
+    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, DataFormat? preferredFormat = null, bool supportsWriting = true)
+        => new(options, converter, ResolveFullyQualifiedName(options, mapping.DataTypeName))
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting
         };
-    }
 
-    public static PgTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverter converter, Type? unboxedType = null, DataFormat? preferredFormat = null, bool supportsWriting = true)
+    public static PgResolverTypeInfo CreateInfo(this TypeInfoMapping mapping, PgSerializerOptions options, PgConverterResolver resolver, bool includeDataTypeName = true, DataFormat? preferredFormat = null, bool supportsWriting = true)
     {
-        var pgTypeId = !DataTypeName.IsFullyQualified(mapping.DataTypeName.AsSpan())
-            ? options.ToCanonicalTypeId(options.TypeCatalog.GetPostgresTypeByName(mapping.DataTypeName))
-            : new DataTypeName(mapping.DataTypeName);
-        return new(options, converter, pgTypeId, unboxedType)
+        PgTypeId? pgTypeId = includeDataTypeName ? ResolveFullyQualifiedName(options, mapping.DataTypeName) : null;
+        return new(options, resolver, pgTypeId)
         {
             PreferredFormat = preferredFormat,
             SupportsWriting = supportsWriting
