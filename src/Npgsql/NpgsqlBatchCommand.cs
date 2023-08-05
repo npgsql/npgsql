@@ -38,6 +38,33 @@ public sealed class NpgsqlBatchCommand : DbBatchCommand
     /// <inheritdoc cref="DbBatchCommand.Parameters"/>
     public new NpgsqlParameterCollection Parameters { get; } = new();
 
+#pragma warning disable CA1822 // Mark members as static
+
+#if NET8_0_OR_GREATER
+    /// <inheritdoc/>
+    public override
+#else
+    /// <summary>
+    /// Creates a new instance of an <see cref="System.Data.Common.DbParameter"/> object.
+    /// </summary>
+    /// <returns>A <see cref="System.Data.Common.DbParameter"/> object.</returns>
+    public
+#endif
+    DbParameter CreateParameter() => new NpgsqlParameter();
+
+#if NET8_0_OR_GREATER
+    /// <inheritdoc/>
+    public override
+#else
+    /// <summary>
+    /// Returns whether the <see cref="NpgsqlBatchCommand.CreateParameter"/> method is implemented.
+    /// </summary>
+    public
+#endif
+    bool CanCreateParameter => true;
+
+#pragma warning restore CA1822 // Mark members as static
+
     /// <summary>
     /// Appends an error barrier after this batch command. Defaults to the value of <see cref="NpgsqlBatch.EnableErrorBarriers" /> on the
     /// batch.

@@ -288,6 +288,18 @@ public class BatchTests : MultiplexingTestBase
         Assert.That(batch.BatchCommands[1].OID, Is.EqualTo(0));
     }
 
+    [Test]
+    public void CanCreateParameter()
+    {
+        Assert.True(new NpgsqlBatchCommand().CanCreateParameter);
+    }
+
+    [Test]
+    public void CreateParameter()
+    {
+        Assert.IsInstanceOf<NpgsqlParameter>(new NpgsqlBatchCommand().CreateParameter());
+    }
+
     #endregion NpgsqlBatchCommand
 
     #region Command behaviors
