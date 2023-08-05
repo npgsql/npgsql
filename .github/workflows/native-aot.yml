@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  dotnet_sdk_version: '8.0.100-preview.5.23266.8'
+  dotnet_sdk_version: '8.0.100-preview.6.23330.14'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   nuget_config: |
     <?xml version="1.0" encoding="utf-8"?>
