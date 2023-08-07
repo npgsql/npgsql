@@ -34,7 +34,7 @@
     <!-- Benchmarks -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.7" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.1" />
-    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.6" />
+    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.7" />
 
     <!-- NativeAOT -->
     <PackageVersion Include="Mono.Cecil" Version="0.11.5" />
