@@ -115,8 +115,9 @@ sealed class CompositeFieldInfo<T> : CompositeFieldInfo
         else
             builder.AddValue(Converter.Read(reader));
         return new();
-
+#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+#endif
         async ValueTask Core(CompositeBuilder builder, ValueTask<T> task)
         {
             builder.AddValue(await task);

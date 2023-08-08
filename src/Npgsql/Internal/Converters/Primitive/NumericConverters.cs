@@ -87,6 +87,8 @@ sealed class BigIntegerNumericConverter : PgStreamingConverter<BigInteger>
 sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
 #if NET7_0_OR_GREATER
     where T : INumberBase<T>
+#else
+    where T : notnull
 #endif
 {
     const int StackAllocByteThreshold = 64 * sizeof(uint);
@@ -106,7 +108,7 @@ sealed class DecimalNumericConverter<T> : PgBufferedConverter<T>
         return value;
     }
 
-    public override Size GetSize(SizeContext context, [DisallowNull]T value, ref object? writeState) =>
+    public override Size GetSize(SizeContext context, T value, ref object? writeState) =>
         PgNumeric.GetByteCount(default(T) switch
         {
             _ when typeof(decimal) == typeof(T) => PgNumeric.GetDigitCount((decimal)(object)value),
