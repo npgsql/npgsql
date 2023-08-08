@@ -138,7 +138,8 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             new SomeCompositeContainer { A = 8, Containee = new() { SomeText = "foo", X = 9 } },
             @"(8,""(9,foo)"")",
             $"{secondSchemaName}.container",
-            npgsqlDbType: null);
+            npgsqlDbType: null,
+            isDefaultForWriting: false);
 
         await AssertType(
             connection,
@@ -146,7 +147,7 @@ CREATE TYPE {secondSchemaName}.container AS (a int, containee {secondSchemaName}
             @"(8,""(9,foo)"")",
             $"{firstSchemaName}.container",
             npgsqlDbType: null,
-            isDefaultForWriting: false);
+            isDefaultForWriting: true);
     }
 
     [Test]
