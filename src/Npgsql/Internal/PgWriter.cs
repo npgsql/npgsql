@@ -473,8 +473,9 @@ public class PgWriter
             Current.WriteState = state;
 
         return new(new NestedWriteScope());
-
+#if NET6_0_OR_GREATER
         [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
+#endif
         async ValueTask<NestedWriteScope> Core()
         {
             await Flush(async, cancellationToken).ConfigureAwait(false);

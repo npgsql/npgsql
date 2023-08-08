@@ -103,7 +103,7 @@ public class MultirangeConverter<T, TRange> : PgStreamingConverter<T>
             await writer.Flush(async, cancellationToken).ConfigureAwait(false);
         writer.WriteInt32(value.Count);
 
-        var data = writeState.Data;
+        var data = writeState.Data.Array!;
         for (var i = 0; i < value.Count; i++)
         {
             if (writer.ShouldFlush(sizeof(int))) // Length

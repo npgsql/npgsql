@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using Npgsql.Internal.Postgres;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -197,14 +198,14 @@ static class ReflectionCompositeInfoFactory
         {
             var attr = x.GetCustomAttribute<PgNameAttribute>();
             var name = attr?.PgName ?? nameTranslator.TranslateMemberName(x.Name);
-            return KeyValuePair.Create(name, x);
+            return new KeyValuePair<string, PropertyInfo>(name, x);
         }).ToArray();
 
         var duplicates = propertiesAndNames.Except(propertiesAndNames.Distinct()).ToArray();
         if (duplicates.Length > 0)
             throw new AmbiguousMatchException($"Multiple properties are mapped to the '{duplicates[0].Key}' field.");
 
-        var propertiesMap = propertiesAndNames.ToDictionary();
+        var propertiesMap = propertiesAndNames.ToDictionary(x => x.Key, x => x.Value);
         var result = new Dictionary<int, PropertyInfo>();
         for (var i = 0; i < fields.Count; i++)
         {
@@ -225,14 +226,14 @@ static class ReflectionCompositeInfoFactory
         {
             var attr = x.GetCustomAttribute<PgNameAttribute>();
             var name = attr?.PgName ?? nameTranslator.TranslateMemberName(x.Name);
-            return KeyValuePair.Create(name, x);
+            return new KeyValuePair<string, FieldInfo>(name, x);
         }).ToArray();
 
         var duplicates = clrFieldsAndNames.Except(clrFieldsAndNames.Distinct()).ToArray();
         if (duplicates.Length > 0)
             throw new AmbiguousMatchException($"Multiple properties are mapped to the '{duplicates[0].Key}' field.");
 
-        var clrFieldsMap = clrFieldsAndNames.ToDictionary();
+        var clrFieldsMap = clrFieldsAndNames.ToDictionary(x => x.Key, x => x.Value);
         var result = new Dictionary<int, FieldInfo>();
         for (var i = 0; i < fields.Count; i++)
         {
