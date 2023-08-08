@@ -134,7 +134,8 @@ public sealed class TypeInfoMappingCollection
     {
         foreach (var mapping in _baseCollection?._items ?? _items)
         {
-            if (mapping.TypeEquals(type) && mapping.DataTypeNameEquals(dataTypeName))
+            // During mapping we just use the declared type.
+            if (mapping.Type == type && mapping.DataTypeNameEquals(dataTypeName))
             {
                 value = mapping;
                 return true;
