@@ -67,10 +67,11 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             // Arrays
             new AdoArrayTypeInfoResolver(),
             new ExtraConversionsArrayTypeInfoResolver(),
+            new SystemTextJsonArrayTypeInfoResolver(),
+            new SystemTextJsonPocoArrayTypeInfoResolver(),
+            new RangeArrayTypeInfoResolver(),
             new RecordArrayTypeInfoResolver(),
             new TupledRecordArrayTypeInfoResolver(),
-            new RangeArrayTypeInfoResolver(),
-
             new UnmappedEnumTypeInfoArrayResolver(),
         }, overwrite);
 
@@ -91,9 +92,11 @@ public sealed class NpgsqlDataSourceBuilder : INpgsqlTypeMapper
             AddTypeInfoResolver(UnsupportedTypeInfoResolver);
             // Reverse order arrays.
             AddTypeInfoResolver(new UnmappedEnumTypeInfoArrayResolver());
-            AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
             AddTypeInfoResolver(new TupledRecordArrayTypeInfoResolver());
             AddTypeInfoResolver(new RecordArrayTypeInfoResolver());
+            AddTypeInfoResolver(new RangeArrayTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonPocoArrayTypeInfoResolver());
+            AddTypeInfoResolver(new SystemTextJsonArrayTypeInfoResolver());
             AddTypeInfoResolver(new ExtraConversionsArrayTypeInfoResolver());
             AddTypeInfoResolver(new AdoArrayTypeInfoResolver());
             // Reverse order.

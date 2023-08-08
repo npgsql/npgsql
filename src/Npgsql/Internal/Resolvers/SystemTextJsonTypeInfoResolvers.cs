@@ -10,9 +10,9 @@ using Npgsql.Internal.Postgres;
 
 namespace Npgsql.Internal.Resolvers;
 
-sealed class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
+class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; } = new();
+    protected TypeInfoMappingCollection Mappings { get; } = new();
 
     public SystemTextJsonTypeInfoResolver(JsonSerializerOptions? serializerOptions = null)
         => AddTypeInfos(Mappings, serializerOptions);
@@ -43,15 +43,41 @@ sealed class SystemTextJsonTypeInfoResolver : IPgTypeInfoResolver
         }
     }
 
+    protected static void AddArrayInfos(TypeInfoMappingCollection mappings)
+    {
+        foreach (var dataTypeName in new[] { DataTypeNames.Jsonb, DataTypeNames.Json })
+        {
+            mappings.AddArrayType<JsonDocument>((string)dataTypeName);
+            mappings.AddArrayType<JsonNode>((string)dataTypeName);
+            mappings.AddArrayType<JsonObject>((string)dataTypeName);
+            mappings.AddArrayType<JsonArray>((string)dataTypeName);
+            mappings.AddArrayType<JsonValue>((string)dataTypeName);
+        }
+    }
+
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
+}
+
+sealed class SystemTextJsonArrayTypeInfoResolver : SystemTextJsonTypeInfoResolver, IPgTypeInfoResolver
+{
+    new TypeInfoMappingCollection Mappings { get; }
+
+    public SystemTextJsonArrayTypeInfoResolver()
+    {
+        Mappings = new TypeInfoMappingCollection(base.Mappings);
+        AddArrayInfos(Mappings);
+    }
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 }
 
 [RequiresUnreferencedCode("Json serializer may perform reflection on trimmed types.")]
 [RequiresDynamicCode("Need to construct a generic converter for statically unknown types.")]
-sealed class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
+class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
 {
-    TypeInfoMappingCollection Mappings { get; } = new();
+    protected TypeInfoMappingCollection Mappings { get; } = new();
 
     public SystemTextJsonPocoTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
         => AddMappings(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>(), serializerOptions);
@@ -123,6 +149,20 @@ sealed class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
         }
     }
 
+    protected static void AddArrayInfos(TypeInfoMappingCollection mappings, Type[] jsonbClrTypes, Type[] jsonClrTypes)
+    {
+        foreach (var jsonbClrType in jsonbClrTypes)
+            AddArrayType(mappings, jsonbClrType, DataTypeNames.Jsonb);
+
+        foreach (var jsonClrType in jsonClrTypes)
+            AddArrayType(mappings, jsonClrType, DataTypeNames.Json);
+
+        // Fallback mappings
+        mappings.AddArrayType<object>((string)DataTypeNames.Jsonb);
+        mappings.AddArrayType<object>((string)DataTypeNames.Json);
+
+    }
+
     public PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
         => Mappings.Find(type, dataTypeName, options);
 
@@ -135,11 +175,24 @@ sealed class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
             configureMapping
         });
 
+    static void AddArrayType(TypeInfoMappingCollection mappings, Type type, DataTypeName dataTypeName)
+        => (type.IsValueType ? AddStructArrayTypeMethodInfo : AddArrayTypeMethodInfo).MakeGenericMethod(type)
+            .Invoke(mappings, new object?[]
+            {
+                (string)dataTypeName,
+            });
+
     static readonly MethodInfo AddTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddType),
         new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
 
+    static readonly MethodInfo AddArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
+        .GetMethod(nameof(TypeInfoMappingCollection.AddArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
+
     static readonly MethodInfo AddStructTypeMethodInfo = typeof(TypeInfoMappingCollection).GetMethod(nameof(TypeInfoMappingCollection.AddStructType),
         new[] { typeof(DataTypeName), typeof(TypeInfoFactory), typeof(Func<TypeInfoMapping, TypeInfoMapping>) }) ?? throw new NullReferenceException();
+
+    static readonly MethodInfo AddStructArrayTypeMethodInfo = typeof(TypeInfoMappingCollection)
+        .GetMethod(nameof(TypeInfoMappingCollection.AddStructArrayType), new[] { typeof(string) }) ?? throw new NullReferenceException();
 
     static PgConverter CreateSystemTextJsonConverter(Type valueType, bool jsonb, Encoding textEncoding, JsonSerializerOptions serializerOptions, Type baseType)
         => (PgConverter)Activator.CreateInstance(
@@ -148,4 +201,19 @@ sealed class SystemTextJsonPocoTypeInfoResolver : IPgTypeInfoResolver
                 textEncoding,
                 serializerOptions
             )!;
+}
+
+sealed class SystemTextJsonPocoArrayTypeInfoResolver : SystemTextJsonPocoTypeInfoResolver, IPgTypeInfoResolver
+{
+    new TypeInfoMappingCollection Mappings { get; }
+
+    public SystemTextJsonPocoArrayTypeInfoResolver(Type[]? jsonbClrTypes = null, Type[]? jsonClrTypes = null, JsonSerializerOptions? serializerOptions = null)
+        : base(jsonbClrTypes, jsonClrTypes, serializerOptions)
+    {
+        Mappings = new TypeInfoMappingCollection(base.Mappings);
+        AddArrayInfos(Mappings, jsonbClrTypes ?? Array.Empty<Type>(), jsonClrTypes ?? Array.Empty<Type>());
+    }
+
+    public new PgTypeInfo? GetTypeInfo(Type? type, DataTypeName? dataTypeName, PgSerializerOptions options)
+        => Mappings.Find(type, dataTypeName, options);
 }
