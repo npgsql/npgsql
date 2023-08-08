@@ -15,7 +15,7 @@ interface IElementOperations
 {
     object CreateCollection(int[] lengths);
     int GetCollectionCount(object collection, out int[]? lengths);
-    Size? GetSize(SizeContext context, object collection, int[] indices, ref object? writeState);
+    Size? GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState);
     ValueTask Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken = default);
     ValueTask Write(bool async, PgWriter writer, object collection, int[] indices, CancellationToken cancellationToken = default);
 }
@@ -44,27 +44,26 @@ readonly struct PgArrayConverter
     bool IsDbNull(object values, int[] indices)
     {
         object? state = null;
-        return _elemOps.GetSize(new(DataFormat.Binary), values, indices, ref state) is null;
+        return _elemOps.GetSizeOrDbNull(new(DataFormat.Binary, _bufferRequirements.Write), values, indices, ref state) is null;
     }
 
-    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool elemStateDisposable, DataFormat format, int count, int[] indices, int[]? lengths = null)
+    Size GetElemsSize(object values, (Size, object?)[] elemStates, out bool anyElementState, DataFormat format, int count, int[] indices, int[]? lengths = null)
     {
         Debug.Assert(elemStates.Length >= count);
         var totalSize = Size.Zero;
-        var context = new SizeContext(format);
-        elemStateDisposable = false;
+        var context = new SizeContext(format, _bufferRequirements.Write);
+        anyElementState = false;
         var lastLength = lengths?[lengths.Length - 1] ?? count;
         ref var lastIndex = ref indices[indices.Length - 1];
         var i = 0;
         do
         {
             ref var elemItem = ref elemStates[i++];
-            var state = (object?)null;
-            var sizeResult = _elemOps.GetSize(context, values, indices, ref state);
-            if (!elemStateDisposable && state is IDisposable)
-                elemStateDisposable = true;
-            elemItem = (sizeResult ?? Size.Create(-1), state);
-            totalSize = totalSize.Combine(sizeResult ?? Size.Zero);
+            var elemState = (object?)null;
+            var size = _elemOps.GetSizeOrDbNull(context, values, indices, ref elemState);
+            anyElementState = anyElementState || elemState is not null;
+            elemItem = (size ?? -1, elemState);
+            totalSize = totalSize.Combine(size ?? 0);
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
         while (++lastIndex < lastLength || (indices.Length > 1 && CarryIndices(lengths!, indices)));
@@ -110,39 +109,26 @@ readonly struct PgArrayConverter
         if (_bufferRequirements.IsFixedSize)
         {
             elemsSize = GetFixedElemsSize(values, count, indices, lengths);
-            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths };
+            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ArrayPool = null, Data = default, AnyWriteState = false };
         }
         else
         {
-            var stateArray = ArrayPool<(Size, object?)>.Shared.Rent(count);
-            elemsSize = GetElemsSize(values, stateArray, out var elemStateDisposable, context.Format, count, indices, lengths);
-            writeState = new WriteState { Count = count, Indices = indices, Lengths = lengths, ElementInfo = new(stateArray, 0, count), ElemStateDisposable = elemStateDisposable };
+            var arrayPool = ArrayPool<(Size, object?)>.Shared;
+            var data = ArrayPool<(Size, object?)>.Shared.Rent(count);
+            elemsSize = GetElemsSize(values, data, out var elemStateDisposable, context.Format, count, indices, lengths);
+            writeState = new WriteState
+                { Count = count, Indices = indices, Lengths = lengths,
+                    ArrayPool = arrayPool,  Data = new(data, 0, count), AnyWriteState = elemStateDisposable };
         }
 
         return formatSize.Combine(elemsSize);
     }
 
-    class WriteState : IDisposable
+    sealed class WriteState : MultiWriteState
     {
         public required int Count { get; init; }
         public required int[] Indices { get; init; }
         public required int[]? Lengths { get; init; }
-        public ArraySegment<(Size, object?)> ElementInfo { get; init; }
-        public bool ElemStateDisposable { get; init; }
-
-        public void Dispose()
-        {
-            if (ElemStateDisposable)
-            {
-                var array = ElementInfo.Array!;
-                for (var i = ElementInfo.Offset; i < array.Length; i++)
-                    if (array[i].Item2 is IDisposable disposable)
-                        disposable.Dispose();
-            }
-
-            if (ElementInfo.Array is not null)
-                ArrayPool<(Size, object?)>.Shared.Return(ElementInfo.Array, true);
-        }
     }
 
     public async ValueTask<object> Read(bool async, PgReader reader, CancellationToken cancellationToken = default)
@@ -237,7 +223,7 @@ readonly struct PgArrayConverter
         {
             WriteState writeState => (writeState.Count, writeState.Lengths?.Length ?? 1 , writeState),
             null => (0, values is Array a ? a.Rank : 1, null),
-            _ => throw new InvalidCastException($"Invalid state, expected {typeof((Size, object?)[]).FullName}.")
+            _ => throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.")
         };
 
         if (writer.ShouldFlush(GetFormatSize(count, dims)))
@@ -257,63 +243,32 @@ readonly struct PgArrayConverter
             return;
 
         var elemTypeDbNullable = ElemTypeDbNullable;
-        var stateArray = state.ElementInfo.Array;
+        var elemData = state.Data.Array;
 
         var indices = state.Indices;
         Array.Clear(indices, 0 , indices.Length);
         var lastLength = state.Lengths?[state.Lengths.Length - 1] ?? state.Count;
-        var i = state.ElementInfo.Offset;
+        var i = state.Data.Offset;
         do
         {
-            var stateElem = stateArray?[i];
-            if (elemTypeDbNullable && (stateElem?.Item1.Value == -1 || IsDbNull(values, indices)))
+            if (writer.ShouldFlush(sizeof(int)))
+                await writer.Flush(async, cancellationToken).ConfigureAwait(false);
+
+            var elem = elemData?[i++];
+            var size = elem?.Size ?? (elemTypeDbNullable && IsDbNull(values, indices) ? -1 : _bufferRequirements.Write);
+            if (size.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var length = size.Value;
+            writer.WriteInt32(length);
+            if (length != -1)
             {
-                if (writer.ShouldFlush(sizeof(int)))
-                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-                writer.WriteInt32(-1);
+                using var _ = await writer.BeginNestedWrite(async, _bufferRequirements.Write, length, elem?.WriteState, cancellationToken).ConfigureAwait(false);
+                await _elemOps.Write(async, writer, values, indices, cancellationToken).ConfigureAwait(false);
             }
-            else if (stateElem is null)
-            {
-                var length = _bufferRequirements.Write.Value;
-                if (writer.ShouldFlush(sizeof(int) + length))
-                    await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-                writer.WriteInt32(length);
-                await WriteValue(_elemOps, indices, length, null).ConfigureAwait(false);
-            }
-            else
-            {
-                var (sizeResult, elemState) = stateElem.Value;
-                switch (sizeResult)
-                {
-                case { Kind: SizeKind.Exact, Value: var length }:
-                    if (writer.ShouldFlush(sizeof(int) + length))
-                        await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-
-                    writer.WriteInt32(length);
-                    await WriteValue(_elemOps, indices, length, elemState).ConfigureAwait(false);
-                    break;
-                case { Kind: SizeKind.Unknown }:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException();
-                }
-            }
-
-            i++;
         }
         // We can immediately continue if we didn't reach the end of the last dimension.
         while (++indices[indices.Length - 1] < lastLength || (indices.Length > 1 && CarryIndices(state.Lengths!, indices)));
-
-        ValueTask WriteValue(IElementOperations elementOps, int[] indices, int byteCount, object? writeState)
-        {
-            ref var current = ref writer.Current;
-            current.Size = byteCount;
-            if (writeState is not null || current.WriteState is not null)
-                current.WriteState = writeState;
-            return elementOps.Write(async, writer, values, indices, cancellationToken);
-        }
     }
 }
 
@@ -324,14 +279,12 @@ abstract class ArrayConverter<T> : PgStreamingConverter<T> where T : class
     protected Type ElemTypeToConvert { get; }
 
     readonly PgArrayConverter _pgArrayConverter;
-    protected BufferRequirements ElemBinaryRequirements { get; }
 
     private protected ArrayConverter(int? expectedDimensions, PgConverterResolution elemResolution, int pgLowerBound = 1)
     {
         if (!elemResolution.Converter.CanConvert(DataFormat.Binary, out var bufferRequirements))
             throw new NotSupportedException("Element converter has to support the binary format to be compatible.");
 
-        ElemBinaryRequirements = bufferRequirements;
         ElemResolution = elemResolution;
         ElemTypeToConvert = elemResolution.Converter.TypeToConvert;
         _pgArrayConverter = new((IElementOperations)this, elemResolution.Converter.IsNullDefaultValue, expectedDimensions,
@@ -462,16 +415,8 @@ sealed class ArrayBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElement
         return array.Length;
     }
 
-    Size? IElementOperations.GetSize(SizeContext context, object collection, int[] indices, ref object? writeState)
-    {
-        var value = GetValue(collection, indices);
-        if (_elemConverter.IsDbNull(value))
-            return null;
-
-        return !ElemBinaryRequirements.IsFixedSize
-            ? _elemConverter.GetSize(context, value, ref writeState)
-            : Size.Zero;
-    }
+    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
+        => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices), ref writeState);
 
     unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {
@@ -543,16 +488,8 @@ sealed class ListBasedArrayConverter<T, TElement> : ArrayConverter<T>, IElementO
         return Unsafe.As<List<TElement?>>(collection).Count;
     }
 
-    Size? IElementOperations.GetSize(SizeContext context, object collection, int[] indices, ref object? writeState)
-    {
-        var value = GetValue(collection, indices[0]);
-        if (_elemConverter.IsDbNull(value))
-            return null;
-
-        return !ElemBinaryRequirements.IsFixedSize
-            ? _elemConverter.GetSize(context, value, ref writeState)
-            : Size.Zero;
-    }
+    Size? IElementOperations.GetSizeOrDbNull(SizeContext context, object collection, int[] indices, ref object? writeState)
+        => _elemConverter.GetSizeOrDbNull(context.Format, context.BufferRequirement, GetValue(collection, indices[0]), ref writeState);
 
     unsafe ValueTask IElementOperations.Read(bool async, PgReader reader, bool isDbNull, object collection, int[] indices, CancellationToken cancellationToken)
     {

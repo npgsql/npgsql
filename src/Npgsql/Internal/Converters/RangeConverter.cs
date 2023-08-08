@@ -66,7 +66,6 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
             // Note that we leave the CLR default for nulls
             if (length != -1)
             {
-                // Set size before calling ShouldBuffer (it needs to be able to resolve an upper bound requirement)
                 await using var _ = await reader
                     .BeginNestedRead(async, length, readRequirement, cancellationToken).ConfigureAwait(false);
 
@@ -91,7 +90,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         {
             totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(_subtypeRequirements.Write, context, value.LowerBound, ref subTypeState) is { } size)
+            if (_subtypeConverter.GetSizeOrDbNull(context.Format, _subtypeRequirements.Write, value.LowerBound, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size);
                 (state ??= new WriteState()).LowerBoundSize = size;
@@ -105,7 +104,7 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         {
             totalSize = totalSize.Combine(sizeof(int));
             var subTypeState = (object?)null;
-            if (_subtypeConverter.GetSizeOrDbNull(_subtypeRequirements.Write, context, value.UpperBound, ref subTypeState) is { } size)
+            if (_subtypeConverter.GetSizeOrDbNull(context.Format, _subtypeRequirements.Write, value.UpperBound, ref subTypeState) is { } size)
             {
                 totalSize = totalSize.Combine(size);
                 (state ??= new WriteState()).UpperBoundSize = size;
@@ -148,42 +147,52 @@ public class RangeConverter<TSubtype> : PgStreamingConverter<NpgsqlRange<TSubtyp
         if (value.IsEmpty)
             return;
 
+        // Always need write state from this point.
+        if (writeState is null)
+            throw new InvalidCastException($"Invalid write state, expected {typeof(WriteState).FullName}.");
+
         if (!flags.HasFlag(RangeFlags.LowerBoundInfinite))
         {
-            Debug.Assert(lowerBoundSize.Kind is SizeKind.Exact && lowerBoundSize.Value != -1);
-            var length = lowerBoundSize.Value;
+            Debug.Assert(lowerBoundSize.Value != -1);
+            if (lowerBoundSize.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var byteCount = lowerBoundSize.Value; // Never -1 so it's a byteCount.
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(length);
+            writer.WriteInt32(byteCount);
+            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+                writeState.LowerBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
-                await writer.NestedWriteAsync(_subtypeConverter, value.LowerBound!, lowerBoundSize,
-                    writeState!.LowerBoundWriteState, cancellationToken);
+                await _subtypeConverter.WriteAsync(writer, value.LowerBound!, cancellationToken).ConfigureAwait(false);
             else
-                writer.NestedWrite(_subtypeConverter, value.LowerBound!, lowerBoundSize, writeState!.LowerBoundWriteState);
+                _subtypeConverter.Write(writer, value.LowerBound!);
         }
 
         if (!flags.HasFlag(RangeFlags.UpperBoundInfinite))
         {
-            Debug.Assert(upperBoundSize.Kind is SizeKind.Exact && upperBoundSize.Value != -1);
-            var length = upperBoundSize.Value;
+            Debug.Assert(upperBoundSize.Value != -1);
+            if (upperBoundSize.Kind is SizeKind.Unknown)
+                throw new NotImplementedException();
+
+            var byteCount = upperBoundSize.Value; // Never -1 so it's a byteCount.
             if (writer.ShouldFlush(sizeof(int))) // Length
                 await writer.Flush(async, cancellationToken).ConfigureAwait(false);
-            writer.WriteInt32(length);
+            writer.WriteInt32(byteCount);
+            using var _ = await writer.BeginNestedWrite(async, _subtypeRequirements.Write, byteCount,
+                writeState.UpperBoundWriteState, cancellationToken).ConfigureAwait(false);
             if (async)
-                await writer.NestedWriteAsync(_subtypeConverter, value.UpperBound!, upperBoundSize,
-                    writeState!.UpperBoundWriteState, cancellationToken);
+                await _subtypeConverter.WriteAsync(writer, value.UpperBound!, cancellationToken).ConfigureAwait(false);
             else
-                writer.NestedWrite(_subtypeConverter, value.UpperBound!, upperBoundSize, writeState!.UpperBoundWriteState);
+                _subtypeConverter.Write(writer, value.UpperBound!);
         }
     }
 
     sealed class WriteState
     {
-        // ReSharper disable InconsistentNaming
-        internal Size LowerBoundSize;
-        internal object? LowerBoundWriteState;
-        internal Size UpperBoundSize;
-        internal object? UpperBoundWriteState;
-        // ReSharper restore InconsistentNaming
+        internal Size LowerBoundSize { get; set; }
+        internal object? LowerBoundWriteState { get; set; }
+        internal Size UpperBoundSize { get; set; }
+        internal object? UpperBoundWriteState { get; set; }
     }
 }

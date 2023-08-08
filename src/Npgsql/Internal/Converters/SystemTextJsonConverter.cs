@@ -1,6 +1,5 @@
 using System;
 using System.Buffers;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
@@ -11,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Npgsql.Internal.Converters;
 
-sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase
+sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where T: TBase?
 {
     readonly bool _jsonb;
     readonly Encoding _textEncoding;
@@ -48,15 +47,15 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
                     : JsonSerializer.Deserialize(stream, typeInfoOfT);
 
             return (T?)(async
-                ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo<TBase>)_jsonTypeInfo, cancellationToken).ConfigureAwait(false)
-                : JsonSerializer.Deserialize(stream, (JsonTypeInfo<TBase>)_jsonTypeInfo));
+                ? await JsonSerializer.DeserializeAsync(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo, cancellationToken).ConfigureAwait(false)
+                : JsonSerializer.Deserialize(stream, (JsonTypeInfo<TBase?>)_jsonTypeInfo));
         }
         else
         {
             var (rentedChars, rentedBytes) = await SystemTextJsonConverter.ReadRentedBuffer(async, _textEncoding, byteCount, reader, cancellationToken).ConfigureAwait(false);
             var result = _jsonTypeInfo is JsonTypeInfo<T> typeInfoOfT
                 ? JsonSerializer.Deserialize(rentedChars.AsSpan(), typeInfoOfT)
-                : (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase>)_jsonTypeInfo);
+                : (T?)JsonSerializer.Deserialize(rentedChars.AsSpan(), (JsonTypeInfo<TBase?>)_jsonTypeInfo);
 
             ArrayPool<char>.Shared.Return(rentedChars.Array!);
             if (rentedBytes is not null)
@@ -66,12 +65,12 @@ sealed class SystemTextJsonConverter<T, TBase> : PgStreamingConverter<T?> where 
         }
     }
 
-    public override Size GetSize(SizeContext context, T value, ref object? writeState)
+    public override Size GetSize(SizeContext context, T? value, ref object? writeState)
     {
         var stream = new MemoryStream();
         // Mirroring ASP.NET Core serialization strategy https://github.com/dotnet/aspnetcore/issues/47548
         if (_objectTypeInfo is null)
-            JsonSerializer.Serialize(stream, value, (JsonTypeInfo<TBase>)_jsonTypeInfo);
+            JsonSerializer.Serialize(stream, value, (JsonTypeInfo<TBase?>)_jsonTypeInfo);
         else
             JsonSerializer.Serialize(stream, value, _objectTypeInfo);
 
