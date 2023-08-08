@@ -166,7 +166,7 @@ sealed class UserTypeMapper
 
         internal override void Build(TypeInfoMappingCollection mappings)
         {
-            mappings.AddStructType<T>(PgTypeName, static (options, mapping, resolvedDataTypeName) =>
+            mappings.AddStructType<T>(PgTypeName, static (options, mapping, dataTypeNameMatch) =>
             {
                 throw new NotImplementedException();
             });
@@ -201,6 +201,7 @@ sealed class UserTypeMapper
             mappings.AddStructType<TEnum>(PgTypeName, (options, mapping, _) =>
                 mapping.CreateInfo(options, new EnumConverter<TEnum>(_enumToLabel, _labelToEnum, options.TextEncoding), preferredFormat: DataFormat.Text), isDefault: true);
 
+            // TODO this should be split out so we can enjoy EnableArray trimming.
             mappings.AddStructArrayType<TEnum>(PgTypeName);
         }
     }

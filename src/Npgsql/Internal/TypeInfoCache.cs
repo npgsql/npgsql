@@ -8,6 +8,7 @@ namespace Npgsql.Internal;
 sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 {
     readonly PgSerializerOptions _options;
+    readonly bool _validatePgTypeIds;
 
     // Mostly used for parameter writing, 8ns
     readonly ConcurrentDictionary<Type, PgTypeInfo?> _cacheByClrType = new();
@@ -22,8 +23,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             throw new InvalidOperationException("Cannot use this type argument.");
     }
 
-    public TypeInfoCache(PgSerializerOptions options)
-        => _options = options;
+    public TypeInfoCache(PgSerializerOptions options, bool validatePgTypeIds = true)
+    {
+        _options = options;
+        _validatePgTypeIds = validatePgTypeIds;
+    }
 
     /// <summary>
     ///
@@ -71,7 +75,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
         PgTypeInfo? AddByType(Type type)
         {
             // We don't pass PgTypeId as we're interested in default converters here.
-            var info = CreateInfo(type, null, _options, defaultTypeFallback: false);
+            var info = CreateInfo(type, null, _options, defaultTypeFallback: false, _validatePgTypeIds);
 
             return info is null
                 ? null
@@ -82,7 +86,7 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
 
         PgTypeInfo? AddEntryById(TPgTypeId pgTypeId, (Type? Type, PgTypeInfo? Info)[]? infos, bool defaultTypeFallback)
         {
-            var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback);
+            var info = CreateInfo(type, pgTypeId, _options, defaultTypeFallback, _validatePgTypeIds);
 
             // We don't store negatives for unknown data types, only for unknown clr types.
             // This is to allow user mappings to be added on the fly without having to reset the entire cache.
@@ -120,11 +124,11 @@ sealed class TypeInfoCache<TPgTypeId> where TPgTypeId : struct
             }
         }
 
-        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? typeId, PgSerializerOptions options, bool defaultTypeFallback)
+        static PgTypeInfo? CreateInfo(Type? type, TPgTypeId? typeId, PgSerializerOptions options, bool defaultTypeFallback, bool validatePgTypeIds)
         {
             var pgTypeId = AsPgTypeId(typeId);
             // Validate that we only pass data types that are supported by the backend.
-            var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: options.ValidatePgTypeIds) : null;
+            var dataTypeName = pgTypeId is { } id ? (DataTypeName?)options.TypeCatalog.GetDataTypeName(id, validate: validatePgTypeIds) : null;
             var info = options.TypeInfoResolver.GetTypeInfo(type, dataTypeName, options);
             if (info is null && defaultTypeFallback)
             {

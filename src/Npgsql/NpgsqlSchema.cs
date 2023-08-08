@@ -557,11 +557,11 @@ FROM pg_constraint c
         // Npgsql-specific
         table.Columns.Add("OID", typeof(uint));
 
-        PgSerializerOptions.IntrospectionMode = true;
 
         // TODO: Support type name restriction
         try
         {
+            PgSerializerOptions.IntrospectionCaller = true;
             foreach (var baseType in connector.DatabaseInfo.BaseTypes.Cast<PostgresType>()
                          .Concat(connector.DatabaseInfo.EnumTypes)
                          .Concat(connector.DatabaseInfo.CompositeTypes))
@@ -639,28 +639,29 @@ FROM pg_constraint c
 
             foreach (var domainType in connector.DatabaseInfo.DomainTypes)
             {
-                if (connector.SerializerOptions.GetDefaultTypeInfo(domainType) is not { } info)
+                var representationalType = domainType.GetRepresentationalType();
+                if (connector.SerializerOptions.GetDefaultTypeInfo(representationalType) is not { } info)
                     continue;
 
 
                 var row = table.Rows.Add();
 
-                PopulateDefaultDataTypeInfo(row, domainType.BaseType);
+                PopulateDefaultDataTypeInfo(row, representationalType);
                 // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
-                PopulateHardcodedDataTypeInfo(row, domainType.BaseType);
+                PopulateHardcodedDataTypeInfo(row, representationalType);
                 row["TypeName"] = domainType.DisplayName;
                 row["OID"] = domainType.OID;
                 // A domain is never the best match, since its underlying base type is
                 row["IsBestMatch"] = false;
 
                 row["DataType"] = info.Type.FullName;
-                if (domainType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
+                if (representationalType.DataTypeName.ToNpgsqlDbType() is { } npgsqlDbType)
                     row["ProviderDbType"] = (int)npgsqlDbType;
             }
         }
         finally
         {
-            PgSerializerOptions.IntrospectionMode = false;
+            PgSerializerOptions.IntrospectionCaller = false;
         }
 
         return table;
